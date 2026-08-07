@@ -389,7 +389,7 @@ function Standings(){let t=ongoingT();if(!t)return noTournament();viewTournament
 function bracketSeedOrder(size){let order=[1,2];for(let n=4;n<=size;n*=2)order=order.flatMap(seed=>[seed,n+1-seed]);return order}
 function projectedTopCutSeeds(t){let groups=Object.keys(groupsOf(t)),per=advancePerGroup(t),entries=[];groups.forEach((g,gi)=>getStand(t,g).slice(0,per).forEach((x,rank)=>entries.push({seed:gi*per+rank+1,p:x.p,group:g,rank:rank+1})));let field=Math.max(2,2**Math.ceil(Math.log2(Math.max(2,entries.length)))),bySeed=Object.fromEntries(entries.map(x=>[x.seed,x]));return bracketSeedOrder(field).map(seed=>bySeed[seed]||{seed,p:'BYE',group:'',rank:0})}
 function projectedMatch(a,b){return `<div class="bracket-match projected-match"><div class="bracket-row"><span><span class="seed">${a.seed}</span>${a.p}</span><span class="bracket-score">—</span></div><div class="bracket-row"><span><span class="seed">${b.seed}</span>${b.p}</span><span class="bracket-score">—</span></div></div>`}
-function bracket(t=activeT()){let seeds=projectedTopCutSeeds(t),pairs=[];for(let i=0;i<seeds.length;i+=2)pairs.push([seeds[i],seeds[i+1]]);if(seeds.length===8)return `<div class="card bracket"><div class="bracket-title">Projected Top Cut · 8 qualifying players</div><p class="projected-note">Cross-group seeding: A1 vs B4, A4 vs B1, A2 vs B3, A3 vs B2. The same pattern is generated from each group's final order.</p><div class="topcut-layout"><div class="topcut-winners"><section class="topcut-column"><div class="bracket-title">Winners Round 1</div>${pairs.map(x=>projectedMatch(x[0],x[1])).join('')}</section><section class="topcut-column r2"><div class="bracket-title">Winners Round 2</div>${projectedMatch({seed:'W1',p:'Winner Match 1'},{seed:'W2',p:'Winner Match 2'})}${projectedMatch({seed:'W3',p:'Winner Match 3'},{seed:'W4',p:'Winner Match 4'})}</section><section class="topcut-column r3"><div class="bracket-title">Winners Final</div>${projectedMatch({seed:'W',p:'Winner Semifinal 1'},{seed:'W',p:'Winner Semifinal 2'})}</section><section class="topcut-column r4"><div class="bracket-title">Grand Final</div>${projectedMatch({seed:'W',p:'Winners champion'},{seed:'L',p:'Losers champion'})}</section></div><div class="topcut-losers"><section class="topcut-column"><div class="bracket-title">Losers Round 1</div>${projectedMatch({seed:'L1',p:'Loser Match 1'},{seed:'L2',p:'Loser Match 2'})}${projectedMatch({seed:'L3',p:'Loser Match 3'},{seed:'L4',p:'Loser Match 4'})}</section><section class="topcut-column"><div class="bracket-title">Losers Round 2</div>${projectedMatch({seed:'W',p:'Winner Losers M1'},{seed:'L',p:'Loser Winners M3'})}${projectedMatch({seed:'W',p:'Winner Losers M2'},{seed:'L',p:'Loser Winners M4'})}</section><section class="topcut-column"><div class="bracket-title">Losers Round 3</div>${projectedMatch({seed:'W',p:'Winner Losers R2-1'},{seed:'W',p:'Winner Losers R2-2'})}</section><section class="topcut-column"><div class="bracket-title">Losers Final</div>${projectedMatch({seed:'L',p:'Loser Winners Final'},{seed:'W',p:'Winner Losers Round 3'})}</section></div></div></div>`;let cols=[],round=pairs,roundNumber=1;while(round.length){cols.push(`<section class="topcut-column"><div class="bracket-title">${roundNumber===1?'Opening Round':'Winners Round '+roundNumber}</div>${round.map(x=>projectedMatch(x[0],x[1])).join('')}</section>`);if(round.length<=1)break;let next=[];for(let i=0;i<round.length;i+=2)next.push([{seed:'W',p:'Winner Match '+(i+1)},{seed:'W',p:'Winner Match '+(i+2)}]);round=next;roundNumber++}return `<div class="card bracket"><div class="bracket-title">Projected Top Cut · ${seeds.filter(x=>x.p!=='BYE').length} qualifying players</div><div class="topcut-layout"><div class="topcut-winners">${cols.join('')}<section class="topcut-column"><div class="bracket-title">Grand Final</div>${projectedMatch({seed:'W',p:'Winners champion'},{seed:'L',p:'Losers champion'})}</section></div></div></div>`}
+function bracket(t=activeT()){let seeds=projectedTopCutSeeds(t),pairs=[];for(let i=0;i<seeds.length;i+=2)pairs.push([seeds[i],seeds[i+1]]);if(seeds.length===8)return `<div class="card bracket"><div class="bracket-title">Projected Top Cut · 8 qualifying players</div><p class="projected-note">Cross-group seeding: A1 vs B4, A4 vs B1, A2 vs B3, A3 vs B2. The same pattern is generated from each group's final order.</p><div class="topcut-layout"><div class="topcut-winners"><section class="topcut-column"><div class="bracket-title">Winners Round 1</div>${pairs.map(x=>projectedMatch(x[0],x[1])).join('')}</section><section class="topcut-column r2"><div class="bracket-title">Winners Round 2</div>${projectedMatch({seed:'W1',p:'Winner Match 1'},{seed:'W2',p:'Winner Match 2'})}${projectedMatch({seed:'W3',p:'Winner Match 3'},{seed:'W4',p:'Winner Match 4'})}</section><section class="topcut-column r3"><div class="bracket-title">Winners Final</div>${projectedMatch({seed:'W',p:'Winner Semifinal 1'},{seed:'W',p:'Winner Semifinal 2'})}</section><section class="topcut-column r4"><div class="bracket-title">Grand Final</div>${projectedMatch({seed:'W',p:'Winners champion'},{seed:'L',p:'Losers champion'})}</section></div><div class="topcut-losers"><section class="topcut-column"><div class="bracket-title">Losers Round 1</div>${projectedMatch({seed:'L1',p:'Loser Match 1'},{seed:'L2',p:'Loser Match 2'})}${projectedMatch({seed:'L3',p:'Loser Match 3'},{seed:'L4',p:'Loser Match 4'})}</section><section class="topcut-column"><div class="bracket-title">Losers Round 2</div>${projectedMatch({seed:'W',p:'Winner Losers M1'},{seed:'L',p:'Loser Winners M3'})}${projectedMatch({seed:'W',p:'Winner Losers M2'},{seed:'L',p:'Loser Winners M4'})}</section><section class="topcut-column"><div class="bracket-title">Losers Round 3</div>${projectedMatch({seed:'W',p:'Winner Losers R2-1'},{seed:'W',p:'Winner Losers R2-2'})}</section><section class="topcut-column"><div class="bracket-title">Losers Final</div>${projectedMatch({seed:'L',p:'Loser Winners Final'},{seed:'W',p:'Winner Losers Round 3'})}</section></div></div></div>`;let cols=[],round=pairs,roundNumber=1;while(round.length){cols.push(`<section class="topcut-column"><div class="bracket-title">${roundNumber===1?'Opening Round':'Winners Round '+roundNumber}</div>${round.map(x=>projectedMatch(x[0],x[1])).join('')}</section>`);if(round.length<=1)break;let next=[];for(let i=0;i<round.length;i+=2)next.push([{seed:'W',p:'Winner Match '+(i+1)},{seed:'W',p:'Winner Match '+(i+2)}]);round=round.length>1?next:[];roundNumber++}return `<div class="card bracket"><div class="bracket-title">Projected Top Cut · ${seeds.filter(x=>x.p!=='BYE').length} qualifying players</div><div class="topcut-layout"><div class="topcut-winners">${cols.join('')}<section class="topcut-column"><div class="bracket-title">Grand Final</div>${projectedMatch({seed:'W',p:'Winners champion'},{seed:'L',p:'Losers champion'})}</section></div></div></div>`}
 /* ===== PATCH: general N-player double-elimination Top Cut + compact Matches page ===== */
 function buildBracketMatches(seededPlayers){let n=seededPlayers.length,k=Math.log2(n);let order=bracketSeedOrder(n),players=order.map(seed=>seededPlayers[seed-1]);let matches=[],wbRounds=[];for(let r=1;r<=k;r++){let count=n/Math.pow(2,r),ids=[];for(let m=1;m<=count;m++){let id='w'+r+'_'+m,title=r===k?'Winners Final':(k-r===1?'Winners Semifinal · Match '+m:'Winners Round '+r+' · Match '+m);let match={id,title,bracket:'W',round:r,p1:'',p2:'',s1:'',s2:''};if(r===1){match.p1=players[(m-1)*2];match.p2=players[(m-1)*2+1]}matches.push(match);ids.push(id)}wbRounds.push(ids)}for(let r=1;r<k;r++)wbRounds[r-1].forEach((id,i)=>{matches.find(x=>x.id===id).winner_to={id:wbRounds[r][Math.floor(i/2)],slot:i%2===0?'p1':'p2'}});let byId=Object.fromEntries(matches.map(m=>[m.id,m]));byId[wbRounds[k-1][0]].winner_to={id:'gf',slot:'p1'};if(k===1){byId[wbRounds[0][0]].loser_to={id:'gf',slot:'p2'}}else{let lbRounds=[],totalLB=2*(k-1);for(let i=1;i<=totalLB;i++){let j=Math.ceil(i/2),size=n/Math.pow(2,j+1),ids=[];for(let m=1;m<=size;m++){let id='l'+i+'_'+m,title=i===totalLB?'Losers Final':'Losers Round '+i+' · Match '+m;matches.push({id,title,bracket:'L',round:i,p1:'',p2:'',s1:'',s2:''});ids.push(id)}lbRounds.push(ids)}byId=Object.fromEntries(matches.map(m=>[m.id,m]));wbRounds[0].forEach((id,i)=>{byId[id].loser_to={id:lbRounds[0][Math.floor(i/2)],slot:i%2===0?'p1':'p2'}});for(let r=2;r<=k;r++){let crossRoundIdx=2*(r-1);wbRounds[r-1].forEach((id,i)=>{byId[id].loser_to={id:lbRounds[crossRoundIdx-1][i],slot:'p2'}})}for(let i=1;i<=totalLB;i++){let ids=lbRounds[i-1],isOdd=i%2===1;if(i===totalLB){ids.forEach(id=>{byId[id].winner_to={id:'gf',slot:'p2'}});continue}if(isOdd)ids.forEach((id,idx)=>{byId[id].winner_to={id:lbRounds[i][idx],slot:'p1'}});else ids.forEach((id,idx)=>{byId[id].winner_to={id:lbRounds[i][Math.floor(idx/2)],slot:idx%2===0?'p1':'p2'}})}}matches.push({id:'gf',title:'Grand Final',bracket:'GF',round:k+1,p1:'',p2:'',s1:'',s2:''});return matches}
 function buildDoubleElim(t){let seeded=seedTopCut(t).filter(Boolean);let n=1;while(n<Math.max(2,seeded.length))n*=2;while(seeded.length<n)seeded.push('BYE');t.bracketMatches=buildBracketMatches(seeded);propagate(t)}
@@ -406,4 +406,458 @@ function highlightMatches(name,on){document.querySelectorAll('.score-match').for
 function renderMatchRow(m,i,t){let editable=moderator&&t.status==='ONGOING'&&t.phase!=='topcut',a=m.a||'TBD',b=m.b||'TBD',av=scoreDrafts['a'+i]??m.as??'',bv=scoreDrafts['b'+i]??m.bs??'',reported=m.as!==''&&m.as!=null,label=m.custom?'Custom · '+(m.group||'Group match'):(m.group||'Group match');return `<article class="score-match" data-players="${a}|${b}"><div class="score-match-head"><span>${reported?'Reported · '+(m.date||'Just now'):'Awaiting result'}</span><span>${label}</span></div><div class="score-match-body"><div class="score-competitor"><span>${matchPlayerName(a)}</span>${editable?`<input aria-label="${a} score" id="a${i}" class="score-box" type="number" min="0" inputmode="numeric" placeholder="0" value="${av}">`:`<b class="score-box" style="display:grid;place-items:center">${reported?m.as:'—'}</b>`}</div><div class="score-match-vs">VS</div><div class="score-competitor right"><span>${matchPlayerName(b)}</span>${editable?`<input aria-label="${b} score" id="b${i}" class="score-box" type="number" min="0" inputmode="numeric" placeholder="0" value="${bv}">`:`<b class="score-box" style="display:grid;place-items:center">${reported?m.bs:'—'}</b>`}</div></div>${editable?`<div class="score-match-foot"><button class="save" onclick="score(${i})">Save result</button>${m.custom?`<button class="save" style="color:#ff969c" onclick="removeCustom(${i})">Remove</button>`:''}</div>`:''}</article>`}
 initSupabase();
 render();
-</script></body></html>
+</script>
+<style>
+/* ── Sprint layer: team-cover polish · draft board · versus graphics ──
+   The friend's compact-predictions patch above uses !important on
+   .prediction/.pick, so the versus rules below carry !important on
+   every property those rules would otherwise clobber. */
+.photo-preview{height:170px;border-radius:6px;margin-top:14px;background-color:#25252b;background-size:cover;background-position:center}
+
+/* ── Versus graphic (predictions) ────────────────────────── */
+.prediction.versus-card{position:relative;padding:12px 14px 0!important;margin-bottom:8px!important;overflow:hidden}
+.versus-card h3{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+.pick-options.versus-stage{display:grid!important;grid-template-columns:1fr 1fr;gap:0!important;margin:10px -14px 0!important;position:relative;isolation:isolate}
+.pick.vs-side{position:relative;isolation:isolate;height:172px;border:0!important;border-radius:0!important;background:#1c1c22;color:#f5f3f0;font:800 27px/1 'Barlow Condensed';font-size:27px!important;letter-spacing:.5px;text-align:left;padding:0 20px 18px!important;display:flex;flex-direction:column;justify-content:flex-end;align-items:flex-start;cursor:pointer;overflow:hidden;transition:filter .18s}
+.pick.vs-side:before{content:'';position:absolute;inset:0;z-index:-1;background-image:var(--art);background-size:cover;background-position:center;filter:saturate(.9) brightness(.62);transition:transform .35s,filter .18s}
+.pick.vs-side:after{content:attr(data-team);font:600 11px/1.3 'DM Sans';font-size:11px;letter-spacing:.3px;color:#c3c0c6;margin-top:5px;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pick.vs-side.left{clip-path:polygon(0 0,100% 0,calc(100% - 34px) 100%,0 100%);padding-right:52px!important;margin-right:-17px}
+.pick.vs-side.right{clip-path:polygon(34px 0,100% 0,100% 100%,0 100%);padding-left:52px!important;margin-left:-17px;text-align:right;align-items:flex-end}
+.pick.vs-side:hover:before{filter:saturate(1.1) brightness(.78)}
+.pick.vs-side.active{background:#3a1218}
+.pick.vs-side.active:before{filter:saturate(1.15) brightness(.9)}
+.pick.vs-side.active:not([disabled]){box-shadow:inset 0 -4px 0 var(--red)}
+.versus-stage.decided .vs-side:not(.active):before{filter:grayscale(.75) brightness(.35)}
+.pick.vs-side:focus-visible{outline:0;box-shadow:inset 0 0 0 3px #fff}
+.pick.vs-side[disabled]{cursor:not-allowed;opacity:1!important}
+.vs-seam{position:absolute;left:50%;top:0;bottom:0;width:2px;transform:translateX(-50%) skewX(-11deg);background:linear-gradient(180deg,transparent,var(--red),transparent);box-shadow:0 0 18px 2px #ef303877;z-index:2;pointer-events:none}
+.vs-plate{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);z-index:3;pointer-events:none;width:42px;height:42px;border-radius:50%;background:#0c0c0f;border:1px solid #5d2028;display:grid;place-items:center;font:800 15px 'Barlow Condensed';color:#ff8189;letter-spacing:.5px;box-shadow:0 6px 20px #000a}
+.vs-tag{position:absolute;z-index:3;bottom:14px;font:800 9px 'DM Sans';letter-spacing:1px;text-transform:uppercase;color:#ffb0b5;background:#4d1a20;border:1px solid #7a2b34;border-radius:3px;padding:3px 6px;pointer-events:none}
+.vs-tag.left{left:20px}.vs-tag.right{right:20px}
+.versus-note{color:#8e8c95;font-size:10px;letter-spacing:.4px;text-transform:uppercase;font-weight:800;padding:10px 0 11px}
+@media(prefers-reduced-motion:no-preference){.pick.vs-side:hover:before{transform:scale(1.045)}}
+@media(max-width:560px){.pick.vs-side{height:132px;font-size:22px!important;padding-bottom:14px!important}.pick.vs-side.left{padding-right:40px!important;margin-right:-11px;clip-path:polygon(0 0,100% 0,calc(100% - 22px) 100%,0 100%)}.pick.vs-side.right{padding-left:40px!important;margin-left:-11px;clip-path:polygon(22px 0,100% 0,100% 100%,0 100%)}.vs-seam{transform:translateX(-50%) skewX(-9deg)}.vs-plate{width:36px;height:36px;font-size:13px}}
+
+/* ── Draft board ─────────────────────────────────────────── */
+.sheet-frame{width:100%;height:74vh;min-height:520px;border:0;border-radius:7px;background:#fff;display:block}
+.board-note{display:flex;gap:14px;align-items:center;justify-content:space-between;flex-wrap:wrap;padding:14px 18px;border-bottom:1px solid var(--line);font-size:12px;color:#b6b4bb}
+.mock-layout{display:grid;grid-template-columns:1fr 330px;gap:18px;align-items:start}
+.pool-toolbar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:15px 16px;border-bottom:1px solid var(--line)}
+.pool-toolbar input[type=search]{flex:1;min-width:170px;background:#101014;border:1px solid #3a3a42;border-radius:5px;padding:9px 10px;color:#fff}
+.chip{border:1px solid #3a3a41;background:#24242a;color:#d9d7dd;border-radius:4px;padding:7px 10px;font-size:11px;font-weight:800;cursor:pointer}
+.chip.on{background:#491b20;border-color:var(--red);color:#fff}
+.pool-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(168px,1fr));gap:8px;padding:16px;max-height:66vh;overflow:auto}
+.pool-mon{display:flex;align-items:center;gap:9px;text-align:left;background:#1f1f25;border:1px solid #33333b;border-left:3px solid #4a4a55;border-radius:5px;padding:8px 10px;color:var(--text);cursor:pointer;transition:.14s}
+.pool-mon:hover{border-color:#8f3440;border-left-color:var(--red);transform:translateY(-1px)}
+.pool-mon.taken{opacity:.34;cursor:default;transform:none;border-left-color:#33333b}
+.pool-mon.pricey{border-left-color:var(--amber)}
+.pool-mon img{width:34px;height:34px;object-fit:contain;image-rendering:pixelated;flex:none}
+.pool-name{flex:1;font-size:11px;font-weight:700;line-height:1.25;overflow:hidden}
+.pool-cost{font:800 17px 'Barlow Condensed';color:var(--amber)}
+.mock-rail{padding:20px;position:sticky;top:96px}
+.budget-num{font:800 44px/.85 'Barlow Condensed';margin:14px 0 4px}
+.budget-num.over{color:#ff6b73}
+.budget-sub{font-size:11px;color:#9d9ba4}
+.budget-bar{height:9px;background:#2c2c33;border-radius:9px;overflow:hidden;margin:16px 0 6px}
+.budget-bar span{display:block;height:100%;background:linear-gradient(90deg,#ef3038,#ff8189);transition:width .25s}
+.budget-bar.over span{background:linear-gradient(90deg,#ff6b73,#ffc65d)}
+.mock-pick{display:flex;align-items:center;gap:9px;padding:9px 0;border-bottom:1px solid #2b2b32;font-size:12px}
+.mock-pick:last-of-type{border:0}
+.mock-pick img{width:26px;height:26px;object-fit:contain;image-rendering:pixelated}
+.mock-pick b{margin-left:auto;font:800 15px 'Barlow Condensed';color:var(--amber)}
+.mock-pick button{border:0;background:none;color:#ff7a80;cursor:pointer;font-size:15px;line-height:1;padding:0 2px}
+.mock-actions{display:flex;gap:8px;margin-top:18px;flex-wrap:wrap}
+.status-line{font-size:11px;color:#9d9ba4;padding:0 16px 14px}
+@media(max-width:900px){.mock-layout{grid-template-columns:1fr}.mock-rail{position:static;order:-1}.sheet-frame{height:60vh}}
+</style>
+<script>
+/* ══════════════════════════════════════════════════════════════════
+   SPRINT LAYER (rebased onto the consolidated code)
+   · Draft Board: live Google Sheet embed + private mock-draft builder
+   · Predictions: versus graphics built from the existing teamCovers
+   · Team covers: uploads are now compressed before saving, so the
+     shared league_state row (and realtime sync) stays small
+   Function declarations below override the ones above — the same
+   layering the rest of this file already relies on.
+   ══════════════════════════════════════════════════════════════════ */
+
+/* ---------- shared helpers ---------- */
+function esc(s){return String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;')}
+function jsArg(s){return esc(String(s??'').replace(/\\/g,'\\\\').replace(/'/g,"\\'"))}
+function hueOf(s){let h=0;for(let i=0;i<String(s).length;i++)h=(h*31+String(s).charCodeAt(i))%360;return h}
+function fallbackArt(label){let h=hueOf(label||'team');return `linear-gradient(135deg,hsl(${h} 42% 26%),hsl(${(h+38)%360} 38% 11%))`}
+function monSprite(name){let slug=String(name||'').toLowerCase().trim().replace(/[.'’:%]/g,'').replace(/\s+/g,'-');return `https://play.pokemonshowdown.com/sprites/gen5/${slug}.png`}
+
+/* ══ 1. TEAM COVERS: compress uploads ══════════════════════════════
+   Same editor, same teamCovers storage — only the file handler
+   changes. Raw 2 MB base64 per team breaks the realtime payload
+   limit once a few covers exist; 900px JPEG keeps sync healthy. */
+function shrinkImage(file,maxW,quality){return new Promise((resolve,reject)=>{let r=new FileReader();r.onerror=()=>reject(new Error('read'));r.onload=()=>{let i=new Image();i.onerror=()=>reject(new Error('decode'));i.onload=()=>{let w=Math.min(maxW,i.width),h=Math.round(i.height*(w/i.width)),c=document.createElement('canvas');c.width=w;c.height=h;c.getContext('2d').drawImage(i,0,0,w,h);resolve(c.toDataURL('image/jpeg',quality))};i.src=r.result};r.readAsDataURL(file)})}
+async function previewTeamCover(e){
+  let f=e.target.files?.[0];if(!f)return;
+  if(f.size>8000000){alert('Please use an image smaller than 8 MB.');e.target.value='';return}
+  try{
+    let data=await shrinkImage(f,900,.72);
+    window.pendingTeamCover=data;
+    document.querySelector('#teamCoverPreview').style.background=`url('${data}') center/cover`;
+  }catch{alert('That file could not be read. Try a JPG, PNG, or WebP.');e.target.value=''}
+}
+async function previewCover(e){ /* tournament covers get the same treatment */
+  let f=e.target.files?.[0];if(!f)return;
+  if(f.size>8000000){alert('Please use an image smaller than 8 MB.');e.target.value='';return}
+  try{
+    let data=await shrinkImage(f,900,.72);
+    window.pendingCover=data;
+    document.querySelector('#coverPreview').style.background=`url('${data}') center/cover`;
+  }catch{alert('That file could not be read. Try a JPG, PNG, or WebP.');e.target.value=''}
+}
+function teamArt(p,t){let img=teamCovers[p];return img?`url('${esc(img)}')`:fallbackArt(teamName(t||ongoingT(),p)+p)}
+
+/* ══ 2. DRAFT BOARD ════════════════════════════════════════════════ */
+const LEAGUE_SHEET='https://docs.google.com/spreadsheets/d/1Yp2dd_1VljvlX7XA-vCZBqMv4IMcZell3wSLkTjI8fI/edit';
+var boardTab='Draft sheet',poolStatus='',mockSearch='',poolSort='cost',affordableOnly=false;
+var draftPool=(()=>{try{return JSON.parse(localStorage.getItem('draftdex-pool')||'null')||{items:[],syncedAt:null,source:''}}catch{return {items:[],syncedAt:null,source:''}}})();
+var mockDraft={key:null,picks:[],budget:100,slots:10};
+
+function sheetIds(url){
+  let id=(String(url||'').match(/\/spreadsheets\/d\/(?:e\/)?([A-Za-z0-9-_]+)/)||[])[1]||'';
+  let gid=(String(url||'').match(/[#&?]gid=([0-9]+)/)||[])[1]||'';
+  return {id,gid,published:/\/spreadsheets\/d\/e\//.test(String(url||''))}
+}
+function sheetEmbedUrl(){
+  let s=sheetIds(boardLink);if(!s.id)return '';
+  if(s.published)return `https://docs.google.com/spreadsheets/d/e/${s.id}/pubhtml?widget=true&headers=false${s.gid?'&gid='+s.gid:''}`;
+  return `https://docs.google.com/spreadsheets/d/${s.id}/preview${s.gid?'#gid='+s.gid:''}`
+}
+function setBoardTab(x){boardTab=x;render();scrollTo(0,0)}
+
+function Board(){
+  let s=sheetIds(boardLink),embed=sheetEmbedUrl();
+  let actions=`<div style="display:flex;gap:8px;flex-wrap:wrap">${moderator?`<button class="btn ghost" onclick="openBoardSettings()">Board settings</button>`:''}<button class="btn" onclick="openBoardLink()">Open in Google Sheets ↗</button></div>`;
+  let body=boardTab==='My mock draft'?mockView():`
+    <div class="card">
+      <div class="board-note"><span>${s.id?'Live view of the league cost sheet. Edits made in Google Sheets show up here on refresh.':'No sheet connected yet.'}</span>
+      <span>${draftPool.items.length?`${draftPool.items.length} Pokémon loaded for mock drafts`:'Draft pool not loaded'} ${moderator?`· <button class="link" onclick="syncDraftPool()">Sync draft pool</button>`:''}</span></div>
+      ${embed?`<iframe class="sheet-frame" src="${esc(embed)}" title="League draft sheet" loading="lazy"></iframe>`
+             :`<div class="empty"><div class="card-title">Connect the cost sheet</div><p class="sub">Add the Google Sheets link in Board settings to show it here.</p></div>`}
+    </div>
+    <p class="sub">Blank frame? In Google Sheets open <b>Share → General access</b> and set it to <b>Anyone with the link · Viewer</b>. Private sheets cannot be embedded.</p>`;
+  return head('Draft Board','Costs, tiers & mock drafts',actions)
+    +`<div class="tabs">${['Draft sheet','My mock draft'].map(x=>`<button class="${boardTab===x?'active':''}" onclick="setBoardTab('${x}')">${x}</button>`).join('')}</div>`
+    +body
+}
+
+function openBoardSettings(){
+  if(!moderator)return;
+  document.querySelector('#modal').innerHTML=`<div class="modal-wrap"><div class="modal" style="max-width:620px">
+    <div class="modal-head"><div><div class="eyebrow">Moderator only</div><h2>Board settings</h2></div><button class="close" onclick="closeModal()">×</button></div>
+    <div class="field"><label>Google Sheets link</label><input id="boardInput" type="url" value="${esc(boardLink)}" placeholder="https://docs.google.com/spreadsheets/d/..."></div>
+    <p class="sub">Open the sheet tab that holds the costs before copying the link — the tab is remembered too.</p>
+    <div class="creator-actions"><button class="btn ghost" onclick="syncDraftPool(true)">Save & sync draft pool</button><button class="btn" onclick="saveBoardLink()">Save link</button></div>
+    <div class="section"><div class="card-title">Draft pool</div>
+      <p class="sub">${draftPool.items.length?`${draftPool.items.length} Pokémon · ${esc(draftPool.source||'sheet')}${draftPool.syncedAt?' · synced '+new Date(draftPool.syncedAt).toLocaleString():''}`:'Nothing loaded yet. Syncing reads the sheet and shares the pool with everyone so nobody else has to load it.'}</p>
+      <div class="creator-actions" style="justify-content:flex-start"><button class="btn ghost" onclick="openPasteCSV()">Paste sheet data instead</button>${draftPool.items.length?`<button class="btn ghost" onclick="openPoolColumns()">Fix columns</button>`:''}</div>
+    </div></div></div>`
+}
+function saveBoardLink(){
+  let value=document.querySelector('#boardInput').value.trim();
+  if(!/^https?:\/\//i.test(value)){alert('Use a full URL starting with https://');return}
+  boardLink=value;localStorage.setItem('draftdex-board',boardLink);persistLeague();closeModal();render()
+}
+
+/* --- reading the sheet ------------------------------------------- */
+function parseCSV(text){
+  let rows=[],row=[],cell='',q=false;
+  for(let i=0;i<text.length;i++){
+    let c=text[i];
+    if(q){if(c==='"'){if(text[i+1]==='"'){cell+='"';i++}else q=false}else cell+=c}
+    else if(c==='"')q=true;
+    else if(c===','){row.push(cell);cell=''}
+    else if(c==='\n'){row.push(cell);rows.push(row);row=[];cell=''}
+    else if(c!=='\r')cell+=c;
+  }
+  row.push(cell);rows.push(row);
+  return rows.map(r=>r.map(x=>x.trim()))
+}
+function notSummary(s){return !/^(total|sum|points?|cost|tier|name|pok[eé]mon|team|player|trainer|round|banned|available|drafted|remaining|budget|notes?)\b/i.test(String(s).trim())}
+function looksLikeMon(s){s=String(s).trim();return /^[A-Za-z][A-Za-z0-9'’.\- é:]{1,26}$/.test(s)&&s.split(/\s+/).length<=3&&notSummary(s)}
+function poolScore(items){return items.filter(x=>looksLikeMon(x.name)&&x.cost>=0&&x.cost<=60).length}
+function dedupe(items){let seen=new Set();return items.filter(x=>{let k=x.name.toLowerCase();if(seen.has(k)||!x.name)return false;seen.add(k);return true})}
+function poolFromRows(rows){
+  let candidates=[];
+  /* a. header row with a name column and a cost column */
+  for(let r=0;r<Math.min(rows.length,12);r++){
+    let nameCol=rows[r].findIndex(c=>/^(pok[eé]mon|name|species|mon)s?\b/i.test(c));
+    let costCol=rows[r].findIndex(c=>/^(cost|points?|pts|price|value|tier)s?\b/i.test(c));
+    if(nameCol>-1&&costCol>-1){
+      let items=[];
+      for(let i=r+1;i<rows.length;i++){
+        let n=rows[i][nameCol]||'',c=parseFloat(String(rows[i][costCol]||'').replace(/[^0-9.]/g,''));
+        if(n&&Number.isFinite(c)&&looksLikeMon(n))items.push({name:n,cost:c});
+      }
+      candidates.push({items:dedupe(items),mode:'columns'});
+    }
+  }
+  /* b. tier grid — a numeric header cell with names listed underneath */
+  let tier=[];
+  for(let r=0;r<rows.length;r++)for(let c=0;c<rows[r].length;c++){
+    let m=String(rows[r][c]||'').match(/^\$?(\d{1,2})(\s*(pts?|points?))?$/i);
+    if(!m)continue;
+    let cost=+m[1];
+    for(let i=r+1;i<rows.length;i++){
+      let v=(rows[i]||[])[c]||'';
+      if(!v)break;
+      if(/^\$?\d{1,2}(\s*(pts?|points?))?$/i.test(v))break;
+      if(looksLikeMon(v))tier.push({name:v,cost});
+    }
+  }
+  candidates.push({items:dedupe(tier),mode:'tiers'});
+  /* c. name cell with a number next to it */
+  let pairs=[];
+  rows.forEach(r=>r.forEach((v,c)=>{
+    let next=String(r[c+1]??'');
+    if(looksLikeMon(v)&&/^\d{1,2}(\.\d+)?$/.test(next))pairs.push({name:v,cost:+next});
+  }));
+  candidates.push({items:dedupe(pairs),mode:'pairs'});
+  candidates.sort((a,b)=>poolScore(b.items)-poolScore(a.items));
+  return candidates[0]||{items:[],mode:'none'}
+}
+function applyPool(items,mode,source){
+  items=dedupe(items.filter(x=>x.name&&Number.isFinite(x.cost))).sort((a,b)=>b.cost-a.cost||a.name.localeCompare(b.name));
+  draftPool={items,syncedAt:Date.now(),source:source||'Google Sheet',mode};
+  try{localStorage.setItem('draftdex-pool',JSON.stringify(draftPool))}catch{}
+  if(moderator)persistLeague();
+  return items.length
+}
+async function syncDraftPool(fromSettings){
+  if(fromSettings){let v=document.querySelector('#boardInput')?.value.trim();if(v&&/^https?:\/\//i.test(v)){boardLink=v;localStorage.setItem('draftdex-board',boardLink)}}
+  let s=sheetIds(boardLink);
+  if(!s.id){alert('Add a Google Sheets link first.');return}
+  poolStatus='Reading the sheet…';if(!fromSettings)render();
+  let urls=s.published
+    ?[`https://docs.google.com/spreadsheets/d/e/${s.id}/pub?output=csv${s.gid?'&gid='+s.gid:''}`]
+    :[`https://docs.google.com/spreadsheets/d/${s.id}/gviz/tq?tqx=out:csv${s.gid?'&gid='+s.gid:''}`,
+      `https://docs.google.com/spreadsheets/d/${s.id}/gviz/tq?tqx=out:csv`,
+      `https://docs.google.com/spreadsheets/d/${s.id}/export?format=csv${s.gid?'&gid='+s.gid:''}`];
+  for(let url of urls){
+    try{
+      let res=await fetch(url,{cache:'no-store'});
+      if(!res.ok)continue;
+      let text=await res.text();
+      if(/^\s*</.test(text))continue;
+      window.poolRows=parseCSV(text);
+      let found=poolFromRows(window.poolRows);
+      let n=applyPool(found.items,found.mode,'Google Sheet');
+      poolStatus=n?`Loaded ${n} Pokémon from the sheet.`:'The sheet loaded but no Pokémon/cost pairs were recognised — use “Fix columns”.';
+      closeModal();boardTab='My mock draft';render();
+      if(!n)openPoolColumns();
+      return
+    }catch(e){}
+  }
+  poolStatus='';
+  closeModal();
+  alert('The sheet could not be read from the browser.\n\nEither set Share → “Anyone with the link · Viewer”, or in Google Sheets use File → Share → Publish to web → CSV and paste that link here.\n\nYou can also paste the sheet data manually.');
+  openPasteCSV()
+}
+function openPasteCSV(){
+  document.querySelector('#modal').innerHTML=`<div class="modal-wrap"><div class="modal" style="max-width:620px">
+    <div class="modal-head"><div><div class="eyebrow">Draft pool</div><h2>Paste sheet data</h2></div><button class="close" onclick="closeModal()">×</button></div>
+    <p class="sub">Select the cost columns in Google Sheets, copy, and paste below. Tier layouts (a cost in the header with Pokémon underneath) and Name/Cost column layouts both work.</p>
+    <div class="field"><textarea id="poolPaste" rows="10" placeholder="Pokémon	Cost&#10;Garchomp	18"></textarea></div>
+    <div class="creator-actions"><button class="btn" onclick="importPastedPool()">Load pool</button></div></div></div>`
+}
+function importPastedPool(){
+  let raw=document.querySelector('#poolPaste').value;
+  if(!raw.trim())return;
+  window.poolRows=raw.includes('\t')?raw.split('\n').map(r=>r.split('\t').map(x=>x.trim())):parseCSV(raw);
+  let found=poolFromRows(window.poolRows),n=applyPool(found.items,found.mode,'Pasted data');
+  closeModal();
+  if(!n){alert('No Pokémon and cost pairs were found in that text.');return}
+  poolStatus=`Loaded ${n} Pokémon.`;boardTab='My mock draft';render()
+}
+function openPoolColumns(){
+  let rows=window.poolRows||[];
+  if(!rows.length){openPasteCSV();return}
+  let width=Math.max(...rows.slice(0,30).map(r=>r.length));
+  let sample=i=>rows.slice(0,8).map(r=>r[i]).filter(Boolean)[0]||'empty';
+  let opts=Array.from({length:width},(_,i)=>`<option value="${i}">Column ${String.fromCharCode(65+i)} · ${esc(String(sample(i)).slice(0,18))}</option>`).join('');
+  document.querySelector('#modal').innerHTML=`<div class="modal-wrap"><div class="modal" style="max-width:560px">
+    <div class="modal-head"><div><div class="eyebrow">Draft pool</div><h2>Choose the columns</h2></div><button class="close" onclick="closeModal()">×</button></div>
+    <p class="sub">Auto-detection did not match your layout. Point it at the right two columns.</p>
+    <div class="creator-grid"><div class="field"><label>Pokémon names</label><select id="poolNameCol">${opts}</select></div>
+    <div class="field"><label>Cost</label><select id="poolCostCol">${opts}</select></div></div>
+    <div class="creator-actions"><button class="btn" onclick="applyPoolColumns()">Load pool</button></div></div></div>`
+}
+function applyPoolColumns(){
+  let rows=window.poolRows||[],n=+document.querySelector('#poolNameCol').value,c=+document.querySelector('#poolCostCol').value,items=[];
+  rows.forEach(r=>{let name=(r[n]||'').trim(),cost=parseFloat(String(r[c]||'').replace(/[^0-9.]/g,''));if(name&&Number.isFinite(cost)&&notSummary(name)&&!/^\d+$/.test(name))items.push({name,cost})});
+  let count=applyPool(items,'manual','Google Sheet');
+  closeModal();
+  poolStatus=count?`Loaded ${count} Pokémon.`:'Those columns did not contain Pokémon and costs.';
+  render()
+}
+
+/* --- the private mock draft --------------------------------------- */
+function accountKey(){return window.currentAccount?.username||sessionUser?.id||'guest'}
+function ensureMock(){
+  let key=accountKey();
+  if(mockDraft.key===key)return mockDraft;
+  let saved=null;try{saved=JSON.parse(localStorage.getItem('draftdex-mock-'+key)||'null')}catch{}
+  mockDraft={key,picks:saved?.picks||[],budget:saved?.budget??100,slots:saved?.slots??10};
+  return mockDraft
+}
+function saveMock(){try{localStorage.setItem('draftdex-mock-'+mockDraft.key,JSON.stringify(mockDraft))}catch{}}
+function mockSpent(){return ensureMock().picks.reduce((n,x)=>n+(+x.cost||0),0)}
+function draftMon(name,cost){
+  let m=ensureMock();
+  if(m.picks.some(x=>x.name.toLowerCase()===String(name).toLowerCase()))return;
+  if(m.picks.length>=m.slots){poolStatus=`That is ${m.slots} Pokémon already — raise the roster size to add more.`;refreshMock();return}
+  m.picks.push({name,cost:+cost||0});saveMock();poolStatus='';refreshMock()
+}
+function undraftMon(i){let m=ensureMock();m.picks.splice(i,1);saveMock();refreshMock()}
+function clearMock(){let m=ensureMock();if(!m.picks.length)return;m.picks=[];saveMock();refreshMock()}
+function setMockNumber(field,value){let m=ensureMock();m[field]=Math.max(1,+value||0);saveMock();refreshMock()}
+function copyMock(){
+  let m=ensureMock();if(!m.picks.length)return;
+  let text=m.picks.map(x=>`${x.name} — ${x.cost}`).join('\n')+`\nTotal: ${mockSpent()} / ${m.budget}`;
+  navigator.clipboard?.writeText(text).then(()=>{poolStatus='Team copied to your clipboard.';refreshMock()},()=>{})
+}
+function addCustomPick(){
+  let name=document.querySelector('#customMon').value.trim(),cost=parseFloat(document.querySelector('#customCost').value);
+  if(!name||!Number.isFinite(cost)){poolStatus='Enter a Pokémon and a cost.';refreshMock();return}
+  draftMon(name,cost)
+}
+function refreshMock(){
+  let rail=document.querySelector('#mockRail'),list=document.querySelector('#poolList');
+  if(!rail||!list){render();return}
+  rail.innerHTML=mockRail();list.innerHTML=poolList()
+}
+function updatePool(v){mockSearch=v;let list=document.querySelector('#poolList');if(list)list.innerHTML=poolList()}
+function setPoolSort(v){poolSort=v;render()}
+function toggleAffordable(){affordableOnly=!affordableOnly;render()}
+
+function poolList(){
+  let m=ensureMock(),left=m.budget-mockSpent(),q=mockSearch.trim().toLowerCase();
+  let items=draftPool.items.filter(x=>!q||x.name.toLowerCase().includes(q));
+  if(affordableOnly)items=items.filter(x=>x.cost<=left);
+  items=[...items].sort(poolSort==='name'?(a,b)=>a.name.localeCompare(b.name):(a,b)=>b.cost-a.cost||a.name.localeCompare(b.name));
+  if(!items.length)return `<p class="sub" style="grid-column:1/-1">No Pokémon match that filter.</p>`;
+  return items.slice(0,400).map(x=>{
+    let taken=m.picks.some(p=>p.name.toLowerCase()===x.name.toLowerCase());
+    return `<button class="pool-mon ${taken?'taken':''} ${x.cost>left&&!taken?'pricey':''}" ${taken?'disabled':''} onclick="draftMon('${jsArg(x.name)}',${x.cost})">
+      <img src="${esc(monSprite(x.name))}" alt="" loading="lazy" onerror="this.style.visibility='hidden'">
+      <span class="pool-name">${esc(x.name)}</span><span class="pool-cost">${x.cost}</span></button>`
+  }).join('')
+}
+function mockRail(){
+  let m=ensureMock(),spent=mockSpent(),left=m.budget-spent,over=left<0;
+  return `<div class="eyebrow">Your board</div>
+    <div class="budget-num ${over?'over':''}">${spent}<span style="font-size:19px;color:#9d9ba4"> / ${m.budget}</span></div>
+    <div class="budget-sub">${over?`${Math.abs(left)} points over budget`:`${left} points left`} · ${m.picks.length} of ${m.slots} slots</div>
+    <div class="budget-bar ${over?'over':''}"><span style="width:${Math.min(100,m.budget?spent/m.budget*100:0)}%"></span></div>
+    <div style="margin-top:16px">${m.picks.length?m.picks.map((x,i)=>`<div class="mock-pick"><img src="${esc(monSprite(x.name))}" alt="" onerror="this.style.visibility='hidden'"><span>${esc(x.name)}</span><b>${x.cost}</b><button title="Remove" onclick="undraftMon(${i})">×</button></div>`).join(''):'<p class="sub">Pick from the list to build a team.</p>'}</div>
+    <div class="mock-actions"><button class="chip" onclick="copyMock()">Copy list</button><button class="chip" onclick="clearMock()">Clear team</button></div>
+    <div class="creator-grid" style="margin-top:6px"><div class="field"><label>Budget</label><input type="number" min="1" value="${m.budget}" onchange="setMockNumber('budget',this.value)"></div>
+    <div class="field"><label>Roster size</label><input type="number" min="1" value="${m.slots}" onchange="setMockNumber('slots',this.value)"></div></div>
+    <p class="sub">${esc(poolStatus)||'This team is saved in your browser only — no one else on the site can see it.'}</p>`
+}
+function mockView(){
+  let m=ensureMock();
+  let pool=draftPool.items.length?`
+    <div class="card">
+      <div class="pool-toolbar">
+        <input type="search" placeholder="Search ${draftPool.items.length} Pokémon" value="${esc(mockSearch)}" oninput="updatePool(this.value)">
+        <button class="chip ${poolSort==='cost'?'on':''}" onclick="setPoolSort('cost')">By cost</button>
+        <button class="chip ${poolSort==='name'?'on':''}" onclick="setPoolSort('name')">A–Z</button>
+        <button class="chip ${affordableOnly?'on':''}" onclick="toggleAffordable()">Affordable only</button>
+      </div>
+      <div class="pool-grid" id="poolList">${poolList()}</div>
+      <div class="status-line">Costs come from the league sheet${draftPool.syncedAt?' · synced '+new Date(draftPool.syncedAt).toLocaleDateString():''}. ${moderator?'<button class="link" onclick="syncDraftPool()">Re-sync</button>':''}</div>
+    </div>`:`
+    <div class="card empty">
+      <div class="card-title">Load the draft pool</div>
+      <p class="sub">Pull the Pokémon and their costs out of the league sheet, then build a practice team against your ${m.budget}-point budget.</p>
+      <div class="mock-actions" style="justify-content:center"><button class="btn" onclick="syncDraftPool()">Load from the sheet</button><button class="btn ghost" onclick="openPasteCSV()">Paste sheet data</button></div>
+      <p class="sub" style="margin-top:18px">${esc(poolStatus)}</p>
+    </div>`;
+  return `<div class="mock-layout"><div>${pool}
+    <div class="card" style="padding:16px;margin-top:15px">
+      <div class="eyebrow">Not on the sheet?</div>
+      <div class="pool-toolbar" style="border:0;padding:12px 0 0">
+        <input id="customMon" type="search" placeholder="Pokémon" style="flex:2">
+        <input id="customCost" type="number" min="0" placeholder="Cost" style="width:90px;background:#101014;border:1px solid #3a3a42;border-radius:5px;padding:9px 10px;color:#fff">
+        <button class="chip" onclick="addCustomPick()">Add to team</button>
+      </div>
+    </div></div>
+    <aside class="card mock-rail" id="mockRail">${mockRail()}</aside></div>`
+}
+
+/* ══ 3. VERSUS GRAPHICS ON PREDICTIONS ═════════════════════════════
+   Question text is byte-identical to the friend's version, so
+   already-saved picks and the Supabase predictions table still match. */
+function savedPick(t,question){try{return localStorage.getItem('draftdex-pick-'+(t?.id||'')+'-'+question)||''}catch{return ''}}
+function versusBlock(t,over,question,a,b,locked){
+  let chosen=savedPick(t,question);
+  let side=(p,cls)=>`<button class="pick vs-side ${cls} ${chosen===p?'active':''}" ${locked?'disabled':''} data-team="${esc(teamName(t,p))}" style="--art:${teamArt(p,t)}" onclick="pick(this)">${esc(p)}</button>`;
+  return `<div class="prediction card versus-card">
+    <div class="eyebrow">${esc(over)}</div><h3>${esc(question)}</h3>
+    <div class="pick-options versus-stage ${locked?'decided':''}">
+      ${side(a,'left')}<span class="vs-seam"></span><span class="vs-plate">VS</span>${side(b,'right')}
+      ${chosen===a?'<span class="vs-tag left">Your pick</span>':''}${chosen===b?'<span class="vs-tag right">Your pick</span>':''}
+    </div>
+    <div class="versus-note">${locked?'Result is in · prediction locked':chosen?'Tap the other side to change your pick':'Tap a side to lock in your pick'}</div>
+  </div>`
+}
+function predictions(t=activeT()){
+  let started=(t.matches||[]).some(x=>x.as!==''&&x.as!=null),groups=groupsOf(t);
+  let block=(over,q,opts,locked=false)=>{
+    if(opts.length===2&&opts.every(x=>x&&x!=='TBD'&&x!=='BYE'))return versusBlock(t,over,q,opts[0],opts[1],locked);
+    let chosen=savedPick(t,q);
+    return `<div class="prediction card"><div class="eyebrow">${esc(over)}</div><h3>${esc(q)}</h3>
+      <div class="pick-options">${opts.map(x=>predictionPick(x,locked,chosen===x)).join('')}</div>
+      ${locked?'<p class="sub">Prediction locked.</p>':''}</div>`
+  };
+  let leaderboard=`<aside class="card leaderboard"><div class="card-title">Prediction leaders</div>${(t.pred||[]).map(([p,pt],i)=>`<div class="leader"><span class="rank">${i+1}</span><span class="mini-avatar" style="background-image:${teamArt(p,t)};background-size:cover;background-position:center;color:#fff;text-shadow:0 1px 3px #000">${esc(p[0]||'')}</span><b>${esc(p)}</b><span class="pts">${pt} pts</span></div>`).join('')}</aside>`;
+  if(t.phase==='topcut'){
+    let live=(t.bracketMatches||[]).filter(m=>m.p1&&m.p2&&m.p1!=='BYE'&&m.p2!=='BYE');
+    return `<div class="pred-layout"><div><div class="eyebrow" style="margin:4px 0 8px">Live Top Cut predictions · 20 points each</div>
+      ${live.map(m=>block('20 points · '+m.title,'Who wins: '+m.p1+' vs '+m.p2,[m.p1,m.p2],m.s1!==''&&m.s2!=='')).join('')}
+      <p class="sub">New predictions appear automatically whenever the bracket produces a new playable matchup. Each locks when that matchup is scored.</p></div>${leaderboard}</div>`
+  }
+  let games=t.matches||[];
+  return `<div class="pred-layout"><div>
+    ${block('100 points · tournament outcome','Who will be the '+t.name+' Champion?',t.players,started)}
+    ${Object.entries(groups).map(([g,ps])=>block('45 points · '+g+' outcome','Who will top '+g+'?',ps,started)).join('')}
+    <div class="eyebrow" style="margin:22px 0 8px">Group-stage match predictions · 8 points each</div>
+    ${games.map(m=>block('8 points · '+(m.group||'Group A'),'Who wins: '+m.a+' vs '+m.b,[m.a,m.b],m.as!==''&&m.bs!=='')).join('')}
+  </div>${leaderboard}</div>`
+}
+function predictionPick(label,locked=false,active=false){
+  return `<button class="pick ${active?'active':''}" ${locked?'disabled style="opacity:.55;cursor:not-allowed"':''} onclick="pick(this)">${esc(label)}</button>`
+}
+
+/* ══ shared state: carry the draft pool through the rev-tracked sync ═ */
+async function flushSync(){
+  if(!supabaseClient||!moderator)return;
+  let snapshotJson=JSON.stringify({tournaments:tournamentData,profiles,roster,teamHistory,teamCovers,cut,boardLink,draftPool});
+  if(snapshotJson===lastSentSnapshot)return;
+  lastSentSnapshot=snapshotJson;knownRev++;
+  let payload=JSON.parse(snapshotJson);payload.rev=knownRev;
+  await supabaseClient.from('league_state').update({data:payload,updated_at:new Date().toISOString()}).eq('id','main')
+}
+(function(){
+  let base=window.applySharedState;
+  window.applySharedState=function(data){
+    base(data);
+    if(data&&data.draftPool&&Array.isArray(data.draftPool.items)&&data.draftPool.items.length>=(draftPool.items||[]).length)draftPool=data.draftPool;
+    if(!sheetIds(boardLink).id)boardLink=LEAGUE_SHEET;
+  }
+})();
+
+/* Point the board at the league sheet the first time only — a saved
+   moderator link always wins. */
+if(!sheetIds(boardLink).id){boardLink=LEAGUE_SHEET;localStorage.setItem('draftdex-board',boardLink)}
+render();
+</script>
+
+</body></html>
