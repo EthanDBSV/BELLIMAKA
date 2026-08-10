@@ -418,23 +418,25 @@ render();
 .prediction.versus-card{position:relative;padding:12px 14px 0!important;margin-bottom:8px!important;overflow:hidden}
 .versus-card h3{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
 .pick-options.versus-stage{display:grid!important;grid-template-columns:1fr 1fr;gap:0!important;margin:10px -14px 0!important;position:relative;isolation:isolate}
-.pick.vs-side{position:relative;isolation:isolate;height:172px;border:0!important;border-radius:0!important;background:#1c1c22;color:#f5f3f0;font:800 27px/1 'Barlow Condensed';font-size:27px!important;letter-spacing:.5px;text-align:left;padding:0 20px 18px!important;display:flex;flex-direction:column;justify-content:flex-end;align-items:flex-start;cursor:pointer;overflow:hidden;transition:filter .18s}
+.pick.vs-side{position:relative;isolation:isolate;height:172px;border:0!important;border-radius:0!important;background:#1c1c22;color:#f5f3f0;font:800 27px/1 'Barlow Condensed';font-size:27px!important;letter-spacing:.5px;text-shadow:0 2px 10px rgba(0,0,0,.9),0 1px 3px rgba(0,0,0,.95);text-align:left;padding:0 20px 18px!important;display:flex;flex-direction:column;justify-content:flex-end;align-items:flex-start;cursor:pointer;overflow:hidden;transition:filter .18s}
 .pick.vs-side:before{content:'';position:absolute;inset:0;z-index:-1;background-image:var(--art);background-size:cover;background-position:center;filter:saturate(.9) brightness(.62);transition:transform .35s,filter .18s}
-.pick.vs-side:after{content:attr(data-team);font:600 11px/1.3 'DM Sans';font-size:11px;letter-spacing:.3px;color:#c3c0c6;margin-top:5px;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pick.vs-side:after{content:attr(data-team);font:600 11px/1.3 'DM Sans';font-size:11px;letter-spacing:.3px;color:#e2e0e5;text-shadow:0 1px 6px rgba(0,0,0,.95),0 1px 2px rgba(0,0,0,.9);margin-top:5px;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .pick.vs-side.left{clip-path:polygon(0 0,100% 0,calc(100% - 34px) 100%,0 100%);padding-right:52px!important;margin-right:-17px}
 .pick.vs-side.right{clip-path:polygon(34px 0,100% 0,100% 100%,0 100%);padding-left:52px!important;margin-left:-17px;text-align:right;align-items:flex-end}
 .pick.vs-side:hover:before{filter:saturate(1.1) brightness(.78)}
 .pick.vs-side.active{background:#3a1218}
 .pick.vs-side.active:before{filter:saturate(1.15) brightness(.9)}
 .pick.vs-side.active:not([disabled]){box-shadow:inset 0 -4px 0 var(--red)}
+.pick.vs-side>.vs-scrim{position:absolute;left:0;right:0;bottom:0;height:62%;z-index:-1;background:linear-gradient(180deg,transparent,rgba(8,8,11,.82));pointer-events:none}
 .versus-stage.decided .vs-side:not(.active):before{filter:grayscale(.75) brightness(.35)}
 .pick.vs-side:focus-visible{outline:0;box-shadow:inset 0 0 0 3px #fff}
 .pick.vs-side[disabled]{cursor:not-allowed;opacity:1!important}
 .vs-seam{position:absolute;left:50%;top:0;bottom:0;width:2px;transform:translateX(-50%) skewX(-11deg);background:linear-gradient(180deg,transparent,var(--red),transparent);box-shadow:0 0 18px 2px #ef303877;z-index:2;pointer-events:none}
 .vs-plate{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);z-index:3;pointer-events:none;width:42px;height:42px;border-radius:50%;background:#0c0c0f;border:1px solid #5d2028;display:grid;place-items:center;font:800 15px 'Barlow Condensed';color:#ff8189;letter-spacing:.5px;box-shadow:0 6px 20px #000a}
-.vs-tag{position:absolute;z-index:3;bottom:14px;font:800 9px 'DM Sans';letter-spacing:1px;text-transform:uppercase;color:#ffb0b5;background:#4d1a20;border:1px solid #7a2b34;border-radius:3px;padding:3px 6px;pointer-events:none}
+.vs-tag{position:absolute;z-index:3;top:12px;font:800 9px 'DM Sans';letter-spacing:1px;text-transform:uppercase;color:#ffb0b5;background:#4d1a20;border:1px solid #7a2b34;border-radius:3px;padding:3px 6px;pointer-events:none;box-shadow:0 2px 8px #0009}
 .vs-tag.left{left:20px}.vs-tag.right{right:20px}
-.versus-note{color:#8e8c95;font-size:10px;letter-spacing:.4px;text-transform:uppercase;font-weight:800;padding:10px 0 11px}
+.vs-locked{position:absolute;z-index:3;left:50%;bottom:10px;transform:translateX(-50%);font:800 8px 'DM Sans';letter-spacing:1px;text-transform:uppercase;color:#a9a7b0;background:#1a1a20cc;border:1px solid #3c3c45;border-radius:3px;padding:2px 6px;pointer-events:none}
+.versus-hint{color:#8e8c95;font-size:11px;margin:-4px 0 10px}
 @media(prefers-reduced-motion:no-preference){.pick.vs-side:hover:before{transform:scale(1.045)}}
 @media(max-width:560px){.pick.vs-side{height:132px;font-size:22px!important;padding-bottom:14px!important}.pick.vs-side.left{padding-right:40px!important;margin-right:-11px;clip-path:polygon(0 0,100% 0,calc(100% - 22px) 100%,0 100%)}.pick.vs-side.right{padding-left:40px!important;margin-left:-11px;clip-path:polygon(22px 0,100% 0,100% 100%,0 100%)}.vs-seam{transform:translateX(-50%) skewX(-9deg)}.vs-plate{width:36px;height:36px;font-size:13px}}
 
@@ -515,7 +517,7 @@ function teamArt(p,t){let img=teamCovers[p];return img?`url('${esc(img)}')`:fall
 
 /* ══ 2. DRAFT BOARD ════════════════════════════════════════════════ */
 const LEAGUE_SHEET='https://docs.google.com/spreadsheets/d/1Yp2dd_1VljvlX7XA-vCZBqMv4IMcZell3wSLkTjI8fI/edit';
-var boardTab='Draft sheet',poolStatus='',mockSearch='',poolSort='cost',affordableOnly=false;
+var boardTab='Draft Sheet',poolStatus='',mockSearch='',poolSort='cost',affordableOnly=false;
 var draftPool=(()=>{try{return JSON.parse(localStorage.getItem('draftdex-pool')||'null')||{items:[],syncedAt:null,source:''}}catch{return {items:[],syncedAt:null,source:''}}})();
 var mockDraft={key:null,picks:[],budget:100,slots:10};
 
@@ -534,7 +536,7 @@ function setBoardTab(x){boardTab=x;render();scrollTo(0,0)}
 function Board(){
   let s=sheetIds(boardLink),embed=sheetEmbedUrl();
   let actions=`<div style="display:flex;gap:8px;flex-wrap:wrap">${moderator?`<button class="btn ghost" onclick="openBoardSettings()">Board settings</button>`:''}<button class="btn" onclick="openBoardLink()">Open in Google Sheets ↗</button></div>`;
-  let body=boardTab==='My mock draft'?mockView():`
+  let body=boardTab==='My Mock Draft'?mockView():`
     <div class="card">
       <div class="board-note"><span>${s.id?'Live view of the league cost sheet. Edits made in Google Sheets show up here on refresh.':'No sheet connected yet.'}</span>
       <span>${draftPool.items.length?`${draftPool.items.length} Pokémon loaded for mock drafts`:'Draft pool not loaded'} ${moderator?`· <button class="link" onclick="syncDraftPool()">Sync draft pool</button>`:''}</span></div>
@@ -542,8 +544,8 @@ function Board(){
              :`<div class="empty"><div class="card-title">Connect the cost sheet</div><p class="sub">Add the Google Sheets link in Board settings to show it here.</p></div>`}
     </div>
     <p class="sub">Blank frame? In Google Sheets open <b>Share → General access</b> and set it to <b>Anyone with the link · Viewer</b>. Private sheets cannot be embedded.</p>`;
-  return head('Draft Board','Costs, tiers & mock drafts',actions)
-    +`<div class="tabs">${['Draft sheet','My mock draft'].map(x=>`<button class="${boardTab===x?'active':''}" onclick="setBoardTab('${x}')">${x}</button>`).join('')}</div>`
+  return head('Draft Tools','Costs, tiers & mock drafts',actions)
+    +`<div class="tabs">${['Draft Sheet','My Mock Draft'].map(x=>`<button class="${boardTab===x?'active':''}" onclick="setBoardTab('${x}')">${x}</button>`).join('')}</div>`
     +body
 }
 
@@ -601,13 +603,14 @@ function poolFromRows(rows){
   /* b. tier grid — a numeric header cell with names listed underneath */
   let tier=[];
   for(let r=0;r<rows.length;r++)for(let c=0;c<rows[r].length;c++){
-    let m=String(rows[r][c]||'').match(/^\$?(\d{1,2})(\s*(pts?|points?))?$/i);
+    let cell=String(rows[r][c]||'').trim();
+    let m=cell.match(/^\$?(\d{1,2})\s*(pts?|points?)?$/i)||cell.match(/^tier\s*(\d{1,2})$/i);
     if(!m)continue;
     let cost=+m[1];
     for(let i=r+1;i<rows.length;i++){
       let v=(rows[i]||[])[c]||'';
       if(!v)break;
-      if(/^\$?\d{1,2}(\s*(pts?|points?))?$/i.test(v))break;
+      if(/^\$?\d{1,2}\s*(pts?|points?)?$/i.test(v)||/^tier\s*\d{1,2}$/i.test(v))break;
       if(looksLikeMon(v))tier.push({name:v,cost});
     }
   }
@@ -649,7 +652,7 @@ async function syncDraftPool(fromSettings){
       let found=poolFromRows(window.poolRows);
       let n=applyPool(found.items,found.mode,'Google Sheet');
       poolStatus=n?`Loaded ${n} Pokémon from the sheet.`:'The sheet loaded but no Pokémon/cost pairs were recognised — use “Fix columns”.';
-      closeModal();boardTab='My mock draft';render();
+      closeModal();boardTab='My Mock Draft';render();
       if(!n)openPoolColumns();
       return
     }catch(e){}
@@ -673,30 +676,79 @@ function importPastedPool(){
   let found=poolFromRows(window.poolRows),n=applyPool(found.items,found.mode,'Pasted data');
   closeModal();
   if(!n){alert('No Pokémon and cost pairs were found in that text.');return}
-  poolStatus=`Loaded ${n} Pokémon.`;boardTab='My mock draft';render()
+  poolStatus=`Loaded ${n} Pokémon.`;boardTab='My Mock Draft';render()
+}
+function nameColumnCandidates(rows){
+  let width=Math.max(0,...rows.map(r=>r.length)),cols=[];
+  for(let c=0;c<width;c++){
+    let names=rows.map(r=>(r[c]||'').trim()).filter(v=>looksLikeMon(v));
+    if(names.length>=2)cols.push({col:c,hits:names.length,sample:[...new Set(names)].slice(0,3).join(', ')});
+  }
+  return cols.sort((a,b)=>b.hits-a.hits)
+}
+/* Work out the cost for a chosen name column without asking the user:
+   first look for the numeric column that lines up with it, then fall
+   back to a tier header sitting above the names in the same column. */
+function costsForNameColumn(rows,nameCol){
+  let rowsWithNames=rows.map((r,i)=>[i,(r[nameCol]||'').trim()]).filter(([,n])=>looksLikeMon(n));
+  if(!rowsWithNames.length)return {items:[],via:'none'};
+  let tally={};
+  rowsWithNames.forEach(([i])=>(rows[i]||[]).forEach((v,c)=>{
+    if(c===nameCol)return;
+    let num=parseFloat(String(v).replace(/[^0-9.]/g,''));
+    if(Number.isFinite(num)&&num>=0&&num<=60&&/\d/.test(String(v)))tally[c]=(tally[c]||0)+1;
+  }));
+  let best=Object.entries(tally).sort((a,b)=>b[1]-a[1]||Math.abs(a[0]-nameCol)-Math.abs(b[0]-nameCol))[0];
+  if(best&&best[1]>=rowsWithNames.length*.6){
+    let c=+best[0];
+    return {items:rowsWithNames.map(([i,n])=>({name:n,cost:parseFloat(String(rows[i][c]).replace(/[^0-9.]/g,''))})).filter(x=>Number.isFinite(x.cost)),
+            via:'the numbers in column '+String.fromCharCode(65+c)};
+  }
+  let items=[];
+  rowsWithNames.forEach(([i,n])=>{
+    for(let up=i-1;up>=0;up--){
+      let v=String((rows[up]||[])[nameCol]||'').trim();
+      if(!v)continue;
+      let m=v.match(/^\$?(\d{1,2})\s*(pts?|points?)?$/i)||v.match(/^tier\s*(\d{1,2})$/i);
+      if(m){items.push({name:n,cost:+m[1]});return}
+      if(looksLikeMon(v))continue;
+      return
+    }
+  });
+  return {items,via:'the tier headings above each name'}
 }
 function openPoolColumns(){
   let rows=window.poolRows||[];
   if(!rows.length){openPasteCSV();return}
-  let width=Math.max(...rows.slice(0,30).map(r=>r.length));
-  let sample=i=>rows.slice(0,8).map(r=>r[i]).filter(Boolean)[0]||'empty';
-  let opts=Array.from({length:width},(_,i)=>`<option value="${i}">Column ${String.fromCharCode(65+i)} · ${esc(String(sample(i)).slice(0,18))}</option>`).join('');
-  document.querySelector('#modal').innerHTML=`<div class="modal-wrap"><div class="modal" style="max-width:560px">
-    <div class="modal-head"><div><div class="eyebrow">Draft pool</div><h2>Choose the columns</h2></div><button class="close" onclick="closeModal()">×</button></div>
-    <p class="sub">Auto-detection did not match your layout. Point it at the right two columns.</p>
-    <div class="creator-grid"><div class="field"><label>Pokémon names</label><select id="poolNameCol">${opts}</select></div>
-    <div class="field"><label>Cost</label><select id="poolCostCol">${opts}</select></div></div>
+  let cols=nameColumnCandidates(rows);
+  if(!cols.length){closeModal();alert('No column in that sheet looks like a list of Pokémon. Try the paste option, or point the board link at the tab that holds the costs.');openPasteCSV();return}
+  let opts=cols.map((x,i)=>`<option value="${x.col}" ${i?'':'selected'}>${esc(x.sample)}${x.hits>3?' …':''} · ${x.hits} name${x.hits===1?'':'s'}</option>`).join('');
+  document.querySelector('#modal').innerHTML=`<div class="modal-wrap"><div class="modal" style="max-width:540px">
+    <div class="modal-head"><div><div class="eyebrow">Draft pool</div><h2>Which list is the Pokémon?</h2></div><button class="close" onclick="closeModal()">×</button></div>
+    <p class="sub">Pick the list that holds the Pokémon names. Their costs are read automatically from the sheet.</p>
+    <div class="field"><label>Pokémon list</label><select id="poolNameCol">${opts}</select></div>
     <div class="creator-actions"><button class="btn" onclick="applyPoolColumns()">Load pool</button></div></div></div>`
 }
 function applyPoolColumns(){
-  let rows=window.poolRows||[],n=+document.querySelector('#poolNameCol').value,c=+document.querySelector('#poolCostCol').value,items=[];
-  rows.forEach(r=>{let name=(r[n]||'').trim(),cost=parseFloat(String(r[c]||'').replace(/[^0-9.]/g,''));if(name&&Number.isFinite(cost)&&notSummary(name)&&!/^\d+$/.test(name))items.push({name,cost})});
-  let count=applyPool(items,'manual','Google Sheet');
+  let rows=window.poolRows||[],nameCol=+document.querySelector('#poolNameCol').value;
+  let found=costsForNameColumn(rows,nameCol),items=found.items,note=found.via;
+  /* A tier heading means the sheet is a grid of cost columns, so pull the
+     rest of the tiers too rather than loading only the column they clicked. */
+  if(found.via.indexOf('tier')>-1){
+    let all=[...items];
+    nameColumnCandidates(rows).forEach(x=>{
+      if(x.col===nameCol)return;
+      let extra=costsForNameColumn(rows,x.col);
+      if(extra.via.indexOf('tier')>-1)all.push(...extra.items);
+    });
+    if(all.length>items.length){items=all;note='the tier headings above each column'}
+  }
+  let count=applyPool(items,'names+auto-cost','Google Sheet');
   closeModal();
-  poolStatus=count?`Loaded ${count} Pokémon.`:'Those columns did not contain Pokémon and costs.';
+  poolStatus=count?`Loaded ${count} Pokémon, costs read from ${note}.`:'Those names loaded but no costs lined up with them. Try the paste option so the costs come across too.';
+  if(!count)openPasteCSV();else boardTab='My Mock Draft';
   render()
 }
-
 /* --- the private mock draft --------------------------------------- */
 function accountKey(){return window.currentAccount?.username||sessionUser?.id||'guest'}
 function ensureMock(){
@@ -798,14 +850,14 @@ function mockView(){
 function savedPick(t,question){try{return localStorage.getItem('draftdex-pick-'+(t?.id||'')+'-'+question)||''}catch{return ''}}
 function versusBlock(t,over,question,a,b,locked){
   let chosen=savedPick(t,question);
-  let side=(p,cls)=>`<button class="pick vs-side ${cls} ${chosen===p?'active':''}" ${locked?'disabled':''} data-team="${esc(teamName(t,p))}" style="--art:${teamArt(p,t)}" onclick="pick(this)">${esc(p)}</button>`;
+  let side=(p,cls)=>`<button class="pick vs-side ${cls} ${chosen===p?'active':''}" ${locked?'disabled':''} data-team="${esc(teamName(t,p))}" style="--art:${teamArt(p,t)}" onclick="pick(this)"><span class="vs-scrim"></span>${esc(p)}</button>`;
   return `<div class="prediction card versus-card">
     <div class="eyebrow">${esc(over)}</div><h3>${esc(question)}</h3>
     <div class="pick-options versus-stage ${locked?'decided':''}">
       ${side(a,'left')}<span class="vs-seam"></span><span class="vs-plate">VS</span>${side(b,'right')}
       ${chosen===a?'<span class="vs-tag left">Your pick</span>':''}${chosen===b?'<span class="vs-tag right">Your pick</span>':''}
+      ${locked?'<span class="vs-locked">Locked</span>':''}
     </div>
-    <div class="versus-note">${locked?'Result is in · prediction locked':chosen?'Tap the other side to change your pick':'Tap a side to lock in your pick'}</div>
   </div>`
 }
 function predictions(t=activeT()){
@@ -817,10 +869,11 @@ function predictions(t=activeT()){
       <div class="pick-options">${opts.map(x=>predictionPick(x,locked,chosen===x)).join('')}</div>
       ${locked?'<p class="sub">Prediction locked.</p>':''}</div>`
   };
-  let leaderboard=`<aside class="card leaderboard"><div class="card-title">Prediction leaders</div>${(t.pred||[]).map(([p,pt],i)=>`<div class="leader"><span class="rank">${i+1}</span><span class="mini-avatar" style="background-image:${teamArt(p,t)};background-size:cover;background-position:center;color:#fff;text-shadow:0 1px 3px #000">${esc(p[0]||'')}</span><b>${esc(p)}</b><span class="pts">${pt} pts</span></div>`).join('')}</aside>`;
+  let leaderboard=`<aside class="card leaderboard"><div class="card-title">Prediction leaders</div>${(t.pred||[]).map(([p,pt],i)=>`<div class="leader"><span class="rank">${i+1}</span><span class="mini-avatar" style="background-image:${teamArt(p,t)};background-size:cover;background-position:center">${teamCovers[p]?'':esc(p[0]||'')}</span><b>${esc(p)}</b><span class="pts">${pt} pts</span></div>`).join('')}</aside>`;
   if(t.phase==='topcut'){
     let live=(t.bracketMatches||[]).filter(m=>m.p1&&m.p2&&m.p1!=='BYE'&&m.p2!=='BYE');
     return `<div class="pred-layout"><div><div class="eyebrow" style="margin:4px 0 8px">Live Top Cut predictions · 20 points each</div>
+      ${live.length?'<p class="versus-hint">Tap a side to lock in your pick. Each matchup locks once it is scored.</p>':''}
       ${live.map(m=>block('20 points · '+m.title,'Who wins: '+m.p1+' vs '+m.p2,[m.p1,m.p2],m.s1!==''&&m.s2!=='')).join('')}
       <p class="sub">New predictions appear automatically whenever the bracket produces a new playable matchup. Each locks when that matchup is scored.</p></div>${leaderboard}</div>`
   }
@@ -829,6 +882,7 @@ function predictions(t=activeT()){
     ${block('100 points · tournament outcome','Who will be the '+t.name+' Champion?',t.players,started)}
     ${Object.entries(groups).map(([g,ps])=>block('45 points · '+g+' outcome','Who will top '+g+'?',ps,started)).join('')}
     <div class="eyebrow" style="margin:22px 0 8px">Group-stage match predictions · 8 points each</div>
+    ${games.length?'<p class="versus-hint">Tap a side to lock in your pick. Each matchup locks once it is scored.</p>':''}
     ${games.map(m=>block('8 points · '+(m.group||'Group A'),'Who wins: '+m.a+' vs '+m.b,[m.a,m.b],m.as!==''&&m.bs!=='')).join('')}
   </div>${leaderboard}</div>`
 }
@@ -853,6 +907,23 @@ async function flushSync(){
     if(!sheetIds(boardLink).id)boardLink=LEAGUE_SHEET;
   }
 })();
+
+/* ══ 4. NAVIGATION: league order, and "Draft Board" is now "Draft Tools" ══ */
+tabs.length=0;
+tabs.push('Home','Standings','Teams','Draft Tools','Matches','Top Cut','Playoff Odds','Predictions','Tournaments');
+function go(tab){
+  current=tab==='Draft Board'?'Draft Tools':tab;
+  try{render();scrollTo(0,0)}
+  catch(e){document.querySelector('#app').innerHTML=`<div class="card empty"><div class="card-title">Page error</div><p class="sub">Refresh the site once, then try again.</p></div>`}
+}
+function render(){
+  let active=document.activeElement;
+  if(current==='Account'&&active&&/^auth(Username|Password)$/.test(active.id||''))return;
+  if(current==='Draft Board')current='Draft Tools';
+  nav();
+  let pages={Home,Standings,Matches,'Top Cut':TopCut,Teams,Predictions,'Playoff Odds':playoffOdds,Tournaments,'Draft Tools':Board,'Draft Board':Board,Account,'Tournament Detail':tournamentDetail};
+  document.querySelector('#app').innerHTML=(pages[current]||Home)()
+}
 
 /* Point the board at the league sheet the first time only — a saved
    moderator link always wins. */
