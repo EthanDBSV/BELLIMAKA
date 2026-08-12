@@ -502,7 +502,12 @@ function openBracketEditor(){let t=ongoingT();if(!t||t.phase!=='topcut'){alert('
 function topCutRoundLabel(matchLocation,roundNumber,roundCount){if(matchLocation==='winner_bracket')return roundNumber===roundCount?'Winners Final':`Winners Round ${roundNumber}`;if(matchLocation==='loser_bracket')return roundNumber===roundCount?'Losers Final':`Losers Round ${roundNumber}`;return roundNumber===roundCount?'Grand Final':`Grand Final ${roundNumber}`}
 let topCutRenderToken=0;
 function topCutRoundName(info){if(info.groupType==='winner_bracket'){if(info.roundCount<=1)return'Finals';if(info.roundNumber===info.roundCount)return'Finals';if(info.roundNumber===info.roundCount-1)return'Semifinals';return`Round ${info.roundNumber}`}if(info.groupType==='loser_bracket'){if(info.roundNumber===info.roundCount)return'Finals';if(info.roundNumber===info.roundCount-1)return'Semifinals';return`Round ${info.roundNumber}`}return info.roundNumber===info.roundCount?'Finals':`Round ${info.roundNumber}`}
-function topCutSourceMatches(t,preview){let source=!preview&&Array.isArray(t.bracketMatches)&&t.bracketMatches.length?t.bracketMatches:buildBracketMatches(seedTopCutEntries(t).map(x=>x.p).filter(p=>p&&p!=='BYE'));return source||[]}
+function topCutSourceMatches(t,preview){
+  let source=!preview&&Array.isArray(t.bracketMatches)&&t.bracketMatches.length?t.bracketMatches:buildBracketMatches(seedTopCutEntries(t).map(x=>x.p).filter(p=>p&&p!=='BYE'));
+  source=JSON.parse(JSON.stringify(source||[]));
+  if(source.length)propagate({bracketMatches:source});
+  return source||[]
+}
 function topCutViewerData(t,preview=false){
   let source=topCutSourceMatches(t,preview).filter(Boolean);
   if(source.length<1)return null;
@@ -513,7 +518,7 @@ function topCutViewerData(t,preview=false){
   let toOpp=(name,slot,match)=>name&&name!=='BYE'&&name!=='TBD'?{id:participantByName[name]||null,position:slot,score:match[`s${slot}`]===''?undefined:+match[`s${slot}`]}:null;
   let transform=m=>{
     let kind=m.bracket||((m.id||'').startsWith('w')?'W':(m.id||'').startsWith('l')?'L':'GF');
-    let group_id=kind==='W'?1:kind==='L'?2:3;
+    let group_id=kind==='W'?0:kind==='L'?1:2;
     let roundMatch=(m.id||'').match(/^[wl](\d+)_?(\d+)?$/i);
     let roundNumber=kind==='GF'?1:(roundMatch?+roundMatch[1]:+m.round||1);
     let matchNumber=kind==='GF'?(m.id==='reset'?2:1):(roundMatch&&roundMatch[2]?+roundMatch[2]:1);
@@ -527,7 +532,7 @@ function topCutViewerData(t,preview=false){
       id:m.id,
       stage_id:1,
       group_id,
-      round_id:group_id*100+roundNumber,
+      round_id:roundNumber,
       number:matchNumber,
       status:m.s1!==''&&m.s2!==''?4:((m.p1&&m.p1!=='BYE'&&m.p1!=='TBD')||(m.p2&&m.p2!=='BYE'&&m.p2!=='TBD')?2:1),
       opponent1,
