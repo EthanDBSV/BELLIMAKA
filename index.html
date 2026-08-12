@@ -501,51 +501,53 @@ function endGroupStage(){let t=ongoingT();if(!t)return;if(t.matches.some(m=>m.as
 function openBracketEditor(){let t=ongoingT();if(!t||t.phase!=='topcut'){alert('Top Cut has not started yet. End the group stage from the Matches page first.');return}alert('Click a bracket match to edit its score.')}
 function topCutRoundLabel(matchLocation,roundNumber,roundCount){if(matchLocation==='winner_bracket')return roundNumber===roundCount?'Winners Final':`Winners Round ${roundNumber}`;if(matchLocation==='loser_bracket')return roundNumber===roundCount?'Losers Final':`Losers Round ${roundNumber}`;return roundNumber===roundCount?'Grand Final':`Grand Final ${roundNumber}`}
 let topCutRenderToken=0;
-async function topCutViewerData(t){
-  let bracket=(t.bracketMatches||[]);
-  if(!bracket.length)return null;
-  let seedNames=seedTopCutEntries(t).map(x=>x.p).filter(p=>p&&p!=='BYE');
-  let participantNames=[...new Set([...seedNames,...bracket.flatMap(m=>[m.p1,m.p2]).filter(p=>p&&p!=='BYE'&&p!=='TBD')])];
+function topCutRoundName(info){if(info.groupType==='winner_bracket'){if(info.roundCount<=1)return'Finals';if(info.roundNumber===info.roundCount)return'Finals';if(info.roundNumber===info.roundCount-1)return'Semifinals';return`Round ${info.roundNumber}`}if(info.groupType==='loser_bracket'){if(info.roundNumber===info.roundCount)return'Finals';if(info.roundNumber===info.roundCount-1)return'Semifinals';return`Round ${info.roundNumber}`}return info.roundNumber===info.roundCount?'Finals':`Round ${info.roundNumber}`}
+function topCutSourceMatches(t,preview){let source=!preview&&Array.isArray(t.bracketMatches)&&t.bracketMatches.length?t.bracketMatches:buildBracketMatches(seedTopCutEntries(t).map(x=>x.p).filter(p=>p&&p!=='BYE'));return source||[]}
+function topCutViewerData(t,preview=false){
+  let source=topCutSourceMatches(t,preview).filter(Boolean);
+  if(source.length<1)return null;
+  let participantNames=[...new Set([...seedTopCutEntries(t).map(x=>x.p),...source.flatMap(m=>[m.p1,m.p2])].filter(p=>p&&p!=='BYE'&&p!=='TBD'))];
   if(participantNames.length<2)return null;
-  let participants=participantNames.map((name,idx)=>({id:idx+1,name,muted:0}));
-  let pid=Object.fromEntries(participants.map(p=>[p.name,p.id]));
-  let scoreOf=m=>result(m);
-  let roundCounts={};
-  let matches=bracket.map(m=>{
-    let group_id=m.bracket==='W'?0:m.bracket==='L'?1:2;
-    let round_id=m.bracket==='GF'?1:(m.round||1);
-    let key=group_id+'|'+round_id;
-    let number=(roundCounts[key]= (roundCounts[key]||0)+1);
-    let r=scoreOf(m),hasScore=m.s1!==''&&m.s2!=='';
-    let p1=m.p1&&m.p1!=='BYE'&&m.p1!=='TBD'?{
-      id:pid[m.p1],
-      position:1,
-      score:m.s1===''?undefined:+m.s1,
-      result:r?(r.winner===m.p1?'win':r.loser===m.p1?'loss':undefined):undefined
-    }:null;
-    let p2=m.p2&&m.p2!=='BYE'&&m.p2!=='TBD'?{
-      id:pid[m.p2],
-      position:2,
-      score:m.s2===''?undefined:+m.s2,
-      result:r?(r.winner===m.p2?'win':r.loser===m.p2?'loss':undefined):undefined
-    }:null;
+  let participants=participantNames.map((name,idx)=>({id:idx+1,name}));
+  let participantByName=Object.fromEntries(participants.map(p=>[p.name,p.id]));
+  let toOpp=(name,slot,match)=>name&&name!=='BYE'&&name!=='TBD'?{id:participantByName[name]||null,position:slot,score:match[`s${slot}`]===''?undefined:+match[`s${slot}`]}:null;
+  let transform=m=>{
+    let kind=m.bracket||((m.id||'').startsWith('w')?'W':(m.id||'').startsWith('l')?'L':'GF');
+    let group_id=kind==='W'?1:kind==='L'?2:3;
+    let roundMatch=(m.id||'').match(/^[wl](\d+)_?(\d+)?$/i);
+    let roundNumber=kind==='GF'?1:(roundMatch?+roundMatch[1]:+m.round||1);
+    let matchNumber=kind==='GF'?(m.id==='reset'?2:1):(roundMatch&&roundMatch[2]?+roundMatch[2]:1);
+    let r=result(m);
+    let opponent1=toOpp(m.p1,1,m),opponent2=toOpp(m.p2,2,m);
+    if(r&&opponent1&&m.p1===r.winner)opponent1.result='win';
+    if(r&&opponent2&&m.p2===r.winner)opponent2.result='win';
+    if(r&&opponent1&&m.p1===r.loser)opponent1.result='loss';
+    if(r&&opponent2&&m.p2===r.loser)opponent2.result='loss';
     return{
       id:m.id,
       stage_id:1,
       group_id,
-      round_id,
-      number,
-      status:hasScore?4:(p1&&p2?2:1),
-      opponent1:p1,
-      opponent2:p2,
-      metadata:{stageType:'double_elimination',games:[]}
+      round_id:group_id*100+roundNumber,
+      number:matchNumber,
+      status:m.s1!==''&&m.s2!==''?4:((m.p1&&m.p1!=='BYE'&&m.p1!=='TBD')||(m.p2&&m.p2!=='BYE'&&m.p2!=='TBD')?2:1),
+      opponent1,
+      opponent2
     };
-  });
-  let participantImages=participants.map(p=>({participantId:p.id,imageUrl:profilePictures[p.name]})).filter(x=>x.imageUrl);
-  return{viewerData:{stages:[{id:1,name:`Double elimination · ${t.name}`,type:'double_elimination',settings:{skipFirstRound:false,grandFinal:'double'}}],matches,matchGames:[],participants},participantImages}
+  };
+  let matches=source.map(transform);
+  let participantImages=participants.map(p=>({participantId:p.id,imageUrl:profilePictures[p.name]||teamCovers[p.name]})).filter(x=>x.imageUrl);
+  return{
+    viewerData:{
+      stages:[{id:1,name:`Double elimination · ${t.name}`,type:'double_elimination',settings:{skipFirstRound:false,grandFinal:'double'}}],
+      matches,
+      matchGames:[],
+      participants
+    },
+    participantImages
+  }
 }
 function topCutPanel(t,preview){let seeded=seedTopCutEntries(t).filter(x=>x.p&&x.p!=='BYE'),title=preview?`Projected Top Cut · ${seeded.length} qualifying players`:`Double elimination · ${esc(t.name)}`,note=preview?'<p class="sub">This preview updates live as group-stage results come in, and mirrors the real bracket seeding.</p>':(moderator&&t.status==='ONGOING'?'<p class="sub">Click any match to edit its score. Reset matches appear automatically when the lower bracket wins the grand final.</p>':''),empty=!preview&&!(t.bracketMatches||[]).length;return empty?'<div class="card empty">Bracket not yet generated.</div>':`<div class="card bracket"><div class="bracket-title">${title}</div><div class="brackets-viewer topcut-viewer" id="topcutViewerMount"></div>${note}</div>`}
-async function renderTopCutViewer(){let t=current==='Top Cut'?ongoingT():current==='Tournament Detail'&&detailTab==='Top Cut'?activeT():null;if(!t||!window.bracketsViewer)return;let token=++topCutRenderToken,preview=t.phase!=='topcut'||!(t.bracketMatches||[]).length,data=await topCutViewerData(t,preview);if(token!==topCutRenderToken||t!==((current==='Top Cut'?ongoingT():current==='Tournament Detail'&&detailTab==='Top Cut'?activeT():null)))return;if(!data)return;window.bracketsViewer.onMatchClicked=match=>{if(!moderator||t.phase!=='topcut'||t.status!=='ONGOING')return;openTopCutMatchEditor(match.id)};window.bracketsViewer.setParticipantImages(data.participantImages);window.bracketsViewer.render(data.viewerData,{selector:'#topcutViewerMount',clear:true,participantOriginPlacement:'before',separatedChildCountLabel:true,showSlotsOrigin:true,showLowerBracketSlotsOrigin:true,showPopoverOnMatchLabelClick:false,highlightParticipantOnHover:true,showRankingTable:false});}
+async function renderTopCutViewer(){let t=current==='Top Cut'?ongoingT():current==='Tournament Detail'&&detailTab==='Top Cut'?activeT():null;if(!t||!window.bracketsViewer)return;let token=++topCutRenderToken,preview=t.phase!=='topcut'||!(t.bracketMatches||[]).length,data=await topCutViewerData(t,preview);if(token!==topCutRenderToken||t!==((current==='Top Cut'?ongoingT():current==='Tournament Detail'&&detailTab==='Top Cut'?activeT():null)))return;if(!data)return;window.bracketsViewer.onMatchClicked=match=>{if(!moderator||t.phase!=='topcut'||t.status!=='ONGOING')return;openTopCutMatchEditor(match.id)};window.bracketsViewer.setParticipantImages(data.participantImages);window.bracketsViewer.render(data.viewerData,{selector:'#topcutViewerMount',clear:true,participantOriginPlacement:'before',separatedChildCountLabel:true,showSlotsOrigin:true,showLowerBracketSlotsOrigin:true,showPopoverOnMatchLabelClick:false,highlightParticipantOnHover:true,showRankingTable:false,customRoundName:topCutRoundName});}
 function openTopCutMatchEditor(matchId){let t=ongoingT();if(!t||t.phase!=='topcut'||t.status!=='ONGOING'||!moderator)return;let m=(t.bracketMatches||[]).find(x=>x.id===matchId);if(!m)return;document.querySelector('#modal').innerHTML=`<div class="modal-wrap"><div class="modal" style="max-width:470px"><div class="modal-head"><div><div class="eyebrow">Top Cut match</div><h2>${esc(m.title||'Match')}</h2></div><button class="close" onclick="closeModal()">×</button></div><div class="field"><label>${esc(m.p1||'TBD')} score</label><input id="topcutScoreA" type="number" min="0" placeholder="0" value="${m.s1===''?'':m.s1}"></div><div class="field"><label>${esc(m.p2||'TBD')} score</label><input id="topcutScoreB" type="number" min="0" placeholder="0" value="${m.s2===''?'':m.s2}"></div><p class="sub" style="margin-top:10px">Blank scores count as 0.</p><div class="creator-actions"><button class="btn ghost" onclick="closeModal()">Cancel</button><button class="btn" onclick="bracketScore('${m.id}')">Save score</button></div></div></div>`}
 function bracketScore(id){let t=ongoingT(),m=t&&(t.bracketMatches||[]).find(x=>x.id===id);if(!m){let active=activeT();m=active&&(active.bracketMatches||[]).find(x=>x.id===id);t=t||active}if(!t||!m)return;let a=document.querySelector('#topcutScoreA')?.value,b=document.querySelector('#topcutScoreB')?.value,one=m.p1&&m.p1!=='BYE'&&m.p1!=='TBD',two=m.p2&&m.p2!=='BYE'&&m.p2!=='TBD';if(!one&&!two){alert('This matchup has no assigned player yet.');return}if(!one||!two){if(one){m.s1=1;m.s2=0}else{m.s1=0;m.s2=1}}else{m.s1=a===''?0:+a;m.s2=b===''?0:+b;if(m.s1===m.s2){alert('Top Cut matches cannot end in a tie.');return}}m.completedAt=Date.now();if(id==='gf'){let r=result(m);if(r&&r.winner===m.p2&&!t.bracketMatches.some(x=>x.id==='reset'))t.bracketMatches.push({id:'reset',title:'Bracket Reset · Grand Final 2',bracket:'GF',round:(m.round||1)+1,p1:m.p1,p2:m.p2,s1:'',s2:''});if(r&&r.winner===m.p1){let reset=t.bracketMatches.find(x=>x.id==='reset');if(reset&&reset.s1===''&&reset.s2==='')t.bracketMatches=t.bracketMatches.filter(x=>x.id!=='reset')}}else if(id!=='reset')propagate(t);persistLeague();closeModal();render()}
 function bracket(t=activeT()){let seeded=seedTopCutEntries(t).filter(x=>x.p&&x.p!=='BYE'),real=seeded.filter(x=>x.p&&x.p!=='BYE');if(real.length<2)return `<div class="card empty">Not enough qualifiers yet to project a bracket.</div>`;return topCutPanel(t,true)}
