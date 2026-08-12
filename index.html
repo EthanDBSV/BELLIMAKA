@@ -508,22 +508,25 @@ function topCutSourceMatches(t,preview){
   if(source.length)propagate({bracketMatches:source});
   return source||[]
 }
+function topCutSeedMap(t){return Object.fromEntries(seedTopCutEntries(t).filter(x=>x.p&&x.p!=='BYE').map(x=>[x.p,x.seed]))}
 function topCutViewerData(t,preview=false){
   let source=topCutSourceMatches(t,preview).filter(Boolean);
   if(source.length<1)return null;
+  let seedMap=topCutSeedMap(t);
   let participantNames=[...new Set([...seedTopCutEntries(t).map(x=>x.p),...source.flatMap(m=>[m.p1,m.p2])].filter(p=>p&&p!=='BYE'&&p!=='TBD'))];
   if(participantNames.length<2)return null;
   let participants=participantNames.map((name,idx)=>({id:idx+1,name}));
   let participantByName=Object.fromEntries(participants.map(p=>[p.name,p.id]));
-  let toOpp=(name,slot,match)=>name&&name!=='BYE'&&name!=='TBD'?{id:participantByName[name]||null,position:slot,score:match[`s${slot}`]===''?undefined:+match[`s${slot}`]}:null;
+  let toOpp=(name,slot,match,position)=>name&&name!=='BYE'&&name!=='TBD'?{id:participantByName[name]||null,...(position===undefined?{}:{position}),score:match[`s${slot}`]===''?undefined:+match[`s${slot}`]}:null;
   let transform=m=>{
     let kind=m.bracket||((m.id||'').startsWith('w')?'W':(m.id||'').startsWith('l')?'L':'GF');
-    let group_id=kind==='W'?0:kind==='L'?1:2;
+    let group_id=kind==='W'?1:kind==='L'?2:3;
     let roundMatch=(m.id||'').match(/^[wl](\d+)_?(\d+)?$/i);
     let roundNumber=kind==='GF'?1:(roundMatch?+roundMatch[1]:+m.round||1);
     let matchNumber=kind==='GF'?(m.id==='reset'?2:1):(roundMatch&&roundMatch[2]?+roundMatch[2]:1);
     let r=result(m);
-    let opponent1=toOpp(m.p1,1,m),opponent2=toOpp(m.p2,2,m);
+    let openingRound=roundNumber===1&&(kind==='W'||kind==='L');
+    let opponent1=toOpp(m.p1,1,m,openingRound?seedMap[m.p1]:undefined),opponent2=toOpp(m.p2,2,m,openingRound?seedMap[m.p2]:undefined);
     if(r&&opponent1&&m.p1===r.winner)opponent1.result='win';
     if(r&&opponent2&&m.p2===r.winner)opponent2.result='win';
     if(r&&opponent1&&m.p1===r.loser)opponent1.result='loss';
@@ -540,10 +543,15 @@ function topCutViewerData(t,preview=false){
     };
   };
   let matches=source.map(transform);
+  let groups=[{id:1,stage_id:1,number:1},{id:2,stage_id:1,number:2},{id:3,stage_id:1,number:3}];
+  let rounds=[];
+  [1,2,3].forEach(groupId=>[...new Set(matches.filter(m=>m.group_id===groupId).map(m=>m.round_id))].sort((a,b)=>a-b).forEach((roundId,idx)=>rounds.push({id:roundId,stage_id:1,group_id:groupId,number:idx+1})));
   let participantImages=participants.map(p=>({participantId:p.id,imageUrl:profilePictures[p.name]||teamCovers[p.name]})).filter(x=>x.imageUrl);
   return{
     viewerData:{
-      stages:[{id:1,name:`Double elimination Â· ${t.name}`,type:'double_elimination',settings:{skipFirstRound:false,grandFinal:'double'}}],
+      stages:[{id:1,name:`Double elimination · ${t.name}`,type:'double_elimination',settings:{skipFirstRound:false,grandFinal:'double',size:participants.length}}],
+      group:groups,
+      round:rounds,
       matches,
       matchGames:[],
       participants
