@@ -61,12 +61,13 @@
 .topcut-gf-col{display:flex;flex-direction:column;gap:16px;flex-shrink:0;width:220px;padding-top:124px}
 .topcut-viewer.brackets-viewer{width:100%;max-width:100%;padding:6px 0 0;background:transparent;--primary-background:transparent;--secondary-background:#1d1d23;--match-background:#111116;--font-color:#f5f3f0;--win-color:#4bdd91;--loss-color:#ff7079;--label-color:#9c9aa3;--hint-color:#8b8893;--connector-color:#5b5b66;--border-color:#3a3a43;--border-hover-color:#565662;--border-selected-color:#7a2932;--match-border-radius:6px;--match-width:185px;--round-margin:56px;--match-horizontal-padding:10px;--match-vertical-padding:7px;--connector-border-width:2px;--match-border-width:1px;--text-size:13px;--participant-image-size:1.15em}
 .topcut-viewer.brackets-viewer h1{display:none}
-.topcut-viewer.brackets-viewer h1,.topcut-viewer.brackets-viewer h2,.topcut-viewer.brackets-viewer h3{color:#f5f3f0}
+.topcut-viewer.brackets-viewer h2{display:none}
+.topcut-viewer.brackets-viewer h1,.topcut-viewer.brackets-viewer h2,.topcut-viewer.brackets-viewer h3{color:#d8b44b}
 .topcut-viewer.brackets-viewer h3{background:#202028}
 .topcut-viewer.brackets-viewer .opponents{background:#111116}
 .topcut-viewer.brackets-viewer .participant{background:#111116}
 .topcut-viewer.brackets-viewer .participant.hover{background:#1b1b22!important}
-.topcut-viewer.brackets-viewer .opponents>span{background:#15151b;color:#b6b4bd}
+.topcut-viewer.brackets-viewer .opponents>span{background:#15151b;color:#d8b44b}
 .topcut-viewer.brackets-viewer .bracket,.topcut-viewer.brackets-viewer .elimination,.topcut-viewer.brackets-viewer .round-robin,.topcut-viewer.brackets-viewer .group{background:transparent}
 .topcut-viewer.brackets-viewer .rounds{padding-bottom:10px}
 .topcut-viewer.brackets-viewer .bracket{width:100%}
@@ -503,7 +504,10 @@ function topCutViewerData(t,preview){
   let seedEntries=seedTopCutEntries(t),seedNames=seedEntries.map(x=>x.p).filter(Boolean),n=1;
   while(n<Math.max(2,seedNames.length))n*=2;
   while(seedEntries.length<n)seedEntries.push({seed:seedEntries.length+1,p:'BYE'});
-  let bracketMatches=preview?buildBracketMatches(seedEntries.map(x=>x.p)):((t.bracketMatches||[]).slice());
+  let generated=buildBracketMatches(seedEntries.map(x=>x.p));
+  let stored=Object.fromEntries((t.bracketMatches||[]).map(m=>[m.id,m]));
+  let bracketMatches=generated.map(m=>({...m,...(stored[m.id]||{}),p1:stored[m.id]?.p1??m.p1,p2:stored[m.id]?.p2??m.p2,s1:stored[m.id]?.s1??m.s1,s2:stored[m.id]?.s2??m.s2}));
+  (t.bracketMatches||[]).forEach(m=>{if(!bracketMatches.some(x=>x.id===m.id))bracketMatches.push({...m})});
   if(!bracketMatches.length)return null;
   let idByName={},participants=[{id:0,name:'BYE',tournament_id:1,position:0}],nextId=1;
   seedEntries.forEach(x=>{if(x.p&&x.p!=='BYE'&&!idByName[x.p]){idByName[x.p]=nextId;participants.push({id:nextId,name:x.p,tournament_id:1,position:x.seed});nextId++}});
