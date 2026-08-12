@@ -506,12 +506,23 @@ function topCutViewerData(t,preview){
   while(seedEntries.length<n)seedEntries.push({seed:seedEntries.length+1,p:'BYE'});
   let generated=buildBracketMatches(seedEntries.map(x=>x.p));
   let stored=Object.fromEntries((t.bracketMatches||[]).map(m=>[m.id,m]));
-  let bracketMatches=generated.map(m=>({...m,...(stored[m.id]||{}),p1:stored[m.id]?.p1??m.p1,p2:stored[m.id]?.p2??m.p2,s1:stored[m.id]?.s1??m.s1,s2:stored[m.id]?.s2??m.s2}));
+  let pickParticipant=(saved,generated)=>saved&&saved!=='TBD'&&saved!=='BYE'?saved:generated;
+  let bracketMatches=generated.map(m=>{
+    let saved=stored[m.id]||{};
+    return{
+      ...m,
+      ...saved,
+      p1:pickParticipant(saved.p1,m.p1),
+      p2:pickParticipant(saved.p2,m.p2),
+      s1:saved.s1!==undefined?saved.s1:m.s1,
+      s2:saved.s2!==undefined?saved.s2:m.s2
+    }
+  });
   (t.bracketMatches||[]).forEach(m=>{if(!bracketMatches.some(x=>x.id===m.id))bracketMatches.push({...m})});
   if(!bracketMatches.length)return null;
   let idByName={},participants=[{id:0,name:'BYE',tournament_id:1,position:0}],nextId=1;
   seedEntries.forEach(x=>{if(x.p&&x.p!=='BYE'&&!idByName[x.p]){idByName[x.p]=nextId;participants.push({id:nextId,name:x.p,tournament_id:1,position:x.seed});nextId++}});
-  let participantImages=participants.filter(p=>p.id!==0).map(p=>({participantId:p.id,imageUrl:profilePictures[p.name]})).filter(x=>x.imageUrl);
+  let participantImages=participants.filter(p=>p.id!==0).map(p=>({participantId:p.id,imageUrl:profilePictures[p.name]||teamCovers[p.name]})).filter(x=>x.imageUrl);
   let roundCountByGroup={},matches=bracketMatches.map(m=>{
     let group_id=m.bracket==='W'?0:m.bracket==='L'?1:2,round_id=m.round||1;
     if(!roundCountByGroup[group_id])roundCountByGroup[group_id]={};
@@ -525,7 +536,7 @@ function topCutViewerData(t,preview){
     else if(r&&p2&&!p1){p2.result='win';p2.score=p2.score??1}
     let scored=m.s1!==''&&m.s2!==''&&m.s1!=null&&m.s2!=null;
     return{id:m.id,stage_id:1,group_id,round_id,number,status:(scored||r)?5:2,opponent1:p1,opponent2:p2,child_count:0}
-  }),stage={id:1,tournament_id:1,name:t.name,type:'double_elimination',number:1,settings:{size:n,seedOrdering:['natural','natural'],grandFinal:'double',skipFirstRound:false}};
+  }),stage={id:1,tournament_id:1,name:t.name,type:'double_elimination',number:1,settings:{size:n,seedOrdering:['natural','reverse_half_shift'],grandFinal:'double',skipFirstRound:false}};
   return{viewerData:{stages:[stage],matches,matchGames:[],participants},participantImages}
 }
 function topCutPanel(t,preview){let seeded=seedTopCutEntries(t).filter(x=>x.p&&x.p!=='BYE'),title=preview?`Projected Top Cut · ${seeded.length} qualifying players`:`Double elimination · ${esc(t.name)}`,note=preview?'<p class="sub">This preview updates live as group-stage results come in, and mirrors the real bracket seeding.</p>':(moderator&&t.status==='ONGOING'?'<p class="sub">Click any match to edit its score. Reset matches appear automatically when the lower bracket wins the grand final.</p>':''),empty=!preview&&!(t.bracketMatches||[]).length;return empty?'<div class="card empty">Bracket not yet generated.</div>':`<div class="card bracket"><div class="bracket-title">${title}</div><div class="brackets-viewer topcut-viewer" id="topcutViewerMount"></div>${note}</div>`}
