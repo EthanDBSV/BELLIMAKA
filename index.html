@@ -74,8 +74,7 @@
 .topcut-viewer.brackets-viewer .opponents.connect-previous::before{border-color:#d8b44b!important;opacity:.95}
 .topcut-viewer.brackets-viewer .match.connect-next::after{border-right-width:3px!important}
 .topcut-viewer.brackets-viewer .opponents.connect-previous::before{border-bottom-width:3px!important}
-.topcut-viewer.brackets-viewer .match.connect-next.straight::after{border-top:3px solid #d8b44b!important;border-right:0!important}
-.topcut-viewer.brackets-viewer .opponents.connect-previous.straight::before{border-bottom:3px solid #d8b44b!important}
+.topcut-viewer.brackets-viewer .match.connect-next.straight::after{border-bottom:3px solid #d8b44b!important}
 .topcut-viewer.brackets-viewer .bracket,.topcut-viewer.brackets-viewer .elimination,.topcut-viewer.brackets-viewer .round-robin,.topcut-viewer.brackets-viewer .group{background:transparent}
 .topcut-viewer.brackets-viewer .rounds{padding-bottom:10px}
 .topcut-viewer.brackets-viewer .bracket{width:100%}
@@ -265,7 +264,7 @@ function migrateAllBrackets(){Object.values(tournamentData).forEach(migrateLegac
 /* ═══ TOP CUT ENGINE — built on brackets-manager.js + brackets-viewer.js ═══ */
 function nextPow2(n){let p=1;while(p<n)p*=2;return Math.max(2,p)}
 function hydrateTopCutManager(t){if(!t.bracketManagerData)return null;let storage=new window.BracketsManagerLib.InMemoryDatabase();storage.setData(JSON.parse(JSON.stringify(t.bracketManagerData)));let manager=new window.BracketsManagerLib.BracketsManager(storage);return {manager,storage}}
-async function createTopCutStage(t){let names=seedTopCut(t).filter(Boolean);let size=nextPow2(Math.max(2,names.length));let seeding=window.BracketsManagerLib.helpers.balanceByes(names,size);let storage=new window.BracketsManagerLib.InMemoryDatabase();let manager=new window.BracketsManagerLib.BracketsManager(storage);await manager.create.stage({tournamentId:0,name:t.name,type:'double_elimination',seeding,settings:{grandFinal:'double',seedOrdering:['natural'],size}});t.bracketManagerData=JSON.parse(JSON.stringify(storage.data));t.topCutMatchTimestamps={};await refreshTopCutCache(t)}
+async function createTopCutStage(t){let names=seedTopCut(t).filter(Boolean);let size=nextPow2(Math.max(2,names.length));let seeding=window.BracketsManagerLib.helpers.balanceByes(names,size);let storage=new window.BracketsManagerLib.InMemoryDatabase();let manager=new window.BracketsManagerLib.BracketsManager(storage);await manager.create.stage({tournamentId:0,name:t.name,type:'double_elimination',seeding,settings:{grandFinal:'double',seedOrdering:['inner_outer'],size}});t.bracketManagerData=JSON.parse(JSON.stringify(storage.data));t.topCutMatchTimestamps={};await refreshTopCutCache(t)}
 async function getTopCutStageData(t){let h=hydrateTopCutManager(t);if(!h)return null;try{return await h.manager.get.stageData(0)}catch(e){return null}}
 function topCutMatchTitle(data,m){let group=data.group.find(g=>g.id===m.group_id);if(!group)return 'Match';let roundsInGroup=data.round.filter(r=>r.group_id===m.group_id).sort((a,b)=>a.number-b.number);let round=data.round.find(r=>r.id===m.round_id);if(!round)return 'Match';let roundCount=roundsInGroup.length;let matchesInRound=data.match.filter(x=>x.round_id===m.round_id);let label;if(group.number===1)label=round.number===roundCount?'Winners Final':(roundCount-round.number===1?'Winners Semifinal':'Winners Round '+round.number);else if(group.number===2)label=round.number===roundCount?'Losers Final':'Losers Round '+round.number;else label=round.number===1?'Grand Final':'Bracket Reset';if(matchesInRound.length>1)label+=' · Match '+m.number;return label}
 async function refreshTopCutCache(t){
@@ -318,7 +317,7 @@ async function mountTopCutViewer(){
     let seeding=window.BracketsManagerLib.helpers.balanceByes(names,size);
     let storage=new window.BracketsManagerLib.InMemoryDatabase();
     let manager=new window.BracketsManagerLib.BracketsManager(storage);
-    await manager.create.stage({tournamentId:0,name:t.name,type:'double_elimination',seeding,settings:{grandFinal:'double',seedOrdering:['natural'],size}});
+    await manager.create.stage({tournamentId:0,name:t.name,type:'double_elimination',seeding,settings:{grandFinal:'double',seedOrdering:['inner_outer'],size}});
     data=await manager.get.stageData(0);
   }else{
     data=await getTopCutStageData(t);
@@ -333,6 +332,66 @@ async function mountTopCutViewer(){
     highlightParticipantOnHover:true,showRankingTable:false,
     onMatchClick:editable?(match=>openTopCutScoreModal(match.id)):undefined,
   });
+  injectTopCutLabels(mount,data);
+}
+/* Fills in the "Winner of X" / "Loser of Y" placeholder the library itself only shows for
+   cross-bracket feeds (a losers-bracket slot fed by a winners-bracket loser, or the grand
+   final's losers-bracket slot) -- it deliberately leaves same-bracket internal progression
+   (e.g. a winners-round-2 slot fed by a winners-round-1 winner) unlabeled by design. */
+function topCutSlotOrigin(data,match,slot){
+  let group=data.group.find(g=>g.id===match.group_id);
+  let rounds=data.round.filter(r=>r.group_id===match.group_id).sort((a,b)=>a.number-b.number);
+  let round=data.round.find(r=>r.id===match.round_id);
+  let m=match.number;
+  if(group.number===1){
+    if(round.number===1)return null;
+    let prevRound=rounds.find(r=>r.number===round.number-1);
+    let prevMatches=data.match.filter(x=>x.round_id===prevRound.id).sort((a,b)=>a.number-b.number);
+    let src=prevMatches[slot==='opponent1'?(m-1)*2:(m-1)*2+1];
+    return src?{match:src,type:'winner'}:null;
+  }
+  if(group.number===2){
+    if(round.number===1)return null;
+    if(round.number%2===1){
+      let prevRound=rounds.find(r=>r.number===round.number-1);
+      let prevMatches=data.match.filter(x=>x.round_id===prevRound.id).sort((a,b)=>a.number-b.number);
+      let src=prevMatches[slot==='opponent1'?(m-1)*2:(m-1)*2+1];
+      return src?{match:src,type:'winner'}:null;
+    }
+    if(slot==='opponent2'){
+      let prevRound=rounds.find(r=>r.number===round.number-1);
+      let prevMatches=data.match.filter(x=>x.round_id===prevRound.id).sort((a,b)=>a.number-b.number);
+      let src=prevMatches[m-1];
+      return src?{match:src,type:'winner'}:null;
+    }
+    return null;
+  }
+  if(group.number===3&&round.number===1&&slot==='opponent1'){
+    let wbGroup=data.group.find(g=>g.number===1);
+    let wbRounds=data.round.filter(r=>r.group_id===wbGroup.id).sort((a,b)=>a.number-b.number);
+    let lastWbRound=wbRounds[wbRounds.length-1];
+    let src=data.match.find(x=>x.round_id===lastWbRound.id);
+    return src?{match:src,type:'winner'}:null;
+  }
+  return null;
+}
+function injectTopCutLabels(mount,data){
+  data.match.forEach(m=>{
+    ['opponent1','opponent2'].forEach((slot,i)=>{
+      let opp=m[slot];
+      if(opp&&opp.id!=null)return;
+      let participantEl=mount.querySelector(`.match[data-match-id="${m.id}"] .participant:nth-of-type(${i+1})`);
+      if(!participantEl)return;
+      let nameEl=participantEl.querySelector('.name');
+      if(!nameEl||nameEl.getAttribute('title'))return;
+      let origin=topCutSlotOrigin(data,m,slot);
+      if(!origin)return;
+      let label=(origin.type==='winner'?'Winner of ':'Loser of ')+topCutMatchTitle(data,origin.match);
+      nameEl.classList.add('hint');
+      nameEl.setAttribute('title',label);
+      nameEl.textContent=label;
+    });
+  });
 }
 async function openTopCutScoreModal(matchId){
   let t=current==='Top Cut'?ongoingT():(current==='Tournament Detail'&&detailTab==='Top Cut'?activeT():null);
@@ -344,9 +403,9 @@ async function openTopCutScoreModal(matchId){
   let name=id=>id==null?null:(data.participant.find(p=>p.id===id)?.name||'TBD');
   let p1=name(m.opponent1?.id),p2=name(m.opponent2?.id);
   if(!p1||!p2)return;
-  document.querySelector('#modal').innerHTML=`<div class="modal-wrap"><div class="modal" style="max-width:440px"><div class="modal-head"><div><div class="eyebrow">Top Cut match</div><h2>Enter score</h2></div><button class="close" onclick="closeModal()">×</button></div><div class="field"><label>${esc(p1)} score</label><input id="topcutScoreA" type="number" min="0" placeholder="0" value="${m.opponent1?.score??''}"></div><div class="field"><label>${esc(p2)} score</label><input id="topcutScoreB" type="number" min="0" placeholder="0" value="${m.opponent2?.score??''}"></div><p class="sub" style="margin-top:10px">Blank scores count as 0. Ties aren't allowed.</p><div class="creator-actions"><button class="btn ghost" onclick="closeModal()">Cancel</button><button class="btn" onclick="saveTopCutScore('${matchId}')">Save score</button></div></div></div>`;
+  document.querySelector('#modal').innerHTML=`<div class="modal-wrap"><div class="modal" style="max-width:440px"><div class="modal-head"><div><div class="eyebrow">Top Cut match</div><h2>Enter score</h2></div><button class="close" onclick="closeModal()">×</button></div><div class="field"><label>${esc(p1)} score</label><input id="topcutScoreA" type="number" min="0" placeholder="0" value="${m.opponent1?.score??''}"></div><div class="field"><label>${esc(p2)} score</label><input id="topcutScoreB" type="number" min="0" placeholder="0" value="${m.opponent2?.score??''}"></div><p class="sub" style="margin-top:10px">Blank scores count as 0. Ties aren't allowed.</p><div class="creator-actions"><button class="btn ghost" onclick="closeModal()">Cancel</button><button class="btn" onclick="saveTopCutScore(${matchId})">Save score</button></div></div></div>`;
 }
-async function saveTopCutScore(matchId){
+async function saveTopCutScore(matchId){matchId=typeof matchId==='string'&&!isNaN(+matchId)?+matchId:matchId;
   let t=current==='Top Cut'?ongoingT():(current==='Tournament Detail'&&detailTab==='Top Cut'?activeT():null);
   if(!t)return;
   let h=hydrateTopCutManager(t);
