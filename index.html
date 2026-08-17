@@ -60,9 +60,11 @@
 .topcut-flow{display:flex;align-items:flex-start;gap:20px;position:relative;z-index:1;flex-wrap:nowrap}
 .topcut-brackets{display:flex;flex-direction:column;gap:28px}
 .topcut-gf-col{display:flex;flex-direction:column;gap:16px;flex-shrink:0;width:220px;padding-top:124px}
-.topcut-viewer.brackets-viewer{width:100%;max-width:100%;padding:6px 0 0;background:transparent;min-height:1450px;--primary-background:transparent;--secondary-background:#1d1d23;--match-background:#111116;--font-color:#f5f3f0;--win-color:#4bdd91;--loss-color:#ff7079;--label-color:#9c9aa3;--hint-color:#8b8893;--connector-color:#5b5b66;--border-color:#3a3a43;--border-hover-color:#565662;--border-selected-color:#7a2932;--match-border-radius:6px;--match-width:285px;--round-margin:126px;--match-horizontal-padding:16px;--match-vertical-padding:13px;--connector-border-width:2px;--match-border-width:1px;--text-size:16px;--participant-image-size:1.5em}
+.topcut-viewer.brackets-viewer{width:100%;max-width:100%;padding:6px 0 0;background:transparent;min-height:1450px;--primary-background:transparent;--secondary-background:#1d1d23;--match-background:#111116;--font-color:#f5f3f0;--win-color:#4bdd91;--loss-color:#ff7079;--label-color:#9c9aa3;--hint-color:#8b8893;--connector-color:#5b5b66;--border-color:#3a3a43;--border-hover-color:#565662;--border-selected-color:#7a2932;--match-border-radius:6px;--match-width:285px;--round-margin:126px;--match-horizontal-padding:16px;--match-vertical-padding:13px;--connector-border-width:2px;--match-border-width:1px;--text-size:16px;--participant-image-size:2.4em}
 .topcut-viewer.brackets-viewer h1{display:none}
 .topcut-viewer.brackets-viewer h2{display:none}
+.topcut-viewer.brackets-viewer .name>img{border-radius:5px!important;box-shadow:0 0 0 1px rgba(255,255,255,.15)}
+.topcut-viewer.brackets-viewer .seed-badge{opacity:.55;font-size:.82em;margin-right:3px;font-weight:600}
 .topcut-viewer.brackets-viewer h1,.topcut-viewer.brackets-viewer h2,.topcut-viewer.brackets-viewer h3{color:#d8b44b}
 .topcut-viewer.brackets-viewer h3{background:#202028}
 .topcut-viewer.brackets-viewer .opponents{background:#111116}
@@ -226,13 +228,13 @@ function matchCard(m,latest=false){return `<article class="card match-card ${lat
 
 
 
-function TopCut(){let t=ongoingT();if(!t)return noTournament();viewTournament=t.id;if(t.phase!=='topcut')return head('Top Cut',t.name+' · pending group stage')+topCutSection(t,true)+`<p class="sub">Top Cut seeds update live from standings. Finalize the group stage from the Matches page to start the double-elimination bracket.</p>`;let ready=t.topCutCache?.complete;return head('Top Cut',t.name+' · live double elimination')+topCutSection(t,false)+`${moderator?`<div class="creator-actions">${ready?`<button class="btn" onclick="endTournament()">End tournament · ${esc(t.topCutCache.champion)} wins!</button>`:`<p class="sub">Complete every bracket match to enable ending the tournament (${t.topCutCache?.done||0}/${t.topCutCache?.total||0} played).</p>`}</div>`:''}`}
+function TopCut(){let t=ongoingT();if(!t)return noTournament();viewTournament=t.id;if(!t.bracketManagerData)return head('Top Cut',t.name+' · pending group stage')+topCutSection(t,true)+`<p class="sub">Top Cut seeds update live from standings. Finalize the group stage from the Matches page to start the double-elimination bracket.</p>`;let ready=t.topCutCache?.complete;return head('Top Cut',t.name+' · live double elimination')+topCutSection(t,false)+`${moderator?`<div class="creator-actions">${ready?`<button class="btn" onclick="endTournament()">End tournament · ${esc(t.topCutCache.champion)} wins!</button>`:`<p class="sub">Complete every bracket match to enable ending the tournament (${t.topCutCache?.done||0}/${t.topCutCache?.total||0} played).</p>`}</div>`:''}`}
 
 function openTournamentRecordEditor(id){let t=tournamentData[id];document.querySelector('#modal').innerHTML=`<div class="modal-wrap"><div class="modal" style="max-width:520px"><div class="modal-head"><div><div class="eyebrow">Moderator only</div><h2>Edit tournament record</h2></div><button class="close" onclick="closeModal()">×</button></div><div class="field"><label>Tournament name</label><input id="recordName" value="${t.name}"></div><div class="field"><label>Start date</label><input id="recordStart" value="${t.start}"></div><div class="field"><label>End date</label><input id="recordEnd" value="${t.end}"></div><div class="field"><label>Regulation</label><input id="recordRule" value="${t.regulation}"></div><p class="sub">Player teams and rosters can be corrected from the Teams / player-profile pages. Editing an old roster updates that player's stored history.</p><div class="creator-actions"><button class="btn" onclick="saveTournamentRecord('${id}')">Save record</button></div></div></div>`}
 function saveTournamentRecord(id){let t=tournamentData[id];t.name=document.querySelector('#recordName').value.trim()||t.name;t.start=document.querySelector('#recordStart').value.trim()||t.start;t.end=document.querySelector('#recordEnd').value.trim()||t.end;t.regulation=document.querySelector('#recordRule').value.trim()||t.regulation;persistLeague();closeModal()}
 
 
-function tournamentDetail(){let t=activeT();if(!t)return noTournament();let groups=Object.keys(groupsOf(t)),content=detailTab==='Group Stage'?matchesView(t,false):detailTab==='Standings'?`<div class="card table-wrap">${groups.map(g=>standingTable(t,g)).join('')}</div>`:detailTab==='Top Cut'?topCutSection(t,t.phase!=='topcut'):predictions(t);return head(t.name,t.season+' · '+t.status,`<div><button class="btn ghost" onclick="go('Tournaments')">← Archive</button>${moderator?` <button class="btn ghost" onclick="openTournamentRecordEditor('${t.id}')">Edit record</button>${t.status==='COMPLETE'?` <button class="btn ghost" onclick="resyncTournamentStats('${t.id}')">Resync stats</button>`:''} <button class="btn ghost" style="color:#ff9ba1" onclick="deleteTournament('${t.id}')">Delete</button>`:''}</div>`)+`<div class="tabs">${['Group Stage','Standings','Top Cut','Predictions'].map(x=>`<button class="${detailTab===x?'active':''}" onclick="detailTab='${x}';render()">${x}</button>`).join('')}</div><div class="detail-layout"><div>${content}</div><aside class="card side"><div class="card-title">Tournament record</div><div class="side-line">${t.regulation}</div><div class="side-line"><b>${t.players.length}</b> players · ${groups.length} group${groups.length===1?'':'s'}</div><div class="side-line">Top ${advancePerGroup(t)} per group</div><div class="side-line">${t.start} → ${t.end}</div></aside></div>`}
+function tournamentDetail(){let t=activeT();if(!t)return noTournament();let groups=Object.keys(groupsOf(t)),content=detailTab==='Group Stage'?matchesView(t,false):detailTab==='Standings'?`<div class="card table-wrap">${groups.map(g=>standingTable(t,g)).join('')}</div>`:detailTab==='Top Cut'?topCutSection(t,!t.bracketManagerData):predictions(t);return head(t.name,t.season+' · '+t.status,`<div><button class="btn ghost" onclick="go('Tournaments')">← Archive</button>${moderator?` <button class="btn ghost" onclick="openTournamentRecordEditor('${t.id}')">Edit record</button>${t.status==='COMPLETE'?` <button class="btn ghost" onclick="resyncTournamentStats('${t.id}')">Resync stats</button>`:''} <button class="btn ghost" style="color:#ff9ba1" onclick="deleteTournament('${t.id}')">Delete</button>`:''}</div>`)+`<div class="tabs">${['Group Stage','Standings','Top Cut','Predictions'].map(x=>`<button class="${detailTab===x?'active':''}" onclick="detailTab='${x}';render()">${x}</button>`).join('')}</div><div class="detail-layout"><div>${content}</div><aside class="card side"><div class="card-title">Tournament record</div><div class="side-line">${t.regulation}</div><div class="side-line"><b>${t.players.length}</b> players · ${groups.length} group${groups.length===1?'':'s'}</div><div class="side-line">Top ${advancePerGroup(t)} per group</div><div class="side-line">${t.start} → ${t.end}</div></aside></div>`}
 
 function editProfile(p){let q=ensureProfile(p);document.querySelector('#modal').innerHTML=`<div class="modal-wrap"><div class="modal" style="max-width:520px"><div class="modal-head"><div><div class="eyebrow">Player profile</div><h2>Edit ${p}</h2></div><button class="close" onclick="closeModal()">×</button></div><div class="field"><label>Default team name</label><input id="editDefaultTeam" value="${q.team}"></div><div class="card" style="padding:14px;margin-top:14px;background:#111116;border-color:#32323a"><div class="eyebrow">Profile art</div><p class="sub" style="margin:7px 0 12px">Use the player photo on profile pages and the team cover on team cards.</p><div class="creator-actions" style="justify-content:start;flex-wrap:wrap">${moderator?`<button class="btn ghost" onclick="openProfilePictureEditor('${p}')">Edit profile picture</button><button class="btn ghost" onclick="openTeamCoverEditor('${p}')">Edit team cover</button>`:''}</div></div><div class="card" style="padding:14px;margin-top:14px;background:#111116;border-color:#32323a"><div class="eyebrow">Current snapshot</div><div class="mini-stats" style="margin-top:14px"><div><b>${q.cups.length}x</b><span>Champion</span></div><div><b>${q.tops}x</b><span>Top Cut</span></div><div><b>${q.record}</b><span>All-time W-L</span></div></div></div><div class="creator-actions"><button class="btn" onclick="saveProfile('${p}')">Save profile</button></div></div></div>`}
 function saveProfile(p){profiles[p].team=document.querySelector('#editDefaultTeam').value.trim()||'No default team';rebuildAllPlayerStats();persistLeague();closeModal()}
@@ -264,7 +266,7 @@ function migrateAllBrackets(){Object.values(tournamentData).forEach(migrateLegac
 /* ═══ TOP CUT ENGINE — built on brackets-manager.js + brackets-viewer.js ═══ */
 function nextPow2(n){let p=1;while(p<n)p*=2;return Math.max(2,p)}
 function hydrateTopCutManager(t){if(!t.bracketManagerData)return null;let storage=new window.BracketsManagerLib.InMemoryDatabase();storage.setData(JSON.parse(JSON.stringify(t.bracketManagerData)));let manager=new window.BracketsManagerLib.BracketsManager(storage);return {manager,storage}}
-async function createTopCutStage(t){let names=seedTopCut(t).filter(Boolean);let size=nextPow2(Math.max(2,names.length));let seeding=window.BracketsManagerLib.helpers.balanceByes(names,size);let storage=new window.BracketsManagerLib.InMemoryDatabase();let manager=new window.BracketsManagerLib.BracketsManager(storage);await manager.create.stage({tournamentId:0,name:t.name,type:'double_elimination',seeding,settings:{grandFinal:'double',seedOrdering:['inner_outer'],size}});t.bracketManagerData=JSON.parse(JSON.stringify(storage.data));t.topCutMatchTimestamps={};await refreshTopCutCache(t)}
+async function createTopCutStage(t){let{seeding,size}=buildTopCutSeeding(t);let storage=new window.BracketsManagerLib.InMemoryDatabase();let manager=new window.BracketsManagerLib.BracketsManager(storage);await manager.create.stage({tournamentId:0,name:t.name,type:'double_elimination',seeding,settings:{grandFinal:'double',seedOrdering:['inner_outer'],size}});t.bracketManagerData=JSON.parse(JSON.stringify(storage.data));t.topCutMatchTimestamps={};await refreshTopCutCache(t)}
 async function getTopCutStageData(t){let h=hydrateTopCutManager(t);if(!h)return null;try{return await h.manager.get.stageData(0)}catch(e){return null}}
 function topCutMatchTitle(data,m){let group=data.group.find(g=>g.id===m.group_id);if(!group)return 'Match';let roundsInGroup=data.round.filter(r=>r.group_id===m.group_id).sort((a,b)=>a.number-b.number);let round=data.round.find(r=>r.id===m.round_id);if(!round)return 'Match';let roundCount=roundsInGroup.length;let matchesInRound=data.match.filter(x=>x.round_id===m.round_id);let label;if(group.number===1)label=round.number===roundCount?'Winners Final':(roundCount-round.number===1?'Winners Semifinal':'Winners Round '+round.number);else if(group.number===2)label=round.number===roundCount?'Losers Final':'Losers Round '+round.number;else label=round.number===1?'Grand Final':'Bracket Reset';if(matchesInRound.length>1)label+=' · Match '+m.number;return label}
 async function refreshTopCutCache(t){
@@ -308,13 +310,12 @@ async function mountTopCutViewer(){
   let t=current==='Top Cut'?ongoingT():(current==='Tournament Detail'&&detailTab==='Top Cut'?activeT():null);
   if(!t)return;
   let token=++topCutRenderToken;
-  let preview=t.phase!=='topcut';
+  let preview=!t.bracketManagerData;
   let data;
   if(preview){
-    let names=seedTopCut(t).filter(Boolean),real=names.filter(p=>p&&p!=='BYE');
+    let real=seedTopCut(t).filter(p=>p&&p!=='BYE');
     if(real.length<2){mount.innerHTML='';return}
-    let size=nextPow2(Math.max(2,names.length));
-    let seeding=window.BracketsManagerLib.helpers.balanceByes(names,size);
+    let{seeding,size}=buildTopCutSeeding(t);
     let storage=new window.BracketsManagerLib.InMemoryDatabase();
     let manager=new window.BracketsManagerLib.BracketsManager(storage);
     await manager.create.stage({tournamentId:0,name:t.name,type:'double_elimination',seeding,settings:{grandFinal:'double',seedOrdering:['inner_outer'],size}});
@@ -333,6 +334,37 @@ async function mountTopCutViewer(){
     onMatchClick:editable?(match=>openTopCutScoreModal(match.id)):undefined,
   });
   injectTopCutLabels(mount,data);
+  injectSeedBadges(mount,data);
+}
+/* The library only shows the "#N" seed badge in round 1 by design (later rounds just show
+   the name). Extend that same badge to every round so a player's original seed stays
+   visible throughout the whole bracket, not just their opening match. */
+function injectSeedBadges(mount,data){
+  let seedOf={};
+  data.match.forEach(m=>{
+    let round=data.round.find(r=>r.id===m.round_id);
+    if(!round||round.number!==1)return;
+    if(m.opponent1?.position!=null&&m.opponent1?.id!=null)seedOf[m.opponent1.id]=m.opponent1.position;
+    if(m.opponent2?.position!=null&&m.opponent2?.id!=null)seedOf[m.opponent2.id]=m.opponent2.position;
+  });
+  data.match.forEach(m=>{
+    let round=data.round.find(r=>r.id===m.round_id);
+    if(!round||round.number===1)return;
+    ['opponent1','opponent2'].forEach((slot,i)=>{
+      let opp=m[slot];
+      if(!opp||opp.id==null)return;
+      let seed=seedOf[opp.id];
+      if(seed==null)return;
+      let participantEl=mount.querySelector(`.match[data-match-id="${m.id}"] .participant:nth-of-type(${i+1})`);
+      if(!participantEl)return;
+      let nameEl=participantEl.querySelector('.name');
+      if(!nameEl||nameEl.querySelector('.seed-badge'))return;
+      let badge=mount.ownerDocument.createElement('span');
+      badge.className='seed-badge';
+      badge.textContent='#'+seed+' ';
+      nameEl.insertBefore(badge,nameEl.firstChild);
+    });
+  });
 }
 /* Fills in the "Winner of X" / "Loser of Y" placeholder the library itself only shows for
    cross-bracket feeds (a losers-bracket slot fed by a winners-bracket loser, or the grand
@@ -632,7 +664,33 @@ function openCoverEditor(id){let t=tournamentData[id];document.querySelector('#m
 function openRecapPanelCoverEditor(id){let t=tournamentData[id];document.querySelector('#modal').innerHTML=`<div class="modal-wrap"><div class="modal" style="max-width:510px"><div class="modal-head"><div><div class="eyebrow">Recap panel cover</div><h2>${t.name}</h2></div><button class="close" onclick="closeModal()">×</button></div><p class="sub">This changes the background of the off-season Last Tournament panel only.</p><div class="field"><label>Upload panel image</label><input id="recapPanelFile" type="file" accept="image/png,image/jpeg,image/webp" onchange="previewRecapPanelCover(event)"></div><div id="recapPanelPreview" style="height:190px;border-radius:6px;margin-top:14px;background:${t.recapPanelImage||t.backgroundImage?`url('${t.recapPanelImage||t.backgroundImage}') center/cover`:'#25252b'}"></div><div class="creator-actions"><button class="btn ghost" onclick="removeRecapPanelCover('${id}')">Remove panel cover</button><button class="btn" onclick="saveRecapPanelCover('${id}')">Save panel cover</button></div></div></div>`}
 function openPulsePanelCoverEditor(id){let t=tournamentData[id];document.querySelector('#modal').innerHTML=`<div class="modal-wrap"><div class="modal" style="max-width:510px"><div class="modal-head"><div><div class="eyebrow">Tournament pulse cover</div><h2>${t.name}</h2></div><button class="close" onclick="closeModal()">×</button></div><p class="sub">This is a league-wide cover for the Tournament Pulse panel and carries over to every tournament until you change it again.</p><div class="field"><label>Upload pulse image</label><input id="pulsePanelFile" type="file" accept="image/png,image/jpeg,image/webp" onchange="previewPulsePanelCover(event)"></div><div id="pulsePanelPreview" style="height:190px;border-radius:6px;margin-top:14px;background:${pulsePanelImages.global||t.backgroundImage?`url('${pulsePanelImages.global||t.backgroundImage}') center/cover`:'#25252b'}"></div><div class="creator-actions"><button class="btn ghost" onclick="removePulsePanelCover('${id}')">Remove panel cover</button><button class="btn" onclick="savePulsePanelCover('${id}')">Save panel cover</button></div></div></div>`}
 
-function seedTopCut(t){let groups=Object.keys(groupsOf(t)),per=advancePerGroup(t),entries=[];groups.forEach((g,gi)=>getStand(t,g).slice(0,per).forEach((x,rank)=>entries.push({seed:gi*per+rank+1,p:x.p})));entries.sort((a,b)=>a.seed-b.seed);return entries.map(x=>x.p)}
+function seedTopCut(t){let groups=Object.keys(groupsOf(t)),per=advancePerGroup(t),entries=[];for(let rank=0;rank<per;rank++)groups.forEach(g=>{let x=getStand(t,g)[rank];if(x)entries.push(x.p)});return entries}
+function topCutBracketSeedOrder(size){let order=[1,2];for(let n=4;n<=size;n*=2)order=order.flatMap(seed=>[seed,n+1-seed]);return order}
+function buildTopCutSeeding(t){
+  let names=seedTopCut(t).filter(Boolean);
+  let groups=groupsOf(t),groupOf=p=>{for(let k in groups)if(groups[k].includes(p))return k;return null};
+  let size=nextPow2(Math.max(2,names.length));
+  let seeding=names.slice();
+  while(seeding.length<size)seeding.push(null);
+  let order=topCutBracketSeedOrder(size);
+  let positions=order.map(seed=>seeding[seed-1]);
+  for(let i=0;i<positions.length;i+=2){
+    let a=positions[i],b=positions[i+1];
+    if(a&&b&&groupOf(a)===groupOf(b)){
+      for(let j=0;j<positions.length;j++){
+        if(j===i||j===i+1)continue;
+        let partnerIdx=j%2===0?j+1:j-1,candidate=positions[j],partner=positions[partnerIdx];
+        if(candidate&&groupOf(candidate)!==groupOf(a)&&(!partner||groupOf(partner)!==groupOf(b))){
+          [positions[i+1],positions[j]]=[positions[j],positions[i+1]];
+          let seedIdxB=order[i+1]-1,seedIdxJ=order[j]-1;
+          [seeding[seedIdxB],seeding[seedIdxJ]]=[seeding[seedIdxJ],seeding[seedIdxB]];
+          break;
+        }
+      }
+    }
+  }
+  return {seeding,size};
+}
 function isMathematicallyEliminated(t,p){let g=Object.entries(groupsOf(t)).find(([,ps])=>ps.includes(p))?.[0];if(!g)return true;let ps=groupsOf(t)[g],cut=advancePerGroup(t);if(ps.length<=cut)return false;let wins={},remaining={};ps.forEach(x=>{wins[x]=0;remaining[x]=0});groupMatches(t,g).forEach(m=>{if(m.as!==''&&m.as!=null&&m.bs!==''&&m.bs!=null){if(+m.as>+m.bs)wins[m.a]++;else if(+m.bs>+m.as)wins[m.b]++}else{remaining[m.a]=(remaining[m.a]||0)+1;remaining[m.b]=(remaining[m.b]||0)+1}});let maxWins=(wins[p]||0)+(remaining[p]||0);return ps.filter(x=>x!==p&&(wins[x]||0)>maxWins).length>=cut}
 function playoffOddsData(t){let complete=(t.matches||[]).length>0&&(t.matches||[]).every(m=>m.as!==''&&m.as!=null&&m.bs!==''&&m.bs!=null);if(complete){let data={};Object.keys(groupsOf(t)).forEach(g=>getStand(t,g).forEach((x,i)=>data[x.p]=i<advancePerGroup(t)?100:0));return data}let key=JSON.stringify({matches:(t.matches||[]).map(m=>[m.a,m.b,m.as,m.bs,m.group]),advance:advancePerGroup(t),groups:t.groupAssignments||{},players:t.players});if(oddsCache.key===key)return oddsCache.data;let counts=Object.fromEntries(t.players.map(p=>[p,0])),runs=2000,groups=groupsOf(t);for(let run=0;run<runs;run++){for(let [g,ps] of Object.entries(groups)){let wins=Object.fromEntries(ps.map(p=>[p,0]));groupMatches(t,g).forEach(m=>{if(m.as!==''&&m.bs!==''){if(+m.as>+m.bs)wins[m.a]++;else if(+m.bs>+m.as)wins[m.b]++}else wins[Math.random()<winChance(m.a,m.b,t)?m.a:m.b]++});Object.entries(wins).sort((a,b)=>b[1]-a[1]||Math.random()-.5).slice(0,Math.min(advancePerGroup(t),ps.length)).forEach(([p])=>counts[p]++)}}let data=Object.fromEntries(Object.entries(counts).map(([p,n])=>{if(isMathematicallyEliminated(t,p))return [p,0];let pct=Math.round(n/runs*100);return [p,Math.max(pct,1)]}));oddsCache={key,data};return data}
 
