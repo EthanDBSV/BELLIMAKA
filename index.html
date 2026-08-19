@@ -309,10 +309,6 @@ async function mountTopCutViewer(){
   if(!mount||!window.bracketsViewer||!window.BracketsManagerLib)return;
   let t=current==='Top Cut'?ongoingT():(current==='Tournament Detail'&&detailTab==='Top Cut'?activeT():null);
   if(!t)return;
-  if(!t.bracketManagerData&&t.bracketMatches&&t.bracketMatches.length){
-    await migrateLegacyBracketToManager(t);
-    persistLeague();
-  }
   let token=++topCutRenderToken;
   let preview=!t.bracketManagerData;
   let data;
@@ -694,45 +690,6 @@ function buildTopCutSeeding(t){
     }
   }
   return {seeding,size};
-}
-/* Tournaments completed before the switch to brackets-manager only have the old
-   bracketMatches records (id/p1/p2/s1/s2), not the bracketManagerData this viewer needs.
-   Rebuild a fresh bracket with today's (correct) seeding logic, then replay every
-   recorded legacy result onto whichever match it structurally corresponds to, so the
-   archive shows the real history instead of a blank freshly-seeded bracket.
-   Results are replayed in bracket/round order (winners bracket, then losers, then grand
-   final) rather than original array order -- necessary because the same two players
-   often meet twice (once in the winners bracket, again in the grand final), and without
-   resolving strictly in dependency order a later-round result can get misapplied to an
-   earlier match between the same pair. */
-async function migrateLegacyBracketToManager(t){
-  if(t.bracketManagerData||!t.bracketMatches||!t.bracketMatches.length)return;
-  let bracketRank={W:0,L:1,GF:2};
-  let replay=t.bracketMatches
-    .map(m=>({p1:m.p1,p2:m.p2,s1:m.s1,s2:m.s2,bracket:m.bracket,round:m.round||0}))
-    .filter(m=>m.p1&&m.p2&&m.p1!=='BYE'&&m.p2!=='BYE'&&m.s1!==''&&m.s2!==''&&m.s1!=null&&m.s2!=null&&+m.s1!==+m.s2)
-    .sort((a,b)=>(bracketRank[a.bracket]??1)-(bracketRank[b.bracket]??1)||a.round-b.round);
-  if(!replay.length)return;
-  let{seeding,size}=buildTopCutSeeding(t);
-  let storage=new window.BracketsManagerLib.InMemoryDatabase();
-  let manager=new window.BracketsManagerLib.BracketsManager(storage);
-  await manager.create.stage({tournamentId:0,name:t.name,type:'double_elimination',seeding,settings:{grandFinal:'double',seedOrdering:['inner_outer'],size}});
-  for(let r of replay){
-    let data=await manager.get.stageData(0);
-    let nameOf=id=>id==null?null:(data.participant.find(p=>p.id===id)?.name||null);
-    let match=data.match.find(m=>{
-      if(m.opponent1?.result||m.opponent2?.result)return false;
-      let n1=nameOf(m.opponent1?.id),n2=nameOf(m.opponent2?.id);
-      return (n1===r.p1&&n2===r.p2)||(n1===r.p2&&n2===r.p1);
-    });
-    if(!match)continue;
-    let n1=nameOf(match.opponent1.id),flip=n1!==r.p1;
-    let s1=flip?r.s2:r.s1,s2=flip?r.s1:r.s2;
-    try{await manager.update.match({id:match.id,opponent1:{score:+s1,result:+s1>+s2?'win':'loss'},opponent2:{score:+s2,result:+s2>+s1?'win':'loss'}})}catch(e){}
-  }
-  t.bracketManagerData=JSON.parse(JSON.stringify(storage.data));
-  t.topCutMatchTimestamps={};
-  await refreshTopCutCache(t);
 }
 function isMathematicallyEliminated(t,p){let g=Object.entries(groupsOf(t)).find(([,ps])=>ps.includes(p))?.[0];if(!g)return true;let ps=groupsOf(t)[g],cut=advancePerGroup(t);if(ps.length<=cut)return false;let wins={},remaining={};ps.forEach(x=>{wins[x]=0;remaining[x]=0});groupMatches(t,g).forEach(m=>{if(m.as!==''&&m.as!=null&&m.bs!==''&&m.bs!=null){if(+m.as>+m.bs)wins[m.a]++;else if(+m.bs>+m.as)wins[m.b]++}else{remaining[m.a]=(remaining[m.a]||0)+1;remaining[m.b]=(remaining[m.b]||0)+1}});let maxWins=(wins[p]||0)+(remaining[p]||0);return ps.filter(x=>x!==p&&(wins[x]||0)>maxWins).length>=cut}
 function playoffOddsData(t){let complete=(t.matches||[]).length>0&&(t.matches||[]).every(m=>m.as!==''&&m.as!=null&&m.bs!==''&&m.bs!=null);if(complete){let data={};Object.keys(groupsOf(t)).forEach(g=>getStand(t,g).forEach((x,i)=>data[x.p]=i<advancePerGroup(t)?100:0));return data}let key=JSON.stringify({matches:(t.matches||[]).map(m=>[m.a,m.b,m.as,m.bs,m.group]),advance:advancePerGroup(t),groups:t.groupAssignments||{},players:t.players});if(oddsCache.key===key)return oddsCache.data;let counts=Object.fromEntries(t.players.map(p=>[p,0])),runs=2000,groups=groupsOf(t);for(let run=0;run<runs;run++){for(let [g,ps] of Object.entries(groups)){let wins=Object.fromEntries(ps.map(p=>[p,0]));groupMatches(t,g).forEach(m=>{if(m.as!==''&&m.bs!==''){if(+m.as>+m.bs)wins[m.a]++;else if(+m.bs>+m.as)wins[m.b]++}else wins[Math.random()<winChance(m.a,m.b,t)?m.a:m.b]++});Object.entries(wins).sort((a,b)=>b[1]-a[1]||Math.random()-.5).slice(0,Math.min(advancePerGroup(t),ps.length)).forEach(([p])=>counts[p]++)}}let data=Object.fromEntries(Object.entries(counts).map(([p,n])=>{if(isMathematicallyEliminated(t,p))return [p,0];let pct=Math.round(n/runs*100);return [p,Math.max(pct,1)]}));oddsCache={key,data};return data}
@@ -1329,5 +1286,971 @@ render();
 @media(max-width:900px){.mock-layout{grid-template-columns:1fr}.mock-rail{position:static;order:-1}.sheet-frame{height:60vh}}
 </style>
 
+
+<style>
+/* ══ SPRINT 3 ══ profiles · account links · match visuals · form scale ══ */
+
+/* ---- Profile: roster & history ---- */
+.pf-grid{display:grid;grid-template-columns:270px minmax(0,1fr);gap:18px}
+.pf-section{margin-top:22px}
+.pf-section:first-child{margin-top:0}
+.pf-head{display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin-bottom:12px}
+.pf-head h4{font:800 17px 'Barlow Condensed';letter-spacing:.6px;text-transform:uppercase;margin:0}
+.pf-count{font-size:10px;font-weight:800;letter-spacing:.7px;color:#8e8c95;text-transform:uppercase}
+.pf-empty{border:1px dashed #3a3a44;border-radius:7px;padding:20px;text-align:center;color:#8e8c95;font-size:12px}
+
+.mon-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(132px,1fr));gap:8px}
+.mon-chip{position:relative;display:flex;align-items:center;gap:8px;background:linear-gradient(135deg,#212128,#191920);border:1px solid #34343d;border-left:3px solid var(--red);border-radius:6px;padding:7px 9px;min-width:0}
+.mon-chip img{width:36px;height:36px;object-fit:contain;image-rendering:pixelated;flex:none;filter:drop-shadow(0 2px 4px #0008)}
+.mon-chip span{font-size:11px;font-weight:700;line-height:1.25;overflow:hidden;text-overflow:ellipsis}
+.mon-chip .x{position:absolute;top:3px;right:4px;border:0;background:none;color:#ff7a80;cursor:pointer;font-size:14px;line-height:1;opacity:0;transition:.15s;padding:1px 3px}
+.mon-chip:hover .x{opacity:1}
+.mon-chip.historic{border-left-color:#5a5a66;background:linear-gradient(135deg,#1c1c22,#17171c)}
+.mon-chip.historic img{filter:grayscale(.28) drop-shadow(0 2px 4px #0008)}
+
+.hist-card{border:1px solid #33333c;border-radius:8px;padding:14px;margin-top:10px;background:#17171d}
+.hist-top{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:11px}
+.hist-top b{font:800 19px 'Barlow Condensed';letter-spacing:.4px}
+.hist-when{font-size:9px;font-weight:800;letter-spacing:.7px;text-transform:uppercase;color:#a09ea7;background:#26262e;border:1px solid #3a3a44;border-radius:3px;padding:3px 6px}
+.hist-top .save{margin-left:auto}
+
+/* ---- Profile: past tournaments ---- */
+.past-row{display:grid;grid-template-columns:44px minmax(0,1fr) auto;gap:12px;align-items:center;padding:11px 12px;border:1px solid #31313a;border-left:3px solid #4a4a55;border-radius:7px;margin-top:8px;background:#191920}
+.past-row.gold{border-left-color:#f3c245;background:linear-gradient(90deg,#2a2214,#191920 55%)}
+.past-row.silver{border-left-color:#c8c8d2;background:linear-gradient(90deg,#22222a,#191920 55%)}
+.past-row.cut{border-left-color:var(--red)}
+.past-place{font:800 20px 'Barlow Condensed';text-align:center;color:#e9e7ec;line-height:1}
+.past-place small{display:block;font:800 8px 'DM Sans';letter-spacing:.6px;color:#8e8c95;text-transform:uppercase;margin-top:2px}
+.past-name{font-weight:800;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.past-meta{font-size:10px;color:#8e8c95;margin-top:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.past-rec{font:800 19px 'Barlow Condensed';color:#e9e7ec;text-align:right;line-height:1.05}
+.past-rec small{display:block;font:800 8px 'DM Sans';letter-spacing:.6px;color:#8e8c95;text-transform:uppercase}
+.past-total{display:flex;gap:22px;flex-wrap:wrap;padding:12px 2px 0;margin-top:12px;border-top:1px solid #2e2e36}
+.past-total b{display:block;font:800 21px 'Barlow Condensed'}
+.past-total span{font-size:9px;color:#9d9ba4;text-transform:uppercase;letter-spacing:.5px}
+
+/* ---- Account link badge ---- */
+.link-badge{display:inline-flex;align-items:center;gap:6px;font-size:10px;font-weight:800;letter-spacing:.6px;text-transform:uppercase;color:#9fe0ad;background:#16301d;border:1px solid #2f5c3b;border-radius:3px;padding:3px 7px}
+.link-badge.none{color:#a09ea7;background:#26262e;border-color:#3a3a44}
+.link-row{display:grid;grid-template-columns:minmax(0,1fr) 190px;gap:10px;align-items:center;padding:10px 0;border-bottom:1px solid #2e2e36}
+.link-row:last-child{border:0}
+.link-row select{background:#101014;border:1px solid #3a3a42;border-radius:5px;padding:8px;color:#fff;width:100%}
+
+/* ---- Prediction leaderboard (accounts) ---- */
+.leader.me{background:#241318;margin:0 -8px;padding-left:8px;padding-right:8px;border-radius:5px}
+.leader .pts{margin-left:auto;font:800 15px 'Barlow Condensed';color:var(--amber)}
+.leader-note{font-size:10px;color:#8e8c95;padding-top:11px;line-height:1.5}
+
+/* ---- Matches page visuals ---- */
+.score-match{border-radius:8px;transition:border-color .16s,transform .16s}
+.score-match:hover{border-color:#4a4a56}
+.score-match.done{border-color:#33333d;background:#15151a}
+.score-match.live{border-left:3px solid var(--amber)}
+.score-match-head{background:#131318}
+.score-match-head .st{display:inline-flex;align-items:center;gap:5px}
+.score-match-head .st i{width:6px;height:6px;border-radius:50%;background:#5d5d6a;display:inline-block}
+.score-match.done .st i{background:var(--green)}
+.score-match.live .st i{background:var(--amber);box-shadow:0 0 0 3px #f3c24522}
+.score-competitor{gap:11px}
+.mrow-face{width:34px;height:34px;border-radius:50%;flex:none;background-size:cover;background-position:center;display:grid;place-items:center;font:800 15px 'Barlow Condensed';color:#fff;text-shadow:0 1px 3px #000;border:1px solid #ffffff1f}
+.mrow-id{display:flex;align-items:center;gap:9px;min-width:0}
+.score-competitor.right .mrow-id{flex-direction:row-reverse}
+.mrow-text{min-width:0}
+.mrow-name{font-size:14px;font-weight:800;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.mrow-team{font-size:9px;color:#8e8c95;letter-spacing:.4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-transform:uppercase;font-weight:700}
+.score-competitor.right .mrow-text{text-align:right}
+.score-match.done .loser .mrow-face{filter:grayscale(.8);opacity:.5}
+.score-match.done .loser .mrow-name{color:#8a8892;font-weight:700}
+.score-match.done .loser .score-box{color:#8a8892!important;border-color:#3a3a44!important;background:#101014!important}
+.score-match.done .winner .score-box{border-color:var(--green)!important;color:#fff!important;box-shadow:0 0 0 1px #3ba25733}
+.win-flag{font-size:8px;font-weight:800;letter-spacing:.8px;color:#7fd894;text-transform:uppercase;margin-top:2px}
+.score-competitor.right .win-flag{text-align:right}
+@media(max-width:560px){.mrow-face{width:28px;height:28px;font-size:13px}.mrow-name{font-size:12px}.score-competitor .mrow-id{flex-direction:row}.score-competitor.right .mrow-id{flex-direction:row}}
+</style>
+<script>
+/* ══════════════════════════════════════════════════════════════════
+   SPRINT 3
+   1. Player profiles: roster/history visuals + automatic Past Tournaments
+   2. Accounts linked to player profiles
+   3. Prediction points scored per account, not per player profile
+   4. League name in one place (LEAGUE below)
+   6. Edit qualification moved to the tournament page
+   7. Arrange groups moved to the tournament page
+   8. Playoff "Rating" shown as "Form" on a 0-100 scale (math untouched)
+   9. Fix: assigned team names not saving
+   10. Matches page visual pass (no behaviour changes)
+   Declarations here override the ones above, as with the earlier layers.
+   ══════════════════════════════════════════════════════════════════ */
+
+/* ══ 4. LEAGUE IDENTITY ════════════════════════════════════════════
+   Every user-facing mention of the league reads from here, so the
+   name can be changed in one place. Chosen to match what is already
+   baked into this codebase: the cherry-with-a-leaf logo in .ball and
+   the cherrymoon.local auth domain. Auth strings are NOT touched —
+   changing those would lock existing accounts out. */
+const LEAGUE={
+  name:'Cherry Moon Draft League',
+  short:'Cherry Moon',
+  wordmark:'CHERRY MOON',
+  tagline:'Pokémon draft league'
+};
+(function brandLeague(){
+  document.title=LEAGUE.name;
+  let brand=document.querySelector('.brand');
+  if(brand)brand.innerHTML=`<span class="ball"></span>${esc(LEAGUE.wordmark)}`;
+})();
+
+/* ══ 1. PLAYER PROFILES ════════════════════════════════════════════ */
+
+/* --- current roster --- */
+function rosterList(p){
+  let mons=roster[p]||[];
+  if(!mons.length)return `<div class="pf-empty">No Pokémon drafted yet.</div>`;
+  return `<div class="mon-grid">${mons.map((m,i)=>`<div class="mon-chip">
+    <img src="${esc(monSprite(m))}" alt="" loading="lazy" onerror="this.style.visibility='hidden'">
+    <span>${esc(m)}</span>
+    ${moderator?`<button class="x" title="Remove ${esc(m)}" onclick="removeMon('${jsArg(p)}',${i})">×</button>`:''}
+  </div>`).join('')}</div>`
+}
+
+/* --- team history --- */
+function historyList(p){
+  let h=teamHistory[p]||[];
+  if(!h.length)return `<div class="pf-empty">No previous team has been recorded.</div>`;
+  return h.map((x,i)=>`<div class="hist-card">
+    <div class="hist-top">
+      <b>${esc(x.team)}</b><span class="hist-when">${esc(x.tournament)}</span>
+      ${moderator?`<button class="save" style="color:#ff9ba1" onclick="removeHistoryTeam('${jsArg(p)}',${i})">Remove team</button>`:''}
+    </div>
+    ${(x.pokemon||[]).length?`<div class="mon-grid">${x.pokemon.map((m,j)=>`<div class="mon-chip historic">
+      <img src="${esc(monSprite(m))}" alt="" loading="lazy" onerror="this.style.visibility='hidden'">
+      <span>${esc(m)}</span>
+      ${moderator?`<button class="x" title="Remove ${esc(m)}" onclick="removeHistoryMon('${jsArg(p)}',${i},${j})">×</button>`:''}
+    </div>`).join('')}</div>`:`<div class="pf-empty">No Pokémon recorded for this team.</div>`}
+    ${moderator?`<div class="poke-search" style="margin-top:11px"><input id="historyMon${i}" placeholder="Add Pokémon to this team"><button class="save" onclick="addHistoryMon('${jsArg(p)}',${i})">Add</button></div>`:''}
+  </div>`).join('')
+}
+
+/* --- past tournaments (automatic) ---
+   Everything here is derived from tournament data that already exists:
+   the same record maths the stats engine uses, plus the finish worked
+   out from the champion, the bracket cache, and the group standings. */
+function tournamentFinish(t,p){
+  if(t.champion===p)return {place:1,label:'1st',note:'Champion',cls:'gold'};
+  let cache=t.topCutCache,inCut=false;
+  if(cache&&Array.isArray(cache.participants))inCut=cache.participants.includes(p);
+  else{try{inCut=qualified(t).some(x=>x.p===p)}catch(e){inCut=false}}
+  if(inCut){
+    /* the last bracket match they lost tells us how far they got */
+    let losses=(cache?.results||[]).filter(m=>(m.p1===p&&+m.s2>+m.s1)||(m.p2===p&&+m.s1>+m.s2));
+    let last=losses.sort((a,b)=>(b.completedAt||0)-(a.completedAt||0))[0];
+    let title=last?.title||'';
+    if(/grand final|final/i.test(title)&&!/semi|quarter/i.test(title))
+      return {place:2,label:'2nd',note:'Runner-up',cls:'silver'};
+    return {place:3,label:'Top Cut',note:title?'Out in '+title:(cache?.complete?'Reached Top Cut':'In the Top Cut'),cls:'cut'};
+  }
+  /* group stage only — report where they placed in their own group */
+  let entry=Object.entries(groupsOf(t)).find(([,ps])=>ps.includes(p));
+  if(entry){
+    try{
+      let stand=getStand(t,entry[0]),idx=stand.findIndex(x=>x.p===p);
+      if(idx>-1)return {place:100+idx,label:ordinal(idx+1),note:(Object.keys(groupsOf(t)).length>1?entry[0]+' · ':'')+'group stage',cls:''};
+    }catch(e){}
+  }
+  return {place:999,label:'—',note:'Group stage',cls:''}
+}
+function ordinal(n){let s=['th','st','nd','rd'],v=n%100;return n+(s[(v-20)%10]||s[v]||s[0])}
+function pastTournaments(p){
+  let played=Object.values(tournamentData)
+    .filter(t=>(t.players||[]).includes(p)||(t.matches||[]).some(m=>m.a===p||m.b===p))
+    .sort((a,b)=>(Date.parse(b.start)||0)-(Date.parse(a.start)||0)||String(b.season||'').localeCompare(String(a.season||'')));
+  if(!played.length)return `<div class="pf-empty">No tournament appearances recorded yet.</div>`;
+  let wins=0,losses=0,titles=0,cuts=0;
+  let rows=played.map(t=>{
+    let rec=tournamentRecord(t,p),[w,l]=rec.split('-').map(Number);
+    let f=tournamentFinish(t,p);
+    wins+=w||0;losses+=l||0;
+    if(f.place===1)titles++;
+    if(f.place<=3)cuts++;
+    return `<div class="past-row ${f.cls}">
+      <div class="past-place">${esc(f.label)}<small>${t.status==='ONGOING'?'so far':'finish'}</small></div>
+      <div><div class="past-name">${esc(t.name)}</div><div class="past-meta">${esc([t.season,f.note,teamName(t,p)].filter(x=>x&&x!=='Unassigned team').join(' · '))}</div></div>
+      <div class="past-rec">${esc(rec)}<small>W-L</small></div>
+    </div>`
+  }).join('');
+  return rows+`<div class="past-total">
+    <div><b>${played.length}</b><span>Tournaments</span></div>
+    <div><b>${wins}-${losses}</b><span>Combined W-L</span></div>
+    <div><b>${titles}</b><span>Titles</span></div>
+    <div><b>${cuts}</b><span>Top Cuts</span></div>
+  </div>`
+}
+
+/* --- the profile modal --- */
+function openProfile(p){
+  let q=ensureProfile(p),acct=accountForPlayer(p);
+  document.querySelector('#modal').innerHTML=`<div class="modal-wrap"><div class="modal">
+    <div class="modal-head"><div><div class="eyebrow">Player profile</div><h2>${esc(p)}</h2></div><button class="close" onclick="closeModal()">×</button></div>
+    <div class="pf-grid" style="margin-top:18px">
+      <aside class="card profile-card">
+        <div class="avatar" style="background:${profileArt(p)};background-size:cover;background-position:center">${profilePictures[p]||teamCovers[p]?'':esc(p[0]||'')}</div>
+        <div class="profile-name">${esc(p)}</div>
+        <div style="margin-top:8px">${acct?`<span class="link-badge">◆ ${esc(acct)}</span>`:`<span class="link-badge none">No account linked</span>`}</div>
+        <div class="mini-stats"><div><b>${q.cups.length}x</b><span>Champion</span></div><div><b>${q.tops}x</b><span>Top Cut</span></div><div><b>${esc(q.record)}</b><span>All-time W-L</span></div></div>
+        ${q.cups.length?`<div style="margin-top:14px"><div class="card-title">Championships</div>${q.cups.map(c=>`<div class="sub" style="margin-top:4px">🏆 ${esc(c)}</div>`).join('')}</div>`:''}
+        ${moderator?`<div class="card" style="padding:14px;margin-top:14px;background:#111116;border-color:#32323a">
+          <div class="eyebrow">Moderator</div>
+          <div class="creator-actions" style="justify-content:flex-start;flex-wrap:wrap">
+            <button class="btn ghost" onclick="openProfilePictureEditor('${jsArg(p)}')">Edit profile picture</button>
+            <button class="btn ghost" onclick="openTeamCoverEditor('${jsArg(p)}')">Edit team cover</button>
+            <button class="btn ghost" onclick="openAccountLinks('${jsArg(p)}')">Link account</button>
+          </div></div>`:''}
+      </aside>
+      <section class="card roster-editor">
+        <div class="pf-section">
+          <div class="pf-head"><h4>Current roster</h4><span class="pf-count">${(roster[p]||[]).length} Pokémon</span></div>
+          ${moderator?`<div class="poke-search" style="margin-bottom:12px"><input id="newMon" placeholder="Search / add a Pokémon"><button class="btn" onclick="addMon('${jsArg(p)}')">Add</button></div>`:''}
+          <div id="rosterList">${rosterList(p)}</div>
+        </div>
+        <div class="pf-section">
+          <div class="pf-head"><h4>Past tournaments</h4><span class="pf-count">automatic</span></div>
+          ${pastTournaments(p)}
+        </div>
+        <div class="pf-section">
+          <div class="pf-head"><h4>Team history</h4><span class="pf-count">${(teamHistory[p]||[]).length} recorded</span></div>
+          ${historyList(p)}
+          ${moderator?`<div class="card" style="padding:14px;margin-top:12px">
+            <div class="field"><label>Previous tournament</label><select id="historyTournament">${historyTournamentOptions()}</select></div>
+            <div class="field"><label>Team name in that tournament</label><input id="historyTeam" placeholder="e.g. Obsidian Owls"></div>
+            <button class="btn ghost" style="margin-top:12px" onclick="addHistoryTeam('${jsArg(p)}')">+ Add historical team</button>
+          </div>`:''}
+        </div>
+      </section>
+    </div></div></div>`
+}
+
+/* ══ 2. ACCOUNTS LINKED TO PLAYER PROFILES ═════════════════════════
+   The link lives in league_state (moderator-writable) rather than in
+   user_profiles, so no schema migration is needed and players cannot
+   claim to be someone else. Keyed by account username. */
+var accountLinks=(()=>{try{return JSON.parse(localStorage.getItem('draftdex-accountlinks')||'{}')||{}}catch{return {}}})();
+/* Links are validated against live profiles, so a deleted player can
+   never leave an account pointing at a profile that no longer exists. */
+function accountForPlayer(p){return (p&&profiles[p])?(Object.keys(accountLinks).find(u=>accountLinks[u]===p)||null):null}
+function playerForAccount(u){let p=u?accountLinks[u]:null;return (p&&profiles[p])?p:null}
+(function(){
+  let base=window.deleteProfile;
+  if(typeof base!=='function')return;
+  window.deleteProfile=function(p){
+    let had=accountForPlayer(p);
+    base(p);
+    if(profiles[p])return;                       /* the delete was cancelled */
+    Object.keys(accountLinks).forEach(u=>{if(accountLinks[u]===p)delete accountLinks[u]});
+    if(had){try{localStorage.setItem('draftdex-accountlinks',JSON.stringify(accountLinks))}catch{}persistLeague()}
+  }
+})();
+function myPlayer(){return playerForAccount(window.currentAccount?.username)}
+function knownAccounts(){
+  let names=new Set(Object.keys(accountLinks));
+  (window.leagueAccounts||[]).forEach(a=>names.add(a.username));
+  if(window.currentAccount?.username)names.add(window.currentAccount.username);
+  return [...names].filter(Boolean).sort((a,b)=>a.localeCompare(b))
+}
+async function loadAccounts(){
+  if(!supabaseClient)return window.leagueAccounts||[];
+  try{
+    let {data}=await supabaseClient.from('user_profiles').select('id,username,role');
+    window.leagueAccounts=data||[];
+  }catch(e){}
+  return window.leagueAccounts||[]
+}
+function openAccountLinks(focusPlayer){
+  if(!moderator)return;
+  loadAccounts().then(()=>{
+    let players=Object.keys(profiles).sort((a,b)=>a.localeCompare(b));
+    let accounts=knownAccounts();
+    let rows=accounts.length?accounts.map(u=>`<div class="link-row">
+      <div><b>${esc(u)}</b><div class="sub" style="margin:2px 0 0">${accountLinks[u]?'Plays as '+esc(accountLinks[u]):'Not linked to a player yet'}</div></div>
+      <select class="accountLink" data-account="${esc(u)}">
+        <option value="">— no player —</option>
+        ${players.map(p=>`<option value="${esc(p)}" ${accountLinks[u]===p?'selected':''} ${accountForPlayer(p)&&accountForPlayer(p)!==u?'disabled':''}>${esc(p)}${accountForPlayer(p)&&accountForPlayer(p)!==u?' (taken)':''}</option>`).join('')}
+      </select></div>`).join(''):'<p class="sub">No accounts found yet. Accounts appear here once somebody signs up.</p>';
+    document.querySelector('#modal').innerHTML=`<div class="modal-wrap"><div class="modal" style="max-width:620px">
+      <div class="modal-head"><div><div class="eyebrow">Moderator only</div><h2>Link accounts to players</h2></div><button class="close" onclick="closeModal()">×</button></div>
+      <p class="sub">Connect each sign-in account to the player profile it belongs to. Linked players see their own profile from the account page, and prediction points are tracked against the account.</p>
+      ${focusPlayer&&!accountForPlayer(focusPlayer)?`<p class="sub" style="color:#ffb0b5">${esc(focusPlayer)} has no account linked yet.</p>`:''}
+      <div class="card" style="padding:6px 14px">${rows}</div>
+      <div class="creator-actions"><button class="btn" onclick="saveAccountLinks()">Save links</button></div>
+    </div></div>`
+  })
+}
+function saveAccountLinks(){
+  if(!moderator)return;
+  let next={};
+  document.querySelectorAll('.accountLink').forEach(sel=>{let p=sel.value.trim();if(p)next[sel.dataset.account]=p});
+  accountLinks=next;
+  try{localStorage.setItem('draftdex-accountlinks',JSON.stringify(accountLinks))}catch{}
+  persistLeague();closeModal();render()
+}
+
+function Account(){
+  if(!sessionUser)return head('Sign in',LEAGUE.short+' account')+`<div class="card account-panel" style="max-width:520px">
+    <div class="card-title">Account access</div>
+    <p class="sub">Create a username and password. An email address is not shown or requested.</p>
+    <div class="field"><label>Username</label><input id="authUsername" autocomplete="username" placeholder="Trainer name"></div>
+    <div class="field"><label>Password</label><input id="authPassword" autocomplete="current-password" type="password" placeholder="Password"></div>
+    <div class="creator-actions" style="justify-content:start"><button class="btn" onclick="signIn()">Sign in</button><button class="btn ghost" onclick="signUp()">Create account</button></div>
+    <p id="authNotice" class="sub" style="display:none"></p>
+    ${supabaseReady()?'':'<p class="sub">Supabase is not configured yet. Add your project credentials to <code>supabase-config.js</code>.</p>'}</div>`;
+  let username=window.currentAccount?.username||'Trainer',mine=myPlayer();
+  return head('Your account','Identity & permissions')+`<div class="card account-panel">
+    <div class="eyebrow">Signed in</div>
+    <div class="profile-name">${esc(username)}</div>
+    <div class="role-box"><b>${moderator?'Moderator':'Player'}</b></div>
+    <div class="section" style="margin-top:4px">
+      <div class="card-title">Player profile</div>
+      ${mine?`<p class="sub" style="margin:6px 0 10px">This account plays as <b>${esc(mine)}</b>.</p>
+        <div class="creator-actions" style="justify-content:start"><button class="btn ghost" onclick="openProfile('${jsArg(mine)}')">Open my profile</button></div>`
+      :`<p class="sub" style="margin:6px 0 0">This account is not linked to a player profile yet${moderator?'':' — ask a moderator to link it'}. Predictions still count without a link.</p>`}
+    </div>
+    ${moderator?`<div class="creator-actions" style="justify-content:start">
+      <button class="btn" onclick="openProfileManager()">Manage player profiles</button>
+      <button class="btn ghost" onclick="openAccountLinks()">Link accounts</button>
+      <button class="btn ghost" onclick="openTournamentPlayers()">Edit tournament players</button></div>`:''}
+    <button class="btn ghost" onclick="signOut()">Sign out</button></div>`
+}
+function openProfileManager(){
+  let rows=Object.entries(profiles).map(([p,q])=>{
+    let acct=accountForPlayer(p);
+    return `<div class="card" style="padding:12px;margin-top:8px">
+      <b>${esc(p)}</b><span class="sub" style="margin-left:8px">${esc(q.team)}</span>
+      <span style="margin-left:8px">${acct?`<span class="link-badge">◆ ${esc(acct)}</span>`:`<span class="link-badge none">no account</span>`}</span>
+      <button class="save" style="float:right;color:#ff969c" onclick="deleteProfile('${jsArg(p)}')">Delete</button>
+      <button class="save" style="float:right;margin-right:7px" onclick="editProfile('${jsArg(p)}')">Edit</button></div>`
+  }).join('');
+  document.querySelector('#modal').innerHTML=`<div class="modal-wrap"><div class="modal">
+    <div class="modal-head"><div><div class="eyebrow">Moderator only</div><h2>Player profiles</h2></div><button class="close" onclick="closeModal()">×</button></div>
+    <div class="field"><label>New profile name</label><input id="profileNewName" placeholder="Player name"></div>
+    <div class="field"><label>Default team name (optional)</label><input id="profileNewTeam" placeholder="Used outside specific tournaments"></div>
+    <button class="btn" style="margin-top:12px" onclick="createProfile()">Create player profile</button>
+    <button class="btn ghost" style="margin:12px 0 0" onclick="openAccountLinks()">Link accounts to players</button>
+    <button class="btn ghost" style="margin:12px 0 0;color:#ff9ba1" onclick="removeStarterData()">Remove starter sample data</button>
+    <div class="section">${rows||'<p class="sub">No profiles yet.</p>'}</div></div></div>`
+}
+
+/* ══ 3. PREDICTION POINTS BELONG TO ACCOUNTS ═══════════════════════
+   Scored from the predictions table against the real results, so the
+   leaderboard lists sign-in accounts rather than tournament players.
+   Nothing is written back: user_profiles.prediction_points can only be
+   updated by its owner under the current RLS policy, so totals are
+   derived on read instead. */
+/* A group-stage question and a Top Cut question can produce the exact
+   same key ("Who wins: A vs B"), so resolve the answer and its point
+   value together rather than guessing the value from the key alone. */
+function predictionOutcome(t,key){
+  if(/^Who will be the .* Champion\?$/.test(key))
+    return {value:100,answer:(t.champion&&t.champion!=='TBD'&&t.champion!=='BYE')?t.champion:null};
+  let top=key.match(/^Who will top (.+)\?$/);
+  if(top){
+    let g=top[1],buckets=groupsOf(t);
+    if(!buckets[g])return {value:45,answer:null};
+    let done=(t.matches||[]).filter(m=>(m.group||'Group A')===g).every(m=>m.as!==''&&m.as!=null);
+    if(!done)return {value:45,answer:null};
+    try{return {value:45,answer:getStand(t,g)[0]?.p||null}}catch(e){return {value:45,answer:null}}
+  }
+  /* Top Cut questions carry a prefix so a bracket rematch of a group
+     pairing can never be scored against the group result. */
+  let cut=key.match(/^Top Cut · Who wins: (.+) vs (.+)$/);
+  if(cut){
+    let bm=(t.topCutCache?.results||[]).find(x=>(x.p1===cut[1]&&x.p2===cut[2])||(x.p1===cut[2]&&x.p2===cut[1]));
+    if(bm&&+bm.s1!==+bm.s2)return {value:20,answer:+bm.s1>+bm.s2?bm.p1:bm.p2};
+    return {value:20,answer:null};
+  }
+  let vs=key.match(/^Who wins: (.+) vs (.+)$/);
+  if(vs){
+    let [,a,b]=vs;
+    let m=(t.matches||[]).find(x=>(x.a===a&&x.b===b)||(x.a===b&&x.b===a));
+    if(m){
+      if(m.as===''||m.as==null||m.bs===''||m.bs==null||+m.as===+m.bs)return {value:8,answer:null};
+      return {value:8,answer:+m.as>+m.bs?m.a:m.b};
+    }
+    /* legacy rows written before the prefix existed */
+    let bm=(t.topCutCache?.results||[]).find(x=>(x.p1===a&&x.p2===b)||(x.p1===b&&x.p2===a));
+    if(bm&&+bm.s1!==+bm.s2)return {value:20,answer:+bm.s1>+bm.s2?bm.p1:bm.p2};
+    return {value:20,answer:null};
+  }
+  return {value:0,answer:null}
+}
+function predictionAnswer(t,key){return predictionOutcome(t,key).answer}
+function predictionValue(key,t){return predictionOutcome(t,key).value}
+function scorePredictionRows(t,rows,nameOf){
+  let totals={},settled=0,pending=0,cache={};
+  rows.forEach(r=>{
+    if(!(r.prediction_key in cache))cache[r.prediction_key]=predictionOutcome(t,r.prediction_key);
+    let {answer,value}=cache[r.prediction_key];
+    let who=nameOf(r.user_id);
+    if(!who)return;
+    totals[who]=totals[who]||{pts:0,hits:0,made:0,open:0};
+    totals[who].made++;
+    if(answer==null){totals[who].open++;pending++;return}
+    settled++;
+    if(answer===r.selection){totals[who].pts+=value;totals[who].hits++}
+  });
+  return {rows:Object.entries(totals).map(([u,v])=>({u,...v})).sort((a,b)=>b.pts-a.pts||b.hits-a.hits||a.u.localeCompare(b.u)),settled,pending}
+}
+function leaderboardShell(t){
+  return `<aside class="card leaderboard" id="predLeaders" data-tournament="${esc(t?.id||'')}">
+    <div class="card-title">Prediction leaders</div>
+    <p class="sub" id="predLeadersBody">Loading account scores…</p></aside>`
+}
+async function renderPredictionLeaders(t){
+  let host=document.querySelector('#predLeaders');
+  if(!host||!t)return;
+  let body=host.querySelector('#predLeadersBody');
+  if(!supabaseClient||!supabaseReady()){
+    body.outerHTML=`<p class="sub" id="predLeadersBody">Sign-in is not configured, so prediction points cannot be tracked yet.</p>`;
+    return
+  }
+  let rows=[],accounts=[];
+  try{
+    let res=await supabaseClient.from('predictions').select('user_id,prediction_key,selection').eq('tournament_id',t.id);
+    rows=res.data||[];
+    accounts=await loadAccounts();
+  }catch(e){
+    let el=document.querySelector('#predLeadersBody');
+    if(el)el.textContent='Prediction scores could not be loaded right now.';
+    return
+  }
+  if(document.querySelector('#predLeaders')?.dataset.tournament!==t.id)return;
+  let byId=Object.fromEntries((accounts||[]).map(a=>[a.id,a.username]));
+  let {rows:board,settled,pending}=scorePredictionRows(t,rows,id=>byId[id]||null);
+  let me=window.currentAccount?.username;
+  let list=board.length?board.map((x,i)=>{
+    let player=playerForAccount(x.u);
+    return `<div class="leader ${x.u===me?'me':''}">
+      <span class="rank">${i+1}</span>
+      <span class="mini-avatar" style="background-image:${player?teamArt(player,t):fallbackArt(x.u)};background-size:cover;background-position:center">${player&&(teamCovers[player]||profilePictures[player])?'':esc(x.u[0]||'')}</span>
+      <b>${esc(x.u)}${player?`<span class="sub" style="display:block;font-size:9px">as ${esc(player)}</span>`:''}</b>
+      <span class="pts">${x.pts} pts</span></div>`
+  }).join(''):'<p class="sub">No predictions submitted yet. Points are awarded once results come in.</p>';
+  let note=`<div class="leader-note">${settled} scored · ${pending} still open. Points follow the sign-in account, so they stay with you across tournaments whether or not you are playing.</div>`;
+  let target=document.querySelector('#predLeaders');
+  if(target)target.innerHTML=`<div class="card-title">Prediction leaders</div>${list}${note}`
+}
+
+/* predictions(): same layout, account-based leaderboard */
+function predictions(t=activeT()){
+  let started=(t.matches||[]).some(x=>x.as!==''&&x.as!=null),groups=groupsOf(t);
+  let block=(over,q,opts,locked=false)=>{
+    if(opts.length===2&&opts.every(x=>x&&x!=='TBD'&&x!=='BYE'))return versusBlock(t,over,q,opts[0],opts[1],locked);
+    let chosen=savedPick(t,q);
+    return `<div class="prediction card"><div class="eyebrow">${esc(over)}</div><h3>${esc(q)}</h3>
+      <div class="pick-options">${opts.map(x=>predictionPick(x,locked,chosen===x)).join('')}</div>
+      ${locked?'<p class="sub">Prediction locked.</p>':''}</div>`
+  };
+  setTimeout(()=>renderPredictionLeaders(t),0);
+  let leaderboard=leaderboardShell(t);
+  if(t.phase==='topcut'){
+    let live=(t.bracketMatches||t.topCutCache?.playable||[]).filter(m=>m.p1&&m.p2&&m.p1!=='BYE'&&m.p2!=='BYE');
+    return `<div class="pred-layout"><div><div class="eyebrow" style="margin:4px 0 8px">Live Top Cut predictions · 20 points each</div>
+      ${live.length?'<p class="versus-hint">Tap a side to lock in your pick. Each matchup locks once it is scored.</p>':''}
+      ${live.map(m=>block('20 points · '+m.title,'Top Cut · Who wins: '+m.p1+' vs '+m.p2,[m.p1,m.p2],m.s1!==''&&m.s2!=='')).join('')}
+      <p class="sub">New predictions appear automatically whenever the bracket produces a new playable matchup. Each locks when that matchup is scored.</p></div>${leaderboard}</div>`
+  }
+  let games=t.matches||[];
+  return `<div class="pred-layout"><div>
+    ${block('100 points · tournament outcome','Who will be the '+t.name+' Champion?',t.players,started)}
+    ${Object.entries(groups).map(([g,ps])=>block('45 points · '+g+' outcome','Who will top '+g+'?',ps,started)).join('')}
+    <div class="eyebrow" style="margin:22px 0 8px">Group-stage match predictions · 8 points each</div>
+    ${games.length?'<p class="versus-hint">Tap a side to lock in your pick. Each matchup locks once it is scored.</p>':''}
+    ${games.map(m=>block('8 points · '+(m.group||'Group A'),'Who wins: '+m.a+' vs '+m.b,[m.a,m.b],m.as!==''&&m.bs!=='')).join('')}
+  </div>${leaderboard}</div>`
+}
+
+/* ══ 6 & 7. MODERATOR CONTROLS MOVED TO THE TOURNAMENT PAGE ════════ */
+function Standings(){
+  let t=ongoingT();
+  if(!t){
+    let r=recapRankings();
+    return head('Standings','All-time league rankings')+`<div class="card table-wrap"><table class="standings">
+      <thead><tr><th>#</th><th>Player</th><th>ELO</th><th>Titles</th><th>Top Cuts</th><th>All-time W-L</th></tr></thead>
+      <tbody>${r.map((x,i)=>`<tr><td class="rank">${i+1}</td><td class="player">${playerLink(x.p)}<span class="team">${esc(profiles[x.p].team)}</span></td><td><b>${x.score}</b></td><td>${x.champ}</td><td>${x.tops}</td><td>${esc(x.record)}</td></tr>`).join('')}</tbody></table></div>`
+  }
+  viewTournament=t.id;
+  let groups=Object.keys(groupsOf(t));
+  let controls=moderator?`<div><button class="btn ghost" onclick="openRankingEditor()">Arrange rankings</button></div>`:'';
+  return head('Standings',t.name+' · group stage',controls)
+    +`<div style="display:grid;grid-template-columns:repeat(${groups.length>1?2:1},minmax(0,1fr));gap:15px">${groups.map(g=>`<div class="card table-wrap">${standingTable(t,g)}</div>`).join('')}</div>`
+    +`<p class="sub">The default order is W-L, games won, game differential, then head-to-head. Moderators can use Arrange rankings for a manual override; qualification and group placement now live under <b>Edit</b> on the tournament page.</p>`
+}
+(function(){
+  let baseMatches=window.Matches;
+  window.Matches=function(){
+    let html=baseMatches();
+    /* drop the Arrange groups button — it now lives under Edit on the tournament page */
+    html=html.replace(/<button class="btn ghost" onclick="openGroupPlacementEditor\(\)">Arrange groups<\/button>\s*/,'');
+    html=html.replace(/Use <b>Arrange groups<\/b> to drag trainers between groups\./,'Group placement is edited under <b>Edit</b> on the tournament page.');
+    return html
+  }
+})();
+/* qualification + group placement now act on the tournament being viewed */
+function openSettings(){
+  let t=activeT();if(!t||!moderator)return;
+  let groupSize=Math.max(...Object.values(groupsOf(t)).map(x=>x.length));
+  window.editingTournamentId=t.id;
+  document.querySelector('#modal').innerHTML=`<div class="modal-wrap"><div class="modal" style="max-width:430px">
+    <div class="modal-head"><div><div class="eyebrow">Moderator setting · ${esc(t.name)}</div><h2>Group qualification</h2></div><button class="close" onclick="closeModal()">×</button></div>
+    <div class="field"><label>Players advancing from each group</label><input id="cutSelect" type="number" min="1" max="${groupSize}" value="${advancePerGroup(t)}"></div>
+    <p class="sub">This is per group. It immediately updates standings, the cutoff line, and Top Cut seeding.</p>
+    <div class="creator-actions"><button class="btn" onclick="saveQualification()">Save qualification</button></div></div></div>`
+}
+function saveQualification(){
+  let t=tournamentData[window.editingTournamentId]||activeT();
+  if(!t||!moderator)return;
+  let value=Math.max(1,+document.querySelector('#cutSelect').value||1);
+  t.advancePerGroup=value;
+  if(t.id==='scarlet')cut=value*Object.keys(groupsOf(t)).length;
+  persistLeague();closeModal();render()
+}
+function openGroupPlacementEditor(){
+  let t=activeT();
+  if(!moderator||!t||t.phase==='topcut')return;
+  window.editingTournamentId=t.id;
+  let groups=groupsOf(t);
+  document.querySelector('#modal').innerHTML=`<div class="modal-wrap"><div class="modal" style="max-width:760px">
+    <div class="modal-head"><div><div class="eyebrow">Moderator only · ${esc(t.name)}</div><h2>Arrange group placements</h2></div><button class="close" onclick="closeModal()">×</button></div>
+    <p class="sub">Drag a trainer onto another trainer to swap their group placements. Moving players between groups rebuilds the round-robin schedule while preserving scores for matchups that still exist.</p>
+    <div class="group-placement-grid">${Object.entries(groups).map(([g,players])=>`<section class="group-dropzone" data-group="${esc(g)}"><div class="eyebrow">${esc(g)}</div>${players.map(p=>`<button class="group-placement-drag" draggable="true" data-player="${esc(p)}" data-group="${esc(g)}">${esc(p)}</button>`).join('')||'<p class="sub">Drop a trainer here</p>'}</section>`).join('')}</div>
+  </div></div>`
+}
+function swapGroupPlacements(first,second,targetGroup){
+  let t=tournamentData[window.editingTournamentId]||activeT();
+  if(!t||!first||!moderator||t.phase==='topcut')return;
+  let buckets=groupsOf(t),assign={};
+  Object.entries(buckets).forEach(([g,players])=>players.forEach(p=>assign[p]=g));
+  let source=assign[first];
+  if(second){
+    let other=assign[second];assign[first]=other;assign[second]=source;
+    if(source===other){let ai=t.players.indexOf(first),bi=t.players.indexOf(second);if(ai>=0&&bi>=0)[t.players[ai],t.players[bi]]=[t.players[bi],t.players[ai]]}
+  }else if(targetGroup&&source!==targetGroup){assign[first]=targetGroup}
+  t.groupAssignments=assign;rebuildSchedulePreserving(t);persistLeague();openGroupPlacementEditor();render()
+}
+function tournamentDetail(){
+  let t=activeT();if(!t)return noTournament();
+  window.editingTournamentId=t.id;
+  let groups=Object.keys(groupsOf(t));
+  let content=detailTab==='Group Stage'?matchesView(t,false)
+    :detailTab==='Standings'?`<div class="card table-wrap">${groups.map(g=>standingTable(t,g)).join('')}</div>`
+    :detailTab==='Top Cut'?topCutSection(t,!t.bracketManagerData)
+    :predictions(t);
+  let edit=moderator?` <button class="btn ghost" onclick="openTournamentEdit('${jsArg(t.id)}')">Edit</button>`:'';
+  return head(t.name,t.season+' · '+t.status,`<div><button class="btn ghost" onclick="go('Tournaments')">← Archive</button>${edit}${moderator?` <button class="btn ghost" style="color:#ff9ba1" onclick="deleteTournament('${jsArg(t.id)}')">Delete</button>`:''}</div>`)
+    +`<div class="tabs">${['Group Stage','Standings','Top Cut','Predictions'].map(x=>`<button class="${detailTab===x?'active':''}" onclick="detailTab='${x}';render()">${x}</button>`).join('')}</div>`
+    +`<div class="detail-layout"><div>${content}</div><aside class="card side">
+      <div class="card-title">Tournament record</div>
+      <div class="side-line">${esc(t.regulation||'')}</div>
+      <div class="side-line"><b>${t.players.length}</b> players · ${groups.length} group${groups.length===1?'':'s'}</div>
+      <div class="side-line">Top ${advancePerGroup(t)} per group</div>
+      <div class="side-line">${esc(t.start||'')} → ${esc(t.end||'')}</div></aside></div>`
+}
+function openTournamentEdit(id){
+  if(!moderator)return;
+  let t=tournamentData[id]||activeT();if(!t)return;
+  window.editingTournamentId=t.id;
+  let locked=t.phase==='topcut';
+  document.querySelector('#modal').innerHTML=`<div class="modal-wrap"><div class="modal" style="max-width:520px">
+    <div class="modal-head"><div><div class="eyebrow">Moderator only</div><h2>Edit ${esc(t.name)}</h2></div><button class="close" onclick="closeModal()">×</button></div>
+    <p class="sub">${esc(t.season||'')} · ${esc(t.status)}</p>
+    <div class="section" style="display:grid;gap:9px">
+      <button class="btn ghost" onclick="openTournamentRecordEditor('${jsArg(t.id)}')">Edit record</button>
+      <button class="btn ghost" onclick="openSettings()">Edit qualification</button>
+      <button class="btn ghost" ${locked?'disabled style="opacity:.5;cursor:not-allowed"':`onclick="openGroupPlacementEditor()"`}>Arrange groups${locked?' (locked in Top Cut)':''}</button>
+      <button class="btn ghost" onclick="openTournamentPlayers()">Edit players & teams</button>
+      <button class="btn ghost" onclick="openCoverEditor('${jsArg(t.id)}')">Edit cover image</button>
+      ${t.status==='COMPLETE'?`<button class="btn ghost" onclick="resyncTournamentStats('${jsArg(t.id)}')">Resync stats</button>`:''}
+    </div></div></div>`
+}
+
+/* ══ 8. PLAYOFF "FORM" ON A 0-100 SCALE ════════════════════════════
+   playoffRating and winChance are untouched — the simulation still
+   runs on exactly the same numbers. This only changes what is shown:
+   the raw rating is mapped through the same logistic the simulation
+   uses, so 50 is the neutral baseline and the ordering is identical. */
+function playoffForm(p,t){return Math.round(100/(1+Math.exp(-(playoffRating(p,t)-1000)/130)))}
+function playoffOdds(){
+  let t=ongoingT();if(!t)return noTournament();
+  let data=playoffOddsData(t);
+  let rows=Object.entries(data).map(([p,odds])=>({p,odds,form:playoffForm(p,t),accolades:playoffAccolades(p)})).sort((a,b)=>b.odds-a.odds);
+  return head('Playoff Calculator',t.name+' · projected Top Cut chances')
+    +`<div class="card table-wrap"><table class="standings">
+      <thead><tr><th>#</th><th>Trainer</th><th>Top Cut chance</th><th>Projection</th></tr></thead>
+      <tbody>${rows.map((x,i)=>`<tr class="${x.odds===100?'safe':x.odds===0?'out':'hunt'}">
+        <td class="rank">${i+1}</td>
+        <td class="player">${playerLink(x.p)}<span class="team">Form ${x.form}/100 · ${x.accolades.titles} title${x.accolades.titles===1?'':'s'} · ${x.accolades.tops} Top Cut${x.accolades.tops===1?'':'s'}</span></td>
+        <td><b>${x.odds}%</b></td>
+        <td><div class="progress" style="width:160px"><span style="width:${x.odds}%;background:${x.odds===100?'var(--green)':x.odds===0?'var(--red)':'var(--amber)'}"></span></div></td></tr>`).join('')}</tbody></table></div>`
+    +`<p class="sub">2,000 simulated finishes. Form runs 0-100 with 50 as the league-average baseline: it blends all-time W-L (career form), this tournament's W-L (current form), game differential, plus a bonus per title and per Top Cut. Players with no record or accolades sit at 50.</p>`
+}
+
+/* ══ 9. FIX: ASSIGNED TEAM NAMES NOT SAVING ════════════════════════
+   Three separate faults, all of which looked like "it didn't save":
+   a) Teams uses ongoingT() but never set viewTournament, so after
+      visiting an archived tournament the editor opened via activeT()
+      and wrote the team names onto that OLD tournament instead.
+   b) A blank box stored '' and teamName() treated any tournament with
+      a teamNames object as authoritative, so it printed "Unassigned
+      team" instead of falling back to the profile's default.
+   c) Boxes were only rendered for players already in the tournament,
+      so a player ticked in the same visit had nowhere to type a team. */
+function teamName(t,p){
+  let explicit=t&&t.teamNames?String(t.teamNames[p]||'').trim():'';
+  if(explicit)return explicit;
+  let fallback=String(profiles[p]?.team||'').trim();
+  if(fallback&&fallback!=='No default team')return fallback;
+  return 'Unassigned team'
+}
+function Teams(){
+  let t=ongoingT();if(!t)return noTournament();
+  viewTournament=t.id;                    /* (a) keep the editor on this tournament */
+  return head('Teams',t.name+' rosters',moderator?`<button class="btn ghost" onclick="openTournamentPlayers()">Edit tournament teams</button>`:'')
+    +`<div class="teams">${t.players.map(p=>`<div style="position:relative">
+      <button class="card team-card" ${teamCoverBg(p)} onclick="openProfile('${jsArg(p)}')">
+        <div class="eyebrow">${esc(p)}</div><h3>${esc(teamName(t,p))}</h3>
+        <div class="roster">${(roster[p]||[]).map(x=>`<span class="mon">${esc(x)}</span>`).join('')}</div>
+        <p class="sub">View profile & team history →</p></button>
+      ${moderator?`<button class="cover-edit" onclick="event.stopPropagation();openTeamCoverEditor('${jsArg(p)}')">Edit cover</button>`:''}
+    </div>`).join('')}</div>`
+}
+function openTournamentPlayers(){
+  let t=activeT();if(!t)return;
+  window.editingTournamentId=t.id;        /* pin it so the save cannot drift */
+  let groups=Object.keys(groupsOf(t)),buckets=groupsOf(t);
+  let rows=Object.keys(profiles).sort((a,b)=>a.localeCompare(b)).map(p=>{
+    let inT=t.players.includes(p),explicit=t.teamNames?String(t.teamNames[p]||'').trim():'';
+    return `<div class="link-row" style="grid-template-columns:20px minmax(0,1fr) 130px minmax(0,1fr)">
+      <input class="tPlayerChoice" type="checkbox" value="${esc(p)}" ${inT?'checked':''}>
+      <span><b>${esc(p)}</b>${accountForPlayer(p)?`<div class="sub" style="font-size:9px;margin-top:2px">◆ ${esc(accountForPlayer(p))}</div>`:''}</span>
+      <select class="playerGroup" data-player="${esc(p)}">${groups.map(g=>`<option ${buckets[g].includes(p)?'selected':''}>${esc(g)}</option>`).join('')}</select>
+      <input class="tTeamName" data-player="${esc(p)}" value="${esc(explicit)}" placeholder="${esc(profiles[p]?.team&&profiles[p].team!=='No default team'?profiles[p].team:'Team name')}">
+    </div>`
+  }).join('');
+  document.querySelector('#modal').innerHTML=`<div class="modal-wrap"><div class="modal" style="max-width:760px">
+    <div class="modal-head"><div><div class="eyebrow">Moderator only · ${esc(t.name)}</div><h2>Players & teams</h2></div><button class="close" onclick="closeModal()">×</button></div>
+    <p class="sub">Tick who is playing, set their group, and give each one a team name for this tournament. Leave a team box empty to fall back to that player's default team.</p>
+    <div class="card" style="padding:6px 14px">${rows}</div>
+    <div class="field" style="margin-top:14px"><label>Add new player profile</label><input id="editNewPlayer" placeholder="New player name"></div>
+    <div class="creator-actions"><button class="btn" onclick="saveTournamentPlayers()">Save participants & teams</button></div>
+  </div></div>`
+}
+function saveTournamentPlayers(){
+  let t=tournamentData[window.editingTournamentId]||activeT();
+  if(!t)return;
+  if(t.phase==='topcut'){alert('Participants are locked after Top Cut begins.');return}
+  let selected=[...document.querySelectorAll('.tPlayerChoice:checked')].map(x=>x.value);
+  let newP=document.querySelector('#editNewPlayer').value.trim();
+  if(newP){
+    if(!profiles[newP]){profiles[newP]={team:'No default team',record:'0-0',tops:0,cups:[]};roster[newP]=[];teamHistory[newP]=[]}
+    selected.push(newP);
+  }
+  if(selected.length<2){alert('A tournament needs at least two players.');return}
+  let oldPlayers=t.players.join('|'),oldAssign=JSON.stringify(t.groupAssignments||{});
+  t.players=[...new Set(selected)];
+  t.teamNames=t.teamNames||{};
+  /* (b) only store real names; a blank box clears the override */
+  document.querySelectorAll('.tTeamName').forEach(x=>{
+    let p=x.dataset.player,v=x.value.trim();
+    if(!t.players.includes(p))return;
+    if(v)t.teamNames[p]=v;else delete t.teamNames[p];
+  });
+  Object.keys(t.teamNames).forEach(p=>{if(!t.players.includes(p))delete t.teamNames[p]});
+  let assign={};
+  document.querySelectorAll('.playerGroup').forEach(x=>{if(t.players.includes(x.dataset.player))assign[x.dataset.player]=x.value});
+  let groupNames=Object.keys(groupsOf(t));
+  t.players.filter(p=>!assign[p]).forEach((p,i)=>assign[p]=groupNames[i%groupNames.length]);
+  t.groupAssignments=assign;
+  let changed=oldPlayers!==t.players.join('|')||oldAssign!==JSON.stringify(assign);
+  if(changed)rebuildSchedulePreserving(t);
+  rebuildAllPlayerStats();persistLeague();closeModal();render()
+}
+
+/* ══ 10. MATCHES PAGE — VISUALS ONLY ═══════════════════════════════
+   Same inputs, same ids, same score()/removeCustom() calls; this only
+   adds team art, team names, and a won/lost treatment. */
+function playerFace(p,t){
+  let art=profilePictures[p]?`url('${esc(profilePictures[p])}')`:(teamCovers[p]?`url('${esc(teamCovers[p])}')`:fallbackArt(p));
+  let letter=(profilePictures[p]||teamCovers[p])?'':esc((p||'?')[0]);
+  return `<span class="mrow-face" style="background-image:${art}">${letter}</span>`
+}
+function renderMatchRow(m,i,t){
+  let editable=moderator&&t.status==='ONGOING'&&t.phase!=='topcut';
+  let a=m.a||'TBD',b=m.b||'TBD';
+  let av=scoreDrafts['a'+i]??m.as??'',bv=scoreDrafts['b'+i]??m.bs??'';
+  let reported=m.as!==''&&m.as!=null&&m.bs!==''&&m.bs!=null;
+  let aWon=reported&&+m.as>+m.bs,bWon=reported&&+m.bs>+m.as;
+  let label=m.custom?'Custom · '+(m.group||'Group match'):(m.group||'Group match');
+  let side=(p,score,won,lost,id,cls)=>`<div class="score-competitor ${cls} ${won?'winner':''} ${lost?'loser':''}">
+    <span class="mrow-id">${playerFace(p,t)}<span class="mrow-text">
+      <span class="mrow-name">${matchPlayerName(p)}</span>
+      <span class="mrow-team">${esc(teamName(t,p))}</span>
+      ${won?'<span class="win-flag">▲ Winner</span>':''}
+    </span></span>
+    ${editable?`<input aria-label="${esc(p)} score" id="${id}" class="score-box" type="number" min="0" inputmode="numeric" placeholder="0" value="${esc(score)}">`
+              :`<b class="score-box" style="display:grid;place-items:center">${reported?esc(cls==='right'?m.bs:m.as):'—'}</b>`}</div>`;
+  return `<article class="score-match ${reported?'done':'live'}" data-players="${esc(a)}|${esc(b)}">
+    <div class="score-match-head">
+      <span class="st"><i></i>${reported?'Reported'+(m.date?' · '+esc(m.date):''):'Awaiting result'}</span>
+      <span>${esc(label)}</span></div>
+    <div class="score-match-body">
+      ${side(a,av,aWon,bWon,'a'+i,'')}
+      <div class="score-match-vs">VS</div>
+      ${side(b,bv,bWon,aWon,'b'+i,'right')}
+    </div>
+    ${editable?`<div class="score-match-foot"><button class="save" onclick="score(${i})">Save result</button>${m.custom?`<button class="save" style="color:#ff969c" onclick="removeCustom(${i})">Remove</button>`:''}</div>`:''}
+  </article>`
+}
+
+/* Top Cut question text gained a "Top Cut · " prefix; keep reading the
+   old key so picks made before this change still show as selected. */
+function savedPick(t,question){
+  try{
+    let id=t?.id||'',hit=localStorage.getItem('draftdex-pick-'+id+'-'+question);
+    if(hit)return hit;
+    if(question.startsWith('Top Cut · '))return localStorage.getItem('draftdex-pick-'+id+'-'+question.slice(10))||'';
+    return ''
+  }catch{return ''}
+}
+
+/* ══ SHARED STATE: carry account links alongside everything else ════ */
+async function flushSync(){
+  if(!supabaseClient||!moderator)return;
+  let snapshotJson=JSON.stringify({tournaments:tournamentData,profiles,roster,teamHistory,teamCovers,profilePictures,pulsePanelImages,cut,boardLink,draftPool,accountLinks});
+  if(snapshotJson===lastSentSnapshot)return;
+  lastSentSnapshot=snapshotJson;knownRev++;
+  let payload=JSON.parse(snapshotJson);payload.rev=knownRev;
+  await supabaseClient.from('league_state').update({data:payload,updated_at:new Date().toISOString()}).eq('id','main')
+}
+(function(){
+  let base=window.applySharedState;
+  window.applySharedState=function(data){
+    base(data);
+    if(data&&data.accountLinks&&typeof data.accountLinks==='object'){
+      accountLinks=data.accountLinks;
+      try{localStorage.setItem('draftdex-accountlinks',JSON.stringify(accountLinks))}catch{}
+    }
+  }
+})();
+
+if(supabaseReady())loadAccounts();
+render();
+</script>
+<style>
+/* ══ 5. DRAFT TOOLS: sheet + team planner on one page ══ */
+.tools-layout{display:grid;grid-template-columns:minmax(0,1fr) 350px;gap:18px;align-items:start}
+.builder{padding:18px;position:sticky;top:96px;max-height:calc(100vh - 120px);overflow:auto}
+.team-chips{display:flex;gap:6px;flex-wrap:wrap;margin:12px 0 4px}
+.team-chip{border:1px solid #3a3a41;background:#24242a;color:#d9d7dd;border-radius:4px;padding:7px 10px;font-size:11px;font-weight:800;cursor:pointer;max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.team-chip.on{background:#491b20;border-color:var(--red);color:#fff}
+.team-chip.new{border-style:dashed;color:#9d9ba4}
+.tm-name-row{display:flex;align-items:center;gap:8px;margin-top:14px}
+.tm-name{font:800 23px 'Barlow Condensed';letter-spacing:.4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tm-name-row .save{margin-left:auto;flex:none}
+.tm-name-row input{flex:1;min-width:0;background:#101014;border:1px solid #3a3a42;border-radius:5px;padding:8px 10px;color:#fff;font-weight:800}
+.tm-add{display:grid;grid-template-columns:minmax(0,1fr) 74px auto;gap:7px;margin-top:13px}
+.tm-add input{background:#101014;border:1px solid #3a3a42;border-radius:5px;padding:9px 10px;color:#fff;min-width:0}
+.tm-count{display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin-top:16px}
+.tm-count .slots{font-size:11px;font-weight:800;color:#9d9ba4;letter-spacing:.4px}
+.tm-count .slots b{color:#e9e7ec}
+.tm-list{margin-top:8px}
+.tm-item{display:flex;align-items:center;gap:9px;padding:8px 0;border-bottom:1px solid #2b2b32;font-size:12px}
+.tm-item:last-of-type{border:0}
+.tm-item img{width:28px;height:28px;object-fit:contain;image-rendering:pixelated;flex:none}
+.tm-item span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:700}
+.tm-item b{margin-left:auto;font:800 16px 'Barlow Condensed';color:var(--amber);flex:none}
+.tm-item button{border:0;background:none;color:#ff7a80;cursor:pointer;font-size:15px;line-height:1;padding:0 2px;flex:none}
+.tm-slot-free{padding:7px 0;border-bottom:1px dashed #26262d;font-size:10px;color:#55535d;letter-spacing:.5px;text-transform:uppercase;font-weight:800}
+.tm-slot-free:last-of-type{border:0}
+.tm-note{font-size:10px;color:#8e8c95;margin-top:12px;line-height:1.5}
+.tm-status{font-size:11px;color:#ffb0b5;margin-top:9px;min-height:14px}
+@media(max-width:900px){.tools-layout{grid-template-columns:1fr}.builder{position:static;order:-1;max-height:none}}
+</style>
+<script>
+/* ══════════════════════════════════════════════════════════════════
+   5. DRAFT TOOLS REWORK
+   The sheet-parsing pool proved unreliable, so the planner is now
+   manual entry on the same page as the spreadsheet: read the cost off
+   the sheet, type the Pokémon and its price beside it. Teams are
+   named, capped at 10 Pokémon / 100 points, saved per account (with a
+   cross-device copy in the account's auth metadata when signed in).
+   ══════════════════════════════════════════════════════════════════ */
+const TEAM_BUDGET=100,TEAM_SLOTS=10;
+var teamStore={key:null,teams:[],activeId:null,updatedAt:0,adoptedGuest:false};
+var builderStatus='';window.__teamsPulled={};
+
+function readTeamStore(key){try{return JSON.parse(localStorage.getItem('draftdex-teams-'+key)||'null')}catch{return null}}
+function ensureTeams(){
+  let key=accountKey();
+  if(teamStore.key===key)return teamStore;
+  let saved=readTeamStore(key);
+  teamStore={key,teams:saved?.teams||[],activeId:saved?.activeId||null,updatedAt:saved?.updatedAt||0,adoptedGuest:!!saved?.adoptedGuest};
+  /* one-time migration from the old single mock draft */
+  if(!teamStore.teams.length){
+    let legacy=null;try{legacy=JSON.parse(localStorage.getItem('draftdex-mock-'+key)||'null')}catch{}
+    if(legacy?.picks?.length){teamStore.teams=[{id:teamId(),name:'My first team',picks:legacy.picks.map(x=>({name:String(x.name),cost:+x.cost||0}))}];teamStore.activeId=teamStore.teams[0].id;writeTeams(false)}
+  }
+  /* teams built before signing in follow the FIRST account that signs
+     in on this browser; the guest copy is then marked claimed so a
+     second account on the same machine cannot see them. */
+  if(key!=='guest'&&!teamStore.teams.length&&!teamStore.adoptedGuest){
+    let guest=readTeamStore('guest');
+    if(guest?.teams?.length&&!guest.claimed){
+      teamStore.teams=JSON.parse(JSON.stringify(guest.teams));
+      teamStore.activeId=guest.activeId||guest.teams[0].id;
+      try{localStorage.setItem('draftdex-teams-guest',JSON.stringify({...guest,claimed:true}))}catch{}
+    }
+    teamStore.adoptedGuest=true;writeTeams(false);
+  }
+  if(!teamStore.activeId&&teamStore.teams.length)teamStore.activeId=teamStore.teams[0].id;
+  return teamStore
+}
+function teamId(){return 't'+Date.now().toString(36)+Math.random().toString(36).slice(2,6)}
+function activeTeam(){let s=ensureTeams();return s.teams.find(x=>x.id===s.activeId)||null}
+function writeTeams(bump=true){
+  if(bump)teamStore.updatedAt=Date.now();
+  try{localStorage.setItem('draftdex-teams-'+teamStore.key,JSON.stringify({teams:teamStore.teams,activeId:teamStore.activeId,updatedAt:teamStore.updatedAt,adoptedGuest:teamStore.adoptedGuest}))}catch{}
+  if(bump)schedulePushTeams()
+}
+var teamsPushTimer=null;
+function schedulePushTeams(){
+  if(!supabaseClient||!sessionUser)return;
+  clearTimeout(teamsPushTimer);
+  teamsPushTimer=setTimeout(async()=>{
+    try{await supabaseClient.auth.updateUser({data:{draftTeams:{teams:teamStore.teams,activeId:teamStore.activeId,updatedAt:teamStore.updatedAt,adoptedGuest:teamStore.adoptedGuest}}})}catch(e){}
+  },800)
+}
+async function pullRemoteTeams(){
+  if(!supabaseClient||!sessionUser)return;
+  let key=accountKey();
+  if(window.__teamsPulled[key])return;
+  window.__teamsPulled[key]=true;
+  try{
+    let {data}=await supabaseClient.auth.getUser();
+    let remote=data?.user?.user_metadata?.draftTeams;
+    ensureTeams();
+    if(remote&&Array.isArray(remote.teams)&&(remote.updatedAt||0)>(teamStore.updatedAt||0)&&teamStore.key===accountKey()){
+      teamStore.teams=remote.teams;teamStore.activeId=remote.activeId||remote.teams[0]?.id||null;
+      teamStore.updatedAt=remote.updatedAt;teamStore.adoptedGuest=!!remote.adoptedGuest;
+      writeTeams(false);refreshBuilder();
+    }
+  }catch(e){}
+}
+function fmtPts(n){return Number.isInteger(+n)?+n:+(+n).toFixed(1)}
+function teamSpent(team){return fmtPts((team?.picks||[]).reduce((n,x)=>n+(+x.cost||0),0))}
+
+/* --- actions (each refreshes only the builder, never the iframe) --- */
+function refreshBuilder(){let host=document.querySelector('#teamBuilder');if(host)host.innerHTML=builderHTML()}
+function createTeam(){
+  let box=document.querySelector('#newTeamName'),name=(box?.value||'').trim()||'Team '+(ensureTeams().teams.length+1);
+  if(name.length>40)name=name.slice(0,40);
+  let s=ensureTeams(),team={id:teamId(),name,picks:[]};
+  s.teams.push(team);s.activeId=team.id;builderStatus='';writeTeams();refreshBuilder();
+  setTimeout(()=>document.querySelector('#tmName')?.focus(),0)
+}
+function switchTeam(id){let s=ensureTeams();if(!s.teams.some(x=>x.id===id))return;s.activeId=id;window.renamingTeam=null;builderStatus='';writeTeams();refreshBuilder()}
+function startRenameTeam(){window.renamingTeam=ensureTeams().activeId;refreshBuilder();setTimeout(()=>document.querySelector('#renameTeam')?.focus(),0)}
+function commitRenameTeam(){
+  let team=activeTeam(),box=document.querySelector('#renameTeam');
+  if(team&&box){let v=box.value.trim();if(v)team.name=v.slice(0,40)}
+  window.renamingTeam=null;writeTeams();refreshBuilder()
+}
+function deleteTeam(){
+  let s=ensureTeams(),team=activeTeam();
+  if(!team)return;
+  if(!confirm('Delete "'+team.name+'"? This cannot be undone.'))return;
+  s.teams=s.teams.filter(x=>x.id!==team.id);
+  s.activeId=s.teams[0]?.id||null;
+  builderStatus='';writeTeams();refreshBuilder()
+}
+function addTeamMon(){
+  let team=activeTeam();if(!team)return;
+  let nameBox=document.querySelector('#tmName'),costBox=document.querySelector('#tmCost');
+  let name=(nameBox?.value||'').trim(),cost=parseFloat(costBox?.value);
+  if(!name||!Number.isFinite(cost)||cost<0){builderStatus='Enter a Pokémon and its cost from the sheet.';refreshBuilder();setTimeout(()=>document.querySelector(name?'#tmCost':'#tmName')?.focus(),0);return}
+  if(team.picks.length>=TEAM_SLOTS){builderStatus='That is all '+TEAM_SLOTS+' slots — remove a Pokémon to add another.';refreshBuilder();return}
+  if(team.picks.some(x=>x.name.toLowerCase()===name.toLowerCase())){builderStatus=name+' is already on this team.';refreshBuilder();setTimeout(()=>document.querySelector('#tmName')?.focus(),0);return}
+  team.picks.push({name:name.slice(0,30),cost:fmtPts(cost)});
+  builderStatus='';writeTeams();refreshBuilder();
+  setTimeout(()=>{let b=document.querySelector('#tmName');if(b){b.value='';b.focus()}let c=document.querySelector('#tmCost');if(c)c.value=''},0)
+}
+function removeTeamMon(i){let team=activeTeam();if(!team)return;team.picks.splice(i,1);builderStatus='';writeTeams();refreshBuilder()}
+function copyTeam(){
+  let team=activeTeam();if(!team||!team.picks.length)return;
+  let text=team.name+'\n'+team.picks.map(x=>`${x.name} — ${x.cost}`).join('\n')+`\nTotal: ${teamSpent(team)} / ${TEAM_BUDGET}`;
+  navigator.clipboard?.writeText(text).then(()=>{builderStatus='Copied to your clipboard.';refreshBuilder()},()=>{})
+}
+function teamKeydown(e){if(e.key==='Enter'){e.preventDefault();addTeamMon()}}
+
+/* --- markup --- */
+function builderHTML(){
+  let s=ensureTeams(),team=activeTeam(),who=s.key==='guest'?'this browser':(window.currentAccount?.username||'your account');
+  let chips=`<div class="team-chips">${s.teams.map(t=>`<button class="team-chip ${t.id===s.activeId?'on':''}" title="${esc(t.name)}" onclick="switchTeam('${jsArg(t.id)}')">${esc(t.name)}</button>`).join('')}<button class="team-chip new" onclick="window.renamingTeam=null;switchTeam('${jsArg(s.activeId||'')}');document.querySelector('#newTeamRow').style.display='grid';document.querySelector('#newTeamName').focus()">+ New team</button></div>
+  <div id="newTeamRow" style="display:${s.teams.length?'none':'grid'};grid-template-columns:minmax(0,1fr) auto;gap:7px;margin-top:10px">
+    <input id="newTeamName" placeholder="Name this team (e.g. Rain squad)" maxlength="40" onkeydown="if(event.key==='Enter'){event.preventDefault();createTeam()}">
+    <button class="btn" onclick="createTeam()">Create</button></div>`;
+  if(!team)return `<div class="eyebrow">Team planner</div>
+    <p class="sub" style="margin-top:9px">Plan a draft before it happens: read a Pokémon's cost off the sheet, type it in, and watch the total. ${TEAM_SLOTS} Pokémon, ${TEAM_BUDGET} points.</p>
+    ${chips}
+    <p class="tm-note">Teams are private and saved to ${esc(who)}.</p>`;
+  let spent=teamSpent(team),left=fmtPts(TEAM_BUDGET-spent),over=left<0;
+  let nameRow=window.renamingTeam===team.id
+    ?`<div class="tm-name-row"><input id="renameTeam" value="${esc(team.name)}" maxlength="40" onkeydown="if(event.key==='Enter'){event.preventDefault();commitRenameTeam()}"><button class="save" onclick="commitRenameTeam()">Save</button></div>`
+    :`<div class="tm-name-row"><div class="tm-name">${esc(team.name)}</div><button class="save" onclick="startRenameTeam()">Rename</button></div>`;
+  let free=Math.max(0,TEAM_SLOTS-team.picks.length);
+  return `<div class="eyebrow">Team planner</div>
+    ${chips}
+    ${nameRow}
+    <div class="tm-add">
+      <input id="tmName" placeholder="Pokémon" maxlength="30" onkeydown="teamKeydown(event)">
+      <input id="tmCost" type="number" min="0" step="any" placeholder="Cost" inputmode="decimal" onkeydown="teamKeydown(event)">
+      <button class="btn" onclick="addTeamMon()">Add</button></div>
+    <div class="tm-status">${esc(builderStatus)}</div>
+    <div class="tm-count">
+      <div class="budget-num ${over?'over':''}" style="margin:0">${spent}<span style="font-size:17px;color:#9d9ba4"> / ${TEAM_BUDGET}</span></div>
+      <div class="slots"><b>${team.picks.length}</b> / ${TEAM_SLOTS} Pokémon</div></div>
+    <div class="budget-bar ${over?'over':''}"><span style="width:${Math.min(100,spent/TEAM_BUDGET*100)}%"></span></div>
+    <div class="budget-sub">${over?fmtPts(Math.abs(left))+' points over budget':left+' points left'}</div>
+    <div class="tm-list">
+      ${team.picks.map((x,i)=>`<div class="tm-item"><img src="${esc(monSprite(x.name))}" alt="" loading="lazy" onerror="this.style.visibility='hidden'"><span>${esc(x.name)}</span><b>${fmtPts(x.cost)}</b><button title="Remove ${esc(x.name)}" onclick="removeTeamMon(${i})">×</button></div>`).join('')}
+      ${Array.from({length:free},(_,i)=>`<div class="tm-slot-free">Slot ${team.picks.length+i+1} open</div>`).join('')}
+    </div>
+    <div class="mock-actions"><button class="chip" onclick="copyTeam()">Copy list</button><button class="chip" onclick="deleteTeam()" style="color:#ff9ba1">Delete team</button></div>
+    <p class="tm-note">Teams are private and saved to ${esc(who)}${s.key!=='guest'?' — they follow your account when you sign in elsewhere':''}.</p>`
+}
+
+/* --- the page: spreadsheet and planner together --- */
+function Board(){
+  let s=sheetIds(boardLink),embed=sheetEmbedUrl();
+  let actions=`<div style="display:flex;gap:8px;flex-wrap:wrap">${moderator?`<button class="btn ghost" onclick="openBoardSettings()">Board settings</button>`:''}<button class="btn" onclick="openBoardLink()">Open in Google Sheets ↗</button></div>`;
+  setTimeout(pullRemoteTeams,0);
+  return head('Draft Tools','Cost sheet & team planner',actions)
+    +`<div class="tools-layout">
+      <div class="card">
+        <div class="board-note"><span>${s.id?'Live view of the league cost sheet. Edits made in Google Sheets show up here on refresh.':'No sheet connected yet.'}</span></div>
+        ${embed?`<iframe class="sheet-frame" src="${esc(embed)}" title="League draft sheet" loading="lazy"></iframe>`
+               :`<div class="empty"><div class="card-title">Connect the cost sheet</div><p class="sub">Add the Google Sheets link in Board settings to show it here.</p></div>`}
+      </div>
+      <aside class="card builder" id="teamBuilder">${builderHTML()}</aside>
+    </div>
+    <p class="sub">Blank frame? In Google Sheets open <b>Share → General access</b> and set it to <b>Anyone with the link · Viewer</b>. Private sheets cannot be embedded.</p>`
+}
+function openBoardSettings(){
+  if(!moderator)return;
+  document.querySelector('#modal').innerHTML=`<div class="modal-wrap"><div class="modal" style="max-width:560px">
+    <div class="modal-head"><div><div class="eyebrow">Moderator only</div><h2>Board settings</h2></div><button class="close" onclick="closeModal()">×</button></div>
+    <div class="field"><label>Google Sheets link</label><input id="boardInput" type="url" value="${esc(boardLink)}" placeholder="https://docs.google.com/spreadsheets/d/..."></div>
+    <p class="sub">Open the sheet tab that holds the costs before copying the link — the tab is remembered too.</p>
+    <div class="creator-actions"><button class="btn" onclick="saveBoardLink()">Save link</button></div></div></div>`
+}
+render();
+</script>
 
 </body></html>
