@@ -236,7 +236,7 @@ function saveTournamentRecord(id){let t=tournamentData[id];t.name=document.query
 
 function tournamentDetail(){let t=activeT();if(!t)return noTournament();let groups=Object.keys(groupsOf(t)),content=detailTab==='Group Stage'?matchesView(t,false):detailTab==='Standings'?`<div style="display:grid;grid-template-columns:repeat(${groups.length>1?2:1},minmax(0,1fr));gap:16px;align-items:start">${groups.map(g=>`<div class="card table-wrap" style="align-self:start">${standingTable(t,g)}</div>`).join('')}</div>`:detailTab==='Top Cut'?topCutSection(t,!t.bracketManagerData):predictions(t);return head(t.name,t.season+' · '+t.status,`<div><button class="btn ghost" onclick="go('Tournaments')">← Archive</button>${moderator?` <button class="btn ghost" onclick="openTournamentRecordEditor('${t.id}')">Edit record</button>${t.status==='COMPLETE'?` <button class="btn ghost" onclick="resyncTournamentStats('${t.id}')">Resync stats</button>`:''} <button class="btn ghost" style="color:#ff9ba1" onclick="deleteTournament('${t.id}')">Delete</button>`:''}</div>`)+`<div class="tabs">${['Group Stage','Standings','Top Cut','Predictions'].map(x=>`<button class="${detailTab===x?'active':''}" onclick="detailTab='${x}';render()">${x}</button>`).join('')}</div><div class="detail-layout"><div>${content}</div><aside class="card side"><div class="card-title">Tournament record</div><div class="side-line">${t.regulation}</div><div class="side-line"><b>${t.players.length}</b> players · ${groups.length} group${groups.length===1?'':'s'}</div><div class="side-line">Top ${advancePerGroup(t)} per group</div><div class="side-line">${t.start} → ${t.end}</div></aside></div>`}
 
-function editProfile(p){let q=ensureProfile(p);document.querySelector('#modal').innerHTML=`<div class="modal-wrap"><div class="modal" style="max-width:520px"><div class="modal-head"><div><div class="eyebrow">Player profile</div><h2>Edit ${esc(p)}</h2></div><button class="close" onclick="closeModal()">×</button></div><div class="field"><label>Default team name</label><input id="editDefaultTeam" value="${esc(q.team)}"></div><div class="card" style="padding:14px;margin-top:14px;background:#111116;border-color:#32323a"><div class="eyebrow">Profile art</div><p class="sub" style="margin:7px 0 12px">Use the player photo on profile pages and the team cover on team cards.</p><div class="creator-actions" style="justify-content:start;flex-wrap:wrap">${moderator?`<button class="btn ghost" onclick="openProfilePictureEditor('${jsArg(p)}')">Edit profile picture</button><button class="btn ghost" onclick="openTeamCoverEditor('${jsArg(p)}')">Edit team cover</button>`:''}</div></div><div class="card" style="padding:14px;margin-top:14px;background:#111116;border-color:#32323a"><div class="eyebrow">Current snapshot</div><div class="mini-stats" style="margin-top:14px"><div><b>${q.cups.length}x</b><span>Champion</span></div><div><b>${q.tops}x</b><span>Top Cut</span></div><div><b>${esc(q.record)}</b><span>All-time W-L</span></div></div></div><div class="creator-actions"><button class="btn ghost" onclick="openProfileManager()">Back</button><button class="btn" onclick="saveProfile('${jsArg(p)}')">Save profile</button></div></div></div>`}
+function editProfile(p){let q=ensureProfile(p),career=playerCareerStats(p);document.querySelector('#modal').innerHTML=`<div class="modal-wrap"><div class="modal" style="max-width:520px"><div class="modal-head"><div><div class="eyebrow">Player profile</div><h2>Edit ${esc(p)}</h2></div><button class="close" onclick="closeModal()">×</button></div><div class="field"><label>Default team name</label><input id="editDefaultTeam" value="${esc(q.team)}"></div><div class="card" style="padding:14px;margin-top:14px;background:#111116;border-color:#32323a"><div class="eyebrow">Profile art</div><p class="sub" style="margin:7px 0 12px">Use the player photo on profile pages and the team cover on team cards.</p><div class="creator-actions" style="justify-content:start;flex-wrap:wrap">${moderator?`<button class="btn ghost" onclick="openProfilePictureEditor('${jsArg(p)}')">Edit profile picture</button><button class="btn ghost" onclick="openTeamCoverEditor('${jsArg(p)}')">Edit team cover</button>`:''}</div></div><div class="card" style="padding:14px;margin-top:14px;background:#111116;border-color:#32323a"><div class="eyebrow">Current snapshot</div><div class="mini-stats" style="margin-top:14px"><div><b>${career.titles}x</b><span>Champion</span></div><div><b>${career.topCuts}x</b><span>Top Cut</span></div><div><b>${esc(career.record)}</b><span>All-time W-L</span></div></div></div><div class="creator-actions"><button class="btn ghost" onclick="openProfileManager()">Back</button><button class="btn" onclick="saveProfile('${jsArg(p)}')">Save profile</button></div></div></div>`}
 function saveProfile(p){ensureProfile(p);let teamVal=document.querySelector('#editDefaultTeam')?.value.trim();profiles[p].team=teamVal||'No default team';rebuildAllPlayerStats();persistLeague();openProfileManager()}
 
 
@@ -533,7 +533,7 @@ new MutationObserver(restorePicks).observe(document.querySelector('#app'),{child
 
 
 
-function basicStandingTable(t,g){let list=getStand(t,g);return `<div class="eyebrow" style="padding:16px 14px 0">${g}</div><table class="standings"><thead><tr><th>#</th><th>Trainer / Team</th><th>W-L</th><th>GW</th><th>GD</th><th>H2H</th></tr></thead><tbody>${list.map((x,i)=>`<tr><td class="rank">${i+1}</td><td class="player">${playerLink(x.p)}<span class="team">${teamName(t,x.p)}</span></td><td>${x.w}-${x.l}</td><td>${x.gw}</td><td>${x.gw-x.gl}</td><td>${x.h2h}</td></tr>`).join('')}</tbody></table>`}
+function basicStandingTable(t,g){let list=getStand(t,g);return `<div class="eyebrow" style="padding:16px 14px 0">${g}</div><table class="standings"><thead><tr><th style="width:32px;text-align:center">#</th><th>Trainer / Team</th><th style="text-align:center;white-space:nowrap">W-L</th><th style="text-align:center;white-space:nowrap">GW</th><th style="text-align:center;white-space:nowrap">GD</th><th style="text-align:center;white-space:nowrap">H2H</th></tr></thead><tbody>${list.map((x,i)=>`<tr><td class="rank" style="text-align:center">${i+1}</td><td class="player">${playerLink(x.p)}<span class="team">${esc(teamName(t,x.p))}</span></td><td style="text-align:center;white-space:nowrap">${x.w}-${x.l}</td><td style="text-align:center;white-space:nowrap">${x.gw}</td><td style="text-align:center;white-space:nowrap">${x.gw-x.gl>0?'+':''}${x.gw-x.gl}</td><td style="text-align:center;white-space:nowrap">${x.h2h}</td></tr>`).join('')}</tbody></table>`}
 
 
 
@@ -573,7 +573,7 @@ function Home(){let t=ongoingT();if(!t)return OffseasonHome();viewTournament=t.i
 function advancePerGroup(t){if(Number.isFinite(Number(t.advancePerGroup)))return Math.max(1,Number(t.advancePerGroup));if(Number.isFinite(Number(t.advance)))return Math.max(1,Number(t.advance));let groups=Object.keys(groupsOf(t)).length,total=Number(t.id==='scarlet'?cut:t.advance||1);return Math.max(1,Math.floor(total/groups))}
 function openSettings(){let t=ongoingT(),groupSize=Math.max(...Object.values(groupsOf(t)).map(x=>x.length));document.querySelector('#modal').innerHTML=`<div class="modal-wrap"><div class="modal" style="max-width:430px"><div class="modal-head"><div><div class="eyebrow">Moderator setting</div><h2>Group qualification</h2></div><button class="close" onclick="closeModal()">×</button></div><div class="field"><label>Players advancing from each group</label><input id="cutSelect" type="number" min="1" max="${groupSize}" value="${advancePerGroup(t)}"></div><p class="sub">This is per group. It immediately updates standings, the cutoff line, and Top Cut seeding.</p><div class="creator-actions"><button class="btn" onclick="saveQualification()">Save qualification</button></div></div></div>`}
 function saveQualification(){let t=ongoingT(),value=Math.max(1,+document.querySelector('#cutSelect').value||1);t.advancePerGroup=value;if(t.id==='scarlet')cut=value*Object.keys(groupsOf(t)).length;persistLeague();closeModal();render()}
-function standingTable(t=activeT(),group='Group A'){let final=t.finalStandings?.[group],list=final?final.map(p=>getStand(t,group).find(x=>x.p===p)).filter(Boolean):getStand(t,group),cut=advancePerGroup(t),odds={};if(final){list.forEach((x,i)=>odds[x.p]=i<cut?100:0)}else{try{odds=playoffOddsData(t)}catch{list.forEach((x,i)=>odds[x.p]=i<cut?100:1)}}let complete=final||isGroupComplete(t,group);return `<div style="display:flex;justify-content:space-between;align-items:center;padding:12px 14px;border-bottom:1px solid #2b2b35;background:#141419"><div style="display:flex;align-items:center;gap:8px"><span style="font:800 16px 'Barlow Condensed';letter-spacing:0.8px;color:#f5f3f0;text-transform:uppercase">${esc(group)}</span><span style="font-size:8px;font-weight:800;letter-spacing:0.7px;padding:2px 6px;border-radius:3px;background:${complete?'#163821':'#272730'};color:${complete?'#7df0aa':'#a09fa8'};text-transform:uppercase">${final?'FINAL':(complete?'COMPLETE':'LIVE')}</span></div><span style="font-size:9px;font-weight:800;color:#9d9ba4;letter-spacing:0.6px;text-transform:uppercase">TOP ${cut} ADVANCE</span></div><table class="standings"><thead><tr><th style="width:28px">#</th><th>Trainer / Team</th><th style="white-space:nowrap">W-L</th><th style="white-space:nowrap">GW</th><th style="white-space:nowrap">GD</th><th style="white-space:nowrap">H2H</th><th style="text-align:right;white-space:nowrap">Top Cut status</th></tr></thead><tbody>${list.map((x,i)=>{let pct=Number(odds[x.p]??0),status=pct>=100?'safe':pct<=0?'out':'hunt',label=pct>=100?'Qualified':pct<=0?'Eliminated':'In The Hunt';let faceArt=profilePictures[x.p]?`url('${esc(profilePictures[x.p])}')`:(teamCovers[x.p]?`url('${esc(teamCovers[x.p])}')`:fallbackArt(x.p));let faceLetter=(profilePictures[x.p]||teamCovers[x.p])?'':esc((x.p||'?')[0]);let diff=x.gw-x.gl;return `<tr class="${status} ${i===cut?'cutoff-row':''}"><td class="rank">${i+1}</td><td class="player"><div style="display:flex;align-items:center;gap:9px"><span class="mrow-face" style="background-image:${faceArt};background-size:cover;background-position:center;width:28px;height:28px;font-size:12px;border-radius:50%;flex:none;display:grid;place-items:center;border:1px solid #ffffff1f">${faceLetter}</span><div style="min-width:0"><div style="font-size:13px;font-weight:800;line-height:1.2">${playerLink(x.p)}</div><span class="team" style="margin-top:2px">${esc(teamName(t,x.p))}</span></div></div></td><td style="white-space:nowrap">${x.w}-${x.l}</td><td style="white-space:nowrap">${x.gw}</td><td style="white-space:nowrap">${diff>0?'+':''}${diff}</td><td style="white-space:nowrap">${x.h2h}</td><td style="text-align:right;white-space:nowrap"><span class="tag ${status}">${label}${final?' · Final':(pct>=100||pct<=0?' · Final':` · ${pct}%`)}</span></td></tr>`}).join('')}</tbody></table>`}
+function standingTable(t=activeT(),group='Group A'){let final=t.finalStandings?.[group],list=final?final.map(p=>getStand(t,group).find(x=>x.p===p)).filter(Boolean):getStand(t,group),cut=advancePerGroup(t),odds={};if(final){list.forEach((x,i)=>odds[x.p]=i<cut?100:0)}else{try{odds=playoffOddsData(t)}catch{list.forEach((x,i)=>odds[x.p]=i<cut?100:1)}}let complete=final||isGroupComplete(t,group);return `<div style="display:flex;justify-content:space-between;align-items:center;padding:12px 14px;border-bottom:1px solid #2b2b35;background:#141419"><div style="display:flex;align-items:center;gap:8px"><span style="font:800 16px 'Barlow Condensed';letter-spacing:0.8px;color:#f5f3f0;text-transform:uppercase">${esc(group)}</span><span style="font-size:8px;font-weight:800;letter-spacing:0.7px;padding:2px 6px;border-radius:3px;background:${complete?'#163821':'#272730'};color:${complete?'#7df0aa':'#a09fa8'};text-transform:uppercase">${final?'FINAL':(complete?'COMPLETE':'LIVE')}</span></div><span style="font-size:9px;font-weight:800;color:#9d9ba4;letter-spacing:0.6px;text-transform:uppercase">TOP ${cut} ADVANCE</span></div><table class="standings"><thead><tr><th style="width:32px;text-align:center">#</th><th>Trainer / Team</th><th style="white-space:nowrap;text-align:center">W-L</th><th style="white-space:nowrap;text-align:center">GW</th><th style="white-space:nowrap;text-align:center">GD</th><th style="white-space:nowrap;text-align:center">H2H</th><th style="text-align:right;white-space:nowrap">Top Cut status</th></tr></thead><tbody>${list.map((x,i)=>{let pct=Number(odds[x.p]??0),status=pct>=100?'safe':pct<=0?'out':'hunt',label=pct>=100?'Qualified':pct<=0?'Eliminated':'In The Hunt';let faceArt=profilePictures[x.p]?`url('${esc(profilePictures[x.p])}')`:(teamCovers[x.p]?`url('${esc(teamCovers[x.p])}')`:fallbackArt(x.p));let faceLetter=(profilePictures[x.p]||teamCovers[x.p])?'':esc((x.p||'?')[0]);let diff=x.gw-x.gl;return `<tr class="${status} ${i===cut?'cutoff-row':''}"><td class="rank" style="text-align:center">${i+1}</td><td class="player"><div style="display:flex;align-items:center;gap:9px"><span class="mrow-face" style="background-image:${faceArt};background-size:cover;background-position:center;width:28px;height:28px;font-size:12px;border-radius:50%;flex:none;display:grid;place-items:center;border:1px solid #ffffff1f">${faceLetter}</span><div style="min-width:0"><div style="font-size:13px;font-weight:800;line-height:1.2">${playerLink(x.p)}</div><span class="team" style="margin-top:2px">${esc(teamName(t,x.p))}</span></div></div></td><td style="white-space:nowrap;text-align:center">${x.w}-${x.l}</td><td style="white-space:nowrap;text-align:center">${x.gw}</td><td style="white-space:nowrap;text-align:center">${diff>0?'+':''}${diff}</td><td style="white-space:nowrap;text-align:center">${x.h2h}</td><td style="text-align:right;white-space:nowrap"><span class="tag ${status}">${label}${final?' · Final':(pct>=100||pct<=0?' · Final':` · ${pct}%`)}</span></td></tr>`}).join('')}</tbody></table>`}
 function deleteProfile(p){if(Object.values(tournamentData).some(t=>t.players?.includes(p))){alert('Remove this player from all tournaments first.');return}if(!confirm(`Delete ${p}'s profile?`))return;delete profiles[p];delete roster[p];delete teamHistory[p];persistLeague();openProfileManager()}
 function openProfileManager(){let rows=Object.entries(profiles).map(([p,q])=>`<div class="card" style="padding:12px;margin-top:8px"><b>${p}</b><span class="sub" style="margin-left:8px">${q.team}</span><button class="save" style="float:right;color:#ff969c" onclick="deleteProfile('${p}')">Delete</button><button class="save" style="float:right;margin-right:7px" onclick="editProfile('${p}')">Edit</button></div>`).join('');document.querySelector('#modal').innerHTML=`<div class="modal-wrap"><div class="modal"><div class="modal-head"><div><div class="eyebrow">Moderator only</div><h2>Player profiles</h2></div><button class="close" onclick="closeModal()">×</button></div><div class="field"><label>New profile name</label><input id="profileNewName" placeholder="Player name"></div><div class="field"><label>Default team name (optional)</label><input id="profileNewTeam" placeholder="Used outside specific tournaments"></div><button class="btn" style="margin-top:12px" onclick="createProfile()">Create player profile</button><button class="btn ghost" style="margin:12px 0 0;color:#ff9ba1" onclick="removeStarterData()">Remove starter sample data</button><div class="section">${rows||'<p class="sub">No profiles yet.</p>'}</div></div></div>`}
 
@@ -581,61 +581,9 @@ function openProfileManager(){let rows=Object.entries(profiles).map(([p,q])=>`<d
 
 function finalQualifiers(t){if(t.finalStandings)return Object.entries(t.finalStandings).flatMap(([,players])=>players.slice(0,advancePerGroup(t)));return qualified(t).map(x=>x.p)}
 function ensureProfile(p){if(!profiles[p])profiles[p]={team:'No default team',record:'0-0',tops:0,cups:[]};if(!Array.isArray(profiles[p].cups))profiles[p].cups=[];if(typeof profiles[p].tops!=='number')profiles[p].tops=0;if(!profiles[p].record)profiles[p].record='0-0';return profiles[p]}
-/* ═══ STATS ENGINE (rebuilt from scratch): pure, stateless, always recomputed from raw tournament data — no flags, no incremental add/subtract, nothing to drift out of sync ═══ */
-function computeTournamentContribution(t){
-  let record={},names=new Set(t.players||[]);
-  (t.matches||[]).forEach(m=>{if(m.a)names.add(m.a);if(m.b)names.add(m.b)});
-  (t.topCutCache?.results||[]).forEach(m=>{if(m.p1)names.add(m.p1);if(m.p2)names.add(m.p2)});
-  names.forEach(p=>record[p]={w:0,l:0});
-  (t.matches||[]).forEach(m=>{
-    let a=m.a,b=m.b,sa=m.as,sb=m.bs;
-    if(!a||!b||sa===''||sb===''||sa==null||sb==null||+sa===+sb)return;
-    let winner=+sa>+sb?a:b,loser=+sa>+sb?b:a;
-    if(record[winner])record[winner].w++;
-    if(record[loser])record[loser].l++;
-  });
-  (t.topCutCache?.results||[]).forEach(m=>{
-    let a=m.p1,b=m.p2,sa=m.s1,sb=m.s2;
-    if(!a||!b||+sa===+sb)return;
-    let winner=+sa>+sb?a:b,loser=+sa>+sb?b:a;
-    if(record[winner])record[winner].w++;
-    if(record[loser])record[loser].l++;
-  });
-  let topCut=[];
-  if(t.finalStandings){
-    let per=advancePerGroup(t);
-    topCut=Object.values(t.finalStandings).flatMap(list=>(list||[]).slice(0,per));
-  } else if(t.topCutCache){
-    topCut=t.topCutCache.participants||[];
-  } else {
-    try{topCut=qualified(t).map(x=>x.p)}catch(e){topCut=[]}
-  }
-  let champion=(t.champion&&t.champion!=='BYE'&&t.champion!=='TBD')?t.champion:null;
-  return {record,topCut,champion};
-}
-function rebuildAllPlayerStats(){
-  Object.keys(profiles).forEach(ensureProfile);
-  let totals={};
-  let bucket=p=>{
-    if(!totals[p]){
-      ensureProfile(p);
-      totals[p]={w:0,l:0,tops:0,cups:new Set()};
-    }
-    return totals[p];
-  };
-  Object.keys(profiles).forEach(p=>bucket(p));
-  Object.values(tournamentData).filter(t=>t.status==='COMPLETE').forEach(t=>{
-    let c=computeTournamentContribution(t);
-    Object.entries(c.record).forEach(([p,x])=>{ensureProfile(p);let b=bucket(p);b.w+=x.w;b.l+=x.l});
-    c.topCut.forEach(p=>{ensureProfile(p);bucket(p).tops++});
-    if(c.champion){ensureProfile(c.champion);bucket(c.champion).cups.add(t.name)}
-  });
-  Object.entries(totals).forEach(([p,b])=>{
-    profiles[p].record=`${b.w}-${b.l}`;
-    profiles[p].tops=b.tops;
-    profiles[p].cups=[...b.cups];
-  });
-}
+function tournamentRecord(t,p){let w=0,l=0;(t.matches||[]).forEach(m=>{let a=m.a,b=m.b,sa=m.as,sb=m.bs;if(!a||!b||sa===''||sb===''||sa==null||sb==null||+sa===+sb)return;if(a===p){if(+sa>+sb)w++;else l++}else if(b===p){if(+sb>+sa)w++;else l++}});(t.topCutCache?.results||[]).forEach(m=>{let a=m.p1,b=m.p2,sa=m.s1,sb=m.s2;if(!a||!b||+sa===+sb)return;if(a===p){if(+sa>+sb)w++;else l++}else if(b===p){if(+sb>+sa)w++;else l++}});return `${w}-${l}`}
+function playerCareerStats(p){let wins=0,losses=0,titles=0,topCuts=0,tournaments=0,championshipCups=[];Object.values(tournamentData).forEach(t=>{let played=(t.players||[]).includes(p)||(t.matches||[]).some(m=>m.a===p||m.b===p);if(!played)return;tournaments++;let [w,l]=tournamentRecord(t,p).split('-').map(Number);wins+=w||0;losses+=l||0;let f=tournamentFinish(t,p);if(f.place===1||t.champion===p){if(!championshipCups.includes(t.name))championshipCups.push(t.name)}if(f.place<=3||(t.topCutCache?.participants||[]).includes(p)||finalQualifiers(t).includes(p))topCuts++});(profiles[p]?.cups||[]).forEach(c=>{if(!championshipCups.includes(c))championshipCups.push(c)});titles=championshipCups.length;let profileTops=Number(profiles[p]?.tops)||0;if(profileTops>topCuts)topCuts=profileTops;let totalGames=wins+losses,winPct=totalGames>0?Math.round(wins/totalGames*100):0;return {wins,losses,record:`${wins}-${losses}`,titles,topCuts,tournaments,winPct,championshipCups}}
+function rebuildAllPlayerStats(){Object.keys(profiles).forEach(ensureProfile);Object.values(tournamentData).forEach(t=>{(t.players||[]).forEach(ensureProfile)});Object.keys(profiles).forEach(p=>{let s=playerCareerStats(p);profiles[p].record=s.record;profiles[p].tops=s.topCuts;profiles[p].cups=s.championshipCups})}
 function resyncTournamentStats(id){let t=tournamentData[id];if(!t){alert('Tournament not found.');return}if(t.status!=='COMPLETE'){alert('Only completed tournaments can be resynced.');return}rebuildAllPlayerStats();persistLeague();render();alert(`Stats resynced for ${t.name}.`)}
 
 
@@ -1293,14 +1241,25 @@ render();
 <style>
 /* ══ SPRINT 3 ══ profiles · account links · match visuals · form scale ══ */
 
-/* ---- Profile: roster & history ---- */
-.pf-grid{display:grid;grid-template-columns:270px minmax(0,1fr);gap:18px}
-.pf-section{margin-top:22px}
+/* ---- Profile: modern clean layout ---- */
+.pf-grid{display:grid;grid-template-columns:260px minmax(0,1fr);gap:16px;align-items:start}
+.pf-section{margin-top:20px}
 .pf-section:first-child{margin-top:0}
 .pf-head{display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin-bottom:12px}
 .pf-head h4{font:800 17px 'Barlow Condensed';letter-spacing:.6px;text-transform:uppercase;margin:0}
 .pf-count{font-size:10px;font-weight:800;letter-spacing:.7px;color:#8e8c95;text-transform:uppercase}
-.pf-empty{border:1px dashed #3a3a44;border-radius:7px;padding:20px;text-align:center;color:#8e8c95;font-size:12px}
+.pf-empty{border:1px dashed #3a3a44;border-radius:7px;padding:18px;text-align:center;color:#8e8c95;font-size:12px}
+
+.pf-stats-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;background:#131318;border:1px solid #2b2b35;border-radius:8px;padding:10px}
+.pf-stat-box{display:flex;flex-direction:column;align-items:center;text-align:center;padding:4px}
+.pf-stat-val{font:800 20px/1.1 'Barlow Condensed';color:#f5f3f0;letter-spacing:.3px}
+.pf-stat-lbl{font:800 9px 'DM Sans';color:#8e8c96;letter-spacing:.6px;text-transform:uppercase;margin-top:3px}
+.pf-trophy-banner{background:linear-gradient(135deg,#2c2010,#19150d);border:1px solid #6b4d1c;border-radius:8px;padding:11px 13px}
+.pf-trophy-title{font:800 13px 'Barlow Condensed';color:#ffd166;letter-spacing:.5px;text-transform:uppercase;margin-bottom:4px}
+.pf-trophy-item{font-size:11px;font-weight:600;color:#e8dfcf;margin-top:3px}
+.pf-mod-box{background:#121217;border:1px solid #2d2d38;border-radius:8px;padding:12px}
+.pf-mod-actions{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.btn-sm{padding:7px 8px!important;font-size:10px!important;font-weight:800!important;text-align:center;justify-content:center}
 
 .mon-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(132px,1fr));gap:8px}
 .mon-chip{position:relative;display:flex;align-items:center;gap:8px;background:linear-gradient(135deg,#212128,#191920);border:1px solid #34343d;border-left:3px solid var(--red);border-radius:6px;padding:7px 9px;min-width:0}
@@ -1311,16 +1270,10 @@ render();
 .mon-chip.historic{border-left-color:#5a5a66;background:linear-gradient(135deg,#1c1c22,#17171c)}
 .mon-chip.historic img{filter:grayscale(.28) drop-shadow(0 2px 4px #0008)}
 
-.hist-card{border:1px solid #33333c;border-radius:8px;padding:14px;margin-top:10px;background:#17171d}
-.hist-top{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:11px}
-.hist-top b{font:800 19px 'Barlow Condensed';letter-spacing:.4px}
-.hist-when{font-size:9px;font-weight:800;letter-spacing:.7px;text-transform:uppercase;color:#a09ea7;background:#26262e;border:1px solid #3a3a44;border-radius:3px;padding:3px 6px}
-.hist-top .save{margin-left:auto}
-
 /* ---- Profile: past tournaments ---- */
-.past-row{display:grid;grid-template-columns:44px minmax(0,1fr) auto;gap:12px;align-items:center;padding:11px 12px;border:1px solid #31313a;border-left:3px solid #4a4a55;border-radius:7px;margin-top:8px;background:#191920}
-.past-row.gold{border-left-color:#f3c245;background:linear-gradient(90deg,#2a2214,#191920 55%)}
-.past-row.silver{border-left-color:#c8c8d2;background:linear-gradient(90deg,#22222a,#191920 55%)}
+.past-row{display:grid;grid-template-columns:50px minmax(0,1fr) auto;gap:12px;align-items:center;padding:10px 12px;border:1px solid #2f2f38;border-left:3px solid #4a4a55;border-radius:7px;margin-top:8px;background:#17171d}
+.past-row.gold{border-left-color:#f3c245;background:linear-gradient(90deg,#2a2214,#17171d 55%)}
+.past-row.silver{border-left-color:#c8c8d2;background:linear-gradient(90deg,#22222a,#17171d 55%)}
 .past-row.cut{border-left-color:var(--red)}
 .past-place{font:800 20px 'Barlow Condensed';text-align:center;color:#e9e7ec;line-height:1}
 .past-place small{display:block;font:800 8px 'DM Sans';letter-spacing:.6px;color:#8e8c95;text-transform:uppercase;margin-top:2px}
@@ -1328,9 +1281,7 @@ render();
 .past-meta{font-size:10px;color:#8e8c95;margin-top:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .past-rec{font:800 19px 'Barlow Condensed';color:#e9e7ec;text-align:right;line-height:1.05}
 .past-rec small{display:block;font:800 8px 'DM Sans';letter-spacing:.6px;color:#8e8c95;text-transform:uppercase}
-.past-total{display:flex;gap:22px;flex-wrap:wrap;padding:12px 2px 0;margin-top:12px;border-top:1px solid #2e2e36}
-.past-total b{display:block;font:800 21px 'Barlow Condensed'}
-.past-total span{font-size:9px;color:#9d9ba4;text-transform:uppercase;letter-spacing:.5px}
+@media(max-width:700px){.pf-grid{grid-template-columns:1fr}}
 
 /* ---- Account link badge ---- */
 .link-badge{display:inline-flex;align-items:center;gap:6px;font-size:10px;font-weight:800;letter-spacing:.6px;text-transform:uppercase;color:#9fe0ad;background:#16301d;border:1px solid #2f5c3b;border-radius:3px;padding:3px 7px}
@@ -1468,65 +1419,102 @@ function pastTournaments(p){
     .filter(t=>(t.players||[]).includes(p)||(t.matches||[]).some(m=>m.a===p||m.b===p))
     .sort((a,b)=>(Date.parse(b.start)||0)-(Date.parse(a.start)||0)||String(b.season||'').localeCompare(String(a.season||'')));
   if(!played.length)return `<div class="pf-empty">No tournament appearances recorded yet.</div>`;
-  let wins=0,losses=0,titles=0,cuts=0;
-  let rows=played.map(t=>{
-    let rec=tournamentRecord(t,p),[w,l]=rec.split('-').map(Number);
+  return played.map(t=>{
+    let rec=tournamentRecord(t,p);
     let f=tournamentFinish(t,p);
-    wins+=w||0;losses+=l||0;
-    if(f.place===1)titles++;
-    if(f.place<=3)cuts++;
+    let hist=(teamHistory[p]||[]).find(h=>h.tournament===t.name||h.tournament===(t.name+' · '+t.season));
     return `<div class="past-row ${f.cls}">
       <div class="past-place">${esc(f.label)}<small>${t.status==='ONGOING'?'so far':'finish'}</small></div>
-      <div><div class="past-name">${esc(t.name)}</div><div class="past-meta">${esc([t.season,f.note,teamName(t,p)].filter(x=>x&&x!=='Unassigned team').join(' · '))}</div></div>
+      <div style="min-width:0">
+        <div class="past-name">${esc(t.name)}</div>
+        <div class="past-meta">${esc([t.season,f.note,teamName(t,p)].filter(x=>x&&x!=='Unassigned team').join(' · '))}</div>
+        ${hist?.pokemon?.length?`<div class="mon-grid" style="margin-top:6px;grid-template-columns:repeat(auto-fill,minmax(90px,1fr));gap:5px">${hist.pokemon.map(m=>`<div class="mon-chip historic" style="padding:3px 6px"><img src="${esc(monSprite(m))}" alt="" style="width:24px;height:24px" loading="lazy" onerror="this.style.visibility='hidden'"><span style="font-size:10px">${esc(m)}</span></div>`).join('')}</div>`:''}
+      </div>
       <div class="past-rec">${esc(rec)}<small>W-L</small></div>
     </div>`
   }).join('');
-  return rows+`<div class="past-total">
-    <div><b>${played.length}</b><span>Tournaments</span></div>
-    <div><b>${wins}-${losses}</b><span>Combined W-L</span></div>
-    <div><b>${titles}</b><span>Titles</span></div>
-    <div><b>${cuts}</b><span>Top Cuts</span></div>
-  </div>`
 }
 
 /* --- the profile modal --- */
 function openProfile(p){
-  let q=ensureProfile(p),acct=accountForPlayer(p);
-  document.querySelector('#modal').innerHTML=`<div class="modal-wrap"><div class="modal">
-    <div class="modal-head"><div><div class="eyebrow">Player profile</div><h2>${esc(p)}</h2></div><button class="close" onclick="closeModal()">×</button></div>
+  let q=ensureProfile(p),acct=accountForPlayer(p),career=playerCareerStats(p);
+  let faceArt=profilePictures[p]?`url('${esc(profilePictures[p])}')`:(teamCovers[p]?`url('${esc(teamCovers[p])}')`:fallbackArt(p));
+  let faceLetter=(profilePictures[p]||teamCovers[p])?'':esc((p||'?')[0]);
+  let team=profiles[p]?.team&&profiles[p].team!=='No default team'?profiles[p].team:'No default team';
+
+  document.querySelector('#modal').innerHTML=`<div class="modal-wrap"><div class="modal" style="max-width:860px">
+    <div class="modal-head"><div><div class="eyebrow">Player Profile</div><h2>${esc(p)}</h2></div><button class="close" onclick="closeModal()">×</button></div>
     <div class="pf-grid" style="margin-top:18px">
-      <aside class="card profile-card">
-        <div class="avatar" style="background:${profileArt(p)};background-size:cover;background-position:center">${profilePictures[p]||teamCovers[p]?'':esc(p[0]||'')}</div>
-        <div class="profile-name">${esc(p)}</div>
-        <div style="margin-top:8px">${acct?`<span class="link-badge">◆ ${esc(acct)}</span>`:`<span class="link-badge none">No account linked</span>`}</div>
-        <div class="mini-stats"><div><b>${q.cups.length}x</b><span>Champion</span></div><div><b>${q.tops}x</b><span>Top Cut</span></div><div><b>${esc(q.record)}</b><span>All-time W-L</span></div></div>
-        ${q.cups.length?`<div style="margin-top:14px"><div class="card-title">Championships</div>${q.cups.map(c=>`<div class="sub" style="margin-top:4px">🏆 ${esc(c)}</div>`).join('')}</div>`:''}
-        ${moderator?`<div class="card" style="padding:14px;margin-top:14px;background:#111116;border-color:#32323a">
-          <div class="eyebrow">Moderator</div>
-          <div class="creator-actions" style="justify-content:flex-start;flex-wrap:wrap">
-            <button class="btn ghost" onclick="openProfilePictureEditor('${jsArg(p)}')">Edit profile picture</button>
-            <button class="btn ghost" onclick="openTeamCoverEditor('${jsArg(p)}')">Edit team cover</button>
-            <button class="btn ghost" onclick="openAccountLinks('${jsArg(p)}')">Link account</button>
-          </div></div>`:''}
+      <aside class="card profile-card" style="padding:18px">
+        <div style="display:flex;flex-direction:column;align-items:center;text-align:center">
+          <div class="avatar" style="background-image:${faceArt};background-size:cover;background-position:center;width:76px;height:76px;font-size:32px;border-radius:50%;border:2px solid #ffffff24;box-shadow:0 6px 18px rgba(0,0,0,0.5);display:grid;place-items:center">${faceLetter}</div>
+          <div class="profile-name" style="margin:12px 0 3px;font:800 26px 'Barlow Condensed';letter-spacing:.4px">${esc(p)}</div>
+          <div style="display:flex;flex-direction:column;gap:5px;align-items:center;margin-top:2px">
+            <span style="font-size:11px;font-weight:700;color:#c0bec8;background:#202028;border:1px solid #363642;padding:2px 8px;border-radius:4px;max-width:210px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(team)}</span>
+            ${acct?`<span class="link-badge">◆ ${esc(acct)}</span>`:`<span class="link-badge none">No account linked</span>`}
+          </div>
+        </div>
+
+        <div class="pf-stats-grid">
+          <div class="pf-stat-box">
+            <span class="pf-stat-val">${career.titles}</span>
+            <span class="pf-stat-lbl">Titles</span>
+          </div>
+          <div class="pf-stat-box">
+            <span class="pf-stat-val">${career.topCuts}</span>
+            <span class="pf-stat-lbl">Top Cuts</span>
+          </div>
+          <div class="pf-stat-box">
+            <span class="pf-stat-val">${career.record}</span>
+            <span class="pf-stat-lbl">Career W-L</span>
+          </div>
+          <div class="pf-stat-box">
+            <span class="pf-stat-val">${career.winPct}%</span>
+            <span class="pf-stat-lbl">Win Rate</span>
+          </div>
+        </div>
+
+        ${career.championshipCups.length?`
+          <div class="pf-trophy-banner">
+            <div class="pf-trophy-title">🏆 Championships</div>
+            ${career.championshipCups.map(c=>`<div class="pf-trophy-item">${esc(c)}</div>`).join('')}
+          </div>
+        `:''}
+
+        ${moderator?`
+          <div class="pf-mod-box">
+            <div class="eyebrow" style="margin-bottom:8px">Moderator tools</div>
+            <div class="pf-mod-actions">
+              <button class="btn ghost btn-sm" onclick="openProfilePictureEditor('${jsArg(p)}')">Edit photo</button>
+              <button class="btn ghost btn-sm" onclick="openTeamCoverEditor('${jsArg(p)}')">Edit cover</button>
+              <button class="btn ghost btn-sm" onclick="editProfile('${jsArg(p)}')">Default team</button>
+              <button class="btn ghost btn-sm" onclick="openAccountLinks('${jsArg(p)}')">Link account</button>
+            </div>
+          </div>
+        `:''}
       </aside>
-      <section class="card roster-editor">
+
+      <section class="card roster-editor" style="padding:18px">
         <div class="pf-section">
-          <div class="pf-head"><h4>Current roster</h4><span class="pf-count">${(roster[p]||[]).length} Pokémon</span></div>
-          ${moderator?`<div class="poke-search" style="margin-bottom:12px"><input id="newMon" placeholder="Search / add a Pokémon"><button class="btn" onclick="addMon('${jsArg(p)}')">Add</button></div>`:''}
+          <div class="pf-head">
+            <h4>Current Roster</h4>
+            <span class="pf-count">${(roster[p]||[]).length} Pokémon</span>
+          </div>
+          ${moderator?`
+            <div class="poke-search" style="margin-bottom:12px;display:flex;gap:8px">
+              <input id="newMon" placeholder="Search / add a Pokémon" style="flex:1" onkeydown="if(event.key==='Enter'){event.preventDefault();addMon('${jsArg(p)}')}">
+              <button class="btn" onclick="addMon('${jsArg(p)}')">Add</button>
+            </div>
+          `:''}
           <div id="rosterList">${rosterList(p)}</div>
         </div>
+
         <div class="pf-section">
-          <div class="pf-head"><h4>Past tournaments</h4><span class="pf-count">automatic</span></div>
+          <div class="pf-head">
+            <h4>Tournament History</h4>
+            <span class="pf-count">${career.tournaments} tournament${career.tournaments===1?'':'s'}</span>
+          </div>
           ${pastTournaments(p)}
-        </div>
-        <div class="pf-section">
-          <div class="pf-head"><h4>Team history</h4><span class="pf-count">${(teamHistory[p]||[]).length} recorded</span></div>
-          ${historyList(p)}
-          ${moderator?`<div class="card" style="padding:14px;margin-top:12px">
-            <div class="field"><label>Previous tournament</label><select id="historyTournament">${historyTournamentOptions()}</select></div>
-            <div class="field"><label>Team name in that tournament</label><input id="historyTeam" placeholder="e.g. Obsidian Owls"></div>
-            <button class="btn ghost" style="margin-top:12px" onclick="addHistoryTeam('${jsArg(p)}')">+ Add historical team</button>
-          </div>`:''}
         </div>
       </section>
     </div></div></div>`
@@ -1776,8 +1764,8 @@ function Standings(){
   if(!t){
     let r=recapRankings();
     return head('Standings','All-time league rankings')+`<div class="card table-wrap"><table class="standings">
-      <thead><tr><th>#</th><th>Player</th><th>ELO</th><th>Titles</th><th>Top Cuts</th><th>All-time W-L</th></tr></thead>
-      <tbody>${r.map((x,i)=>`<tr><td class="rank">${i+1}</td><td class="player">${playerLink(x.p)}<span class="team">${esc(profiles[x.p].team)}</span></td><td><b>${x.score}</b></td><td>${x.champ}</td><td>${x.tops}</td><td>${esc(x.record)}</td></tr>`).join('')}</tbody></table></div>`
+      <thead><tr><th style="width:32px;text-align:center">#</th><th>Player</th><th style="text-align:center;white-space:nowrap">ELO</th><th style="text-align:center;white-space:nowrap">Titles</th><th style="text-align:center;white-space:nowrap">Top Cuts</th><th style="text-align:center;white-space:nowrap">All-time W-L</th></tr></thead>
+      <tbody>${r.map((x,i)=>`<tr><td class="rank" style="text-align:center">${i+1}</td><td class="player">${playerLink(x.p)}<span class="team">${esc(profiles[x.p]?.team||'')}</span></td><td style="text-align:center"><b>${x.score}</b></td><td style="text-align:center">${x.champ}</td><td style="text-align:center">${x.tops}</td><td style="text-align:center;white-space:nowrap">${esc(x.record)}</td></tr>`).join('')}</tbody></table></div>`
   }
   viewTournament=t.id;
   let groups=Object.keys(groupsOf(t));
