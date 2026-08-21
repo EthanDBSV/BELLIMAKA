@@ -1729,7 +1729,11 @@ function score(i){
   if(!m)return;
   let a=scoreDrafts['a'+i]??document.querySelector('#a'+i)?.value;
   let b=scoreDrafts['b'+i]??document.querySelector('#b'+i)?.value;
-  if(a===''||a==null||b===''||b==null){alert('Please enter a score for both trainers.');return}
+  let aHas = (a !== '' && a != null);
+  let bHas = (b !== '' && b != null);
+  if(!aHas && !bHas){alert('Please enter a score for at least one trainer.');return}
+  if(aHas && !bHas) b = '0';
+  if(bHas && !aHas) a = '0';
   m.as=+a;
   m.bs=+b;
   delete scoreDrafts['a'+i];
@@ -2142,6 +2146,16 @@ function onMatchSearchInput(val){
   }
 }
 
+function toggleMatchPlayerFilter(p){
+  let idx = matchFilterPlayers.indexOf(p);
+  if(idx > -1){
+    matchFilterPlayers.splice(idx, 1);
+  } else {
+    matchFilterPlayers.push(p);
+  }
+  render();
+}
+
 function Matches(){
   let t = ongoingT();
   if(!t) return noTournament();
@@ -2211,7 +2225,7 @@ function Matches(){
               let isSel = matchFilterPlayers.includes(p);
               let face = profilePictures[p] ? `url('${esc(profilePictures[p])}')` : (teamCovers[p] ? `url('${esc(teamCovers[p])}')` : fallbackArt(p));
               let letter = (profilePictures[p] || teamCovers[p]) ? '' : esc((p || '?')[0]);
-              return `<button class="m-player-chip ${isSel ? 'active' : ''}" onclick="matchFilterPlayers = (matchFilterPlayers.includes('${jsArg(p)}') ? [] : ['${jsArg(p)}']); render()">
+              return `<button class="m-player-chip ${isSel ? 'active' : ''}" onclick="toggleMatchPlayerFilter('${jsArg(p)}')">
                 <span class="m-player-chip-face" style="background-image:${face}">${letter}</span>
                 ${esc(p)}
               </button>`;
