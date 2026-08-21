@@ -99,7 +99,7 @@
 <style>#newMon{background:#fff!important;color:#111!important}#newMon::placeholder{color:#666}.hero-main:after{content:attr(data-season)!important}.player-link{border:0;background:none;color:#f5f3f0;padding:0;font:inherit;font-weight:800;cursor:pointer;text-align:left}.player-link:hover{color:#ff777d;text-decoration:underline}.match-row.aligned{grid-template-columns:145px minmax(115px,1fr) 34px minmax(115px,1fr) 118px 78px}.match-row.aligned .match-player{font-size:12px;min-width:0}.match-row.aligned .match-vs{text-align:center;color:#85838d;font-size:10px;font-weight:800}.bracket-match input{width:36px;background:#0f0f13;border:1px solid #474750;border-radius:3px;color:white;text-align:center;padding:3px}.bracket-grid-final{display:grid;grid-template-columns:repeat(4,210px);gap:42px;align-items:center;min-width:960px}.bracket-grid-final>div{display:grid;gap:38px}.bracket-grid-final>div:nth-child(2){padding-top:45px}.bracket-grid-final>div:nth-child(3){padding-top:115px}.bracket-grid-final>div:nth-child(4){padding-top:80px}.bracket-box{position:relative}.bracket-match-title{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.7px;color:var(--amber);margin:0 0 6px 2px}@media(max-width:560px){.match-row.aligned{grid-template-columns:75px 1fr 30px 1fr}.match-row.aligned .score-edit{grid-column:2/4}.match-row.aligned .save{grid-column:2/4}}</style>
 <body><div class="shell"><header class="topbar"><div class="brand"><span class="ball"></span>DRAFTDEX</div><nav class="nav" id="nav"></nav><button class="account" onclick="go('Account')"><span class="mode-dot"></span><span id="accountText">Ethan · Moderator</span></button></header><main class="page" id="app"></main></div><div id="modal"></div>
 <script>
-const tabs=['Home','Standings','Matches','Top Cut','Teams','Playoff Odds','Predictions','Records','Tournaments','Draft Board'];let current='Home',viewTournament=null,detailTab='Group Stage',matchFilterPlayers=[];
+const tabs=['Home','Standings','Teams','Draft Tools','Matches','Top Cut','Playoff Odds','Predictions','Records','Tournaments'];let current='Home',viewTournament=null,detailTab='Group Stage',matchFilterPlayers=[];
 function toggleMatchFilter(v){let i=matchFilterPlayers.indexOf(v);if(i>=0)matchFilterPlayers.splice(i,1);else matchFilterPlayers.push(v);render()}
 function clearMatchFilters(){matchFilterPlayers=[];render()}
 const profiles={};
@@ -1281,7 +1281,7 @@ async function flushSync(){
 
 /* ══ 4. NAVIGATION: league order, and "Draft Board" is now "Draft Tools" ══ */
 tabs.length=0;
-tabs.push('Home','Standings','Teams','Draft Tools','Matches','Top Cut','Playoff Odds','Predictions','Tournaments');
+tabs.push('Home','Standings','Teams','Draft Tools','Matches','Top Cut','Playoff Odds','Predictions','Records','Tournaments');
 function go(tab){
   current=tab==='Draft Board'?'Draft Tools':tab;
   try{render();scrollTo(0,0)}
@@ -1292,8 +1292,23 @@ function render(){
   if(current==='Account'&&active&&/^auth(Username|Password)$/.test(active.id||''))return;
   if(current==='Draft Board')current='Draft Tools';
   nav();
-  let pages={Home,Standings,Matches,'Top Cut':TopCut,Teams,Predictions,'Playoff Odds':playoffOdds,Tournaments,'Draft Tools':Board,'Draft Board':Board,Account,'Tournament Detail':tournamentDetail};
-  document.querySelector('#app').innerHTML=(pages[current]||Home)()
+  let pages={
+    Home: typeof Home==='function'?Home:window.Home,
+    Standings: typeof Standings==='function'?Standings:window.Standings,
+    Matches: typeof Matches==='function'?Matches:window.Matches,
+    'Top Cut': typeof TopCut==='function'?TopCut:window.TopCut,
+    Teams: typeof Teams==='function'?Teams:window.Teams,
+    Predictions: typeof Predictions==='function'?Predictions:window.Predictions,
+    'Playoff Odds': typeof playoffOdds==='function'?playoffOdds:window.playoffOdds,
+    Records: typeof Records==='function'?Records:window.Records,
+    Tournaments: typeof Tournaments==='function'?Tournaments:window.Tournaments,
+    'Draft Tools': typeof Board==='function'?Board:window.Board,
+    'Draft Board': typeof Board==='function'?Board:window.Board,
+    Account: typeof Account==='function'?Account:window.Account,
+    'Tournament Detail': typeof tournamentDetail==='function'?tournamentDetail:window.tournamentDetail
+  };
+  let handler = pages[current] || window[current] || (typeof window[current?.replace(/\s+/g,'')] === 'function' ? window[current.replace(/\s+/g,'')] : Home);
+  document.querySelector('#app').innerHTML=(typeof handler==='function'?handler():Home());
   mountTopCutViewer();
 }
 
@@ -1725,15 +1740,10 @@ function openProfile(p){
     <div class="pf-grid" style="margin-top:18px">
       <aside class="card profile-card ovr-card-${ovrCard.tier}" style="padding:18px">
         
-        <!-- FIFA / Madden Top Banner -->
-        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px">
-          <div>
-            <div style="font:900 40px/0.85 'Barlow Condensed';letter-spacing:-1px;color:${ovrCard.color}">${ovrCard.ovr}</div>
-            <div style="font:800 10px 'DM Sans';letter-spacing:1px;text-transform:uppercase;color:${ovrCard.color};opacity:0.9">${ovrCard.tierUpper}</div>
-          </div>
-          <div>
-            <span class="ovr-badge-pill ${ovrCard.badgeCls}" style="font-size:11px;padding:4px 9px">${ovrCard.tierUpper} · ${ovrCard.ovr} OVR</span>
-          </div>
+        <!-- FIFA / Madden Top Rating Header -->
+        <div style="margin-bottom:8px">
+          <div style="font:900 46px/0.85 'Barlow Condensed';letter-spacing:-1px;color:${ovrCard.color}">${ovrCard.ovr}</div>
+          <div style="font:800 11px 'DM Sans';letter-spacing:1.5px;text-transform:uppercase;color:${ovrCard.color};opacity:0.95">OVR</div>
         </div>
 
         <div style="display:flex;flex-direction:column;align-items:center;text-align:center">
@@ -1745,16 +1755,8 @@ function openProfile(p){
           </div>
         </div>
 
-        <!-- FIFA / Madden Mini Stat Attributes -->
-        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:4px;width:100%;margin-top:14px;background:#00000044;border-radius:6px;padding:8px 4px;border:1px solid #ffffff12;text-align:center">
-          <div><div style="font:800 16px 'Barlow Condensed';color:#f5f3f0">${ovrCard.subStats.win}%</div><div style="font:800 8px 'DM Sans';color:#9d9ba4">WIN%</div></div>
-          <div><div style="font:800 16px 'Barlow Condensed';color:#f5f3f0">${ovrCard.subStats.tit}</div><div style="font:800 8px 'DM Sans';color:#9d9ba4">TITLES</div></div>
-          <div><div style="font:800 16px 'Barlow Condensed';color:#f5f3f0">${ovrCard.subStats.cut}</div><div style="font:800 8px 'DM Sans';color:#9d9ba4">CUTS</div></div>
-          <div><div style="font:800 16px 'Barlow Condensed';color:#f5f3f0">${ovrCard.subStats.strk}W</div><div style="font:800 8px 'DM Sans';color:#9d9ba4">STRK</div></div>
-        </div>
-
         <!-- Career Record Grid -->
-        <div class="pf-stats-grid" style="margin-top:10px;background:#00000055;border-color:#ffffff15">
+        <div class="pf-stats-grid" style="margin-top:16px;background:#00000055;border-color:#ffffff15">
           <div class="pf-stat-box">
             <span class="pf-stat-val">${career.titles}</span>
             <span class="pf-stat-lbl">Titles</span>
