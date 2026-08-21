@@ -1717,7 +1717,234 @@ function openTournamentPlayers(){
 }
 function saveTournamentPlayers(){let t=activeT();if(t.phase==='topcut'){alert('Participants are locked after Top Cut begins.');return}let selected=[...document.querySelectorAll('.tPlayerChoice:checked')].map(x=>x.value),newP=document.querySelector('#editNewPlayer').value.trim();if(newP){if(!profiles[newP]){profiles[newP]={team:'No default team',record:'0-0',tops:0,cups:[]};roster[newP]=[];teamHistory[newP]=[]}selected.push(newP)}if(selected.length<2){alert('A tournament needs at least two players.');return}let oldPlayers=t.players.join('|'),oldAssign=JSON.stringify(t.groupAssignments||{});t.players=[...new Set(selected)];t.teamNames=t.teamNames||{};document.querySelectorAll('.tTeamName').forEach(x=>t.teamNames[x.dataset.player]=x.value.trim());let assign={};document.querySelectorAll('.playerGroup').forEach(x=>{if(t.players.includes(x.dataset.player))assign[x.dataset.player]=x.value});t.players.filter(p=>!assign[p]).forEach((p,i)=>assign[p]=Object.keys(groupsOf(t))[i%Object.keys(groupsOf(t)).length]);t.groupAssignments=assign;let changed=oldPlayers!==t.players.join('|')||oldAssign!==JSON.stringify(assign);if(changed)rebuildSchedulePreserving(t);persistLeague();closeModal()}
 function tournamentRecord(t,p){let w=0,l=0;[...t.matches,...(t.topCutCache?.results||[]).map(m=>({a:m.p1,b:m.p2,as:m.s1,bs:m.s2}))].forEach(m=>{let a=m.a,b=m.b,sa=m.as,sb=m.bs;if(a!==p&&b!==p)return;if(sa===''||sb===''||sa==null||sb==null||+sa===+sb)return;if((a===p&&+sa>+sb)||(b===p&&+sb>+sa))w++;else l++});return `${w}-${l}`}
-function OffseasonHome(){let last=Object.values(tournamentData).filter(t=>t.status==='COMPLETE').at(-1),r=recapRankings().slice(0,5),champ=last?.champion,panelImage=last?.recapPanelImage||last?.backgroundImage||'',lastPanel=panelImage?`linear-gradient(135deg,rgba(6,6,9,.42),rgba(6,6,9,.72) 62%),url('${panelImage}')`:'linear-gradient(135deg,#221117,#17171d 65%)',heroBg=last?.backgroundImage?`style="background-image:linear-gradient(130deg,rgba(48,20,25,.88),rgba(23,23,28,.9) 65%),url('${last.backgroundImage}');background-size:cover;background-position:center;cursor:pointer"`:(last?`style="cursor:pointer"`:'');return head('League Off-Season','No tournament is currently ongoing',moderator?`<button class="btn" onclick="openCreator()">+ Create next tournament</button>`:'')+`<section class="hero"><div class="hero-main" ${heroBg} ${last?`onclick="openTournament('${last.id}')"`:''}><span class="status"><i></i>SEASON RECAP</span><div class="hero-title">${last?last.name.toUpperCase():'THE LEAGUE ARCHIVE'}</div><div class="hero-info">${last?`Last champion: ${champ} · ${last.regulation}`:'Create a tournament to begin recording the league.'}</div></div><aside class="card pulse" style="position:relative;overflow:hidden;background-image:${lastPanel};background-size:cover;background-position:center;border-color:#6a2831">${last?`<div style="position:absolute;inset:0;background:linear-gradient(180deg,rgba(5,5,8,.42),rgba(5,5,8,.82));pointer-events:none"></div><div style="position:relative;z-index:1"><div class="card-title">Last Tournament</div><div class="eyebrow" style="margin-top:8px">${last.regulation}</div><div style="margin-top:22px;display:flex;align-items:center;justify-content:space-between;gap:12px"><div><div style="font:800 31px 'Barlow Condensed';line-height:.92">${esc(last.name)}</div><div class="sub" style="margin-top:7px">Champion · ${playerLink(champ)} · ${tournamentRecord(last,champ)} record</div></div><span class="avatar" style="width:70px;height:70px;font-size:30px">${champ?.[0]||'—'}</span></div><div style="display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-top:18px"><div class="card" style="padding:12px;background:#111116d0"><div class="eyebrow">Champion</div><div style="font:800 20px 'Barlow Condensed';margin-top:6px">${playerLink(champ)}</div></div><div class="card" style="padding:12px;background:#111116d0"><div class="eyebrow">Tournament record</div><div style="font:800 20px 'Barlow Condensed';margin-top:6px">${tournamentRecord(last,champ)}</div></div></div>${moderator?`<div class="creator-actions" style="margin-top:16px"><button class="btn ghost" onclick="openRecapPanelCoverEditor('${last.id}')">Edit panel cover</button></div>`:''}</div>`:'<div style="position:relative;z-index:1"><div class="card-title">Last Tournament</div><p class="sub" style="margin-top:16px">No completed tournament yet.</p></div>'}</aside></section><section class="section"><div class="section-head"><h2>PLAYER ELO LEADERBOARD</h2><button class="link" onclick="go('Standings')">FULL STANDINGS →</button></div><div class="card table-wrap"><table class="standings"><thead><tr><th style="width:32px;text-align:center">#</th><th>Trainer / Team</th><th style="text-align:center;white-space:nowrap">OVR</th><th style="text-align:center;white-space:nowrap">ELO</th><th style="text-align:center;white-space:nowrap">Titles</th><th style="text-align:center;white-space:nowrap">Top Cuts</th><th style="text-align:center;white-space:nowrap">All-Time W-L</th></tr></thead><tbody>${r.map((x,i)=>{let p=x.p,ovrObj=x.ovrObj||calculatePlayerOVR(p),faceArt=profilePictures[p]?`url('${esc(profilePictures[p])}')`:(teamCovers[p]?`url('${esc(teamCovers[p])}')`:fallbackArt(p)),faceLetter=(profilePictures[p]||teamCovers[p])?'':esc((p||'?')[0]);return `<tr><td class="rank" style="text-align:center">${i===0?'👑':(i+1)}</td><td class="player"><div style="display:flex;align-items:center;gap:9px"><span class="mrow-face" style="background-image:${faceArt};background-size:cover;background-position:center;width:28px;height:28px;font-size:12px;border-radius:50%;flex:none;display:grid;place-items:center;border:2px solid ${ovrObj.color}">${faceLetter}</span><div style="min-width:0"><div style="font-size:13px;font-weight:800;line-height:1.2">${playerLink(p)}</div><span class="team" style="margin-top:2px">${esc(profiles[p]?.team||'')}</span></div></div></td><td style="text-align:center">${ovrObj.badgeHtml}</td><td style="text-align:center"><b style="font:800 15px 'Barlow Condensed';letter-spacing:.3px;color:#f5f3f0">${x.score}</b></td><td style="text-align:center">${x.champ>0?`<span style="color:#ffd166;font-weight:800">👑 ${x.champ}</span>`:'0'}</td><td style="text-align:center">${x.tops>0?`<span style="color:#d8d9e2;font-weight:800">⚔️ ${x.tops}</span>`:'0'}</td><td style="text-align:center;white-space:nowrap">${esc(x.record)}</td></tr>`}).join('')}</tbody></table></div></section>`}
+function OffseasonHome(){
+  let completedTournaments = Object.values(tournamentData).filter(t => t.status === 'COMPLETE').sort((a,b) => (Date.parse(b.start)||0) - (Date.parse(a.start)||0));
+  let last = completedTournaments[0] || null;
+  let r = recapRankings().slice(0, 5);
+  let champ = last?.champion;
+  let champFace = profilePictures[champ] ? `url('${esc(profilePictures[champ])}')` : (teamCovers[champ] ? `url('${esc(teamCovers[champ])}')` : fallbackArt(champ));
+  let champLetter = (profilePictures[champ] || teamCovers[champ]) ? '' : esc(champ?.[0] || '—');
+  let champOvr = calculatePlayerOVR(champ);
+  let champTeam = champ ? teamName(last, champ) : '';
+  let champRecord = last && champ ? tournamentRecord(last, champ) : '—';
+  let champHistory = champ ? (teamHistory[champ] || []).find(h => h.tournament === last?.name || h.tournament === (last?.name + ' · ' + last?.season)) : null;
+
+  let panelImage = pulsePanelImages.recap || last?.recapPanelImage || pulsePanelImages.global || last?.backgroundImage || '';
+  let lastPanel = panelImage ? `linear-gradient(135deg,rgba(6,6,9,.45),rgba(6,6,9,.75) 62%),url('${panelImage}')` : 'linear-gradient(135deg,#221117,#17171d 65%)';
+  let heroBg = last?.backgroundImage ? `style="background-image:linear-gradient(130deg,rgba(48,20,25,.88),rgba(23,23,28,.9) 65%),url('${last.backgroundImage}');background-size:cover;background-position:center;cursor:pointer"` : (last ? `style="cursor:pointer"` : '');
+
+  // League metrics
+  let totalFixtures = Object.values(tournamentData).reduce((sum, t) => sum + tournamentTotalMatches(t), 0);
+  let topLeader = r[0] || null;
+
+  let actions = (moderator ? `<button class="btn" onclick="openCreator()">+ Create next tournament</button>` : '');
+
+  return head('League Off-Season', 'No tournament is currently ongoing', actions) + `
+    <!-- Top League Highlights Metric Strip -->
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px;margin-bottom:20px">
+      <div class="card" style="padding:12px 16px;background:linear-gradient(135deg,#1f1418,#141419 75%);border-color:#5c242c;display:flex;align-items:center;gap:12px">
+        <span style="font-size:26px">👑</span>
+        <div style="min-width:0">
+          <div style="font-size:10px;font-weight:800;color:#ff9ba1;text-transform:uppercase;letter-spacing:.6px">Defending Champion</div>
+          <div style="font:800 16px 'Barlow Condensed';color:#f5f3f0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${champ ? playerLink(champ) : 'None'}</div>
+        </div>
+      </div>
+
+      <div class="card" style="padding:12px 16px;background:#141419;border-color:#2c2c36;display:flex;align-items:center;gap:12px">
+        <span style="font-size:26px">🏆</span>
+        <div>
+          <div style="font-size:10px;font-weight:800;color:#a09fa8;text-transform:uppercase;letter-spacing:.6px">Completed Seasons</div>
+          <div style="font:800 18px 'Barlow Condensed';color:#f5f3f0">${completedTournaments.length} <small style="font-size:11px;color:#8e8c95;font-weight:700">Tournaments</small></div>
+        </div>
+      </div>
+
+      <div class="card" style="padding:12px 16px;background:#141419;border-color:#2c2c36;display:flex;align-items:center;gap:12px">
+        <span style="font-size:26px">⚔️</span>
+        <div>
+          <div style="font-size:10px;font-weight:800;color:#a09fa8;text-transform:uppercase;letter-spacing:.6px">All-Time Fixtures</div>
+          <div style="font:800 18px 'Barlow Condensed';color:#f5f3f0">${totalFixtures} <small style="font-size:11px;color:#8e8c95;font-weight:700">Matches Recorded</small></div>
+        </div>
+      </div>
+
+      <div class="card" style="padding:12px 16px;background:#141419;border-color:#2c2c36;display:flex;align-items:center;gap:12px">
+        <span style="font-size:26px">⭐</span>
+        <div style="min-width:0">
+          <div style="font-size:10px;font-weight:800;color:#ffd166;text-transform:uppercase;letter-spacing:.6px">#1 ELO Leader</div>
+          <div style="font:800 16px 'Barlow Condensed';color:#f5f3f0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${topLeader ? `${playerLink(topLeader.p)} (${topLeader.score})` : '—'}</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Hero & Last Tournament Card -->
+    <section class="hero">
+      <div class="hero-main" ${heroBg} ${last ? `onclick="openTournament('${last.id}')"` : ''}>
+        <span class="status"><i></i>${last ? `${last.season.toUpperCase()} ARCHIVE` : 'LEAGUE ARCHIVE'}</span>
+        <div class="hero-title">${last ? last.name.toUpperCase().replace(' ', '<br>') : 'THE LEAGUE ARCHIVE'}</div>
+        <div class="hero-info">${last ? `Reigning Champion: <b>${champ}</b> · ${last.regulation}` : 'Create a tournament to begin recording the league.'}</div>
+        ${last ? `
+          <div style="margin-top:16px;display:flex;gap:10px;flex-wrap:wrap">
+            <button class="btn btn-sm" onclick="event.stopPropagation();openTournament('${last.id}')">View Tournament Details →</button>
+            <button class="btn ghost btn-sm" onclick="event.stopPropagation();go('Tournaments')">Browse All Seasons</button>
+          </div>
+        ` : ''}
+      </div>
+
+      <aside class="card pulse" style="position:relative;overflow:hidden;background-image:${lastPanel};background-size:cover;background-position:center;border-color:#6a2831">
+        ${last ? `
+          <div style="position:absolute;inset:0;background:linear-gradient(180deg,rgba(5,5,8,.42),rgba(5,5,8,.85));pointer-events:none"></div>
+          <div style="position:relative;z-index:1;display:flex;flex-direction:column;justify-content:space-between;height:100%">
+            <div>
+              <div style="display:flex;justify-content:space-between;align-items:center">
+                <div class="card-title">Last Tournament Recap</div>
+                <span class="tag" style="background:#28181d;color:#ff9ba1;border:1px solid #5c242c;font-size:9px">${esc(last.regulation)}</span>
+              </div>
+              <div class="eyebrow" style="margin-top:4px">${esc(last.season)} · Complete</div>
+
+              <div style="margin-top:16px;display:flex;align-items:center;justify-content:space-between;gap:14px;background:#101015c0;padding:12px 14px;border-radius:8px;border:1px solid #2f2f3a">
+                <div style="min-width:0">
+                  <div style="font-size:10px;font-weight:800;color:#ffd166;letter-spacing:.6px;text-transform:uppercase">Defending Champion</div>
+                  <div style="font:800 24px 'Barlow Condensed';line-height:1.1;color:#f5f3f0;margin-top:2px;display:flex;align-items:center;gap:6px">
+                    ${playerLink(champ)}
+                    ${champOvr.badgeHtml}
+                  </div>
+                  <div class="sub" style="margin-top:2px">${champTeam ? esc(champTeam) : 'No team assigned'}</div>
+                </div>
+
+                <div style="position:relative;flex:none;cursor:pointer" onclick="openProfile('${esc(champ)}')">
+                  <span class="avatar" style="background-image:${champFace};background-size:cover;background-position:center;width:66px;height:66px;font-size:26px;border-radius:50%;border:2px solid ${champOvr.color};box-shadow:0 6px 20px rgba(0,0,0,0.5);display:grid;place-items:center">${champLetter}</span>
+                  <span style="position:absolute;bottom:-3px;right:-3px;font-size:15px;background:#15151b;border-radius:50%;padding:2px;border:1px solid #ffd166;line-height:1;box-shadow:0 2px 6px #000" title="Tournament Champion">👑</span>
+                </div>
+              </div>
+
+              <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-top:12px">
+                <div class="card" style="padding:10px 12px;background:#111116d0;border-color:#2a2a36">
+                  <div class="eyebrow" style="font-size:9px">Tournament Record</div>
+                  <div style="font:800 18px 'Barlow Condensed';margin-top:3px;color:#f5f3f0">${champRecord} <small style="font-size:10px;color:#4bdd91;font-weight:700">W-L</small></div>
+                </div>
+                <div class="card" style="padding:10px 12px;background:#111116d0;border-color:#2a2a36">
+                  <div class="eyebrow" style="font-size:9px">Tournament Result</div>
+                  <div style="font:800 18px 'Barlow Condensed';margin-top:3px;color:#ffd166">1st Place · Champion</div>
+                </div>
+              </div>
+
+              ${champHistory?.pokemon?.length ? `
+                <div style="margin-top:12px;padding-top:10px;border-top:1px solid #272734">
+                  <div class="eyebrow" style="font-size:9px;margin-bottom:6px">Winning Draft Roster</div>
+                  <div class="mon-grid" style="grid-template-columns:repeat(auto-fill,minmax(80px,1fr));gap:6px">
+                    ${champHistory.pokemon.slice(0, 6).map(m => `
+                      <div class="mon-chip historic" style="padding:3px 5px;gap:4px">
+                        <img src="${esc(monSprite(m))}" alt="" style="width:20px;height:20px" loading="lazy" onerror="this.style.visibility='hidden'">
+                        <span style="font-size:9px;font-weight:700">${esc(m)}</span>
+                      </div>
+                    `).join('')}
+                  </div>
+                </div>
+              ` : ''}
+            </div>
+
+            ${moderator ? `
+              <div class="creator-actions" style="margin-top:16px">
+                <button class="btn ghost btn-sm" onclick="openRecapPanelCoverEditor('${last.id}')">Edit panel cover</button>
+              </div>
+            ` : ''}
+          </div>
+        ` : `
+          <div style="position:relative;z-index:1">
+            <div class="card-title">Last Tournament</div>
+            <p class="sub" style="margin-top:16px">No completed tournament yet.</p>
+          </div>
+        `}
+      </aside>
+    </section>
+
+    <!-- Player ELO Leaderboard Section -->
+    <section class="section">
+      <div class="section-head">
+        <h2>PLAYER ELO LEADERBOARD</h2>
+        <button class="link" onclick="go('Standings')">FULL STANDINGS →</button>
+      </div>
+      <div class="card table-wrap">
+        <table class="standings">
+          <thead>
+            <tr>
+              <th style="width:36px;text-align:center">#</th>
+              <th>Trainer / Team</th>
+              <th style="text-align:center;white-space:nowrap">OVR</th>
+              <th style="text-align:center;white-space:nowrap">ELO</th>
+              <th style="text-align:center;white-space:nowrap">Titles</th>
+              <th style="text-align:center;white-space:nowrap">Top Cuts</th>
+              <th style="text-align:center;white-space:nowrap">All-Time W-L</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${r.map((x, i) => {
+              let p = x.p, ovrObj = x.ovrObj || calculatePlayerOVR(p);
+              let faceArt = profilePictures[p] ? `url('${esc(profilePictures[p])}')` : (teamCovers[p] ? `url('${esc(teamCovers[p])}')` : fallbackArt(p));
+              let faceLetter = (profilePictures[p] || teamCovers[p]) ? '' : esc((p || '?')[0]);
+              let rankMedal = i === 0 ? '👑' : (i === 1 ? '🥈' : (i === 2 ? '🥉' : (i + 1)));
+              return `<tr>
+                <td class="rank" style="text-align:center;font-size:${i < 3 ? '15px' : '13px'}">${rankMedal}</td>
+                <td class="player">
+                  <div style="display:flex;align-items:center;gap:9px">
+                    <span class="mrow-face" style="background-image:${faceArt};background-size:cover;background-position:center;width:30px;height:30px;font-size:12px;border-radius:50%;flex:none;display:grid;place-items:center;border:2px solid ${ovrObj.color}">${faceLetter}</span>
+                    <div style="min-width:0">
+                      <div style="font-size:13px;font-weight:800;line-height:1.2">${playerLink(p)}</div>
+                      <span class="team" style="margin-top:2px">${esc(profiles[p]?.team || '')}</span>
+                    </div>
+                  </div>
+                </td>
+                <td style="text-align:center">${ovrObj.badgeHtml}</td>
+                <td style="text-align:center"><b style="font:800 16px 'Barlow Condensed';letter-spacing:.3px;color:#f5f3f0">${x.score}</b></td>
+                <td style="text-align:center">${x.champ > 0 ? `<span style="color:#ffd166;font-weight:800">👑 ${x.champ}</span>` : '0'}</td>
+                <td style="text-align:center">${x.tops > 0 ? `<span style="color:#d8d9e2;font-weight:800">⚔️ ${x.tops}</span>` : '0'}</td>
+                <td style="text-align:center;white-space:nowrap">${esc(x.record)}</td>
+              </tr>`;
+            }).join('')}
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- Past Seasons Quick Grid -->
+    ${completedTournaments.length > 0 ? `
+      <section class="section">
+        <div class="section-head">
+          <h2>LEAGUE SEASONS ARCHIVE</h2>
+          <button class="link" onclick="go('Tournaments')">VIEW ALL (${completedTournaments.length}) →</button>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px">
+          ${completedTournaments.slice(0, 3).map(t => {
+            let tChamp = t.champion;
+            let tChampFace = profilePictures[tChamp] ? `url('${esc(profilePictures[tChamp])}')` : (teamCovers[tChamp] ? `url('${esc(teamCovers[tChamp])}')` : fallbackArt(tChamp));
+            let tChampLetter = (profilePictures[tChamp] || teamCovers[tChamp]) ? '' : esc(tChamp?.[0] || '—');
+            let tMatches = tournamentTotalMatches(t);
+            let bg = t.backgroundImage ? `style="background-image:linear-gradient(90deg,rgba(18,18,24,.92),rgba(18,18,24,.75)),url('${t.backgroundImage}');background-size:cover;background-position:center"` : '';
+
+            return `
+              <div class="card" ${bg} style="padding:16px;display:flex;flex-direction:column;justify-content:space-between;cursor:pointer;min-height:160px;transition:all .15s" onclick="openTournament('${t.id}')">
+                <div>
+                  <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
+                    <span class="tag" style="background:#23232e;color:#a09fa8;border:1px solid #363644;font-size:9px">${esc(t.season)}</span>
+                    <span style="font-size:10px;font-weight:800;color:#8e8c95">${esc(t.regulation)}</span>
+                  </div>
+                  <h3 style="font:800 24px 'Barlow Condensed';color:#f5f3f0;margin:8px 0 2px;letter-spacing:.4px">${esc(t.name)}</h3>
+                </div>
+
+                <div style="margin-top:14px;padding-top:10px;border-top:1px solid #ffffff15;display:flex;align-items:center;justify-content:space-between">
+                  <div style="display:flex;align-items:center;gap:8px">
+                    <span class="mrow-face" style="background-image:${tChampFace};background-size:cover;background-position:center;width:24px;height:24px;font-size:10px;border-radius:50%;flex:none;display:grid;place-items:center;border:1px solid #ffd166">${tChampLetter}</span>
+                    <span style="font-size:11px;font-weight:800;color:#ffd166">👑 ${esc(tChamp || 'No champion')}</span>
+                  </div>
+                  <span style="font-size:11px;color:#8e8c95;font-weight:700">${tMatches} matches</span>
+                </div>
+              </div>
+            `;
+          }).join('')}
+        </div>
+      </section>
+    ` : ''}
+  `;
+}
 
 var scoreDrafts={},oddsCache={key:'',data:null};
 document.addEventListener('input',e=>{if(/^([ab]\d+|bs.+[ab])$/.test(e.target.id||''))scoreDrafts[e.target.id]=e.target.value});
@@ -2000,7 +2227,7 @@ function removeCover(id){
 }
 
 function openCoverEditor(id){let t=tournamentData[id];document.querySelector('#modal').innerHTML=`<div class="modal-wrap"><div class="modal" style="max-width:510px"><div class="modal-head"><div><div class="eyebrow">Tournament cover</div><h2>${t.name}</h2></div><button class="close" onclick="closeModal()">×</button></div><p class="sub">Choose a Pokémon image up to 2 MB. This limit is for the current browser/JSON storage setup, not your website host.</p><div class="field"><label>Upload cover image</label><input id="coverFile" type="file" accept="image/png,image/jpeg,image/webp" onchange="previewCover(event)"></div><div id="coverPreview" style="height:190px;border-radius:6px;margin-top:14px;background:${t.backgroundImage?`url('${t.backgroundImage}') center/cover`:'#25252b'}"></div><div class="creator-actions"><button class="btn ghost" onclick="removeCover('${id}')">Remove cover</button><button class="btn" onclick="saveCover('${id}')">Save cover</button></div></div></div>`}
-function openRecapPanelCoverEditor(id){let t=tournamentData[id];document.querySelector('#modal').innerHTML=`<div class="modal-wrap"><div class="modal" style="max-width:510px"><div class="modal-head"><div><div class="eyebrow">Recap panel cover</div><h2>${t.name}</h2></div><button class="close" onclick="closeModal()">×</button></div><p class="sub">This changes the background of the off-season Last Tournament panel only.</p><div class="field"><label>Upload panel image</label><input id="recapPanelFile" type="file" accept="image/png,image/jpeg,image/webp" onchange="previewRecapPanelCover(event)"></div><div id="recapPanelPreview" style="height:190px;border-radius:6px;margin-top:14px;background:${t.recapPanelImage||t.backgroundImage?`url('${t.recapPanelImage||t.backgroundImage}') center/cover`:'#25252b'}"></div><div class="creator-actions"><button class="btn ghost" onclick="removeRecapPanelCover('${id}')">Remove panel cover</button><button class="btn" onclick="saveRecapPanelCover('${id}')">Save panel cover</button></div></div></div>`}
+function openRecapPanelCoverEditor(id){let t=tournamentData[id];let currentCover=pulsePanelImages.recap||t?.recapPanelImage||t?.backgroundImage||'';document.querySelector('#modal').innerHTML=`<div class="modal-wrap"><div class="modal" style="max-width:510px"><div class="modal-head"><div><div class="eyebrow">Recap panel cover</div><h2>${t?.name||'Off-Season Recap'}</h2></div><button class="close" onclick="closeModal()">×</button></div><p class="sub">This image is used as the off-season Last Tournament panel cover and carries over across tournaments so your off-season looks consistent.</p><div class="field"><label>Upload panel image</label><input id="recapPanelFile" type="file" accept="image/png,image/jpeg,image/webp" onchange="previewRecapPanelCover(event)"></div><div id="recapPanelPreview" style="height:190px;border-radius:6px;margin-top:14px;background:${currentCover?`url('${currentCover}') center/cover`:'#25252b'}"></div><div class="creator-actions"><button class="btn ghost" onclick="removeRecapPanelCover('${id}')">Remove panel cover</button><button class="btn" onclick="saveRecapPanelCover('${id}')">Save panel cover</button></div></div></div>`}
 function openPulsePanelCoverEditor(id){let t=tournamentData[id];document.querySelector('#modal').innerHTML=`<div class="modal-wrap"><div class="modal" style="max-width:510px"><div class="modal-head"><div><div class="eyebrow">Tournament pulse cover</div><h2>${t.name}</h2></div><button class="close" onclick="closeModal()">×</button></div><p class="sub">This is a league-wide cover for the Tournament Pulse panel and carries over to every tournament until you change it again.</p><div class="field"><label>Upload pulse image</label><input id="pulsePanelFile" type="file" accept="image/png,image/jpeg,image/webp" onchange="previewPulsePanelCover(event)"></div><div id="pulsePanelPreview" style="height:190px;border-radius:6px;margin-top:14px;background:${pulsePanelImages.global||t.backgroundImage?`url('${pulsePanelImages.global||t.backgroundImage}') center/cover`:'#25252b'}"></div><div class="creator-actions"><button class="btn ghost" onclick="removePulsePanelCover('${id}')">Remove panel cover</button><button class="btn" onclick="savePulsePanelCover('${id}')">Save panel cover</button></div></div></div>`}
 
 function seedTopCut(t){let groups=Object.keys(groupsOf(t)),per=advancePerGroup(t),entries=[];for(let rank=0;rank<per;rank++)groups.forEach(g=>{let x=getStand(t,g)[rank];if(x)entries.push(x.p)});return entries}
@@ -2506,8 +2733,23 @@ async function previewPulsePanelCover(e){
     document.querySelector('#pulsePanelPreview').style.background=`url('${data}') center/cover`;
   }catch{alert('That file could not be read. Try a JPG, PNG, or WebP.');e.target.value=''}
 }
-function saveRecapPanelCover(id){if(!window.pendingRecapPanelCover){closeModal();return}tournamentData[id].recapPanelImage=window.pendingRecapPanelCover;window.pendingRecapPanelCover=null;persistLeague();closeModal();render()}
-function removeRecapPanelCover(id){delete tournamentData[id].recapPanelImage;window.pendingRecapPanelCover=null;persistLeague();closeModal();render()}
+function saveRecapPanelCover(id){
+  if(!window.pendingRecapPanelCover){closeModal();return}
+  pulsePanelImages.recap=window.pendingRecapPanelCover;
+  if(id&&tournamentData[id])tournamentData[id].recapPanelImage=window.pendingRecapPanelCover;
+  window.pendingRecapPanelCover=null;
+  persistLeague();
+  closeModal();
+  render();
+}
+function removeRecapPanelCover(id){
+  delete pulsePanelImages.recap;
+  if(id&&tournamentData[id])delete tournamentData[id].recapPanelImage;
+  window.pendingRecapPanelCover=null;
+  persistLeague();
+  closeModal();
+  render();
+}
 function savePulsePanelCover(id){if(!window.pendingPulsePanelCover){closeModal();return}pulsePanelImages.global=window.pendingPulsePanelCover;window.pendingPulsePanelCover=null;persistLeague();closeModal();render()}
 function removePulsePanelCover(id){delete pulsePanelImages.global;window.pendingPulsePanelCover=null;persistLeague();closeModal();render()}
 function teamArt(p,t){let img=teamCovers[p];return img?`url('${esc(img)}')`:fallbackArt(teamName(t||ongoingT(),p)+p)}
