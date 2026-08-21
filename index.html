@@ -4162,22 +4162,23 @@ function calculateLeagueRecords(){
           }
         }
 
-        // Cinderella Run: Overperformed expectations in general for this tournament
-        let isLowSeed=(gSeed>=3||(gSeed===2&&groupSize<=3));
-        let reachedCut=isCompleteOrTopCut&&(finish.place<=3);
-        let reachedFinals=(finish.place===1||finish.place===2);
-        let upsetRun=isLowSeed&&reachedCut;
-        let surpriseFinalist=reachedFinals&&(isLowSeed||(w>l&&gSeed>=2));
+        // Cinderella Run: Strict rare miracle award for true underdogs who made an improbable deep playoff run
+        // Only awarded in completed tournaments when an actual Cinderella miracle occurs (does NOT award every tournament)
+        if(t.status==='COMPLETE'&&finish&&(finish.place===1||finish.place===2)){
+          let isTrueUnderdog=(gSeed>=3)||(gw<=gl)||(gSeed>=2&&groupSize>=5);
+          let wonAsUnderdog=(finish.place===1&&isTrueUnderdog);
+          let miracleFinalist=(finish.place===2&&(gSeed>=3||(gw<=gl&&gSeed>=2)));
 
-        if(upsetRun||surpriseFinalist){
-          statsByPlayer[p].badges.push({
-            id:'cinderella-'+t.id,
-            icon:'👠',
-            name:`Cinderella Run (${t.name})`,
-            desc:`Overperformed expectations in ${t.name}, advancing to ${finish.label} (${finish.note})`,
-            category:'miracle',
-            color:'purple'
-          });
+          if(wonAsUnderdog||miracleFinalist){
+            statsByPlayer[p].badges.push({
+              id:'cinderella-'+t.id,
+              icon:'👠',
+              name:`Cinderella Run (${t.name})`,
+              desc:`Underdog miracle run in ${t.name}, advancing from #${gSeed} group seed to ${finish.label} (${finish.note})`,
+              category:'miracle',
+              color:'purple'
+            });
+          }
         }
       }
     });
@@ -4587,7 +4588,7 @@ function openBadgeGuide(){
         { icon: '🛡️', name: 'Clean Sheet', color: 'blue', desc: 'Flawless group stage without dropping a single match in a tournament.' },
         { icon: '👑', name: 'Undefeated Champ', color: 'gold', desc: 'Won an entire tournament without dropping a single match in groups or playoffs.' },
         { icon: '🚀', name: 'Most Improved', color: 'green', desc: 'Largest tournament-to-tournament rank and win improvement.' },
-        { icon: '👠', name: 'Cinderella Run', color: 'purple', desc: 'Low-seed underdog qualification into Top Cut playoffs or Finals.' },
+        { icon: '👠', name: 'Cinderella Run', color: 'purple', desc: 'Rare miracle feat awarded to a low-seed underdog who defied the odds to reach the Grand Finals or win the Championship.' },
         { icon: '💥', name: 'Blowout King (+5 GD)', color: 'amber', desc: 'Dominant +5 or higher game differential in a single tournament.' },
         { icon: '💀', name: 'Victim', color: 'red', desc: 'Went winless (0 wins) in a completed group stage.' }
       ]
