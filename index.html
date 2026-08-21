@@ -3569,11 +3569,14 @@ function openProfile(p){
           </div>
         `:''}
 
-        ${pBadges.length?`
+        ${pBadges.length||moderator?`
           <div style="background:#00000055;border:1px solid #ffffff15;border-radius:8px;padding:12px;margin-top:10px">
-            <div class="eyebrow" style="margin-bottom:8px">Hall of Fame Badges (${pBadges.length})</div>
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+              <div class="eyebrow">Hall of Fame Badges (${pBadges.length})</div>
+              ${moderator?`<button class="btn ghost btn-sm" style="font-size:10px;padding:2px 7px;color:var(--amber);border-color:#5e4a1a" onclick="openBadgeManager('${jsArg(p)}')">Manage</button>`:''}
+            </div>
             <div style="display:flex;flex-wrap:wrap;gap:6px">
-              ${pBadges.map(b=>`<span class="badge-pill ${b.color}" title="${esc(b.desc)}">${b.icon} ${esc(b.name)}</span>`).join('')}
+              ${pBadges.length?pBadges.map(b=>`<span class="badge-pill ${b.color}" title="${esc(b.desc)}">${b.icon} ${esc(b.name)}</span>`).join(''):'<span style="font-size:11px;color:#8e8c95">No badges earned yet.</span>'}
             </div>
           </div>
         `:''}
@@ -3582,6 +3585,7 @@ function openProfile(p){
           <div class="pf-mod-box" style="margin-top:10px">
             <div class="eyebrow" style="margin-bottom:8px">Moderator tools</div>
             <div class="pf-mod-actions">
+              <button class="btn ghost btn-sm" style="color:var(--amber);border-color:#5e4a1a;grid-column:1/-1" onclick="openBadgeManager('${jsArg(p)}')">🏅 Manage Player Badges</button>
               <button class="btn ghost btn-sm" onclick="openProfilePictureEditor('${jsArg(p)}')">Edit photo</button>
               <button class="btn ghost btn-sm" onclick="openTeamCoverEditor('${jsArg(p)}')">Edit cover</button>
               <button class="btn ghost btn-sm" onclick="editProfile('${jsArg(p)}')">Default team</button>
@@ -3615,6 +3619,231 @@ function openProfile(p){
         </div>
       </section>
     </div></div></div>`
+}
+
+function openBadgeManager(p){
+  let q = ensureProfile(p);
+  q.customBadges = q.customBadges || [];
+  q.revokedBadges = q.revokedBadges || [];
+
+  let leagueRecs = calculateLeagueRecords();
+  let currentBadges = (leagueRecs.statsByPlayer[p]?.badges) || [];
+  let pastTournaments = Object.values(tournamentData).sort((a,b)=>(Date.parse(b.start)||0)-(Date.parse(a.start)||0));
+
+  let badgePresets = [
+    { id: 'cleansheet', icon: '🛡️', name: 'Clean Sheet', color: 'blue', desc: 'Flawless group stage without dropping a single match.', perTournament: true },
+    { id: 'undefeated-champ', icon: '👑', name: 'Undefeated Champ', color: 'gold', desc: 'Won an entire tournament without dropping a single match in groups or playoffs.', perTournament: true },
+    { id: 'cinderella', icon: '👠', name: 'Cinderella Run', color: 'purple', desc: 'Underdog miracle run into Grand Finals / Championship.', perTournament: true },
+    { id: 'improved', icon: '🚀', name: 'Most Improved', color: 'green', desc: 'Largest tournament-to-tournament performance improvement.', perTournament: true },
+    { id: 'blowout-king', icon: '💥', name: 'Blowout King (+5 GD)', color: 'amber', desc: 'Dominant +5 or higher game differential in a single tournament.', perTournament: true },
+    { id: 'victim', icon: '💀', name: 'Victim', color: 'red', desc: 'Went winless (0 wins) in a completed group stage.', perTournament: true },
+    { id: 'prediction-king', icon: '🔮', name: 'Prediction King', color: 'purple', desc: 'Scored the most prediction points in a tournament.', perTournament: true },
+    { id: 'champion-badge', icon: '🏆', name: 'League Champion', color: 'gold', desc: 'Won a League Championship tournament.', perTournament: true },
+    { id: 'playoff-royalty', icon: '⚔️', name: 'Playoff Royalty', color: 'purple', desc: 'Reached Top Cut in multiple tournaments.', perTournament: false },
+    { id: 'top-cut-veteran', icon: '⚔️', name: 'Top Cut Veteran', color: 'silver', desc: 'Reached Top Cut in 2 tournaments.', perTournament: false },
+    { id: 'record-win-streak', icon: '🔥', name: 'All-Time Streak King', color: 'red', desc: 'All-time consecutive win streak record holder.', perTournament: false },
+    { id: 'active-win-streak', icon: '⚡', name: 'On Fire (3W+)', color: 'amber', desc: 'Active 3+ match win streak.', perTournament: false },
+    { id: 'active-loss-streak', icon: '❄️', name: 'Cold Slump (3L+)', color: 'blue', desc: 'Active 3+ match loss slump.', perTournament: false },
+    { id: 'goat-badge', icon: '🐐', name: 'GOAT', color: 'gold', desc: 'The Greatest of All Time.', perTournament: false }
+  ];
+
+  let tournamentOptions = `<option value="">General / All-Time</option>` + pastTournaments.map(t => `<option value="${esc(t.name)}">${esc(t.name)} (${esc(t.season)})</option>`).join('');
+
+  document.querySelector('#modal').innerHTML = `
+    <div class="modal-wrap">
+      <div class="modal" style="max-width:760px">
+        <div class="modal-head">
+          <div>
+            <div class="eyebrow">Moderator Tool</div>
+            <h2>Manage Badges · ${esc(p)}</h2>
+          </div>
+          <button class="close" onclick="openProfile('${jsArg(p)}')">×</button>
+        </div>
+        <p class="sub" style="margin:4px 0 16px">Give or take away badges for ${esc(p)}. You can grant badges for specific tournaments or revoke automatically calculated badges.</p>
+
+        <!-- Current Active Badges -->
+        <div class="card" style="padding:14px;background:#121217;border-color:#2a2a34;margin-bottom:16px">
+          <div class="eyebrow" style="margin-bottom:10px">Active Badges (${currentBadges.length})</div>
+          ${currentBadges.length ? `
+            <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:8px">
+              ${currentBadges.map(b => `
+                <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 10px;background:#181820;border:1px solid #2e2e3a;border-radius:6px;gap:8px">
+                  <div style="min-width:0;flex:1">
+                    <span class="badge-pill ${b.color}" style="margin-bottom:3px">${b.icon} ${esc(b.name)}</span>
+                    <div style="font-size:10px;color:#8e8c96;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(b.desc)}">${esc(b.desc)}</div>
+                  </div>
+                  <button class="btn ghost btn-sm" style="color:#ff8e95;border-color:#502428;padding:3px 8px;font-size:11px;flex:none" onclick="revokePlayerBadge('${jsArg(p)}','${jsArg(b.id)}','${jsArg(b.name)}')">Take Away</button>
+                </div>
+              `).join('')}
+            </div>
+          ` : `<p class="sub" style="margin:4px 0">No active badges currently assigned.</p>`}
+        </div>
+
+        <!-- Award a New Badge -->
+        <div class="card" style="padding:14px;background:#121217;border-color:#2a2a34;margin-bottom:16px">
+          <div class="eyebrow" style="margin-bottom:10px">+ Award Badge to ${esc(p)}</div>
+          
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+            <div class="field" style="margin-top:0">
+              <label style="margin-top:0">Select Tournament</label>
+              <select id="grantBadgeTournament" onchange="onBadgePresetChange()">
+                ${tournamentOptions}
+              </select>
+            </div>
+            <div class="field" style="margin-top:0">
+              <label style="margin-top:0">Select Badge Preset</label>
+              <select id="grantBadgePreset" onchange="onBadgePresetChange()">
+                ${badgePresets.map(bp => `<option value="${bp.id}" data-icon="${bp.icon}" data-name="${bp.name}" data-color="${bp.color}" data-desc="${bp.desc}" data-pert="${bp.perTournament}">${bp.icon} ${bp.name}</option>`).join('')}
+                <option value="custom">🌟 Custom Badge...</option>
+              </select>
+            </div>
+          </div>
+
+          <div style="display:grid;grid-template-columns:60px 1fr 110px;gap:10px;margin-top:8px">
+            <div class="field" style="margin-top:0">
+              <label style="margin-top:0">Icon</label>
+              <input id="grantBadgeIcon" value="🛡️" style="text-align:center;font-size:16px">
+            </div>
+            <div class="field" style="margin-top:0">
+              <label style="margin-top:0">Badge Name</label>
+              <input id="grantBadgeName" value="Clean Sheet">
+            </div>
+            <div class="field" style="margin-top:0">
+              <label style="margin-top:0">Color</label>
+              <select id="grantBadgeColor">
+                <option value="purple">Purple</option>
+                <option value="gold">Gold</option>
+                <option value="blue" selected>Blue</option>
+                <option value="green">Green</option>
+                <option value="red">Red</option>
+                <option value="amber">Amber</option>
+                <option value="silver">Silver</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="field" style="margin-top:8px">
+            <label style="margin-top:0">Description / Subtitle</label>
+            <input id="grantBadgeDesc" value="Flawless group stage without dropping a single match.">
+          </div>
+
+          <div class="creator-actions" style="margin-top:12px">
+            <button class="btn" onclick="submitGrantBadge('${jsArg(p)}')">+ Give Badge to ${esc(p)}</button>
+          </div>
+        </div>
+
+        <!-- Revoked / Hidden Badges (if any) -->
+        ${(q.revokedBadges && q.revokedBadges.length) ? `
+          <div class="card" style="padding:14px;background:#121217;border-color:#2a2a34">
+            <div class="eyebrow" style="margin-bottom:10px;color:#ff9ba1">Hidden / Taken Away Badges (${q.revokedBadges.length})</div>
+            <p class="sub" style="margin:-4px 0 10px;font-size:11px">These badges were hidden by a moderator and will not appear on leaderboard or profile.</p>
+            <div style="display:flex;flex-wrap:wrap;gap:6px">
+              ${q.revokedBadges.map(rb => {
+                let name = typeof rb === 'object' ? (rb.name || rb.id) : rb;
+                let key = typeof rb === 'object' ? (rb.id || rb.name) : rb;
+                return `
+                <div style="display:flex;align-items:center;gap:6px;background:#1f1418;border:1px solid #5a2028;padding:4px 8px;border-radius:6px;font-size:11px">
+                  <span style="color:#ff9ba1">${esc(name)}</span>
+                  <button style="border:0;background:none;color:#7df0aa;cursor:pointer;font-size:12px;padding:0 2px" title="Restore badge" onclick="restorePlayerBadge('${jsArg(p)}','${jsArg(key)}')">↺ Give Back</button>
+                </div>`;
+              }).join('')}
+            </div>
+          </div>
+        ` : ''}
+
+        <div class="creator-actions" style="margin-top:16px">
+          <button class="btn ghost" onclick="openProfile('${jsArg(p)}')">Done & View Profile</button>
+        </div>
+      </div>
+    </div>
+  `;
+
+  onBadgePresetChange();
+}
+
+function onBadgePresetChange(){
+  let presetSelect = document.querySelector('#grantBadgePreset');
+  let tSelect = document.querySelector('#grantBadgeTournament');
+  if(!presetSelect || !tSelect) return;
+  
+  let opt = presetSelect.selectedOptions[0];
+  let tVal = tSelect.value;
+  if(presetSelect.value === 'custom'){
+    document.querySelector('#grantBadgeIcon').value = '🌟';
+    document.querySelector('#grantBadgeName').value = tVal ? `Custom Badge (${tVal})` : 'Custom Badge';
+    document.querySelector('#grantBadgeDesc').value = 'Special award granted by league moderators.';
+    return;
+  }
+  let icon = opt?.dataset.icon || '🏅';
+  let name = opt?.dataset.name || 'Badge';
+  let color = opt?.dataset.color || 'blue';
+  let desc = opt?.dataset.desc || '';
+  let perT = opt?.dataset.pert === 'true';
+
+  let fullName = (perT && tVal) ? `${name} (${tVal})` : name;
+  let fullDesc = (perT && tVal) ? desc.replace('a tournament', tVal).replace('in a tournament', `in ${tVal}`) : desc;
+
+  document.querySelector('#grantBadgeIcon').value = icon;
+  document.querySelector('#grantBadgeName').value = fullName;
+  document.querySelector('#grantBadgeColor').value = color;
+  document.querySelector('#grantBadgeDesc').value = fullDesc;
+}
+
+function submitGrantBadge(p){
+  let q = ensureProfile(p);
+  q.customBadges = q.customBadges || [];
+  q.revokedBadges = q.revokedBadges || [];
+
+  let icon = document.querySelector('#grantBadgeIcon')?.value.trim() || '🏅';
+  let name = document.querySelector('#grantBadgeName')?.value.trim() || 'Badge';
+  let color = document.querySelector('#grantBadgeColor')?.value || 'purple';
+  let desc = document.querySelector('#grantBadgeDesc')?.value.trim() || '';
+  let tVal = document.querySelector('#grantBadgeTournament')?.value || '';
+
+  let newBadge = {
+    id: 'custom-' + Date.now() + '-' + Math.random().toString(36).slice(2, 6),
+    icon,
+    name,
+    desc,
+    color,
+    category: 'custom',
+    tournament: tVal
+  };
+
+  q.revokedBadges = q.revokedBadges.filter(x => x !== name && x !== newBadge.id);
+  q.customBadges.push(newBadge);
+
+  persistLeague();
+  render();
+  openBadgeManager(p);
+}
+
+function revokePlayerBadge(p, badgeId, badgeName){
+  let q = ensureProfile(p);
+  q.customBadges = q.customBadges || [];
+  q.revokedBadges = q.revokedBadges || [];
+
+  q.customBadges = q.customBadges.filter(b => b.id !== badgeId && b.name !== badgeName);
+
+  let key = badgeId || badgeName;
+  if(key && !q.revokedBadges.some(x => (typeof x === 'object' ? (x.id === key || x.name === key) : x === key))){
+    q.revokedBadges.push({ id: badgeId || badgeName, name: badgeName || badgeId });
+  }
+
+  persistLeague();
+  render();
+  openBadgeManager(p);
+}
+
+function restorePlayerBadge(p, revokedKey){
+  let q = ensureProfile(p);
+  q.revokedBadges = (q.revokedBadges || []).filter(x => {
+    if(typeof x === 'object') return x.id !== revokedKey && x.name !== revokedKey;
+    return x !== revokedKey;
+  });
+  persistLeague();
+  render();
+  openBadgeManager(p);
 }
 
 /* ══ 2. ACCOUNTS LINKED TO PLAYER PROFILES ═════════════════════════
@@ -3808,6 +4037,7 @@ function openProfileManager(){
         </div>
       </div>
       <div style="display:flex;gap:6px;flex:none;margin-left:12px">
+        <button class="btn ghost btn-sm" style="color:var(--amber);border-color:#5e4a1a" onclick="openBadgeManager('${jsArg(p)}')">Badges</button>
         <button class="btn ghost btn-sm" onclick="editProfile('${jsArg(p)}')">Edit</button>
         <button class="btn ghost btn-sm" style="color:#ff969c;border-color:#4a242a" onclick="deleteProfile('${jsArg(p)}')">Delete</button>
       </div>
@@ -4383,6 +4613,30 @@ function calculateLeagueRecords(){
   let maxCareerWinsAll=0;
   allPlayers.forEach(p=>{
     if(statsByPlayer[p].wins>maxCareerWinsAll)maxCareerWinsAll=statsByPlayer[p].wins;
+  });
+
+  // Apply Moderator Custom / Granted Badges & Filter Revoked Badges
+  allPlayers.forEach(p=>{
+    let s=statsByPlayer[p];
+    if(!s)return;
+    let prof=profiles[p]||{};
+    let granted=(prof.customBadges||prof.grantedBadges||[]);
+    let revoked=(prof.revokedBadges||[]);
+
+    if(revoked.length>0){
+      s.badges=s.badges.filter(b=>{
+        return !revoked.some(r=>{
+          if(typeof r === 'object' && r) return r.id === b.id || r.name === b.name;
+          return r === b.id || r === b.name;
+        });
+      });
+    }
+
+    granted.forEach(gb=>{
+      if(!s.badges.some(b=>b.id===gb.id||b.name===gb.name)){
+        s.badges.push(gb);
+      }
+    });
   });
 
   return {
