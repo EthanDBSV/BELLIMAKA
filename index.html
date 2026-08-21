@@ -1812,7 +1812,7 @@ function tournamentRecord(t,p){
     if(a===p){if(+sa>+sb)w++;else l++}else if(b===p){if(+sb>+sa)w++;else l++}
   });
   let topResults = t.topCutCache?.results;
-  if((!topResults || !topResults.length) && typeof getTournamentTopCutModel==='function'){
+  if((!topResults || !topResults.length) && (t.bracketManagerData || t.phase==='topcut' || t.status==='COMPLETE') && typeof getTournamentTopCutModel==='function'){
     let mod = getTournamentTopCutModel(t);
     if(mod && mod.completedList) topResults = mod.completedList.map(m=>({p1:m.p1,p2:m.p2,s1:m.s1,s2:m.s2}));
   }
@@ -1831,8 +1831,7 @@ function playerCareerStats(p){
     tournaments++;
     let [w,l]=tournamentRecord(t,p).split('-').map(Number);
     wins+=w||0;losses+=l||0;
-    let f=tournamentFinish(t,p);
-    if(f.place===1||t.champion===p){
+    if(t.champion===p){
       if(!championshipCups.includes(t.name))championshipCups.push(t.name);
     }
     let isTopCutActual=(t.phase==='topcut'||t.status==='COMPLETE'||!!t.bracketManagerData);
@@ -1840,13 +1839,13 @@ function playerCareerStats(p){
       let inCut=false;
       if(t.topCutCache?.participants?.length)inCut=t.topCutCache.participants.includes(p);
       else if(t.finalStandings)inCut=Object.values(t.finalStandings).some(arr=>arr.slice(0,advancePerGroup(t)).includes(p));
-      else if(f.place<=3)inCut=true;
+      else if(t.champion===p)inCut=true;
       if(inCut)topCuts++;
     }
   });
   titles=championshipCups.length;
   let totalGames=wins+losses,winPct=totalGames>0?Math.round(wins/totalGames*100):0;
-  return {wins,losses,record:`${wins}-${losses}`,titles,topCuts,tournaments,winPct,championshipCups}
+  return {wins,losses,record:`${wins}-${losses}`,titles,topCuts,tournaments,winPct,championshipCups};
 }
 function rebuildAllPlayerStats(){Object.keys(profiles).forEach(ensureProfile);Object.values(tournamentData).forEach(t=>{(t.players||[]).forEach(ensureProfile)});Object.keys(profiles).forEach(p=>{let s=playerCareerStats(p);profiles[p].record=s.record;profiles[p].tops=s.topCuts;profiles[p].cups=[...s.championshipCups]})}
 function resyncTournamentStats(id){let t=tournamentData[id];if(!t){alert('Tournament not found.');return}if(t.status!=='COMPLETE'){alert('Only completed tournaments can be resynced.');return}rebuildAllPlayerStats();persistLeague();render();alert(`Stats resynced for ${t.name}.`)}
@@ -3022,10 +3021,19 @@ function pastTournaments(p){
   }).join('');
 }
 
-/* --- Madden / FIFA Player Overall Rating (OVR) Engine --- */
+var _calculatingRecords = false;
 function calculatePlayerOVR(p, leagueData=null){
   let career=playerCareerStats(p);
-  let recs=leagueData||(typeof calculateLeagueRecords==='function'?calculateLeagueRecords():null);
+  let recs = (leagueData && leagueData.statsByPlayer) ? leagueData : null;
+  if(!recs && !_calculatingRecords && typeof calculateLeagueRecords === 'function'){
+    try {
+      _calculatingRecords = true;
+      recs = calculateLeagueRecords();
+    } catch(e){}
+    finally {
+      _calculatingRecords = false;
+    }
+  }
   let s=recs?.statsByPlayer?.[p]||{wins:career.wins,losses:career.losses,maxWinStreak:0,currentWinStreak:0,bestGD:0};
   let total=career.wins+career.losses;
   if(total===0){
