@@ -2012,6 +2012,134 @@ function matchesView(t=activeT(), editable=moderator){
     }).join('')}
   </div>`;
 }
+function getStand(t=activeT(),group=null){
+  let buckets=groupsOf(t),g=group||Object.keys(buckets)[0],members=buckets[g]||t.players,s={};
+  members.forEach(p=>s[p]={p,w:0,l:0,gw:0,gl:0,h2h:0,results:{}});
+  groupMatches(t,g).filter(m=>m.as!==''&&m.as!=null&&m.bs!==''&&m.bs!=null).forEach(m=>{
+    let a=s[m.a],b=s[m.b];
+    if(!a||!b)return;
+    a.gw+=+m.as;a.gl+=+m.bs;b.gw+=+m.bs;b.gl+=+m.as;
+    if(+m.as>+m.bs){a.w++;b.l++;a.results[m.b]=1;b.results[m.a]=0}
+    else if(+m.bs>+m.as){b.w++;a.l++;b.results[m.a]=1;a.results[m.b]=0}
+  });
+  let list=Object.values(s);
+  list.sort((a,b)=>{
+    let basic=b.w-a.w||b.gw-a.gw||(b.gw-b.gl)-(a.gw-a.gl);
+    if(basic)return basic;
+    let ah=a.results[b.p],bh=b.results[a.p];
+    if(ah!==undefined&&bh!==undefined)return bh-ah;
+    return a.p.localeCompare(b.p);
+  });
+  let manual=t.manualStandings?.[g];
+  if(Array.isArray(manual)&&manual.length===list.length&&manual.every(p=>members.includes(p))){
+    let rank=Object.fromEntries(manual.map((p,i)=>[p,i]));
+    list.sort((a,b)=>rank[a.p]-rank[b.p]);
+  }
+  return list;
+}
+
+function standingTable(t, g){
+  let list = getStand(t, g);
+  let cut = advancePerGroup(t);
+  return `
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:14px 16px 10px;border-bottom:1px solid #282834">
+      <span style="font:900 20px 'Barlow Condensed';letter-spacing:.5px;color:#f5f3f0;text-transform:uppercase">${esc(g)}</span>
+      <span style="font-size:10px;font-weight:800;color:var(--amber);letter-spacing:.6px">TOP ${cut} ADVANCE</span>
+    </div>
+    <table class="standings">
+      <thead>
+        <tr>
+          <th style="width:36px;text-align:center">#</th>
+          <th>Trainer / Team</th>
+          <th style="text-align:center;white-space:nowrap">OVR</th>
+          <th style="text-align:center;white-space:nowrap">W-L</th>
+          <th style="text-align:center;white-space:nowrap">GW</th>
+          <th style="text-align:center;white-space:nowrap">GD</th>
+          <th style="text-align:center;white-space:nowrap">H2H</th>
+          <th style="text-align:center;white-space:nowrap">Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${list.map((x, i) => {
+          let p = x.p;
+          let ovrObj = calculatePlayerOVR(p);
+          let isCutoff = (i === cut);
+          let statusTag = '';
+          if(isMathematicallyClinched(t, p)){
+            statusTag = '<span class="tag safe">CLINCHED</span>';
+          } else if(isMathematicallyEliminated(t, p)){
+            statusTag = '<span class="tag out">ELIMINATED</span>';
+          } else {
+            statusTag = i < cut ? '<span class="tag hunt">IN CUT</span>' : '<span class="tag hunt">HUNT</span>';
+          }
+          let gd = x.gw - x.gl;
+          let gdStr = (gd > 0 ? '+' : '') + gd;
+          return `
+            <tr class="${isCutoff ? 'cutoff-row' : ''} ${i < cut ? 'safe' : ''}">
+              <td class="rank" style="text-align:center">${i + 1}</td>
+              <td class="player">
+                ${playerLink(p)}
+                <span class="team">${esc(teamName(t, p))}</span>
+              </td>
+              <td style="text-align:center">${ovrObj.badgeHtml}</td>
+              <td style="text-align:center;white-space:nowrap;font-weight:800">${x.w}-${x.l}</td>
+              <td style="text-align:center;white-space:nowrap">${x.gw}</td>
+              <td style="text-align:center;white-space:nowrap">${gdStr}</td>
+              <td style="text-align:center;white-space:nowrap">${x.h2h}</td>
+              <td style="text-align:center">${statusTag}</td>
+            </tr>
+          `;
+        }).join('')}
+      </tbody>
+    </table>
+  `;
+}
+
+function openRankingEditor(){
+  let t=ongoingT();if(!moderator||!t)return;
+  let groups=Object.keys(groupsOf(t));
+  document.querySelector('#modal').innerHTML=`<div class="modal-wrap"><div class="modal" style="max-width:760px"><div class="modal-head"><div><div class="eyebrow">Moderator only</div><h2>Arrange standings</h2></div><button class="close" onclick="closeModal()">×</button></div><p class="sub">Drag a trainer onto another trainer in the same group to swap their displayed rank. This manual order is also used for qualification and Top Cut seeding.</p><div class="group-placement-grid">${groups.map(g=>`<section class="group-dropzone rank-dropzone" data-rank-group="${g}"><div class="eyebrow">${g}</div>${getStand(t,g).map((x,i)=>`<button class="group-placement-drag rank-placement-drag" draggable="true" data-player="${x.p}" data-rank-group="${g}"><span style="color:#aaa;margin-right:10px">${i+1}</span>${x.p}</button>`).join('')}</section>`).join('')}</div><div class="creator-actions"><button class="btn ghost" onclick="resetManualStandings()">Return to automatic order</button></div></div></div>`;
+}
+
+function swapStandingRanks(first,second,group){
+  let t=ongoingT();if(!t||!first||!second||first===second||!moderator)return;
+  let ordered=getStand(t,group).map(x=>x.p),a=ordered.indexOf(first),b=ordered.indexOf(second);
+  if(a<0||b<0)return;
+  [ordered[a],ordered[b]]=[ordered[b],ordered[a]];
+  t.manualStandings=t.manualStandings||{};
+  t.manualStandings[group]=ordered;
+  persistLeague();
+  openRankingEditor();
+  render();
+}
+
+function resetManualStandings(){
+  let t=ongoingT();if(!t)return;
+  delete t.manualStandings;
+  persistLeague();
+  closeModal();
+  render();
+}
+
+document.addEventListener('dragstart',e=>{let x=e.target.closest('.rank-placement-drag');if(x&&moderator)e.dataTransfer.setData('application/cherrymoon-rank-player',JSON.stringify({player:x.dataset.player,group:x.dataset.rankGroup}))});
+document.addEventListener('dragover',e=>{let target=e.target.closest('.rank-placement-drag');if(target&&moderator)e.preventDefault()});
+document.addEventListener('drop',e=>{let target=e.target.closest('.rank-placement-drag'),raw=e.dataTransfer.getData('application/cherrymoon-rank-player');if(!target||!raw||!moderator)return;let source;try{source=JSON.parse(raw)}catch{return}if(source.group!==target.dataset.rankGroup)return;e.preventDefault();swapStandingRanks(source.player,target.dataset.player,source.group)});
+
+function Standings(){
+  let t=ongoingT();
+  if(!t){
+    let r=recapRankings();
+    return head('Standings','All-time league rankings')+`<div class="card table-wrap"><table class="standings"><thead><tr><th style="width:32px;text-align:center">#</th><th>Player</th><th style="text-align:center;white-space:nowrap">OVR</th><th style="text-align:center;white-space:nowrap">ELO</th><th style="text-align:center;white-space:nowrap">Titles</th><th style="text-align:center;white-space:nowrap">Top Cuts</th><th style="text-align:center;white-space:nowrap">All-time W-L</th></tr></thead><tbody>${r.map((x,i)=>{let ovrObj=x.ovrObj||calculatePlayerOVR(x.p);return `<tr><td class="rank" style="text-align:center">${i===0?'👑':(i+1)}</td><td class="player">${playerLink(x.p)}<span class="team">${profiles[x.p]?.team||''}</span></td><td style="text-align:center">${ovrObj.badgeHtml}</td><td style="text-align:center"><b>${x.score}</b></td><td style="text-align:center">${x.champ>0?`👑 ${x.champ}`:'0'}</td><td style="text-align:center">${x.tops>0?`⚔️ ${x.tops}`:'0'}</td><td style="text-align:center;white-space:nowrap">${x.record}</td></tr>`}).join('')}</tbody></table></div>`;
+  }
+  viewTournament=t.id;
+  let groups=Object.keys(groupsOf(t)),controls=moderator?`<div><button class="btn ghost" onclick="openRankingEditor()">Arrange rankings</button> <button class="btn ghost" onclick="openSettings()">Edit qualification</button></div>`:'';
+  return head('Standings',t.name+' · group stage',controls)+`<div style="display:grid;grid-template-columns:repeat(${groups.length>1?2:1},minmax(0,1fr));gap:15px">${groups.map(g=>`<div class="card table-wrap">${standingTable(t,g)}</div>`).join('')}</div><p class="sub">The default order is W-L, games won, game differential, then head-to-head. Moderators can use Arrange rankings to apply a manual standings override.</p>`;
+}
+
+function matchPlayerName(p){return `<button class="player-link match-hover-name" onclick="openProfile('${p}')" onmouseenter="highlightMatches('${p}',true)" onmouseleave="highlightMatches('${p}',false)">${p}</button>`}
+
+function highlightMatches(name,on){document.querySelectorAll('.m-card, .score-match').forEach(el=>{if((el.dataset.players||'').split('|').includes(name))el.classList.toggle('match-highlight',on)})}
+
 initSupabase();
 
 
@@ -2494,7 +2622,10 @@ function go(tab, updateHash=true){
     }
   }catch(e){}
   try{render();scrollTo(0,0)}
-  catch(e){document.querySelector('#app').innerHTML=`<div class="card empty"><div class="card-title">Page error</div><p class="sub">Refresh the site once, then try again.</p></div>`}
+  catch(e){
+    console.error('Render error:', e);
+    document.querySelector('#app').innerHTML=`<div class="card empty"><div class="card-title">Page error</div><p class="sub">${esc(e.message||'Refresh the site once, then try again.')}</p></div>`;
+  }
 }
 window.addEventListener('hashchange', ()=>{
   try{
@@ -4083,17 +4214,6 @@ function Standings(){
   return head('Standings',t.name+' · group stage',controls)
     +`<div style="display:grid;grid-template-columns:repeat(${groups.length>1?2:1},minmax(0,1fr));gap:15px">${groups.map(g=>`<div class="card table-wrap">${standingTable(t,g)}</div>`).join('')}</div>`
     +`<p class="sub">The default order is W-L, games won, game differential, then head-to-head.</p>`
-}
-(function(){
-  let baseMatches=window.Matches;
-  window.Matches=function(){
-    let html=baseMatches();
-    /* drop the Arrange groups button — it now lives under Edit on the tournament page */
-    html=html.replace(/<button class="btn ghost" onclick="openGroupPlacementEditor\(\)">Arrange groups<\/button>\s*/,'');
-    html=html.replace(/Use <b>Arrange groups<\/b> to drag trainers between groups\./,'Group placement is edited under <b>Edit</b> on the tournament page.');
-    return html
-  }
-})();
 /* qualification + group placement now act on the tournament being viewed */
 function openSettings(){
   let t=activeT();if(!t||!moderator)return;
