@@ -4234,7 +4234,8 @@ function Standings(){
   let controls=`<div style="display:flex;gap:8px">${moderator?`<button class="btn ghost" onclick="openRankingEditor()">Arrange rankings</button>`:''}<button class="btn ghost" onclick="go('Records')">🏆 Hall of Fame →</button></div>`;
   return head('Standings',t.name+' · group stage',controls)
     +`<div style="display:grid;grid-template-columns:repeat(${groups.length>1?2:1},minmax(0,1fr));gap:15px">${groups.map(g=>`<div class="card table-wrap">${standingTable(t,g)}</div>`).join('')}</div>`
-    +`<p class="sub">The default order is W-L, games won, game differential, then head-to-head.</p>`
+    +`<p class="sub">The default order is W-L, games won, game differential, then head-to-head.</p>`;
+}
 /* qualification + group placement now act on the tournament being viewed */
 function openSettings(){
   let t=activeT();if(!t||!moderator)return;
@@ -4417,41 +4418,7 @@ function saveTournamentPlayers(){
   rebuildAllPlayerStats();persistLeague();closeModal();render()
 }
 
-/* ══ 10. MATCHES PAGE — VISUALS ONLY ═══════════════════════════════
-   Same inputs, same ids, same score()/removeCustom() calls; this only
-   adds team art, team names, and a won/lost treatment. */
-function playerFace(p,t){
-  let art=profilePictures[p]?`url('${esc(profilePictures[p])}')`:(teamCovers[p]?`url('${esc(teamCovers[p])}')`:fallbackArt(p));
-  let letter=(profilePictures[p]||teamCovers[p])?'':esc((p||'?')[0]);
-  return `<span class="mrow-face" style="background-image:${art}">${letter}</span>`
-}
-function renderMatchRow(m,i,t){
-  let editable=moderator&&t.status==='ONGOING'&&t.phase!=='topcut';
-  let a=m.a||'TBD',b=m.b||'TBD';
-  let av=scoreDrafts['a'+i]??m.as??'',bv=scoreDrafts['b'+i]??m.bs??'';
-  let reported=m.as!==''&&m.as!=null&&m.bs!==''&&m.bs!=null;
-  let aWon=reported&&+m.as>+m.bs,bWon=reported&&+m.bs>+m.as;
-  let label=m.custom?'Custom · '+(m.group||'Group match'):(m.group||'Group match');
-  let side=(p,score,won,lost,id,cls)=>`<div class="score-competitor ${cls} ${won?'winner':''} ${lost?'loser':''}">
-    <span class="mrow-id">${playerFace(p,t)}<span class="mrow-text">
-      <span class="mrow-name">${matchPlayerName(p)}</span>
-      <span class="mrow-team">${esc(teamName(t,p))}</span>
-      ${won?'<span class="win-flag">▲ Winner</span>':''}
-    </span></span>
-    ${editable?`<input aria-label="${esc(p)} score" id="${id}" class="score-box" type="number" min="0" inputmode="numeric" placeholder="0" value="${esc(score)}">`
-              :`<b class="score-box" style="display:grid;place-items:center">${reported?esc(cls==='right'?m.bs:m.as):'—'}</b>`}</div>`;
-  return `<article class="score-match ${reported?'done':'live'}" data-players="${esc(a)}|${esc(b)}">
-    <div class="score-match-head">
-      <span class="st"><i></i>${reported?'Reported'+(m.date?' · '+esc(m.date):''):'Awaiting result'}</span>
-      <span>${esc(label)}</span></div>
-    <div class="score-match-body">
-      ${side(a,av,aWon,bWon,'a'+i,'')}
-      <div class="score-match-vs">VS</div>
-      ${side(b,bv,bWon,aWon,'b'+i,'right')}
-    </div>
-    ${editable?`<div class="score-match-foot"><button class="save" onclick="score(${i})">Save result</button>${m.custom?`<button class="save" style="color:#ff969c" onclick="removeCustom(${i})">Remove</button>`:''}</div>`:''}
-  </article>`
-}
+/* Modern renderMatchRow is active at line 2055 */
 
 /* Top Cut question text gained a "Top Cut · " prefix; keep reading the
    old key so picks made before this change still show as selected. */
@@ -4658,7 +4625,8 @@ function openBoardSettings(){
     <div class="modal-head"><div><div class="eyebrow">Moderator only</div><h2>Board settings</h2></div><button class="close" onclick="closeModal()">×</button></div>
     <div class="field"><label>Google Sheets link</label><input id="boardInput" type="url" value="${esc(boardLink)}" placeholder="https://docs.google.com/spreadsheets/d/..."></div>
     <p class="sub">Open the sheet tab that holds the costs before copying the link — the tab is remembered too.</p>
-    <div class="creator-actions"><button class="btn" onclick="saveBoardLink()">Save link</button></div></div></div>`
+    <div class="creator-actions"><button class="btn" onclick="saveBoardLink()">Save link</button></div></div></div>`;
+}
 try {
   render();
 } catch(e) {
