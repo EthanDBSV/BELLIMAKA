@@ -4387,8 +4387,13 @@ function Records(){
     </div>
 
     <section class="section">
-      <div class="section-head">
-        <h2>HALL OF FAME LEADERBOARD & BADGES</h2>
+      <div class="section-head" style="align-items:center;flex-wrap:wrap;gap:10px">
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+          <h2 style="margin:0">HALL OF FAME LEADERBOARD & BADGES</h2>
+          <button class="btn ghost btn-sm" style="display:inline-flex;align-items:center;gap:6px;padding:4px 10px;font-size:11px;border-radius:20px;border-color:#40404c;cursor:pointer" onclick="openBadgeGuide()" title="View all earnable badges and unlock requirements">
+            <span style="font-size:13px">ℹ️</span> Badge Guide
+          </button>
+        </div>
       </div>
       <div class="card table-wrap">
         <table class="standings">
@@ -4445,6 +4450,71 @@ function Records(){
         </table>
       </div>
     </section>`;
+}
+
+function openBadgeGuide(){
+  let categories = [
+    {
+      cat: 'Championships & Prestige',
+      badges: [
+        { icon: '🐐', name: 'GOAT', color: 'gold', desc: 'Rated #1 Greatest of All Time based on composite ELO, titles, top cuts, and win rate.' },
+        { icon: '👑', name: 'Dynasty Champion', color: 'gold', desc: 'Won 2 or more League Championships.' },
+        { icon: '🏆', name: 'League Champion', color: 'gold', desc: 'Won 1 League Championship.' },
+        { icon: '⚔️', name: 'Playoff Royalty', color: 'purple', desc: 'Reached Top Cut in 3 or more tournaments.' },
+        { icon: '⚔️', name: 'Top Cut Veteran', color: 'silver', desc: 'Reached Top Cut in 2 tournaments.' }
+      ]
+    },
+    {
+      cat: 'Tournament Feats',
+      badges: [
+        { icon: '🛡️', name: 'Undefeated Group', color: 'blue', desc: 'Flawless group stage without a single match loss in a tournament.' },
+        { icon: '👑', name: 'Undefeated Champ', color: 'gold', desc: 'Won an entire tournament without dropping a single match in groups or playoffs.' },
+        { icon: '🚀', name: 'Most Improved', color: 'green', desc: 'Largest tournament-to-tournament rank and win improvement.' },
+        { icon: '👠', name: 'Cinderella Run', color: 'purple', desc: 'Low-seed underdog qualification into Top Cut playoffs or Finals.' },
+        { icon: '💥', name: 'Blowout King (+5 GD)', color: 'amber', desc: 'Dominant +5 or higher game differential in a single tournament.' }
+      ]
+    },
+    {
+      cat: 'Streaks & Performance',
+      badges: [
+        { icon: '🔥', name: 'All-Time Streak King', color: 'red', desc: 'Permanent badge held exclusively by the all-time consecutive win streak record holder.' },
+        { icon: '⚡', name: 'On Fire (3W+)', color: 'amber', desc: 'Active badge displayed while currently riding an active 3+ match win streak.' },
+        { icon: '❄️', name: 'Cold Slump (3L+)', color: 'blue', desc: 'Active badge displayed while currently on an active 3+ match loss slump.' },
+        { icon: '🎯', name: '70%+ Win Rate', color: 'green', desc: 'Maintained a career win rate of 70% or higher (min. 5 matches).' }
+      ]
+    }
+  ];
+
+  document.querySelector('#modal').innerHTML = `
+    <div class="modal-wrap">
+      <div class="modal" style="max-width:720px">
+        <div class="modal-head">
+          <div>
+            <div class="eyebrow">Hall of Fame Guide</div>
+            <h2>Earnable Badges & Accolades</h2>
+          </div>
+          <button class="close" onclick="closeModal()">×</button>
+        </div>
+        <p class="sub" style="margin-top:6px">Complete league matches and tournaments to unlock badges on your trainer profile and Hall of Fame leaderboard.</p>
+        
+        <div style="margin-top:16px;display:flex;flex-direction:column;gap:14px;max-height:65vh;overflow-y:auto;padding-right:4px">
+          ${categories.map(c => `
+            <div class="card" style="padding:14px;background:#141419;border-color:#2e2e38">
+              <div class="eyebrow" style="margin-bottom:10px;color:#ff9ba1">${esc(c.cat)}</div>
+              <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:10px">
+                ${c.badges.map(b => `
+                  <div style="display:flex;align-items:flex-start;gap:10px;background:#101014;padding:10px 12px;border-radius:6px;border:1px solid #272732">
+                    <span class="badge-pill ${b.color}" style="flex:none;margin-top:2px">${b.icon} ${esc(b.name)}</span>
+                    <div style="font-size:11px;color:#a09fa8;line-height:1.4">${esc(b.desc)}</div>
+                  </div>
+                `).join('')}
+              </div>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+    </div>
+  `;
 }
 
 /* ══ 6 & 7. MODERATOR CONTROLS MOVED TO THE TOURNAMENT PAGE ════════ */
