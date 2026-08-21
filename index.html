@@ -99,7 +99,7 @@
 <style>#newMon{background:#fff!important;color:#111!important}#newMon::placeholder{color:#666}.hero-main:after{content:attr(data-season)!important}.player-link{border:0;background:none;color:#f5f3f0;padding:0;font:inherit;font-weight:800;cursor:pointer;text-align:left}.player-link:hover{color:#ff777d;text-decoration:underline}.match-row.aligned{grid-template-columns:145px minmax(115px,1fr) 34px minmax(115px,1fr) 118px 78px}.match-row.aligned .match-player{font-size:12px;min-width:0}.match-row.aligned .match-vs{text-align:center;color:#85838d;font-size:10px;font-weight:800}.bracket-match input{width:36px;background:#0f0f13;border:1px solid #474750;border-radius:3px;color:white;text-align:center;padding:3px}.bracket-grid-final{display:grid;grid-template-columns:repeat(4,210px);gap:42px;align-items:center;min-width:960px}.bracket-grid-final>div{display:grid;gap:38px}.bracket-grid-final>div:nth-child(2){padding-top:45px}.bracket-grid-final>div:nth-child(3){padding-top:115px}.bracket-grid-final>div:nth-child(4){padding-top:80px}.bracket-box{position:relative}.bracket-match-title{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.7px;color:var(--amber);margin:0 0 6px 2px}@media(max-width:560px){.match-row.aligned{grid-template-columns:75px 1fr 30px 1fr}.match-row.aligned .score-edit{grid-column:2/4}.match-row.aligned .save{grid-column:2/4}}</style>
 <body><div class="shell"><header class="topbar"><div class="brand"><span class="ball"></span>DRAFTDEX</div><nav class="nav" id="nav"></nav><button class="account" onclick="go('Account')"><span class="mode-dot"></span><span id="accountText">Ethan · Moderator</span></button></header><main class="page" id="app"></main></div><div id="modal"></div>
 <script>
-const tabs=['Home','Standings','Matches','Top Cut','Teams','Predictions','Tournaments','Draft Board'];let current='Home',viewTournament=null,detailTab='Group Stage',matchFilterPlayers=[];
+const tabs=['Home','Standings','Matches','Top Cut','Teams','Predictions','Records','Tournaments','Draft Board'];let current='Home',viewTournament=null,detailTab='Group Stage',matchFilterPlayers=[];
 function toggleMatchFilter(v){let i=matchFilterPlayers.indexOf(v);if(i>=0)matchFilterPlayers.splice(i,1);else matchFilterPlayers.push(v);render()}
 function clearMatchFilters(){matchFilterPlayers=[];render()}
 const profiles={};
@@ -109,12 +109,21 @@ const tournamentData={};
 let cut=+localStorage.getItem('draftdex-cut')||4,boardLink=localStorage.getItem('draftdex-board')||'https://docs.google.com/spreadsheets/';let moderator=true;
 function save(){localStorage.setItem('draftdex-cut',cut);localStorage.setItem('draftdex-board',boardLink)}
 
-function head(title,over,action=''){return `<div class="page-head"><div><div class="eyebrow">${over}</div><h1>${title}</h1></div>${action}</div>`}function nav(){document.querySelector('#nav').innerHTML=tabs.map(t=>`<button class="${current===t?'active':''}" onclick="go('${t}')">${t}</button>`).join('')}
-
-
-
-
-
+function head(title,over,action=''){return `<div class="page-head"><div><div class="eyebrow">${over}</div><h1>${title}</h1></div>${action}</div>`}
+function nav(){document.querySelector('#nav').innerHTML=tabs.map(t=>`<button class="${current===t?'active':''}" onclick="go('${t}')">${t}</button>`).join('')}
+function go(t){current=t;render()}
+function render(){
+  nav();
+  let view = current==='Tournament Detail' ? tournamentDetail() :
+             current==='Playoff Odds' ? playoffOdds() :
+             current==='Records' ? Records() :
+             current==='Draft Board' ? Board() :
+             current==='Top Cut' ? TopCut() :
+             (typeof window[current] === 'function' ? window[current]() :
+             (typeof window[current.replace(/\s+/g,'')] === 'function' ? window[current.replace(/\s+/g,'')]() : Home()));
+  document.querySelector('#app').innerHTML=view;
+  if(current==='Top Cut'||(current==='Tournament Detail'&&detailTab==='Top Cut'))mountTopCutViewer();
+}
 
 function bracketMatch(a,an,b,bn,as='—',bs='—'){return `<div class="bracket-match"><div class="bracket-row"><span><span class="seed">${a}</span>${an}</span><span class="bracket-score">${as}</span></div><div class="bracket-row"><span><span class="seed">${b}</span>${bn}</span><span class="bracket-score">${bs}</span></div></div>`}
 
@@ -685,7 +694,31 @@ function openProfileManager(){let rows=Object.entries(profiles).map(([p,q])=>`<d
 function finalQualifiers(t){if(t.finalStandings)return Object.entries(t.finalStandings).flatMap(([,players])=>players.slice(0,advancePerGroup(t)));return qualified(t).map(x=>x.p)}
 function ensureProfile(p){if(!profiles[p])profiles[p]={team:'No default team',record:'0-0',tops:0,cups:[]};if(!Array.isArray(profiles[p].cups))profiles[p].cups=[];if(typeof profiles[p].tops!=='number')profiles[p].tops=0;if(!profiles[p].record)profiles[p].record='0-0';return profiles[p]}
 function tournamentRecord(t,p){let w=0,l=0;(t.matches||[]).forEach(m=>{let a=m.a,b=m.b,sa=m.as,sb=m.bs;if(!a||!b||sa===''||sb===''||sa==null||sb==null||+sa===+sb)return;if(a===p){if(+sa>+sb)w++;else l++}else if(b===p){if(+sb>+sa)w++;else l++}});(t.topCutCache?.results||[]).forEach(m=>{let a=m.p1,b=m.p2,sa=m.s1,sb=m.s2;if(!a||!b||+sa===+sb)return;if(a===p){if(+sa>+sb)w++;else l++}else if(b===p){if(+sb>+sa)w++;else l++}});return `${w}-${l}`}
-function playerCareerStats(p){let wins=0,losses=0,titles=0,topCuts=0,tournaments=0,championshipCups=[];Object.values(tournamentData).forEach(t=>{let played=(t.players||[]).includes(p)||(t.matches||[]).some(m=>m.a===p||m.b===p);if(!played)return;tournaments++;let [w,l]=tournamentRecord(t,p).split('-').map(Number);wins+=w||0;losses+=l||0;let f=tournamentFinish(t,p);if(f.place===1||t.champion===p){if(!championshipCups.includes(t.name))championshipCups.push(t.name)}if(f.place<=3||(t.topCutCache?.participants||[]).includes(p)||finalQualifiers(t).includes(p))topCuts++});titles=championshipCups.length;let totalGames=wins+losses,winPct=totalGames>0?Math.round(wins/totalGames*100):0;return {wins,losses,record:`${wins}-${losses}`,titles,topCuts,tournaments,winPct,championshipCups}}
+function playerCareerStats(p){
+  let wins=0,losses=0,titles=0,topCuts=0,tournaments=0,championshipCups=[];
+  Object.values(tournamentData).forEach(t=>{
+    let played=(t.players||[]).includes(p)||(t.matches||[]).some(m=>m.a===p||m.b===p);
+    if(!played)return;
+    tournaments++;
+    let [w,l]=tournamentRecord(t,p).split('-').map(Number);
+    wins+=w||0;losses+=l||0;
+    let f=tournamentFinish(t,p);
+    if(f.place===1||t.champion===p){
+      if(!championshipCups.includes(t.name))championshipCups.push(t.name);
+    }
+    let isTopCutActual=(t.phase==='topcut'||t.status==='COMPLETE'||!!t.bracketManagerData);
+    if(isTopCutActual){
+      let inCut=false;
+      if(t.topCutCache?.participants?.length)inCut=t.topCutCache.participants.includes(p);
+      else if(t.finalStandings)inCut=Object.values(t.finalStandings).some(arr=>arr.slice(0,advancePerGroup(t)).includes(p));
+      else if(f.place<=3)inCut=true;
+      if(inCut)topCuts++;
+    }
+  });
+  titles=championshipCups.length;
+  let totalGames=wins+losses,winPct=totalGames>0?Math.round(wins/totalGames*100):0;
+  return {wins,losses,record:`${wins}-${losses}`,titles,topCuts,tournaments,winPct,championshipCups}
+}
 function rebuildAllPlayerStats(){Object.keys(profiles).forEach(ensureProfile);Object.values(tournamentData).forEach(t=>{(t.players||[]).forEach(ensureProfile)});Object.keys(profiles).forEach(p=>{let s=playerCareerStats(p);profiles[p].record=s.record;profiles[p].tops=s.topCuts;profiles[p].cups=[...s.championshipCups]})}
 function resyncTournamentStats(id){let t=tournamentData[id];if(!t){alert('Tournament not found.');return}if(t.status!=='COMPLETE'){alert('Only completed tournaments can be resynced.');return}rebuildAllPlayerStats();persistLeague();render();alert(`Stats resynced for ${t.name}.`)}
 
@@ -1400,12 +1433,35 @@ render();
 .acct-hub-card{padding:22px;background:#17171d}
 .acct-hub-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:18px;border-bottom:1px solid #2b2b35;padding-bottom:14px}
 .acct-tools-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px}
-.acct-tool-card{display:flex;flex-direction:column;background:#131318;border:1px solid #2d2d38;border-radius:8px;padding:16px;transition:border-color .18s,transform .18s;cursor:pointer}
+.acct-tool-card{display:flex;flex-direction:column;justify-content:space-between;min-height:175px;background:#131318;border:1px solid #2d2d38;border-radius:8px;padding:16px;transition:border-color .18s,transform .18s;cursor:pointer}
 .acct-tool-card:hover{border-color:#5c242c;transform:translateY(-2px);background:#161620}
-.acct-tool-icon{font-size:24px;margin-bottom:10px}
+.acct-tool-icon{font-size:24px;margin-bottom:8px}
+.acct-tool-body{flex:1;display:flex;flex-direction:column}
 .acct-tool-body h4{font:800 17px 'Barlow Condensed';letter-spacing:.4px;margin:0 0 4px;color:#f5f3f0}
-.acct-tool-body p{font-size:11px;color:#9d9ba4;line-height:1.45;margin:0 0 14px}
+.acct-tool-body p{font-size:11px;color:#9d9ba4;line-height:1.45;margin:0 0 12px;min-height:32px}
+.acct-tool-card button{margin-top:auto;width:100%}
 @media(max-width:860px){.acct-grid{grid-template-columns:1fr}}
+
+/* ---- Hall of Fame & Badge Styles ---- */
+.badge-pill{display:inline-flex;align-items:center;gap:5px;font-size:10px;font-weight:800;letter-spacing:.5px;padding:3px 8px;border-radius:4px;white-space:nowrap;cursor:default;transition:transform .12s}
+.badge-pill:hover{transform:translateY(-1px)}
+.badge-pill.gold{background:#382711;color:#ffd166;border:1px solid #78531e}
+.badge-pill.silver{background:#23252d;color:#d8d9e2;border:1px solid #4a4d5e}
+.badge-pill.red{background:#381419;color:#ff8e95;border:1px solid #73242f}
+.badge-pill.amber{background:#382c12;color:#ffc857;border:1px solid #6e551f}
+.badge-pill.blue{background:#122538;color:#7ad1ff;border:1px solid #234b73}
+.badge-pill.green{background:#143320;color:#7ff0aa;border:1px solid #296b3f}
+.badge-pill.purple{background:#2b1836;color:#dca2f5;border:1px solid #5a3070}
+.badge-pill.gray{background:#202026;color:#a09fa8;border:1px solid #363640}
+
+.hof-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px;margin-bottom:24px}
+.hof-card{padding:18px;background:#17171d;border:1px solid #2d2d38;border-radius:8px;position:relative;overflow:hidden;display:flex;flex-direction:column;justify-content:space-between}
+.hof-card.gold-card{border-color:#6e501e;background:linear-gradient(135deg,#23190d,#16161c 65%)}
+.hof-card.red-card{border-color:#6b242e;background:linear-gradient(135deg,#261216,#16161c 65%)}
+.hof-card-icon{font-size:26px;margin-bottom:8px}
+.hof-card-val{font:800 32px 'Barlow Condensed';line-height:1;margin:4px 0 2px;color:#f5f3f0}
+.hof-card-title{font:800 13px 'DM Sans';letter-spacing:.6px;text-transform:uppercase;color:#8e8c95}
+.hof-card-holder{display:flex;align-items:center;gap:8px;margin-top:12px;padding-top:10px;border-top:1px solid #282832;font-size:12px}
 
 /* ---- Player selection tiles (Create tournament & Roster editor) ---- */
 .t-player-tile{display:flex;align-items:center;gap:10px;padding:10px 12px;background:#141419;border:1px solid #2e2e38;border-radius:6px;cursor:pointer;transition:border-color .15s,background .15s;user-select:none}
@@ -1514,26 +1570,28 @@ function historyList(p){
 function tournamentFinish(t,p){
   if(t.champion===p)return {place:1,label:'1st',note:'Champion',cls:'gold'};
   let cache=t.topCutCache,inCut=false;
-  if(cache&&Array.isArray(cache.participants))inCut=cache.participants.includes(p);
-  else{try{inCut=qualified(t).some(x=>x.p===p)}catch(e){inCut=false}}
-  if(inCut){
-    /* the last bracket match they lost tells us how far they got */
-    let losses=(cache?.results||[]).filter(m=>(m.p1===p&&+m.s2>+m.s1)||(m.p2===p&&+m.s1>+m.s2));
-    let last=losses.sort((a,b)=>(b.completedAt||0)-(a.completedAt||0))[0];
-    let title=last?.title||'';
-    if(/grand final|final/i.test(title)&&!/semi|quarter/i.test(title))
-      return {place:2,label:'2nd',note:'Runner-up',cls:'silver'};
-    return {place:3,label:'Top Cut',note:title?'Out in '+title:(cache?.complete?'Reached Top Cut':'In the Top Cut'),cls:'cut'};
+  let isTopCutLive=(t.phase==='topcut'||t.status==='COMPLETE'||!!t.bracketManagerData);
+  if(isTopCutLive){
+    if(cache&&Array.isArray(cache.participants)&&cache.participants.length)inCut=cache.participants.includes(p);
+    else if(t.finalStandings)inCut=Object.values(t.finalStandings).some(arr=>arr.slice(0,advancePerGroup(t)).includes(p));
+    if(inCut){
+      let losses=(cache?.results||[]).filter(m=>(m.p1===p&&+m.s2>+m.s1)||(m.p2===p&&+m.s1>+m.s2));
+      let last=losses.sort((a,b)=>(b.completedAt||0)-(a.completedAt||0))[0];
+      let title=last?.title||'';
+      if(/grand final|final/i.test(title)&&!/semi|quarter/i.test(title))
+        return {place:2,label:'2nd',note:'Runner-up',cls:'silver'};
+      return {place:3,label:'Top Cut',note:title?'Out in '+title:(cache?.complete?'Reached Top Cut':(t.status==='COMPLETE'?'Top Cut':'In Top Cut')),cls:'cut'};
+    }
   }
   /* group stage only — report where they placed in their own group */
   let entry=Object.entries(groupsOf(t)).find(([,ps])=>ps.includes(p));
   if(entry){
     try{
       let stand=getStand(t,entry[0]),idx=stand.findIndex(x=>x.p===p);
-      if(idx>-1)return {place:100+idx,label:ordinal(idx+1),note:(Object.keys(groupsOf(t)).length>1?entry[0]+' · ':'')+'group stage',cls:''};
+      if(idx>-1)return {place:100+idx,label:ordinal(idx+1),note:(Object.keys(groupsOf(t)).length>1?entry[0]+' · ':'')+(t.status==='COMPLETE'?'group stage':'current rank'),cls:''};
     }catch(e){}
   }
-  return {place:999,label:'—',note:'Group stage',cls:''}
+  return {place:999,label:'—',note:t.status==='COMPLETE'?'Group stage':'Participating',cls:''};
 }
 function ordinal(n){let s=['th','st','nd','rd'],v=n%100;return n+(s[(v-20)%10]||s[v]||s[0])}
 function pastTournaments(p){
@@ -1563,6 +1621,7 @@ function openProfile(p){
   let faceArt=profilePictures[p]?`url('${esc(profilePictures[p])}')`:(teamCovers[p]?`url('${esc(teamCovers[p])}')`:fallbackArt(p));
   let faceLetter=(profilePictures[p]||teamCovers[p])?'':esc((p||'?')[0]);
   let team=profiles[p]?.team&&profiles[p].team!=='No default team'?profiles[p].team:'No default team';
+  let pBadges=(calculateLeagueRecords().statsByPlayer[p]?.badges)||[];
 
   document.querySelector('#modal').innerHTML=`<div class="modal-wrap"><div class="modal" style="max-width:860px">
     <div class="modal-head"><div><div class="eyebrow">Player Profile</div><h2>${esc(p)}</h2></div><button class="close" onclick="closeModal()">×</button></div>
@@ -1600,6 +1659,15 @@ function openProfile(p){
           <div class="pf-trophy-banner">
             <div class="pf-trophy-title">🏆 Championships</div>
             ${career.championshipCups.map(c=>`<div class="pf-trophy-item">${esc(c)}</div>`).join('')}
+          </div>
+        `:''}
+
+        ${pBadges.length?`
+          <div style="background:#131318;border:1px solid #2b2b35;border-radius:8px;padding:12px">
+            <div class="eyebrow" style="margin-bottom:8px">Hall of Fame Badges (${pBadges.length})</div>
+            <div style="display:flex;flex-wrap:wrap;gap:6px">
+              ${pBadges.map(b=>`<span class="badge-pill ${b.color}" title="${esc(b.desc)}">${b.icon} ${esc(b.name)}</span>`).join('')}
+            </div>
           </div>
         `:''}
 
@@ -1767,7 +1835,7 @@ function Account(){
               <div class="acct-tool-icon">👥</div>
               <div class="acct-tool-body">
                 <h4>Player Profiles</h4>
-                <p>Create, edit, or delete league trainers and set default team names.</p>
+                <p>Create, edit, or delete league trainers and set default teams.</p>
               </div>
               <button class="btn ghost btn-sm" onclick="event.stopPropagation();openProfileManager()">Manage Profiles</button>
             </div>
@@ -1776,7 +1844,7 @@ function Account(){
               <div class="acct-tool-icon">🔗</div>
               <div class="acct-tool-body">
                 <h4>Link Accounts</h4>
-                <p>Connect user accounts to player profiles for predictions and access.</p>
+                <p>Connect user accounts to player profiles for predictions.</p>
               </div>
               <button class="btn ghost btn-sm" onclick="event.stopPropagation();openAccountLinks()">Link Accounts</button>
             </div>
@@ -1785,7 +1853,7 @@ function Account(){
               <div class="acct-tool-icon">⚔️</div>
               <div class="acct-tool-body">
                 <h4>Tournament Players</h4>
-                <p>Configure participants, group allocations, and tournament team names.</p>
+                <p>Set participants, group placements, and tournament teams.</p>
               </div>
               <button class="btn ghost btn-sm" onclick="event.stopPropagation();openTournamentPlayers()">Edit Rosters</button>
             </div>
@@ -1794,7 +1862,7 @@ function Account(){
               <div class="acct-tool-icon">🏆</div>
               <div class="acct-tool-body">
                 <h4>New Tournament</h4>
-                <p>Start a new tournament season with custom groups and qualifiers.</p>
+                <p>Start a new season with custom groups and qualifiers.</p>
               </div>
               <button class="btn ghost btn-sm" onclick="event.stopPropagation();openCreator()">New Season</button>
             </div>
@@ -1984,6 +2052,455 @@ function predictions(t=activeT()){
     ${games.length?'<p class="versus-hint">Tap a side to lock in your pick. Each matchup locks once it is scored.</p>':''}
     ${games.map(m=>block('8 points · '+(m.group||'Group A'),'Who wins: '+m.a+' vs '+m.b,[m.a,m.b],m.as!==''&&m.bs!=='')).join('')}
   </div>${leaderboard}</div>`
+}
+
+/* ══ 4. HALL OF FAME & LEAGUE RECORDS ENGINE ═══════════════════════ */
+function getChronologicalMatches(){
+  let sortedTournaments=Object.values(tournamentData).sort((a,b)=>{
+    let da=Date.parse(a.start)||0,db=Date.parse(b.start)||0;
+    if(da!==db)return da-db;
+    let sa=Number(String(a.season).replace(/\D/g,''))||0;
+    let sb=Number(String(b.season).replace(/\D/g,''))||0;
+    return sa-sb;
+  });
+
+  let allMatches=[];
+  sortedTournaments.forEach(t=>{
+    (t.matches||[]).forEach((m,idx)=>{
+      if(m.as!==''&&m.bs!==''&&m.as!=null&&m.bs!=null&&+m.as!==+m.bs){
+        allMatches.push({
+          tournament:t,
+          tournamentId:t.id,
+          tournamentName:t.name,
+          stage:'group',
+          a:m.a,
+          b:m.b,
+          sa:+m.as,
+          sb:+m.bs,
+          winner:+m.as>+m.bs?m.a:m.b,
+          loser:+m.as>+m.bs?m.b:m.a,
+          time:m.completedAt||(t.start?Date.parse(t.start)+idx*1000:idx*1000)
+        });
+      }
+    });
+
+    (t.topCutCache?.results||[]).forEach((m,idx)=>{
+      if(m.s1!==''&&m.s2!==''&&m.s1!=null&&m.s2!=null&&+m.s1!==+m.s2){
+        allMatches.push({
+          tournament:t,
+          tournamentId:t.id,
+          tournamentName:t.name,
+          stage:'topcut',
+          a:m.p1,
+          b:m.p2,
+          sa:+m.s1,
+          sb:+m.s2,
+          winner:+m.s1>+m.s2?m.p1:m.p2,
+          loser:+m.s1>+m.s2?m.p2:m.p1,
+          time:m.completedAt||(t.end?Date.parse(t.end)+idx*1000:1000000000000+idx*1000)
+        });
+      }
+    });
+  });
+
+  allMatches.sort((a,b)=>a.time-b.time);
+  return {sortedTournaments,allMatches};
+}
+
+function calculateLeagueRecords(){
+  let {sortedTournaments,allMatches}=getChronologicalMatches();
+  let allPlayers=Object.keys(profiles);
+  sortedTournaments.forEach(t=>(t.players||[]).forEach(p=>{if(!allPlayers.includes(p))allPlayers.push(p)}));
+
+  let statsByPlayer={};
+  allPlayers.forEach(p=>{
+    statsByPlayer[p]={
+      player:p,
+      matches:[],
+      wins:0,
+      losses:0,
+      maxWinStreak:0,
+      currentWinStreak:0,
+      maxLossStreak:0,
+      currentLossStreak:0,
+      bestGD:-999,
+      bestGDTournament:'',
+      tournamentFinishes:[],
+      badges:[]
+    };
+  });
+
+  allMatches.forEach(m=>{
+    if(statsByPlayer[m.a])statsByPlayer[m.a].matches.push({won:m.winner===m.a,match:m});
+    if(statsByPlayer[m.b])statsByPlayer[m.b].matches.push({won:m.winner===m.b,match:m});
+  });
+
+  allPlayers.forEach(p=>{
+    let s=statsByPlayer[p];
+    let curW=0,maxW=0,curL=0,maxL=0;
+    s.matches.forEach(item=>{
+      if(item.won){
+        curW++;
+        curL=0;
+        if(curW>maxW)maxW=curW;
+      }else{
+        curL++;
+        curW=0;
+        if(curL>maxL)maxL=curL;
+      }
+    });
+    s.wins=s.matches.filter(x=>x.won).length;
+    s.losses=s.matches.filter(x=>!x.won).length;
+    s.maxWinStreak=maxW;
+    s.currentWinStreak=curW;
+    s.maxLossStreak=maxL;
+    s.currentLossStreak=curL;
+  });
+
+  sortedTournaments.forEach(t=>{
+    let isCompleteOrTopCut=(t.phase==='topcut'||t.status==='COMPLETE'||!!t.bracketManagerData);
+
+    (t.players||[]).forEach(p=>{
+      let rec=tournamentRecord(t,p);
+      let [w,l]=rec.split('-').map(Number);
+      let finish=tournamentFinish(t,p);
+
+      let gEntry=Object.entries(groupsOf(t)).find(([,ps])=>ps.includes(p));
+      let gStand=gEntry?getStand(t,gEntry[0]).find(x=>x.p===p):null;
+      let gd=gStand?(gStand.gw-gStand.gl):0;
+      let gSeed=gStand?getStand(t,gEntry[0]).indexOf(gStand)+1:0;
+      let groupSize=gEntry?groupsOf(t)[gEntry[0]]?.length||4:4;
+
+      if(statsByPlayer[p]){
+        if(gd>statsByPlayer[p].bestGD){
+          statsByPlayer[p].bestGD=gd;
+          statsByPlayer[p].bestGDTournament=t.name;
+        }
+
+        statsByPlayer[p].tournamentFinishes.push({
+          tournament:t,
+          finish,
+          w:w||0,
+          l:l||0,
+          gd,
+          gSeed,
+          groupSize
+        });
+
+        // Perfect run / Undefeated Champion
+        if(finish.place===1&&(l||0)===0&&(w||0)>0){
+          statsByPlayer[p].badges.push({
+            id:'undefeated-'+t.id,
+            icon:'🛡️',
+            name:`Undefeated Champ (${t.name})`,
+            desc:`Won ${t.name} without a single match loss (${w}-0)`,
+            category:'championship',
+            color:'gold'
+          });
+        }
+
+        // Cinderella Run: Overperformed expectations in general for this tournament
+        let isLowSeed=(gSeed>=3||(gSeed===2&&groupSize<=3));
+        let reachedCut=isCompleteOrTopCut&&(finish.place<=3);
+        let reachedFinals=(finish.place===1||finish.place===2);
+        let upsetRun=isLowSeed&&reachedCut;
+        let surpriseFinalist=reachedFinals&&(isLowSeed||(w>l&&gSeed>=2));
+
+        if(upsetRun||surpriseFinalist){
+          statsByPlayer[p].badges.push({
+            id:'cinderella-'+t.id,
+            icon:'👠',
+            name:`Cinderella Run (${t.name})`,
+            desc:`Overperformed expectations in ${t.name}, advancing to ${finish.label} (${finish.note})`,
+            category:'miracle',
+            color:'purple'
+          });
+        }
+      }
+    });
+  });
+
+  // Most Improved badges across consecutive tournaments
+  allPlayers.forEach(p=>{
+    let s=statsByPlayer[p];
+    let tf=s.tournamentFinishes;
+    for(let i=1;i<tf.length;i++){
+      let prev=tf[i-1],curr=tf[i];
+      let prevPlace=prev.finish.place,currPlace=curr.finish.place;
+      let isBigJump=(prevPlace>3&&currPlace<=3)||(prev.w<=1&&curr.w>=3&&currPlace<=3);
+      if(isBigJump){
+        s.badges.push({
+          id:'improved-'+curr.tournament.id,
+          icon:'🚀',
+          name:`Most Improved (${curr.tournament.name})`,
+          desc:`Breakout leap in ${curr.tournament.name} (${curr.finish.label}) compared to ${prev.tournament.name} (${prev.finish.label})`,
+          category:'improvement',
+          color:'green'
+        });
+      }
+    }
+  });
+
+  // Global Leaders
+  let maxWinAll=Math.max(0,...allPlayers.map(p=>statsByPlayer[p].maxWinStreak));
+  let maxActiveWinAll=Math.max(0,...allPlayers.map(p=>statsByPlayer[p].currentWinStreak));
+  let maxLossAll=Math.max(0,...allPlayers.map(p=>statsByPlayer[p].maxLossStreak));
+  let maxActiveLossAll=Math.max(0,...allPlayers.map(p=>statsByPlayer[p].currentLossStreak));
+  let maxTitlesAll=Math.max(0,...allPlayers.map(p=>(profiles[p]?.cups||[]).length));
+  let maxTopsAll=Math.max(0,...allPlayers.map(p=>Number(profiles[p]?.tops)||0));
+
+  allPlayers.forEach(p=>{
+    let s=statsByPlayer[p];
+    let career=playerCareerStats(p);
+
+    if(s.maxWinStreak>=3&&s.maxWinStreak===maxWinAll){
+      s.badges.push({
+        id:'record-win-streak',
+        icon:'🔥',
+        name:`All-Time Streak King (${s.maxWinStreak}W)`,
+        desc:`Holds the all-time league record of ${s.maxWinStreak} consecutive match wins`,
+        category:'streak',
+        color:'red'
+      });
+    }else if(s.maxWinStreak>=4){
+      s.badges.push({
+        id:'high-win-streak',
+        icon:'🔥',
+        name:`${s.maxWinStreak}x Win Streak`,
+        desc:`Won ${s.maxWinStreak} consecutive matches`,
+        category:'streak',
+        color:'red'
+      });
+    }
+
+    if(s.currentWinStreak>=2&&s.currentWinStreak===maxActiveWinAll){
+      s.badges.push({
+        id:'active-win-streak',
+        icon:'⚡',
+        name:`On Fire (${s.currentWinStreak}W)`,
+        desc:`Current active win streak of ${s.currentWinStreak} matches`,
+        category:'streak',
+        color:'amber'
+      });
+    }
+
+    if(s.currentLossStreak>=3&&s.currentLossStreak===maxActiveLossAll){
+      s.badges.push({
+        id:'active-loss-streak',
+        icon:'❄️',
+        name:`Cold Slump (${s.currentLossStreak}L)`,
+        desc:`Current active slump of ${s.currentLossStreak} matches`,
+        category:'streak',
+        color:'blue'
+      });
+    }
+
+    if(career.titles>0){
+      s.badges.push({
+        id:'champion-badge',
+        icon:'👑',
+        name:career.titles===1?'League Champion':`${career.titles}x Champion`,
+        desc:`Won: ${career.championshipCups.join(', ')}`,
+        category:'trophy',
+        color:'gold'
+      });
+    }
+
+    if(career.topCuts>=2){
+      s.badges.push({
+        id:'top-cut-veteran',
+        icon:'⚔️',
+        name:`${career.topCuts}x Top Cut`,
+        desc:`Reached Top Cut in ${career.topCuts} tournaments`,
+        category:'playoffs',
+        color:'silver'
+      });
+    }
+
+    let totalGames=s.wins+s.losses;
+    if(totalGames>=5&&career.winPct>=70){
+      s.badges.push({
+        id:'win-pct-elite',
+        icon:'🎯',
+        name:`${career.winPct}% Win Rate`,
+        desc:`Career record of ${career.record} (${career.winPct}% win rate)`,
+        category:'efficiency',
+        color:'green'
+      });
+    }
+
+    if(s.bestGD>=5){
+      s.badges.push({
+        id:'blowout-king',
+        icon:'💥',
+        name:`+${s.bestGD} GD (${s.bestGDTournament})`,
+        desc:`Dominant +${s.bestGD} game differential in ${s.bestGDTournament}`,
+        category:'dominance',
+        color:'amber'
+      });
+    }
+
+    if(totalGames>=8){
+      s.badges.push({
+        id:'iron-trainer',
+        icon:'🏅',
+        name:'Iron Trainer',
+        desc:`Fought in ${totalGames} career matches`,
+        category:'veteran',
+        color:'gray'
+      });
+    }
+  });
+
+  return {
+    statsByPlayer,
+    records:{
+      maxWinStreak:{value:maxWinAll,holders:allPlayers.filter(p=>statsByPlayer[p].maxWinStreak===maxWinAll&&maxWinAll>0)},
+      activeWinStreak:{value:maxActiveWinAll,holders:allPlayers.filter(p=>statsByPlayer[p].currentWinStreak===maxActiveWinAll&&maxActiveWinAll>0)},
+      maxLossStreak:{value:maxLossAll,holders:allPlayers.filter(p=>statsByPlayer[p].maxLossStreak===maxLossAll&&maxLossAll>0)},
+      activeLossStreak:{value:maxActiveLossAll,holders:allPlayers.filter(p=>statsByPlayer[p].currentLossStreak===maxActiveLossAll&&maxActiveLossAll>0)},
+      maxTitles:{value:maxTitlesAll,holders:allPlayers.filter(p=>(profiles[p]?.cups||[]).length===maxTitlesAll&&maxTitlesAll>0)},
+      maxTopCuts:{value:maxTopsAll,holders:allPlayers.filter(p=>Number(profiles[p]?.tops)===maxTopsAll&&maxTopsAll>0)}
+    }
+  };
+}
+
+function Records(){
+  let {statsByPlayer,records}=calculateLeagueRecords();
+  let r=recapRankings();
+
+  return head('Hall of Fame','League Records & Historic Milestones')
+    +`<div class="hof-grid">
+      <div class="hof-card gold-card">
+        <div>
+          <div class="hof-card-icon">🔥</div>
+          <div class="hof-card-title">All-Time Win Streak</div>
+          <div class="hof-card-val">${records.maxWinStreak.value} <span style="font-size:18px;font-weight:600;color:#9d9ba4">Matches</span></div>
+        </div>
+        <div class="hof-card-holder">
+          <span style="font-size:11px;color:#8e8c95">Record Holder:</span>
+          <b>${records.maxWinStreak.holders.length?records.maxWinStreak.holders.map(p=>playerLink(p)).join(', '):'—'}</b>
+        </div>
+      </div>
+
+      <div class="hof-card">
+        <div>
+          <div class="hof-card-icon">⚡</div>
+          <div class="hof-card-title">Active Win Streak</div>
+          <div class="hof-card-val">${records.activeWinStreak.value} <span style="font-size:18px;font-weight:600;color:#9d9ba4">Matches</span></div>
+        </div>
+        <div class="hof-card-holder">
+          <span style="font-size:11px;color:#8e8c95">Current Leader:</span>
+          <b>${records.activeWinStreak.holders.length?records.activeWinStreak.holders.map(p=>playerLink(p)).join(', '):'—'}</b>
+        </div>
+      </div>
+
+      <div class="hof-card gold-card">
+        <div>
+          <div class="hof-card-icon">👑</div>
+          <div class="hof-card-title">Championship Titles</div>
+          <div class="hof-card-val">${records.maxTitles.value} <span style="font-size:18px;font-weight:600;color:#9d9ba4">Titles</span></div>
+        </div>
+        <div class="hof-card-holder">
+          <span style="font-size:11px;color:#8e8c95">Most Trophies:</span>
+          <b>${records.maxTitles.holders.length?records.maxTitles.holders.map(p=>playerLink(p)).join(', '):'—'}</b>
+        </div>
+      </div>
+
+      <div class="hof-card">
+        <div>
+          <div class="hof-card-icon">⚔️</div>
+          <div class="hof-card-title">Top Cut Appearances</div>
+          <div class="hof-card-val">${records.maxTopCuts.value} <span style="font-size:18px;font-weight:600;color:#9d9ba4">Playoffs</span></div>
+        </div>
+        <div class="hof-card-holder">
+          <span style="font-size:11px;color:#8e8c95">Playoff Leaders:</span>
+          <b>${records.maxTopCuts.holders.length?records.maxTopCuts.holders.map(p=>playerLink(p)).join(', '):'—'}</b>
+        </div>
+      </div>
+
+      <div class="hof-card">
+        <div>
+          <div class="hof-card-icon">❄️</div>
+          <div class="hof-card-title">All-Time Cold Streak</div>
+          <div class="hof-card-val">${records.maxLossStreak.value} <span style="font-size:18px;font-weight:600;color:#9d9ba4">Matches</span></div>
+        </div>
+        <div class="hof-card-holder">
+          <span style="font-size:11px;color:#8e8c95">Historic Slump:</span>
+          <b>${records.maxLossStreak.holders.length?records.maxLossStreak.holders.map(p=>playerLink(p)).join(', '):'—'}</b>
+        </div>
+      </div>
+
+      <div class="hof-card">
+        <div>
+          <div class="hof-card-icon">🧊</div>
+          <div class="hof-card-title">Active Loss Streak</div>
+          <div class="hof-card-val">${records.activeLossStreak.value} <span style="font-size:18px;font-weight:600;color:#9d9ba4">Matches</span></div>
+        </div>
+        <div class="hof-card-holder">
+          <span style="font-size:11px;color:#8e8c95">Current Slump:</span>
+          <b>${records.activeLossStreak.holders.length?records.activeLossStreak.holders.map(p=>playerLink(p)).join(', '):'—'}</b>
+        </div>
+      </div>
+    </div>
+
+    <section class="section">
+      <div class="section-head">
+        <h2>HALL OF FAME LEADERBOARD & BADGES</h2>
+        <span class="sub">Career achievements, streaks, and tournament accolades</span>
+      </div>
+      <div class="card table-wrap">
+        <table class="standings">
+          <thead>
+            <tr>
+              <th style="width:32px;text-align:center">#</th>
+              <th>Trainer / Team</th>
+              <th>Accolades & Badges</th>
+              <th style="text-align:center;white-space:nowrap">Career W-L</th>
+              <th style="text-align:center;white-space:nowrap">Win %</th>
+              <th style="text-align:center;white-space:nowrap">Best Streak</th>
+              <th style="text-align:center;white-space:nowrap">Active</th>
+              <th style="text-align:center;white-space:nowrap">Titles</th>
+              <th style="text-align:center;white-space:nowrap">Top Cuts</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${r.map((x,i)=>{
+              let p=x.p;
+              let s=statsByPlayer[p]||{};
+              let career=playerCareerStats(p);
+              let badges=s.badges||[];
+              let faceArt=profilePictures[p]?`url('${esc(profilePictures[p])}')`:(teamCovers[p]?`url('${esc(teamCovers[p])}')`:fallbackArt(p));
+              let faceLetter=(profilePictures[p]||teamCovers[p])?'':esc((p||'?')[0]);
+
+              return `<tr>
+                <td class="rank" style="text-align:center">${i+1}</td>
+                <td class="player">
+                  <div style="display:flex;align-items:center;gap:9px">
+                    <span class="mrow-face" style="background-image:${faceArt};background-size:cover;background-position:center;width:30px;height:30px;font-size:13px;border-radius:50%;flex:none;display:grid;place-items:center;border:1px solid #ffffff1f">${faceLetter}</span>
+                    <div style="min-width:0">
+                      <div style="font-size:13px;font-weight:800;line-height:1.2">${playerLink(p)}</div>
+                      <span class="team" style="margin-top:2px">${esc(profiles[p]?.team||'')}</span>
+                    </div>
+                  </div>
+                </td>
+                <td>
+                  <div style="display:flex;flex-wrap:wrap;gap:4px">
+                    ${badges.length?badges.map(b=>`<span class="badge-pill ${b.color}" title="${esc(b.desc)}">${b.icon} ${esc(b.name)}</span>`).join(''):'<span style="color:#6d6b75;font-size:11px">—</span>'}
+                  </div>
+                </td>
+                <td style="text-align:center;white-space:nowrap"><b>${esc(career.record)}</b></td>
+                <td style="text-align:center;white-space:nowrap">${career.winPct}%</td>
+                <td style="text-align:center;white-space:nowrap;color:${s.maxWinStreak>=3?'#ff8e95':'inherit'}">${s.maxWinStreak>0?`${s.maxWinStreak}W`:'—'}</td>
+                <td style="text-align:center;white-space:nowrap">${s.currentWinStreak>0?`<span style="color:#7df0aa;font-weight:800">${s.currentWinStreak}W</span>`:(s.currentLossStreak>0?`<span style="color:#ff8e95">${s.currentLossStreak}L</span>`:'—')}</td>
+                <td style="text-align:center;white-space:nowrap">${career.titles>0?`<b>${career.titles}</b>`:'0'}</td>
+                <td style="text-align:center;white-space:nowrap">${career.topCuts>0?`<b>${career.topCuts}</b>`:'0'}</td>
+              </tr>`;
+            }).join('')}
+          </tbody>
+        </table>
+      </div>
+    </section>`;
 }
 
 /* ══ 6 & 7. MODERATOR CONTROLS MOVED TO THE TOURNAMENT PAGE ════════ */
