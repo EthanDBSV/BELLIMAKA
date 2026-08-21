@@ -3996,9 +3996,12 @@ function calculateLeagueRecords(){
 
       let gEntry=Object.entries(groupsOf(t)).find(([,ps])=>ps.includes(p));
       let gStand=gEntry?getStand(t,gEntry[0]).find(x=>x.p===p):null;
+      let gw=gStand?(gStand.w||0):0;
+      let gl=gStand?(gStand.l||0):0;
       let gd=gStand?(gStand.gw-gStand.gl):0;
       let gSeed=gStand?getStand(t,gEntry[0]).indexOf(gStand)+1:0;
       let groupSize=gEntry?groupsOf(t)[gEntry[0]]?.length||4:4;
+      let gComplete=isGroupComplete(t,gEntry?.[0])||isCompleteOrTopCut;
 
       if(statsByPlayer[p]){
         if(gd>statsByPlayer[p].bestGD){
@@ -4011,20 +4014,35 @@ function calculateLeagueRecords(){
           finish,
           w:w||0,
           l:l||0,
+          gw,
+          gl,
+          gComplete,
           gd,
           gSeed,
           groupSize
         });
 
-        // Perfect run / Undefeated Champion
-        if(finish.place===1&&(l||0)===0&&(w||0)>0){
+        // Perfect run / Undefeated Champion (Whole tournament without a loss)
+        if(finish.place===1&&(l||0)===0&&(w||0)>=2){
           statsByPlayer[p].badges.push({
-            id:'undefeated-'+t.id,
-            icon:'🛡️',
+            id:'undefeated-champ-'+t.id,
+            icon:'👑',
             name:`Undefeated Champ (${t.name})`,
-            desc:`Won ${t.name} without a single match loss (${w}-0)`,
+            desc:`Won ${t.name} without dropping a single match (${w}-0)`,
             category:'championship',
             color:'gold'
+          });
+        }
+
+        // Undefeated Group Stage (Flawless in group stage)
+        if(gComplete&&gw>=2&&gl===0){
+          statsByPlayer[p].badges.push({
+            id:'undefeated-group-'+t.id,
+            icon:'🛡️',
+            name:`Undefeated Group (${t.name})`,
+            desc:`Flawless group stage without a single match loss (${gw}-0) in ${t.name}`,
+            category:'dominance',
+            color:'blue'
           });
         }
 
@@ -4113,6 +4131,7 @@ function calculateLeagueRecords(){
     let s=statsByPlayer[p];
     let career=playerCareerStats(p);
 
+    // All-Time Record Streak King (Permanent Hall of Fame badge for the #1 all-time record holder)
     if(s.maxWinStreak>=3&&s.maxWinStreak===maxWinAll){
       s.badges.push({
         id:'record-win-streak',
@@ -4122,28 +4141,21 @@ function calculateLeagueRecords(){
         category:'streak',
         color:'red'
       });
-    }else if(s.maxWinStreak>=4){
-      s.badges.push({
-        id:'high-win-streak',
-        icon:'🔥',
-        name:`${s.maxWinStreak}x Win Streak`,
-        desc:`Won ${s.maxWinStreak} consecutive matches`,
-        category:'streak',
-        color:'red'
-      });
     }
 
-    if(s.currentWinStreak>=2&&s.currentWinStreak===maxActiveWinAll){
+    // Active Win Streak (TEMPORARY: Only shown while the player is currently riding a 3+ match win streak)
+    if(s.currentWinStreak>=3){
       s.badges.push({
         id:'active-win-streak',
         icon:'⚡',
         name:`On Fire (${s.currentWinStreak}W)`,
-        desc:`Current active win streak of ${s.currentWinStreak} matches`,
+        desc:`Currently riding an active streak of ${s.currentWinStreak} consecutive match wins`,
         category:'streak',
         color:'amber'
       });
     }
 
+    // Active Cold Slump (TEMPORARY: Only shown while the player is on an active 3+ match loss slump)
     if(s.currentLossStreak>=3&&s.currentLossStreak===maxActiveLossAll){
       s.badges.push({
         id:'active-loss-streak',
@@ -4194,19 +4206,6 @@ function calculateLeagueRecords(){
         color:'silver'
       });
     }
-
-    s.tournamentFinishes.forEach(tf=>{
-      if(tf.w>=2&&tf.l===0){
-        s.badges.push({
-          id:'undefeated-group-'+tf.tournament.id,
-          icon:'🛡️',
-          name:`Undefeated Group (${tf.tournament.name})`,
-          desc:`Flawless group stage without a single match loss (${tf.w}-0) in ${tf.tournament.name}`,
-          category:'dominance',
-          color:'blue'
-        });
-      }
-    });
 
     let totalGames=s.wins+s.losses;
     if(totalGames>=5&&career.winPct>=70){
