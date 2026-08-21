@@ -512,7 +512,7 @@ function historyTournamentOptions(){let past=Object.values(tournamentData).filte
 function openProfile(p){let q=ensureProfile(p);document.querySelector('#modal').innerHTML=`<div class="modal-wrap"><div class="modal"><div class="modal-head"><div><div class="eyebrow">Player profile · linked account</div><h2>${p}</h2></div><button class="close" onclick="closeModal()">×</button></div><div class="profile-layout" style="margin-top:18px"><aside class="card profile-card"><div class="avatar" style="background:${profileArt(p)}">${profilePictures[p]||teamCovers[p]?``:p[0]}</div><div class="profile-name">${p}</div><div class="mini-stats"><div><b>${q.cups.length}x</b><span>Champion</span></div><div><b>${q.tops}x</b><span>Top Cut</span></div><div><b>${q.record}</b><span>All-time W-L</span></div></div>${q.cups.length?`<div style="margin-top:14px"><div class="card-title">Championships</div>${q.cups.map(c=>`<div class="sub" style="margin-top:4px">🏆 ${c}</div>`).join('')}</div>`:''}${moderator?`<div class="card" style="padding:14px;margin-top:14px;background:#111116;border-color:#32323a"><div class="eyebrow">Profile art</div><div class="sub" style="margin-top:6px">Update the player photo and the team cover used across the site.</div><div class="creator-actions" style="justify-content:flex-start;flex-wrap:wrap"><button class="btn ghost" onclick="openProfilePictureEditor('${p}')">Edit profile picture</button><button class="btn ghost" onclick="openTeamCoverEditor('${p}')">Edit team cover</button></div></div>`:''}</aside><section class="card roster-editor"><div class="card-title">Current roster</div>${moderator?`<div class="poke-search"><input id="newMon" placeholder="Search / add a Pokémon"><button class="btn" onclick="addMon('${p}')">Add</button></div>`:''}<div class="roster-edit-list" id="rosterList">${rosterList(p)}</div><div class="section"><div class="card-title">Team history</div>${historyList(p)}${moderator?`<div class="card" style="padding:14px;margin-top:12px"><div class="field"><label>Previous tournament</label><select id="historyTournament">${historyTournamentOptions()}</select></div><div class="field"><label>Team name in that tournament</label><input id="historyTeam" placeholder="e.g. Obsidian Owls"></div><button class="btn ghost" style="margin-top:12px" onclick="addHistoryTeam('${p}')">+ Add historical team</button></div>`:''}</div></section></div></div></div>`}
 function addHistoryTeam(p){let tournament=document.querySelector('#historyTournament').value,team=document.querySelector('#historyTeam').value.trim()||'Unnamed team';if(tournament==='No completed tournaments yet'){alert('Complete a tournament first.');return}teamHistory[p]??=[];teamHistory[p].push({tournament,team,pokemon:[]});persistLeague();openProfile(p)}
 
-function createTournament(){let name=document.querySelector('#tn').value.trim()||'Untitled Cup',selected=[...document.querySelectorAll('.profileChoice:checked')].map(x=>x.value),newPs=document.querySelector('#newPlayers').value.split(',').map(x=>x.trim()).filter(Boolean);newPs.forEach(p=>{if(!profiles[p]){profiles[p]={team:'Unassigned team',record:'0-0',tops:0,cups:[]};roster[p]=[];teamHistory[p]=[]}if(!selected.includes(p))selected.push(p)});if(selected.length<2){alert('Choose at least two existing profiles or add new players.');return}let stillOngoing=ongoingT();if(stillOngoing){alert(`"${stillOngoing.name}" is still ongoing. End it (from the Top Cut page) or delete it from the archive before starting a new tournament, so its stats aren't lost.`);return}let id='t'+Date.now(),groupCount=Math.min(+document.querySelector('#gc').value,selected.length),perGroup=Math.max(1,+document.querySelector('#ap').value||1);tournamentData[id]={id,name,season:'Season '+(Object.keys(tournamentData).length+1),status:'ONGOING',start:document.querySelector('#sd').value||'TBD',end:document.querySelector('#ed').value||'TBD',regulation:document.querySelector('#tr').value||'Custom regulation',players:selected,groups:groupCount,groupCount,advancePerGroup:perGroup,matches:[],champion:null,pred:selected.map(p=>[p,0])};tournamentData[id].matches=groupSchedule(tournamentData[id]);viewTournament=id;current='Tournament Detail';persistLeague();closeModal();render()}
+function createTournament(){let name=document.querySelector('#tn').value.trim()||'Untitled Cup',selected=[...document.querySelectorAll('.profileChoice:checked')].map(x=>x.value),newPs=document.querySelector('#newPlayers').value.split(',').map(x=>x.trim()).filter(Boolean);newPs.forEach(p=>{if(!profiles[p]){profiles[p]={team:'Unassigned team',record:'0-0',tops:0,cups:[]};roster[p]=[];teamHistory[p]=[]}if(!selected.includes(p))selected.push(p)});if(selected.length<2){alert('Choose at least two existing profiles or add new players.');return}let stillOngoing=ongoingT();if(stillOngoing){alert(`"${stillOngoing.name}" is still ongoing. End it (from the Top Cut page) or delete it from the archive before starting a new tournament, so its stats aren't lost.`);return}let id='t'+Date.now(),groupCount=Math.min(+document.querySelector('#gc').value,selected.length),perGroup=Math.max(1,+document.querySelector('#ap').value||1);tournamentData[id]={id,name,status:'ONGOING',start:document.querySelector('#sd').value||'TBD',end:document.querySelector('#ed').value||'TBD',regulation:document.querySelector('#tr').value||'Custom regulation',players:selected,groups:groupCount,groupCount,advancePerGroup:perGroup,matches:[],champion:null,pred:selected.map(p=>[p,0])};tournamentData[id].matches=groupSchedule(tournamentData[id]);syncTournamentSeasons();viewTournament=id;current='Tournament Detail';rebuildAllPlayerStats();persistLeague();closeModal();render()}
 
 /* Final league-management controls */
 function teamName(t,p){return t&&Object.prototype.hasOwnProperty.call(t,'teamNames')?(t.teamNames[p]||'Unassigned team'):(profiles[p]?.team||'Unassigned team')}
@@ -564,13 +564,14 @@ function TopCut(){
 }
 
 function openTournamentRecordEditor(id){let t=tournamentData[id];if(!t)return;document.querySelector('#modal').innerHTML=`<div class="modal-wrap"><div class="modal" style="max-width:520px"><div class="modal-head"><div><div class="eyebrow">Moderator only</div><h2>Edit tournament record</h2></div><button class="close" onclick="closeModal()">×</button></div><div class="field"><label>Tournament name</label><input id="recordName" value="${esc(t.name)}"></div><div class="field"><label>Start date</label><input id="recordStart" value="${esc(t.start)}"></div><div class="field"><label>End date</label><input id="recordEnd" value="${esc(t.end)}"></div><div class="field"><label>Regulation</label><input id="recordRule" value="${esc(t.regulation)}"></div><p class="sub">Player teams and rosters can be corrected from the Teams / player-profile pages. Editing an old roster updates that player's stored history.</p><div class="creator-actions"><button class="btn" onclick="saveTournamentRecord('${id}')">Save record</button></div></div></div>`}
-function saveTournamentRecord(id){let t=tournamentData[id];if(!t)return;t.name=document.querySelector('#recordName').value.trim()||t.name;t.start=document.querySelector('#recordStart').value.trim()||t.start;t.end=document.querySelector('#recordEnd').value.trim()||t.end;t.regulation=document.querySelector('#recordRule').value.trim()||t.regulation;persistLeague();closeModal()}
+function saveTournamentRecord(id){let t=tournamentData[id];if(!t)return;t.name=document.querySelector('#recordName').value.trim()||t.name;t.start=document.querySelector('#recordStart').value.trim()||t.start;t.end=document.querySelector('#recordEnd').value.trim()||t.end;t.regulation=document.querySelector('#recordRule').value.trim()||t.regulation;syncTournamentSeasons();rebuildAllPlayerStats();persistLeague();closeModal();render()}
 
 function deleteTournament(id){
   let t=tournamentData[id];
   if(!t)return;
   if(!confirm(`Delete "${t.name}" (${t.season})? This cannot be undone.`))return;
   delete tournamentData[id];
+  syncTournamentSeasons();
   if(viewTournament===id){
     viewTournament=ongoingT()?.id||Object.keys(tournamentData)[0]||null;
   }
@@ -633,32 +634,30 @@ function shouldApply(incoming){
   } catch(e){}
   return true;
 }
-function sanitizeRegulationFMatches(){
-  let t=Object.values(tournamentData).find(x=>x.name==='Regulation F'||x.id==='t1787300725961');
-  if(!t||!Array.isArray(t.matches))return;
-  t.matches.forEach(m=>{
-    if((m.a==='Sam'&&m.b==='Trtl')||(m.a==='Trtl'&&m.b==='Sam')){
-      if(m.a==='Sam'){m.as='0';m.bs='2';}else{m.as='2';m.bs='0';}
-    }
-    if((m.a==='Ethan'&&m.b==='Kai')||(m.a==='Kai'&&m.b==='Ethan')){
-      if(m.a==='Ethan'){m.as='1';m.bs='2';}else{m.as='2';m.bs='1';}
-    }
-    if((m.a==='Ethan'&&m.b==='Max')||(m.a==='Max'&&m.b==='Ethan')){
-      if(m.a==='Ethan'){m.as='1';m.bs='2';}else{m.as='2';m.bs='1';}
-    }
-    if((m.a==='Kai'&&m.b==='Max')||(m.a==='Max'&&m.b==='Kai')){
-      if(m.a==='Kai'){m.as='0';m.bs='2';}else{m.as='2';m.bs='0';}
-    }
-    if((m.a==='Kai'&&m.b==='Yamac')||(m.a==='Yamac'&&m.b==='Kai')){
-      if(m.a==='Kai'){m.as='1';m.bs='2';}else{m.as='2';m.bs='1';}
-    }
+function sortedTournamentsChronological(){
+  return Object.values(tournamentData).sort((a,b)=>{
+    let da=Date.parse(a.start)||0, db=Date.parse(b.start)||0;
+    if(da && db && da !== db) return da - db;
+    if(da && !db) return -1;
+    if(!da && db) return 1;
+    let sa=Number(String(a.season||'').replace(/\D/g,''))||0;
+    let sb=Number(String(b.season||'').replace(/\D/g,''))||0;
+    if(sa && sb && sa !== sb) return sa - sb;
+    let ida=Number(String(a.id||'').replace(/\D/g,''))||0;
+    let idb=Number(String(b.id||'').replace(/\D/g,''))||0;
+    if(ida && idb && ida !== idb) return ida - idb;
+    return String(a.id||'').localeCompare(String(b.id||''));
   });
-  t.finalStandings={
-    "Group A":["Ozy","Dao Ming","Trtl","Sam"],
-    "Group B":["Yamac","Max","Kai","Ethan"]
-  };
 }
-function migrateAllBrackets(){Object.values(tournamentData).forEach(migrateLegacyBracket);sanitizeRegulationFMatches();}
+
+function syncTournamentSeasons(){
+  let sorted=sortedTournamentsChronological();
+  sorted.forEach((t, i)=>{
+    t.season = `Season ${i + 1}`;
+  });
+}
+
+function migrateAllBrackets(){Object.values(tournamentData).forEach(migrateLegacyBracket)}
 /* ═══ NATIVE TOP CUT ENGINE — Pokémon Draft League Championship Bracket ═══ */
 function nextPow2(n){let p=1;while(p<n)p*=2;return Math.max(2,p)}
 function hydrateTopCutManager(t){if(!t.bracketManagerData||!window.BracketsManagerLib)return null;try{let storage=new window.BracketsManagerLib.InMemoryDatabase();storage.setData(JSON.parse(JSON.stringify(t.bracketManagerData)));let manager=new window.BracketsManagerLib.BracketsManager(storage);return {manager,storage}}catch(e){return null}}
@@ -1503,7 +1502,7 @@ async function saveTopCutScore(matchId){
   render();
 }
 
-function applySharedState(data){if(!data||!data.tournaments)return;Object.keys(tournamentData).forEach(k=>delete tournamentData[k]);Object.assign(tournamentData,data.tournaments||{});Object.keys(profiles).forEach(k=>delete profiles[k]);Object.assign(profiles,data.profiles||{});Object.keys(roster).forEach(k=>delete roster[k]);Object.assign(roster,data.roster||{});Object.keys(teamHistory).forEach(k=>delete teamHistory[k]);Object.assign(teamHistory,data.teamHistory||{});Object.keys(teamCovers).forEach(k=>delete teamCovers[k]);Object.assign(teamCovers,data.teamCovers||{});Object.keys(profilePictures).forEach(k=>delete profilePictures[k]);Object.assign(profilePictures,data.profilePictures||{});Object.keys(pulsePanelImages).forEach(k=>delete pulsePanelImages[k]);Object.assign(pulsePanelImages,data.pulsePanelImages||{});cut=data.cut||cut;boardLink=data.boardLink||boardLink;try{localStorage.setItem('draftdex-tournaments',JSON.stringify(tournamentData));localStorage.setItem('draftdex-profiles',JSON.stringify(profiles));localStorage.setItem('draftdex-rosters',JSON.stringify(roster));localStorage.setItem('draftdex-history',JSON.stringify(teamHistory));localStorage.setItem('draftdex-teamcovers',JSON.stringify(teamCovers));localStorage.setItem('draftdex-profilepics',JSON.stringify(profilePictures));localStorage.setItem('draftdex-pulsepanels',JSON.stringify(pulsePanelImages));if(data.cut)localStorage.setItem('draftdex-cut',data.cut);if(data.boardLink)localStorage.setItem('draftdex-board',data.boardLink)}catch(e){}migrateAllBrackets();rebuildAllPlayerStats()}
+function applySharedState(data){if(!data||!data.tournaments)return;Object.keys(tournamentData).forEach(k=>delete tournamentData[k]);Object.assign(tournamentData,data.tournaments||{});Object.keys(profiles).forEach(k=>delete profiles[k]);Object.assign(profiles,data.profiles||{});Object.keys(roster).forEach(k=>delete roster[k]);Object.assign(roster,data.roster||{});Object.keys(teamHistory).forEach(k=>delete teamHistory[k]);Object.assign(teamHistory,data.teamHistory||{});Object.keys(teamCovers).forEach(k=>delete teamCovers[k]);Object.assign(teamCovers,data.teamCovers||{});Object.keys(profilePictures).forEach(k=>delete profilePictures[k]);Object.assign(profilePictures,data.profilePictures||{});Object.keys(pulsePanelImages).forEach(k=>delete pulsePanelImages[k]);Object.assign(pulsePanelImages,data.pulsePanelImages||{});cut=data.cut||cut;boardLink=data.boardLink||boardLink;try{localStorage.setItem('draftdex-tournaments',JSON.stringify(tournamentData));localStorage.setItem('draftdex-profiles',JSON.stringify(profiles));localStorage.setItem('draftdex-rosters',JSON.stringify(roster));localStorage.setItem('draftdex-history',JSON.stringify(teamHistory));localStorage.setItem('draftdex-teamcovers',JSON.stringify(teamCovers));localStorage.setItem('draftdex-profilepics',JSON.stringify(profilePictures));localStorage.setItem('draftdex-pulsepanels',JSON.stringify(pulsePanelImages));if(data.cut)localStorage.setItem('draftdex-cut',data.cut);if(data.boardLink)localStorage.setItem('draftdex-board',data.boardLink)}catch(e){}syncTournamentSeasons();migrateAllBrackets();rebuildAllPlayerStats()}
 window.applySharedState = applySharedState;
 var supabaseInited=false;
 async function initSupabase(){if(!supabaseReady()||supabaseInited)return;supabaseInited=true;supabaseClient=window.supabase.createClient(window.DRAFTDEX_SUPABASE.url,window.DRAFTDEX_SUPABASE.anonKey);let {data:{session}}=await supabaseClient.auth.getSession();await updateSession(session);supabaseClient.auth.onAuthStateChange(async(_,s)=>await updateSession(s));supabaseClient.channel('league-state').on('postgres_changes',{event:'UPDATE',schema:'public',table:'league_state',filter:'id=eq.main'},p=>{let incoming=p.new.data;if(shouldApply(incoming)){applySharedState(incoming);render()}}).subscribe()}
@@ -2055,7 +2054,7 @@ function playerCareerStats(p){
   let totalGames=wins+losses,winPct=totalGames>0?Math.round(wins/totalGames*100):0;
   return {wins,losses,record:`${wins}-${losses}`,titles,topCuts,tournaments,winPct,championshipCups};
 }
-function rebuildAllPlayerStats(){if(typeof sanitizeRegulationFMatches==='function')sanitizeRegulationFMatches();Object.keys(profiles).forEach(ensureProfile);Object.values(tournamentData).forEach(t=>{(t.players||[]).forEach(ensureProfile)});Object.keys(profiles).forEach(p=>{let s=playerCareerStats(p);profiles[p].record=s.record;profiles[p].tops=s.topCuts;profiles[p].cups=[...s.championshipCups]})}
+function rebuildAllPlayerStats(){Object.keys(profiles).forEach(ensureProfile);Object.values(tournamentData).forEach(t=>{(t.players||[]).forEach(ensureProfile)});Object.keys(profiles).forEach(p=>{let s=playerCareerStats(p);profiles[p].record=s.record;profiles[p].tops=s.topCuts;profiles[p].cups=[...s.championshipCups]})}
 function resyncTournamentStats(id){let t=tournamentData[id];if(!t){alert('Tournament not found.');return}if(t.status!=='COMPLETE'){alert('Only completed tournaments can be resynced.');return}rebuildAllPlayerStats();persistLeague();render();alert(`Stats resynced for ${t.name}.`)}
 
 
@@ -2137,7 +2136,19 @@ function tournamentCard(t){
 }
 
 function Tournaments(){
-  return head('Tournaments','League archive',moderator?`<button class="btn" onclick="openCreator()">+ New tournament</button>`:'')+`<div class="archive">${Object.values(tournamentData).map(t=>`<div style="position:relative">${tournamentCard(t)}${moderator?`<button class="cover-edit" onclick="event.stopPropagation();openCoverEditor('${t.id}')">Edit cover</button>`:''}</div>`).join('')}</div><p class="sub">Moderators can add a tournament cover image from the archive page.</p>`;
+  let sorted = Object.values(tournamentData).sort((a,b)=>{
+    if(a.status==='ONGOING'&&b.status!=='ONGOING') return -1;
+    if(b.status==='ONGOING'&&a.status!=='ONGOING') return 1;
+    let da=Date.parse(a.start)||0, db=Date.parse(b.start)||0;
+    if(da && db && da !== db) return db - da;
+    if(da && !db) return -1;
+    if(!da && db) return 1;
+    let sa=Number(String(a.season||'').replace(/\D/g,''))||0;
+    let sb=Number(String(b.season||'').replace(/\D/g,''))||0;
+    if(sa && sb && sa !== sb) return sb - sa;
+    return String(b.id||'').localeCompare(String(a.id||''));
+  });
+  return head('Tournaments','League archive',moderator?`<button class="btn" onclick="openCreator()">+ New tournament</button>`:'')+`<div class="archive">${sorted.map(t=>`<div style="position:relative">${tournamentCard(t)}${moderator?`<button class="cover-edit" onclick="event.stopPropagation();openCoverEditor('${t.id}')">Edit cover</button>`:''}</div>`).join('')}</div><p class="sub">Moderators can add a tournament cover image from the archive page.</p>`;
 }
 
 
@@ -3385,7 +3396,16 @@ function ordinal(n){let s=['th','st','nd','rd'],v=n%100;return n+(s[(v-20)%10]||
 function pastTournaments(p){
   let played=Object.values(tournamentData)
     .filter(t=>(t.players||[]).includes(p)||(t.matches||[]).some(m=>m.a===p||m.b===p))
-    .sort((a,b)=>(Date.parse(b.start)||0)-(Date.parse(a.start)||0)||String(b.season||'').localeCompare(String(a.season||'')));
+    .sort((a,b)=>{
+      let da=Date.parse(a.start)||0, db=Date.parse(b.start)||0;
+      if(da && db && da !== db) return db - da;
+      if(da && !db) return -1;
+      if(!da && db) return 1;
+      let sa=Number(String(a.season||'').replace(/\D/g,''))||0;
+      let sb=Number(String(b.season||'').replace(/\D/g,''))||0;
+      if(sa && sb && sa !== sb) return sb - sa;
+      return String(b.id||'').localeCompare(String(a.id||''));
+    });
   if(!played.length)return `<div class="pf-empty">No tournament appearances recorded yet.</div>`;
   return played.map(t=>{
     let rec=tournamentRecord(t,p);
@@ -3960,14 +3980,7 @@ function predictions(t=activeT()){
 
 /* ══ 4. HALL OF FAME & LEAGUE RECORDS ENGINE ═══════════════════════ */
 function getChronologicalMatches(){
-  let sortedTournaments=Object.values(tournamentData).sort((a,b)=>{
-    let da=Date.parse(a.start)||0,db=Date.parse(b.start)||0;
-    if(da!==db)return da-db;
-    let sa=Number(String(a.season).replace(/\D/g,''))||0;
-    let sb=Number(String(b.season).replace(/\D/g,''))||0;
-    return sa-sb;
-  });
-
+  let sortedTournaments=sortedTournamentsChronological();
   let allMatches=[];
   sortedTournaments.forEach((t, tIdx)=>{
     let tBaseTime = (Date.parse(t.start) || (tIdx * 100000000));
@@ -4022,7 +4035,6 @@ function getChronologicalMatches(){
 }
 
 function calculateLeagueRecords(){
-  if(typeof sanitizeRegulationFMatches==='function')sanitizeRegulationFMatches();
   let {sortedTournaments,allMatches}=getChronologicalMatches();
   let allPlayers=Object.keys(profiles);
   sortedTournaments.forEach(t=>(t.players||[]).forEach(p=>{if(!allPlayers.includes(p))allPlayers.push(p)}));
