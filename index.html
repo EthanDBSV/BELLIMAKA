@@ -3276,14 +3276,44 @@ function tournamentFinish(t,p){
   let isTopCutLive=(t.phase==='topcut'||t.status==='COMPLETE'||!!t.bracketManagerData);
   if(isTopCutLive){
     if(cache&&Array.isArray(cache.participants)&&cache.participants.length)inCut=cache.participants.includes(p);
+    else if(cache&&Array.isArray(cache.results))inCut=cache.results.some(x=>x.p1===p||x.p2===p);
     else if(t.finalStandings)inCut=Object.values(t.finalStandings).some(arr=>arr.slice(0,advancePerGroup(t)).includes(p));
     if(inCut){
+      let isChamp=(t.champion===p||(cache?.champion===p));
+      if(isChamp) return {place:1,label:'1st',note:'Champion',cls:'gold'};
+
       let losses=(cache?.results||[]).filter(m=>(m.p1===p&&+m.s2>+m.s1)||(m.p2===p&&+m.s1>+m.s2));
-      let last=losses.sort((a,b)=>(b.completedAt||0)-(a.completedAt||0))[0];
-      let title=last?.title||'';
-      if(/grand final|final/i.test(title)&&!/semi|quarter/i.test(title))
+      if(!losses.length){
+        return {place:3,label:'Top Cut',note:t.status==='COMPLETE'?'Top Cut':'In Top Cut',cls:'cut'};
+      }
+
+      losses.sort((a,b)=>(b.completedAt||0)-(a.completedAt||0));
+      let lastLoss=losses[0];
+      let title=(lastLoss.title||'').toLowerCase();
+
+      if(title.includes('grand final')||title.includes('bracket reset')){
         return {place:2,label:'2nd',note:'Runner-up',cls:'silver'};
-      return {place:3,label:'Top Cut',note:title?'Out in '+title:(cache?.complete?'Reached Top Cut':(t.status==='COMPLETE'?'Top Cut':'In Top Cut')),cls:'cut'};
+      }
+      if(title.includes('losers final')){
+        return {place:3,label:'3rd',note:'3rd Place',cls:'bronze'};
+      }
+      if(title.includes('losers round 3')||title.includes('losers semifinal')){
+        return {place:4,label:'4th',note:'4th Place',cls:'cut'};
+      }
+      if(title.includes('losers round 2')){
+        return {place:5,label:'Top 6',note:'5th-6th Place',cls:'cut'};
+      }
+      if(title.includes('losers round 1')){
+        let count=(cache?.participants||[]).length;
+        if(count<=4){
+          return {place:4,label:'4th',note:'4th Place',cls:'cut'};
+        }
+        return {place:7,label:'Top 8',note:'7th-8th Place',cls:'cut'};
+      }
+      if(title.includes('winners final')){
+        return {place:3,label:'Top 3',note:'Winners Finalist',cls:'bronze'};
+      }
+      return {place:3,label:'Top Cut',note:lastLoss.title||'Top Cut',cls:'cut'};
     }
   }
   /* group stage only — report where they placed in their own group */
@@ -4046,13 +4076,14 @@ function calculateLeagueRecords(){
           });
         }
 
-        // Victim: Lost all group stage matches (min 2 matches played)
-        if(gComplete&&gw===0&&gl>=2){
+        // Victim: Went winless in group stage (0 wins in a completed group stage)
+        let isTopCutParticipant=(t.topCutCache?.participants||[]).includes(p)||(t.topCutCache?.results||[]).some(x=>x.p1===p||x.p2===p)||(isCompleteOrTopCut&&finish.place<=4);
+        if(gComplete&&gw===0&&gl>=1&&!isTopCutParticipant){
           statsByPlayer[p].badges.push({
             id:'victim-'+t.id,
             icon:'💀',
             name:`Victim (${t.name})`,
-            desc:`Lost all group stage matches (0-${gl}) in ${t.name}`,
+            desc:`Went winless in ${t.name} group stage (0-${gl})`,
             category:'notoriety',
             color:'red'
           });
@@ -4501,7 +4532,7 @@ function openBadgeGuide(){
         { icon: '🚀', name: 'Most Improved', color: 'green', desc: 'Largest tournament-to-tournament rank and win improvement.' },
         { icon: '👠', name: 'Cinderella Run', color: 'purple', desc: 'Low-seed underdog qualification into Top Cut playoffs or Finals.' },
         { icon: '💥', name: 'Blowout King (+5 GD)', color: 'amber', desc: 'Dominant +5 or higher game differential in a single tournament.' },
-        { icon: '💀', name: 'Victim', color: 'red', desc: 'Lost all matches in a completed group stage.' }
+        { icon: '💀', name: 'Victim', color: 'red', desc: 'Went winless (0 wins) in a completed group stage.' }
       ]
     },
     {
