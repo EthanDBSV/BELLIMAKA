@@ -525,7 +525,35 @@ async function pick(el){
   localStorage.setItem('draftdex-pick-'+(t?.id||'')+'-'+key,choice);
   if(supabaseClient&&sessionUser&&t){await supabaseClient.from('predictions').upsert({user_id:sessionUser.id,tournament_id:t.id,prediction_key:key,selection:choice},{onConflict:'user_id,tournament_id,prediction_key'})}
 }
-function recapRankings(){return Object.entries(profiles).map(([p,q])=>{let cups=Array.isArray(q.cups)?q.cups:[],tops=Number(q.tops)||0,record=q.record||'0-0',[w,l]=record.split('-').map(x=>Number(x)||0),score=Math.max(0,1000+cups.length*150+tops*50+(w-l)*10+w*2);return {p,score,champ:cups.length,tops,record}}).sort((a,b)=>b.score-a.score)}
+function recapRankings(){
+  let leagueRecs=(typeof calculateLeagueRecords==='function'?calculateLeagueRecords():null);
+  let stats=leagueRecs?.statsByPlayer||{};
+  return Object.entries(profiles).map(([p,q])=>{
+    let career=playerCareerStats(p);
+    let s=stats[p]||{wins:career.wins,losses:career.losses,maxWinStreak:0,badges:[]};
+    let ovrObj=calculatePlayerOVR(p, leagueRecs);
+    let cups=career.championshipCups||[];
+    let tops=career.topCuts||0;
+    let [w,l]=[career.wins,career.losses];
+    
+    // Modernized ELO Formula: Base 1000 + Titles (160) + Top Cuts (60) + Net Impact (18W / -10L) + Streaks + OVR Form
+    let streakBonus=(s.maxWinStreak||0)*5;
+    let ovrImpact=Math.max(0, (ovrObj.ovr-63)*4);
+    let score=Math.max(0, Math.round(1000 + cups.length*160 + tops*60 + (w*18 - l*10) + streakBonus + ovrImpact));
+
+    return {
+      p,
+      score,
+      ovr:ovrObj.ovr,
+      ovrObj,
+      champ:cups.length,
+      tops,
+      record:career.record,
+      winPct:career.winPct,
+      badges:s.badges||[]
+    };
+  }).sort((a,b)=>b.score-a.score || b.ovr-a.ovr);
+}
 
 function deleteTournament(id){let t=tournamentData[id];if(!t||!confirm(`Delete ${t.name}?`))return;delete tournamentData[id];rebuildAllPlayerStats();persistLeague();viewTournament=ongoingT()?.id||Object.keys(tournamentData)[0]||null;current='Tournaments';render()}
 
@@ -659,7 +687,7 @@ function openTournamentPlayers(){
 }
 function saveTournamentPlayers(){let t=activeT();if(t.phase==='topcut'){alert('Participants are locked after Top Cut begins.');return}let selected=[...document.querySelectorAll('.tPlayerChoice:checked')].map(x=>x.value),newP=document.querySelector('#editNewPlayer').value.trim();if(newP){if(!profiles[newP]){profiles[newP]={team:'No default team',record:'0-0',tops:0,cups:[]};roster[newP]=[];teamHistory[newP]=[]}selected.push(newP)}if(selected.length<2){alert('A tournament needs at least two players.');return}let oldPlayers=t.players.join('|'),oldAssign=JSON.stringify(t.groupAssignments||{});t.players=[...new Set(selected)];t.teamNames=t.teamNames||{};document.querySelectorAll('.tTeamName').forEach(x=>t.teamNames[x.dataset.player]=x.value.trim());let assign={};document.querySelectorAll('.playerGroup').forEach(x=>{if(t.players.includes(x.dataset.player))assign[x.dataset.player]=x.value});t.players.filter(p=>!assign[p]).forEach((p,i)=>assign[p]=Object.keys(groupsOf(t))[i%Object.keys(groupsOf(t)).length]);t.groupAssignments=assign;let changed=oldPlayers!==t.players.join('|')||oldAssign!==JSON.stringify(assign);if(changed)rebuildSchedulePreserving(t);persistLeague();closeModal()}
 function tournamentRecord(t,p){let w=0,l=0;[...t.matches,...(t.topCutCache?.results||[]).map(m=>({a:m.p1,b:m.p2,as:m.s1,bs:m.s2}))].forEach(m=>{let a=m.a,b=m.b,sa=m.as,sb=m.bs;if(a!==p&&b!==p)return;if(sa===''||sb===''||sa==null||sb==null||+sa===+sb)return;if((a===p&&+sa>+sb)||(b===p&&+sb>+sa))w++;else l++});return `${w}-${l}`}
-function OffseasonHome(){let last=Object.values(tournamentData).filter(t=>t.status==='COMPLETE').at(-1),r=recapRankings().slice(0,5),champ=last?.champion,panelImage=last?.recapPanelImage||last?.backgroundImage||'',lastPanel=panelImage?`linear-gradient(135deg,rgba(6,6,9,.42),rgba(6,6,9,.72) 62%),url('${panelImage}')`:'linear-gradient(135deg,#221117,#17171d 65%)',heroBg=last?.backgroundImage?`style="background-image:linear-gradient(130deg,rgba(48,20,25,.88),rgba(23,23,28,.9) 65%),url('${last.backgroundImage}');background-size:cover;background-position:center;cursor:pointer"`:(last?`style="cursor:pointer"`:'');return head('League Off-Season','No tournament is currently ongoing',moderator?`<button class="btn" onclick="openCreator()">+ Create next tournament</button>`:'')+`<section class="hero"><div class="hero-main" ${heroBg} ${last?`onclick="openTournament('${last.id}')"`:''}><span class="status"><i></i>SEASON RECAP</span><div class="hero-title">${last?last.name.toUpperCase():'THE LEAGUE ARCHIVE'}</div><div class="hero-info">${last?`Last champion: ${champ} · ${last.regulation}`:'Create a tournament to begin recording the league.'}</div></div><aside class="card pulse" style="position:relative;overflow:hidden;background-image:${lastPanel};background-size:cover;background-position:center;border-color:#6a2831">${last?`<div style="position:absolute;inset:0;background:linear-gradient(180deg,rgba(5,5,8,.42),rgba(5,5,8,.82));pointer-events:none"></div><div style="position:relative;z-index:1"><div class="card-title">Last Tournament</div><div class="eyebrow" style="margin-top:8px">${last.regulation}</div><div style="margin-top:22px;display:flex;align-items:center;justify-content:space-between;gap:12px"><div><div style="font:800 31px 'Barlow Condensed';line-height:.92">${esc(last.name)}</div><div class="sub" style="margin-top:7px">Champion · ${playerLink(champ)} · ${tournamentRecord(last,champ)} record</div></div><span class="avatar" style="width:70px;height:70px;font-size:30px">${champ?.[0]||'—'}</span></div><div style="display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-top:18px"><div class="card" style="padding:12px;background:#111116d0"><div class="eyebrow">Champion</div><div style="font:800 20px 'Barlow Condensed';margin-top:6px">${playerLink(champ)}</div></div><div class="card" style="padding:12px;background:#111116d0"><div class="eyebrow">Tournament record</div><div style="font:800 20px 'Barlow Condensed';margin-top:6px">${tournamentRecord(last,champ)}</div></div></div>${moderator?`<div class="creator-actions" style="margin-top:16px"><button class="btn ghost" onclick="openRecapPanelCoverEditor('${last.id}')">Edit panel cover</button></div>`:''}</div>`:'<div style="position:relative;z-index:1"><div class="card-title">Last Tournament</div><p class="sub" style="margin-top:16px">No completed tournament yet.</p></div>'}</aside></section><section class="section"><div class="section-head"><h2>PLAYER ELO RANKING</h2><span class="sub">ELO = 1000 + 150 × titles + 50 × Top Cuts + 10 × (wins − losses) + 2 × wins</span></div><div class="card table-wrap"><table class="standings"><thead><tr><th style="width:32px;text-align:center">#</th><th>Player</th><th style="text-align:center;white-space:nowrap">ELO</th><th style="text-align:center;white-space:nowrap">Titles</th><th style="text-align:center;white-space:nowrap">Top Cuts</th><th style="text-align:center;white-space:nowrap">All-time W-L</th></tr></thead><tbody>${r.map((x,i)=>`<tr><td class="rank" style="text-align:center">${i+1}</td><td class="player">${playerLink(x.p)}<span class="team">${esc(profiles[x.p]?.team||'')}</span></td><td style="text-align:center"><b>${x.score}</b></td><td style="text-align:center">${x.champ}</td><td style="text-align:center">${x.tops}</td><td style="text-align:center;white-space:nowrap">${esc(x.record)}</td></tr>`).join('')}</tbody></table></div></section>`}
+function OffseasonHome(){let last=Object.values(tournamentData).filter(t=>t.status==='COMPLETE').at(-1),r=recapRankings().slice(0,5),champ=last?.champion,panelImage=last?.recapPanelImage||last?.backgroundImage||'',lastPanel=panelImage?`linear-gradient(135deg,rgba(6,6,9,.42),rgba(6,6,9,.72) 62%),url('${panelImage}')`:'linear-gradient(135deg,#221117,#17171d 65%)',heroBg=last?.backgroundImage?`style="background-image:linear-gradient(130deg,rgba(48,20,25,.88),rgba(23,23,28,.9) 65%),url('${last.backgroundImage}');background-size:cover;background-position:center;cursor:pointer"`:(last?`style="cursor:pointer"`:'');return head('League Off-Season','No tournament is currently ongoing',moderator?`<button class="btn" onclick="openCreator()">+ Create next tournament</button>`:'')+`<section class="hero"><div class="hero-main" ${heroBg} ${last?`onclick="openTournament('${last.id}')"`:''}><span class="status"><i></i>SEASON RECAP</span><div class="hero-title">${last?last.name.toUpperCase():'THE LEAGUE ARCHIVE'}</div><div class="hero-info">${last?`Last champion: ${champ} · ${last.regulation}`:'Create a tournament to begin recording the league.'}</div></div><aside class="card pulse" style="position:relative;overflow:hidden;background-image:${lastPanel};background-size:cover;background-position:center;border-color:#6a2831">${last?`<div style="position:absolute;inset:0;background:linear-gradient(180deg,rgba(5,5,8,.42),rgba(5,5,8,.82));pointer-events:none"></div><div style="position:relative;z-index:1"><div class="card-title">Last Tournament</div><div class="eyebrow" style="margin-top:8px">${last.regulation}</div><div style="margin-top:22px;display:flex;align-items:center;justify-content:space-between;gap:12px"><div><div style="font:800 31px 'Barlow Condensed';line-height:.92">${esc(last.name)}</div><div class="sub" style="margin-top:7px">Champion · ${playerLink(champ)} · ${tournamentRecord(last,champ)} record</div></div><span class="avatar" style="width:70px;height:70px;font-size:30px">${champ?.[0]||'—'}</span></div><div style="display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-top:18px"><div class="card" style="padding:12px;background:#111116d0"><div class="eyebrow">Champion</div><div style="font:800 20px 'Barlow Condensed';margin-top:6px">${playerLink(champ)}</div></div><div class="card" style="padding:12px;background:#111116d0"><div class="eyebrow">Tournament record</div><div style="font:800 20px 'Barlow Condensed';margin-top:6px">${tournamentRecord(last,champ)}</div></div></div>${moderator?`<div class="creator-actions" style="margin-top:16px"><button class="btn ghost" onclick="openRecapPanelCoverEditor('${last.id}')">Edit panel cover</button></div>`:''}</div>`:'<div style="position:relative;z-index:1"><div class="card-title">Last Tournament</div><p class="sub" style="margin-top:16px">No completed tournament yet.</p></div>'}</aside></section><section class="section"><div class="section-head"><h2>PLAYER ELO LEADERBOARD</h2><button class="link" onclick="go('Standings')">FULL STANDINGS →</button></div><div class="card table-wrap"><table class="standings"><thead><tr><th style="width:32px;text-align:center">#</th><th>Trainer / Team</th><th style="text-align:center;white-space:nowrap">OVR</th><th style="text-align:center;white-space:nowrap">ELO</th><th style="text-align:center;white-space:nowrap">Titles</th><th style="text-align:center;white-space:nowrap">Top Cuts</th><th style="text-align:center;white-space:nowrap">All-Time W-L</th></tr></thead><tbody>${r.map((x,i)=>{let p=x.p,ovrObj=x.ovrObj||calculatePlayerOVR(p),faceArt=profilePictures[p]?`url('${esc(profilePictures[p])}')`:(teamCovers[p]?`url('${esc(teamCovers[p])}')`:fallbackArt(p)),faceLetter=(profilePictures[p]||teamCovers[p])?'':esc((p||'?')[0]);return `<tr><td class="rank" style="text-align:center">${i===0?'👑':(i+1)}</td><td class="player"><div style="display:flex;align-items:center;gap:9px"><span class="mrow-face" style="background-image:${faceArt};background-size:cover;background-position:center;width:28px;height:28px;font-size:12px;border-radius:50%;flex:none;display:grid;place-items:center;border:2px solid ${ovrObj.color}">${faceLetter}</span><div style="min-width:0"><div style="font-size:13px;font-weight:800;line-height:1.2">${playerLink(p)}</div><span class="team" style="margin-top:2px">${esc(profiles[p]?.team||'')}</span></div></div></td><td style="text-align:center">${ovrObj.badgeHtml}</td><td style="text-align:center"><b style="font:800 15px 'Barlow Condensed';letter-spacing:.3px;color:#f5f3f0">${x.score}</b></td><td style="text-align:center">${x.champ>0?`<span style="color:#ffd166;font-weight:800">👑 ${x.champ}</span>`:'0'}</td><td style="text-align:center">${x.tops>0?`<span style="color:#d8d9e2;font-weight:800">⚔️ ${x.tops}</span>`:'0'}</td><td style="text-align:center;white-space:nowrap">${esc(x.record)}</td></tr>`}).join('')}</tbody></table></div></section>`}
 
 var scoreDrafts={},oddsCache={key:'',data:null};
 document.addEventListener('input',e=>{if(/^([ab]\d+|bs.+[ab])$/.test(e.target.id||''))scoreDrafts[e.target.id]=e.target.value});
@@ -1527,6 +1555,18 @@ render();
 .hof-card-val{font:800 32px 'Barlow Condensed';line-height:1;margin:4px 0 2px;color:#f5f3f0}
 .hof-card-title{font:800 13px 'DM Sans';letter-spacing:.6px;text-transform:uppercase;color:#8e8c95}
 .hof-card-holder{display:flex;align-items:center;gap:8px;margin-top:12px;padding-top:10px;border-top:1px solid #282832;font-size:12px}
+
+/* ---- Offseason Standings Podium & Leaderboard ---- */
+.standings-podium{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:14px;margin-bottom:24px}
+.podium-card{background:#17171d;border:1px solid #2d2d38;border-radius:8px;padding:16px;display:flex;align-items:center;gap:14px;position:relative;overflow:hidden;transition:transform .15s,border-color .15s;cursor:pointer}
+.podium-card:hover{transform:translateY(-2px)}
+.podium-card.rank-1{border-color:#e0ad2b;background:linear-gradient(135deg,#2e2208,#16161c 68%);box-shadow:0 6px 20px rgba(224,173,43,0.15)}
+.podium-card.rank-2{border-color:#72768a;background:linear-gradient(135deg,#1f212a,#16161c 68%)}
+.podium-card.rank-3{border-color:#8c592e;background:linear-gradient(135deg,#24180f,#16161c 68%)}
+.podium-rank-badge{position:absolute;top:10px;right:12px;font:900 12px 'Barlow Condensed';letter-spacing:1px;text-transform:uppercase;color:#8e8c95}
+.podium-card.rank-1 .podium-rank-badge{color:#ffd166}
+.podium-card.rank-2 .podium-rank-badge{color:#d0d0dc}
+.podium-card.rank-3 .podium-rank-badge{color:#cd7f32}
 
 /* ---- Player selection tiles (Create tournament & Roster editor) ---- */
 .t-player-tile{display:flex;align-items:center;gap:10px;padding:10px 12px;background:#141419;border:1px solid #2e2e38;border-radius:6px;cursor:pointer;transition:border-color .15s,background .15s;user-select:none}
@@ -2790,12 +2830,84 @@ function Standings(){
   let t=ongoingT();
   if(!t){
     let r=recapRankings();
-    return head('Standings','All-time league rankings',`<button class="btn ghost" onclick="go('Records')">🏆 Hall of Fame & Records →</button>`)+`<div class="card table-wrap"><table class="standings">
-      <thead><tr><th style="width:32px;text-align:center">#</th><th>Player</th><th style="text-align:center;white-space:nowrap">OVR</th><th style="text-align:center;white-space:nowrap">ELO</th><th style="text-align:center;white-space:nowrap">Titles</th><th style="text-align:center;white-space:nowrap">Top Cuts</th><th style="text-align:center;white-space:nowrap">All-time W-L</th></tr></thead>
-      <tbody>${r.map((x,i)=>{
-        let ovrObj=calculatePlayerOVR(x.p);
-        return `<tr><td class="rank" style="text-align:center">${i+1}</td><td class="player">${playerLink(x.p)}<span class="team">${esc(profiles[x.p]?.team||'')}</span></td><td style="text-align:center">${ovrObj.badgeHtml}</td><td style="text-align:center"><b>${x.score}</b></td><td style="text-align:center">${x.champ}</td><td style="text-align:center">${x.tops}</td><td style="text-align:center;white-space:nowrap">${esc(x.record)}</td></tr>`
-      }).join('')}</tbody></table></div>`
+    let top3=r.slice(0,3);
+    let controls=`<div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn ghost" onclick="go('Records')">🏆 Hall of Fame & Records →</button>${moderator?`<button class="btn" onclick="openCreator()">+ Create next tournament</button>`:''}</div>`;
+
+    return head('Standings','All-Time League Rankings & ELO Leaderboard',controls)
+      +(top3.length>=2?`<div class="standings-podium">
+        ${top3.map((x,i)=>{
+          let p=x.p;
+          let ovrObj=x.ovrObj||calculatePlayerOVR(p);
+          let faceArt=profilePictures[p]?`url('${esc(profilePictures[p])}')`:(teamCovers[p]?`url('${esc(teamCovers[p])}')`:fallbackArt(p));
+          let faceLetter=(profilePictures[p]||teamCovers[p])?'':esc((p||'?')[0]);
+          let rankLabel=i===0?'★ #1 LEADER':i===1?'#2 CONTENDER':'#3 CONTENDER';
+          let crown=i===0?'👑 ':i===1?'🥈 ':'🥉 ';
+
+          return `<div class="podium-card rank-${i+1}" onclick="openProfile('${esc(p)}')">
+            <span class="podium-rank-badge">${crown}${rankLabel}</span>
+            <span class="mrow-face" style="background-image:${faceArt};background-size:cover;background-position:center;width:52px;height:52px;font-size:22px;border-radius:50%;flex:none;display:grid;place-items:center;border:3px solid ${ovrObj.color};box-shadow:0 4px 14px rgba(0,0,0,0.5)">${faceLetter}</span>
+            <div style="min-width:0;flex:1">
+              <div style="font:800 20px 'Barlow Condensed';letter-spacing:.3px;color:#f5f3f0;line-height:1.1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(p)}</div>
+              <div style="font-size:11px;color:#9d9ba4;margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(profiles[p]?.team||'No default team')}</div>
+              <div style="display:flex;align-items:center;gap:8px;margin-top:7px">
+                ${ovrObj.badgeHtml}
+                <span style="font:800 14px 'Barlow Condensed';color:#f5f3f0">${x.score} <span style="font-size:10px;color:#8e8c95;font-weight:700">ELO</span></span>
+              </div>
+            </div>
+          </div>`;
+        }).join('')}
+      </div>`:'')
+      +`<div class="card table-wrap">
+        <table class="standings">
+          <thead>
+            <tr>
+              <th style="width:32px;text-align:center">#</th>
+              <th>Trainer / Team</th>
+              <th style="text-align:center;white-space:nowrap">OVR Rating</th>
+              <th style="text-align:center;white-space:nowrap">ELO Rating</th>
+              <th>Accolades & Badges</th>
+              <th style="text-align:center;white-space:nowrap">Career W-L</th>
+              <th style="text-align:center;white-space:nowrap">Win %</th>
+              <th style="text-align:center;white-space:nowrap">Titles</th>
+              <th style="text-align:center;white-space:nowrap">Top Cuts</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${r.map((x,i)=>{
+              let p=x.p;
+              let ovrObj=x.ovrObj||calculatePlayerOVR(p);
+              let faceArt=profilePictures[p]?`url('${esc(profilePictures[p])}')`:(teamCovers[p]?`url('${esc(teamCovers[p])}')`:fallbackArt(p));
+              let faceLetter=(profilePictures[p]||teamCovers[p])?'':esc((p||'?')[0]);
+              let badges=x.badges||[];
+
+              return `<tr>
+                <td class="rank" style="text-align:center">${i===0?'👑':(i+1)}</td>
+                <td class="player">
+                  <div style="display:flex;align-items:center;gap:9px">
+                    <span class="mrow-face" style="background-image:${faceArt};background-size:cover;background-position:center;width:30px;height:30px;font-size:13px;border-radius:50%;flex:none;display:grid;place-items:center;border:2px solid ${ovrObj.color}">${faceLetter}</span>
+                    <div style="min-width:0">
+                      <div style="font-size:13px;font-weight:800;line-height:1.2">${playerLink(p)}</div>
+                      <span class="team" style="margin-top:2px">${esc(profiles[p]?.team||'')}</span>
+                    </div>
+                  </div>
+                </td>
+                <td style="text-align:center;white-space:nowrap">${ovrObj.badgeHtml}</td>
+                <td style="text-align:center;white-space:nowrap"><b style="font:800 15px 'Barlow Condensed';letter-spacing:.3px;color:#f5f3f0">${x.score}</b></td>
+                <td>
+                  <div style="display:flex;flex-wrap:wrap;gap:4px">
+                    ${badges.length?badges.slice(0,3).map(b=>`<span class="badge-pill ${b.color}" title="${esc(b.desc)}">${b.icon} ${esc(b.name)}</span>`).join('')+(badges.length>3?`<span class="badge-pill gray">+${badges.length-3}</span>`:''):'<span style="color:#6d6b75;font-size:11px">—</span>'}
+                  </div>
+                </td>
+                <td style="text-align:center;white-space:nowrap"><b>${esc(x.record)}</b></td>
+                <td style="text-align:center;white-space:nowrap">${x.winPct}%</td>
+                <td style="text-align:center;white-space:nowrap">${x.champ>0?`<span style="color:#ffd166;font-weight:800">👑 ${x.champ}</span>`:'0'}</td>
+                <td style="text-align:center;white-space:nowrap">${x.tops>0?`<span style="color:#d8d9e2;font-weight:800">⚔️ ${x.tops}</span>`:'0'}</td>
+              </tr>`;
+            }).join('')}
+          </tbody>
+        </table>
+      </div>
+      <p class="sub" style="margin-top:14px">ELO integrates championship cups, playoff qualification history, match win differential, streaks, and overall player rating.</p>`;
   }
   viewTournament=t.id;
   let groups=Object.keys(groupsOf(t));
