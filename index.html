@@ -633,8 +633,32 @@ function shouldApply(incoming){
   } catch(e){}
   return true;
 }
-function migrateLegacyBracket(t){if(!t.bracketMatches)return;let legacy={w1:{bracket:'W',round:1},w2:{bracket:'W',round:1},wf:{bracket:'W',round:2},lr1:{bracket:'L',round:1},lf:{bracket:'L',round:2},gf:{bracket:'GF',round:3},reset:{bracket:'GF',round:99}};t.bracketMatches.forEach(m=>{if(!m.bracket&&legacy[m.id]){m.bracket=legacy[m.id].bracket;m.round=legacy[m.id].round}})}
-function migrateAllBrackets(){Object.values(tournamentData).forEach(migrateLegacyBracket)}
+function sanitizeRegulationFMatches(){
+  let t=Object.values(tournamentData).find(x=>x.name==='Regulation F'||x.id==='t1787300725961');
+  if(!t||!Array.isArray(t.matches))return;
+  t.matches.forEach(m=>{
+    if((m.a==='Sam'&&m.b==='Trtl')||(m.a==='Trtl'&&m.b==='Sam')){
+      if(m.a==='Sam'){m.as='0';m.bs='2';}else{m.as='2';m.bs='0';}
+    }
+    if((m.a==='Ethan'&&m.b==='Kai')||(m.a==='Kai'&&m.b==='Ethan')){
+      if(m.a==='Ethan'){m.as='1';m.bs='2';}else{m.as='2';m.bs='1';}
+    }
+    if((m.a==='Ethan'&&m.b==='Max')||(m.a==='Max'&&m.b==='Ethan')){
+      if(m.a==='Ethan'){m.as='1';m.bs='2';}else{m.as='2';m.bs='1';}
+    }
+    if((m.a==='Kai'&&m.b==='Max')||(m.a==='Max'&&m.b==='Kai')){
+      if(m.a==='Kai'){m.as='0';m.bs='2';}else{m.as='2';m.bs='0';}
+    }
+    if((m.a==='Kai'&&m.b==='Yamac')||(m.a==='Yamac'&&m.b==='Kai')){
+      if(m.a==='Kai'){m.as='1';m.bs='2';}else{m.as='2';m.bs='1';}
+    }
+  });
+  t.finalStandings={
+    "Group A":["Ozy","Dao Ming","Trtl","Sam"],
+    "Group B":["Yamac","Max","Kai","Ethan"]
+  };
+}
+function migrateAllBrackets(){Object.values(tournamentData).forEach(migrateLegacyBracket);sanitizeRegulationFMatches();}
 /* ═══ NATIVE TOP CUT ENGINE — Pokémon Draft League Championship Bracket ═══ */
 function nextPow2(n){let p=1;while(p<n)p*=2;return Math.max(2,p)}
 function hydrateTopCutManager(t){if(!t.bracketManagerData||!window.BracketsManagerLib)return null;try{let storage=new window.BracketsManagerLib.InMemoryDatabase();storage.setData(JSON.parse(JSON.stringify(t.bracketManagerData)));let manager=new window.BracketsManagerLib.BracketsManager(storage);return {manager,storage}}catch(e){return null}}
@@ -2031,7 +2055,7 @@ function playerCareerStats(p){
   let totalGames=wins+losses,winPct=totalGames>0?Math.round(wins/totalGames*100):0;
   return {wins,losses,record:`${wins}-${losses}`,titles,topCuts,tournaments,winPct,championshipCups};
 }
-function rebuildAllPlayerStats(){Object.keys(profiles).forEach(ensureProfile);Object.values(tournamentData).forEach(t=>{(t.players||[]).forEach(ensureProfile)});Object.keys(profiles).forEach(p=>{let s=playerCareerStats(p);profiles[p].record=s.record;profiles[p].tops=s.topCuts;profiles[p].cups=[...s.championshipCups]})}
+function rebuildAllPlayerStats(){if(typeof sanitizeRegulationFMatches==='function')sanitizeRegulationFMatches();Object.keys(profiles).forEach(ensureProfile);Object.values(tournamentData).forEach(t=>{(t.players||[]).forEach(ensureProfile)});Object.keys(profiles).forEach(p=>{let s=playerCareerStats(p);profiles[p].record=s.record;profiles[p].tops=s.topCuts;profiles[p].cups=[...s.championshipCups]})}
 function resyncTournamentStats(id){let t=tournamentData[id];if(!t){alert('Tournament not found.');return}if(t.status!=='COMPLETE'){alert('Only completed tournaments can be resynced.');return}rebuildAllPlayerStats();persistLeague();render();alert(`Stats resynced for ${t.name}.`)}
 
 
@@ -3998,6 +4022,7 @@ function getChronologicalMatches(){
 }
 
 function calculateLeagueRecords(){
+  if(typeof sanitizeRegulationFMatches==='function')sanitizeRegulationFMatches();
   let {sortedTournaments,allMatches}=getChronologicalMatches();
   let allPlayers=Object.keys(profiles);
   sortedTournaments.forEach(t=>(t.players||[]).forEach(p=>{if(!allPlayers.includes(p))allPlayers.push(p)}));
