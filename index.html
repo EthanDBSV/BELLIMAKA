@@ -2236,8 +2236,8 @@ function buildTopCutSeeding(t){
 function isGroupComplete(t,g){let ms=groupMatches(t,g);return ms.length>0&&ms.every(m=>m.as!==''&&m.as!=null&&m.bs!==''&&m.bs!=null)}
 function isMathematicallyEliminated(t,p){let g=Object.entries(groupsOf(t)).find(([,ps])=>ps.includes(p))?.[0];if(!g)return true;let ps=groupsOf(t)[g],cut=advancePerGroup(t);if(ps.length<=cut)return false;if(isGroupComplete(t,g))return getStand(t,g).findIndex(x=>x.p===p)>=cut;let wins={},remaining={};ps.forEach(x=>{wins[x]=0;remaining[x]=0});groupMatches(t,g).forEach(m=>{if(m.as!==''&&m.as!=null&&m.bs!==''&&m.bs!=null){if(+m.as>+m.bs)wins[m.a]++;else if(+m.bs>+m.as)wins[m.b]++}else{remaining[m.a]=(remaining[m.a]||0)+1;remaining[m.b]=(remaining[m.b]||0)+1}});let maxWins=(wins[p]||0)+(remaining[p]||0);return ps.filter(x=>x!==p&&(wins[x]||0)>maxWins).length>=cut}
 function isMathematicallyClinched(t,p){let g=Object.entries(groupsOf(t)).find(([,ps])=>ps.includes(p))?.[0];if(!g)return false;let ps=groupsOf(t)[g],cut=advancePerGroup(t);if(ps.length<=cut)return true;if(isGroupComplete(t,g))return getStand(t,g).findIndex(x=>x.p===p)<cut;let wins={},remaining={};ps.forEach(x=>{wins[x]=0;remaining[x]=0});groupMatches(t,g).forEach(m=>{if(m.as!==''&&m.as!=null&&m.bs!==''&&m.bs!=null){if(+m.as>+m.bs)wins[m.a]++;else if(+m.bs>+m.as)wins[m.b]++}else{remaining[m.a]=(remaining[m.a]||0)+1;remaining[m.b]=(remaining[m.b]||0)+1}});let minWins=wins[p]||0;let othersWhoCanReach=ps.filter(x=>x!==p&&((wins[x]||0)+(remaining[x]||0))>=minWins).length;return othersWhoCanReach<cut}
-function getPlayerTournamentPower(p, tourn){
-  let leagueRecs = calculateLeagueRecords();
+function getPlayerTournamentPower(p, tourn, cachedLeagueRecs){
+  let leagueRecs = cachedLeagueRecs || calculateLeagueRecords();
   let ovrObj = calculatePlayerOVR(p, leagueRecs);
   let ovr = ovrObj.ovr || 70;
   let s = leagueRecs.statsByPlayer[p] || {};
@@ -2269,11 +2269,27 @@ function winChance(a, b, t){
   return Math.max(0.12, Math.min(0.88, prob));
 }
 
-function simulateTournamentOdds(tourn, runs = 2500){
+function simulateTournamentOdds(tourn, runs = 2000){
   if(!tourn || !tourn.players || !tourn.players.length) return {};
   let groups = groupsOf(tourn);
   let cut = advancePerGroup(tourn);
   let players = tourn.players;
+
+  let leagueRecs = calculateLeagueRecords();
+  let playerPowers = {};
+  players.forEach(p => {
+    playerPowers[p] = getPlayerTournamentPower(p, tourn, leagueRecs);
+  });
+
+  let matchProbMatrix = {};
+  players.forEach(p1 => {
+    players.forEach(p2 => {
+      if(p1 !== p2){
+        let diff = (playerPowers[p1]?.power || 1000) - (playerPowers[p2]?.power || 1000);
+        matchProbMatrix[p1 + '|' + p2] = Math.max(0.12, Math.min(0.88, 1 / (1 + Math.exp(-diff / 150))));
+      }
+    });
+  });
 
   let topCutCounts = Object.fromEntries(players.map(p => [p, 0]));
   let finalsCounts = Object.fromEntries(players.map(p => [p, 0]));
@@ -2298,7 +2314,7 @@ function simulateTournamentOdds(tourn, runs = 2500){
         sa = +m.as;
         sb = +m.bs;
       } else {
-        let pWin = winChance(m.a, m.b, tourn);
+        let pWin = matchProbMatrix[m.a + '|' + m.b] || 0.5;
         let aWon = Math.random() < pWin;
         let sweep = Math.random() < 0.55;
         sa = aWon ? 2 : (sweep ? 0 : 1);
@@ -2344,7 +2360,7 @@ function simulateTournamentOdds(tourn, runs = 2500){
           nextRound.push(pool[i]);
         } else {
           let p1 = pool[i], p2 = pool[i + 1];
-          let p1Chance = winChance(p1, p2, tourn);
+          let p1Chance = matchProbMatrix[p1 + '|' + p2] || 0.5;
           let winner = Math.random() < p1Chance ? p1 : p2;
           if(pool.length === 2){
             finalsCounts[p1]++;
@@ -2373,10 +2389,10 @@ function simulateTournamentOdds(tourn, runs = 2500){
     
     let dec = champPct > 0 ? (100 / champPct).toFixed(1) + 'x' : '100x';
 
-    let pPow = getPlayerTournamentPower(p, tourn);
+    let pPow = playerPowers[p] || { ovr: 70, elo: 1000, form: { w: 0, l: 0, gw: 0, gl: 0 } };
     let gName = Object.entries(groups).find(([, ps]) => ps.includes(p))?.[0] || 'Group A';
     let gOpponents = (groups[gName] || []).filter(x => x !== p);
-    let avgGroupOvr = Math.round(gOpponents.reduce((sum, opp) => sum + getPlayerTournamentPower(opp, tourn).ovr, 0) / (gOpponents.length || 1));
+    let avgGroupOvr = Math.round(gOpponents.reduce((sum, opp) => sum + (playerPowers[opp]?.ovr || 70), 0) / (gOpponents.length || 1));
     
     let unplayed = (tourn.matches || []).filter(m => (m.a === p || m.b === p) && (m.as === '' || m.as == null));
     let remainingOpponents = unplayed.map(m => m.a === p ? m.b : m.a);
@@ -5290,7 +5306,8 @@ function playoffOdds(){
   let cut = advancePerGroup(t);
   let groups = groupsOf(t);
   let groupNames = Object.keys(groups);
-  let sim = simulateTournamentOdds(t, 2500);
+  let data = playoffOddsData(t);
+  let sim = oddsCache.sim || simulateTournamentOdds(t, 2000);
   let list = Object.values(sim).sort((a, b) => b.champPct - a.champPct || b.topCutPct - a.topCutPct);
 
   let favorite = list[0] || { player: 'None', champPct: 0, moneyline: '+100', decimalOdds: '1.0x' };
