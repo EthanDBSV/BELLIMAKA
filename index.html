@@ -210,10 +210,11 @@
 .mon-chip:hover .x{opacity:1}
 .mon-chip.historic{border-left-color:#5a5a66;background:linear-gradient(135deg,#1c1c22,#17171c)}
 .mon-chip.historic img{filter:grayscale(.28) drop-shadow(0 2px 4px #0008)}
-.past-row{display:grid;grid-template-columns:50px minmax(0,1fr) auto;gap:12px;align-items:center;padding:10px 12px;border:1px solid #2f2f38;border-left:3px solid #4a4a55;border-radius:7px;margin-top:8px;background:#17171d}
-.past-row.gold{border-left-color:#f3c245;background:linear-gradient(90deg,#2a2214,#17171d 55%)}
-.past-row.silver{border-left-color:#c8c8d2;background:linear-gradient(90deg,#22222a,#17171d 55%)}
-.past-row.cut{border-left-color:var(--red)}
+.past-row{display:grid;grid-template-columns:58px minmax(0,1fr) auto;gap:12px;align-items:center;padding:10px 12px;border:1px solid #2f2f38;border-left:3px solid #4a4a55;border-radius:7px;margin-top:8px;background:#17171d}
+.past-row.gold{border-left-color:#f3c245;background:linear-gradient(90deg,rgba(243,194,69,0.18),#17171d 55%)}
+.past-row.silver{border-left-color:#c8c8d2;background:linear-gradient(90deg,rgba(200,200,210,0.15),#17171d 55%)}
+.past-row.bronze{border-left-color:#cd7f32;background:linear-gradient(90deg,rgba(205,127,50,0.18),#17171d 55%)}
+.past-row.cut{border-left-color:#a855f7;background:linear-gradient(90deg,rgba(168,85,247,0.12),#17171d 55%)}
 .past-place{font:800 20px 'Barlow Condensed';text-align:center;color:#e9e7ec;line-height:1}
 .past-place small{display:block;font:800 8px 'DM Sans';letter-spacing:.6px;color:#8e8c95;text-transform:uppercase;margin-top:2px}
 .past-name{font-weight:800;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -3316,8 +3317,10 @@ function tournamentFinish(t,p){
       return {place:3,label:'Top Cut',note:lastLoss.title||'Top Cut',cls:'cut'};
     }
   }
-  /* group stage only — report where they placed in their own group */
-  let entry=Object.entries(groupsOf(t)).find(([,ps])=>ps.includes(p));
+  /* group stage only — report where they placed overall/in group */
+  let buckets=groupsOf(t);
+  let totalGroups=Object.keys(buckets).length;
+  let entry=Object.entries(buckets).find(([,ps])=>ps.includes(p));
   if(entry){
     try{
       let gName=entry[0];
@@ -3329,7 +3332,27 @@ function tournamentFinish(t,p){
         let stand=getStand(t,gName);
         idx=stand.findIndex(x=>x.p===p);
       }
-      if(idx>-1)return {place:100+idx,label:ordinal(idx+1),note:(Object.keys(groupsOf(t)).length>1?gName+' · ':'')+(t.status==='COMPLETE'?'group stage':'current rank'),cls:''};
+      if(idx>-1){
+        let cutPerGroup=Number(t.advancePerGroup||2);
+        let label='';
+        if(totalGroups>1){
+          let minRank=(cutPerGroup*totalGroups)+(idx-cutPerGroup)*totalGroups+1;
+          let maxRank=minRank+totalGroups-1;
+          if(minRank>0&&maxRank>0&&idx>=cutPerGroup){
+            label=(minRank===maxRank)?ordinal(minRank):(minRank+'th-'+maxRank+'th');
+          }else{
+            label=ordinal(idx+1);
+          }
+        }else{
+          label=ordinal(idx+1);
+        }
+        return {
+          place: 100+idx,
+          label: label,
+          note: (totalGroups>1?gName+' ('+ordinal(idx+1)+') · ':'')+(t.status==='COMPLETE'?'group stage':'current rank'),
+          cls: ''
+        };
+      }
     }catch(e){}
   }
   return {place:999,label:'—',note:t.status==='COMPLETE'?'Group stage':'Participating',cls:''};
@@ -4086,8 +4109,7 @@ function calculateLeagueRecords(){
         }
 
         // Victim: Went winless in group stage (0 wins in a completed group stage)
-        let isTopCutParticipant=(t.topCutCache?.participants||[]).includes(p)||(t.topCutCache?.results||[]).some(x=>x.p1===p||x.p2===p)||(isCompleteOrTopCut&&finish.place<=4);
-        if(gComplete&&gw===0&&gl>=1&&!isTopCutParticipant){
+        if(gComplete&&gw===0&&gl>=1){
           statsByPlayer[p].badges.push({
             id:'victim-'+t.id,
             icon:'💀',
