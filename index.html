@@ -156,7 +156,7 @@ const profiles={};
 const roster={};
 function rr(names){let out=[],r=1;for(let i=0;i<names.length;i++)for(let j=i+1;j<names.length;j++){out.push({id:r+'-'+i+j,round:'Round '+r,a:names[i],b:names[j],as:'',bs:'',date:'TBD'});r=r===5?1:r+1}return out}
 const tournamentData={};
-let cut=+localStorage.getItem('draftdex-cut')||4,boardLink=localStorage.getItem('draftdex-board')||'https://docs.google.com/spreadsheets/';let moderator=true;
+let cut=+localStorage.getItem('draftdex-cut')||4,boardLink=localStorage.getItem('draftdex-board')||'https://docs.google.com/spreadsheets/';let moderator=(localStorage.getItem('draftdex-moderator')!=='false');
 function save(){localStorage.setItem('draftdex-cut',cut);localStorage.setItem('draftdex-board',boardLink)}
 
 function head(title,over,action=''){return `<div class="page-head"><div><div class="eyebrow">${over}</div><h1>${title}</h1></div>${action}</div>`}
@@ -318,9 +318,21 @@ function TopCut(){
   return head('Top Cut', subtitle)+topCutSection(t, isPreview)+`${moderator && t.status==='ONGOING' && !isPreview ? `<div class="creator-actions" style="margin-top:20px">${ready?`<button class="btn" onclick="endTournament()">End tournament · ${esc(champName)} wins! 👑</button>`:`<p class="sub">Complete every bracket match to enable ending the tournament (${t.topCutCache?.done||0}/${t.topCutCache?.total||0} played).</p>`}</div>`:''}`;
 }
 
-function openTournamentRecordEditor(id){let t=tournamentData[id];document.querySelector('#modal').innerHTML=`<div class="modal-wrap"><div class="modal" style="max-width:520px"><div class="modal-head"><div><div class="eyebrow">Moderator only</div><h2>Edit tournament record</h2></div><button class="close" onclick="closeModal()">×</button></div><div class="field"><label>Tournament name</label><input id="recordName" value="${t.name}"></div><div class="field"><label>Start date</label><input id="recordStart" value="${t.start}"></div><div class="field"><label>End date</label><input id="recordEnd" value="${t.end}"></div><div class="field"><label>Regulation</label><input id="recordRule" value="${t.regulation}"></div><p class="sub">Player teams and rosters can be corrected from the Teams / player-profile pages. Editing an old roster updates that player's stored history.</p><div class="creator-actions"><button class="btn" onclick="saveTournamentRecord('${id}')">Save record</button></div></div></div>`}
-function saveTournamentRecord(id){let t=tournamentData[id];t.name=document.querySelector('#recordName').value.trim()||t.name;t.start=document.querySelector('#recordStart').value.trim()||t.start;t.end=document.querySelector('#recordEnd').value.trim()||t.end;t.regulation=document.querySelector('#recordRule').value.trim()||t.regulation;persistLeague();closeModal()}
+function openTournamentRecordEditor(id){let t=tournamentData[id];if(!t)return;document.querySelector('#modal').innerHTML=`<div class="modal-wrap"><div class="modal" style="max-width:520px"><div class="modal-head"><div><div class="eyebrow">Moderator only</div><h2>Edit tournament record</h2></div><button class="close" onclick="closeModal()">×</button></div><div class="field"><label>Tournament name</label><input id="recordName" value="${esc(t.name)}"></div><div class="field"><label>Start date</label><input id="recordStart" value="${esc(t.start)}"></div><div class="field"><label>End date</label><input id="recordEnd" value="${esc(t.end)}"></div><div class="field"><label>Regulation</label><input id="recordRule" value="${esc(t.regulation)}"></div><p class="sub">Player teams and rosters can be corrected from the Teams / player-profile pages. Editing an old roster updates that player's stored history.</p><div class="creator-actions"><button class="btn" onclick="saveTournamentRecord('${id}')">Save record</button></div></div></div>`}
+function saveTournamentRecord(id){let t=tournamentData[id];if(!t)return;t.name=document.querySelector('#recordName').value.trim()||t.name;t.start=document.querySelector('#recordStart').value.trim()||t.start;t.end=document.querySelector('#recordEnd').value.trim()||t.end;t.regulation=document.querySelector('#recordRule').value.trim()||t.regulation;persistLeague();closeModal()}
 
+function deleteTournament(id){
+  let t=tournamentData[id];
+  if(!t)return;
+  if(!confirm(`Delete "${t.name}" (${t.season})? This cannot be undone.`))return;
+  delete tournamentData[id];
+  if(viewTournament===id){
+    viewTournament=ongoingT()?.id||Object.keys(tournamentData)[0]||null;
+  }
+  rebuildAllPlayerStats();
+  persistLeague();
+  go('Tournaments');
+}
 
 function tournamentDetail(){
   let t=activeT();
@@ -331,7 +343,8 @@ function tournamentDetail(){
               detailTab==='Standings'?`<div style="display:grid;grid-template-columns:repeat(${groups.length>1?2:1},minmax(0,1fr));gap:16px;align-items:start">${groups.map(g=>`<div class="card table-wrap" style="align-self:start">${standingTable(t,g)}</div>`).join('')}</div>`:
               detailTab==='Top Cut'?topCutSection(t, isPreview):
               predictions(t);
-  return head(t.name,t.season+' · '+t.status,`<div><button class="btn ghost" onclick="go('Tournaments')">← Archive</button>${moderator?` <button class="btn ghost" onclick="openTournamentRecordEditor('${t.id}')">Edit record</button>${t.status==='COMPLETE'?` <button class="btn ghost" onclick="resyncTournamentStats('${t.id}')">Resync stats</button>`:''} <button class="btn ghost" style="color:#ff9ba1" onclick="deleteTournament('${t.id}')">Delete</button>`:''}</div>`)+`<div class="tabs">${['Group Stage','Standings','Top Cut','Predictions'].map(x=>`<button class="${detailTab===x?'active':''}" onclick="detailTab='${x}';render()">${x}</button>`).join('')}</div><div class="detail-layout"><div>${content}</div><aside class="card side"><div class="card-title">Tournament record</div><div class="side-line">${t.regulation}</div><div class="side-line"><b>${t.players.length}</b> players · ${groups.length} group${groups.length===1?'':'s'}</div><div class="side-line">Top ${advancePerGroup(t)} per group</div><div class="side-line">${t.start} → ${t.end}</div></aside></div>`;
+  let modActions = moderator ? ` <button class="btn ghost" onclick="openTournamentRecordEditor('${t.id}')">Edit record</button>${t.status==='COMPLETE'?` <button class="btn ghost" onclick="resyncTournamentStats('${t.id}')">Resync stats</button>`:''} <button class="btn ghost" style="color:#ff9ba1" onclick="deleteTournament('${t.id}')">Delete</button>` : '';
+  return head(t.name,t.season+' · '+t.status,`<div><button class="btn ghost" onclick="go('Tournaments')">← Archive</button>${modActions}</div>`)+`<div class="tabs">${['Group Stage','Standings','Top Cut','Predictions'].map(x=>`<button class="${detailTab===x?'active':''}" onclick="detailTab='${x}';render()">${x}</button>`).join('')}</div><div class="detail-layout"><div>${content}</div><aside class="card side"><div class="card-title">Tournament record</div><div class="side-line">${t.regulation}</div><div class="side-line"><b>${t.players.length}</b> players · ${groups.length} group${groups.length===1?'':'s'}</div><div class="side-line">Top ${advancePerGroup(t)} per group</div><div class="side-line">${t.start} → ${t.end}</div></aside></div>`;
 }
 
 function editProfile(p){let q=ensureProfile(p),career=playerCareerStats(p);document.querySelector('#modal').innerHTML=`<div class="modal-wrap"><div class="modal" style="max-width:520px"><div class="modal-head"><div><div class="eyebrow">Player profile</div><h2>Edit ${esc(p)}</h2></div><button class="close" onclick="closeModal()">×</button></div><div class="field"><label>Default team name</label><input id="editDefaultTeam" value="${esc(q.team)}"></div><div class="card" style="padding:14px;margin-top:14px;background:#111116;border-color:#32323a"><div class="eyebrow">Profile art</div><p class="sub" style="margin:7px 0 12px">Use the player photo on profile pages and the team cover on team cards.</p><div class="creator-actions" style="justify-content:start;flex-wrap:wrap">${moderator?`<button class="btn ghost" onclick="openProfilePictureEditor('${jsArg(p)}')">Edit profile picture</button><button class="btn ghost" onclick="openTeamCoverEditor('${jsArg(p)}')">Edit team cover</button>`:''}</div></div><div class="card" style="padding:14px;margin-top:14px;background:#111116;border-color:#32323a"><div class="eyebrow">Current snapshot</div><div class="mini-stats" style="margin-top:14px"><div><b>${career.titles}x</b><span>Champion</span></div><div><b>${career.topCuts}x</b><span>Top Cut</span></div><div><b>${esc(career.record)}</b><span>All-time W-L</span></div></div></div><div class="creator-actions"><button class="btn ghost" onclick="openProfileManager()">Back</button><button class="btn" onclick="saveProfile('${jsArg(p)}')">Save profile</button></div></div></div>`}
@@ -737,7 +750,7 @@ function getTournamentTopCutModel(t){
 }
 
 async function resetTopCutBracket(){
-  let t = ongoingT();
+  let t = (current === 'Tournament Detail' ? activeT() : ongoingT()) || activeT();
   if(!t || !moderator) return;
   if(!confirm("Reset the Top Cut bracket? This will clear playoff match scores and re-seed the bracket freshly from the current group standings.")) return;
   delete t.bracketManagerData;
@@ -753,7 +766,7 @@ function topCutSection(t, preview){
   let model = getTournamentTopCutModel(t);
   if(!model) return '<div class="card empty"><div class="card-title">Top Cut bracket data unavailable</div></div>';
 
-  let isModEditable = moderator && t.status === 'ONGOING' && (t.phase === 'topcut' || !!t.bracketManagerData);
+  let isModEditable = moderator && (t.status === 'ONGOING' || t.phase === 'topcut' || !!t.bracketManagerData);
   let statusBadge = preview ? `<span class="tag hunt">PROJECTED SEEDS</span>` : (t.status === 'COMPLETE' ? `<span class="tag safe">TOURNAMENT ARCHIVE · COMPLETE</span>` : `<span class="tag hunt">PLAYOFFS LIVE</span>`);
 
   function renderMatchSlot(pName, seed, score, isWinner, isLoser, originLabel){
@@ -960,8 +973,8 @@ function mountTopCutViewer(){}
 
 async function openTopCutScoreModal(matchId){
   matchId = typeof matchId === 'string' && !isNaN(+matchId) ? +matchId : matchId;
-  let t = current === 'Top Cut' ? ongoingT() : (current === 'Tournament Detail' && detailTab === 'Top Cut' ? activeT() : null);
-  if(!t || !moderator || t.status !== 'ONGOING') return;
+  let t = (current === 'Tournament Detail' ? activeT() : ongoingT()) || activeT();
+  if(!t || !moderator) return;
   let data = await getTopCutStageData(t);
   if(!data || !data.match) return;
   let m = data.match.find(x => x.id === matchId);
@@ -1002,7 +1015,7 @@ async function openTopCutScoreModal(matchId){
 
 async function saveTopCutScore(matchId){
   matchId = typeof matchId === 'string' && !isNaN(+matchId) ? +matchId : matchId;
-  let t = current === 'Top Cut' ? ongoingT() : (current === 'Tournament Detail' && detailTab === 'Top Cut' ? activeT() : null);
+  let t = (current === 'Tournament Detail' ? activeT() : ongoingT()) || activeT();
   if(!t) return;
   let h = hydrateTopCutManager(t);
   if(!h) return;
@@ -1334,24 +1347,96 @@ function resyncTournamentStats(id){let t=tournamentData[id];if(!t){alert('Tourna
 
 
 
+function getStoredModeratorState(){
+  let saved = localStorage.getItem('draftdex-moderator');
+  return saved !== null ? saved === 'true' : true;
+}
+
+function toggleModerator(){
+  moderator = !moderator;
+  localStorage.setItem('draftdex-moderator', moderator ? 'true' : 'false');
+  let label = document.querySelector('#accountText');
+  if(label) label.textContent = sessionUser ? (moderator ? 'Moderator' : 'Player') : (moderator ? 'Moderator' : 'Sign in');
+  render();
+}
+
 var sessionReqId=0,sessionResolvedFor=null;
-async function updateSession(session){let myReq=++sessionReqId;let wasAccount=current==='Account'&&!sessionUser&&!session;let newUser=session?.user||null;if(newUser&&sessionUser&&newUser.id===sessionUser.id&&sessionResolvedFor===newUser.id){sessionUser=newUser;return}sessionUser=newUser;let nextModerator=false,nextAccount=null;if(sessionUser&&supabaseClient){let {data}=await supabaseClient.from('user_profiles').select('role,username,prediction_points').eq('id',sessionUser.id).single();if(myReq!==sessionReqId)return;nextModerator=data?.role==='moderator';nextAccount=data||null}moderator=nextModerator;window.currentAccount=nextAccount;sessionResolvedFor=sessionUser?sessionUser.id:null;let label=document.querySelector('#accountText');if(label)label.textContent=sessionUser?(moderator?'Moderator':'Player'):'Sign in';if(supabaseClient){let {data}=await supabaseClient.from('league_state').select('data').eq('id','main').single();if(myReq!==sessionReqId)return;let incoming=data?.data;if(shouldApply(incoming))applySharedState(incoming)}if(!wasAccount)render()}
+async function updateSession(session){
+  let myReq=++sessionReqId;
+  let wasAccount=current==='Account'&&!sessionUser&&!session;
+  let newUser=session?.user||null;
+  if(newUser&&sessionUser&&newUser.id===sessionUser.id&&sessionResolvedFor===newUser.id){sessionUser=newUser;return}
+  sessionUser=newUser;
+  let nextModerator=getStoredModeratorState(),nextAccount=null;
+  if(sessionUser&&supabaseClient){
+    let {data}=await supabaseClient.from('user_profiles').select('role,username,prediction_points').eq('id',sessionUser.id).single();
+    if(myReq!==sessionReqId)return;
+    if(data){
+      nextModerator=data.role==='moderator';
+      nextAccount=data;
+    }
+  }
+  moderator=nextModerator;
+  window.currentAccount=nextAccount;
+  sessionResolvedFor=sessionUser?sessionUser.id:null;
+  let label=document.querySelector('#accountText');
+  if(label)label.textContent=sessionUser?(moderator?'Moderator':'Player'):(moderator?'Moderator':'Sign in');
+  if(supabaseClient){
+    let {data}=await supabaseClient.from('league_state').select('data').eq('id','main').single();
+    if(myReq!==sessionReqId)return;
+    let incoming=data?.data;
+    if(shouldApply(incoming))applySharedState(incoming);
+  }
+  if(!wasAccount)render();
+}
 
-function tournamentCard(t){let bg=t.backgroundImage?`style="background-image:linear-gradient(90deg,rgba(20,20,25,.92),rgba(20,20,25,.68)),url('${t.backgroundImage}') ;background-size:cover;background-position:center"`:'';return `<button class="card archive-card" ${bg} onclick="openTournament('${t.id}')"><div class="${t.status==='ONGOING'?'status':'eyebrow'}">${t.status==='ONGOING'?'<i></i>':''}${t.status}</div><h3>${t.name} · ${t.season}</h3><p>${t.champion?'Champion: '+t.champion:'Group stage · '+t.players.length+' trainers'}<br>${t.regulation}</p><div class="archive-stats"><span><b>${t.matches.length}</b>Matches</span><span><b>${t.start}</b>Started</span></div></button>`}
-function Tournaments(){return head('Tournaments','League archive',moderator?`<button class="btn" onclick="openCreator()">+ New tournament</button>`:'')+`<div class="archive">${Object.values(tournamentData).map(t=>`<div style="position:relative">${tournamentCard(t)}${moderator?`<button class="cover-edit" onclick="event.stopPropagation();openCoverEditor('${t.id}')">Edit cover</button>`:''}</div>`).join('')}</div><p class="sub">Moderators can add a tournament cover image from the archive page.</p>`}
+function tournamentCard(t){
+  let bg=t.backgroundImage?`style="background-image:linear-gradient(90deg,rgba(20,20,25,.92),rgba(20,20,25,.68)),url('${t.backgroundImage}') ;background-size:cover;background-position:center"`:'';
+  return `<button class="card archive-card" ${bg} onclick="openTournament('${t.id}')"><div class="${t.status==='ONGOING'?'status':'eyebrow'}">${t.status==='ONGOING'?'<i></i>':''}${t.status}</div><h3>${t.name} · ${t.season}</h3><p>${t.champion?'Champion: '+t.champion:'Group stage · '+t.players.length+' trainers'}<br>${t.regulation}</p><div class="archive-stats"><span><b>${t.matches.length}</b>Matches</span><span><b>${t.start}</b>Started</span></div></button>`;
+}
 
+function Tournaments(){
+  return head('Tournaments','League archive',moderator?`<button class="btn" onclick="openCreator()">+ New tournament</button>`:'')+`<div class="archive">${Object.values(tournamentData).map(t=>`<div style="position:relative">${tournamentCard(t)}${moderator?`<button class="cover-edit" onclick="event.stopPropagation();openCoverEditor('${t.id}')">Edit cover</button>`:''}</div>`).join('')}</div><p class="sub">Moderators can add a tournament cover image from the archive page.</p>`;
+}
 
-function saveCover(id){if(!window.pendingCover){closeModal();return}tournamentData[id].backgroundImage=window.pendingCover;window.pendingCover=null;persistLeague();closeModal()}
-function removeCover(id){delete tournamentData[id].backgroundImage;window.pendingCover=null;persistLeague();closeModal()}
-
-
-
-function authNotice(message,error=false){let box=document.querySelector('#authNotice');if(box){box.textContent=message;box.style.display='block';box.style.color=error?'#ff9ba1':'#79e7a8'}}
-async function ensureSupabase(){if(!supabaseClient)await initSupabase();return supabaseClient}
-
-
-async function signUp(){if(!await ensureSupabase()){authNotice('Supabase is not configured. Add the Project URL and publishable key to supabase-config.js.',true);return}let username=document.querySelector('#authUsername').value.trim(),password=document.querySelector('#authPassword').value,email=usernameAuthEmail(username);if(username.length<3||!email||password.length<6){authNotice('Use a username of at least 3 characters and a password of at least 6 characters.',true);return}let {data,error}=await supabaseClient.auth.signUp({email,password,options:{data:{username}}});if(error)authNotice(error.message,true);else if(!data.session)authNotice('Account was created, but Supabase still requires email confirmation. Disable Confirm email in Supabase Auth settings.',true);else authNotice('Account created and signed in.')}
-function Account(){if(!sessionUser)return head('Sign in','League account')+`<div class="card account-panel" style="max-width:520px"><div class="card-title">Account access</div><p class="sub">Create a username and password. An email address is not shown or requested.</p><div class="field"><label>Username</label><input id="authUsername" autocomplete="username" placeholder="Trainer name"></div><div class="field"><label>Password</label><input id="authPassword" autocomplete="current-password" type="password" placeholder="Password"></div><div class="creator-actions" style="justify-content:start"><button class="btn" onclick="signIn()">Sign in</button><button class="btn ghost" onclick="signUp()">Create account</button></div><p id="authNotice" class="sub" style="display:none"></p>${supabaseReady()?'':'<p class="sub">Supabase is not configured yet. Add your project credentials to <code>supabase-config.js</code>.</p>'}</div>`;return head('Your account','Identity & permissions')+`<div class="card account-panel"><div class="eyebrow">Signed in</div><div class="profile-name">${window.currentAccount?.username||'Trainer'}</div><div class="role-box"><b>${moderator?'Moderator':'Player'}</b></div>${moderator?`<div class="creator-actions" style="justify-content:start"><button class="btn" onclick="openProfileManager()">Manage player profiles</button><button class="btn ghost" onclick="openTournamentPlayers()">Edit tournament players</button></div>`:''}<button class="btn ghost" onclick="signOut()">Sign out</button></div>`}
+function Account(){
+  if(!sessionUser){
+    return head('Account & Permissions','Settings')+`<div class="card account-panel" style="max-width:540px">
+      <div class="card-title">Moderator Controls</div>
+      <p class="sub">Toggle administrator and editing mode on this browser.</p>
+      <div style="margin:16px 0 24px;padding:14px;background:#101015;border:1px solid #32323a;border-radius:6px;display:flex;align-items:center;justify-content:space-between">
+        <div>
+          <div style="font-weight:800;font-size:14px">Moderator Permissions</div>
+          <div class="sub" style="font-size:11px;margin-top:2px">${moderator?'Enabled: You can edit scores, create tournaments, and manage records.':'Disabled: Read-only spectator mode.'}</div>
+        </div>
+        <button class="btn ${moderator?'':'ghost'}" style="padding:7px 13px;font-size:11px;margin-left:12px" onclick="toggleModerator()">${moderator?'Moderator: ON':'Moderator: OFF'}</button>
+      </div>
+      <div class="card-title">Account Sign In</div>
+      <p class="sub">Sign in with username and password to link your predictions and profile.</p>
+      <div class="field"><label>Username</label><input id="authUsername" autocomplete="username" placeholder="Trainer name"></div>
+      <div class="field"><label>Password</label><input id="authPassword" autocomplete="current-password" type="password" placeholder="Password"></div>
+      <div class="creator-actions" style="justify-content:start;margin-top:14px">
+        <button class="btn" onclick="signIn()">Sign in</button>
+        <button class="btn ghost" onclick="signUp()">Create account</button>
+      </div>
+      <p id="authNotice" class="sub" style="display:none"></p>
+    </div>`;
+  }
+  return head('Your account','Identity & permissions')+`<div class="card account-panel" style="max-width:540px">
+    <div class="eyebrow">Signed in</div>
+    <div class="profile-name">${window.currentAccount?.username||'Trainer'}</div>
+    <div class="role-box"><b>${moderator?'Moderator':'Player'}</b></div>
+    <div style="margin:16px 0;padding:14px;background:#101015;border:1px solid #32323a;border-radius:6px;display:flex;align-items:center;justify-content:space-between">
+      <div>
+        <div style="font-weight:800;font-size:13px">Moderator Mode</div>
+        <div class="sub" style="font-size:11px;margin-top:2px">Toggle administrator actions on this browser</div>
+      </div>
+      <button class="btn ${moderator?'':'ghost'}" style="padding:6px 12px;font-size:11px" onclick="toggleModerator()">${moderator?'Moderator: ON':'Moderator: OFF'}</button>
+    </div>
+    ${moderator?`<div class="creator-actions" style="justify-content:start;margin-top:14px"><button class="btn" onclick="openProfileManager()">Manage player profiles</button><button class="btn ghost" onclick="openTournamentPlayers()">Edit tournament players</button></div>`:''}
+    <div style="margin-top:14px"><button class="btn ghost" onclick="signOut()">Sign out</button></div>
+  </div>`;
+}
 
 function openCoverEditor(id){let t=tournamentData[id];document.querySelector('#modal').innerHTML=`<div class="modal-wrap"><div class="modal" style="max-width:510px"><div class="modal-head"><div><div class="eyebrow">Tournament cover</div><h2>${t.name}</h2></div><button class="close" onclick="closeModal()">×</button></div><p class="sub">Choose a Pokémon image up to 2 MB. This limit is for the current browser/JSON storage setup, not your website host.</p><div class="field"><label>Upload cover image</label><input id="coverFile" type="file" accept="image/png,image/jpeg,image/webp" onchange="previewCover(event)"></div><div id="coverPreview" style="height:190px;border-radius:6px;margin-top:14px;background:${t.backgroundImage?`url('${t.backgroundImage}') center/cover`:'#25252b'}"></div><div class="creator-actions"><button class="btn ghost" onclick="removeCover('${id}')">Remove cover</button><button class="btn" onclick="saveCover('${id}')">Save cover</button></div></div></div>`}
 function openRecapPanelCoverEditor(id){let t=tournamentData[id];document.querySelector('#modal').innerHTML=`<div class="modal-wrap"><div class="modal" style="max-width:510px"><div class="modal-head"><div><div class="eyebrow">Recap panel cover</div><h2>${t.name}</h2></div><button class="close" onclick="closeModal()">×</button></div><p class="sub">This changes the background of the off-season Last Tournament panel only.</p><div class="field"><label>Upload panel image</label><input id="recapPanelFile" type="file" accept="image/png,image/jpeg,image/webp" onchange="previewRecapPanelCover(event)"></div><div id="recapPanelPreview" style="height:190px;border-radius:6px;margin-top:14px;background:${t.recapPanelImage||t.backgroundImage?`url('${t.recapPanelImage||t.backgroundImage}') center/cover`:'#25252b'}"></div><div class="creator-actions"><button class="btn ghost" onclick="removeRecapPanelCover('${id}')">Remove panel cover</button><button class="btn" onclick="saveRecapPanelCover('${id}')">Save panel cover</button></div></div></div>`}
