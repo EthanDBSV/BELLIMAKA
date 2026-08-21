@@ -4034,16 +4034,44 @@ function calculateLeagueRecords(){
           });
         }
 
-        // Undefeated Group Stage (Flawless in group stage)
+        // Clean Sheet: Flawless in group stage
         if(gComplete&&gw>=2&&gl===0){
           statsByPlayer[p].badges.push({
-            id:'undefeated-group-'+t.id,
+            id:'cleansheet-'+t.id,
             icon:'🛡️',
-            name:`Undefeated Group (${t.name})`,
+            name:`Clean Sheet (${t.name})`,
             desc:`Flawless group stage without a single match loss (${gw}-0) in ${t.name}`,
             category:'dominance',
             color:'blue'
           });
+        }
+
+        // Victim: Lost all group stage matches (min 2 matches played)
+        if(gComplete&&gw===0&&gl>=2){
+          statsByPlayer[p].badges.push({
+            id:'victim-'+t.id,
+            icon:'💀',
+            name:`Victim (${t.name})`,
+            desc:`Lost all group stage matches (0-${gl}) in ${t.name}`,
+            category:'notoriety',
+            color:'red'
+          });
+        }
+
+        // Prediction King: Top prediction score in a completed tournament
+        if(t.status==='COMPLETE'&&(t.predictionKing||t.predictionLeader||t.predictionWinner)){
+          let pk=t.predictionKing||t.predictionLeader||t.predictionWinner;
+          let pkPlayer=(typeof playerForAccount==='function'?playerForAccount(pk):null)||pk;
+          if(pkPlayer===p){
+            statsByPlayer[p].badges.push({
+              id:'prediction-king-'+t.id,
+              icon:'🔮',
+              name:`Prediction King (${t.name})`,
+              desc:`Scored the most prediction points in ${t.name}`,
+              category:'predictions',
+              color:'purple'
+            });
+          }
         }
 
         // Cinderella Run: Overperformed expectations in general for this tournament
@@ -4460,6 +4488,7 @@ function openBadgeGuide(){
         { icon: '🐐', name: 'GOAT', color: 'gold', desc: 'Rated #1 Greatest of All Time based on composite ELO, titles, top cuts, and win rate.' },
         { icon: '👑', name: 'Dynasty Champion', color: 'gold', desc: 'Won 2 or more League Championships.' },
         { icon: '🏆', name: 'League Champion', color: 'gold', desc: 'Won 1 League Championship.' },
+        { icon: '🔮', name: 'Prediction King', color: 'purple', desc: 'Awarded to the trainer/account with the most prediction points in a completed tournament.' },
         { icon: '⚔️', name: 'Playoff Royalty', color: 'purple', desc: 'Reached Top Cut in 3 or more tournaments.' },
         { icon: '⚔️', name: 'Top Cut Veteran', color: 'silver', desc: 'Reached Top Cut in 2 tournaments.' }
       ]
@@ -4467,11 +4496,12 @@ function openBadgeGuide(){
     {
       cat: 'Tournament Feats',
       badges: [
-        { icon: '🛡️', name: 'Undefeated Group', color: 'blue', desc: 'Flawless group stage without a single match loss in a tournament.' },
+        { icon: '🛡️', name: 'Clean Sheet', color: 'blue', desc: 'Flawless group stage without dropping a single match in a tournament.' },
         { icon: '👑', name: 'Undefeated Champ', color: 'gold', desc: 'Won an entire tournament without dropping a single match in groups or playoffs.' },
         { icon: '🚀', name: 'Most Improved', color: 'green', desc: 'Largest tournament-to-tournament rank and win improvement.' },
         { icon: '👠', name: 'Cinderella Run', color: 'purple', desc: 'Low-seed underdog qualification into Top Cut playoffs or Finals.' },
-        { icon: '💥', name: 'Blowout King (+5 GD)', color: 'amber', desc: 'Dominant +5 or higher game differential in a single tournament.' }
+        { icon: '💥', name: 'Blowout King (+5 GD)', color: 'amber', desc: 'Dominant +5 or higher game differential in a single tournament.' },
+        { icon: '💀', name: 'Victim', color: 'red', desc: 'Lost all matches in a completed group stage.' }
       ]
     },
     {
