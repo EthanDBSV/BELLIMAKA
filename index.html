@@ -3320,8 +3320,16 @@ function tournamentFinish(t,p){
   let entry=Object.entries(groupsOf(t)).find(([,ps])=>ps.includes(p));
   if(entry){
     try{
-      let stand=getStand(t,entry[0]),idx=stand.findIndex(x=>x.p===p);
-      if(idx>-1)return {place:100+idx,label:ordinal(idx+1),note:(Object.keys(groupsOf(t)).length>1?entry[0]+' · ':'')+(t.status==='COMPLETE'?'group stage':'current rank'),cls:''};
+      let gName=entry[0];
+      let finalArr=t.finalStandings?.[gName]||t.manualStandings?.[gName];
+      let idx=-1;
+      if(Array.isArray(finalArr)&&finalArr.includes(p)){
+        idx=finalArr.indexOf(p);
+      }else{
+        let stand=getStand(t,gName);
+        idx=stand.findIndex(x=>x.p===p);
+      }
+      if(idx>-1)return {place:100+idx,label:ordinal(idx+1),note:(Object.keys(groupsOf(t)).length>1?gName+' · ':'')+(t.status==='COMPLETE'?'group stage':'current rank'),cls:''};
     }catch(e){}
   }
   return {place:999,label:'—',note:t.status==='COMPLETE'?'Group stage':'Participating',cls:''};
@@ -4029,7 +4037,8 @@ function calculateLeagueRecords(){
       let gw=gStand?(gStand.w||0):0;
       let gl=gStand?(gStand.l||0):0;
       let gd=gStand?(gStand.gw-gStand.gl):0;
-      let gSeed=gStand?getStand(t,gEntry[0]).indexOf(gStand)+1:0;
+      let finalArr=t.finalStandings?.[gEntry?.[0]]||t.manualStandings?.[gEntry?.[0]];
+      let gSeed=Array.isArray(finalArr)&&finalArr.includes(p)?(finalArr.indexOf(p)+1):(gStand?getStand(t,gEntry[0]).indexOf(gStand)+1:0);
       let groupSize=gEntry?groupsOf(t)[gEntry[0]]?.length||4:4;
       let gComplete=isGroupComplete(t,gEntry?.[0])||isCompleteOrTopCut;
 
