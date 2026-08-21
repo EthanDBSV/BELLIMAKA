@@ -2136,18 +2136,7 @@ function tournamentCard(t){
 }
 
 function Tournaments(){
-  let sorted = Object.values(tournamentData).sort((a,b)=>{
-    if(a.status==='ONGOING'&&b.status!=='ONGOING') return -1;
-    if(b.status==='ONGOING'&&a.status!=='ONGOING') return 1;
-    let da=Date.parse(a.start)||0, db=Date.parse(b.start)||0;
-    if(da && db && da !== db) return db - da;
-    if(da && !db) return -1;
-    if(!da && db) return 1;
-    let sa=Number(String(a.season||'').replace(/\D/g,''))||0;
-    let sb=Number(String(b.season||'').replace(/\D/g,''))||0;
-    if(sa && sb && sa !== sb) return sb - sa;
-    return String(b.id||'').localeCompare(String(a.id||''));
-  });
+  let sorted = sortedTournamentsChronological();
   return head('Tournaments','League archive',moderator?`<button class="btn" onclick="openCreator()">+ New tournament</button>`:'')+`<div class="archive">${sorted.map(t=>`<div style="position:relative">${tournamentCard(t)}${moderator?`<button class="cover-edit" onclick="event.stopPropagation();openCoverEditor('${t.id}')">Edit cover</button>`:''}</div>`).join('')}</div><p class="sub">Moderators can add a tournament cover image from the archive page.</p>`;
 }
 
