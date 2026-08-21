@@ -632,7 +632,7 @@ function getTournamentTopCutModel(t){
     }
     lbRounds.push({ title:'Losers Final', name:'Round 4', matches:lb4Matches });
 
-    let gf1Match = { id:'gf1', title:'Grand Final', p1:wb3Matches[0].winner||'WB Champion', p2:lb4Matches[0].winner||'LB Champion', originP1:'WB Champion', originP2:'LB Champion' };
+    let gf1Match = { id:'gf1', title:'Grand Finals', p1:wb3Matches[0].winner||'WB Champion', p2:lb4Matches[0].winner||'LB Champion', originP1:'WB Champion', originP2:'LB Champion' };
     let smGf = findStageMatch(bmd, 3, 1, 1);
     if(smGf){
       if(smGf.p1) gf1Match.p1 = smGf.p1;
@@ -642,6 +642,28 @@ function getTournamentTopCutModel(t){
       gf1Match.actualMatchId = smGf.id;
     }
     gfMatches.push(gf1Match);
+
+    let smGf2 = findStageMatch(bmd, 3, 2, 1);
+    let lbWonGf1 = gf1Match.isDone && isKnownPlayer(gf1Match.p1) && isKnownPlayer(gf1Match.p2) && (gf1Match.winner === gf1Match.p2 || (smGf2 && (smGf2.p1 || smGf2.opponent1?.id != null)));
+    if(lbWonGf1 || smGf2?.isDone){
+      let gf2Match = {
+        id:'gf2',
+        title:'Grand Finals · Reset Match',
+        p1: smGf2?.p1 || gf1Match.p1,
+        p2: smGf2?.p2 || gf1Match.p2,
+        originP1:'GF1 Rematch',
+        originP2:'GF1 Rematch',
+        isReset: true
+      };
+      if(smGf2){
+        if(smGf2.p1) gf2Match.p1 = smGf2.p1;
+        if(smGf2.p2) gf2Match.p2 = smGf2.p2;
+        gf2Match.s1 = smGf2.s1; gf2Match.s2 = smGf2.s2;
+        gf2Match.isDone = smGf2.isDone; gf2Match.winner = smGf2.winner; gf2Match.loser = smGf2.loser;
+        gf2Match.actualMatchId = smGf2.id;
+      }
+      gfMatches.push(gf2Match);
+    }
 
   } else {
     let wb1Matches = [
@@ -705,7 +727,7 @@ function getTournamentTopCutModel(t){
     }
     lbRounds.push({ title:'Losers Final', name:'Round 2', matches:lb2Matches });
 
-    let gf1Match = { id:'gf1', title:'Grand Final', p1:wb2Matches[0].winner||'WB Champion', p2:lb2Matches[0].winner||'LB Champion', originP1:'WB Champion', originP2:'LB Champion' };
+    let gf1Match = { id:'gf1', title:'Grand Finals', p1:wb2Matches[0].winner||'WB Champion', p2:lb2Matches[0].winner||'LB Champion', originP1:'WB Champion', originP2:'LB Champion' };
     let smGf = findStageMatch(bmd, 3, 1, 1);
     if(smGf){
       if(smGf.p1) gf1Match.p1 = smGf.p1;
@@ -715,6 +737,28 @@ function getTournamentTopCutModel(t){
       gf1Match.actualMatchId = smGf.id;
     }
     gfMatches.push(gf1Match);
+
+    let smGf2 = findStageMatch(bmd, 3, 2, 1);
+    let lbWonGf1 = gf1Match.isDone && isKnownPlayer(gf1Match.p1) && isKnownPlayer(gf1Match.p2) && (gf1Match.winner === gf1Match.p2 || (smGf2 && (smGf2.p1 || smGf2.opponent1?.id != null)));
+    if(lbWonGf1 || smGf2?.isDone){
+      let gf2Match = {
+        id:'gf2',
+        title:'Grand Finals · Reset Match',
+        p1: smGf2?.p1 || gf1Match.p1,
+        p2: smGf2?.p2 || gf1Match.p2,
+        originP1:'GF1 Rematch',
+        originP2:'GF1 Rematch',
+        isReset: true
+      };
+      if(smGf2){
+        if(smGf2.p1) gf2Match.p1 = smGf2.p1;
+        if(smGf2.p2) gf2Match.p2 = smGf2.p2;
+        gf2Match.s1 = smGf2.s1; gf2Match.s2 = smGf2.s2;
+        gf2Match.isDone = smGf2.isDone; gf2Match.winner = smGf2.winner; gf2Match.loser = smGf2.loser;
+        gf2Match.actualMatchId = smGf2.id;
+      }
+      gfMatches.push(gf2Match);
+    }
   }
 
   let allBracketMatches = [...wbRounds.flatMap(r=>r.matches), ...lbRounds.flatMap(r=>r.matches), ...gfMatches];
@@ -732,8 +776,28 @@ function getTournamentTopCutModel(t){
     });
   }
 
-  let champion = t.champion || (gfMatches[0]?.isDone ? gfMatches[0].winner : null) || t.topCutCache?.champion || null;
-  let runnerUp = (gfMatches[0]?.isDone ? gfMatches[0].loser : null);
+  let champion = t.champion;
+  let runnerUp = null;
+
+  if(gfMatches.length > 1){
+    if(gfMatches[1].isDone){
+      champion = gfMatches[1].winner;
+      runnerUp = gfMatches[1].loser;
+    } else {
+      champion = null;
+      runnerUp = null;
+    }
+  } else if(gfMatches[0]?.isDone && gfMatches[0].winner === gfMatches[0].p1){
+    champion = gfMatches[0].winner;
+    runnerUp = gfMatches[0].loser;
+  }
+
+  if(!champion && t.topCutCache?.champion && (t.status === 'COMPLETE' || !gfMatches.some(m=>!m.isDone))){
+    champion = t.topCutCache.champion;
+  }
+  if(!runnerUp && champion && gfMatches[0]?.isDone){
+    runnerUp = (champion === gfMatches[0].p1) ? gfMatches[0].p2 : gfMatches[0].p1;
+  }
   let thirdPlace = (lbRounds[lbRounds.length-1]?.matches[0]?.isDone ? lbRounds[lbRounds.length-1]?.matches[0].loser : null);
 
   return {
@@ -2621,7 +2685,14 @@ function saveAccountLinks(){
 function Account(){
   if(!sessionUser)return head('Sign in',LEAGUE.short+' account')+`<div class="card account-panel" style="max-width:520px;padding:28px">
     <div class="card-title" style="margin-bottom:6px">Account Access</div>
-    <p class="sub" style="margin:0 0 20px">Sign in or create a trainer account to track prediction points and access your profile.</p>
+    <p class="sub" style="margin:0 0 16px">Sign in or create a trainer account to track prediction points and access your profile.</p>
+    <div style="margin: 0 0 20px; padding: 14px; background: #141419; border: 1px solid #2f2f38; border-radius: 6px; display: flex; align-items: center; justify-content: space-between;">
+      <div>
+        <div style="font-size: 13px; font-weight: 800; color: #f5f3f0;">Moderator Controls</div>
+        <div class="sub" style="font-size: 11px; margin-top: 2px">${moderator ? 'Admin & score edit mode enabled' : 'Viewing site in spectator mode'}</div>
+      </div>
+      <button class="btn ${moderator ? '' : 'ghost'}" style="font-size: 11px; padding: 7px 13px;" onclick="toggleModerator()">${moderator ? '👑 Moderator: ON' : '🎮 Moderator: OFF'}</button>
+    </div>
     <div class="field"><label>Username</label><input id="authUsername" autocomplete="username" placeholder="Trainer username"></div>
     <div class="field"><label>Password</label><input id="authPassword" autocomplete="current-password" type="password" placeholder="Password"></div>
     <div class="creator-actions" style="justify-content:start;margin-top:22px"><button class="btn" onclick="signIn()">Sign in</button><button class="btn ghost" onclick="signUp()">Create account</button></div>
@@ -2639,8 +2710,12 @@ function Account(){
         <div style="display:flex;flex-direction:column;align-items:center;text-align:center">
           <div class="avatar" style="background-image:${faceArt};background-size:cover;background-position:center;width:76px;height:76px;font-size:30px;border:2px solid #ffffff20;border-radius:50%;box-shadow:0 8px 20px rgba(0,0,0,0.5);display:grid;place-items:center">${faceLetter}</div>
           <h2 style="font:800 28px 'Barlow Condensed';margin:14px 0 6px;letter-spacing:.5px">${esc(username)}</h2>
-          <div style="margin-bottom:14px">
+          <div style="margin-bottom:8px">
             ${moderator?`<span class="tag" style="background:#3b1319;color:#ff8e95;border:1px solid #6b242e;font-size:10px;padding:4px 10px;letter-spacing:.7px">👑 Moderator</span>`:`<span class="tag" style="background:#162c1e;color:#7df0aa;border:1px solid #2f5c3b;font-size:10px;padding:4px 10px;letter-spacing:.7px">🎮 Trainer</span>`}
+          </div>
+          <div style="margin: 4px 0 16px; width: 100%; display: flex; flex-direction: column; align-items: center; gap: 5px;">
+            <button class="btn ${moderator ? '' : 'ghost'}" style="width:100%; font-size: 11px; padding: 7px 10px; border-radius: 4px;" onclick="toggleModerator()">${moderator ? '👑 Moderator: ON' : '🎮 Moderator: OFF'}</button>
+            <span class="sub" style="font-size:10px; text-align:center">${moderator ? 'Admin & score editing enabled' : 'Viewing site in spectator mode'}</span>
           </div>
         </div>
 
@@ -2671,7 +2746,9 @@ function Account(){
               <div class="eyebrow">League Administration</div>
               <h2 style="font:800 24px 'Barlow Condensed';letter-spacing:.5px;margin:3px 0 0">Moderator Control Panel</h2>
             </div>
-            <span class="tag" style="background:#22222a;color:#a09fa8;border:1px solid #363642">Active Tools</span>
+            <div style="display:flex;align-items:center;gap:8px">
+              <span class="tag" style="background:#22222a;color:#a09fa8;border:1px solid #363642">Active Tools</span>
+            </div>
           </div>
 
           <div class="acct-tools-grid">
