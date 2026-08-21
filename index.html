@@ -816,12 +816,119 @@ function getTournamentTopCutModel(t){
 async function resetTopCutBracket(){
   let t = (current === 'Tournament Detail' ? activeT() : ongoingT()) || activeT();
   if(!t || !moderator) return;
-  if(!confirm("Reset the Top Cut bracket? This will clear playoff match scores and re-seed the bracket freshly from the current group standings.")) return;
+  if(!confirm("Reset all playoff match scores? This will clear current match results and restart the bracket from the opening round.")) return;
   delete t.bracketManagerData;
   delete t.topCutCache;
   t.topCutMatchTimestamps = {};
   await createTopCutStage(t);
   persistLeague();
+  render();
+}
+
+function openReseedBracketModal(){
+  let t = (current === 'Tournament Detail' ? activeT() : ongoingT()) || activeT();
+  if(!t || !moderator) return;
+
+  let autoSeeds = seedTopCut(t).filter(Boolean);
+  let currentSeeds = (t.customTopCutSeeding && t.customTopCutSeeding.length) 
+    ? t.customTopCutSeeding.slice() 
+    : (t.bracketManagerData?.participant?.map(p=>p.name) || autoSeeds);
+  
+  let count = currentSeeds.length >= 8 ? 8 : (currentSeeds.length >= 4 ? 4 : Math.max(2, currentSeeds.length));
+  while(currentSeeds.length < count) currentSeeds.push(t.players[currentSeeds.length] || `Trainer ${currentSeeds.length+1}`);
+
+  let playerOptions = (selectedVal) => {
+    return (t.players || []).map(p => `<option value="${esc(p)}" ${p === selectedVal ? 'selected' : ''}>${esc(p)}${autoSeeds.includes(p)?` (Auto: #${autoSeeds.indexOf(p)+1})`:''}</option>`).join('');
+  };
+
+  let getPairingPreview = () => {
+    if(count === 8){
+      return `<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px;font-size:12px">
+        <div style="background:#15151c;border:1px solid #2d2d38;border-radius:4px;padding:8px"><b>Match 1:</b> Seed #1 vs Seed #8</div>
+        <div style="background:#15151c;border:1px solid #2d2d38;border-radius:4px;padding:8px"><b>Match 2:</b> Seed #4 vs Seed #5</div>
+        <div style="background:#15151c;border:1px solid #2d2d38;border-radius:4px;padding:8px"><b>Match 3:</b> Seed #2 vs Seed #7</div>
+        <div style="background:#15151c;border:1px solid #2d2d38;border-radius:4px;padding:8px"><b>Match 4:</b> Seed #3 vs Seed #6</div>
+      </div>`;
+    }
+    return `<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px;font-size:12px">
+      <div style="background:#15151c;border:1px solid #2d2d38;border-radius:4px;padding:8px"><b>Semifinal 1:</b> Seed #1 vs Seed #4</div>
+      <div style="background:#15151c;border:1px solid #2d2d38;border-radius:4px;padding:8px"><b>Semifinal 2:</b> Seed #2 vs Seed #3</div>
+    </div>`;
+  };
+
+  let rows = Array.from({length: count}, (_, i) => `
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:8px 12px;background:#14141a;border:1px solid #2d2d38;border-radius:6px;margin-bottom:8px">
+      <div style="font-weight:800;font-size:13px;color:#ffd166;width:70px">Seed #${i+1}</div>
+      <select class="reseed-select" data-seed-idx="${i}" style="flex:1;background:#1b1b22;color:#f5f3f0;border:1px solid #404050;border-radius:4px;padding:6px 10px;font-weight:700">
+        ${playerOptions(currentSeeds[i])}
+      </select>
+    </div>
+  `).join('');
+
+  document.querySelector('#modal').innerHTML = `<div class="modal-wrap">
+    <div class="modal" style="max-width:540px">
+      <div class="modal-head">
+        <div>
+          <div class="eyebrow">Moderator Tool</div>
+          <h2>Re-seed Playoff Bracket</h2>
+        </div>
+        <button class="close" onclick="closeModal()">×</button>
+      </div>
+      <p class="sub" style="margin:4px 0 16px">Assign seed rankings to each qualified trainer. Matchups will automatically update based on standard bracket seed pairings.</p>
+      
+      <div style="max-height:280px;overflow-y:auto;padding-right:4px;margin-bottom:14px">
+        ${rows}
+      </div>
+
+      <div style="margin-top:14px;padding:12px;background:#111116;border:1px solid #2c2c36;border-radius:6px">
+        <div style="font-size:11px;font-weight:800;text-transform:uppercase;color:#a09fa8;letter-spacing:.6px">Bracket Pairings Preview</div>
+        ${getPairingPreview()}
+      </div>
+
+      <div class="creator-actions" style="margin-top:20px;justify-content:space-between;flex-wrap:wrap;gap:8px">
+        <button class="btn ghost" style="color:#d8b44b" onclick="resetToAutoSeeding()">↺ Reset to Group Standings</button>
+        <div style="display:flex;gap:8px">
+          <button class="btn ghost" onclick="closeModal()">Cancel</button>
+          <button class="btn" onclick="applyCustomTopCutSeeding()">Apply Seeding & Build Bracket</button>
+        </div>
+      </div>
+    </div>
+  </div>`;
+}
+
+async function applyCustomTopCutSeeding(){
+  let t = (current === 'Tournament Detail' ? activeT() : ongoingT()) || activeT();
+  if(!t || !moderator) return;
+
+  let selects = [...document.querySelectorAll('.reseed-select')];
+  let chosen = selects.map(s => s.value.trim());
+
+  let duplicates = chosen.filter((item, index) => chosen.indexOf(item) !== index);
+  if(duplicates.length){
+    alert(`Each seed must have a unique player. "${duplicates[0]}" was selected more than once.`);
+    return;
+  }
+
+  t.customTopCutSeeding = chosen;
+  delete t.bracketManagerData;
+  delete t.topCutCache;
+  t.topCutMatchTimestamps = {};
+  await createTopCutStage(t);
+  persistLeague();
+  closeModal();
+  render();
+}
+
+async function resetToAutoSeeding(){
+  let t = (current === 'Tournament Detail' ? activeT() : ongoingT()) || activeT();
+  if(!t || !moderator) return;
+  delete t.customTopCutSeeding;
+  delete t.bracketManagerData;
+  delete t.topCutCache;
+  t.topCutMatchTimestamps = {};
+  await createTopCutStage(t);
+  persistLeague();
+  closeModal();
   render();
 }
 
@@ -981,9 +1088,12 @@ function topCutSection(t, preview){
         <div style="font:900 24px 'Barlow Condensed';letter-spacing:.6px;color:#f5f3f0;text-transform:uppercase">${esc(t.name)} Playoffs</div>
         ${statusBadge}
       </div>
-      <div style="display:flex;align-items:center;gap:10px">
-        ${isModEditable ? `<button class="btn ghost" style="padding:6px 11px;font-size:11px" onclick="resetTopCutBracket()">Reset / Re-seed bracket</button>` : ''}
-        ${isModEditable ? `<span style="font-size:11px;color:var(--amber);font-weight:700">✎ Click any ready match to report scores</span>` : ''}
+      <div style="display:flex;align-items:center;flex-wrap:wrap;gap:8px">
+        ${isModEditable ? `
+          <button class="btn ghost" style="padding:6px 11px;font-size:11px" onclick="openReseedBracketModal()">🔀 Re-seed bracket</button>
+          <button class="btn ghost" style="padding:6px 11px;font-size:11px;color:#ff9ba1;border-color:#4a242a" onclick="resetTopCutBracket()">↺ Reset scores</button>
+        ` : ''}
+        ${isModEditable ? `<span style="font-size:11px;color:var(--amber);font-weight:700;margin-left:4px">✎ Click any ready match to report scores</span>` : ''}
       </div>
     </div>
 
@@ -1502,6 +1612,27 @@ function Account(){
   </div>`;
 }
 
+function saveCover(id){
+  if(!tournamentData[id]){ closeModal(); return; }
+  if(window.pendingCover){
+    tournamentData[id].backgroundImage = window.pendingCover;
+    window.pendingCover = null;
+    persistLeague();
+    closeModal();
+    render();
+  } else {
+    closeModal();
+  }
+}
+function removeCover(id){
+  if(!tournamentData[id]){ closeModal(); return; }
+  delete tournamentData[id].backgroundImage;
+  window.pendingCover = null;
+  persistLeague();
+  closeModal();
+  render();
+}
+
 function openCoverEditor(id){let t=tournamentData[id];document.querySelector('#modal').innerHTML=`<div class="modal-wrap"><div class="modal" style="max-width:510px"><div class="modal-head"><div><div class="eyebrow">Tournament cover</div><h2>${t.name}</h2></div><button class="close" onclick="closeModal()">×</button></div><p class="sub">Choose a Pokémon image up to 2 MB. This limit is for the current browser/JSON storage setup, not your website host.</p><div class="field"><label>Upload cover image</label><input id="coverFile" type="file" accept="image/png,image/jpeg,image/webp" onchange="previewCover(event)"></div><div id="coverPreview" style="height:190px;border-radius:6px;margin-top:14px;background:${t.backgroundImage?`url('${t.backgroundImage}') center/cover`:'#25252b'}"></div><div class="creator-actions"><button class="btn ghost" onclick="removeCover('${id}')">Remove cover</button><button class="btn" onclick="saveCover('${id}')">Save cover</button></div></div></div>`}
 function openRecapPanelCoverEditor(id){let t=tournamentData[id];document.querySelector('#modal').innerHTML=`<div class="modal-wrap"><div class="modal" style="max-width:510px"><div class="modal-head"><div><div class="eyebrow">Recap panel cover</div><h2>${t.name}</h2></div><button class="close" onclick="closeModal()">×</button></div><p class="sub">This changes the background of the off-season Last Tournament panel only.</p><div class="field"><label>Upload panel image</label><input id="recapPanelFile" type="file" accept="image/png,image/jpeg,image/webp" onchange="previewRecapPanelCover(event)"></div><div id="recapPanelPreview" style="height:190px;border-radius:6px;margin-top:14px;background:${t.recapPanelImage||t.backgroundImage?`url('${t.recapPanelImage||t.backgroundImage}') center/cover`:'#25252b'}"></div><div class="creator-actions"><button class="btn ghost" onclick="removeRecapPanelCover('${id}')">Remove panel cover</button><button class="btn" onclick="saveRecapPanelCover('${id}')">Save panel cover</button></div></div></div>`}
 function openPulsePanelCoverEditor(id){let t=tournamentData[id];document.querySelector('#modal').innerHTML=`<div class="modal-wrap"><div class="modal" style="max-width:510px"><div class="modal-head"><div><div class="eyebrow">Tournament pulse cover</div><h2>${t.name}</h2></div><button class="close" onclick="closeModal()">×</button></div><p class="sub">This is a league-wide cover for the Tournament Pulse panel and carries over to every tournament until you change it again.</p><div class="field"><label>Upload pulse image</label><input id="pulsePanelFile" type="file" accept="image/png,image/jpeg,image/webp" onchange="previewPulsePanelCover(event)"></div><div id="pulsePanelPreview" style="height:190px;border-radius:6px;margin-top:14px;background:${pulsePanelImages.global||t.backgroundImage?`url('${pulsePanelImages.global||t.backgroundImage}') center/cover`:'#25252b'}"></div><div class="creator-actions"><button class="btn ghost" onclick="removePulsePanelCover('${id}')">Remove panel cover</button><button class="btn" onclick="savePulsePanelCover('${id}')">Save panel cover</button></div></div></div>`}
@@ -1509,24 +1640,26 @@ function openPulsePanelCoverEditor(id){let t=tournamentData[id];document.querySe
 function seedTopCut(t){let groups=Object.keys(groupsOf(t)),per=advancePerGroup(t),entries=[];for(let rank=0;rank<per;rank++)groups.forEach(g=>{let x=getStand(t,g)[rank];if(x)entries.push(x.p)});return entries}
 function topCutBracketSeedOrder(size){let order=[1,2];for(let n=4;n<=size;n*=2)order=order.flatMap(seed=>[seed,n+1-seed]);return order}
 function buildTopCutSeeding(t){
-  let names=seedTopCut(t).filter(Boolean);
+  let names=(t.customTopCutSeeding && t.customTopCutSeeding.length) ? t.customTopCutSeeding.filter(Boolean) : seedTopCut(t).filter(Boolean);
   let groups=groupsOf(t),groupOf=p=>{for(let k in groups)if(groups[k].includes(p))return k;return null};
   let size=nextPow2(Math.max(2,names.length));
   let seeding=names.slice();
   while(seeding.length<size)seeding.push(null);
-  let order=topCutBracketSeedOrder(size);
-  let positions=order.map(seed=>seeding[seed-1]);
-  for(let i=0;i<positions.length;i+=2){
-    let a=positions[i],b=positions[i+1];
-    if(a&&b&&groupOf(a)===groupOf(b)){
-      for(let j=0;j<positions.length;j++){
-        if(j===i||j===i+1)continue;
-        let partnerIdx=j%2===0?j+1:j-1,candidate=positions[j],partner=positions[partnerIdx];
-        if(candidate&&groupOf(candidate)!==groupOf(a)&&(!partner||groupOf(partner)!==groupOf(b))){
-          [positions[i+1],positions[j]]=[positions[j],positions[i+1]];
-          let seedIdxB=order[i+1]-1,seedIdxJ=order[j]-1;
-          [seeding[seedIdxB],seeding[seedIdxJ]]=[seeding[seedIdxJ],seeding[seedIdxB]];
-          break;
+  if(!t.customTopCutSeeding){
+    let order=topCutBracketSeedOrder(size);
+    let positions=order.map(seed=>seeding[seed-1]);
+    for(let i=0;i<positions.length;i+=2){
+      let a=positions[i],b=positions[i+1];
+      if(a&&b&&groupOf(a)===groupOf(b)){
+        for(let j=0;j<positions.length;j++){
+          if(j===i||j===i+1)continue;
+          let partnerIdx=j%2===0?j+1:j-1,candidate=positions[j],partner=positions[partnerIdx];
+          if(candidate&&groupOf(candidate)!==groupOf(a)&&(!partner||groupOf(partner)!==groupOf(b))){
+            [positions[i+1],positions[j]]=[positions[j],positions[i+1]];
+            let seedIdxB=order[i+1]-1,seedIdxJ=order[j]-1;
+            [seeding[seedIdxB],seeding[seedIdxJ]]=[seeding[seedIdxJ],seeding[seedIdxB]];
+            break;
+          }
         }
       }
     }
