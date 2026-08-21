@@ -1513,7 +1513,7 @@ render();
 .ovr-card-gold{background:linear-gradient(145deg,#36280a 0%,#1a1405 60%,#2e2208 100%)!important;border:2px solid #e0ad2b!important;box-shadow:0 8px 24px rgba(0,0,0,0.5),0 0 16px rgba(224,173,43,0.3)}
 .ovr-card-elite{background:linear-gradient(145deg,#420f16 0%,#1c0609 50%,#3d0811 100%)!important;border:2px solid #ff404a!important;box-shadow:0 8px 28px rgba(0,0,0,0.6),0 0 20px rgba(239,48,56,0.55)!important}
 
-.ovr-badge-pill{font:800 11px/1 'Barlow Condensed';letter-spacing:.6px;padding:3px 7px;border-radius:4px;text-transform:uppercase;display:inline-flex;align-items:center;gap:3px;vertical-align:middle}
+.ovr-badge-pill{font:800 13px/1 'Barlow Condensed';letter-spacing:.4px;padding:4px 8px;min-width:34px;justify-content:center;text-align:center;border-radius:4px;display:inline-flex;align-items:center;gap:2px;vertical-align:middle;font-variant-numeric:tabular-nums}
 .ovr-badge-pill.ovr-elite{background:linear-gradient(135deg,#ef3038,#b51821);color:#fff;border:1px solid #ff8087;box-shadow:0 0 8px rgba(239,48,56,0.6)}
 .ovr-badge-pill.ovr-gold{background:linear-gradient(135deg,#e6b800,#a68000);color:#fff;border:1px solid #ffe066;box-shadow:0 0 6px rgba(255,209,102,0.4)}
 .ovr-badge-pill.ovr-silver{background:linear-gradient(135deg,#6d7185,#464957);color:#fff;border:1px solid #a8abb9}
@@ -1759,7 +1759,7 @@ function calculatePlayerOVR(p, leagueData=null){
     tierUpper,
     color,
     badgeCls,
-    badgeHtml:`<span class="ovr-badge-pill ${badgeCls}">${badgePrefix}${finalOvr} ${tierName}</span>`,
+    badgeHtml:`<span class="ovr-badge-pill ${badgeCls}">${badgePrefix}${finalOvr}</span>`,
     subStats:{
       win:career.winPct,
       tit:career.titles,
@@ -1785,9 +1785,11 @@ function openProfile(p){
       <aside class="card profile-card ovr-card-${ovrCard.tier}" style="padding:18px">
         
         <!-- FIFA / Madden Top Rating Header -->
-        <div style="margin-bottom:8px">
-          <div style="font:900 46px/0.85 'Barlow Condensed';letter-spacing:-1px;color:${ovrCard.color}">${ovrCard.ovr}</div>
-          <div style="font:800 11px 'DM Sans';letter-spacing:1.5px;text-transform:uppercase;color:${ovrCard.color};opacity:0.95">OVR</div>
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px">
+          <div style="display:flex;flex-direction:column;align-items:center;text-align:center;width:52px">
+            <div style="font:900 46px/0.85 'Barlow Condensed';color:${ovrCard.color};font-variant-numeric:tabular-nums;letter-spacing:0;text-align:center;width:100%">${ovrCard.ovr}</div>
+            <div style="font:800 11px/1 'DM Sans';letter-spacing:1.5px;text-transform:uppercase;color:${ovrCard.color};opacity:0.95;margin-top:3px;text-align:center;width:100%">OVR</div>
+          </div>
         </div>
 
         <div style="display:flex;flex-direction:column;align-items:center;text-align:center">
@@ -2771,7 +2773,7 @@ function Records(){
                 </td>
                 <td style="text-align:center;white-space:nowrap"><b>${esc(career.record)}</b></td>
                 <td style="text-align:center;white-space:nowrap">${career.winPct}%</td>
-                <td style="text-align:center;white-space:nowrap;color:${s.maxWinStreak>=3?'#ff8e95':'inherit'}">${s.maxWinStreak>0?`${s.maxWinStreak}W`:'—'}</td>
+                <td style="text-align:center;white-space:nowrap;color:${s.maxWinStreak>=3?'#ffd166':'inherit'};font-weight:${s.maxWinStreak>=3?'800':'inherit'}">${s.maxWinStreak>0?`${s.maxWinStreak}W`:'—'}</td>
                 <td style="text-align:center;white-space:nowrap">${s.currentWinStreak>0?`<span style="color:#7df0aa;font-weight:800">${s.currentWinStreak}W</span>`:(s.currentLossStreak>0?`<span style="color:#ff8e95">${s.currentLossStreak}L</span>`:'—')}</td>
                 <td style="text-align:center;white-space:nowrap">${career.titles>0?`<b>${career.titles}</b>`:'0'}</td>
                 <td style="text-align:center;white-space:nowrap">${career.topCuts>0?`<b>${career.topCuts}</b>`:'0'}</td>
