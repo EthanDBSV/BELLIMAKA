@@ -1735,22 +1735,13 @@ function OffseasonHome(){
 
   // League metrics
   let totalFixtures = Object.values(tournamentData).reduce((sum, t) => sum + tournamentTotalMatches(t), 0);
-  let totalTrainers = Object.keys(profiles).length || (new Set(Object.values(tournamentData).flatMap(t => t.players || []))).size;
-  
-  let streakHolder = '—', streakVal = 0;
-  try {
-    let recs = calculateLeagueRecords();
-    if(recs?.hof?.longestStreak?.holder){
-      streakHolder = recs.hof.longestStreak.holder;
-      streakVal = recs.hof.longestStreak.val;
-    }
-  } catch(e){}
+  let totalTrainers = Object.keys(profiles).filter(p => p && profiles[p] && p.trim()).length || (new Set(Object.values(tournamentData).flatMap(t => t.players || []))).size;
 
   let actions = (moderator ? `<button class="btn" onclick="openCreator()">+ Create next tournament</button>` : '');
 
   return head('League Off-Season', 'No tournament is currently ongoing', actions) + `
     <!-- Top League Highlights Metric Strip -->
-    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px;margin-bottom:20px">
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px;margin-bottom:20px">
       <div class="card" style="padding:12px 16px;background:#141419;border-color:#2c2c36;display:flex;align-items:center;gap:12px">
         <span style="font-size:26px">🏆</span>
         <div>
@@ -1772,14 +1763,6 @@ function OffseasonHome(){
         <div>
           <div style="font-size:10px;font-weight:800;color:#a09fa8;text-transform:uppercase;letter-spacing:.6px">League Coaches</div>
           <div style="font:800 18px 'Barlow Condensed';color:#f5f3f0">${totalTrainers} <small style="font-size:11px;color:#8e8c95;font-weight:700">Registered</small></div>
-        </div>
-      </div>
-
-      <div class="card" style="padding:12px 16px;background:linear-gradient(135deg,#1f1812,#141419 75%);border-color:#5c3a1e;display:flex;align-items:center;gap:12px">
-        <span style="font-size:26px">🔥</span>
-        <div style="min-width:0">
-          <div style="font-size:10px;font-weight:800;color:#ffd166;text-transform:uppercase;letter-spacing:.6px">Record Win Streak</div>
-          <div style="font:800 16px 'Barlow Condensed';color:#f5f3f0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${streakVal > 0 ? `${playerLink(streakHolder)} (${streakVal} Wins)` : 'None yet'}</div>
         </div>
       </div>
     </div>
@@ -2130,44 +2113,6 @@ function Tournaments(){
   return head('Tournaments','League archive',moderator?`<button class="btn" onclick="openCreator()">+ New tournament</button>`:'')+`<div class="archive">${Object.values(tournamentData).map(t=>`<div style="position:relative">${tournamentCard(t)}${moderator?`<button class="cover-edit" onclick="event.stopPropagation();openCoverEditor('${t.id}')">Edit cover</button>`:''}</div>`).join('')}</div><p class="sub">Moderators can add a tournament cover image from the archive page.</p>`;
 }
 
-function Account(){
-  if(!sessionUser){
-    return head('Account & Permissions','Settings')+`<div class="card account-panel" style="max-width:540px">
-      <div class="card-title">Moderator Controls</div>
-      <p class="sub">Toggle administrator and editing mode on this browser.</p>
-      <div style="margin:16px 0 24px;padding:14px;background:#101015;border:1px solid #32323a;border-radius:6px;display:flex;align-items:center;justify-content:space-between">
-        <div>
-          <div style="font-weight:800;font-size:14px">Moderator Permissions</div>
-          <div class="sub" style="font-size:11px;margin-top:2px">${moderator?'Enabled: You can edit scores, create tournaments, and manage records.':'Disabled: Read-only spectator mode.'}</div>
-        </div>
-        <button class="btn ${moderator?'':'ghost'}" style="padding:7px 13px;font-size:11px;margin-left:12px" onclick="toggleModerator()">${moderator?'Moderator: ON':'Moderator: OFF'}</button>
-      </div>
-      <div class="card-title">Account Sign In</div>
-      <p class="sub">Sign in with username and password to link your predictions and profile.</p>
-      <div class="field"><label>Username</label><input id="authUsername" autocomplete="username" placeholder="Trainer name"></div>
-      <div class="field"><label>Password</label><input id="authPassword" autocomplete="current-password" type="password" placeholder="Password"></div>
-      <div class="creator-actions" style="justify-content:start;margin-top:14px">
-        <button class="btn" onclick="signIn()">Sign in</button>
-        <button class="btn ghost" onclick="signUp()">Create account</button>
-      </div>
-      <p id="authNotice" class="sub" style="display:none"></p>
-    </div>`;
-  }
-  return head('Your account','Identity & permissions')+`<div class="card account-panel" style="max-width:540px">
-    <div class="eyebrow">Signed in</div>
-    <div class="profile-name">${window.currentAccount?.username||'Trainer'}</div>
-    <div class="role-box"><b>${moderator?'Moderator':'Player'}</b></div>
-    <div style="margin:16px 0;padding:14px;background:#101015;border:1px solid #32323a;border-radius:6px;display:flex;align-items:center;justify-content:space-between">
-      <div>
-        <div style="font-weight:800;font-size:13px">Moderator Mode</div>
-        <div class="sub" style="font-size:11px;margin-top:2px">Toggle administrator actions on this browser</div>
-      </div>
-      <button class="btn ${moderator?'':'ghost'}" style="padding:6px 12px;font-size:11px" onclick="toggleModerator()">${moderator?'Moderator: ON':'Moderator: OFF'}</button>
-    </div>
-    ${moderator?`<div class="creator-actions" style="justify-content:start;margin-top:14px"><button class="btn" onclick="openProfileManager()">Manage player profiles</button><button class="btn ghost" onclick="openTournamentPlayers()">Edit tournament players</button></div>`:''}
-    <div style="margin-top:14px"><button class="btn ghost" onclick="signOut()">Sign out</button></div>
-  </div>`;
-}
 
 function saveCover(id){
   if(!tournamentData[id]){ closeModal(); return; }
@@ -3554,13 +3499,6 @@ function Account(){
   if(!sessionUser)return head('Sign in',LEAGUE.short+' account')+`<div class="card account-panel" style="max-width:520px;padding:28px">
     <div class="card-title" style="margin-bottom:6px">Account Access</div>
     <p class="sub" style="margin:0 0 16px">Sign in or create a trainer account to track prediction points and access your profile.</p>
-    <div style="margin: 0 0 20px; padding: 14px; background: #141419; border: 1px solid #2f2f38; border-radius: 6px; display: flex; align-items: center; justify-content: space-between;">
-      <div>
-        <div style="font-size: 13px; font-weight: 800; color: #f5f3f0;">Moderator Controls</div>
-        <div class="sub" style="font-size: 11px; margin-top: 2px">${moderator ? 'Admin & score edit mode enabled' : 'Viewing site in spectator mode'}</div>
-      </div>
-      <button class="btn ${moderator ? '' : 'ghost'}" style="font-size: 11px; padding: 7px 13px;" onclick="toggleModerator()">${moderator ? '👑 Moderator: ON' : '🎮 Moderator: OFF'}</button>
-    </div>
     <div class="field"><label>Username</label><input id="authUsername" autocomplete="username" placeholder="Trainer username"></div>
     <div class="field"><label>Password</label><input id="authPassword" autocomplete="current-password" type="password" placeholder="Password"></div>
     <div class="creator-actions" style="justify-content:start;margin-top:22px"><button class="btn" onclick="signIn()">Sign in</button><button class="btn ghost" onclick="signUp()">Create account</button></div>
@@ -3854,7 +3792,8 @@ function getChronologicalMatches(){
   });
 
   let allMatches=[];
-  sortedTournaments.forEach(t=>{
+  sortedTournaments.forEach((t, tIdx)=>{
+    let tBaseTime = (Date.parse(t.start) || (tIdx * 100000000));
     (t.matches||[]).forEach((m,idx)=>{
       if(m.as!==''&&m.bs!==''&&m.as!=null&&m.bs!=null&&+m.as!==+m.bs){
         allMatches.push({
@@ -3868,7 +3807,9 @@ function getChronologicalMatches(){
           sb:+m.bs,
           winner:+m.as>+m.bs?m.a:m.b,
           loser:+m.as>+m.bs?m.b:m.a,
-          time:m.completedAt||(t.start?Date.parse(t.start)+idx*1000:idx*1000)
+          tIdx: tIdx,
+          stageOrder: 1,
+          time: m.completedAt || (tBaseTime + idx * 1000)
         });
       }
     });
@@ -3891,13 +3832,15 @@ function getChronologicalMatches(){
           sb:+m.s2,
           winner:+m.s1>+m.s2?m.p1:m.p2,
           loser:+m.s1>+m.s2?m.p2:m.p1,
-          time:m.completedAt||(t.end?Date.parse(t.end)+idx*1000:1000000000000+idx*1000)
+          tIdx: tIdx,
+          stageOrder: 2,
+          time: m.completedAt || (tBaseTime + 50000000 + idx * 1000)
         });
       }
     });
   });
 
-  allMatches.sort((a,b)=>a.time-b.time);
+  allMatches.sort((a,b)=> a.tIdx - b.tIdx || a.stageOrder - b.stageOrder || (a.time - b.time));
   return {sortedTournaments,allMatches};
 }
 
