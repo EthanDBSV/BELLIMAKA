@@ -329,6 +329,44 @@
 .m-player-chip.active{background:var(--red);color:#fff;border-color:var(--red);box-shadow:0 2px 8px rgba(239,48,56,0.4)}
 .m-player-chip-face{width:16px;height:16px;border-radius:50%;flex:none;background-size:cover;background-position:center;display:grid;place-items:center;font:800 9px 'Barlow Condensed';color:#fff;border:1px solid #ffffff30}
 
+/* ── Betting / Analytics Probability Dashboard ── */
+.odds-dashboard{display:flex;flex-direction:column;gap:20px;width:100%}
+.odds-hero{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:14px}
+.odds-metric-card{background:#14141a;border:1px solid #2d2d38;border-radius:8px;padding:16px 18px;display:flex;align-items:center;gap:14px;position:relative;overflow:hidden}
+.odds-metric-card.gold{border-color:#7a581e;background:linear-gradient(135deg,#261c0d,#141419 65%)}
+.odds-metric-card.red{border-color:#78242f;background:linear-gradient(135deg,#2b1318,#141419 65%)}
+.odds-metric-icon{font-size:28px;flex:none}
+.odds-metric-body{min-width:0;flex:1}
+.odds-metric-label{font-size:10px;font-weight:800;letter-spacing:.8px;text-transform:uppercase;color:#9d9ba4}
+.odds-metric-val{font:800 24px 'Barlow Condensed';letter-spacing:.3px;color:#f5f3f0;margin:2px 0}
+.odds-metric-sub{font-size:11px;color:#8e8c95}
+
+.odds-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:12px}
+.odds-contender-card{background:#141419;border:1px solid #2b2b36;border-radius:8px;padding:16px;display:flex;flex-direction:column;gap:12px;position:relative;transition:border-color .15s,transform .15s;cursor:pointer}
+.odds-contender-card:hover{border-color:#5c242c;transform:translateY(-2px);background:#171720}
+.odds-contender-card.tier-1{border-color:#e0ad2b;background:linear-gradient(145deg,#2a1f0a,#131318 60%);box-shadow:0 6px 20px rgba(224,173,43,0.12)}
+.odds-contender-card.tier-2{border-color:#ff4d58;background:linear-gradient(145deg,#2b1216,#131318 60%);box-shadow:0 6px 20px rgba(239,48,56,0.12)}
+.odds-contender-card.tier-3{border-color:#a855f7;background:linear-gradient(145deg,#23142e,#131318 60%)}
+
+.odds-head-row{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.odds-trainer-info{display:flex;align-items:center;gap:10px;min-width:0}
+.odds-badge-chip{font:800 12px 'Barlow Condensed';letter-spacing:.8px;padding:3px 9px;border-radius:4px;text-transform:uppercase;white-space:nowrap}
+.odds-badge-chip.fav{background:#382711;color:#ffd166;border:1px solid #78531e}
+.odds-badge-chip.contender{background:#381419;color:#ff8e95;border:1px solid #73242f}
+.odds-badge-chip.darkhorse{background:#2b1836;color:#dca2f5;border:1px solid #5a3070}
+.odds-badge-chip.longshot{background:#1a1a24;color:#a09fa8;border:1px solid #363644}
+
+.odds-bar-container{display:flex;flex-direction:column;gap:5px}
+.odds-bar-header{display:flex;justify-content:space-between;align-items:baseline;font-size:11px}
+.odds-bar-title{font-weight:700;color:#c4c1cc}
+.odds-bar-pct{font:800 18px 'Barlow Condensed';color:#f5f3f0;font-variant-numeric:tabular-nums}
+.odds-bar-track{height:9px;background:#202028;border-radius:6px;overflow:hidden;border:1px solid #30303c}
+.odds-bar-fill{height:100%;border-radius:6px;transition:width .4s ease}
+
+.odds-submetrics{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;background:#0d0d12;border:1px solid #23232c;border-radius:6px;padding:8px 10px;text-align:center}
+.odds-submetric-val{font:800 14px 'Barlow Condensed';color:#f5f3f0}
+.odds-submetric-lbl{font-size:9px;font-weight:700;letter-spacing:.4px;color:#8e8c95;text-transform:uppercase;margin-top:1px}
+
 /* ── Draft Tools Layout ── */
 .tools-layout{display:grid;grid-template-columns:minmax(0,1fr) 350px;gap:18px;align-items:start}
 .builder{padding:18px;position:sticky;top:96px;max-height:calc(100vh - 120px);overflow:auto}
@@ -2198,14 +2236,196 @@ function buildTopCutSeeding(t){
 function isGroupComplete(t,g){let ms=groupMatches(t,g);return ms.length>0&&ms.every(m=>m.as!==''&&m.as!=null&&m.bs!==''&&m.bs!=null)}
 function isMathematicallyEliminated(t,p){let g=Object.entries(groupsOf(t)).find(([,ps])=>ps.includes(p))?.[0];if(!g)return true;let ps=groupsOf(t)[g],cut=advancePerGroup(t);if(ps.length<=cut)return false;if(isGroupComplete(t,g))return getStand(t,g).findIndex(x=>x.p===p)>=cut;let wins={},remaining={};ps.forEach(x=>{wins[x]=0;remaining[x]=0});groupMatches(t,g).forEach(m=>{if(m.as!==''&&m.as!=null&&m.bs!==''&&m.bs!=null){if(+m.as>+m.bs)wins[m.a]++;else if(+m.bs>+m.as)wins[m.b]++}else{remaining[m.a]=(remaining[m.a]||0)+1;remaining[m.b]=(remaining[m.b]||0)+1}});let maxWins=(wins[p]||0)+(remaining[p]||0);return ps.filter(x=>x!==p&&(wins[x]||0)>maxWins).length>=cut}
 function isMathematicallyClinched(t,p){let g=Object.entries(groupsOf(t)).find(([,ps])=>ps.includes(p))?.[0];if(!g)return false;let ps=groupsOf(t)[g],cut=advancePerGroup(t);if(ps.length<=cut)return true;if(isGroupComplete(t,g))return getStand(t,g).findIndex(x=>x.p===p)<cut;let wins={},remaining={};ps.forEach(x=>{wins[x]=0;remaining[x]=0});groupMatches(t,g).forEach(m=>{if(m.as!==''&&m.as!=null&&m.bs!==''&&m.bs!=null){if(+m.as>+m.bs)wins[m.a]++;else if(+m.bs>+m.as)wins[m.b]++}else{remaining[m.a]=(remaining[m.a]||0)+1;remaining[m.b]=(remaining[m.b]||0)+1}});let minWins=wins[p]||0;let othersWhoCanReach=ps.filter(x=>x!==p&&((wins[x]||0)+(remaining[x]||0))>=minWins).length;return othersWhoCanReach<cut}
-function playoffOddsData(t){if(!t||!t.players)return {};let cut=advancePerGroup(t),groups=groupsOf(t);let key=JSON.stringify({matches:(t.matches||[]).map(m=>[m.a,m.b,m.as,m.bs,m.group]),advance:cut,groups:t.groupAssignments||{},players:t.players,manual:t.manualStandings||{}});if(oddsCache.key===key&&oddsCache.data)return oddsCache.data;let data={},runs=2000;for(let [g,ps] of Object.entries(groups)){let gCut=Math.min(cut,ps.length);if(ps.length<=cut){ps.forEach(p=>data[p]=100);continue}if(isGroupComplete(t,g)){let standings=getStand(t,g);standings.forEach((x,i)=>{data[x.p]=i<gCut?100:0});continue}let gMatches=groupMatches(t,g),counts=Object.fromEntries(ps.map(p=>[p,0]));for(let run=0;run<runs;run++){let sim=Object.fromEntries(ps.map(p=>[p,{p,w:0,l:0,gw:0,gl:0,results:{}}]));gMatches.forEach(m=>{let hasReported=m.as!==''&&m.as!=null&&m.bs!==''&&m.bs!=null,sa,sb;if(hasReported){sa=+m.as;sb=+m.bs}else{let aChance=winChance(m.a,m.b,t),aWins=Math.random()<aChance,sweep=Math.random()<0.55;if(aWins){sa=2;sb=sweep?0:1}else{sb=2;sa=sweep?0:1}}let a=sim[m.a],b=sim[m.b];if(a&&b){a.gw+=sa;a.gl+=sb;b.gw+=sb;b.gl+=sa;if(sa>sb){a.w++;b.l++;a.results[m.b]=1;b.results[m.a]=0}else if(sb>sa){b.w++;a.l++;b.results[m.a]=1;a.results[m.b]=0}}});let list=Object.values(sim);list.sort((a,b)=>{let basic=(b.w-a.w)||(b.gw-a.gw)||((b.gw-b.gl)-(a.gw-a.gl));if(basic)return basic;let ah=a.results[b.p],bh=b.results[a.p];if(ah!==undefined&&bh!==undefined)return bh-ah;return a.p.localeCompare(b.p)});let manual=t.manualStandings?.[g];if(Array.isArray(manual)&&manual.length===list.length&&manual.every(p=>ps.includes(p))){let rank=Object.fromEntries(manual.map((p,i)=>[p,i]));list.sort((a,b)=>rank[a.p]-rank[b.p])}list.slice(0,gCut).forEach(x=>counts[x.p]++)}ps.forEach(p=>{if(isMathematicallyEliminated(t,p))data[p]=0;else if(isMathematicallyClinched(t,p))data[p]=100;else{let pct=Math.round(counts[p]/runs*100);data[p]=Math.max(1,Math.min(99,pct))}})}oddsCache={key,data};return data}
+function getPlayerTournamentPower(p, tourn){
+  let leagueRecs = calculateLeagueRecords();
+  let ovrObj = calculatePlayerOVR(p, leagueRecs);
+  let ovr = ovrObj.ovr || 70;
+  let s = leagueRecs.statsByPlayer[p] || {};
+  let elo = s.wins !== undefined ? (1000 + (s.wins - s.losses) * 16 + ((profiles[p]?.cups||[]).length * 40)) : 1000;
 
+  // Tournament group form
+  let gEntry = tourn ? Object.entries(groupsOf(tourn)).find(([,ps])=>ps.includes(p)) : null;
+  let form = { w: 0, l: 0, gw: 0, gl: 0 };
+  if(gEntry){
+    let stand = getStand(tourn, gEntry[0]).find(x => x.p === p);
+    if(stand) form = { w: stand.w||0, l: stand.l||0, gw: stand.gw||0, gl: stand.gl||0 };
+  }
 
-function usernameAuthEmail(username){let normalized=username.trim().toLowerCase().replace(/[^a-z0-9_-]/g,'');return normalized?normalized+'@draftdex.invalid':''}
-function playerForm(t,p){let g=Object.entries(groupsOf(t)).find(([,ps])=>ps.includes(p))?.[0],row=g?getStand(t,g).find(x=>x.p===p):null;return {w:row?.w||0,l:row?.l||0,gw:row?.gw||0,gl:row?.gl||0}}
-function playoffAccolades(p){let profile=profiles[p]||{},completed=Object.values(tournamentData).filter(t=>t.status==='COMPLETE'),recordedTitles=(profile.cups||[]).length,archiveTitles=completed.filter(t=>t.champion===p).length,recordedTopCuts=Number(profile.tops)||0,archiveTopCuts=completed.reduce((n,t)=>n+(finalQualifiers(t).includes(p)?1:0),0);return {titles:Math.max(recordedTitles,archiveTitles),tops:Math.max(recordedTopCuts,archiveTopCuts)}}
-function playoffRating(p,t){let [wins,losses]=safeRecord(p),form=playerForm(t,p),careerGames=wins+losses,careerRate=careerGames?(wins+3)/(careerGames+6):.5,formGames=form.w+form.l,formRate=formGames?(form.w+2)/(formGames+4):.5,gameGames=form.gw+form.gl,gameDiffRate=gameGames?((form.gw-form.gl)/(gameGames+6)):0,accolades=playoffAccolades(p);return 1000+(careerRate-.5)*180+(formRate-.5)*260+gameDiffRate*80+accolades.titles*35+accolades.tops*12}
-function winChance(a,b,t){let difference=playoffRating(a,t)-playoffRating(b,t),chance=1/(1+Math.exp(-difference/260));return Math.max(.2,Math.min(.8,chance))}
+  let formDiff = (form.gw - form.gl) * 6 + (form.w - form.l) * 16;
+  let power = (ovr * 14) + (elo * 0.35) + formDiff;
+
+  return { power, ovr, elo, form, ovrObj };
+}
+
+function playoffRating(p, t){
+  return getPlayerTournamentPower(p, t).power;
+}
+
+function winChance(a, b, t){
+  let pow1 = getPlayerTournamentPower(a, t).power;
+  let pow2 = getPlayerTournamentPower(b, t).power;
+  let diff = pow1 - pow2;
+  let prob = 1 / (1 + Math.exp(-diff / 150));
+  return Math.max(0.12, Math.min(0.88, prob));
+}
+
+function simulateTournamentOdds(tourn, runs = 2500){
+  if(!tourn || !tourn.players || !tourn.players.length) return {};
+  let groups = groupsOf(tourn);
+  let cut = advancePerGroup(tourn);
+  let players = tourn.players;
+
+  let topCutCounts = Object.fromEntries(players.map(p => [p, 0]));
+  let finalsCounts = Object.fromEntries(players.map(p => [p, 0]));
+  let champCounts = Object.fromEntries(players.map(p => [p, 0]));
+
+  let groupMatchList = tourn.matches || [];
+
+  for(let r = 0; r < runs; r++){
+    let groupResults = {};
+    for(let [g, ps] of Object.entries(groups)){
+      groupResults[g] = Object.fromEntries(ps.map(p => [p, { p, w: 0, l: 0, gw: 0, gl: 0, h2h: {} }]));
+    }
+
+    groupMatchList.forEach(m => {
+      let g = m.group || Object.keys(groups)[0];
+      let aObj = groupResults[g]?.[m.a];
+      let bObj = groupResults[g]?.[m.b];
+      if(!aObj || !bObj) return;
+
+      let sa, sb;
+      if(m.as !== '' && m.as != null && m.bs !== '' && m.bs != null){
+        sa = +m.as;
+        sb = +m.bs;
+      } else {
+        let pWin = winChance(m.a, m.b, tourn);
+        let aWon = Math.random() < pWin;
+        let sweep = Math.random() < 0.55;
+        sa = aWon ? 2 : (sweep ? 0 : 1);
+        sb = aWon ? (sweep ? 0 : 1) : 2;
+      }
+
+      aObj.gw += sa; aObj.gl += sb;
+      bObj.gw += sb; bObj.gl += sa;
+      if(sa > sb){
+        aObj.w++; bObj.l++;
+        aObj.h2h[m.b] = 1; bObj.h2h[m.a] = 0;
+      } else if(sb > sa){
+        bObj.w++; aObj.l++;
+        bObj.h2h[m.a] = 1; aObj.h2h[m.b] = 0;
+      }
+    });
+
+    let qualifiers = [];
+    for(let [g, ps] of Object.entries(groups)){
+      let list = Object.values(groupResults[g]);
+      list.sort((a, b) => {
+        let diff = (b.w - a.w) || (b.gw - a.gw) || ((b.gw - b.gl) - (a.gw - a.gl));
+        if(diff) return diff;
+        let ah = a.h2h[b.p], bh = b.h2h[a.p];
+        if(ah !== undefined && bh !== undefined) return bh - ah;
+        return a.p.localeCompare(b.p);
+      });
+
+      let gCut = Math.min(cut, list.length);
+      let groupQuals = list.slice(0, gCut).map(x => x.p);
+      groupQuals.forEach(p => topCutCounts[p]++);
+      qualifiers.push(...groupQuals);
+    }
+
+    if(!qualifiers.length) continue;
+
+    // Simulate bracket between qualifiers
+    let pool = [...qualifiers];
+    while(pool.length > 1){
+      let nextRound = [];
+      for(let i = 0; i < pool.length; i += 2){
+        if(i + 1 >= pool.length){
+          nextRound.push(pool[i]);
+        } else {
+          let p1 = pool[i], p2 = pool[i + 1];
+          let p1Chance = winChance(p1, p2, tourn);
+          let winner = Math.random() < p1Chance ? p1 : p2;
+          if(pool.length === 2){
+            finalsCounts[p1]++;
+            finalsCounts[p2]++;
+          }
+          nextRound.push(winner);
+        }
+      }
+      pool = nextRound;
+    }
+
+    if(pool.length === 1){
+      champCounts[pool[0]]++;
+    }
+  }
+
+  let results = {};
+  players.forEach(p => {
+    let topCutPct = Math.round((topCutCounts[p] / runs) * 100);
+    let finalsPct = Math.round((finalsCounts[p] / runs) * 100);
+    let champPct = +((champCounts[p] / runs) * 100).toFixed(1);
+
+    let ml = champPct >= 50 
+      ? `-${Math.round((champPct / (100 - champPct + 0.1)) * 100)}` 
+      : (champPct > 0 ? `+${Math.round(((100 - champPct) / (champPct + 0.1)) * 100)}` : '+9900');
+    
+    let dec = champPct > 0 ? (100 / champPct).toFixed(1) + 'x' : '100x';
+
+    let pPow = getPlayerTournamentPower(p, tourn);
+    let gName = Object.entries(groups).find(([, ps]) => ps.includes(p))?.[0] || 'Group A';
+    let gOpponents = (groups[gName] || []).filter(x => x !== p);
+    let avgGroupOvr = Math.round(gOpponents.reduce((sum, opp) => sum + getPlayerTournamentPower(opp, tourn).ovr, 0) / (gOpponents.length || 1));
+    
+    let unplayed = (tourn.matches || []).filter(m => (m.a === p || m.b === p) && (m.as === '' || m.as == null));
+    let remainingOpponents = unplayed.map(m => m.a === p ? m.b : m.a);
+
+    results[p] = {
+      player: p,
+      ovr: pPow.ovr,
+      ovrObj: pPow.ovrObj,
+      elo: pPow.elo,
+      form: pPow.form,
+      group: gName,
+      avgGroupOvr,
+      unplayedCount: unplayed.length,
+      remainingOpponents,
+      topCutPct,
+      finalsPct,
+      champPct,
+      moneyline: ml,
+      decimalOdds: dec
+    };
+  });
+
+  return results;
+}
+
+function playoffOddsData(t){
+  if(!t || !t.players) return {};
+  let cut = advancePerGroup(t);
+  let groups = groupsOf(t);
+  let key = JSON.stringify({
+    matches: (t.matches || []).map(m => [m.a, m.b, m.as, m.bs, m.group]),
+    advance: cut,
+    groups: t.groupAssignments || {},
+    players: t.players,
+    manual: t.manualStandings || {}
+  });
+  if(oddsCache.key === key && oddsCache.data) return oddsCache.data;
+
+  let sim = simulateTournamentOdds(t, 2000);
+  let data = {};
+  t.players.forEach(p => {
+    if(isMathematicallyEliminated(t, p)) data[p] = 0;
+    else if(isMathematicallyClinched(t, p)) data[p] = 100;
+    else data[p] = Math.max(1, Math.min(99, sim[p]?.topCutPct ?? 50));
+  });
+
+  oddsCache = { key, data, sim };
+  return data;
+}
 
 
 function authNotice(msg, isErr=false){
@@ -2299,7 +2519,6 @@ async function signUp(){
     }
   }
 }
-function playoffOdds(){let t=ongoingT();if(!t)return noTournament();let data=playoffOddsData(t),rows=Object.entries(data).map(([p,odds])=>({p,odds,rating:Math.round(playoffRating(p,t)),accolades:playoffAccolades(p)})).sort((a,b)=>b.odds-a.odds);return head('Playoff Calculator',t.name+' · projected Top Cut chances')+`<div class="card table-wrap"><table class="standings"><thead><tr><th>#</th><th>Trainer</th><th>Top Cut chance</th><th>Projection</th></tr></thead><tbody>${rows.map((x,i)=>`<tr class="${x.odds===100?'safe':x.odds===0?'out':'hunt'}"><td class="rank">${i+1}</td><td class="player">${playerLink(x.p)}<span class="team">Rating ${x.rating} · ${x.accolades.titles} title${x.accolades.titles===1?'':'s'} · ${x.accolades.tops} Top Cut${x.accolades.tops===1?'':'s'}</span></td><td><b>${x.odds}%</b></td><td><div class="progress" style="width:160px"><span style="width:${x.odds}%;background:${x.odds===100?'var(--green)':x.odds===0?'var(--red)':'var(--amber)'}"></span></div></td></tr>`).join('')}</tbody></table></div><p class="sub">2,000 simulated finishes. Match strength uses all-time W-L (career form), this tournament's W-L (current form), plus 80 rating points per title and 20 per Top Cut. Players with no record or accolades start at the neutral 50% baseline.</p>`}
 function openGroupPlacementEditor(){let t=ongoingT();if(!moderator||!t||t.phase==='topcut')return;let groups=groupsOf(t);document.querySelector('#modal').innerHTML=`<div class="modal-wrap"><div class="modal" style="max-width:760px"><div class="modal-head"><div><div class="eyebrow">Moderator only</div><h2>Arrange group placements</h2></div><button class="close" onclick="closeModal()">×</button></div><p class="sub">Drag a trainer onto another trainer to swap their group placements. Moving players between groups rebuilds the round-robin schedule while preserving scores for matchups that still exist.</p><div class="group-placement-grid">${Object.entries(groups).map(([g,players])=>`<section class="group-dropzone" data-group="${g}"><div class="eyebrow">${g}</div>${players.map(p=>`<button class="group-placement-drag" draggable="true" data-player="${p}" data-group="${g}">${p}</button>`).join('')||'<p class="sub">Drop a trainer here</p>'}</section>`).join('')}</div></div></div>`}
 function swapGroupPlacements(first,second,targetGroup){let t=ongoingT();if(!t||!first||!moderator||t.phase==='topcut')return;let buckets=groupsOf(t),assign={};Object.entries(buckets).forEach(([g,players])=>players.forEach(p=>assign[p]=g));let source=assign[first];if(second){let other=assign[second];assign[first]=other;assign[second]=source;if(source===other){let ai=t.players.indexOf(first),bi=t.players.indexOf(second);if(ai>=0&&bi>=0)[t.players[ai],t.players[bi]]=[t.players[bi],t.players[ai]]}}else if(targetGroup&&source!==targetGroup){assign[first]=targetGroup}t.groupAssignments=assign;rebuildSchedulePreserving(t);persistLeague();openGroupPlacementEditor();render()}
 document.addEventListener('dragstart',e=>{let x=e.target.closest('.group-placement-drag');if(x&&moderator)e.dataTransfer.setData('application/cherrymoon-group-player',x.dataset.player)});
@@ -3475,10 +3694,10 @@ function calculatePlayerOVR(p, leagueData=null){
   if(finalOvr>=90){
     tier='elite';
     tierName='Elite';
-    tierUpper='★ ELITE';
+    tierUpper='ELITE';
     color='#ff4d58';
     badgeCls='ovr-elite';
-    badgePrefix='★ ';
+    badgePrefix='';
   }else if(finalOvr>=80){
     tier='gold';
     tierName='Gold';
@@ -5062,19 +5281,253 @@ function openTournamentEdit(id){
    the raw rating is mapped through the same logistic the simulation
    uses, so 50 is the neutral baseline and the ordering is identical. */
 function playoffForm(p,t){return Math.round(100/(1+Math.exp(-(playoffRating(p,t)-1000)/130)))}
+var playoffOddsTab = 'title';
+
 function playoffOdds(){
-  let t=ongoingT();if(!t)return noTournament();
-  let data=playoffOddsData(t);
-  let rows=Object.entries(data).map(([p,odds])=>({p,odds,form:playoffForm(p,t),accolades:playoffAccolades(p)})).sort((a,b)=>b.odds-a.odds);
-  return head('Playoff Calculator',t.name+' · projected Top Cut chances')
-    +`<div class="card table-wrap"><table class="standings">
-      <thead><tr><th>#</th><th>Trainer</th><th>Top Cut chance</th><th>Projection</th></tr></thead>
-      <tbody>${rows.map((x,i)=>`<tr class="${x.odds===100?'safe':x.odds===0?'out':'hunt'}">
-        <td class="rank">${i+1}</td>
-        <td class="player">${playerLink(x.p)}<span class="team">Form ${x.form}/100 · ${x.accolades.titles} title${x.accolades.titles===1?'':'s'} · ${x.accolades.tops} Top Cut${x.accolades.tops===1?'':'s'}</span></td>
-        <td><b>${x.odds}%</b></td>
-        <td><div class="progress" style="width:160px"><span style="width:${x.odds}%;background:${x.odds===100?'var(--green)':x.odds===0?'var(--red)':'var(--amber)'}"></span></div></td></tr>`).join('')}</tbody></table></div>`
-    +`<p class="sub">2,000 simulated finishes. Form runs 0-100 with 50 as the league-average baseline: it blends all-time W-L (career form), this tournament's W-L (current form), game differential, plus a bonus per title and per Top Cut. Players with no record or accolades sit at 50.</p>`
+  let t = ongoingT();
+  if(!t) return noTournament();
+
+  let cut = advancePerGroup(t);
+  let groups = groupsOf(t);
+  let groupNames = Object.keys(groups);
+  let sim = simulateTournamentOdds(t, 2500);
+  let list = Object.values(sim).sort((a, b) => b.champPct - a.champPct || b.topCutPct - a.topCutPct);
+
+  let favorite = list[0] || { player: 'None', champPct: 0, moneyline: '+100', decimalOdds: '1.0x' };
+  let topCutLeader = [...list].sort((a, b) => b.topCutPct - a.topCutPct)[0] || { player: 'None', topCutPct: 0 };
+  let maxChampPct = Math.max(...list.map(x => x.champPct), 1);
+
+  // Group stats
+  let groupStats = {};
+  for(let [g, ps] of Object.entries(groups)){
+    let gMatches = groupMatches(t, g);
+    let played = gMatches.filter(m => m.as !== '' && m.as != null).length;
+    let unplayed = gMatches.length - played;
+    let avgOvr = Math.round(ps.reduce((sum, p) => sum + (sim[p]?.ovr || 70), 0) / (ps.length || 1));
+    groupStats[g] = { played, unplayed, total: gMatches.length, avgOvr, players: ps };
+  }
+
+  let html = head('Playoff & Championship Predictor', t.name + ' (' + t.season + ') · Live Probability & Top Cut Calculator');
+
+  // Hero summary cards
+  html += `
+    <div class="odds-hero" style="margin-bottom:20px">
+      <div class="odds-metric-card gold">
+        <div class="odds-metric-icon">👑</div>
+        <div class="odds-metric-body">
+          <div class="odds-metric-label">Projected Title Favorite</div>
+          <div class="odds-metric-val">${esc(favorite.player)} <span style="font-size:18px;color:#ffd166">(${favorite.champPct}%)</span></div>
+          <div class="odds-metric-sub">Implied Odds: <b>${favorite.moneyline}</b> (${favorite.decimalOdds})</div>
+        </div>
+      </div>
+      <div class="odds-metric-card red">
+        <div class="odds-metric-icon">🛡️</div>
+        <div class="odds-metric-body">
+          <div class="odds-metric-label">Top Cut Lock / Leader</div>
+          <div class="odds-metric-val">${esc(topCutLeader.player)} <span style="font-size:18px;color:#ff8e95">(${topCutLeader.topCutPct}%)</span></div>
+          <div class="odds-metric-sub">Advancement equity in Top Cut playoffs</div>
+        </div>
+      </div>
+      <div class="odds-metric-card">
+        <div class="odds-metric-icon">🎲</div>
+        <div class="odds-metric-body">
+          <div class="odds-metric-label">Simulation Depth</div>
+          <div class="odds-metric-val">2,500 Full Tournament Runs</div>
+          <div class="odds-metric-sub">Calibrated on OVR, Elo, Group SOS & Remaining Matches</div>
+        </div>
+      </div>
+    </div>
+  `;
+
+  // Filter tabs
+  html += `
+    <div class="tabs" style="margin-bottom:18px">
+      <button class="${playoffOddsTab==='title'?'active':''}" onclick="playoffOddsTab='title';render()">🏆 Championship Title Odds</button>
+      <button class="${playoffOddsTab==='topcut'?'active':''}" onclick="playoffOddsTab='topcut';render()">⚔️ Top Cut Probabilities</button>
+      <button class="${playoffOddsTab==='groups'?'active':''}" onclick="playoffOddsTab='groups';render()">📊 Group Breakdown & Remaining SOS</button>
+    </div>
+  `;
+
+  if(playoffOddsTab === 'title'){
+    // Probability Graph / Betting Board
+    html += `
+      <div class="odds-grid">
+        ${list.map((x, i) => {
+          let tierCls = i === 0 ? 'tier-1' : (i < 3 ? 'tier-2' : (x.champPct >= 5 ? 'tier-3' : ''));
+          let badgeTag = i === 0 ? '<span class="odds-badge-chip fav">👑 Favorite</span>' 
+            : (i < 3 ? '<span class="odds-badge-chip contender">⚡ Contender</span>' 
+            : (x.champPct >= 5 ? '<span class="odds-badge-chip darkhorse">🔮 Dark Horse</span>' 
+            : '<span class="odds-badge-chip longshot">🎲 Longshot</span>'));
+          
+          let barPct = Math.min(100, Math.max(2, Math.round((x.champPct / maxChampPct) * 100)));
+          let barGradient = i === 0 ? 'linear-gradient(90deg,#ffd166,#ef3038)' 
+            : (i < 3 ? 'linear-gradient(90deg,#ff8e95,#ef3038)' 
+            : (x.champPct >= 5 ? 'linear-gradient(90deg,#dca2f5,#a855f7)' : 'linear-gradient(90deg,#7ad1ff,#3b82f6)'));
+
+          let face = (typeof profilePictures !== 'undefined' && profilePictures[x.player]) || '';
+          let faceStyle = face ? `style="background-image:url('${esc(face)}')"` : '';
+
+          return `
+            <div class="odds-contender-card ${tierCls}" onclick="openProfile('${jsArg(x.player)}')">
+              <div class="odds-head-row">
+                <div class="odds-trainer-info">
+                  <div class="m-slot-avatar" ${faceStyle}>${face ? '' : esc(x.player.slice(0,2).toUpperCase())}</div>
+                  <div style="min-width:0">
+                    <div style="display:flex;align-items:center;gap:6px">
+                      <span style="font:800 16px 'Barlow Condensed';letter-spacing:.3px;color:#fff">${esc(x.player)}</span>
+                      ${x.ovrObj ? x.ovrObj.badgeHtml : `<span class="ovr-badge-pill ovr-silver">${x.ovr}</span>`}
+                    </div>
+                    <div style="font-size:10px;color:#8e8c95;text-transform:uppercase;font-weight:700;margin-top:1px">${esc(teamName(t, x.player))}</div>
+                  </div>
+                </div>
+                <div style="text-align:right">
+                  ${badgeTag}
+                  <div style="font:800 15px 'Barlow Condensed';color:#ffd166;margin-top:3px">${x.moneyline} <span style="font-size:11px;color:#aaa">(${x.decimalOdds})</span></div>
+                </div>
+              </div>
+
+              <!-- Probability Visual Bar -->
+              <div class="odds-bar-container">
+                <div class="odds-bar-header">
+                  <span class="odds-bar-title">Championship Title Equity</span>
+                  <span class="odds-bar-pct">${x.champPct}%</span>
+                </div>
+                <div class="odds-bar-track">
+                  <div class="odds-bar-fill" style="width:${barPct}%;background:${barGradient}"></div>
+                </div>
+              </div>
+
+              <!-- Key Scenario Metrics -->
+              <div class="odds-submetrics">
+                <div>
+                  <div class="odds-submetric-val" style="color:${x.topCutPct>=80?'#4bdd91':x.topCutPct>=40?'#ffd166':'#ff8e95'}">${x.topCutPct}%</div>
+                  <div class="odds-submetric-lbl">Top Cut</div>
+                </div>
+                <div>
+                  <div class="odds-submetric-val" style="color:#f5f3f0">${x.finalsPct}%</div>
+                  <div class="odds-submetric-lbl">Grand Finals</div>
+                </div>
+                <div>
+                  <div class="odds-submetric-val" style="color:#aaa">${x.unplayedCount} left</div>
+                  <div class="odds-submetric-lbl">${esc(x.group)}</div>
+                </div>
+              </div>
+            </div>
+          `;
+        }).join('')}
+      </div>
+    `;
+  } else if(playoffOddsTab === 'topcut'){
+    // Top Cut Probabilities Ranked Table
+    let sortedByTopCut = [...list].sort((a, b) => b.topCutPct - a.topCutPct || b.champPct - a.champPct);
+    html += `
+      <div class="card table-wrap">
+        <table class="standings">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Trainer</th>
+              <th>Group</th>
+              <th>Matches Left</th>
+              <th>Top Cut Chance</th>
+              <th>Grand Finals</th>
+              <th>Title Odds</th>
+              <th>Top Cut Projection</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${sortedByTopCut.map((x, i) => {
+              let statusCls = x.topCutPct === 100 ? 'safe' : (x.topCutPct === 0 ? 'out' : 'hunt');
+              let statusTag = x.topCutPct === 100 ? '<span class="tag safe">CLINCHED</span>'
+                : (x.topCutPct === 0 ? '<span class="tag out">ELIMINATED</span>'
+                : '<span class="tag hunt">IN THE HUNT</span>');
+              let barColor = x.topCutPct >= 80 ? 'var(--green)' : (x.topCutPct <= 20 ? 'var(--red)' : 'var(--amber)');
+
+              return `
+                <tr class="${statusCls}">
+                  <td class="rank">${i + 1}</td>
+                  <td class="player">
+                    <div style="display:flex;align-items:center;gap:6px">
+                      ${playerLink(x.player)}
+                      ${x.ovrObj ? x.ovrObj.badgeHtml : ''}
+                    </div>
+                    <span class="team">${esc(teamName(t, x.player))} · Form: ${x.form.w}-${x.form.l} (${x.form.gw > x.form.gl ? '+' : ''}${x.form.gw - x.form.gl})</span>
+                  </td>
+                  <td><b>${esc(x.group)}</b></td>
+                  <td>${x.unplayedCount > 0 ? `${x.unplayedCount} unplayed <small style="color:#8e8c95">(${x.remainingOpponents.map(esc).join(', ')})</small>` : '<span style="color:#4bdd91">All Played</span>'}</td>
+                  <td><b>${x.topCutPct}%</b> ${statusTag}</td>
+                  <td>${x.finalsPct}%</td>
+                  <td><b style="color:var(--amber)">${x.champPct}%</b> <small style="color:#8e8c95">(${x.moneyline})</small></td>
+                  <td>
+                    <div class="progress" style="width:140px">
+                      <span style="width:${x.topCutPct}%;background:${barColor}"></span>
+                    </div>
+                  </td>
+                </tr>
+              `;
+            }).join('')}
+          </tbody>
+        </table>
+      </div>
+    `;
+  } else {
+    // Group Breakdowns & Remaining SOS
+    html += `
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(380px,1fr));gap:16px;align-items:start">
+        ${groupNames.map(g => {
+          let gInfo = groupStats[g];
+          let gPlayers = (groups[g] || []).map(p => sim[p]).filter(Boolean).sort((a, b) => b.topCutPct - a.topCutPct);
+          return `
+            <div class="card" style="padding:18px">
+              <div style="display:flex;justify-content:space-between;align-items:flex-start;border-bottom:1px solid #2d2d38;padding-bottom:12px;margin-bottom:14px">
+                <div>
+                  <div class="eyebrow">${esc(g)} · Top ${cut} Advance</div>
+                  <h3 style="font:800 22px 'Barlow Condensed';margin:2px 0 0">${esc(g)} Qualification Race</h3>
+                </div>
+                <div style="text-align:right;font-size:11px;color:#8e8c95">
+                  <div>Avg Strength: <b style="color:#f5f3f0">${gInfo.avgOvr} OVR</b></div>
+                  <div>Fixtures: <b>${gInfo.played}/${gInfo.total}</b> played</div>
+                </div>
+              </div>
+
+              <div class="table-wrap">
+                <table class="standings" style="min-width:100%">
+                  <thead>
+                    <tr>
+                      <th>Trainer</th>
+                      <th>OVR</th>
+                      <th>Group Form</th>
+                      <th>Top Cut %</th>
+                      <th>Remaining Opponents</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    ${gPlayers.map(x => `
+                      <tr class="${x.topCutPct===100?'safe':x.topCutPct===0?'out':'hunt'}">
+                        <td class="player">${playerLink(x.player)}</td>
+                        <td>${x.ovrObj ? x.ovrObj.badgeHtml : x.ovr}</td>
+                        <td><b>${x.form.w}-${x.form.l}</b> <small style="color:#8e8c95">(${x.form.gw > x.form.gl ? '+' : ''}${x.form.gw - x.form.gl})</small></td>
+                        <td><b style="color:${x.topCutPct>=80?'#4bdd91':x.topCutPct>=40?'#ffd166':'#ff8e95'}">${x.topCutPct}%</b></td>
+                        <td style="font-size:11px">${x.remainingOpponents.length ? x.remainingOpponents.map(esc).join(', ') : '<span style="color:#4bdd91">Finished</span>'}</td>
+                      </tr>
+                    `).join('')}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          `;
+        }).join('')}
+      </div>
+    `;
+  }
+
+  html += `
+    <p class="sub" style="margin-top:20px;font-size:11px;color:#8e8c95;line-height:1.6">
+      <b>About the Simulation Model:</b> The probability engine runs 2,500 full Monte Carlo tournament simulations. In each iteration, remaining unplayed matches are simulated using logistic win probabilities derived from player OVR ratings, Elo momentum, current group form (match and game differentials), and group opponent strength of schedule (SOS). Qualifiers are dynamically seeded into the playoff bracket to compute exact title and advancement equity.
+    </p>
+  `;
+
+  return html;
 }
 
 /* ══ 9. FIX: ASSIGNED TEAM NAMES NOT SAVING ════════════════════════
