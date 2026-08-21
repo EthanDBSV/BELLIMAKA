@@ -3608,13 +3608,13 @@ function tournamentFinish(t,p){
         return {
           place: 100+idx,
           label: label,
-          note: (totalGroups>1?gName+' ('+ordinal(idx+1)+') · ':'')+(t.status==='COMPLETE'?'group stage':'current rank'),
+          note: (totalGroups>1?gName+' ('+ordinal(idx+1)+') · ':'')+(t.status==='COMPLETE'?'Group Stage':'Current Rank'),
           cls: ''
         };
       }
     }catch(e){}
   }
-  return {place:999,label:'—',note:t.status==='COMPLETE'?'Group stage':'Participating',cls:''};
+  return {place:999,label:'—',note:t.status==='COMPLETE'?'Group Stage':'Participating',cls:''};
 }
 function ordinal(n){let s=['th','st','nd','rd'],v=n%100;return n+(s[(v-20)%10]||s[v]||s[0])}
 function pastTournaments(p){
@@ -5380,14 +5380,16 @@ function playoffOdds(){
             : (i < 3 ? 'linear-gradient(90deg,#ff8e95,#ef3038)' 
             : (x.champPct >= 5 ? 'linear-gradient(90deg,#dca2f5,#a855f7)' : 'linear-gradient(90deg,#7ad1ff,#3b82f6)'));
 
-          let face = (typeof profilePictures !== 'undefined' && profilePictures[x.player]) || '';
-          let faceStyle = face ? `style="background-image:url('${esc(face)}')"` : '';
+          let faceImg = (typeof profilePictures !== 'undefined' && profilePictures[x.player]) || (typeof teamCovers !== 'undefined' && teamCovers[x.player]) || '';
+          let faceArt = faceImg ? `url('${esc(faceImg)}')` : fallbackArt(x.player);
+          let faceLetter = faceImg ? '' : esc((x.player||'?')[0]);
+          let faceStyle = `style="background-image:${faceArt};background-size:cover;background-position:center;width:34px;height:34px;border-radius:50%;flex:none;display:grid;place-items:center;border:1px solid #ffffff22;font:800 13px 'Barlow Condensed'"`;
 
           return `
             <div class="odds-contender-card ${tierCls}" onclick="openProfile('${jsArg(x.player)}')">
               <div class="odds-head-row">
                 <div class="odds-trainer-info">
-                  <div class="m-slot-avatar" ${faceStyle}>${face ? '' : esc(x.player.slice(0,2).toUpperCase())}</div>
+                  <div class="m-slot-avatar" ${faceStyle}>${faceLetter}</div>
                   <div style="min-width:0">
                     <div style="display:flex;align-items:center;gap:6px">
                       <span style="font:800 16px 'Barlow Condensed';letter-spacing:.3px;color:#fff">${esc(x.player)}</span>
@@ -5459,15 +5461,24 @@ function playoffOdds(){
                 : '<span class="tag hunt">IN THE HUNT</span>');
               let barColor = x.topCutPct >= 80 ? 'var(--green)' : (x.topCutPct <= 20 ? 'var(--red)' : 'var(--amber)');
 
+              let faceImg = (typeof profilePictures !== 'undefined' && profilePictures[x.player]) || (typeof teamCovers !== 'undefined' && teamCovers[x.player]) || '';
+              let faceArt = faceImg ? `url('${esc(faceImg)}')` : fallbackArt(x.player);
+              let faceLetter = faceImg ? '' : esc((x.player||'?')[0]);
+
               return `
                 <tr class="${statusCls}">
                   <td class="rank">${i + 1}</td>
                   <td class="player">
-                    <div style="display:flex;align-items:center;gap:6px">
-                      ${playerLink(x.player)}
-                      ${x.ovrObj ? x.ovrObj.badgeHtml : ''}
+                    <div style="display:flex;align-items:center;gap:8px">
+                      <span class="m-player-chip-face" style="background-image:${faceArt};background-size:cover;background-position:center;width:24px;height:24px;border-radius:50%;font-size:10px;display:grid;place-items:center;flex:none;border:1px solid #ffffff1a">${faceLetter}</span>
+                      <div style="min-width:0">
+                        <div style="display:flex;align-items:center;gap:6px">
+                          ${playerLink(x.player)}
+                          ${x.ovrObj ? x.ovrObj.badgeHtml : ''}
+                        </div>
+                        <span class="team">${esc(teamName(t, x.player))} · Form: ${x.form.w}-${x.form.l} (${x.form.gw > x.form.gl ? '+' : ''}${x.form.gw - x.form.gl})</span>
+                      </div>
                     </div>
-                    <span class="team">${esc(teamName(t, x.player))} · Form: ${x.form.w}-${x.form.l} (${x.form.gw > x.form.gl ? '+' : ''}${x.form.gw - x.form.gl})</span>
                   </td>
                   <td><b>${esc(x.group)}</b></td>
                   <td>${x.unplayedCount > 0 ? `${x.unplayedCount} unplayed <small style="color:#8e8c95">(${x.remainingOpponents.map(esc).join(', ')})</small>` : '<span style="color:#4bdd91">All Played</span>'}</td>
@@ -5518,15 +5529,25 @@ function playoffOdds(){
                     </tr>
                   </thead>
                   <tbody>
-                    ${gPlayers.map(x => `
-                      <tr class="${x.topCutPct===100?'safe':x.topCutPct===0?'out':'hunt'}">
-                        <td class="player">${playerLink(x.player)}</td>
-                        <td>${x.ovrObj ? x.ovrObj.badgeHtml : x.ovr}</td>
-                        <td><b>${x.form.w}-${x.form.l}</b> <small style="color:#8e8c95">(${x.form.gw > x.form.gl ? '+' : ''}${x.form.gw - x.form.gl})</small></td>
-                        <td><b style="color:${x.topCutPct>=80?'#4bdd91':x.topCutPct>=40?'#ffd166':'#ff8e95'}">${x.topCutPct}%</b></td>
-                        <td style="font-size:11px">${x.remainingOpponents.length ? x.remainingOpponents.map(esc).join(', ') : '<span style="color:#4bdd91">Finished</span>'}</td>
-                      </tr>
-                    `).join('')}
+                    ${gPlayers.map(x => {
+                      let gFaceImg = (typeof profilePictures !== 'undefined' && profilePictures[x.player]) || (typeof teamCovers !== 'undefined' && teamCovers[x.player]) || '';
+                      let gFaceArt = gFaceImg ? `url('${esc(gFaceImg)}')` : fallbackArt(x.player);
+                      let gFaceLetter = gFaceImg ? '' : esc((x.player||'?')[0]);
+                      return `
+                        <tr class="${x.topCutPct===100?'safe':x.topCutPct===0?'out':'hunt'}">
+                          <td class="player">
+                            <div style="display:flex;align-items:center;gap:7px">
+                              <span class="m-player-chip-face" style="background-image:${gFaceArt};background-size:cover;background-position:center;width:22px;height:22px;border-radius:50%;font-size:10px;display:grid;place-items:center;flex:none;border:1px solid #ffffff1a">${gFaceLetter}</span>
+                              ${playerLink(x.player)}
+                            </div>
+                          </td>
+                          <td>${x.ovrObj ? x.ovrObj.badgeHtml : x.ovr}</td>
+                          <td><b>${x.form.w}-${x.form.l}</b> <small style="color:#8e8c95">(${x.form.gw > x.form.gl ? '+' : ''}${x.form.gw - x.form.gl})</small></td>
+                          <td><b style="color:${x.topCutPct>=80?'#4bdd91':x.topCutPct>=40?'#ffd166':'#ff8e95'}">${x.topCutPct}%</b></td>
+                          <td style="font-size:11px">${x.remainingOpponents.length ? x.remainingOpponents.map(esc).join(', ') : '<span style="color:#4bdd91">Finished</span>'}</td>
+                        </tr>
+                      `;
+                    }).join('')}
                   </tbody>
                 </table>
               </div>
