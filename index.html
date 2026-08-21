@@ -636,8 +636,40 @@ function saveProfile(p){ensureProfile(p);let teamVal=document.querySelector('#ed
 
 
 
-function groupsOf(t){let count=Math.max(1,Number(t.groupCount||t.groups||1)),names=Array.from({length:count},(_,i)=>'Group '+String.fromCharCode(65+i)),buckets=Object.fromEntries(names.map(x=>[x,[]]));if(t.groupAssignments){Object.entries(t.groupAssignments).forEach(([p,g])=>{if(buckets[g])buckets[g].push(p)});t.players.filter(p=>!Object.hasOwn(t.groupAssignments,p)).forEach((p,i)=>buckets[names[i%count]].push(p))}else t.players.forEach((p,i)=>buckets[names[i%count]].push(p));return buckets}
-function rebuildSchedulePreserving(t){let old={};t.matches.forEach(m=>old[[m.group||'Group A',m.a,m.b].sort().join('|')]=m);let fresh=groupSchedule(t);fresh.forEach(m=>{let prior=old[[m.group,m.a,m.b].sort().join('|')];if(prior){m.as=prior.as;m.bs=prior.bs;m.date=prior.date}});t.matches=fresh}
+function groupsOf(t){
+  let count=Math.max(1,Number(t.groupCount||t.groups||1)),names=Array.from({length:count},(_,i)=>'Group '+String.fromCharCode(65+i)),buckets=Object.fromEntries(names.map(x=>[x,[]]));
+  if(t.groupAssignments){
+    Object.entries(t.groupAssignments).forEach(([p,g])=>{if(buckets[g])buckets[g].push(p)});
+    t.players.filter(p=>!Object.hasOwn(t.groupAssignments,p)).forEach((p,i)=>buckets[names[i%count]].push(p));
+  } else t.players.forEach((p,i)=>buckets[names[i%count]].push(p));
+  return buckets;
+}
+
+function rebuildSchedulePreserving(t){
+  let old={};
+  (t.matches||[]).forEach(m=>{
+    old[[m.group||'Group A', m.a, m.b].sort().join('|')] = m;
+  });
+  let fresh = groupSchedule(t);
+  fresh.forEach(m=>{
+    let key = [m.group||'Group A', m.a, m.b].sort().join('|');
+    let prior = old[key];
+    if(prior){
+      if(prior.a === m.a && prior.b === m.b){
+        m.as = prior.as;
+        m.bs = prior.bs;
+      } else if(prior.a === m.b && prior.b === m.a){
+        m.as = prior.bs;
+        m.bs = prior.as;
+      } else {
+        m.as = prior.as;
+        m.bs = prior.bs;
+      }
+      m.date = prior.date;
+    }
+  });
+  t.matches = fresh;
+}
 
 
 function addCustom(){let t=activeT(),groups=Object.keys(groupsOf(t)),opts=t.players.map(p=>`<option>${p}</option>`).join('');document.querySelector('#modal').innerHTML=`<div class="modal-wrap"><div class="modal" style="max-width:440px"><div class="modal-head"><div><div class="eyebrow">Moderator only</div><h2>Add custom match</h2></div><button class="close" onclick="closeModal()">×</button></div><div class="field"><label>Group</label><select id="customGroup">${groups.map(g=>`<option>${g}</option>`).join('')}</select></div><div class="field"><label>First player</label><select id="customA">${opts}</select></div><div class="field"><label>Second player</label><select id="customB">${opts}</select></div><div class="creator-actions"><button class="btn" onclick="saveCustomMatch()">Add match</button></div></div></div>`}
@@ -1777,7 +1809,7 @@ function openTournamentPlayers(){
     <div class="creator-actions" style="margin-top:18px"><button class="btn ghost" onclick="closeModal()">Cancel</button><button class="btn" onclick="saveTournamentPlayers()">Save participants & teams</button></div>
   </div></div>`;
 }
-function saveTournamentPlayers(){let t=activeT();if(t.phase==='topcut'){alert('Participants are locked after Top Cut begins.');return}let selected=[...document.querySelectorAll('.tPlayerChoice:checked')].map(x=>x.value),newP=document.querySelector('#editNewPlayer').value.trim();if(newP){if(!profiles[newP]){profiles[newP]={team:'No default team',record:'0-0',tops:0,cups:[]};roster[newP]=[];teamHistory[newP]=[]}selected.push(newP)}if(selected.length<2){alert('A tournament needs at least two players.');return}let oldPlayers=t.players.join('|'),oldAssign=JSON.stringify(t.groupAssignments||{});t.players=[...new Set(selected)];t.teamNames=t.teamNames||{};document.querySelectorAll('.tTeamName').forEach(x=>t.teamNames[x.dataset.player]=x.value.trim());let assign={};document.querySelectorAll('.playerGroup').forEach(x=>{if(t.players.includes(x.dataset.player))assign[x.dataset.player]=x.value});t.players.filter(p=>!assign[p]).forEach((p,i)=>assign[p]=Object.keys(groupsOf(t))[i%Object.keys(groupsOf(t)).length]);t.groupAssignments=assign;let changed=oldPlayers!==t.players.join('|')||oldAssign!==JSON.stringify(assign);if(changed)rebuildSchedulePreserving(t);persistLeague();closeModal()}
+
 function tournamentRecord(t,p){let w=0,l=0;[...t.matches,...(t.topCutCache?.results||[]).map(m=>({a:m.p1,b:m.p2,as:m.s1,bs:m.s2}))].forEach(m=>{let a=m.a,b=m.b,sa=m.as,sb=m.bs;if(a!==p&&b!==p)return;if(sa===''||sb===''||sa==null||sb==null||+sa===+sb)return;if((a===p&&+sa>+sb)||(b===p&&+sb>+sa))w++;else l++});return `${w}-${l}`}
 function OffseasonHome(){
   let completedTournaments = Object.values(tournamentData).filter(t => t.status === 'COMPLETE').sort((a,b) => (Date.parse(b.start)||0) - (Date.parse(a.start)||0));
@@ -5630,24 +5662,43 @@ function saveTournamentPlayers(){
     selected.push(newP);
   }
   if(selected.length<2){alert('A tournament needs at least two players.');return}
-  let oldPlayers=t.players.join('|'),oldAssign=JSON.stringify(t.groupAssignments||{});
-  t.players=[...new Set(selected)];
+  
+  let oldPlayersSet = new Set(t.players||[]);
+  let newPlayersSet = new Set(selected);
+  let playersChanged = oldPlayersSet.size !== newPlayersSet.size || [...oldPlayersSet].some(p => !newPlayersSet.has(p));
+  
+  if(playersChanged){
+    t.players = [...(t.players||[]).filter(p => newPlayersSet.has(p)), ...selected.filter(p => !oldPlayersSet.has(p))];
+  }
+
   t.teamNames=t.teamNames||{};
-  /* (b) only store real names; a blank box clears the override */
+  /* store real team name overrides; blank clears the override */
   document.querySelectorAll('.tTeamName').forEach(x=>{
     let p=x.dataset.player,v=x.value.trim();
     if(!t.players.includes(p))return;
     if(v)t.teamNames[p]=v;else delete t.teamNames[p];
   });
   Object.keys(t.teamNames).forEach(p=>{if(!t.players.includes(p))delete t.teamNames[p]});
+  
   let assign={};
   document.querySelectorAll('.playerGroup').forEach(x=>{if(t.players.includes(x.dataset.player))assign[x.dataset.player]=x.value});
   let groupNames=Object.keys(groupsOf(t));
   t.players.filter(p=>!assign[p]).forEach((p,i)=>assign[p]=groupNames[i%groupNames.length]);
+  
+  let oldAssignJson = JSON.stringify(t.groupAssignments||{});
+  let newAssignJson = JSON.stringify(assign);
+  let assignChanged = oldAssignJson !== newAssignJson;
   t.groupAssignments=assign;
-  let changed=oldPlayers!==t.players.join('|')||oldAssign!==JSON.stringify(assign);
-  if(changed)rebuildSchedulePreserving(t);
-  rebuildAllPlayerStats();persistLeague();closeModal();render()
+
+  // Never rebuild schedule for completed tournaments or when only team names were edited
+  if(t.status !== 'COMPLETE' && (playersChanged || assignChanged)){
+    rebuildSchedulePreserving(t);
+  }
+  
+  rebuildAllPlayerStats();
+  persistLeague();
+  closeModal();
+  render();
 }
 
 /* Modern renderMatchRow is active at line 2055 */
