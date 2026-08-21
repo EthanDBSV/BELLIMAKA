@@ -1910,9 +1910,29 @@ async function updateSession(session){
   if(!wasAccount)render();
 }
 
+function tournamentTotalMatches(t){
+  if(!t) return 0;
+  let groupCount = (t.matches || []).length;
+  let topCutCount = 0;
+  if(t.topCutCache?.results?.length){
+    topCutCount = t.topCutCache.results.length;
+  } else if(t.bracketManagerData && Array.isArray(t.bracketManagerData.match)){
+    topCutCount = t.bracketManagerData.match.filter(m => (m.opponent1 && m.opponent1.id != null && m.opponent2 && m.opponent2.id != null) || m.opponent1?.result || m.opponent2?.result || (m.opponent1?.score != null && m.opponent2?.score != null && +m.opponent1.score !== +m.opponent2.score)).length;
+  } else if(t.topCutCache?.done != null && t.topCutCache.done > 0){
+    topCutCount = t.topCutCache.done;
+  } else if((t.phase === 'topcut' || t.status === 'COMPLETE') && typeof getTournamentTopCutModel === 'function'){
+    let mod = getTournamentTopCutModel(t);
+    if(mod && mod.completedList){
+      topCutCount = mod.completedList.length;
+    }
+  }
+  return groupCount + topCutCount;
+}
+
 function tournamentCard(t){
   let bg=t.backgroundImage?`style="background-image:linear-gradient(90deg,rgba(20,20,25,.92),rgba(20,20,25,.68)),url('${t.backgroundImage}') ;background-size:cover;background-position:center"`:'';
-  return `<button class="card archive-card" ${bg} onclick="openTournament('${t.id}')"><div class="${t.status==='ONGOING'?'status':'eyebrow'}">${t.status==='ONGOING'?'<i></i>':''}${t.status}</div><h3>${t.name} · ${t.season}</h3><p>${t.champion?'Champion: '+t.champion:'Group stage · '+t.players.length+' trainers'}<br>${t.regulation}</p><div class="archive-stats"><span><b>${t.matches.length}</b>Matches</span><span><b>${t.start}</b>Started</span></div></button>`;
+  let totalMatches = tournamentTotalMatches(t);
+  return `<button class="card archive-card" ${bg} onclick="openTournament('${t.id}')"><div class="${t.status==='ONGOING'?'status':'eyebrow'}">${t.status==='ONGOING'?'<i></i>':''}${t.status}</div><h3>${t.name} · ${t.season}</h3><p>${t.champion?'Champion: '+t.champion:'Group stage · '+t.players.length+' trainers'}<br>${t.regulation}</p><div class="archive-stats"><span><b>${totalMatches}</b>Matches</span><span><b>${t.start}</b>Started</span></div></button>`;
 }
 
 function Tournaments(){
@@ -3078,7 +3098,7 @@ function calculatePlayerOVR(p, leagueData=null){
       tierUpper:'BRONZE',
       color:'#cd7f32',
       badgeCls:'ovr-bronze',
-      badgeHtml:'<span class="ovr-badge-pill ovr-bronze">60 BRONZE</span>',
+      badgeHtml:'<span class="ovr-badge-pill ovr-bronze">60</span>',
       subStats:{win:50,tit:0,cut:0,strk:0}
     };
   }
