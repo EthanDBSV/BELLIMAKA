@@ -1735,21 +1735,22 @@ function OffseasonHome(){
 
   // League metrics
   let totalFixtures = Object.values(tournamentData).reduce((sum, t) => sum + tournamentTotalMatches(t), 0);
-  let topLeader = r[0] || null;
+  let totalTrainers = Object.keys(profiles).length || (new Set(Object.values(tournamentData).flatMap(t => t.players || []))).size;
+  
+  let streakHolder = '—', streakVal = 0;
+  try {
+    let recs = calculateLeagueRecords();
+    if(recs?.hof?.longestStreak?.holder){
+      streakHolder = recs.hof.longestStreak.holder;
+      streakVal = recs.hof.longestStreak.val;
+    }
+  } catch(e){}
 
   let actions = (moderator ? `<button class="btn" onclick="openCreator()">+ Create next tournament</button>` : '');
 
   return head('League Off-Season', 'No tournament is currently ongoing', actions) + `
     <!-- Top League Highlights Metric Strip -->
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px;margin-bottom:20px">
-      <div class="card" style="padding:12px 16px;background:linear-gradient(135deg,#1f1418,#141419 75%);border-color:#5c242c;display:flex;align-items:center;gap:12px">
-        <span style="font-size:26px">👑</span>
-        <div style="min-width:0">
-          <div style="font-size:10px;font-weight:800;color:#ff9ba1;text-transform:uppercase;letter-spacing:.6px">Defending Champion</div>
-          <div style="font:800 16px 'Barlow Condensed';color:#f5f3f0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${champ ? playerLink(champ) : 'None'}</div>
-        </div>
-      </div>
-
       <div class="card" style="padding:12px 16px;background:#141419;border-color:#2c2c36;display:flex;align-items:center;gap:12px">
         <span style="font-size:26px">🏆</span>
         <div>
@@ -1767,10 +1768,18 @@ function OffseasonHome(){
       </div>
 
       <div class="card" style="padding:12px 16px;background:#141419;border-color:#2c2c36;display:flex;align-items:center;gap:12px">
-        <span style="font-size:26px">⭐</span>
+        <span style="font-size:26px">👥</span>
+        <div>
+          <div style="font-size:10px;font-weight:800;color:#a09fa8;text-transform:uppercase;letter-spacing:.6px">League Coaches</div>
+          <div style="font:800 18px 'Barlow Condensed';color:#f5f3f0">${totalTrainers} <small style="font-size:11px;color:#8e8c95;font-weight:700">Registered</small></div>
+        </div>
+      </div>
+
+      <div class="card" style="padding:12px 16px;background:linear-gradient(135deg,#1f1812,#141419 75%);border-color:#5c3a1e;display:flex;align-items:center;gap:12px">
+        <span style="font-size:26px">🔥</span>
         <div style="min-width:0">
-          <div style="font-size:10px;font-weight:800;color:#ffd166;text-transform:uppercase;letter-spacing:.6px">#1 ELO Leader</div>
-          <div style="font:800 16px 'Barlow Condensed';color:#f5f3f0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${topLeader ? `${playerLink(topLeader.p)} (${topLeader.score})` : '—'}</div>
+          <div style="font-size:10px;font-weight:800;color:#ffd166;text-transform:uppercase;letter-spacing:.6px">Record Win Streak</div>
+          <div style="font:800 16px 'Barlow Condensed';color:#f5f3f0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${streakVal > 0 ? `${playerLink(streakHolder)} (${streakVal} Wins)` : 'None yet'}</div>
         </div>
       </div>
     </div>
@@ -1816,15 +1825,9 @@ function OffseasonHome(){
                 </div>
               </div>
 
-              <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-top:12px">
-                <div class="card" style="padding:10px 12px;background:#111116d0;border-color:#2a2a36">
-                  <div class="eyebrow" style="font-size:9px">Tournament Record</div>
-                  <div style="font:800 18px 'Barlow Condensed';margin-top:3px;color:#f5f3f0">${champRecord} <small style="font-size:10px;color:#4bdd91;font-weight:700">W-L</small></div>
-                </div>
-                <div class="card" style="padding:10px 12px;background:#111116d0;border-color:#2a2a36">
-                  <div class="eyebrow" style="font-size:9px">Tournament Result</div>
-                  <div style="font:800 18px 'Barlow Condensed';margin-top:3px;color:#ffd166">1st Place · Champion</div>
-                </div>
+              <div class="card" style="padding:10px 14px;background:#111116d0;border-color:#2a2a36;margin-top:12px">
+                <div class="eyebrow" style="font-size:9px">Tournament Record</div>
+                <div style="font:800 20px 'Barlow Condensed';margin-top:3px;color:#f5f3f0">${champRecord}</div>
               </div>
 
               ${champHistory?.pokemon?.length ? `
@@ -1904,45 +1907,6 @@ function OffseasonHome(){
         </table>
       </div>
     </section>
-
-    <!-- Past Seasons Quick Grid -->
-    ${completedTournaments.length > 0 ? `
-      <section class="section">
-        <div class="section-head">
-          <h2>LEAGUE SEASONS ARCHIVE</h2>
-          <button class="link" onclick="go('Tournaments')">VIEW ALL (${completedTournaments.length}) →</button>
-        </div>
-        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px">
-          ${completedTournaments.slice(0, 3).map(t => {
-            let tChamp = t.champion;
-            let tChampFace = profilePictures[tChamp] ? `url('${esc(profilePictures[tChamp])}')` : (teamCovers[tChamp] ? `url('${esc(teamCovers[tChamp])}')` : fallbackArt(tChamp));
-            let tChampLetter = (profilePictures[tChamp] || teamCovers[tChamp]) ? '' : esc(tChamp?.[0] || '—');
-            let tMatches = tournamentTotalMatches(t);
-            let bg = t.backgroundImage ? `style="background-image:linear-gradient(90deg,rgba(18,18,24,.92),rgba(18,18,24,.75)),url('${t.backgroundImage}');background-size:cover;background-position:center"` : '';
-
-            return `
-              <div class="card" ${bg} style="padding:16px;display:flex;flex-direction:column;justify-content:space-between;cursor:pointer;min-height:160px;transition:all .15s" onclick="openTournament('${t.id}')">
-                <div>
-                  <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
-                    <span class="tag" style="background:#23232e;color:#a09fa8;border:1px solid #363644;font-size:9px">${esc(t.season)}</span>
-                    <span style="font-size:10px;font-weight:800;color:#8e8c95">${esc(t.regulation)}</span>
-                  </div>
-                  <h3 style="font:800 24px 'Barlow Condensed';color:#f5f3f0;margin:8px 0 2px;letter-spacing:.4px">${esc(t.name)}</h3>
-                </div>
-
-                <div style="margin-top:14px;padding-top:10px;border-top:1px solid #ffffff15;display:flex;align-items:center;justify-content:space-between">
-                  <div style="display:flex;align-items:center;gap:8px">
-                    <span class="mrow-face" style="background-image:${tChampFace};background-size:cover;background-position:center;width:24px;height:24px;font-size:10px;border-radius:50%;flex:none;display:grid;place-items:center;border:1px solid #ffd166">${tChampLetter}</span>
-                    <span style="font-size:11px;font-weight:800;color:#ffd166">👑 ${esc(tChamp || 'No champion')}</span>
-                  </div>
-                  <span style="font-size:11px;color:#8e8c95;font-weight:700">${tMatches} matches</span>
-                </div>
-              </div>
-            `;
-          }).join('')}
-        </div>
-      </section>
-    ` : ''}
   `;
 }
 
