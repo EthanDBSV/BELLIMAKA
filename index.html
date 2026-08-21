@@ -613,7 +613,7 @@ function removeCustom(i){let t=activeT(),m=t.matches[i];if(!m.custom||!confirm('
 
 /* Supabase connection: activate by filling in supabase-config.js */
 var supabaseClient=null,sessionUser=null;
-function supabaseReady(){let c=window.DRAFTDEX_SUPABASE;return c&&c.url&&c.anonKey&&window.supabase}
+function supabaseReady(){let c=window.DRAFTDEX_SUPABASE;return Boolean(c&&c.url&&c.anonKey&&window.supabase)}
 var knownRev = Number(localStorage.getItem('draftdex-rev')) || 0;
 var lastLocalUpdate = Number(localStorage.getItem('draftdex-updated-at')) || Date.now();
 var syncTimer = null, lastSentSnapshot = '';
@@ -2053,18 +2053,17 @@ function toggleModerator(){
 var sessionReqId=0,sessionResolvedFor=null;
 async function updateSession(session){
   let myReq=++sessionReqId;
-  let wasAccount=current==='Account'&&!sessionUser&&!session;
   let newUser=session?.user||null;
-  if(newUser&&sessionUser&&newUser.id===sessionUser.id&&sessionResolvedFor===newUser.id){sessionUser=newUser;return}
   sessionUser=newUser;
   let nextModerator=getStoredModeratorState(),nextAccount=null;
   if(sessionUser&&supabaseClient){
-    let {data}=await supabaseClient.from('user_profiles').select('role,username,prediction_points').eq('id',sessionUser.id).single();
-    if(myReq!==sessionReqId)return;
-    if(data){
-      nextModerator=data.role==='moderator';
-      nextAccount=data;
-    }
+    try{
+      let {data}=await supabaseClient.from('user_profiles').select('role,username,prediction_points').eq('id',sessionUser.id).maybeSingle();
+      if(myReq===sessionReqId && data){
+        if(data.role==='moderator') nextModerator=true;
+        nextAccount=data;
+      }
+    }catch(e){}
   }
   moderator=nextModerator;
   window.currentAccount=nextAccount;
@@ -2072,16 +2071,19 @@ async function updateSession(session){
   let label=document.querySelector('#accountText');
   if(label)label.textContent=sessionUser?(moderator?'Moderator':'Player'):(moderator?'Moderator':'Sign in');
   if(supabaseClient){
-    let {data}=await supabaseClient.from('league_state').select('data').eq('id','main').single();
-    if(myReq!==sessionReqId)return;
-    let incoming=data?.data;
-    if(shouldApply(incoming)){
-      applySharedState(incoming);
-    } else if(moderator && incoming && ((incoming.rev || 0) < knownRev || (incoming.updatedAt || 0) < lastLocalUpdate)){
-      flushSync();
-    }
+    try{
+      let {data}=await supabaseClient.from('league_state').select('data').eq('id','main').maybeSingle();
+      if(myReq===sessionReqId && data?.data){
+        let incoming=data.data;
+        if(shouldApply(incoming)){
+          applySharedState(incoming);
+        } else if(moderator && incoming && ((incoming.rev || 0) < knownRev || (incoming.updatedAt || 0) < lastLocalUpdate)){
+          flushSync();
+        }
+      }
+    }catch(e){}
   }
-  if(!wasAccount)render();
+  render();
 }
 
 function tournamentTotalMatches(t){
@@ -2181,7 +2183,97 @@ function playoffRating(p,t){let [wins,losses]=safeRecord(p),form=playerForm(t,p)
 function winChance(a,b,t){let difference=playoffRating(a,t)-playoffRating(b,t),chance=1/(1+Math.exp(-difference/260));return Math.max(.2,Math.min(.8,chance))}
 
 
-async function signIn(){if(!await ensureSupabase()){authNotice('Supabase is not configured. Add the Project URL and publishable key to supabase-config.js.',true);return}let username=document.querySelector('#authUsername').value.trim(),password=document.querySelector('#authPassword').value,email=usernameAuthEmail(username);if(!email||!password){authNotice('Enter your username and password.',true);return}let result=await supabaseClient.auth.signInWithPassword({email,password});if(result.error){let fallback=username.toLowerCase().replace(/[^a-z0-9_-]/g,'')+'@cherrymoon.local';result=await supabaseClient.auth.signInWithPassword({email:fallback,password})}if(result.error)authNotice(result.error.message,true);else{authNotice('Signed in.');let {data:{session}}=await supabaseClient.auth.getSession();await updateSession(session)}}
+function authNotice(msg, isErr=false){
+  let el = document.querySelector('#authNotice');
+  if(!el) return;
+  el.style.display = 'block';
+  el.style.color = isErr ? '#ff7a82' : '#4bdd91';
+  el.textContent = msg;
+}
+
+async function ensureSupabase(){
+  if(supabaseClient && supabaseInited) return true;
+  if(!supabaseReady()) return false;
+  await initSupabase();
+  return !!supabaseClient;
+}
+
+async function signIn(){
+  if(!await ensureSupabase()){
+    authNotice('Supabase is not connected. Please check your internet connection or supabase-config.js credentials.', true);
+    return;
+  }
+  let usernameEl = document.querySelector('#authUsername');
+  let passwordEl = document.querySelector('#authPassword');
+  let username = usernameEl ? usernameEl.value.trim() : '';
+  let password = passwordEl ? passwordEl.value : '';
+  let email = usernameAuthEmail(username);
+  if(!username || !password){
+    authNotice('Enter your username and password.', true);
+    return;
+  }
+  authNotice('Signing in...');
+  let result = await supabaseClient.auth.signInWithPassword({ email, password });
+  if(result.error){
+    let fallback = username.toLowerCase().replace(/[^a-z0-9_-]/g,'') + '@cherrymoon.local';
+    result = await supabaseClient.auth.signInWithPassword({ email: fallback, password });
+  }
+  if(result.error){
+    authNotice(result.error.message, true);
+  } else {
+    authNotice('Signed in successfully!');
+    let { data: { session } } = await supabaseClient.auth.getSession();
+    await updateSession(session);
+    render();
+  }
+}
+
+async function signUp(){
+  if(!await ensureSupabase()){
+    authNotice('Supabase is not connected. Please check your internet connection or supabase-config.js credentials.', true);
+    return;
+  }
+  let usernameEl = document.querySelector('#authUsername');
+  let passwordEl = document.querySelector('#authPassword');
+  let username = usernameEl ? usernameEl.value.trim() : '';
+  let password = passwordEl ? passwordEl.value : '';
+  let email = usernameAuthEmail(username);
+  if(!username || !password){
+    authNotice('Enter a username and password to create an account.', true);
+    return;
+  }
+  if(password.length < 6){
+    authNotice('Password must be at least 6 characters long.', true);
+    return;
+  }
+  authNotice('Creating account...');
+  let { data, error } = await supabaseClient.auth.signUp({
+    email,
+    password,
+    options: {
+      data: { username }
+    }
+  });
+  if(error){
+    authNotice(error.message, true);
+  } else {
+    if(data?.session){
+      authNotice('Account created and signed in!');
+      try {
+        await supabaseClient.from('user_profiles').upsert({
+          id: data.user.id,
+          username: username,
+          role: 'player',
+          prediction_points: 0
+        });
+      } catch(e){}
+      await updateSession(data.session);
+      render();
+    } else {
+      authNotice('Account created! You can now sign in.');
+    }
+  }
+}
 function playoffOdds(){let t=ongoingT();if(!t)return noTournament();let data=playoffOddsData(t),rows=Object.entries(data).map(([p,odds])=>({p,odds,rating:Math.round(playoffRating(p,t)),accolades:playoffAccolades(p)})).sort((a,b)=>b.odds-a.odds);return head('Playoff Calculator',t.name+' · projected Top Cut chances')+`<div class="card table-wrap"><table class="standings"><thead><tr><th>#</th><th>Trainer</th><th>Top Cut chance</th><th>Projection</th></tr></thead><tbody>${rows.map((x,i)=>`<tr class="${x.odds===100?'safe':x.odds===0?'out':'hunt'}"><td class="rank">${i+1}</td><td class="player">${playerLink(x.p)}<span class="team">Rating ${x.rating} · ${x.accolades.titles} title${x.accolades.titles===1?'':'s'} · ${x.accolades.tops} Top Cut${x.accolades.tops===1?'':'s'}</span></td><td><b>${x.odds}%</b></td><td><div class="progress" style="width:160px"><span style="width:${x.odds}%;background:${x.odds===100?'var(--green)':x.odds===0?'var(--red)':'var(--amber)'}"></span></div></td></tr>`).join('')}</tbody></table></div><p class="sub">2,000 simulated finishes. Match strength uses all-time W-L (career form), this tournament's W-L (current form), plus 80 rating points per title and 20 per Top Cut. Players with no record or accolades start at the neutral 50% baseline.</p>`}
 function openGroupPlacementEditor(){let t=ongoingT();if(!moderator||!t||t.phase==='topcut')return;let groups=groupsOf(t);document.querySelector('#modal').innerHTML=`<div class="modal-wrap"><div class="modal" style="max-width:760px"><div class="modal-head"><div><div class="eyebrow">Moderator only</div><h2>Arrange group placements</h2></div><button class="close" onclick="closeModal()">×</button></div><p class="sub">Drag a trainer onto another trainer to swap their group placements. Moving players between groups rebuilds the round-robin schedule while preserving scores for matchups that still exist.</p><div class="group-placement-grid">${Object.entries(groups).map(([g,players])=>`<section class="group-dropzone" data-group="${g}"><div class="eyebrow">${g}</div>${players.map(p=>`<button class="group-placement-drag" draggable="true" data-player="${p}" data-group="${g}">${p}</button>`).join('')||'<p class="sub">Drop a trainer here</p>'}</section>`).join('')}</div></div></div>`}
 function swapGroupPlacements(first,second,targetGroup){let t=ongoingT();if(!t||!first||!moderator||t.phase==='topcut')return;let buckets=groupsOf(t),assign={};Object.entries(buckets).forEach(([g,players])=>players.forEach(p=>assign[p]=g));let source=assign[first];if(second){let other=assign[second];assign[first]=other;assign[second]=source;if(source===other){let ai=t.players.indexOf(first),bi=t.players.indexOf(second);if(ai>=0&&bi>=0)[t.players[ai],t.players[bi]]=[t.players[bi],t.players[ai]]}}else if(targetGroup&&source!==targetGroup){assign[first]=targetGroup}t.groupAssignments=assign;rebuildSchedulePreserving(t);persistLeague();openGroupPlacementEditor();render()}
