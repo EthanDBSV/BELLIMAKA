@@ -322,6 +322,11 @@
 .m-slot-input{width:42px!important;height:32px!important;text-align:center!important;font:900 16px 'Barlow Condensed'!important;border-radius:4px!important;border:1px solid #4a4a58!important;background:#09090d!important;color:#fff!important;padding:0!important;margin:0!important}
 .m-slot-input:focus{border-color:var(--red)!important;outline:none;box-shadow:0 0 0 2px rgba(239,48,56,0.3)!important}
 .m-card-foot{display:flex;align-items:center;justify-content:flex-end;gap:8px;padding:6px 10px 8px;background:#101015;border-top:1px solid #1e1e26}
+.match-player-filter-bar{display:flex;align-items:center;flex-wrap:wrap;gap:6px}
+.m-player-chip{display:inline-flex;align-items:center;gap:6px;padding:4px 9px;font-size:11px;font-weight:800;border-radius:20px;border:1px solid #363644;background:#181822;color:#a09fa8;cursor:pointer;transition:all .15s ease}
+.m-player-chip:hover{border-color:#5c242c;color:#fff;background:#242430}
+.m-player-chip.active{background:var(--red);color:#fff;border-color:var(--red);box-shadow:0 2px 8px rgba(239,48,56,0.4)}
+.m-player-chip-face{width:16px;height:16px;border-radius:50%;flex:none;background-size:cover;background-position:center;display:grid;place-items:center;font:800 9px 'Barlow Condensed';color:#fff;border:1px solid #ffffff30}
 
 /* ── Draft Tools Layout ── */
 .tools-layout{display:grid;grid-template-columns:minmax(0,1fr) 350px;gap:18px;align-items:start}
@@ -2063,9 +2068,6 @@ function renderMatchRow(m, i, t){
   let aWon = reported && sa > sb;
   let bWon = reported && sb > sa;
 
-  let aOvr = calculatePlayerOVR(a);
-  let bOvr = calculatePlayerOVR(b);
-
   let aFace = profilePictures[a] ? `url('${esc(profilePictures[a])}')` : (teamCovers[a] ? `url('${esc(teamCovers[a])}')` : fallbackArt(a));
   let aLetter = (profilePictures[a] || teamCovers[a]) ? '' : esc((a || '?')[0]);
 
@@ -2091,11 +2093,10 @@ function renderMatchRow(m, i, t){
     </div>
     <div class="m-card-body">
       <div class="m-slot ${aWon ? 'winner' : (bWon ? 'loser' : '')}">
-        <span class="m-slot-avatar" style="background-image:${aFace};border-color:${aOvr.color}">${aLetter}</span>
+        <span class="m-slot-avatar" style="background-image:${aFace}">${aLetter}</span>
         <div class="m-slot-info">
           <div class="m-slot-name-row">
             <span class="m-slot-name">${playerLink(a)}</span>
-            ${aOvr.badgeHtml}
           </div>
           <span class="m-slot-team">${aTeam}</span>
         </div>
@@ -2107,11 +2108,10 @@ function renderMatchRow(m, i, t){
       </div>
 
       <div class="m-slot ${bWon ? 'winner' : (aWon ? 'loser' : '')}">
-        <span class="m-slot-avatar" style="background-image:${bFace};border-color:${bOvr.color}">${bLetter}</span>
+        <span class="m-slot-avatar" style="background-image:${bFace}">${bLetter}</span>
         <div class="m-slot-info">
           <div class="m-slot-name-row">
             <span class="m-slot-name">${playerLink(b)}</span>
-            ${bOvr.badgeHtml}
           </div>
           <span class="m-slot-team">${bTeam}</span>
         </div>
@@ -2176,28 +2176,48 @@ function Matches(){
     return true;
   };
 
+  let playersList = t.players || [];
+
   return head('Matches', t.name + ' · group stage fixtures', modActions) + `
     <div class="match-layout-modern">
       <div class="match-controls-bar">
-        <div style="display:flex;flex-wrap:wrap;align-items:center;gap:12px">
-          <div class="match-filter-tabs">
-            <button class="m-tab ${matchGroupTab === 'all' ? 'active' : ''}" onclick="matchGroupTab='all';render()">All Groups</button>
-            ${groups.map(g => `<button class="m-tab ${matchGroupTab === g ? 'active' : ''}" onclick="matchGroupTab='${g}';render()">${esc(g)}</button>`).join('')}
+        <div style="display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px;width:100%">
+          <div style="display:flex;flex-wrap:wrap;align-items:center;gap:12px">
+            <div class="match-filter-tabs">
+              <button class="m-tab ${matchGroupTab === 'all' ? 'active' : ''}" onclick="matchGroupTab='all';render()">All Groups</button>
+              ${groups.map(g => `<button class="m-tab ${matchGroupTab === g ? 'active' : ''}" onclick="matchGroupTab='${g}';render()">${esc(g)}</button>`).join('')}
+            </div>
+
+            <span style="color:#4a4a58">|</span>
+
+            <div class="match-filter-tabs">
+              <button class="m-tab ${matchStatusTab === 'all' ? 'active' : ''}" onclick="matchStatusTab='all';render()">All (${totalMatches})</button>
+              <button class="m-tab ${matchStatusTab === 'pending' ? 'active' : ''}" onclick="matchStatusTab='pending';render()">Pending (${totalMatches - reportedMatches})</button>
+              <button class="m-tab ${matchStatusTab === 'reported' ? 'active' : ''}" onclick="matchStatusTab='reported';render()">Reported (${reportedMatches})</button>
+            </div>
           </div>
 
-          <span style="color:#4a4a58">|</span>
-
-          <div class="match-filter-tabs">
-            <button class="m-tab ${matchStatusTab === 'all' ? 'active' : ''}" onclick="matchStatusTab='all';render()">All (${totalMatches})</button>
-            <button class="m-tab ${matchStatusTab === 'pending' ? 'active' : ''}" onclick="matchStatusTab='pending';render()">Pending (${totalMatches - reportedMatches})</button>
-            <button class="m-tab ${matchStatusTab === 'reported' ? 'active' : ''}" onclick="matchStatusTab='reported';render()">Reported (${reportedMatches})</button>
+          <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+            <input id="matchSearchBox" placeholder="🔍 Search trainer or team..." value="${esc(matchSearchTerm)}" oninput="onMatchSearchInput(this.value)" style="background:#0d0d12;border:1px solid #363644;border-radius:5px;padding:6px 12px;color:#f5f3f0;font-size:11px;min-width:180px">
+            ${matchFilterPlayers.length || matchSearchTerm ? `<button class="btn ghost btn-sm" style="padding:6px 10px;font-size:10px" onclick="matchFilterPlayers=[];matchSearchTerm='';render()">Clear Filters</button>` : ''}
           </div>
         </div>
 
-        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
-          <input id="matchSearchBox" placeholder="🔍 Search trainer or team..." value="${esc(matchSearchTerm)}" oninput="onMatchSearchInput(this.value)" style="background:#0d0d12;border:1px solid #363644;border-radius:5px;padding:6px 12px;color:#f5f3f0;font-size:11px;min-width:180px">
-          ${matchFilterPlayers.length || matchSearchTerm ? `<button class="btn ghost btn-sm" style="padding:6px 10px;font-size:10px" onclick="matchFilterPlayers=[];matchSearchTerm='';render()">Clear Filters</button>` : ''}
-        </div>
+        ${playersList.length ? `
+          <div class="match-player-filter-bar" style="display:flex;align-items:center;flex-wrap:wrap;gap:6px;width:100%;margin-top:10px;padding-top:10px;border-top:1px solid #23232c">
+            <span style="font-size:10px;font-weight:800;color:#8e8c95;letter-spacing:.6px;text-transform:uppercase;margin-right:2px">Filter by Trainer:</span>
+            <button class="m-player-chip ${matchFilterPlayers.length === 0 ? 'active' : ''}" onclick="matchFilterPlayers=[];render()">All Trainers</button>
+            ${playersList.map(p => {
+              let isSel = matchFilterPlayers.includes(p);
+              let face = profilePictures[p] ? `url('${esc(profilePictures[p])}')` : (teamCovers[p] ? `url('${esc(teamCovers[p])}')` : fallbackArt(p));
+              let letter = (profilePictures[p] || teamCovers[p]) ? '' : esc((p || '?')[0]);
+              return `<button class="m-player-chip ${isSel ? 'active' : ''}" onclick="matchFilterPlayers = (matchFilterPlayers.includes('${jsArg(p)}') ? [] : ['${jsArg(p)}']); render()">
+                <span class="m-player-chip-face" style="background-image:${face}">${letter}</span>
+                ${esc(p)}
+              </button>`;
+            }).join('')}
+          </div>
+        ` : ''}
       </div>
 
       <div>
