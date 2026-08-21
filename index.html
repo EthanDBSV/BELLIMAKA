@@ -5312,7 +5312,6 @@ function playoffOdds(){
 
   let favorite = list[0] || { player: 'None', champPct: 0, moneyline: '+100', decimalOdds: '1.0x' };
   let topCutLeader = [...list].sort((a, b) => b.topCutPct - a.topCutPct)[0] || { player: 'None', topCutPct: 0 };
-  let maxChampPct = Math.max(...list.map(x => x.champPct), 1);
 
   // Group stats
   let groupStats = {};
@@ -5349,7 +5348,7 @@ function playoffOdds(){
         <div class="odds-metric-icon">🎲</div>
         <div class="odds-metric-body">
           <div class="odds-metric-label">Simulation Depth</div>
-          <div class="odds-metric-val">2,500 Full Tournament Runs</div>
+          <div class="odds-metric-val">2,000 Full Tournament Runs</div>
           <div class="odds-metric-sub">Calibrated on OVR, Elo, Group SOS & Remaining Matches</div>
         </div>
       </div>
@@ -5376,7 +5375,7 @@ function playoffOdds(){
             : (x.champPct >= 5 ? '<span class="odds-badge-chip darkhorse">🔮 Dark Horse</span>' 
             : '<span class="odds-badge-chip longshot">🎲 Longshot</span>'));
           
-          let barPct = Math.min(100, Math.max(2, Math.round((x.champPct / maxChampPct) * 100)));
+          let barPct = Math.min(100, Math.max(x.champPct > 0 ? 2 : 0, +x.champPct.toFixed(1)));
           let barGradient = i === 0 ? 'linear-gradient(90deg,#ffd166,#ef3038)' 
             : (i < 3 ? 'linear-gradient(90deg,#ff8e95,#ef3038)' 
             : (x.champPct >= 5 ? 'linear-gradient(90deg,#dca2f5,#a855f7)' : 'linear-gradient(90deg,#7ad1ff,#3b82f6)'));
