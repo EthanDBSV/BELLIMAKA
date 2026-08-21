@@ -12,9 +12,7 @@
   <style>button,input,select,textarea{color:var(--text)}button.team-card{color:var(--text)}</style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="supabase-config.js"></script>
-<link rel="stylesheet" href="brackets-viewer.min.css">
 <script src="brackets-manager.browser.js"></script>
-<script src="brackets-viewer.min.js"></script>
 <style>
 .score-match{padding:0;overflow:hidden;margin:10px 0;border:1px solid #34343d;background:#17171d}.score-match-head{display:flex;justify-content:space-between;gap:12px;padding:10px 14px;border-bottom:1px solid #303039;font-size:10px;font-weight:800;letter-spacing:.8px;color:#aaa;text-transform:uppercase}.score-match-body{display:grid;grid-template-columns:minmax(0,1fr) 38px minmax(0,1fr);align-items:center;padding:13px 14px;gap:8px}.score-competitor{display:flex;align-items:center;justify-content:space-between;gap:10px;min-width:0}.score-competitor.right{flex-direction:row-reverse;text-align:right}.score-competitor .player-link{font-size:15px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.score-box{width:58px!important;height:48px!important;font-size:22px!important;font-weight:900!important;text-align:center!important;background:#09090d!important;color:#fff!important;border:1px solid #6a2029!important;border-radius:6px!important;padding:0!important;flex:0 0 auto}.score-match-vs{text-align:center;color:#f05059;font-size:10px;font-weight:900;letter-spacing:1px}.score-match-foot{display:flex;justify-content:flex-end;align-items:center;gap:10px;padding:0 14px 12px}.score-match-foot .save{min-width:100px}.group-placement-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(185px,1fr));gap:12px;margin-top:18px}.group-dropzone{min-height:120px;border:1px dashed #5c5c67;border-radius:7px;padding:10px;background:#15151a}.group-dropzone.over{border-color:#ff5c64;background:#29161a}.group-placement-drag{display:block;width:100%;margin:7px 0;padding:10px;border-radius:5px;background:#24242c;color:#f5f3f0;border:1px solid #3a3a43;text-align:left;font:inherit;font-weight:800;cursor:grab}.group-placement-drag:active{cursor:grabbing}.group-placement-drag:hover{border-color:#f35a63;color:#ff9aa0}@media(max-width:650px){.score-match-body{grid-template-columns:1fr 25px 1fr;padding:11px 9px}.score-competitor{flex-direction:column;align-items:flex-start;gap:7px}.score-competitor.right{flex-direction:column;align-items:flex-end}.score-competitor .player-link{font-size:13px;max-width:100%}.score-box{width:48px!important;height:42px!important;font-size:19px!important}}
 .topcut-layout{overflow-x:auto;padding-bottom:16px}.topcut-winners,.topcut-losers{display:grid;grid-template-columns:repeat(4,220px);gap:24px;min-width:970px}.topcut-losers{margin-top:26px}.topcut-column{display:flex;flex-direction:column;gap:16px;justify-content:flex-start}.topcut-column .bracket-title{margin:0 0 3px}.projected-match{border-left:3px solid #8b2630}.projected-match .bracket-row{min-height:33px}.projected-note{margin:6px 0 0;font-size:11px;color:#a9a6af}@media(max-width:650px){.topcut-winners,.topcut-losers{grid-template-columns:repeat(4,190px);gap:18px;min-width:810px}}
@@ -1476,8 +1474,39 @@ function OffseasonHome(){let last=Object.values(tournamentData).filter(t=>t.stat
 
 var scoreDrafts={},oddsCache={key:'',data:null};
 document.addEventListener('input',e=>{if(/^([ab]\d+|bs.+[ab])$/.test(e.target.id||''))scoreDrafts[e.target.id]=e.target.value});
-function matchesView(t=activeT(),editable=moderator){if(!t)return '';editable=Boolean(editable&&moderator&&t.status==='ONGOING'&&t.phase!=='topcut');let groups=Object.keys(groupsOf(t));return `<div style="display:grid;gap:16px">${groups.map(g=>{let list=groupMatches(t,g);return `<section class="card round-list" style="margin-bottom:0"><div class="round-title" style="display:flex;justify-content:space-between;align-items:center;padding:12px 16px"><span>${esc(g)}</span><span style="font-size:10px;font-weight:700;color:var(--muted);letter-spacing:.5px">${list.length} MATCHES</span></div><div style="padding:4px 8px">${list.map(m=>renderMatchRow(m,(t.matches||[]).indexOf(m),t)).join('')||'<div class="empty">No matches scheduled.</div>'}</div></section>`}).join('')}</div>`}
-function score(i){let t=activeT();if(t.phase==='topcut'){alert('Group-stage scores are locked after Top Cut seeding.');return}let m=t.matches[i],a=scoreDrafts['a'+i]??document.querySelector('#a'+i).value,b=scoreDrafts['b'+i]??document.querySelector('#b'+i).value;m.as=a===''?0:+a;m.bs=b===''?0:+b;delete scoreDrafts['a'+i];delete scoreDrafts['b'+i];m.completedAt=Date.now();m.date=new Date(m.completedAt).toLocaleString([],{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'});persistLeague();render()}
+function score(i){
+  let t=(current==='Tournament Detail'?activeT():ongoingT())||activeT();
+  if(!t)return;
+  if(t.phase==='topcut'){alert('Group-stage scores are locked after Top Cut seeding.');return}
+  let m=t.matches?.[i];
+  if(!m)return;
+  let a=scoreDrafts['a'+i]??document.querySelector('#a'+i)?.value;
+  let b=scoreDrafts['b'+i]??document.querySelector('#b'+i)?.value;
+  if(a===''||a==null||b===''||b==null){alert('Please enter a score for both trainers.');return}
+  m.as=+a;
+  m.bs=+b;
+  delete scoreDrafts['a'+i];
+  delete scoreDrafts['b'+i];
+  m.completedAt=Date.now();
+  m.date=new Date(m.completedAt).toLocaleString([],{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'});
+  persistLeague();
+  render();
+}
+function clearSingleScore(i){
+  let t=(current==='Tournament Detail'?activeT():ongoingT())||activeT();
+  if(!t||!moderator)return;
+  let m=t.matches?.[i];
+  if(!m)return;
+  if(!confirm(`Reset score for ${m.a} vs ${m.b}?`))return;
+  m.as='';
+  m.bs='';
+  m.date='TBD';
+  delete m.completedAt;
+  delete scoreDrafts['a'+i];
+  delete scoreDrafts['b'+i];
+  persistLeague();
+  render();
+}
 function restorePicks(){let t=ongoingT();if(!t)return;document.querySelectorAll('.prediction').forEach(card=>{let key=card.querySelector('h3')?.textContent,saved=localStorage.getItem('draftdex-pick-'+t.id+'-'+key);if(!saved)return;card.querySelectorAll('.pick').forEach(b=>b.classList.toggle('active',b.textContent===saved))})}
 new MutationObserver(restorePicks).observe(document.querySelector('#app'),{childList:true,subtree:true});
 
@@ -1755,18 +1784,234 @@ document.addEventListener('dragover',e=>{let zone=e.target.closest('.group-dropz
 document.addEventListener('dragleave',e=>e.target.closest('.group-dropzone')?.classList.remove('over'));
 document.addEventListener('drop',e=>{let zone=e.target.closest('.group-dropzone');if(!zone||!moderator)return;let first=e.dataTransfer.getData('application/cherrymoon-group-player');if(!first)return;e.preventDefault();document.querySelectorAll('.group-dropzone.over').forEach(x=>x.classList.remove('over'));let target=e.target.closest('.group-placement-drag');swapGroupPlacements(first,target?.dataset.player,zone.dataset.group)});
 
-function Matches(){let t=ongoingT();if(!t)return noTournament();viewTournament=t.id;let groups=Object.keys(groupsOf(t)),controls=moderator&&t.phase!=='topcut'?`<div><button class="btn ghost" onclick="openGroupPlacementEditor()">Arrange groups</button> <button class="btn ghost" onclick="addCustom()">+ Add custom match</button> <button class="btn" onclick="endGroupStage()">End group stage</button></div>`:'';let selected=new Set(matchFilterPlayers),groupMatchesVisible=g=>{let all=(t.matches||[]).filter(m=>(m.group||'Group A')===g);return selected.size?all.filter(m=>selected.has(m.a)||selected.has(m.b)):all},visibleGroups=groups.filter(g=>groupMatchesVisible(g).length);return head('Matches',t.name+' · group stage',controls)+`<div class="match-layout"><div>${(selected.size?visibleGroups:groups).map(g=>{let list=groupMatchesVisible(g);return `<section class="card round-list" style="margin-bottom:15px"><div class="round-title">${g} · ${list.length} matches</div>${list.map(m=>renderMatchRow(m,(t.matches||[]).indexOf(m),t)).join('')||'<div class="empty">No matches scheduled.</div>'}</section>`}).join('')}</div><aside class="card side"><div class="card-title">Schedule</div><p class="sub">Each score box sits beside its trainer. Save a result when both scores are ready.</p>${moderator&&t.phase!=='topcut'?'<div class="side-line">Use <b>Arrange groups</b> to drag trainers between groups.</div>':''}<div class="side-line"><b>${(t.matches||[]).length}</b> total scheduled matches</div><div class="side-line"><b>${(t.matches||[]).filter(m=>m.as!==''&&m.as!=null).length}</b> scores reported</div><div class="card" style="padding:12px 12px 10px;margin-top:12px;background:#111116;border-color:#32323a"><div class="eyebrow" style="margin-bottom:8px">Filter matches</div><div class="sub" style="margin-bottom:10px">Select one or more trainers</div><div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px">${(t.players||[]).slice().sort().map(p=>`<label class="card match-filter-item" data-match-filter="${esc(p)}" style="display:flex;align-items:center;gap:8px;padding:9px 10px;background:#111116;border-color:${matchFilterPlayers.includes(p)?'var(--red)':'#32323a'};cursor:pointer"><input type="checkbox" ${matchFilterPlayers.includes(p)?'checked':''} tabindex="-1"><span style="font-size:12px;font-weight:800">${esc(p)}</span></label>`).join('')}</div>${matchFilterPlayers.length?`<div class="creator-actions" style="justify-content:flex-start;margin-top:10px"><button class="btn ghost" onclick="clearMatchFilters()">Clear filters</button></div>`:''}</div></aside></div>`}
-function getStand(t=activeT(),group=null){let buckets=groupsOf(t),g=group||Object.keys(buckets)[0],members=buckets[g]||t.players,s={};members.forEach(p=>s[p]={p,w:0,l:0,gw:0,gl:0,h2h:0,results:{}});groupMatches(t,g).filter(m=>m.as!==''&&m.bs!=='').forEach(m=>{let a=s[m.a],b=s[m.b];if(!a||!b)return;a.gw+=+m.as;a.gl+=+m.bs;b.gw+=+m.bs;b.gl+=+m.as;if(+m.as>+m.bs){a.w++;b.l++;a.results[m.b]=1;b.results[m.a]=0}else if(+m.bs>+m.as){b.w++;a.l++;b.results[m.a]=1;a.results[m.b]=0}});let list=Object.values(s);list.sort((a,b)=>{let basic=b.w-a.w||b.gw-a.gw||(b.gw-b.gl)-(a.gw-a.gl);if(basic)return basic;let ah=a.results[b.p],bh=b.results[a.p];if(ah!==undefined&&bh!==undefined)return bh-ah;return a.p.localeCompare(b.p)});let manual=t.manualStandings?.[g];if(Array.isArray(manual)&&manual.length===list.length&&manual.every(p=>members.includes(p))){let rank=Object.fromEntries(manual.map((p,i)=>[p,i]));list.sort((a,b)=>rank[a.p]-rank[b.p])}return list}
-function openRankingEditor(){let t=ongoingT();if(!moderator||!t)return;let groups=Object.keys(groupsOf(t));document.querySelector('#modal').innerHTML=`<div class="modal-wrap"><div class="modal" style="max-width:760px"><div class="modal-head"><div><div class="eyebrow">Moderator only</div><h2>Arrange standings</h2></div><button class="close" onclick="closeModal()">×</button></div><p class="sub">Drag a trainer onto another trainer in the same group to swap their displayed rank. This manual order is also used for qualification and Top Cut seeding.</p><div class="group-placement-grid">${groups.map(g=>`<section class="group-dropzone rank-dropzone" data-rank-group="${g}"><div class="eyebrow">${g}</div>${getStand(t,g).map((x,i)=>`<button class="group-placement-drag rank-placement-drag" draggable="true" data-player="${x.p}" data-rank-group="${g}"><span style="color:#aaa;margin-right:10px">${i+1}</span>${x.p}</button>`).join('')}</section>`).join('')}</div><div class="creator-actions"><button class="btn ghost" onclick="resetManualStandings()">Return to automatic order</button></div></div></div>`}
-function swapStandingRanks(first,second,group){let t=ongoingT();if(!t||!first||!second||first===second||!moderator)return;let ordered=getStand(t,group).map(x=>x.p),a=ordered.indexOf(first),b=ordered.indexOf(second);if(a<0||b<0)return;[ordered[a],ordered[b]]=[ordered[b],ordered[a]];t.manualStandings=t.manualStandings||{};t.manualStandings[group]=ordered;persistLeague();openRankingEditor();render()}
-function resetManualStandings(){let t=ongoingT();if(!t)return;delete t.manualStandings;persistLeague();closeModal();render()}
-document.addEventListener('dragstart',e=>{let x=e.target.closest('.rank-placement-drag');if(x&&moderator)e.dataTransfer.setData('application/cherrymoon-rank-player',JSON.stringify({player:x.dataset.player,group:x.dataset.rankGroup}))});
-document.addEventListener('dragover',e=>{let target=e.target.closest('.rank-placement-drag');if(target&&moderator)e.preventDefault()});
-document.addEventListener('drop',e=>{let target=e.target.closest('.rank-placement-drag'),raw=e.dataTransfer.getData('application/cherrymoon-rank-player');if(!target||!raw||!moderator)return;let source;try{source=JSON.parse(raw)}catch{return}if(source.group!==target.dataset.rankGroup)return;e.preventDefault();swapStandingRanks(source.player,target.dataset.player,source.group)});
-function Standings(){let t=ongoingT();if(!t){let r=recapRankings();return head('Standings','All-time league rankings')+`<div class="card table-wrap"><table class="standings"><thead><tr><th>#</th><th>Player</th><th>ELO</th><th>Titles</th><th>Top Cuts</th><th>All-time W-L</th></tr></thead><tbody>${r.map((x,i)=>`<tr><td class="rank">${i+1}</td><td class="player">${playerLink(x.p)}<span class="team">${profiles[x.p].team}</span></td><td><b>${x.score}</b></td><td>${x.champ}</td><td>${x.tops}</td><td>${x.record}</td></tr>`).join('')}</tbody></table></div>`}viewTournament=t.id;let groups=Object.keys(groupsOf(t)),controls=moderator?`<div><button class="btn ghost" onclick="openRankingEditor()">Arrange rankings</button> <button class="btn ghost" onclick="openSettings()">Edit qualification</button></div>`:'';return head('Standings',t.name+' · group stage',controls)+`<div style="display:grid;grid-template-columns:repeat(${groups.length>1?2:1},minmax(0,1fr));gap:15px">${groups.map(g=>`<div class="card table-wrap">${standingTable(t,g)}</div>`).join('')}</div><p class="sub">The default order is W-L, games won, game differential, then head-to-head. Moderators can use Arrange rankings to apply a manual standings override.</p>`}
-function matchPlayerName(p){return `<button class="player-link match-hover-name" onclick="openProfile('${p}')" onmouseenter="highlightMatches('${p}',true)" onmouseleave="highlightMatches('${p}',false)">${p}</button>`}
-function highlightMatches(name,on){document.querySelectorAll('.score-match').forEach(el=>{if((el.dataset.players||'').split('|').includes(name))el.classList.toggle('match-highlight',on)})}
-function renderMatchRow(m,i,t){let editable=moderator&&t.status==='ONGOING'&&t.phase!=='topcut',a=m.a||'TBD',b=m.b||'TBD',av=scoreDrafts['a'+i]??m.as??'',bv=scoreDrafts['b'+i]??m.bs??'',reported=m.as!==''&&m.as!=null,label=m.custom?'Custom · '+(m.group||'Group match'):(m.group||'Group match');return `<article class="score-match" data-players="${a}|${b}"><div class="score-match-head"><span>${reported?'Reported · '+(m.date||'Just now'):'Awaiting result'}</span><span>${label}</span></div><div class="score-match-body"><div class="score-competitor"><span>${matchPlayerName(a)}</span>${editable?`<input aria-label="${a} score" id="a${i}" class="score-box" type="number" min="0" inputmode="numeric" placeholder="0" value="${av}">`:`<b class="score-box" style="display:grid;place-items:center">${reported?m.as:'—'}</b>`}</div><div class="score-match-vs">VS</div><div class="score-competitor right"><span>${matchPlayerName(b)}</span>${editable?`<input aria-label="${b} score" id="b${i}" class="score-box" type="number" min="0" inputmode="numeric" placeholder="0" value="${bv}">`:`<b class="score-box" style="display:grid;place-items:center">${reported?m.bs:'—'}</b>`}</div></div>${editable?`<div class="score-match-foot"><button class="save" onclick="score(${i})">Save result</button>${m.custom?`<button class="save" style="color:#ff969c" onclick="removeCustom(${i})">Remove</button>`:''}</div>`:''}</article>`}
+var matchGroupTab = 'all';
+var matchStatusTab = 'all';
+var matchSearchTerm = '';
+
+function resetGroupStageScores(){
+  let t = (current === 'Tournament Detail' ? activeT() : ongoingT()) || activeT();
+  if(!t || !moderator) return;
+  let hasScores = (t.matches || []).some(m => m.as !== '' && m.as != null);
+  if(!hasScores){
+    alert('No group stage match scores have been reported yet.');
+    return;
+  }
+  if(!confirm(`Reset all group stage scores for "${t.name}"? This will clear all reported match scores back to unplayed (0-0), while keeping your group placements, schedule, and participants intact.`)) return;
+
+  (t.matches || []).forEach(m => {
+    m.as = '';
+    m.bs = '';
+    m.date = 'TBD';
+    delete m.completedAt;
+  });
+  delete t.finalStandings;
+  scoreDrafts = {};
+  persistLeague();
+  render();
+}
+
+function renderMatchRow(m, i, t){
+  let editable = moderator && t.status === 'ONGOING' && t.phase !== 'topcut';
+  let a = m.a || 'TBD', b = m.b || 'TBD';
+  let av = scoreDrafts['a'+i] ?? m.as ?? '';
+  let bv = scoreDrafts['b'+i] ?? m.bs ?? '';
+  let reported = m.as !== '' && m.as != null && m.bs !== '' && m.bs != null;
+
+  let sa = reported ? +m.as : null;
+  let sb = reported ? +m.bs : null;
+  let aWon = reported && sa > sb;
+  let bWon = reported && sb > sa;
+
+  let aOvr = calculatePlayerOVR(a);
+  let bOvr = calculatePlayerOVR(b);
+
+  let aFace = profilePictures[a] ? `url('${esc(profilePictures[a])}')` : (teamCovers[a] ? `url('${esc(teamCovers[a])}')` : fallbackArt(a));
+  let aLetter = (profilePictures[a] || teamCovers[a]) ? '' : esc((a || '?')[0]);
+
+  let bFace = profilePictures[b] ? `url('${esc(profilePictures[b])}')` : (teamCovers[b] ? `url('${esc(teamCovers[b])}')` : fallbackArt(b));
+  let bLetter = (profilePictures[b] || teamCovers[b]) ? '' : esc((b || '?')[0]);
+
+  let aTeam = esc(teamName(t, a));
+  let bTeam = esc(teamName(t, b));
+
+  let label = m.custom ? 'Custom Match' : (m.group || 'Group Match');
+
+  let headerBadge = '';
+  if(reported){
+    headerBadge = `<span style="color:#4bdd91;font-weight:900">FINAL ${m.date ? `· ${esc(m.date)}` : ''}</span>`;
+  } else {
+    headerBadge = `<span style="color:#ffd166;font-weight:800">AWAITING SCORE</span>`;
+  }
+
+  return `<article class="m-card ${reported ? 'reported' : ''}" data-players="${esc(a)}|${esc(b)}">
+    <div class="m-card-head">
+      <span>${esc(label)}</span>
+      ${headerBadge}
+    </div>
+    <div class="m-card-body">
+      <div class="m-slot ${aWon ? 'winner' : (bWon ? 'loser' : '')}">
+        <span class="m-slot-avatar" style="background-image:${aFace};border-color:${aOvr.color}">${aLetter}</span>
+        <div class="m-slot-info">
+          <div class="m-slot-name-row">
+            <span class="m-slot-name">${playerLink(a)}</span>
+            ${aOvr.badgeHtml}
+          </div>
+          <span class="m-slot-team">${aTeam}</span>
+        </div>
+        ${editable ? `
+          <input aria-label="${esc(a)} score" id="a${i}" class="m-slot-input" type="number" min="0" inputmode="numeric" placeholder="0" value="${av}">
+        ` : `
+          <span class="m-slot-score">${reported ? m.as : '—'}</span>
+        `}
+      </div>
+
+      <div class="m-slot ${bWon ? 'winner' : (aWon ? 'loser' : '')}">
+        <span class="m-slot-avatar" style="background-image:${bFace};border-color:${bOvr.color}">${bLetter}</span>
+        <div class="m-slot-info">
+          <div class="m-slot-name-row">
+            <span class="m-slot-name">${playerLink(b)}</span>
+            ${bOvr.badgeHtml}
+          </div>
+          <span class="m-slot-team">${bTeam}</span>
+        </div>
+        ${editable ? `
+          <input aria-label="${esc(b)} score" id="b${i}" class="m-slot-input" type="number" min="0" inputmode="numeric" placeholder="0" value="${bv}">
+        ` : `
+          <span class="m-slot-score">${reported ? m.bs : '—'}</span>
+        `}
+      </div>
+    </div>
+    ${editable ? `
+      <div class="m-card-foot">
+        ${m.custom ? `<button class="btn ghost btn-sm" style="color:#ff969c;padding:3px 8px;font-size:10px" onclick="removeCustom(${i})">Remove</button>` : ''}
+        ${reported ? `<button class="btn ghost btn-sm" style="padding:3px 8px;font-size:10px;color:#a09fa8" onclick="clearSingleScore(${i})">Clear</button>` : ''}
+        <button class="btn btn-sm" style="padding:4px 12px;font-size:10px" onclick="score(${i})">Save Result</button>
+      </div>
+    ` : ''}
+  </article>`;
+}
+
+function onMatchSearchInput(val){
+  matchSearchTerm = val;
+  render();
+  let box = document.querySelector('#matchSearchBox');
+  if(box){
+    box.focus();
+    box.setSelectionRange(box.value.length, box.value.length);
+  }
+}
+
+function Matches(){
+  let t = ongoingT();
+  if(!t) return noTournament();
+  viewTournament = t.id;
+
+  let groups = Object.keys(groupsOf(t));
+  let allMatches = t.matches || [];
+  let totalMatches = allMatches.length;
+  let reportedMatches = allMatches.filter(m => m.as !== '' && m.as != null && m.bs !== '' && m.bs != null).length;
+
+  let visibleGroups = matchGroupTab === 'all' ? groups : groups.filter(g => g === matchGroupTab);
+
+  let modActions = (moderator && t.status === 'ONGOING' && t.phase !== 'topcut') ? `
+    <div style="display:flex;align-items:center;flex-wrap:wrap;gap:8px">
+      <button class="btn ghost" style="padding:6px 11px;font-size:11px" onclick="openGroupPlacementEditor()">🗂️ Arrange groups</button>
+      <button class="btn ghost" style="padding:6px 11px;font-size:11px" onclick="addCustom()">➕ Custom match</button>
+      <button class="btn ghost" style="padding:6px 11px;font-size:11px;color:#ff9ba1;border-color:#4a242a" onclick="resetGroupStageScores()">↺ Reset group scores</button>
+      <button class="btn" style="padding:6px 13px;font-size:11px" onclick="endGroupStage()">🏁 End group stage</button>
+    </div>
+  ` : '';
+
+  let filterMatch = m => {
+    if(matchStatusTab === 'pending' && m.as !== '' && m.as != null && m.bs !== '' && m.bs != null) return false;
+    if(matchStatusTab === 'reported' && (m.as === '' || m.as == null || m.bs === '' || m.bs == null)) return false;
+    if(matchFilterPlayers.length && !matchFilterPlayers.includes(m.a) && !matchFilterPlayers.includes(m.b)) return false;
+    if(matchSearchTerm){
+      let q = matchSearchTerm.toLowerCase();
+      let aName = (m.a || '').toLowerCase(), bName = (m.b || '').toLowerCase();
+      let aTeam = (profiles[m.a]?.team || '').toLowerCase(), bTeam = (profiles[m.b]?.team || '').toLowerCase();
+      if(!aName.includes(q) && !bName.includes(q) && !aTeam.includes(q) && !bTeam.includes(q)) return false;
+    }
+    return true;
+  };
+
+  return head('Matches', t.name + ' · group stage fixtures', modActions) + `
+    <div class="match-layout-modern">
+      <div class="match-controls-bar">
+        <div style="display:flex;flex-wrap:wrap;align-items:center;gap:12px">
+          <div class="match-filter-tabs">
+            <button class="m-tab ${matchGroupTab === 'all' ? 'active' : ''}" onclick="matchGroupTab='all';render()">All Groups</button>
+            ${groups.map(g => `<button class="m-tab ${matchGroupTab === g ? 'active' : ''}" onclick="matchGroupTab='${g}';render()">${esc(g)}</button>`).join('')}
+          </div>
+
+          <span style="color:#4a4a58">|</span>
+
+          <div class="match-filter-tabs">
+            <button class="m-tab ${matchStatusTab === 'all' ? 'active' : ''}" onclick="matchStatusTab='all';render()">All (${totalMatches})</button>
+            <button class="m-tab ${matchStatusTab === 'pending' ? 'active' : ''}" onclick="matchStatusTab='pending';render()">Pending (${totalMatches - reportedMatches})</button>
+            <button class="m-tab ${matchStatusTab === 'reported' ? 'active' : ''}" onclick="matchStatusTab='reported';render()">Reported (${reportedMatches})</button>
+          </div>
+        </div>
+
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+          <input id="matchSearchBox" placeholder="🔍 Search trainer or team..." value="${esc(matchSearchTerm)}" oninput="onMatchSearchInput(this.value)" style="background:#0d0d12;border:1px solid #363644;border-radius:5px;padding:6px 12px;color:#f5f3f0;font-size:11px;min-width:180px">
+          ${matchFilterPlayers.length || matchSearchTerm ? `<button class="btn ghost btn-sm" style="padding:6px 10px;font-size:10px" onclick="matchFilterPlayers=[];matchSearchTerm='';render()">Clear Filters</button>` : ''}
+        </div>
+      </div>
+
+      <div>
+        ${visibleGroups.map(g => {
+          let gMatches = (t.matches || []).filter(m => (m.group || 'Group A') === g);
+          let filtered = gMatches.filter(filterMatch);
+          let gReported = gMatches.filter(m => m.as !== '' && m.as != null && m.bs !== '' && m.bs != null).length;
+          let isDone = gMatches.length > 0 && gReported === gMatches.length;
+
+          return `
+            <section class="card round-list" style="margin-bottom:20px;padding:16px 18px;background:#141419;border-color:#2c2c36">
+              <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;border-bottom:1px solid #252530;padding-bottom:12px;margin-bottom:16px">
+                <div style="display:flex;align-items:center;gap:10px">
+                  <span style="font:900 22px 'Barlow Condensed';letter-spacing:.6px;color:#f5f3f0;text-transform:uppercase">${esc(g)}</span>
+                  <span class="tag ${isDone ? 'safe' : 'hunt'}">${gReported}/${gMatches.length} REPORTED</span>
+                </div>
+                <div style="font-size:11px;color:#8e8c95;font-weight:700">
+                  ${isDone ? '✨ Group Stage Complete' : `${gMatches.length - gReported} matches remaining`}
+                </div>
+              </div>
+
+              <div class="match-grid-modern">
+                ${filtered.map(m => renderMatchRow(m, (t.matches || []).indexOf(m), t)).join('') || '<div class="empty" style="grid-column:1/-1;padding:20px">No matches found matching the current filters.</div>'}
+              </div>
+            </section>
+          `;
+        }).join('')}
+      </div>
+    </div>
+  `;
+}
+
+function matchesView(t=activeT(), editable=moderator){
+  if(!t) return '';
+  let groups = Object.keys(groupsOf(t));
+  return `<div style="display:grid;gap:20px">
+    ${groups.map(g => {
+      let gMatches = groupMatches(t, g);
+      let gReported = gMatches.filter(m => m.as !== '' && m.as != null && m.bs !== '' && m.bs != null).length;
+      let isDone = gMatches.length > 0 && gReported === gMatches.length;
+      return `<section class="card round-list" style="margin-bottom:0;padding:16px 18px;background:#141419;border-color:#2c2c36">
+        <div style="display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #252530;padding-bottom:12px;margin-bottom:16px">
+          <div style="display:flex;align-items:center;gap:10px">
+            <span style="font:900 20px 'Barlow Condensed';letter-spacing:.5px;color:#f5f3f0;text-transform:uppercase">${esc(g)}</span>
+            <span class="tag ${isDone ? 'safe' : 'hunt'}">${gReported}/${gMatches.length} REPORTED</span>
+          </div>
+          <span style="font-size:11px;color:#8e8c95;font-weight:700">${gMatches.length - gReported === 0 ? 'All Matches Complete' : `${gMatches.length - gReported} remaining`}</span>
+        </div>
+        <div class="match-grid-modern">
+          ${gMatches.map(m => renderMatchRow(m, (t.matches || []).indexOf(m), t)).join('') || '<div class="empty" style="grid-column:1/-1">No matches scheduled.</div>'}
+        </div>
+      </section>`;
+    }).join('')}
+  </div>`;
+}
 initSupabase();
 
 
@@ -2480,31 +2725,34 @@ render();
 .leader .pts{margin-left:auto;font:800 15px 'Barlow Condensed';color:var(--amber)}
 .leader-note{font-size:10px;color:#8e8c95;padding-top:11px;line-height:1.5}
 
-/* ---- Matches page visuals ---- */
-.score-match{border-radius:8px;transition:border-color .16s,transform .16s}
-.score-match:hover{border-color:#4a4a56}
-.score-match.done{border-color:#33333d;background:#15151a}
-.score-match.live{border-left:3px solid var(--amber)}
-.score-match-head{background:#131318}
-.score-match-head .st{display:inline-flex;align-items:center;gap:5px}
-.score-match-head .st i{width:6px;height:6px;border-radius:50%;background:#5d5d6a;display:inline-block}
-.score-match.done .st i{background:var(--green)}
-.score-match.live .st i{background:var(--amber);box-shadow:0 0 0 3px #f3c24522}
-.score-competitor{gap:11px}
-.mrow-face{width:34px;height:34px;border-radius:50%;flex:none;background-size:cover;background-position:center;display:grid;place-items:center;font:800 15px 'Barlow Condensed';color:#fff;text-shadow:0 1px 3px #000;border:1px solid #ffffff1f}
-.mrow-id{display:flex;align-items:center;gap:9px;min-width:0}
-.score-competitor.right .mrow-id{flex-direction:row-reverse}
-.mrow-text{min-width:0}
-.mrow-name{font-size:14px;font-weight:800;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.mrow-team{font-size:9px;color:#8e8c95;letter-spacing:.4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-transform:uppercase;font-weight:700}
-.score-competitor.right .mrow-text{text-align:right}
-.score-match.done .loser .mrow-face{filter:grayscale(.8);opacity:.5}
-.score-match.done .loser .mrow-name{color:#8a8892;font-weight:700}
-.score-match.done .loser .score-box{color:#8a8892!important;border-color:#3a3a44!important;background:#101014!important}
-.score-match.done .winner .score-box{border-color:var(--green)!important;color:#fff!important;box-shadow:0 0 0 1px #3ba25733}
-.win-flag{font-size:8px;font-weight:800;letter-spacing:.8px;color:#7fd894;text-transform:uppercase;margin-top:2px}
-.score-competitor.right .win-flag{text-align:right}
-@media(max-width:560px){.mrow-face{width:28px;height:28px;font-size:13px}.mrow-name{font-size:12px}.score-competitor .mrow-id{flex-direction:row}.score-competitor.right .mrow-id{flex-direction:row}}
+/* ---- Modern Matches UI ---- */
+.match-layout-modern{display:flex;flex-direction:column;gap:18px;width:100%}
+.match-controls-bar{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px;background:#14141a;border:1px solid #2b2b36;border-radius:8px;padding:12px 16px}
+.match-filter-tabs{display:flex;flex-wrap:wrap;align-items:center;gap:6px}
+.m-tab{padding:6px 12px;font-size:11px;font-weight:800;border-radius:5px;border:1px solid #363644;background:#1c1c24;color:#a09fa8;cursor:pointer;transition:all .15s ease}
+.m-tab:hover{border-color:#5c242c;color:#fff;background:#242430}
+.m-tab.active{background:var(--red);color:#fff;border-color:var(--red);box-shadow:0 2px 8px rgba(239,48,56,0.4)}
+.match-grid-modern{display:grid;grid-template-columns:repeat(auto-fill,minmax(310px,1fr));gap:12px}
+.m-card{background:#131318;border:1px solid #2d2d38;border-radius:8px;overflow:hidden;box-shadow:0 4px 14px rgba(0,0,0,0.4);transition:border-color .15s,transform .15s,box-shadow .15s;display:flex;flex-direction:column}
+.m-card:hover{border-color:#4a4a58;transform:translateY(-2px);box-shadow:0 6px 20px rgba(0,0,0,0.5)}
+.m-card.reported{border-color:#383846}
+.m-card.match-highlight{border-color:var(--red)!important;box-shadow:0 0 0 1px var(--red)}
+.m-card-head{display:flex;align-items:center;justify-content:space-between;padding:7px 12px;background:#0d0d12;border-bottom:1px solid #1f1f28;font-size:9px;font-weight:800;letter-spacing:.6px;text-transform:uppercase;color:#8e8c95}
+.m-card-body{padding:8px 10px;display:flex;flex-direction:column;gap:4px;flex:1}
+.m-slot{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:10px;align-items:center;padding:6px 8px;border-radius:6px;background:#17171e;border:1px solid transparent;transition:all .12s}
+.m-slot.winner{background:linear-gradient(90deg,rgba(75,221,145,0.12),#17171e);border-color:rgba(75,221,145,0.35)}
+.m-slot.loser{opacity:0.6}
+.m-slot-avatar{width:28px;height:28px;border-radius:50%;flex:none;background-size:cover;background-position:center;display:grid;place-items:center;font:800 12px 'Barlow Condensed';color:#fff;border:1px solid #ffffff1f}
+.m-slot-info{min-width:0;display:flex;flex-direction:column}
+.m-slot-name-row{display:flex;align-items:center;gap:6px;min-width:0}
+.m-slot-name{font:800 13px 'Barlow Condensed';letter-spacing:.3px;color:#f5f3f0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.m-slot.winner .m-slot-name{color:#4bdd91;font-weight:900}
+.m-slot-team{font-size:9px;color:#8e8c95;letter-spacing:.4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-transform:uppercase;font-weight:700;margin-top:1px}
+.m-slot-score{font:900 16px 'Barlow Condensed';color:#f5f3f0;width:38px;height:32px;text-align:center;border-radius:4px;background:#0d0d12;border:1px solid #383846;display:grid;place-items:center}
+.m-slot.winner .m-slot-score{background:#143822;color:#4bdd91;border-color:#28683f}
+.m-slot-input{width:42px!important;height:32px!important;text-align:center!important;font:900 16px 'Barlow Condensed'!important;border-radius:4px!important;border:1px solid #4a4a58!important;background:#09090d!important;color:#fff!important;padding:0!important;margin:0!important}
+.m-slot-input:focus{border-color:var(--red)!important;outline:none;box-shadow:0 0 0 2px rgba(239,48,56,0.3)!important}
+.m-card-foot{display:flex;align-items:center;justify-content:flex-end;gap:8px;padding:6px 10px 8px;background:#101015;border-top:1px solid #1e1e26}
 </style>
 <script>
 /* ══════════════════════════════════════════════════════════════════
