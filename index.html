@@ -370,8 +370,24 @@ function removeCustom(i){let t=activeT(),m=t.matches[i];if(!m.custom||!confirm('
 /* Supabase connection: activate by filling in supabase-config.js */
 var supabaseClient=null,sessionUser=null;
 function supabaseReady(){let c=window.DRAFTDEX_SUPABASE;return c&&c.url&&c.anonKey&&window.supabase}
-var knownRev=0,syncTimer=null,lastSentSnapshot='';
-function shouldApply(incoming){if(!incoming)return false;let rev=typeof incoming.rev==='number'?incoming.rev:0;if(rev>knownRev){knownRev=rev;return true}return false}
+var knownRev = Number(localStorage.getItem('draftdex-rev')) || 0;
+var lastLocalUpdate = Number(localStorage.getItem('draftdex-updated-at')) || Date.now();
+var syncTimer = null, lastSentSnapshot = '';
+function shouldApply(incoming){
+  if(!incoming || typeof incoming !== 'object') return false;
+  let incomingRev = typeof incoming.rev === 'number' ? incoming.rev : 0;
+  let incomingTime = typeof incoming.updatedAt === 'number' ? incoming.updatedAt : (Date.parse(incoming.updated_at) || 0);
+  if(knownRev > incomingRev) return false;
+  if(knownRev === incomingRev) return false;
+  if(incomingTime && lastLocalUpdate && incomingTime < lastLocalUpdate) return false;
+  knownRev = incomingRev;
+  lastLocalUpdate = incomingTime || Date.now();
+  try {
+    localStorage.setItem('draftdex-rev', String(knownRev));
+    localStorage.setItem('draftdex-updated-at', String(lastLocalUpdate));
+  } catch(e){}
+  return true;
+}
 function migrateLegacyBracket(t){if(!t.bracketMatches)return;let legacy={w1:{bracket:'W',round:1},w2:{bracket:'W',round:1},wf:{bracket:'W',round:2},lr1:{bracket:'L',round:1},lf:{bracket:'L',round:2},gf:{bracket:'GF',round:3},reset:{bracket:'GF',round:99}};t.bracketMatches.forEach(m=>{if(!m.bracket&&legacy[m.id]){m.bracket=legacy[m.id].bracket;m.round=legacy[m.id].round}})}
 function migrateAllBrackets(){Object.values(tournamentData).forEach(migrateLegacyBracket)}
 /* ═══ NATIVE TOP CUT ENGINE — Pokémon Draft League Championship Bracket ═══ */
@@ -1222,7 +1238,54 @@ function applySharedState(data){if(!data||!data.tournaments)return;Object.keys(t
 var supabaseInited=false;
 async function initSupabase(){if(!supabaseReady()||supabaseInited)return;supabaseInited=true;supabaseClient=window.supabase.createClient(window.DRAFTDEX_SUPABASE.url,window.DRAFTDEX_SUPABASE.anonKey);let {data:{session}}=await supabaseClient.auth.getSession();await updateSession(session);supabaseClient.auth.onAuthStateChange(async(_,s)=>await updateSession(s));supabaseClient.channel('league-state').on('postgres_changes',{event:'UPDATE',schema:'public',table:'league_state',filter:'id=eq.main'},p=>{let incoming=p.new.data;if(shouldApply(incoming)){applySharedState(incoming);render()}}).subscribe()}
 
-function persistLeague(){localStorage.setItem('draftdex-tournaments',JSON.stringify(tournamentData));localStorage.setItem('draftdex-profiles',JSON.stringify(profiles));localStorage.setItem('draftdex-rosters',JSON.stringify(roster));localStorage.setItem('draftdex-history',JSON.stringify(teamHistory));localStorage.setItem('draftdex-teamcovers',JSON.stringify(teamCovers));localStorage.setItem('draftdex-profilepics',JSON.stringify(profilePictures));localStorage.setItem('draftdex-pulsepanels',JSON.stringify(pulsePanelImages));if(typeof accountLinks!=='undefined')localStorage.setItem('draftdex-accountlinks',JSON.stringify(accountLinks));if(!supabaseClient||!moderator)return;clearTimeout(syncTimer);syncTimer=setTimeout(flushSync,700)}
+async function flushSync(){
+  if(!supabaseClient || !moderator) return;
+  let payload = {
+    rev: knownRev,
+    updatedAt: lastLocalUpdate,
+    tournaments: tournamentData,
+    profiles: profiles,
+    roster: roster,
+    teamHistory: teamHistory,
+    teamCovers: teamCovers,
+    profilePictures: profilePictures,
+    pulsePanelImages: pulsePanelImages,
+    cut: cut,
+    boardLink: boardLink
+  };
+  let serialized = JSON.stringify(payload);
+  if(serialized === lastSentSnapshot) return;
+  lastSentSnapshot = serialized;
+  try {
+    await supabaseClient.from('league_state').upsert({
+      id: 'main',
+      data: payload,
+      updated_at: new Date(lastLocalUpdate).toISOString()
+    });
+  } catch(e) {
+    console.warn('Draftdex: Cloud sync deferred or failed', e);
+  }
+}
+
+function persistLeague(){
+  knownRev = (knownRev || 0) + 1;
+  lastLocalUpdate = Date.now();
+  try{
+    localStorage.setItem('draftdex-rev', String(knownRev));
+    localStorage.setItem('draftdex-updated-at', String(lastLocalUpdate));
+    localStorage.setItem('draftdex-tournaments', JSON.stringify(tournamentData));
+    localStorage.setItem('draftdex-profiles', JSON.stringify(profiles));
+    localStorage.setItem('draftdex-rosters', JSON.stringify(roster));
+    localStorage.setItem('draftdex-history', JSON.stringify(teamHistory));
+    localStorage.setItem('draftdex-teamcovers', JSON.stringify(teamCovers));
+    localStorage.setItem('draftdex-profilepics', JSON.stringify(profilePictures));
+    localStorage.setItem('draftdex-pulsepanels', JSON.stringify(pulsePanelImages));
+    if(typeof accountLinks!=='undefined') localStorage.setItem('draftdex-accountlinks', JSON.stringify(accountLinks));
+  }catch(e){}
+  if(!supabaseClient || !moderator) return;
+  clearTimeout(syncTimer);
+  syncTimer = setTimeout(flushSync, 500);
+}
 
 
 
@@ -1559,7 +1622,11 @@ async function updateSession(session){
     let {data}=await supabaseClient.from('league_state').select('data').eq('id','main').single();
     if(myReq!==sessionReqId)return;
     let incoming=data?.data;
-    if(shouldApply(incoming))applySharedState(incoming);
+    if(shouldApply(incoming)){
+      applySharedState(incoming);
+    } else if(moderator && incoming && ((incoming.rev || 0) < knownRev || (incoming.updatedAt || 0) < lastLocalUpdate)){
+      flushSync();
+    }
   }
   if(!wasAccount)render();
 }
