@@ -2445,18 +2445,36 @@ function calculateLeagueRecords(){
       });
     }
 
-    if(career.titles>0){
+    if(career.titles>=2){
+      s.badges.push({
+        id:'dynasty-badge',
+        icon:'👑',
+        name:`${career.titles}x Dynasty Champion`,
+        desc:`Won ${career.titles} League Championships: ${career.championshipCups.join(', ')}`,
+        category:'trophy',
+        color:'gold'
+      });
+    }else if(career.titles===1){
       s.badges.push({
         id:'champion-badge',
-        icon:'👑',
-        name:career.titles===1?'League Champion':`${career.titles}x Champion`,
+        icon:'🏆',
+        name:'League Champion',
         desc:`Won: ${career.championshipCups.join(', ')}`,
         category:'trophy',
         color:'gold'
       });
     }
 
-    if(career.topCuts>=2){
+    if(career.topCuts>=3){
+      s.badges.push({
+        id:'playoff-royalty',
+        icon:'⚔️',
+        name:`${career.topCuts}x Playoff Royalty`,
+        desc:`Reached Top Cut in ${career.topCuts} tournaments`,
+        category:'playoffs',
+        color:'purple'
+      });
+    }else if(career.topCuts>=2){
       s.badges.push({
         id:'top-cut-veteran',
         icon:'⚔️',
@@ -2466,6 +2484,19 @@ function calculateLeagueRecords(){
         color:'silver'
       });
     }
+
+    s.tournamentFinishes.forEach(tf=>{
+      if(tf.w>=2&&tf.l===0){
+        s.badges.push({
+          id:'undefeated-group-'+tf.tournament.id,
+          icon:'🛡️',
+          name:`Undefeated Group (${tf.tournament.name})`,
+          desc:`Flawless group stage without a single match loss (${tf.w}-0) in ${tf.tournament.name}`,
+          category:'dominance',
+          color:'blue'
+        });
+      }
+    });
 
     let totalGames=s.wins+s.losses;
     if(totalGames>=5&&career.winPct>=70){
@@ -2489,40 +2520,13 @@ function calculateLeagueRecords(){
         color:'amber'
       });
     }
-
-    let ovrObj=calculatePlayerOVR(p, {statsByPlayer});
-    if(ovrObj.tier==='elite'){
-      s.badges.push({
-        id:'elite-ovr',
-        icon:'★',
-        name:`${ovrObj.ovr} OVR Elite`,
-        desc:`Elite tier overall rating of ${ovrObj.ovr} (Top tier status in the league)`,
-        category:'ovr',
-        color:'red'
-      });
-    }else if(ovrObj.tier==='gold'){
-      s.badges.push({
-        id:'gold-ovr',
-        icon:'⭐',
-        name:`${ovrObj.ovr} OVR Gold`,
-        desc:`Gold tier overall rating of ${ovrObj.ovr} based on career form`,
-        category:'ovr',
-        color:'gold'
-      });
-    }else if(ovrObj.tier==='silver'){
-      s.badges.push({
-        id:'silver-ovr',
-        icon:'🛡️',
-        name:`${ovrObj.ovr} OVR Silver`,
-        desc:`Silver tier overall rating of ${ovrObj.ovr} based on career form`,
-        category:'ovr',
-        color:'silver'
-      });
-    }
   });
 
   let maxOvrAll=0,maxOvrHolders=[];
+  let goatCandidate=null,maxGoatScore=0;
   allPlayers.forEach(p=>{
+    let s=statsByPlayer[p];
+    let career=playerCareerStats(p);
     let obj=calculatePlayerOVR(p, {statsByPlayer});
     if(obj.ovr>maxOvrAll){
       maxOvrAll=obj.ovr;
@@ -2530,7 +2534,25 @@ function calculateLeagueRecords(){
     }else if(obj.ovr===maxOvrAll&&maxOvrAll>0){
       maxOvrHolders.push(p);
     }
+
+    // GOAT determination: high OVR + titles + top cuts
+    let goatScore=(obj.ovr*2)+(career.titles*30)+(career.topCuts*12)+(s.wins*3);
+    if((career.titles>0||career.topCuts>=2||obj.ovr>=80)&&goatScore>maxGoatScore){
+      maxGoatScore=goatScore;
+      goatCandidate=p;
+    }
   });
+
+  if(goatCandidate){
+    statsByPlayer[goatCandidate].badges.unshift({
+      id:'goat-badge',
+      icon:'🐐',
+      name:'GOAT',
+      desc:`The Greatest of All Time: League #1 ranked player with ${profiles[goatCandidate]?.cups?.length||0} championship(s) and dominant career resume`,
+      category:'prestige',
+      color:'gold'
+    });
+  }
 
   let maxCareerWinsAll=0;
   allPlayers.forEach(p=>{
