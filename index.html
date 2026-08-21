@@ -913,8 +913,7 @@ function Board(){
       <span>${draftPool.items.length?`${draftPool.items.length} Pokémon loaded for mock drafts`:'Draft pool not loaded'} ${moderator?`· <button class="link" onclick="syncDraftPool()">Sync draft pool</button>`:''}</span></div>
       ${embed?`<iframe class="sheet-frame" src="${esc(embed)}" title="League draft sheet" loading="lazy"></iframe>`
              :`<div class="empty"><div class="card-title">Connect the cost sheet</div><p class="sub">Add the Google Sheets link in Board settings to show it here.</p></div>`}
-    </div>
-    <p class="sub">Blank frame? In Google Sheets open <b>Share → General access</b> and set it to <b>Anyone with the link · Viewer</b>. Private sheets cannot be embedded.</p>`;
+    </div>`;
   return head('Draft Tools','Costs, tiers & mock drafts',actions)
     +`<div class="tabs">${['Draft Sheet','My Mock Draft'].map(x=>`<button class="${boardTab===x?'active':''}" onclick="setBoardTab('${x}')">${x}</button>`).join('')}</div>`
     +body
@@ -2533,16 +2532,22 @@ function calculateLeagueRecords(){
     }
   });
 
+  let maxCareerWinsAll=0;
+  allPlayers.forEach(p=>{
+    if(statsByPlayer[p].wins>maxCareerWinsAll)maxCareerWinsAll=statsByPlayer[p].wins;
+  });
+
   return {
     statsByPlayer,
     records:{
       maxOvr:{value:maxOvrAll,holders:maxOvrHolders},
       maxWinStreak:{value:maxWinAll,holders:allPlayers.filter(p=>statsByPlayer[p].maxWinStreak===maxWinAll&&maxWinAll>0)},
       activeWinStreak:{value:maxActiveWinAll,holders:allPlayers.filter(p=>statsByPlayer[p].currentWinStreak===maxActiveWinAll&&maxActiveWinAll>0)},
-      maxLossStreak:{value:maxLossAll,holders:allPlayers.filter(p=>statsByPlayer[p].maxLossStreak===maxLossAll&&maxLossAll>0)},
-      activeLossStreak:{value:maxActiveLossAll,holders:allPlayers.filter(p=>statsByPlayer[p].currentLossStreak===maxActiveLossAll&&maxActiveLossAll>0)},
       maxTitles:{value:maxTitlesAll,holders:allPlayers.filter(p=>(profiles[p]?.cups||[]).length===maxTitlesAll&&maxTitlesAll>0)},
-      maxTopCuts:{value:maxTopsAll,holders:allPlayers.filter(p=>Number(profiles[p]?.tops)===maxTopsAll&&maxTopsAll>0)}
+      maxTopCuts:{value:maxTopsAll,holders:allPlayers.filter(p=>Number(profiles[p]?.tops)===maxTopsAll&&maxTopsAll>0)},
+      maxCareerWins:{value:maxCareerWinsAll,holders:allPlayers.filter(p=>statsByPlayer[p].wins===maxCareerWinsAll&&maxCareerWinsAll>0)},
+      maxLossStreak:{value:maxLossAll,holders:allPlayers.filter(p=>statsByPlayer[p].maxLossStreak===maxLossAll&&maxLossAll>0)},
+      activeLossStreak:{value:maxActiveLossAll,holders:allPlayers.filter(p=>statsByPlayer[p].currentLossStreak===maxActiveLossAll&&maxActiveLossAll>0)}
     }
   };
 }
@@ -2615,6 +2620,18 @@ function Records(){
 
       <div class="hof-card">
         <div>
+          <div class="hof-card-icon">🎯</div>
+          <div class="hof-card-title">All-Time Match Wins</div>
+          <div class="hof-card-val">${records.maxCareerWins.value} <span style="font-size:18px;font-weight:600;color:#9d9ba4">Wins</span></div>
+        </div>
+        <div class="hof-card-holder">
+          <span style="font-size:11px;color:#8e8c95">Wins Leader:</span>
+          <b>${records.maxCareerWins.holders.length?records.maxCareerWins.holders.map(p=>playerLink(p)).join(', '):'—'}</b>
+        </div>
+      </div>
+
+      <div class="hof-card">
+        <div>
           <div class="hof-card-icon">❄️</div>
           <div class="hof-card-title">All-Time Cold Streak</div>
           <div class="hof-card-val">${records.maxLossStreak.value} <span style="font-size:18px;font-weight:600;color:#9d9ba4">Matches</span></div>
@@ -2624,12 +2641,23 @@ function Records(){
           <b>${records.maxLossStreak.holders.length?records.maxLossStreak.holders.map(p=>playerLink(p)).join(', '):'—'}</b>
         </div>
       </div>
+
+      <div class="hof-card">
+        <div>
+          <div class="hof-card-icon">🧊</div>
+          <div class="hof-card-title">Active Loss Streak</div>
+          <div class="hof-card-val">${records.activeLossStreak.value} <span style="font-size:18px;font-weight:600;color:#9d9ba4">Matches</span></div>
+        </div>
+        <div class="hof-card-holder">
+          <span style="font-size:11px;color:#8e8c95">Current Slump:</span>
+          <b>${records.activeLossStreak.holders.length?records.activeLossStreak.holders.map(p=>playerLink(p)).join(', '):'—'}</b>
+        </div>
+      </div>
     </div>
 
     <section class="section">
       <div class="section-head">
         <h2>HALL OF FAME LEADERBOARD & BADGES</h2>
-        <span class="sub">Career achievements, Madden/FIFA card ratings, streaks, and tournament accolades</span>
       </div>
       <div class="card table-wrap">
         <table class="standings">
@@ -2705,7 +2733,7 @@ function Standings(){
   let controls=`<div style="display:flex;gap:8px">${moderator?`<button class="btn ghost" onclick="openRankingEditor()">Arrange rankings</button>`:''}<button class="btn ghost" onclick="go('Records')">🏆 Hall of Fame →</button></div>`;
   return head('Standings',t.name+' · group stage',controls)
     +`<div style="display:grid;grid-template-columns:repeat(${groups.length>1?2:1},minmax(0,1fr));gap:15px">${groups.map(g=>`<div class="card table-wrap">${standingTable(t,g)}</div>`).join('')}</div>`
-    +`<p class="sub">The default order is W-L, games won, game differential, then head-to-head. Moderators can use Arrange rankings for a manual override; qualification and group placement now live under <b>Edit</b> on the tournament page.</p>`
+    +`<p class="sub">The default order is W-L, games won, game differential, then head-to-head.</p>`
 }
 (function(){
   let baseMatches=window.Matches;
@@ -3165,8 +3193,7 @@ function Board(){
                :`<div class="empty"><div class="card-title">Connect the cost sheet</div><p class="sub">Add the Google Sheets link in Board settings to show it here.</p></div>`}
       </div>
       <aside class="card builder" id="teamBuilder">${builderHTML()}</aside>
-    </div>
-    <p class="sub">Blank frame? In Google Sheets open <b>Share → General access</b> and set it to <b>Anyone with the link · Viewer</b>. Private sheets cannot be embedded.</p>`
+    </div>`
 }
 function openBoardSettings(){
   if(!moderator)return;
