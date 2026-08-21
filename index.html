@@ -444,12 +444,57 @@ async function refreshTopCutCache(t){
     t.topCutCache={total,done,complete,champion:model.champion,playable:[],results,participants};
   }
 }
+function isKnownPlayer(p){
+  if(!p || typeof p !== 'string') return false;
+  let s = p.trim();
+  if(!s) return false;
+  let lower = s.toLowerCase();
+  if(lower.startsWith('winner') || lower.startsWith('loser') || lower.startsWith('seed #') || lower.startsWith('seed#') || lower.startsWith('wb ') || lower.startsWith('lb ') || lower === 'tbd' || lower === 'bye' || lower.includes('champion') || lower.includes('finalist') || lower.includes('winner') || lower.includes('loser')) return false;
+  return true;
+}
+
+function findStageMatch(bmd, groupNum, roundNum, matchNum){
+  if(!bmd || !bmd.match || !bmd.group || !bmd.round) return null;
+  let group = bmd.group.find(g => g.number === groupNum);
+  if(!group) return null;
+  let rounds = bmd.round.filter(r => r.group_id === group.id).sort((a,b) => a.number - b.number);
+  let round = rounds.find(r => r.number === roundNum);
+  if(!round) return null;
+  let matches = bmd.match.filter(m => m.round_id === round.id).sort((a,b) => a.number - b.number);
+  let m = matches.find(m => m.number === matchNum) || matches[matchNum - 1] || null;
+  if(!m) return null;
+
+  let nameOf = id => {
+    if(id == null) return null;
+    let p = bmd.participant?.find(x => x.id === id);
+    return p?.name || null;
+  };
+
+  let p1 = nameOf(m.opponent1?.id);
+  let p2 = nameOf(m.opponent2?.id);
+  let s1 = m.opponent1?.score != null ? Number(m.opponent1.score) : (m.opponent1?.result === 'win' ? 2 : (m.opponent1?.result === 'loss' ? 0 : null));
+  let s2 = m.opponent2?.score != null ? Number(m.opponent2.score) : (m.opponent2?.result === 'win' ? 2 : (m.opponent2?.result === 'loss' ? 0 : null));
+  let isDone = !!(m.opponent1?.result || m.opponent2?.result || (s1 != null && s2 != null && s1 !== s2));
+  let winner = isDone ? (m.opponent1?.result === 'win' || (s1 > s2) ? p1 : p2) : null;
+  let loser = isDone ? (winner === p1 ? p2 : p1) : null;
+
+  return {
+    id: m.id,
+    p1,
+    p2,
+    s1,
+    s2,
+    isDone,
+    winner,
+    loser,
+    raw: m
+  };
+}
 
 function getTournamentTopCutModel(t){
-  if(!t)return null;
+  if(!t) return null;
   let isPreview = (!t.bracketManagerData && t.phase!=='topcut' && t.status==='ONGOING');
   
-  // 1. Determine Qualifiers & Seeds
   let qualifiers=[];
   if(t.bracketManagerData?.participant?.length){
     qualifiers=t.bracketManagerData.participant.map((pt,idx)=>({name:pt.name,seed:idx+1}));
@@ -459,258 +504,224 @@ function getTournamentTopCutModel(t){
     qualifiers=qualified(t).map((x,idx)=>({name:x.p,seed:idx+1,group:x.group}));
   }
 
-  // 2. Decode match data from bracketManagerData if available
-  let bmd=t.bracketManagerData;
-  let matchMap={};
-  if(bmd&&bmd.match){
-    let nameOf=id=>id==null?null:(bmd.participant?.find(p=>p.id===id)?.name||null);
-    bmd.match.forEach(m=>{
-      let round=bmd.round?.find(r=>r.id===m.round_id);
-      let group=bmd.group?.find(g=>g.id===m.group_id);
-      let p1=nameOf(m.opponent1?.id);
-      let p2=nameOf(m.opponent2?.id);
-      let s1=m.opponent1?.score!=null?Number(m.opponent1.score):(m.opponent1?.result==='win'?2:(m.opponent1?.result==='loss'?0:null));
-      let s2=m.opponent2?.score!=null?Number(m.opponent2.score):(m.opponent2?.result==='win'?2:(m.opponent2?.result==='loss'?0:null));
-      let isDone=!!(m.opponent1?.result||m.opponent2?.result||(s1!=null&&s2!=null&&s1!==s2));
-      let winner=isDone?(m.opponent1?.result==='win'||(s1>s2)?p1:p2):null;
-      let loser=isDone?(winner===p1?p2:p1):null;
+  let bmd = t.bracketManagerData;
+  let count = qualifiers.length >= 8 ? 8 : (qualifiers.length >= 4 ? 4 : Math.max(2, qualifiers.length));
+  let seededNames = qualifiers.map(q => q.name);
+  while(seededNames.length < count) seededNames.push(null);
 
-      matchMap[m.id]={
-        id:m.id,
-        groupNumber:group?.number||1,
-        roundNumber:round?.number||1,
-        matchNumber:m.number,
-        p1,p2,s1,s2,
-        isDone,winner,loser,
-        raw:m
-      };
-    });
-  }
+  let wbRounds = [];
+  let lbRounds = [];
+  let gfMatches = [];
 
-  // 3. Build Double Elimination Bracket (8-Player or 4-Player)
-  let count=qualifiers.length>=8?8:(qualifiers.length>=4?4:Math.max(2,qualifiers.length));
-  let seededNames=qualifiers.map(q=>q.name);
-  while(seededNames.length<count)seededNames.push(null);
-
-  let wbRounds=[];
-  let lbRounds=[];
-  let gfMatches=[];
-
-  if(count===8){
-    // 8-Player Double Elimination
-    // --- WB Round 1 (Quarterfinals) ---
-    let wb1Matches=[
-      {id:'wb1',title:'WB Quarterfinal 1',p1:seededNames[0]||'Seed #1',p1Seed:1,p2:seededNames[7]||'Seed #8',p2Seed:8,mId:1},
-      {id:'wb2',title:'WB Quarterfinal 2',p1:seededNames[3]||'Seed #4',p1Seed:4,p2:seededNames[4]||'Seed #5',p2Seed:5,mId:2},
-      {id:'wb3',title:'WB Quarterfinal 3',p1:seededNames[1]||'Seed #2',p1Seed:2,p2:seededNames[6]||'Seed #7',p2Seed:7,mId:3},
-      {id:'wb4',title:'WB Quarterfinal 4',p1:seededNames[2]||'Seed #3',p1Seed:3,p2:seededNames[5]||'Seed #6',p2Seed:6,mId:4},
+  if(count === 8){
+    let wb1Matches = [
+      { id:'wb1', title:'WB Quarterfinal 1', p1:seededNames[0]||'Seed #1', p1Seed:1, p2:seededNames[7]||'Seed #8', p2Seed:8, originP1:'Seed #1', originP2:'Seed #8' },
+      { id:'wb2', title:'WB Quarterfinal 2', p1:seededNames[3]||'Seed #4', p1Seed:4, p2:seededNames[4]||'Seed #5', p2Seed:5, originP1:'Seed #4', originP2:'Seed #5' },
+      { id:'wb3', title:'WB Quarterfinal 3', p1:seededNames[1]||'Seed #2', p1Seed:2, p2:seededNames[6]||'Seed #7', p2Seed:7, originP1:'Seed #2', originP2:'Seed #7' },
+      { id:'wb4', title:'WB Quarterfinal 4', p1:seededNames[2]||'Seed #3', p1Seed:3, p2:seededNames[5]||'Seed #6', p2Seed:6, originP1:'Seed #3', originP2:'Seed #6' },
     ];
-    wb1Matches.forEach(m=>{
-      let matchData=matchMap[m.mId]||Object.values(matchMap).find(x=>x.groupNumber===1&&x.roundNumber===1&&x.matchNumber===m.mId);
-      if(matchData){
-        if(matchData.p1)m.p1=matchData.p1;if(matchData.p2)m.p2=matchData.p2;
-        m.s1=matchData.s1;m.s2=matchData.s2;
-        m.isDone=matchData.isDone;m.winner=matchData.winner;m.loser=matchData.loser;
-        m.actualMatchId=matchData.id;
+    [1, 2, 3, 4].forEach((num, idx)=>{
+      let sm = findStageMatch(bmd, 1, 1, num);
+      if(sm){
+        if(sm.p1) wb1Matches[idx].p1 = sm.p1;
+        if(sm.p2) wb1Matches[idx].p2 = sm.p2;
+        wb1Matches[idx].s1 = sm.s1; wb1Matches[idx].s2 = sm.s2;
+        wb1Matches[idx].isDone = sm.isDone; wb1Matches[idx].winner = sm.winner; wb1Matches[idx].loser = sm.loser;
+        wb1Matches[idx].actualMatchId = sm.id;
       }
     });
-    wbRounds.push({title:'Quarterfinals',name:'Round 1',matches:wb1Matches});
+    wbRounds.push({ title:'Quarterfinals', name:'Round 1', matches:wb1Matches });
 
-    // --- WB Round 2 (Semifinals) ---
-    let wb2Matches=[
-      {id:'wb5',title:'WB Semifinal 1',p1:wb1Matches[0].winner||'Winner QF 1',p2:wb1Matches[1].winner||'Winner QF 2',mId:5,originP1:'Winner of QF 1',originP2:'Winner of QF 2'},
-      {id:'wb6',title:'WB Semifinal 2',p1:wb1Matches[2].winner||'Winner QF 3',p2:wb1Matches[3].winner||'Winner QF 4',mId:6,originP1:'Winner of QF 3',originP2:'Winner of QF 4'},
+    let wb2Matches = [
+      { id:'wb5', title:'WB Semifinal 1', p1:wb1Matches[0].winner||'Winner QF 1', p2:wb1Matches[1].winner||'Winner QF 2', originP1:'Winner of QF 1', originP2:'Winner of QF 2' },
+      { id:'wb6', title:'WB Semifinal 2', p1:wb1Matches[2].winner||'Winner QF 3', p2:wb1Matches[3].winner||'Winner QF 4', originP1:'Winner of QF 3', originP2:'Winner of QF 4' },
     ];
-    wb2Matches.forEach(m=>{
-      let matchData=matchMap[m.mId]||Object.values(matchMap).find(x=>x.groupNumber===1&&x.roundNumber===2&&x.matchNumber===(m.mId-4));
-      if(matchData){
-        if(matchData.p1)m.p1=matchData.p1;if(matchData.p2)m.p2=matchData.p2;
-        m.s1=matchData.s1;m.s2=matchData.s2;
-        m.isDone=matchData.isDone;m.winner=matchData.winner;m.loser=matchData.loser;
-        m.actualMatchId=matchData.id;
+    [1, 2].forEach((num, idx)=>{
+      let sm = findStageMatch(bmd, 1, 2, num);
+      if(sm){
+        if(sm.p1) wb2Matches[idx].p1 = sm.p1;
+        if(sm.p2) wb2Matches[idx].p2 = sm.p2;
+        wb2Matches[idx].s1 = sm.s1; wb2Matches[idx].s2 = sm.s2;
+        wb2Matches[idx].isDone = sm.isDone; wb2Matches[idx].winner = sm.winner; wb2Matches[idx].loser = sm.loser;
+        wb2Matches[idx].actualMatchId = sm.id;
       }
     });
-    wbRounds.push({title:'Semifinals',name:'Round 2',matches:wb2Matches});
+    wbRounds.push({ title:'Semifinals', name:'Round 2', matches:wb2Matches });
 
-    // --- WB Round 3 (Winners Finals) ---
-    let wb3Matches=[
-      {id:'wb7',title:'Winners Final',p1:wb2Matches[0].winner||'Winner SF 1',p2:wb2Matches[1].winner||'Winner SF 2',mId:7,originP1:'Winner of SF 1',originP2:'Winner of SF 2'}
+    let wb3Matches = [
+      { id:'wb7', title:'Winners Final', p1:wb2Matches[0].winner||'Winner SF 1', p2:wb2Matches[1].winner||'Winner SF 2', originP1:'Winner of SF 1', originP2:'Winner of SF 2' }
     ];
-    wb3Matches.forEach(m=>{
-      let matchData=matchMap[m.mId]||Object.values(matchMap).find(x=>x.groupNumber===1&&x.roundNumber===3&&x.matchNumber===1);
-      if(matchData){
-        if(matchData.p1)m.p1=matchData.p1;if(matchData.p2)m.p2=matchData.p2;
-        m.s1=matchData.s1;m.s2=matchData.s2;
-        m.isDone=matchData.isDone;m.winner=matchData.winner;m.loser=matchData.loser;
-        m.actualMatchId=matchData.id;
+    let smWf = findStageMatch(bmd, 1, 3, 1);
+    if(smWf){
+      if(smWf.p1) wb3Matches[0].p1 = smWf.p1;
+      if(smWf.p2) wb3Matches[0].p2 = smWf.p2;
+      wb3Matches[0].s1 = smWf.s1; wb3Matches[0].s2 = smWf.s2;
+      wb3Matches[0].isDone = smWf.isDone; wb3Matches[0].winner = smWf.winner; wb3Matches[0].loser = smWf.loser;
+      wb3Matches[0].actualMatchId = smWf.id;
+    }
+    wbRounds.push({ title:'Winners Final', name:'Round 3', matches:wb3Matches });
+
+    let lb1Matches = [
+      { id:'lb1', title:'LB Round 1 · Match 1', p1:wb1Matches[0].loser||'Loser QF 1', p2:wb1Matches[1].loser||'Loser QF 2', originP1:'Loser of QF 1', originP2:'Loser of QF 2' },
+      { id:'lb2', title:'LB Round 1 · Match 2', p1:wb1Matches[2].loser||'Loser QF 3', p2:wb1Matches[3].loser||'Loser QF 4', originP1:'Loser of QF 3', originP2:'Loser of QF 4' }
+    ];
+    [1, 2].forEach((num, idx)=>{
+      let sm = findStageMatch(bmd, 2, 1, num);
+      if(sm){
+        if(sm.p1) lb1Matches[idx].p1 = sm.p1;
+        if(sm.p2) lb1Matches[idx].p2 = sm.p2;
+        lb1Matches[idx].s1 = sm.s1; lb1Matches[idx].s2 = sm.s2;
+        lb1Matches[idx].isDone = sm.isDone; lb1Matches[idx].winner = sm.winner; lb1Matches[idx].loser = sm.loser;
+        lb1Matches[idx].actualMatchId = sm.id;
       }
     });
-    wbRounds.push({title:'Winners Final',name:'Round 3',matches:wb3Matches});
+    lbRounds.push({ title:'LB Round 1', name:'Round 1', matches:lb1Matches });
 
-    // --- LB Round 1 ---
-    let lb1Matches=[
-      {id:'lb1',title:'LB Round 1 · Match 1',p1:wb1Matches[0].loser||'Loser QF 1',p2:wb1Matches[1].loser||'Loser QF 2',mId:8,originP1:'Loser of QF 1',originP2:'Loser of QF 2'},
-      {id:'lb2',title:'LB Round 1 · Match 2',p1:wb1Matches[2].loser||'Loser QF 3',p2:wb1Matches[3].loser||'Loser QF 4',mId:9,originP1:'Loser of QF 3',originP2:'Loser of QF 4'}
+    let lb2Matches = [
+      { id:'lb3', title:'LB Round 2 · Match 1', p1:lb1Matches[0].winner||'Winner LB R1.1', p2:wb2Matches[1].loser||'Loser WB Semi 2', originP1:'Winner of LB R1.1', originP2:'Loser of WB Semi 2' },
+      { id:'lb4', title:'LB Round 2 · Match 2', p1:lb1Matches[1].winner||'Winner LB R1.2', p2:wb2Matches[0].loser||'Loser WB Semi 1', originP1:'Winner of LB R1.2', originP2:'Loser of WB Semi 1' }
     ];
-    lb1Matches.forEach(m=>{
-      let matchData=matchMap[m.mId]||Object.values(matchMap).find(x=>x.groupNumber===2&&x.roundNumber===1&&x.matchNumber===(m.mId-7));
-      if(matchData){
-        if(matchData.p1)m.p1=matchData.p1;if(matchData.p2)m.p2=matchData.p2;
-        m.s1=matchData.s1;m.s2=matchData.s2;
-        m.isDone=matchData.isDone;m.winner=matchData.winner;m.loser=matchData.loser;
-        m.actualMatchId=matchData.id;
+    [1, 2].forEach((num, idx)=>{
+      let sm = findStageMatch(bmd, 2, 2, num);
+      if(sm){
+        if(sm.p1) lb2Matches[idx].p1 = sm.p1;
+        if(sm.p2) lb2Matches[idx].p2 = sm.p2;
+        lb2Matches[idx].s1 = sm.s1; lb2Matches[idx].s2 = sm.s2;
+        lb2Matches[idx].isDone = sm.isDone; lb2Matches[idx].winner = sm.winner; lb2Matches[idx].loser = sm.loser;
+        lb2Matches[idx].actualMatchId = sm.id;
       }
     });
-    lbRounds.push({title:'LB Round 1',name:'Round 1',matches:lb1Matches});
+    lbRounds.push({ title:'LB Round 2', name:'Round 2', matches:lb2Matches });
 
-    // --- LB Round 2 ---
-    let lb2Matches=[
-      {id:'lb3',title:'LB Round 2 · Match 1',p1:lb1Matches[0].winner||'Winner LB R1',p2:wb2Matches[1].loser||'Loser WB Semi 2',mId:10,originP1:'Winner of LB R1.1',originP2:'Loser of WB Semi 2'},
-      {id:'lb4',title:'LB Round 2 · Match 2',p1:lb1Matches[1].winner||'Winner LB R1',p2:wb2Matches[0].loser||'Loser WB Semi 1',mId:11,originP1:'Winner of LB R1.2',originP2:'Loser of WB Semi 1'}
+    let lb3Matches = [
+      { id:'lb5', title:'Losers Semifinal', p1:lb2Matches[0].winner||'Winner LB R2.1', p2:lb2Matches[1].winner||'Winner LB R2.2', originP1:'Winner of LB R2.1', originP2:'Winner of LB R2.2' }
     ];
-    lb2Matches.forEach(m=>{
-      let matchData=matchMap[m.mId]||Object.values(matchMap).find(x=>x.groupNumber===2&&x.roundNumber===2&&x.matchNumber===(m.mId-9));
-      if(matchData){
-        if(matchData.p1)m.p1=matchData.p1;if(matchData.p2)m.p2=matchData.p2;
-        m.s1=matchData.s1;m.s2=matchData.s2;
-        m.isDone=matchData.isDone;m.winner=matchData.winner;m.loser=matchData.loser;
-        m.actualMatchId=matchData.id;
-      }
-    });
-    lbRounds.push({title:'LB Round 2',name:'Round 2',matches:lb2Matches});
+    let smLb3 = findStageMatch(bmd, 2, 3, 1);
+    if(smLb3){
+      if(smLb3.p1) lb3Matches[0].p1 = smLb3.p1;
+      if(smLb3.p2) lb3Matches[0].p2 = smLb3.p2;
+      lb3Matches[0].s1 = smLb3.s1; lb3Matches[0].s2 = smLb3.s2;
+      lb3Matches[0].isDone = smLb3.isDone; lb3Matches[0].winner = smLb3.winner; lb3Matches[0].loser = smLb3.loser;
+      lb3Matches[0].actualMatchId = smLb3.id;
+    }
+    lbRounds.push({ title:'Losers Semifinal', name:'Round 3', matches:lb3Matches });
 
-    // --- LB Round 3 (Losers Semifinals) ---
-    let lb3Matches=[
-      {id:'lb5',title:'Losers Semifinal',p1:lb2Matches[0].winner||'Winner LB R2.1',p2:lb2Matches[1].winner||'Winner LB R2.2',mId:12,originP1:'Winner of LB R2.1',originP2:'Winner of LB R2.2'}
+    let lb4Matches = [
+      { id:'lb6', title:'Losers Final', p1:lb3Matches[0].winner||'Winner LB Semi', p2:wb3Matches[0].loser||'Loser WB Final', originP1:'Winner of LB Semi', originP2:'Loser of WB Final' }
     ];
-    lb3Matches.forEach(m=>{
-      let matchData=matchMap[m.mId]||Object.values(matchMap).find(x=>x.groupNumber===2&&x.roundNumber===3&&x.matchNumber===1);
-      if(matchData){
-        if(matchData.p1)m.p1=matchData.p1;if(matchData.p2)m.p2=matchData.p2;
-        m.s1=matchData.s1;m.s2=matchData.s2;
-        m.isDone=matchData.isDone;m.winner=matchData.winner;m.loser=matchData.loser;
-        m.actualMatchId=matchData.id;
-      }
-    });
-    lbRounds.push({title:'Losers Semifinal',name:'Round 3',matches:lb3Matches});
+    let smLb4 = findStageMatch(bmd, 2, 4, 1);
+    if(smLb4){
+      if(smLb4.p1) lb4Matches[0].p1 = smLb4.p1;
+      if(smLb4.p2) lb4Matches[0].p2 = smLb4.p2;
+      lb4Matches[0].s1 = smLb4.s1; lb4Matches[0].s2 = smLb4.s2;
+      lb4Matches[0].isDone = smLb4.isDone; lb4Matches[0].winner = smLb4.winner; lb4Matches[0].loser = smLb4.loser;
+      lb4Matches[0].actualMatchId = smLb4.id;
+    }
+    lbRounds.push({ title:'Losers Final', name:'Round 4', matches:lb4Matches });
 
-    // --- LB Round 4 (Losers Finals) ---
-    let lb4Matches=[
-      {id:'lb6',title:'Losers Final',p1:lb3Matches[0].winner||'Winner LB Semi',p2:wb3Matches[0].loser||'Loser WB Final',mId:13,originP1:'Winner of LB Semi',originP2:'Loser of WB Final'}
-    ];
-    lb4Matches.forEach(m=>{
-      let matchData=matchMap[m.mId]||Object.values(matchMap).find(x=>x.groupNumber===2&&x.roundNumber===4&&x.matchNumber===1);
-      if(matchData){
-        if(matchData.p1)m.p1=matchData.p1;if(matchData.p2)m.p2=matchData.p2;
-        m.s1=matchData.s1;m.s2=matchData.s2;
-        m.isDone=matchData.isDone;m.winner=matchData.winner;m.loser=matchData.loser;
-        m.actualMatchId=matchData.id;
-      }
-    });
-    lbRounds.push({title:'Losers Final',name:'Round 4',matches:lb4Matches});
-
-    // --- Grand Finals ---
-    let gf1Match={id:'gf1',title:'Grand Final',p1:wb3Matches[0].winner||'WB Champion',p2:lb4Matches[0].winner||'LB Champion',mId:14,originP1:'WB Champion',originP2:'LB Champion'};
-    let gfMatchData=matchMap[14]||Object.values(matchMap).find(x=>x.groupNumber===3&&x.roundNumber===1);
-    if(gfMatchData){
-      if(gfMatchData.p1)gf1Match.p1=gfMatchData.p1;if(gfMatchData.p2)gf1Match.p2=gfMatchData.p2;
-      gf1Match.s1=gfMatchData.s1;gf1Match.s2=gfMatchData.s2;
-      gf1Match.isDone=gfMatchData.isDone;gf1Match.winner=gfMatchData.winner;gf1Match.loser=gfMatchData.loser;
-      gf1Match.actualMatchId=gfMatchData.id;
+    let gf1Match = { id:'gf1', title:'Grand Final', p1:wb3Matches[0].winner||'WB Champion', p2:lb4Matches[0].winner||'LB Champion', originP1:'WB Champion', originP2:'LB Champion' };
+    let smGf = findStageMatch(bmd, 3, 1, 1);
+    if(smGf){
+      if(smGf.p1) gf1Match.p1 = smGf.p1;
+      if(smGf.p2) gf1Match.p2 = smGf.p2;
+      gf1Match.s1 = smGf.s1; gf1Match.s2 = smGf.s2;
+      gf1Match.isDone = smGf.isDone; gf1Match.winner = smGf.winner; gf1Match.loser = smGf.loser;
+      gf1Match.actualMatchId = smGf.id;
     }
     gfMatches.push(gf1Match);
 
   } else {
-    // 4-Player Double Elimination
-    let wb1Matches=[
-      {id:'wb1',title:'WB Semifinal 1',p1:seededNames[0]||'Seed #1',p1Seed:1,p2:seededNames[3]||'Seed #4',p2Seed:4,mId:1},
-      {id:'wb2',title:'WB Semifinal 2',p1:seededNames[1]||'Seed #2',p1Seed:2,p2:seededNames[2]||'Seed #3',p2Seed:3,mId:2}
+    let wb1Matches = [
+      { id:'wb1', title:'WB Semifinal 1', p1:seededNames[0]||'Seed #1', p1Seed:1, p2:seededNames[3]||'Seed #4', p2Seed:4, originP1:'Seed #1', originP2:'Seed #4' },
+      { id:'wb2', title:'WB Semifinal 2', p1:seededNames[1]||'Seed #2', p1Seed:2, p2:seededNames[2]||'Seed #3', p2Seed:3, originP1:'Seed #2', originP2:'Seed #3' }
     ];
-    wb1Matches.forEach(m=>{
-      let matchData=matchMap[m.mId]||Object.values(matchMap).find(x=>x.groupNumber===1&&x.roundNumber===1&&x.matchNumber===m.mId);
-      if(matchData){
-        if(matchData.p1)m.p1=matchData.p1;if(matchData.p2)m.p2=matchData.p2;
-        m.s1=matchData.s1;m.s2=matchData.s2;
-        m.isDone=matchData.isDone;m.winner=matchData.winner;m.loser=matchData.loser;
-        m.actualMatchId=matchData.id;
-      }
-    });
-    wbRounds.push({title:'Semifinals',name:'Round 1',matches:wb1Matches});
+    let sm1 = findStageMatch(bmd, 1, 1, 1);
+    if(sm1){
+      if(sm1.p1) wb1Matches[0].p1 = sm1.p1;
+      if(sm1.p2) wb1Matches[0].p2 = sm1.p2;
+      wb1Matches[0].s1 = sm1.s1; wb1Matches[0].s2 = sm1.s2;
+      wb1Matches[0].isDone = sm1.isDone; wb1Matches[0].winner = sm1.winner; wb1Matches[0].loser = sm1.loser;
+      wb1Matches[0].actualMatchId = sm1.id;
+    }
+    let sm2 = findStageMatch(bmd, 1, 1, 2);
+    if(sm2){
+      if(sm2.p1) wb1Matches[1].p1 = sm2.p1;
+      if(sm2.p2) wb1Matches[1].p2 = sm2.p2;
+      wb1Matches[1].s1 = sm2.s1; wb1Matches[1].s2 = sm2.s2;
+      wb1Matches[1].isDone = sm2.isDone; wb1Matches[1].winner = sm2.winner; wb1Matches[1].loser = sm2.loser;
+      wb1Matches[1].actualMatchId = sm2.id;
+    }
+    wbRounds.push({ title:'Semifinals', name:'Round 1', matches:wb1Matches });
 
-    let wb2Matches=[
-      {id:'wb3',title:'Winners Final',p1:wb1Matches[0].winner||'Winner Semi 1',p2:wb1Matches[1].winner||'Winner Semi 2',mId:3,originP1:'Winner of Semi 1',originP2:'Winner of Semi 2'}
+    let wb2Matches = [
+      { id:'wb3', title:'Winners Final', p1:wb1Matches[0].winner||'Winner Semi 1', p2:wb1Matches[1].winner||'Winner Semi 2', originP1:'Winner of Semi 1', originP2:'Winner of Semi 2' }
     ];
-    wb2Matches.forEach(m=>{
-      let matchData=matchMap[m.mId]||Object.values(matchMap).find(x=>x.groupNumber===1&&x.roundNumber===2);
-      if(matchData){
-        if(matchData.p1)m.p1=matchData.p1;if(matchData.p2)m.p2=matchData.p2;
-        m.s1=matchData.s1;m.s2=matchData.s2;
-        m.isDone=matchData.isDone;m.winner=matchData.winner;m.loser=matchData.loser;
-        m.actualMatchId=matchData.id;
-      }
-    });
-    wbRounds.push({title:'Winners Final',name:'Round 2',matches:wb2Matches});
+    let smWf = findStageMatch(bmd, 1, 2, 1);
+    if(smWf){
+      if(smWf.p1) wb2Matches[0].p1 = smWf.p1;
+      if(smWf.p2) wb2Matches[0].p2 = smWf.p2;
+      wb2Matches[0].s1 = smWf.s1; wb2Matches[0].s2 = smWf.s2;
+      wb2Matches[0].isDone = smWf.isDone; wb2Matches[0].winner = smWf.winner; wb2Matches[0].loser = smWf.loser;
+      wb2Matches[0].actualMatchId = smWf.id;
+    }
+    wbRounds.push({ title:'Winners Final', name:'Round 2', matches:wb2Matches });
 
-    let lb1Matches=[
-      {id:'lb1',title:'LB Round 1',p1:wb1Matches[0].loser||'Loser Semi 1',p2:wb1Matches[1].loser||'Loser Semi 2',mId:4,originP1:'Loser of Semi 1',originP2:'Loser of Semi 2'}
+    let lb1Matches = [
+      { id:'lb1', title:'LB Round 1', p1:wb1Matches[0].loser||'Loser Semi 1', p2:wb1Matches[1].loser||'Loser Semi 2', originP1:'Loser of Semi 1', originP2:'Loser of Semi 2' }
     ];
-    lb1Matches.forEach(m=>{
-      let matchData=matchMap[m.mId]||Object.values(matchMap).find(x=>x.groupNumber===2&&x.roundNumber===1);
-      if(matchData){
-        if(matchData.p1)m.p1=matchData.p1;if(matchData.p2)m.p2=matchData.p2;
-        m.s1=matchData.s1;m.s2=matchData.s2;
-        m.isDone=matchData.isDone;m.winner=matchData.winner;m.loser=matchData.loser;
-        m.actualMatchId=matchData.id;
-      }
-    });
-    lbRounds.push({title:'LB Round 1',name:'Round 1',matches:lb1Matches});
+    let smLb1 = findStageMatch(bmd, 2, 1, 1);
+    if(smLb1){
+      if(smLb1.p1) lb1Matches[0].p1 = smLb1.p1;
+      if(smLb1.p2) lb1Matches[0].p2 = smLb1.p2;
+      lb1Matches[0].s1 = smLb1.s1; lb1Matches[0].s2 = smLb1.s2;
+      lb1Matches[0].isDone = smLb1.isDone; lb1Matches[0].winner = smLb1.winner; lb1Matches[0].loser = smLb1.loser;
+      lb1Matches[0].actualMatchId = smLb1.id;
+    }
+    lbRounds.push({ title:'LB Round 1', name:'Round 1', matches:lb1Matches });
 
-    let lb2Matches=[
-      {id:'lb2',title:'Losers Final',p1:lb1Matches[0].winner||'Winner LB R1',p2:wb2Matches[0].loser||'Loser WB Final',mId:5,originP1:'Winner of LB R1',originP2:'Loser of WB Final'}
+    let lb2Matches = [
+      { id:'lb2', title:'Losers Final', p1:lb1Matches[0].winner||'Winner LB R1', p2:wb2Matches[0].loser||'Loser WB Final', originP1:'Winner of LB R1', originP2:'Loser of WB Final' }
     ];
-    lb2Matches.forEach(m=>{
-      let matchData=matchMap[m.mId]||Object.values(matchMap).find(x=>x.groupNumber===2&&x.roundNumber===2);
-      if(matchData){
-        if(matchData.p1)m.p1=matchData.p1;if(matchData.p2)m.p2=matchData.p2;
-        m.s1=matchData.s1;m.s2=matchData.s2;
-        m.isDone=matchData.isDone;m.winner=matchData.winner;m.loser=matchData.loser;
-        m.actualMatchId=matchData.id;
-      }
-    });
-    lbRounds.push({title:'Losers Final',name:'Round 2',matches:lb2Matches});
+    let smLb2 = findStageMatch(bmd, 2, 2, 1);
+    if(smLb2){
+      if(smLb2.p1) lb2Matches[0].p1 = smLb2.p1;
+      if(smLb2.p2) lb2Matches[0].p2 = smLb2.p2;
+      lb2Matches[0].s1 = smLb2.s1; lb2Matches[0].s2 = smLb2.s2;
+      lb2Matches[0].isDone = smLb2.isDone; lb2Matches[0].winner = smLb2.winner; lb2Matches[0].loser = smLb2.loser;
+      lb2Matches[0].actualMatchId = smLb2.id;
+    }
+    lbRounds.push({ title:'Losers Final', name:'Round 2', matches:lb2Matches });
 
-    let gf1Match={id:'gf1',title:'Grand Final',p1:wb2Matches[0].winner||'WB Winner',p2:lb2Matches[0].winner||'LB Winner',mId:6,originP1:'WB Champion',originP2:'LB Champion'};
-    let gfMatchData=matchMap[6]||Object.values(matchMap).find(x=>x.groupNumber===3&&x.roundNumber===1);
-    if(gfMatchData){
-      if(gfMatchData.p1)gf1Match.p1=gfMatchData.p1;if(gfMatchData.p2)gf1Match.p2=gfMatchData.p2;
-      gf1Match.s1=gfMatchData.s1;gf1Match.s2=gfMatchData.s2;
-      gf1Match.isDone=gfMatchData.isDone;gf1Match.winner=gfMatchData.winner;gf1Match.loser=gfMatchData.loser;
-      gf1Match.actualMatchId=gfMatchData.id;
+    let gf1Match = { id:'gf1', title:'Grand Final', p1:wb2Matches[0].winner||'WB Champion', p2:lb2Matches[0].winner||'LB Champion', originP1:'WB Champion', originP2:'LB Champion' };
+    let smGf = findStageMatch(bmd, 3, 1, 1);
+    if(smGf){
+      if(smGf.p1) gf1Match.p1 = smGf.p1;
+      if(smGf.p2) gf1Match.p2 = smGf.p2;
+      gf1Match.s1 = smGf.s1; gf1Match.s2 = smGf.s2;
+      gf1Match.isDone = smGf.isDone; gf1Match.winner = smGf.winner; gf1Match.loser = smGf.loser;
+      gf1Match.actualMatchId = smGf.id;
     }
     gfMatches.push(gf1Match);
   }
 
-  // Compile list of completed playoff matches
-  let allBracketMatches=[...wbRounds.flatMap(r=>r.matches), ...lbRounds.flatMap(r=>r.matches), ...gfMatches];
-  let completedList=allBracketMatches.filter(m=>m.isDone&&m.p1&&m.p2&&m.s1!=null&&m.s2!=null&&!m.p1.startsWith('Winner')&&!m.p1.startsWith('Loser')&&!m.p2.startsWith('Winner')&&!m.p2.startsWith('Loser'));
+  let allBracketMatches = [...wbRounds.flatMap(r=>r.matches), ...lbRounds.flatMap(r=>r.matches), ...gfMatches];
+  let completedList = allBracketMatches.filter(m => m.isDone && isKnownPlayer(m.p1) && isKnownPlayer(m.p2) && m.s1 != null && m.s2 != null);
 
-  // If matchMap didn't have data but topCutCache has past results, enrich:
   if(!completedList.length && t.topCutCache?.results?.length){
     t.topCutCache.results.forEach(res=>{
       completedList.push({
-        title:res.title||'Playoff Match',
-        p1:res.p1,p2:res.p2,s1:res.s1,s2:res.s2,
-        winner:res.s1>res.s2?res.p1:res.p2,
-        loser:res.s1>res.s2?res.p2:res.p1,
-        isDone:true
+        title: res.title || 'Playoff Match',
+        p1: res.p1, p2: res.p2, s1: res.s1, s2: res.s2,
+        winner: res.s1 > res.s2 ? res.p1 : res.p2,
+        loser: res.s1 > res.s2 ? res.p2 : res.p1,
+        isDone: true
       });
     });
   }
 
-  // Determine Champion, Runner-Up, 3rd Place
-  let champion=t.champion||gfMatches[0]?.winner||t.topCutCache?.champion||null;
-  let runnerUp=gfMatches[0]?.loser||null;
-  let thirdPlace=lbRounds[lbRounds.length-1]?.matches[0]?.loser||null;
+  let champion = t.champion || (gfMatches[0]?.isDone ? gfMatches[0].winner : null) || t.topCutCache?.champion || null;
+  let runnerUp = (gfMatches[0]?.isDone ? gfMatches[0].loser : null);
+  let thirdPlace = (lbRounds[lbRounds.length-1]?.matches[0]?.isDone ? lbRounds[lbRounds.length-1]?.matches[0].loser : null);
 
   return {
     isPreview,
@@ -725,33 +736,45 @@ function getTournamentTopCutModel(t){
   };
 }
 
-function topCutSection(t, preview){
-  if(!t)return '<div class="card empty"><div class="card-title">No tournament selected</div></div>';
-  let model=getTournamentTopCutModel(t);
-  if(!model)return '<div class="card empty"><div class="card-title">Top Cut bracket data unavailable</div></div>';
+async function resetTopCutBracket(){
+  let t = ongoingT();
+  if(!t || !moderator) return;
+  if(!confirm("Reset the Top Cut bracket? This will clear playoff match scores and re-seed the bracket freshly from the current group standings.")) return;
+  delete t.bracketManagerData;
+  delete t.topCutCache;
+  t.topCutMatchTimestamps = {};
+  await createTopCutStage(t);
+  persistLeague();
+  render();
+}
 
-  let isModEditable=moderator && t.status==='ONGOING' && (t.phase==='topcut'||!!t.bracketManagerData);
-  let statusBadge=preview?`<span class="tag hunt">PROJECTED SEEDS</span>`:(t.status==='COMPLETE'?`<span class="tag safe">TOURNAMENT ARCHIVE · COMPLETE</span>`:`<span class="tag hunt">PLAYOFFS LIVE</span>`);
+function topCutSection(t, preview){
+  if(!t) return '<div class="card empty"><div class="card-title">No tournament selected</div></div>';
+  let model = getTournamentTopCutModel(t);
+  if(!model) return '<div class="card empty"><div class="card-title">Top Cut bracket data unavailable</div></div>';
+
+  let isModEditable = moderator && t.status === 'ONGOING' && (t.phase === 'topcut' || !!t.bracketManagerData);
+  let statusBadge = preview ? `<span class="tag hunt">PROJECTED SEEDS</span>` : (t.status === 'COMPLETE' ? `<span class="tag safe">TOURNAMENT ARCHIVE · COMPLETE</span>` : `<span class="tag hunt">PLAYOFFS LIVE</span>`);
 
   function renderMatchSlot(pName, seed, score, isWinner, isLoser, originLabel){
-    let isTBD=!pName || pName.startsWith('Winner') || pName.startsWith('Loser') || pName.startsWith('Seed #');
-    if(isTBD){
+    let isReal = isKnownPlayer(pName);
+    if(!isReal){
       return `<div class="tc-slot tbd">
         <span class="tc-slot-seed">—</span>
         <div class="tc-slot-info">
-          <span class="tc-slot-tbd">${esc(originLabel||pName||'TBD')}</span>
+          <span class="tc-slot-tbd">${esc(originLabel || pName || 'TBD')}</span>
         </div>
         <span class="tc-slot-score">—</span>
       </div>`;
     }
 
-    let ovrObj=calculatePlayerOVR(pName);
-    let faceArt=profilePictures[pName]?`url('${esc(profilePictures[pName])}')`:(teamCovers[pName]?`url('${esc(teamCovers[pName])}')`:fallbackArt(pName));
-    let faceLetter=(profilePictures[pName]||teamCovers[pName])?'':esc((pName||'?')[0]);
-    let teamStr=teamName(t, pName);
+    let ovrObj = calculatePlayerOVR(pName);
+    let faceArt = profilePictures[pName] ? `url('${esc(profilePictures[pName])}')` : (teamCovers[pName] ? `url('${esc(teamCovers[pName])}')` : fallbackArt(pName));
+    let faceLetter = (profilePictures[pName] || teamCovers[pName]) ? '' : esc((pName || '?')[0]);
+    let teamStr = teamName(t, pName);
 
     return `<div class="tc-slot ${isWinner?'winner':''} ${isLoser?'loser':''}">
-      <span class="tc-slot-seed">${seed?`#${seed}`:''}</span>
+      <span class="tc-slot-seed">${seed ? `#${seed}` : ''}</span>
       <div class="tc-slot-info">
         <span class="mrow-face" style="background-image:${faceArt};background-size:cover;background-position:center;width:24px;height:24px;font-size:10px;border-radius:50%;flex:none;display:grid;place-items:center;border:2px solid ${ovrObj.color}">${faceLetter}</span>
         <div style="min-width:0">
@@ -759,7 +782,7 @@ function topCutSection(t, preview){
           <span class="team" style="font-size:9px;margin-top:1px">${esc(teamStr)}</span>
         </div>
       </div>
-      <span class="tc-slot-score">${score!=null?score:'—'}</span>
+      <span class="tc-slot-score">${score != null ? score : '—'}</span>
     </div>`;
   }
 
@@ -768,60 +791,64 @@ function topCutSection(t, preview){
     let p2Done = m.isDone && m.winner === m.p2;
     let p1Lost = m.isDone && m.loser === m.p1;
     let p2Lost = m.isDone && m.loser === m.p2;
-    let isPlayable = isModEditable && m.actualMatchId && m.p1 && m.p2 && !m.p1.startsWith('Winner') && !m.p1.startsWith('Loser') && !m.p2.startsWith('Winner') && !m.p2.startsWith('Loser');
-    let clickAttr = isPlayable ? `onclick="openTopCutScoreModal(${m.actualMatchId})" title="Click to enter match score"` : '';
 
-    return `<div class="tc-match-card ${m.isDone?'completed':''} ${isPlayable?'clickable':''}" ${clickAttr}>
+    let isReady = isKnownPlayer(m.p1) && isKnownPlayer(m.p2);
+    let isClickable = isModEditable && m.actualMatchId != null && isReady;
+    let clickAttr = isClickable ? `onclick="openTopCutScoreModal(${m.actualMatchId})" style="cursor:pointer" title="Click to enter or edit match score"` : '';
+
+    let headerBadge = '';
+    if(m.isDone){
+      headerBadge = isClickable ? `<span style="color:#4bdd91;font-weight:900">FINAL <span style="font-size:8px;color:var(--amber);opacity:0.8">✎</span></span>` : `<span style="color:#4bdd91;font-weight:900">FINAL</span>`;
+    } else if(isClickable){
+      headerBadge = `<span style="color:var(--amber);font-weight:900">ENTER SCORE ✎</span>`;
+    }
+
+    return `<div class="tc-match-card ${m.isDone?'completed':''} ${isClickable?'clickable':''}" ${clickAttr}>
       <div class="tc-match-head">
         <span>${esc(m.title)}</span>
-        ${m.isDone?`<span style="color:#4bdd91;font-weight:900">FINAL</span>`:(isPlayable?`<span style="color:var(--amber)">ENTER SCORE ✎</span>`:``)}
+        ${headerBadge}
       </div>
       ${renderMatchSlot(m.p1, m.p1Seed, m.s1, p1Done, p1Lost, m.originP1)}
       ${renderMatchSlot(m.p2, m.p2Seed, m.s2, p2Done, p2Lost, m.originP2)}
     </div>`;
   }
 
-  // Championship Podium
-  let podiumHtml='';
+  let podiumHtml = '';
   if(model.champion || t.champion){
-    let champName=model.champion||t.champion;
-    let runnerName=model.runnerUp;
-    let thirdName=model.thirdPlace;
-    let champOvr=calculatePlayerOVR(champName);
-    let champArt=profilePictures[champName]?`url('${esc(profilePictures[champName])}')`:(teamCovers[champName]?`url('${esc(teamCovers[champName])}')`:fallbackArt(champName));
-    let champLetter=(profilePictures[champName]||teamCovers[champName])?'':esc((champName||'?')[0]);
+    let champName = model.champion || t.champion;
+    let runnerName = model.runnerUp;
+    let thirdName = model.thirdPlace;
+    let champOvr = calculatePlayerOVR(champName);
 
-    podiumHtml=`<div class="tc-podium">
+    podiumHtml = `<div class="tc-podium">
       <div class="tc-podium-card champ" onclick="openProfile('${esc(champName)}')">
         <span class="podium-rank-badge" style="color:#ffd166">👑 TOURNAMENT CHAMPION</span>
-        <span class="mrow-face" style="background-image:${champArt};background-size:cover;background-position:center;width:56px;height:56px;font-size:24px;border-radius:50%;flex:none;display:grid;place-items:center;border:3px solid ${champOvr.color};box-shadow:0 6px 20px rgba(224,173,43,0.3)">${champLetter}</span>
         <div style="min-width:0;flex:1">
-          <div style="font:900 22px 'Barlow Condensed';color:#f5f3f0;line-height:1.1">${esc(champName)}</div>
+          <div style="font:900 22px 'Barlow Condensed';color:#f5f3f0">${esc(champName)}</div>
           <div style="font-size:11px;color:#ffd166;font-weight:700;margin-top:2px">🏆 ${esc(t.name)} Champion</div>
           <div style="display:flex;align-items:center;gap:6px;margin-top:6px">${champOvr.badgeHtml}</div>
         </div>
       </div>
-      ${runnerName?`<div class="tc-podium-card runner" onclick="openProfile('${esc(runnerName)}')">
+      ${runnerName ? `<div class="tc-podium-card runner" onclick="openProfile('${esc(runnerName)}')">
         <span class="podium-rank-badge" style="color:#d0d0dc">🥈 RUNNER-UP</span>
         <div style="min-width:0;flex:1">
           <div style="font:800 18px 'Barlow Condensed';color:#f5f3f0">${esc(runnerName)}</div>
           <div style="font-size:11px;color:#a0a0b0;margin-top:2px">Grand Finalist</div>
         </div>
-      </div>`:''}
-      ${thirdName?`<div class="tc-podium-card third" onclick="openProfile('${esc(thirdName)}')">
+      </div>` : ''}
+      ${thirdName ? `<div class="tc-podium-card third" onclick="openProfile('${esc(thirdName)}')">
         <span class="podium-rank-badge" style="color:#cd7f32">🥉 3RD PLACE</span>
         <div style="min-width:0;flex:1">
           <div style="font:800 18px 'Barlow Condensed';color:#f5f3f0">${esc(thirdName)}</div>
           <div style="font-size:11px;color:#8e8c95;margin-top:2px">Losers Finalist</div>
         </div>
-      </div>`:''}
+      </div>` : ''}
     </div>`;
   }
 
-  // Playoff Ledger (Series Log)
-  let ledgerHtml='';
+  let ledgerHtml = '';
   if(model.completedList.length){
-    ledgerHtml=`<section class="section" style="margin-top:28px">
+    ledgerHtml = `<section class="section" style="margin-top:28px">
       <div class="tc-section-header">
         <h3><span style="color:#ffd166">📜</span> Playoff Series Results</h3>
         <span style="font-size:11px;color:#8e8c95;font-weight:700">${model.completedList.length} SERIES DECIDED</span>
@@ -840,11 +867,11 @@ function topCutSection(t, preview){
           </thead>
           <tbody>
             ${model.completedList.map((m,idx)=>{
-              let wOvr=calculatePlayerOVR(m.winner);
-              let lOvr=calculatePlayerOVR(m.loser);
+              let wOvr = calculatePlayerOVR(m.winner);
+              let lOvr = calculatePlayerOVR(m.loser);
               return `<tr>
                 <td style="color:#8e8c95;font-weight:700">${idx+1}</td>
-                <td style="font-weight:800;color:#d8b44b">${esc(m.title||'Playoff Match')}</td>
+                <td style="font-weight:800;color:#d8b44b">${esc(m.title || 'Playoff Match')}</td>
                 <td>
                   <div style="display:flex;align-items:center;gap:6px">
                     <span style="font-weight:900;color:#4bdd91">${playerLink(m.winner)}</span>
@@ -860,7 +887,9 @@ function topCutSection(t, preview){
                     ${lOvr.badgeHtml}
                   </div>
                 </td>
-                <td><span style="font-size:11px;color:#8e8c95">${m.title.includes('Grand')?'👑 CROWNS CHAMPION':'Advances in bracket'}</span></td>
+                <td style="font-size:11px;font-weight:800;color:${m.title.includes('Grand')?'#ffd166':'#8e8c95'}">
+                  ${m.title.includes('Grand')?'👑 CROWNS CHAMPION':'Advances in bracket'}
+                </td>
               </tr>`;
             }).join('')}
           </tbody>
@@ -875,15 +904,15 @@ function topCutSection(t, preview){
         <div style="font:900 24px 'Barlow Condensed';letter-spacing:.6px;color:#f5f3f0;text-transform:uppercase">${esc(t.name)} Playoffs</div>
         ${statusBadge}
       </div>
-      ${isModEditable?`<span style="font-size:11px;color:var(--amber);font-weight:700">✎ Click any ready match to report scores</span>`:''}
+      <div style="display:flex;align-items:center;gap:10px">
+        ${isModEditable ? `<button class="btn ghost" style="padding:6px 11px;font-size:11px" onclick="resetTopCutBracket()">Reset / Re-seed bracket</button>` : ''}
+        ${isModEditable ? `<span style="font-size:11px;color:var(--amber);font-weight:700">✎ Click any ready match to report scores</span>` : ''}
+      </div>
     </div>
 
     ${podiumHtml}
 
-    <!-- Double Elimination Visual Arena -->
     <div class="card" style="padding:22px;background:#101015;border-color:#2e2e38">
-      
-      <!-- Winners Bracket (Upper) -->
       <div style="margin-bottom:28px">
         <div class="tc-section-header">
           <h3><span style="color:#ffd166">🏆</span> Winners Bracket</h3>
@@ -898,8 +927,6 @@ function topCutSection(t, preview){
               </div>
             </div>
           `).join('')}
-
-          <!-- Grand Final Column directly adjacent -->
           <div class="tc-round-col" style="border-left:1px dashed #3a3a46;padding-left:24px;width:280px">
             <div class="tc-round-head"><span style="color:#ffd166">👑 Grand Finals</span></div>
             <div class="tc-round-matches">
@@ -908,8 +935,6 @@ function topCutSection(t, preview){
           </div>
         </div>
       </div>
-
-      <!-- Losers Bracket (Lower) -->
       <div>
         <div class="tc-section-header">
           <h3><span style="color:#7ad1ff">🛡️</span> Losers Bracket</h3>
@@ -926,46 +951,80 @@ function topCutSection(t, preview){
           `).join('')}
         </div>
       </div>
-
     </div>
-
     ${ledgerHtml}
   </div>`;
 }
 
-function mountTopCutViewer(){
-  // Native renderer renders inline with zero DOM mutations needed
-}
+function mountTopCutViewer(){}
 
 async function openTopCutScoreModal(matchId){
-  let t=current==='Top Cut'?ongoingT():(current==='Tournament Detail'&&detailTab==='Top Cut'?activeT():null);
-  if(!t||!moderator||t.status!=='ONGOING')return;
-  let data=await getTopCutStageData(t);
-  if(!data)return;
-  let m=data.match.find(x=>x.id===matchId);
-  if(!m)return;
-  let name=id=>id==null?null:(data.participant.find(p=>p.id===id)?.name||'TBD');
-  let p1=name(m.opponent1?.id),p2=name(m.opponent2?.id);
-  if(!p1||!p2)return;
-  document.querySelector('#modal').innerHTML=`<div class="modal-wrap"><div class="modal" style="max-width:440px"><div class="modal-head"><div><div class="eyebrow">Top Cut match</div><h2>Enter score</h2></div><button class="close" onclick="closeModal()">×</button></div><div class="field"><label>${esc(p1)} score</label><input id="topcutScoreA" type="number" min="0" placeholder="0" value="${m.opponent1?.score??''}"></div><div class="field"><label>${esc(p2)} score</label><input id="topcutScoreB" type="number" min="0" placeholder="0" value="${m.opponent2?.score??''}"></div><p class="sub" style="margin-top:10px">Blank scores count as 0. Ties aren't allowed.</p><div class="creator-actions"><button class="btn ghost" onclick="closeModal()">Cancel</button><button class="btn" onclick="saveTopCutScore(${matchId})">Save score</button></div></div></div>`;
+  matchId = typeof matchId === 'string' && !isNaN(+matchId) ? +matchId : matchId;
+  let t = current === 'Top Cut' ? ongoingT() : (current === 'Tournament Detail' && detailTab === 'Top Cut' ? activeT() : null);
+  if(!t || !moderator || t.status !== 'ONGOING') return;
+  let data = await getTopCutStageData(t);
+  if(!data || !data.match) return;
+  let m = data.match.find(x => x.id === matchId);
+  if(!m) return;
+  let name = id => id == null ? null : (data.participant?.find(p => p.id === id)?.name || null);
+  let p1 = name(m.opponent1?.id);
+  let p2 = name(m.opponent2?.id);
+  if(!isKnownPlayer(p1) || !isKnownPlayer(p2)) return;
+
+  let s1Val = m.opponent1?.score != null ? m.opponent1.score : (m.opponent1?.result === 'win' ? 2 : (m.opponent1?.result === 'loss' ? 0 : ''));
+  let s2Val = m.opponent2?.score != null ? m.opponent2.score : (m.opponent2?.result === 'win' ? 2 : (m.opponent2?.result === 'loss' ? 0 : ''));
+
+  document.querySelector('#modal').innerHTML = `<div class="modal-wrap">
+    <div class="modal" style="max-width:440px">
+      <div class="modal-head">
+        <div>
+          <div class="eyebrow">Top Cut Match</div>
+          <h2>Enter Score</h2>
+        </div>
+        <button class="close" onclick="closeModal()">×</button>
+      </div>
+      <div class="field">
+        <label>${esc(p1)} score</label>
+        <input id="topcutScoreA" type="number" min="0" placeholder="0" value="${s1Val}">
+      </div>
+      <div class="field">
+        <label>${esc(p2)} score</label>
+        <input id="topcutScoreB" type="number" min="0" placeholder="0" value="${s2Val}">
+      </div>
+      <p class="sub" style="margin-top:10px">Blank scores count as 0. Ties are not allowed in Top Cut playoffs.</p>
+      <div class="creator-actions">
+        <button class="btn ghost" onclick="closeModal()">Cancel</button>
+        <button class="btn" onclick="saveTopCutScore(${matchId})">Save Score</button>
+      </div>
+    </div>
+  </div>`;
 }
 
 async function saveTopCutScore(matchId){
-  matchId=typeof matchId==='string'&&!isNaN(+matchId)?+matchId:matchId;
-  let t=current==='Top Cut'?ongoingT():(current==='Tournament Detail'&&detailTab==='Top Cut'?activeT():null);
-  if(!t)return;
-  let h=hydrateTopCutManager(t);
-  if(!h)return;
-  let a=document.querySelector('#topcutScoreA')?.value,b=document.querySelector('#topcutScoreB')?.value;
-  let sa=a===''||a==null?0:+a,sb=b===''||b==null?0:+b;
-  if(sa===sb){alert('Top Cut matches cannot end in a tie.');return}
-  try{
-    await h.manager.update.match({id:matchId,opponent1:{score:sa,result:sa>sb?'win':'loss'},opponent2:{score:sb,result:sb>sa?'win':'loss'}});
-  }catch(e){
-    alert("This match can't be changed right now — "+e.message+" If you need to correct it, the later matches it already fed into need to be reset first.");
+  matchId = typeof matchId === 'string' && !isNaN(+matchId) ? +matchId : matchId;
+  let t = current === 'Top Cut' ? ongoingT() : (current === 'Tournament Detail' && detailTab === 'Top Cut' ? activeT() : null);
+  if(!t) return;
+  let h = hydrateTopCutManager(t);
+  if(!h) return;
+  let a = document.querySelector('#topcutScoreA')?.value;
+  let b = document.querySelector('#topcutScoreB')?.value;
+  let sa = a === '' || a == null ? 0 : +a;
+  let sb = b === '' || b == null ? 0 : +b;
+  if(sa === sb){
+    alert('Top Cut matches cannot end in a tie.');
     return;
   }
-  t.bracketManagerData=JSON.parse(JSON.stringify(h.storage.data));
+  try{
+    await h.manager.update.match({
+      id: matchId,
+      opponent1: { score: sa, result: sa > sb ? 'win' : 'loss' },
+      opponent2: { score: sb, result: sb > sa ? 'win' : 'loss' }
+    });
+  }catch(e){
+    alert("This match cannot be changed right now — " + e.message + " If you need to correct it, later dependent matches must be reset first.");
+    return;
+  }
+  t.bracketManagerData = JSON.parse(JSON.stringify(h.storage.data));
   await refreshTopCutCache(t);
   persistLeague();
   closeModal();
