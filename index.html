@@ -99,7 +99,16 @@
 <style>#newMon{background:#fff!important;color:#111!important}#newMon::placeholder{color:#666}.hero-main:after{content:attr(data-season)!important}.player-link{border:0;background:none;color:#f5f3f0;padding:0;font:inherit;font-weight:800;cursor:pointer;text-align:left}.player-link:hover{color:#ff777d;text-decoration:underline}.match-row.aligned{grid-template-columns:145px minmax(115px,1fr) 34px minmax(115px,1fr) 118px 78px}.match-row.aligned .match-player{font-size:12px;min-width:0}.match-row.aligned .match-vs{text-align:center;color:#85838d;font-size:10px;font-weight:800}.bracket-match input{width:36px;background:#0f0f13;border:1px solid #474750;border-radius:3px;color:white;text-align:center;padding:3px}.bracket-grid-final{display:grid;grid-template-columns:repeat(4,210px);gap:42px;align-items:center;min-width:960px}.bracket-grid-final>div{display:grid;gap:38px}.bracket-grid-final>div:nth-child(2){padding-top:45px}.bracket-grid-final>div:nth-child(3){padding-top:115px}.bracket-grid-final>div:nth-child(4){padding-top:80px}.bracket-box{position:relative}.bracket-match-title{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.7px;color:var(--amber);margin:0 0 6px 2px}@media(max-width:560px){.match-row.aligned{grid-template-columns:75px 1fr 30px 1fr}.match-row.aligned .score-edit{grid-column:2/4}.match-row.aligned .save{grid-column:2/4}}</style>
 <body><div class="shell"><header class="topbar"><div class="brand"><span class="ball"></span>DRAFTDEX</div><nav class="nav" id="nav"></nav><button class="account" onclick="go('Account')"><span class="mode-dot"></span><span id="accountText">Ethan · Moderator</span></button></header><main class="page" id="app"></main></div><div id="modal"></div>
 <script>
-const tabs=['Home','Standings','Teams','Draft Tools','Matches','Top Cut','Playoff Odds','Predictions','Records','Tournaments'];let current='Home',viewTournament=null,detailTab='Group Stage',matchFilterPlayers=[];
+const tabs=['Home','Standings','Teams','Draft Tools','Matches','Top Cut','Playoff Odds','Predictions','Records','Tournaments'];
+let current=(()=>{
+  try{
+    let hash=decodeURIComponent(window.location.hash.replace(/^#/,'')||'');
+    if(hash)return hash==='Draft Board'?'Draft Tools':hash;
+    let saved=localStorage.getItem('draftdex-active-tab');
+    if(saved)return saved==='Draft Board'?'Draft Tools':saved;
+  }catch(e){}
+  return 'Home';
+})(),viewTournament=localStorage.getItem('draftdex-view-tournament')||null,detailTab=localStorage.getItem('draftdex-detail-tab')||'Group Stage',matchFilterPlayers=[];
 function toggleMatchFilter(v){let i=matchFilterPlayers.indexOf(v);if(i>=0)matchFilterPlayers.splice(i,1);else matchFilterPlayers.push(v);render()}
 function clearMatchFilters(){matchFilterPlayers=[];render()}
 const profiles={};
@@ -111,7 +120,16 @@ function save(){localStorage.setItem('draftdex-cut',cut);localStorage.setItem('d
 
 function head(title,over,action=''){return `<div class="page-head"><div><div class="eyebrow">${over}</div><h1>${title}</h1></div>${action}</div>`}
 function nav(){document.querySelector('#nav').innerHTML=tabs.map(t=>`<button class="${current===t?'active':''}" onclick="go('${t}')">${t}</button>`).join('')}
-function go(t){current=t;render()}
+function go(t,updateHash=true){
+  current=t==='Draft Board'?'Draft Tools':t;
+  try{
+    localStorage.setItem('draftdex-active-tab',current);
+    if(updateHash&&window.location.hash!=='#'+encodeURIComponent(current)){
+      history.replaceState(null,'','#'+encodeURIComponent(current));
+    }
+  }catch(e){}
+  render();
+}
 function render(){
   nav();
   let view = current==='Tournament Detail' ? tournamentDetail() :
@@ -130,7 +148,18 @@ function bracketMatch(a,an,b,bn,as='—',bs='—'){return `<div class="bracket-m
 function rosterList(p){return (roster[p]||[]).map((m,i)=>`<div class="edit-mon">${m}${moderator?`<button onclick="removeMon('${p}',${i})">Remove</button>`:''}</div>`).join('')}
 
 
-function openTournament(id){viewTournament=id;detailTab='Group Stage';current='Tournament Detail';render()}
+function openTournament(id){
+  viewTournament=id;
+  detailTab='Group Stage';
+  current='Tournament Detail';
+  try{
+    localStorage.setItem('draftdex-active-tab','Tournament Detail');
+    localStorage.setItem('draftdex-view-tournament',id);
+    localStorage.setItem('draftdex-detail-tab','Group Stage');
+    history.replaceState(null,'','#'+encodeURIComponent('Tournament Detail'));
+  }catch(e){}
+  render();
+}
 
 
 
@@ -1281,11 +1310,23 @@ async function flushSync(){
 /* ══ 4. NAVIGATION: league order, and "Draft Board" is now "Draft Tools" ══ */
 tabs.length=0;
 tabs.push('Home','Standings','Teams','Draft Tools','Matches','Top Cut','Playoff Odds','Predictions','Records','Tournaments');
-function go(tab){
+function go(tab, updateHash=true){
   current=tab==='Draft Board'?'Draft Tools':tab;
+  try{
+    localStorage.setItem('draftdex-active-tab', current);
+    if(updateHash && window.location.hash !== '#'+encodeURIComponent(current)){
+      history.replaceState(null, '', '#'+encodeURIComponent(current));
+    }
+  }catch(e){}
   try{render();scrollTo(0,0)}
   catch(e){document.querySelector('#app').innerHTML=`<div class="card empty"><div class="card-title">Page error</div><p class="sub">Refresh the site once, then try again.</p></div>`}
 }
+window.addEventListener('hashchange', ()=>{
+  try{
+    let h=decodeURIComponent(window.location.hash.replace(/^#/,'')||'');
+    if(h && h!==current){go(h, false);}
+  }catch(e){}
+});
 function render(){
   let active=document.activeElement;
   if(current==='Account'&&active&&/^auth(Username|Password)$/.test(active.id||''))return;
@@ -1658,29 +1699,33 @@ function calculatePlayerOVR(p, leagueData=null){
     };
   }
 
-  // Base starting baseline: 66
-  let base=66;
+  // Base starting baseline: 63 (makes higher ratings a true scarcity)
+  let base=63;
 
-  // Win rate impact: 50% is neutral (+0). 80% is +9.6, 20% is -9.6
-  let winRateDiff=(career.winPct-50)*0.32;
+  // Championships impact: +11 per title (Championship hardware carries significant prestige)
+  let titleBonus=(career.titles||0)*11;
 
-  // Championships impact: +6.5 per title (cap +15)
-  let titleBonus=Math.min(15, (career.titles||0)*6.5);
+  // Top Cut appearances impact: +4 per appearance (cap +12)
+  let topCutBonus=Math.min(12, (career.topCuts||0)*4);
 
-  // Top Cut appearances impact: +2.5 per appearance (cap +10)
-  let topCutBonus=Math.min(10, (career.topCuts||0)*2.5);
+  // Win rate impact:
+  // Above 50%: +0.22 per % above 50 (100% gives +11, 75% gives +5.5, 60% gives +2.2)
+  // Below 50%: gentle -0.14 per % below 50 so tough playoff competition doesn't overpenalize champions
+  let winRateDiff = career.winPct >= 50
+    ? (career.winPct - 50) * 0.22
+    : (career.winPct - 50) * 0.14;
 
-  // Longest Win Streak impact: +0.7 per match (cap +5)
-  let maxStreakBonus=Math.min(5, (s.maxWinStreak||0)*0.7);
+  // Longest Win Streak impact: +0.65 per match (cap +5.5)
+  let maxStreakBonus=Math.min(5.5, (s.maxWinStreak||0)*0.65);
 
-  // Active win streak form: +0.5 per match (cap +3)
-  let activeBonus=Math.min(3, (s.currentWinStreak||0)*0.5);
+  // Active win streak form: +0.4 per match (cap +2.5)
+  let activeBonus=Math.min(2.5, (s.currentWinStreak||0)*0.4);
 
-  let rawOvr=base+winRateDiff+titleBonus+topCutBonus+maxStreakBonus+activeBonus;
+  let rawOvr=base+titleBonus+topCutBonus+winRateDiff+maxStreakBonus+activeBonus;
 
-  // Regression / confidence weighting for low sample size
+  // Regression / confidence weighting for low sample size (< 5 games)
   let sampleWeight=Math.min(1.0, total/5);
-  let finalOvr=Math.round(65*(1-sampleWeight) + rawOvr*sampleWeight);
+  let finalOvr=Math.round(63*(1-sampleWeight) + rawOvr*sampleWeight);
 
   // Hard clamp from 50 to 99
   finalOvr=Math.max(50, Math.min(99, finalOvr));
