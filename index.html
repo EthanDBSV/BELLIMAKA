@@ -899,7 +899,7 @@ function topScore(i){let t=ongoingT(),m=t.topCutMatches[i],a=document.querySelec
 
 
 
-function playerLink(p){return `<button class="player-link" onclick="openProfile('${p}')">${p}</button>`}
+function playerLink(p){return `<button class="player-link" onclick="openProfile('${jsArg(p)}')" onmouseenter="highlightMatches('${jsArg(p)}', true)" onmouseleave="highlightMatches('', false)">${esc(p)}</button>`}
 
 function matchCard(m,latest=false){return `<article class="card match-card ${latest?'latest':''}"><div class="match-meta"><span>${latest?'Latest result':m.group||m.round}</span><span>${m.date}</span></div><div class="pair"><div class="pair-row ${+m.as>+m.bs?'win':''}"><span>${playerLink(m.a)}</span><span class="score">${m.as}</span></div><div class="pair-row ${+m.bs>+m.as?'win':''}"><span>${playerLink(m.b)}</span><span class="score">${m.bs}</span></div></div></article>`}
 
@@ -3118,7 +3118,7 @@ function renderMatchRow(m, i, t){
       ${headerBadge}
     </div>
     <div class="m-card-body">
-      <div class="m-slot ${aWon ? 'winner' : (bWon ? 'loser' : '')}" onmouseenter="highlightMatches('${jsArg(a)}', true)" onmouseleave="highlightMatches('', false)">
+      <div class="m-slot ${aWon ? 'winner' : (bWon ? 'loser' : '')}">
         <span class="m-slot-avatar" style="background-image:${aFace}">${aLetter}</span>
         <div class="m-slot-info">
           <div class="m-slot-name-row">
@@ -3133,7 +3133,7 @@ function renderMatchRow(m, i, t){
         `}
       </div>
 
-      <div class="m-slot ${bWon ? 'winner' : (aWon ? 'loser' : '')}" onmouseenter="highlightMatches('${jsArg(b)}', true)" onmouseleave="highlightMatches('', false)">
+      <div class="m-slot ${bWon ? 'winner' : (aWon ? 'loser' : '')}">
         <span class="m-slot-avatar" style="background-image:${bFace}">${bLetter}</span>
         <div class="m-slot-info">
           <div class="m-slot-name-row">
