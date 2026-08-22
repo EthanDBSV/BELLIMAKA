@@ -872,7 +872,7 @@ function getTournamentTopCutModel(t){
   }
 
   let bmd = t.bracketManagerData;
-  let count = qualifiers.length >= 8 ? 8 : (qualifiers.length >= 4 ? 4 : Math.max(2, qualifiers.length));
+  let count = qualifiers.length > 4 ? 8 : (qualifiers.length > 2 ? 4 : 2);
   let seededNames = qualifiers.map(q => q.name);
   while(seededNames.length < count) seededNames.push(null);
 
@@ -881,10 +881,12 @@ function getTournamentTopCutModel(t){
   let gfMatches = [];
 
   if(count === 8){
+    let p8Label = qualifiers.length <= 7 ? 'BYE' : 'Seed #8';
+    let p7Label = qualifiers.length <= 6 ? 'BYE' : 'Seed #7';
     let wb1Matches = [
-      { id:'wb1', title:'WB Quarterfinal 1', p1:seededNames[0]||'Seed #1', p1Seed:1, p2:seededNames[7]||'Seed #8', p2Seed:8, originP1:'Seed #1', originP2:'Seed #8' },
+      { id:'wb1', title:'WB Quarterfinal 1', p1:seededNames[0]||'Seed #1', p1Seed:1, p2:seededNames[7]||p8Label, p2Seed:8, originP1:'Seed #1', originP2:p8Label },
       { id:'wb2', title:'WB Quarterfinal 2', p1:seededNames[3]||'Seed #4', p1Seed:4, p2:seededNames[4]||'Seed #5', p2Seed:5, originP1:'Seed #4', originP2:'Seed #5' },
-      { id:'wb3', title:'WB Quarterfinal 3', p1:seededNames[1]||'Seed #2', p1Seed:2, p2:seededNames[6]||'Seed #7', p2Seed:7, originP1:'Seed #2', originP2:'Seed #7' },
+      { id:'wb3', title:'WB Quarterfinal 3', p1:seededNames[1]||'Seed #2', p1Seed:2, p2:seededNames[6]||p7Label, p2Seed:7, originP1:'Seed #2', originP2:p7Label },
       { id:'wb4', title:'WB Quarterfinal 4', p1:seededNames[2]||'Seed #3', p1Seed:3, p2:seededNames[5]||'Seed #6', p2Seed:6, originP1:'Seed #3', originP2:'Seed #6' },
     ];
     [1, 2, 3, 4].forEach((num, idx)=>{
@@ -895,6 +897,12 @@ function getTournamentTopCutModel(t){
         wb1Matches[idx].s1 = sm.s1; wb1Matches[idx].s2 = sm.s2;
         wb1Matches[idx].isDone = sm.isDone; wb1Matches[idx].winner = sm.winner; wb1Matches[idx].loser = sm.loser;
         wb1Matches[idx].actualMatchId = sm.id;
+      } else if(wb1Matches[idx].p2 === 'BYE' && wb1Matches[idx].p1 && isKnownPlayer(wb1Matches[idx].p1)){
+        wb1Matches[idx].isDone = true;
+        wb1Matches[idx].winner = wb1Matches[idx].p1;
+        wb1Matches[idx].loser = null;
+        wb1Matches[idx].s1 = 2;
+        wb1Matches[idx].s2 = 0;
       }
     });
     wbRounds.push({ title:'Quarterfinals', name:'Round 1', matches:wb1Matches });
@@ -928,53 +936,123 @@ function getTournamentTopCutModel(t){
     }
     wbRounds.push({ title:'Winners Final', name:'Round 3', matches:wb3Matches });
 
-    let lb1Matches = [
-      { id:'lb1', title:'LB Round 1 · Match 1', p1:wb1Matches[0].loser||'Loser QF 1', p2:wb1Matches[1].loser||'Loser QF 2', originP1:'Loser of QF 1', originP2:'Loser of QF 2' },
-      { id:'lb2', title:'LB Round 1 · Match 2', p1:wb1Matches[2].loser||'Loser QF 3', p2:wb1Matches[3].loser||'Loser QF 4', originP1:'Loser of QF 3', originP2:'Loser of QF 4' }
-    ];
-    [1, 2].forEach((num, idx)=>{
-      let sm = findStageMatch(bmd, 2, 1, num);
+    let qf1Loser = wb1Matches[0].loser || (wb1Matches[0].p2 === 'BYE' ? null : 'Loser QF 1');
+    let qf2Loser = wb1Matches[1].loser || 'Loser QF 2';
+    let qf3Loser = wb1Matches[2].loser || (wb1Matches[2].p2 === 'BYE' ? null : 'Loser QF 3');
+    let qf4Loser = wb1Matches[3].loser || 'Loser QF 4';
+
+    let lb1Matches = [];
+    if(qualifiers.length <= 6){
+      lb1Matches.push({
+        id:'lb1',
+        title:'LB Round 1',
+        p1: qf2Loser || 'Loser QF 2',
+        p2: qf4Loser || 'Loser QF 4',
+        originP1:'Loser of QF 2',
+        originP2:'Loser of QF 4'
+      });
+      let sm = findStageMatch(bmd, 2, 1, 1);
       if(sm){
-        if(sm.p1) lb1Matches[idx].p1 = sm.p1;
-        if(sm.p2) lb1Matches[idx].p2 = sm.p2;
-        lb1Matches[idx].s1 = sm.s1; lb1Matches[idx].s2 = sm.s2;
-        lb1Matches[idx].isDone = sm.isDone; lb1Matches[idx].winner = sm.winner; lb1Matches[idx].loser = sm.loser;
-        lb1Matches[idx].actualMatchId = sm.id;
+        if(sm.p1) lb1Matches[0].p1 = sm.p1;
+        if(sm.p2) lb1Matches[0].p2 = sm.p2;
+        lb1Matches[0].s1 = sm.s1; lb1Matches[0].s2 = sm.s2;
+        lb1Matches[0].isDone = sm.isDone; lb1Matches[0].winner = sm.winner; lb1Matches[0].loser = sm.loser;
+        lb1Matches[0].actualMatchId = sm.id;
       }
-    });
+    } else {
+      lb1Matches = [
+        { id:'lb1', title:'LB Round 1 · Match 1', p1:qf1Loser||'Loser QF 1', p2:qf2Loser||'Loser QF 2', originP1:'Loser of QF 1', originP2:'Loser of QF 2' },
+        { id:'lb2', title:'LB Round 1 · Match 2', p1:qf3Loser||'Loser QF 3', p2:qf4Loser||'Loser QF 4', originP1:'Loser of QF 3', originP2:'Loser of QF 4' }
+      ];
+      [1, 2].forEach((num, idx)=>{
+        let sm = findStageMatch(bmd, 2, 1, num);
+        if(sm){
+          if(sm.p1) lb1Matches[idx].p1 = sm.p1;
+          if(sm.p2) lb1Matches[idx].p2 = sm.p2;
+          lb1Matches[idx].s1 = sm.s1; lb1Matches[idx].s2 = sm.s2;
+          lb1Matches[idx].isDone = sm.isDone; lb1Matches[idx].winner = sm.winner; lb1Matches[idx].loser = sm.loser;
+          lb1Matches[idx].actualMatchId = sm.id;
+        }
+      });
+    }
     lbRounds.push({ title:'LB Round 1', name:'Round 1', matches:lb1Matches });
 
-    let lb2Matches = [
-      { id:'lb3', title:'LB Round 2 · Match 1', p1:lb1Matches[0].winner||'Winner LB R1.1', p2:wb2Matches[1].loser||'Loser WB Semi 2', originP1:'Winner of LB R1.1', originP2:'Loser of WB Semi 2' },
-      { id:'lb4', title:'LB Round 2 · Match 2', p1:lb1Matches[1].winner||'Winner LB R1.2', p2:wb2Matches[0].loser||'Loser WB Semi 1', originP1:'Winner of LB R1.2', originP2:'Loser of WB Semi 1' }
-    ];
-    [1, 2].forEach((num, idx)=>{
-      let sm = findStageMatch(bmd, 2, 2, num);
+    let lb2Matches = [];
+    if(qualifiers.length <= 6){
+      lb2Matches.push({
+        id:'lb3',
+        title:'LB Round 2',
+        p1: lb1Matches[0]?.winner || 'Winner LB R1',
+        p2: wb2Matches[1]?.loser || 'Loser WB Semi 2',
+        originP1:'Winner of LB R1',
+        originP2:'Loser of WB Semi 2'
+      });
+      let sm = findStageMatch(bmd, 2, 2, 1);
       if(sm){
-        if(sm.p1) lb2Matches[idx].p1 = sm.p1;
-        if(sm.p2) lb2Matches[idx].p2 = sm.p2;
-        lb2Matches[idx].s1 = sm.s1; lb2Matches[idx].s2 = sm.s2;
-        lb2Matches[idx].isDone = sm.isDone; lb2Matches[idx].winner = sm.winner; lb2Matches[idx].loser = sm.loser;
-        lb2Matches[idx].actualMatchId = sm.id;
+        if(sm.p1) lb2Matches[0].p1 = sm.p1;
+        if(sm.p2) lb2Matches[0].p2 = sm.p2;
+        lb2Matches[0].s1 = sm.s1; lb2Matches[0].s2 = sm.s2;
+        lb2Matches[0].isDone = sm.isDone; lb2Matches[0].winner = sm.winner; lb2Matches[0].loser = sm.loser;
+        lb2Matches[0].actualMatchId = sm.id;
       }
-    });
+    } else {
+      lb2Matches = [
+        { id:'lb3', title:'LB Round 2 · Match 1', p1:lb1Matches[0]?.winner||'Winner LB R1.1', p2:wb2Matches[1]?.loser||'Loser WB Semi 2', originP1:'Winner of LB R1.1', originP2:'Loser of WB Semi 2' },
+        { id:'lb4', title:'LB Round 2 · Match 2', p1:lb1Matches[1]?.winner||'Winner LB R1.2', p2:wb2Matches[0]?.loser||'Loser WB Semi 1', originP1:'Winner of LB R1.2', originP2:'Loser of WB Semi 1' }
+      ];
+      [1, 2].forEach((num, idx)=>{
+        let sm = findStageMatch(bmd, 2, 2, num);
+        if(sm){
+          if(sm.p1) lb2Matches[idx].p1 = sm.p1;
+          if(sm.p2) lb2Matches[idx].p2 = sm.p2;
+          lb2Matches[idx].s1 = sm.s1; lb2Matches[idx].s2 = sm.s2;
+          lb2Matches[idx].isDone = sm.isDone; lb2Matches[idx].winner = sm.winner; lb2Matches[idx].loser = sm.loser;
+          lb2Matches[idx].actualMatchId = sm.id;
+        }
+      });
+    }
     lbRounds.push({ title:'LB Round 2', name:'Round 2', matches:lb2Matches });
 
-    let lb3Matches = [
-      { id:'lb5', title:'Losers Semifinal', p1:lb2Matches[0].winner||'Winner LB R2.1', p2:lb2Matches[1].winner||'Winner LB R2.2', originP1:'Winner of LB R2.1', originP2:'Winner of LB R2.2' }
-    ];
-    let smLb3 = findStageMatch(bmd, 2, 3, 1);
-    if(smLb3){
-      if(smLb3.p1) lb3Matches[0].p1 = smLb3.p1;
-      if(smLb3.p2) lb3Matches[0].p2 = smLb3.p2;
-      lb3Matches[0].s1 = smLb3.s1; lb3Matches[0].s2 = smLb3.s2;
-      lb3Matches[0].isDone = smLb3.isDone; lb3Matches[0].winner = smLb3.winner; lb3Matches[0].loser = smLb3.loser;
-      lb3Matches[0].actualMatchId = smLb3.id;
+    let lb3Matches = [];
+    if(qualifiers.length <= 6){
+      lb3Matches.push({
+        id:'lb5',
+        title:'Losers Semifinal',
+        p1: lb2Matches[0]?.winner || 'Winner LB R2',
+        p2: wb2Matches[0]?.loser || 'Loser WB Semi 1',
+        originP1:'Winner of LB R2',
+        originP2:'Loser of WB Semi 1'
+      });
+      let smLb3 = findStageMatch(bmd, 2, 3, 1);
+      if(smLb3){
+        if(smLb3.p1) lb3Matches[0].p1 = smLb3.p1;
+        if(smLb3.p2) lb3Matches[0].p2 = smLb3.p2;
+        lb3Matches[0].s1 = smLb3.s1; lb3Matches[0].s2 = smLb3.s2;
+        lb3Matches[0].isDone = smLb3.isDone; lb3Matches[0].winner = smLb3.winner; lb3Matches[0].loser = smLb3.loser;
+        lb3Matches[0].actualMatchId = smLb3.id;
+      }
+    } else {
+      lb3Matches.push({
+        id:'lb5',
+        title:'Losers Semifinal',
+        p1: lb2Matches[0]?.winner || 'Winner LB R2.1',
+        p2: lb2Matches[1]?.winner || 'Winner LB R2.2',
+        originP1:'Winner of LB R2.1',
+        originP2:'Winner of LB R2.2'
+      });
+      let smLb3 = findStageMatch(bmd, 2, 3, 1);
+      if(smLb3){
+        if(smLb3.p1) lb3Matches[0].p1 = smLb3.p1;
+        if(smLb3.p2) lb3Matches[0].p2 = smLb3.p2;
+        lb3Matches[0].s1 = smLb3.s1; lb3Matches[0].s2 = smLb3.s2;
+        lb3Matches[0].isDone = smLb3.isDone; lb3Matches[0].winner = smLb3.winner; lb3Matches[0].loser = smLb3.loser;
+        lb3Matches[0].actualMatchId = smLb3.id;
+      }
     }
     lbRounds.push({ title:'Losers Semifinal', name:'Round 3', matches:lb3Matches });
 
     let lb4Matches = [
-      { id:'lb6', title:'Losers Final', p1:lb3Matches[0].winner||'Winner LB Semi', p2:wb3Matches[0].loser||'Loser WB Final', originP1:'Winner of LB Semi', originP2:'Loser of WB Final' }
+      { id:'lb6', title:'Losers Final', p1:lb3Matches[0]?.winner||'Winner LB Semi', p2:wb3Matches[0]?.loser||'Loser WB Final', originP1:'Winner of LB Semi', originP2:'Loser of WB Final' }
     ];
     let smLb4 = findStageMatch(bmd, 2, 4, 1);
     if(smLb4){
@@ -1188,19 +1266,19 @@ function openReseedBracketModal(){
     ? t.customTopCutSeeding.slice() 
     : (t.bracketManagerData?.participant?.map(p=>p.name) || autoSeeds);
   
-  let count = currentSeeds.length >= 8 ? 8 : (currentSeeds.length >= 4 ? 4 : Math.max(2, currentSeeds.length));
-  while(currentSeeds.length < count) currentSeeds.push(t.players[currentSeeds.length] || `Trainer ${currentSeeds.length+1}`);
+  let count = currentSeeds.length;
+  if(count < 2) count = 2;
 
   let playerOptions = (selectedVal) => {
     return (t.players || []).map(p => `<option value="${esc(p)}" ${p === selectedVal ? 'selected' : ''}>${esc(p)}${autoSeeds.includes(p)?` (Auto: #${autoSeeds.indexOf(p)+1})`:''}</option>`).join('');
   };
 
   let getPairingPreview = () => {
-    if(count === 8){
+    if(count > 4){
       return `<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px;font-size:12px">
-        <div style="background:#15151c;border:1px solid #2d2d38;border-radius:4px;padding:8px"><b>Match 1:</b> Seed #1 vs Seed #8</div>
+        <div style="background:#15151c;border:1px solid #2d2d38;border-radius:4px;padding:8px"><b>Match 1:</b> Seed #1 ${count<8?'(BYE to Semis)':'vs Seed #8'}</div>
         <div style="background:#15151c;border:1px solid #2d2d38;border-radius:4px;padding:8px"><b>Match 2:</b> Seed #4 vs Seed #5</div>
-        <div style="background:#15151c;border:1px solid #2d2d38;border-radius:4px;padding:8px"><b>Match 3:</b> Seed #2 vs Seed #7</div>
+        <div style="background:#15151c;border:1px solid #2d2d38;border-radius:4px;padding:8px"><b>Match 3:</b> Seed #2 ${count<7?'(BYE to Semis)':'vs Seed #7'}</div>
         <div style="background:#15151c;border:1px solid #2d2d38;border-radius:4px;padding:8px"><b>Match 4:</b> Seed #3 vs Seed #6</div>
       </div>`;
     }
