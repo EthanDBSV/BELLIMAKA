@@ -433,21 +433,84 @@ function hueOf(s){let h=0;for(let i=0;i<String(s).length;i++)h=(h*31+String(s).c
 function fallbackArt(label){let h=hueOf(label||'team');return `linear-gradient(135deg,hsl(${h} 42% 26%),hsl(${(h+38)%360} 38% 11%))`}
 function monSprite(name){
   let raw = String(name || '').toLowerCase().trim();
-  let slug = raw.replace(/[.'’:%]/g, '')
-    .replace(/^alolan\s+/i, '')
-    .replace(/^galarian\s+/i, '')
-    .replace(/^hisuian\s+/i, '')
-    .replace(/^paldean\s+/i, '')
-    .replace(/^bloodmoon\s+/i, '')
-    .replace(/\s+/g, '-');
   
-  if(raw.startsWith('alolan ')) slug += '-alola';
-  else if(raw.startsWith('galarian ')) slug += '-galar';
-  else if(raw.startsWith('hisuian ')) slug += '-hisui';
-  else if(raw.startsWith('paldean ')) slug += '-paldea';
-  else if(raw.startsWith('bloodmoon ')) slug = 'ursaluna-bloodmoon';
-  else if(slug === 'urshifu-rapid-strike') slug = 'urshifu-rapidstrike';
-  else if(slug === 'urshifu-single-strike') slug = 'urshifu';
+  const overrides = {
+    'paldean tauros': 'tauros-paldeacombat',
+    'tauros-paldea': 'tauros-paldeacombat',
+    'tauros-paldean': 'tauros-paldeacombat',
+    'paldean tauros combat': 'tauros-paldeacombat',
+    'paldean tauros-combat': 'tauros-paldeacombat',
+    'paldean tauros blaze': 'tauros-paldeablaze',
+    'paldean tauros-blaze': 'tauros-paldeablaze',
+    'paldean tauros aqua': 'tauros-paldeaaqua',
+    'paldean tauros-aqua': 'tauros-paldeaaqua',
+    'chi-yu': 'chiyu',
+    'chiyu': 'chiyu',
+    'chien-pao': 'chienpao',
+    'chienpao': 'chienpao',
+    'ting-lu': 'tinglu',
+    'tinglu': 'tinglu',
+    'wo-chien': 'wochien',
+    'wochien': 'wochien',
+    'type: null': 'typenull',
+    'type null': 'typenull',
+    'typenull': 'typenull',
+    'mr. mime': 'mrmime',
+    'mr mime': 'mrmime',
+    'mrmime': 'mrmime',
+    'mr. rime': 'mrrime',
+    'mr rime': 'mrrime',
+    'mrrime': 'mrrime',
+    'mime jr.': 'mimejr',
+    'mime jr': 'mimejr',
+    'mimejr': 'mimejr',
+    'ho-oh': 'hooh',
+    'hooh': 'hooh',
+    'porygon-z': 'porygonz',
+    'porygonz': 'porygonz',
+    'jangmo-o': 'jangmoo',
+    'jangmoo': 'jangmoo',
+    'hakamo-o': 'hakamoo',
+    'hakamoo': 'hakamoo',
+    'kommo-o': 'kommoo',
+    'kommoo': 'kommoo',
+    'bloodmoon ursaluna': 'ursaluna-bloodmoon',
+    'ursaluna-bloodmoon': 'ursaluna-bloodmoon',
+    'urshifu-rapid-strike': 'urshifu-rapidstrike',
+    'urshifu-single-strike': 'urshifu'
+  };
+
+  if(overrides[raw]) return `https://play.pokemonshowdown.com/sprites/gen5/${overrides[raw]}.png`;
+
+  if(raw.startsWith('alolan ')){
+    let base = raw.slice(7).replace(/[.'’:%]/g, '').replace(/[\s-]/g, '');
+    return `https://play.pokemonshowdown.com/sprites/gen5/${base}-alola.png`;
+  }
+  if(raw.startsWith('galarian ')){
+    let base = raw.slice(9).replace(/[.'’:%]/g, '').replace(/[\s-]/g, '');
+    return `https://play.pokemonshowdown.com/sprites/gen5/${base}-galar.png`;
+  }
+  if(raw.startsWith('hisuian ')){
+    let base = raw.slice(8).replace(/[.'’:%]/g, '').replace(/[\s-]/g, '');
+    return `https://play.pokemonshowdown.com/sprites/gen5/${base}-hisui.png`;
+  }
+  if(raw.startsWith('paldean ')){
+    let base = raw.slice(8).replace(/[.'’:%]/g, '').replace(/[\s-]/g, '');
+    if(base === 'tauros') return `https://play.pokemonshowdown.com/sprites/gen5/tauros-paldeacombat.png`;
+    return `https://play.pokemonshowdown.com/sprites/gen5/${base}-paldea.png`;
+  }
+
+  const noHyphenWords = [
+    'great tusk','scream tail','brute bonnet','flutter mane','slither wing','sandy shocks','roaring moon',
+    'walking wake','gouging fire','raging bolt','iron treads','iron bundle','iron hands','iron jugulis',
+    'iron moth','iron thorns','iron valiant','iron leaves','iron boulder','iron crown','tapu koko',
+    'tapu lele','tapu bulu','tapu fini'
+  ];
+  if(noHyphenWords.includes(raw)){
+    return `https://play.pokemonshowdown.com/sprites/gen5/${raw.replace(/\s+/g, '')}.png`;
+  }
+
+  let slug = raw.replace(/[.'’:%]/g, '').replace(/\s+/g, '-');
   return `https://play.pokemonshowdown.com/sprites/gen5/${slug}.png`;
 }
 
@@ -3406,21 +3469,84 @@ function hueOf(s){let h=0;for(let i=0;i<String(s).length;i++)h=(h*31+String(s).c
 function fallbackArt(label){let h=hueOf(label||'team');return `linear-gradient(135deg,hsl(${h} 42% 26%),hsl(${(h+38)%360} 38% 11%))`}
 function monSprite(name){
   let raw = String(name || '').toLowerCase().trim();
-  let slug = raw.replace(/[.'’:%]/g, '')
-    .replace(/^alolan\s+/i, '')
-    .replace(/^galarian\s+/i, '')
-    .replace(/^hisuian\s+/i, '')
-    .replace(/^paldean\s+/i, '')
-    .replace(/^bloodmoon\s+/i, '')
-    .replace(/\s+/g, '-');
   
-  if(raw.startsWith('alolan ')) slug += '-alola';
-  else if(raw.startsWith('galarian ')) slug += '-galar';
-  else if(raw.startsWith('hisuian ')) slug += '-hisui';
-  else if(raw.startsWith('paldean ')) slug += '-paldea';
-  else if(raw.startsWith('bloodmoon ')) slug = 'ursaluna-bloodmoon';
-  else if(slug === 'urshifu-rapid-strike') slug = 'urshifu-rapidstrike';
-  else if(slug === 'urshifu-single-strike') slug = 'urshifu';
+  const overrides = {
+    'paldean tauros': 'tauros-paldeacombat',
+    'tauros-paldea': 'tauros-paldeacombat',
+    'tauros-paldean': 'tauros-paldeacombat',
+    'paldean tauros combat': 'tauros-paldeacombat',
+    'paldean tauros-combat': 'tauros-paldeacombat',
+    'paldean tauros blaze': 'tauros-paldeablaze',
+    'paldean tauros-blaze': 'tauros-paldeablaze',
+    'paldean tauros aqua': 'tauros-paldeaaqua',
+    'paldean tauros-aqua': 'tauros-paldeaaqua',
+    'chi-yu': 'chiyu',
+    'chiyu': 'chiyu',
+    'chien-pao': 'chienpao',
+    'chienpao': 'chienpao',
+    'ting-lu': 'tinglu',
+    'tinglu': 'tinglu',
+    'wo-chien': 'wochien',
+    'wochien': 'wochien',
+    'type: null': 'typenull',
+    'type null': 'typenull',
+    'typenull': 'typenull',
+    'mr. mime': 'mrmime',
+    'mr mime': 'mrmime',
+    'mrmime': 'mrmime',
+    'mr. rime': 'mrrime',
+    'mr rime': 'mrrime',
+    'mrrime': 'mrrime',
+    'mime jr.': 'mimejr',
+    'mime jr': 'mimejr',
+    'mimejr': 'mimejr',
+    'ho-oh': 'hooh',
+    'hooh': 'hooh',
+    'porygon-z': 'porygonz',
+    'porygonz': 'porygonz',
+    'jangmo-o': 'jangmoo',
+    'jangmoo': 'jangmoo',
+    'hakamo-o': 'hakamoo',
+    'hakamoo': 'hakamoo',
+    'kommo-o': 'kommoo',
+    'kommoo': 'kommoo',
+    'bloodmoon ursaluna': 'ursaluna-bloodmoon',
+    'ursaluna-bloodmoon': 'ursaluna-bloodmoon',
+    'urshifu-rapid-strike': 'urshifu-rapidstrike',
+    'urshifu-single-strike': 'urshifu'
+  };
+
+  if(overrides[raw]) return `https://play.pokemonshowdown.com/sprites/gen5/${overrides[raw]}.png`;
+
+  if(raw.startsWith('alolan ')){
+    let base = raw.slice(7).replace(/[.'’:%]/g, '').replace(/[\s-]/g, '');
+    return `https://play.pokemonshowdown.com/sprites/gen5/${base}-alola.png`;
+  }
+  if(raw.startsWith('galarian ')){
+    let base = raw.slice(9).replace(/[.'’:%]/g, '').replace(/[\s-]/g, '');
+    return `https://play.pokemonshowdown.com/sprites/gen5/${base}-galar.png`;
+  }
+  if(raw.startsWith('hisuian ')){
+    let base = raw.slice(8).replace(/[.'’:%]/g, '').replace(/[\s-]/g, '');
+    return `https://play.pokemonshowdown.com/sprites/gen5/${base}-hisui.png`;
+  }
+  if(raw.startsWith('paldean ')){
+    let base = raw.slice(8).replace(/[.'’:%]/g, '').replace(/[\s-]/g, '');
+    if(base === 'tauros') return `https://play.pokemonshowdown.com/sprites/gen5/tauros-paldeacombat.png`;
+    return `https://play.pokemonshowdown.com/sprites/gen5/${base}-paldea.png`;
+  }
+
+  const noHyphenWords = [
+    'great tusk','scream tail','brute bonnet','flutter mane','slither wing','sandy shocks','roaring moon',
+    'walking wake','gouging fire','raging bolt','iron treads','iron bundle','iron hands','iron jugulis',
+    'iron moth','iron thorns','iron valiant','iron leaves','iron boulder','iron crown','tapu koko',
+    'tapu lele','tapu bulu','tapu fini'
+  ];
+  if(noHyphenWords.includes(raw)){
+    return `https://play.pokemonshowdown.com/sprites/gen5/${raw.replace(/\s+/g, '')}.png`;
+  }
+
+  let slug = raw.replace(/[.'’:%]/g, '').replace(/\s+/g, '-');
   return `https://play.pokemonshowdown.com/sprites/gen5/${slug}.png`;
 }
 
