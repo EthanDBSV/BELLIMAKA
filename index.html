@@ -922,8 +922,92 @@ function TopCut(){
   return head('Top Cut', subtitle)+topCutSection(t, isPreview)+`${moderator && t.status==='ONGOING' && !isPreview ? `<div class="creator-actions" style="margin-top:20px">${ready?`<button class="btn" onclick="endTournament()">End tournament · ${esc(champName)} wins! 👑</button>`:`<p class="sub">Complete every bracket match to enable ending the tournament (${t.topCutCache?.done||0}/${t.topCutCache?.total||0} played).</p>`}</div>`:''}`;
 }
 
-function openTournamentRecordEditor(id){let t=tournamentData[id];if(!t)return;document.querySelector('#modal').innerHTML=`<div class="modal-wrap"><div class="modal" style="max-width:520px"><div class="modal-head"><div><div class="eyebrow">Moderator only</div><h2>Edit tournament record</h2></div><button class="close" onclick="closeModal()">×</button></div><div class="field"><label>Tournament name</label><input id="recordName" value="${esc(t.name)}"></div><div class="field"><label>Start date</label><input id="recordStart" value="${esc(t.start)}"></div><div class="field"><label>End date</label><input id="recordEnd" value="${esc(t.end)}"></div><div class="field"><label>Regulation</label><input id="recordRule" value="${esc(t.regulation)}"></div><p class="sub">Player teams and rosters can be corrected from the Teams / player-profile pages. Editing an old roster updates that player's stored history.</p><div class="creator-actions"><button class="btn" onclick="saveTournamentRecord('${id}')">Save record</button></div></div></div>`}
-function saveTournamentRecord(id){let t=tournamentData[id];if(!t)return;t.name=document.querySelector('#recordName').value.trim()||t.name;t.start=document.querySelector('#recordStart').value.trim()||t.start;t.end=document.querySelector('#recordEnd').value.trim()||t.end;t.regulation=document.querySelector('#recordRule').value.trim()||t.regulation;syncTournamentSeasons();rebuildAllPlayerStats();persistLeague();closeModal();render()}
+function openTournamentRecordEditor(id){
+  let t = tournamentData[id];
+  if(!t) return;
+  
+  let todayStr = new Date().toISOString().split('T')[0];
+
+  document.querySelector('#modal').innerHTML = `<div class="modal-wrap"><div class="modal" style="max-width:560px">
+    <div class="modal-head">
+      <div>
+        <div class="eyebrow" style="color:var(--red)">Moderator Only</div>
+        <h2>Edit Tournament Details</h2>
+        <p class="sub" style="margin-top:2px">${esc(t.season || '')} · ${esc(t.status)} · ${(t.players||[]).length} Players</p>
+      </div>
+      <button class="close" onclick="closeModal()">×</button>
+    </div>
+
+    <div class="card" style="padding:18px;margin-top:16px;background:#121217;border:1px solid #2d2d38;border-radius:10px">
+      <div class="field" style="margin-top:0">
+        <label style="font-weight:800;color:#e2e0e8;margin-bottom:6px">Tournament Name</label>
+        <input id="recordName" value="${esc(t.name)}" placeholder="e.g. Moonlit Cup, Scarlet Cup" style="background:#181822;border:1px solid #363646;border-radius:6px;padding:10px 12px;color:#f5f3f0;font-weight:700">
+      </div>
+
+      <div class="field" style="margin-top:14px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+          <label style="font-weight:800;color:#e2e0e8;margin:0">Regulation / Format</label>
+          <div style="display:flex;gap:4px">
+            <button type="button" class="btn ghost btn-sm" style="padding:2px 7px!important;font-size:10px!important" onclick="document.getElementById('recordRule').value='Regulation H'">Reg H</button>
+            <button type="button" class="btn ghost btn-sm" style="padding:2px 7px!important;font-size:10px!important" onclick="document.getElementById('recordRule').value='Regulation G'">Reg G</button>
+            <button type="button" class="btn ghost btn-sm" style="padding:2px 7px!important;font-size:10px!important" onclick="document.getElementById('recordRule').value='Regulation I'">Reg I</button>
+          </div>
+        </div>
+        <input id="recordRule" value="${esc(t.regulation)}" placeholder="e.g. Regulation H · Double Elimination" style="background:#181822;border:1px solid #363646;border-radius:6px;padding:10px 12px;color:#f5f3f0">
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:14px">
+        <div class="field" style="margin-top:0">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+            <label style="font-weight:800;color:#e2e0e8;margin:0">Start Date</label>
+            <div style="display:flex;gap:4px">
+              <button type="button" class="btn ghost btn-sm" style="padding:2px 6px!important;font-size:10px!important" onclick="document.getElementById('recordStart').value='${todayStr}'">Today</button>
+              <button type="button" class="btn ghost btn-sm" style="padding:2px 6px!important;font-size:10px!important" onclick="document.getElementById('recordStart').value='TBD'">TBD</button>
+            </div>
+          </div>
+          <input id="recordStart" value="${esc(t.start)}" placeholder="YYYY-MM-DD or TBD" style="background:#181822;border:1px solid #363646;border-radius:6px;padding:10px 12px;color:#f5f3f0">
+        </div>
+
+        <div class="field" style="margin-top:0">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+            <label style="font-weight:800;color:#e2e0e8;margin:0">End Date</label>
+            <div style="display:flex;gap:4px">
+              <button type="button" class="btn ghost btn-sm" style="padding:2px 6px!important;font-size:10px!important" onclick="document.getElementById('recordEnd').value='${todayStr}'">Today</button>
+              <button type="button" class="btn ghost btn-sm" style="padding:2px 6px!important;font-size:10px!important" onclick="document.getElementById('recordEnd').value='TBD'">TBD</button>
+            </div>
+          </div>
+          <input id="recordEnd" value="${esc(t.end)}" placeholder="YYYY-MM-DD or TBD" style="background:#181822;border:1px solid #363646;border-radius:6px;padding:10px 12px;color:#f5f3f0">
+        </div>
+      </div>
+    </div>
+
+    <div style="background:#0d0d12;border:1px dashed #2a2a38;border-radius:8px;padding:12px 14px;margin-top:14px;display:flex;align-items:flex-start;gap:10px">
+      <span style="font-size:16px;flex:none;margin-top:1px">💡</span>
+      <div style="font-size:11px;color:#9d9ba6;line-height:1.4">
+        Tournament teams and rosters can be edited from <b style="color:#e2e0e8">Edit players & teams</b> or directly on trainer profiles. Saved dates and details update across all archive standings and records automatically.
+      </div>
+    </div>
+
+    <div class="creator-actions" style="margin-top:18px;display:flex;justify-content:space-between;align-items:center">
+      <button class="btn ghost" onclick="openTournamentEdit('${jsArg(id)}')">Back</button>
+      <button class="btn" style="padding:10px 24px;font-weight:800" onclick="saveTournamentRecord('${jsArg(id)}')">Save Details</button>
+    </div>
+  </div></div>`;
+}
+
+function saveTournamentRecord(id){
+  let t = tournamentData[id];
+  if(!t) return;
+  t.name = document.querySelector('#recordName').value.trim() || t.name;
+  t.start = document.querySelector('#recordStart').value.trim() || t.start;
+  t.end = document.querySelector('#recordEnd').value.trim() || t.end;
+  t.regulation = document.querySelector('#recordRule').value.trim() || t.regulation;
+  syncTournamentSeasons();
+  rebuildAllPlayerStats();
+  persistLeague();
+  closeModal();
+  render();
+}
 
 function deleteTournament(id){
   let t=tournamentData[id];
@@ -5939,7 +6023,7 @@ function openTournamentEdit(id){
     <div class="modal-head"><div><div class="eyebrow">Moderator only</div><h2>Edit ${esc(t.name)}</h2></div><button class="close" onclick="closeModal()">×</button></div>
     <p class="sub">${esc(t.season||'')} · ${esc(t.status)}</p>
     <div class="section" style="display:grid;gap:9px">
-      <button class="btn ghost" onclick="openTournamentRecordEditor('${jsArg(t.id)}')">Edit record</button>
+      <button class="btn ghost" onclick="openTournamentRecordEditor('${jsArg(t.id)}')">Edit details</button>
       <button class="btn ghost" onclick="openSettings()">Edit qualification</button>
       <button class="btn ghost" ${locked?'disabled style="opacity:.5;cursor:not-allowed"':`onclick="openGroupPlacementEditor()"`}>Arrange groups${locked?' (locked in Top Cut)':''}</button>
       <button class="btn ghost" onclick="openTournamentPlayers()">Edit players & teams</button>
