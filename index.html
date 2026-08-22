@@ -431,7 +431,25 @@ function esc(s){return String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').
 function jsArg(s){return esc(String(s??'').replace(/\\/g,'\\\\').replace(/'/g,"\\'"))}
 function hueOf(s){let h=0;for(let i=0;i<String(s).length;i++)h=(h*31+String(s).charCodeAt(i))%360;return h}
 function fallbackArt(label){let h=hueOf(label||'team');return `linear-gradient(135deg,hsl(${h} 42% 26%),hsl(${(h+38)%360} 38% 11%))`}
-function monSprite(name){let slug=String(name||'').toLowerCase().trim().replace(/[.'’:%]/g,'').replace(/\s+/g,'-');return `https://play.pokemonshowdown.com/sprites/gen5/${slug}.png`}
+function monSprite(name){
+  let raw = String(name || '').toLowerCase().trim();
+  let slug = raw.replace(/[.'’:%]/g, '')
+    .replace(/^alolan\s+/i, '')
+    .replace(/^galarian\s+/i, '')
+    .replace(/^hisuian\s+/i, '')
+    .replace(/^paldean\s+/i, '')
+    .replace(/^bloodmoon\s+/i, '')
+    .replace(/\s+/g, '-');
+  
+  if(raw.startsWith('alolan ')) slug += '-alola';
+  else if(raw.startsWith('galarian ')) slug += '-galar';
+  else if(raw.startsWith('hisuian ')) slug += '-hisui';
+  else if(raw.startsWith('paldean ')) slug += '-paldea';
+  else if(raw.startsWith('bloodmoon ')) slug = 'ursaluna-bloodmoon';
+  else if(slug === 'urshifu-rapid-strike') slug = 'urshifu-rapidstrike';
+  else if(slug === 'urshifu-single-strike') slug = 'urshifu';
+  return `https://play.pokemonshowdown.com/sprites/gen5/${slug}.png`;
+}
 
 window.onerror = function(msg, url, line, col, error) {
   console.error('Global error:', msg, 'at line', line, error);
@@ -539,35 +557,57 @@ function updateMonAddPreview(val, imgId='newMonPreview'){
   }
 }
 
+const MASTER_POKEDEX = ["Abomasnow","Abra","Absol","Accelgor","Aegislash","Aerodactyl","Aggron","Aipom","Alakazam","Alcremie","Alolan Diglett","Alolan Dugtrio","Alolan Exeggutor","Alolan Geodude","Alolan Golem","Alolan Graveler","Alolan Grimer","Alolan Marowak","Alolan Meowth","Alolan Muk","Alolan Ninetales","Alolan Persian","Alolan Raichu","Alolan Sandshrew","Alolan Sandslash","Alolan Vulpix","Alomomola","Altaria","Amaura","Ambipom","Amoonguss","Ampharos","Annihilape","Anorith","Appletun","Applin","Araquanid","Arbok","Arboliva","Arcanine","Arceus","Archaludon","Archen","Archeops","Arctibax","Arctovish","Arctozolt","Ariados","Armaldo","Armarouge","Aromatisse","Aron","Arrokuda","Articuno","Ash-Greninja","Audino","Aurorus","Avalugg","Axew","Azelf","Azumarill","Azurill","Bagon","Baltoy","Banette","Barbaracle","Barboach","Barraskewda","Basculegion","Basculin","Bastiodon","Baxcalibur","Bayleef","Beartic","Beautifly","Beedrill","Beheeyem","Beldum","Bellibolt","Bellossom","Bellsprout","Bergmite","Bewear","Bibarel","Bidoof","Binacle","Bisharp","Blacephalon","Blastoise","Blaziken","Blipbug","Blissey","Blitzle","Bloodmoon Ursaluna","Boldore","Boltund","Bombirdier","Bonsly","Bouffalant","Bounsweet","Braixen","Brambleghast","Bramblin","Braviary","Breloom","Brionne","Bronzong","Bronzor","Brute Bonnet","Bruxish","Budew","Buizel","Bulbasaur","Buneary","Bunnelby","Burmy","Butterfree","Buzzwole","Cacnea","Cacturne","Calyrex","Calyrex-Ice","Calyrex-Shadow","Camerupt","Capsakid","Carbink","Carkol","Carnivine","Carracosta","Carvanha","Cascoon","Castform","Caterpie","Celebi","Celesteela","Centiskorch","Ceruledge","Cetitan","Cetoddle","Chandelure","Chansey","Charcadet","Charizard","Charjabug","Charmander","Charmeleon","Chatot","Cherrim","Cherubi","Chesnaught","Chespin","Chewtle","Chien-Pao","Chikorita","Chimchar","Chimecho","Chinchou","Chingling","Chi-Yu","Cinccino","Cinderace","Clamperl","Clauncher","Clawitzer","Claydol","Clefable","Clefairy","Cleffa","Clobbopus","Clodsire","Cloyster","Coalossal","Cobalion","Cofagrigus","Combee","Combusken","Comfey","Conkeldurr","Copperajah","Corphish","Corsola","Corviknight","Corvisquire","Cosmoem","Cosmog","Cottonee","Crabominable","Crabrawler","Cradily","Cramorant","Cranidos","Crawdaunt","Cresselia","Croagunk","Crobat","Crocalor","Croconaw","Crustle","Cryogonal","Cubchoo","Cubone","Cufant","Cursola","Cutiefly","Cyclizar","Cyndaquil","Dachsbun","Darkrai","Darmanitan","Dartrix","Darumaka","Decidueye","Dedenne","Deerling","Deino","Delcatty","Delibird","Delphox","Deoxys","Deoxys-Attack","Deoxys-Defense","Deoxys-Speed","Dewgong","Dewott","Dewpider","Dhelmise","Dialga","Dialga-Origin","Diancie","Diggersby","Diglett","Dipplin","Ditto","Dodrio","Doduo","Dolliv","Dondozo","Donphan","Dottler","Doublade","Dracovish","Dracozolt","Dragalge","Dragapult","Dragonair","Dragonite","Drakloak","Drampa","Drapion","Dratini","Drednaw","Dreepy","Drifblim","Drifloon","Drilbur","Drizzile","Drowzee","Druddigon","Dubwool","Ducklett","Dudunsparce","Dugtrio","Dunsparce","Duosion","Duraludon","Durant","Dusclops","Dusknoir","Duskull","Dustox","Dwebble","Eelektrik","Eelektross","Eevee","Eiscue","Ekans","Eldegoss","Electabuzz","Electivire","Electrike","Electrode","Elekid","Elgyem","Emboar","Emolga","Empoleon","Enamorus","Enamorus-Therian","Entei","Escavalier","Espathra","Espeon","Espurr","Eternatus","Excadrill","Exeggcute","Exeggutor","Exploud","Falinks","Farfetch'd","Farigiraf","Fearow","Feebas","Fennekin","Feraligatr","Ferroseed","Ferrothorn","Fezandipiti","Fidough","Finizen","Finneon","Flaaffy","Flabebe","Flamigo","Flapple","Flareon","Fletchinder","Fletchling","Flittle","Floatzel","Floette","Floragato","Florges","Flutter Mane","Flygon","Fomantis","Foongus","Forretress","Fraxure","Frigibax","Frillish","Froakie","Frogadier","Froslass","Frosmoth","Fuecoco","Furfrou","Furret","Gabite","Galarian Articuno","Galarian Corsola","Galarian Darmanitan","Galarian Darumaka","Galarian Farfetch'd","Galarian Linoone","Galarian Meowth","Galarian Moltres","Galarian Mr. Mime","Galarian Ponyta","Galarian Rapidash","Galarian Slowbro","Galarian Slowking","Galarian Slowpoke","Galarian Stunfisk","Galarian Weezing","Galarian Yamask","Galarian Zapdos","Galarian Zigzagoon","Gallade","Galvantula","Garbodor","Garchomp","Gardevoir","Garganacl","Gastly","Gastrodon","Genesect","Gengar","Geodude","Gholdengo","Gible","Gigalith","Gimmighoul","Girafarig","Giratina","Giratina-Origin","Glaceon","Glalie","Glameow","Glastrier","Gligar","Glimmet","Glimmora","Gliscor","Gloom","Gogoat","Golbat","Goldeen","Golduck","Golem","Golett","Golisopod","Golurk","Goodra","Goomy","Gorebyss","Gossifleur","Gothita","Gothitelle","Gothorita","Gouging Fire","Gourgeist","Grafaiai","Granbull","Grapploct","Graveler","Great Tusk","Greavard","Greedent","Greninja","Grimer","Grimmsnarl","Grookey","Grotle","Groudon","Grovyle","Growlithe","Grubbin","Grumpig","Gulpin","Gumshoos","Gurdurr","Guzzlord","Gyarados","Hakamo-o","Happiny","Hariyama","Hatenna","Hatterene","Hattrem","Haunter","Hawlucha","Haxorus","Heatmor","Heatran","Heliolisk","Helioptile","Heracross","Herdier","Hippopotas","Hippowdon","Hisuian Arcanine","Hisuian Avalugg","Hisuian Braviary","Hisuian Decidueye","Hisuian Electrode","Hisuian Goodra","Hisuian Growlithe","Hisuian Lilligant","Hisuian Qwilfish","Hisuian Samurott","Hisuian Sliggoo","Hisuian Sneasel","Hisuian Typhlosion","Hisuian Voltorb","Hisuian Zoroark","Hisuian Zorua","Hitmonchan","Hitmonlee","Hitmontop","Honchkrow","Honedge","Ho-Oh","Hoopa","Hoothoot","Hoppip","Horsea","Houndoom","Houndour","Houndstone","Huntail","Hydrapple","Hydreigon","Hypno","Igglybuff","Illumise","Impidimp","Incineroar","Indeedee","Infernape","Inkay","Inteleon","Iron Boulder","Iron Bundle","Iron Crown","Iron Hands","Iron Jugulis","Iron Leaves","Iron Moth","Iron Thorns","Iron Treads","Iron Valiant","Ivysaur","Jangmo-o","Jellicent","Jigglypuff","Jirachi","Jolteon","Joltik","Jumpluff","Jynx","Kabuto","Kabutops","Kadabra","Kakuna","Kangaskhan","Karrablast","Kartana","Kecleon","Keldeo","Kilowattrel","Kingambit","Kingdra","Kingler","Kirlia","Klang","Klawf","Kleavor","Klefki","Klink","Klinklang","Koffing","Komala","Kommo-o","Koraidon","Krabby","Kricketot","Kricketune","Krokorok","Krookodile","Kubfu","Kyogre","Kyurem","Kyurem-Black","Kyurem-White","Lairon","Lampent","Landorus","Landorus-Therian","Lanturn","Lapras","Larvesta","Larvitar","Latias","Latios","Leafeon","Leavanny","Lechonk","Ledian","Ledyba","Lickilicky","Lickitung","Liepard","Lileep","Lilligant","Lillipup","Linoone","Litleo","Litten","Litwick","Lokix","Lombre","Lopunny","Lotad","Loudred","Lucario","Ludicolo","Lugia","Lumineon","Lunala","Lunatone","Lurantis","Luvdisc","Luxio","Luxray","Lycanroc","Mabosstiff","Machamp","Machoke","Machop","Magby","Magcargo","Magearna","Magikarp","Magmar","Magmortar","Magnemite","Magneton","Magnezone","Makuhita","Malamar","Mamoswine","Manaphy","Mandibuzz","Manectric","Mankey","Mantine","Mantyke","Maractus","Mareanie","Mareep","Marill","Marowak","Marshadow","Marshtomp","Maschiff","Masquerain","Maushold","Mawile","Medicham","Meditite","Meganium","Melmetal","Meloetta","Meltan","Meowscarada","Meowstic","Meowth","Mesprit","Metagross","Metang","Metapod","Mew","Mewtwo","Mienfoo","Mienshao","Mightyena","Milcery","Milotic","Miltank","Mime Jr.","Mimikyu","Minccino","Minior","Minun","Miraidon","Misdreavus","Mismagius","Moltres","Monferno","Morelull","Morgrem","Morpeko","Mothim","Mr. Mime","Mr. Rime","Mudbray","Mudkip","Mudsdale","Muk","Munchlax","Munkidori","Munna","Murkrow","Musharna","Nacli","Naclstack","Naganadel","Natu","Necrozma","Necrozma-Dawn-Wings","Necrozma-Dusk-Mane","Necrozma-Ultra","Nickit","Nidoking","Nidoqueen","Nidoran-F","Nidoran-M","Nidorina","Nidorino","Nihilego","Nincada","Ninetales","Ninjask","Noctowl","Noibat","Noivern","Nosepass","Numel","Nuzleaf","Nymble","Obstagoon","Octillery","Oddish","Ogerpon","Ogerpon-Cornerstone","Ogerpon-Hearthflame","Ogerpon-Wellspring","Oinkologne","Okidogi","Omanyte","Omastar","Onix","Oranguru","Orbeetle","Oricorio","Orthworm","Oshawott","Overqwil","Pachirisu","Palafin","Palafin-Hero","Paldean Tauros","Paldean Wooper","Palkia","Palkia-Origin","Palossand","Palpitoad","Pancham","Pangoro","Panpour","Pansage","Pansear","Paras","Parasect","Passimian","Patrat","Pawmi","Pawmo","Pawmot","Pawniard","Pecharunt","Pelipper","Perrserker","Persian","Petilil","Phanpy","Phantump","Pheromosa","Phione","Pichu","Pidgeot","Pidgeotto","Pidgey","Pidove","Pignite","Pikachu","Pikipek","Piloswine","Pincurchin","Pineco","Pinsir","Piplup","Plusle","Poipole","Politoed","Poliwag","Poliwhirl","Poliwrath","Poltchageist","Polteageist","Ponyta","Poochyena","Popplio","Porygon","Porygon2","Porygon-Z","Primarina","Primeape","Prinplup","Probopass","Psyduck","Pumpkaboo","Pupitar","Purrloin","Purugly","Pyroar","Pyukumuku","Quagsire","Quaquaval","Quaxly","Quaxwell","Quilava","Quilladin","Qwilfish","Raboot","Rabsca","Raging Bolt","Raichu","Raikou","Ralts","Rampardos","Rapidash","Raticate","Rattata","Rayquaza","Regice","Regidrago","Regieleki","Regigigas","Regirock","Registeel","Relicanth","Rellor","Remoraid","Reshiram","Reuniclus","Revavroom","Rhydon","Rhyhorn","Rhyperior","Ribombee","Rillaboom","Riolu","Roaring Moon","Rockruff","Roggenrola","Rolycoly","Rookidee","Roselia","Roserade","Rotom","Rotom-Fan","Rotom-Frost","Rotom-Heat","Rotom-Mow","Rotom-Wash","Rowlet","Rufflet","Runerigus","Sableye","Salamence","Salandit","Salazzle","Samurott","Sandaconda","Sandile","Sandshrew","Sandslash","Sandy Shocks","Sandygast","Sawk","Sawsbuck","Scatterbug","Sceptile","Scizor","Scolipede","Scorbunny","Scovillain","Scrafty","Scraggy","Scream Tail","Scyther","Seadra","Seaking","Sealeo","Seedot","Seel","Seismitoad","Sentret","Serperior","Servine","Seviper","Sewaddle","Sharpedo","Shaymin","Shaymin-Sky","Shedinja","Shelgon","Shellder","Shellos","Shelmet","Shieldon","Shiftry","Shiinotic","Shinx","Shroodle","Shroomish","Shuckle","Shuppet","Sigilyph","Silcoon","Silicobra","Silvally","Simipour","Simisage","Simisear","Sinistcha","Sinistea","Sirfetch'd","Sizzlipede","Skarmory","Skeledirge","Skiddo","Skiploom","Skitty","Skorupi","Skrelp","Skuntank","Skwovet","Slaking","Slakoth","Sliggoo","Slither Wing","Slowbro","Slowking","Slowpoke","Slugma","Slurpuff","Smeargle","Smoliv","Smoochum","Sneasel","Sneasler","Snivy","Snom","Snorlax","Snorunt","Snover","Snubbull","Sobble","Solgaleo","Solosis","Solrock","Spearow","Spectrier","Spewpa","Spheal","Spidops","Spinarak","Spinda","Spiritomb","Spoink","Sprigatito","Spritzee","Squawkabilly","Squirtle","Stakataka","Stantler","Staraptor","Staravia","Starly","Starmie","Staryu","Steelix","Steenee","Stonjourner","Stoutland","Stufful","Stunfisk","Stunky","Sudowoodo","Suicune","Sunflora","Sunkern","Surskit","Swablu","Swadloon","Swalot","Swampert","Swanna","Swellow","Swinub","Swirlix","Swoobat","Sylveon","Tadbulb","Taillow","Talonflame","Tandemaus","Tangela","Tangrowth","Tapu Bulu","Tapu Fini","Tapu Koko","Tapu Lele","Tarountula","Tatsugiri","Tauros","Teddiursa","Tentacool","Tentacruel","Tepig","Terapagos","Terapagos-Stellar","Terapagos-Terastal","Terrakion","Thievul","Throh","Thundurus","Thundurus-Therian","Thwackey","Timburr","Ting-Lu","Tinkatink","Tinkaton","Tinkatuff","Tirtouga","Toedscool","Toedscruel","Togedemaru","Togekiss","Togepi","Togetic","Torchic","Torkoal","Tornadus","Tornadus-Therian","Torracat","Torterra","Totodile","Toucannon","Toxapex","Toxel","Toxicroak","Toxtricity","Tranquill","Trapinch","Treecko","Trevenant","Tropius","Trubbish","Trumbeak","Tsareena","Turtonator","Turtwig","Tympole","Tynamo","Type: Null","Typhlosion","Tyranitar","Tyrantrum","Tyrogue","Tyrunt","Umbreon","Unfezant","Unown","Ursaluna","Ursaring","Urshifu","Urshifu-Rapid-Strike","Urshifu-Single-Strike","Uxie","Vanillish","Vanillite","Vanilluxe","Vaporeon","Varoom","Veluza","Venipede","Venomoth","Venonat","Venusaur","Vespiquen","Vibrava","Victini","Victreebel","Vigoroth","Vikavolt","Vileplume","Virizion","Vivillon","Volbeat","Volcanion","Volcarona","Voltorb","Vullaby","Vulpix","Wailmer","Wailord","Walking Wake","Walrein","Wartortle","Watchog","Wattrel","Weavile","Weedle","Weepinbell","Weezing","Whimsicott","Whirlipede","Whiscash","Whismur","Wigglytuff","Wiglett","Wimpod","Wingull","Wishiwashi","Wobbuffet","Wo-Chien","Woobat","Wooloo","Wooper","Wormadam","Wugtrio","Wurmple","Wynaut","Wyrdeer","Xatu","Xerneas","Xurkitree","Yamask","Yamper","Yanma","Yanmega","Yungoos","Yveltal","Zacian","Zacian-Crowned","Zamazenta","Zamazenta-Crowned","Zangoose","Zapdos","Zarude","Zebstrika","Zekrom","Zeraora","Zigzagoon","Zoroark","Zorua","Zubat","Zweilous","Zygarde"];
+
 function getPokemonDatalistHtml(){
-  let names = new Set([
-    'Garchomp','Great Tusk','Iron Valiant','Kingambit','Ogerpon','Flutter Mane','Dragonite',
-    'Roaring Moon','Rillaboom','Urshifu','Chien-Pao','Chi-Yu','Landorus','Ting-Lu','Dondozo',
-    'Tatsugiri','Gholdengo','Incineroar','Enamorus','Walking Wake','Gouging Fire','Raging Bolt',
-    'Iron Boulder','Iron Crown','Torkoal','Pelipper','Politoed','Ninetales','Tyranitar',
-    'Hippowdon','Abomasnow','Baxcalibur','Dragapult','Volcarona','Heatran','Amoonguss',
-    'Sinistcha','Primarina','Skeledirge','Meowscarada','Quaquaval','Annihilape','Iron Hands',
-    'Iron Bundle','Iron Moth','Iron Treads','Iron Jugulis','Brute Bonnet','Scream Tail',
-    'Sandy Shocks','Slither Wing','Gengar','Clefable','Snorlax','Zapdos','Moltres','Articuno',
-    'Raikou','Entei','Suicune','Latios','Latias','Corviknight','Gliscor','Garganacl','Torterra',
-    'Empoleon','Infernape','Greninja','Cinderace','Lucario','Scizor','Breloom','Ursaluna',
-    'Archaludon','Hydreigon','Kommo-o','Goodra','Salamence','Metagross','Gyarados','Milotic'
-  ]);
+  let names = new Set(MASTER_POKEDEX);
   if(typeof draftPool !== 'undefined' && draftPool?.items){
     draftPool.items.forEach(x => { if(x.name) names.add(x.name); });
   }
   Object.values(roster||{}).forEach(arr => { (arr||[]).forEach(m => names.add(m)); });
   Object.values(teamHistory||{}).forEach(arr => { (arr||[]).forEach(h => (h.pokemon||[]).forEach(m => names.add(m))); });
   Object.values(tournamentData||{}).forEach(t => { Object.values(t.rosters||{}).forEach(arr => (arr||[]).forEach(m => names.add(m))); });
-  return `<datalist id="allPokemonDatalist">${Array.from(names).sort().map(m => `<option value="${esc(m)}">`).join('')}</datalist>`;
+  return `<datalist id="allPokemonDatalist">${Array.from(names).sort((a,b)=>a.localeCompare(b)).map(m => `<option value="${esc(m)}">`).join('')}</datalist>`;
+}
+
+function snapshotTournamentRosters(t){
+  if(!t) return;
+  t.rosters = t.rosters || {};
+  (t.players || []).forEach(p => {
+    let currentMons = roster[p] || [];
+    if(currentMons.length > 0){
+      if(!t.rosters[p] || !t.rosters[p].length){
+        t.rosters[p] = [...currentMons];
+      }
+      teamHistory[p] = teamHistory[p] || [];
+      let entry = teamHistory[p].find(x => (x.tournamentId && x.tournamentId === t.id) || x.tournament === t.name || x.tournament === (t.name + ' · ' + t.season) || String(x.tournament).toLowerCase() === String(t.name).toLowerCase());
+      if(entry){
+        if(!entry.pokemon || !entry.pokemon.length){
+          entry.pokemon = [...currentMons];
+        }
+        if(!entry.team || entry.team === 'No default team'){
+          entry.team = teamName(t, p);
+        }
+      } else {
+        teamHistory[p].push({
+          tournament: t.name,
+          tournamentId: t.id,
+          team: teamName(t, p),
+          pokemon: [...currentMons]
+        });
+      }
+    }
+  });
 }
 
 function getTournamentRoster(p, t){
-  if(t?.rosters?.[p]?.length) return t.rosters[p];
+  if(!t) return [];
+  if(t.rosters?.[p]?.length) return t.rosters[p];
   let h = (teamHistory[p]||[]).find(x => (x.tournamentId && x.tournamentId === t.id) || x.tournament === t.name || x.tournament === (t.name + ' · ' + t.season) || String(x.tournament).toLowerCase() === String(t.name).toLowerCase());
   if(h?.pokemon?.length) return h.pokemon;
   let activeId = ongoingT()?.id;
-  if(t.id === activeId && roster[p]?.length) return roster[p];
+  if((t.id === activeId || t.status === 'ONGOING') && roster[p]?.length) return roster[p];
+  if((t.players||[]).includes(p) && roster[p]?.length) return roster[p];
   return [];
 }
 
@@ -576,26 +616,34 @@ function addMon(p){
   if(!v) return;
   roster[p] = roster[p] || [];
   roster[p].push(v);
+  
   let active = ongoingT();
   if(active && (active.players||[]).includes(p)){
     active.rosters = active.rosters || {};
-    active.rosters[p] = active.rosters[p] || [];
-    if(!active.rosters[p].includes(v)) active.rosters[p].push(v);
+    active.rosters[p] = [...roster[p]];
     teamHistory[p] = teamHistory[p] || [];
-    let h = teamHistory[p].find(x => x.tournamentId === active.id || x.tournament === active.name);
+    let h = teamHistory[p].find(x => (x.tournamentId && x.tournamentId === active.id) || x.tournament === active.name || x.tournament === (active.name + ' · ' + active.season) || String(x.tournament).toLowerCase() === String(active.name).toLowerCase());
     if(h){
-      h.pokemon = h.pokemon || [];
-      if(!h.pokemon.includes(v)) h.pokemon.push(v);
+      h.pokemon = [...roster[p]];
+      h.team = teamName(active, p);
     } else {
-      teamHistory[p].push({ tournament: active.name, tournamentId: active.id, team: teamName(active, p), pokemon: [v] });
+      teamHistory[p].push({ tournament: active.name, tournamentId: active.id, team: teamName(active, p), pokemon: [...roster[p]] });
     }
   }
+  
   persistLeague();
   openProfile(p);
 }
 
 function removeMon(p, i){
   if(roster[p]) roster[p].splice(i, 1);
+  let active = ongoingT();
+  if(active && (active.players||[]).includes(p)){
+    active.rosters = active.rosters || {};
+    active.rosters[p] = [...(roster[p]||[])];
+    let h = (teamHistory[p]||[]).find(x => (x.tournamentId && x.tournamentId === active.id) || x.tournament === active.name || x.tournament === (active.name + ' · ' + active.season) || String(x.tournament).toLowerCase() === String(active.name).toLowerCase());
+    if(h) h.pokemon = [...(roster[p]||[])];
+  }
   persistLeague();
   openProfile(p);
 }
@@ -611,22 +659,21 @@ function addTournamentRosterMon(p, tId){
   t.rosters[p].push(v);
 
   teamHistory[p] = teamHistory[p] || [];
-  let h = teamHistory[p].find(x => (x.tournamentId && x.tournamentId === t.id) || x.tournament === t.name || x.tournament === (t.name + ' · ' + t.season));
+  let h = teamHistory[p].find(x => (x.tournamentId && x.tournamentId === t.id) || x.tournament === t.name || x.tournament === (t.name + ' · ' + t.season) || String(x.tournament).toLowerCase() === String(t.name).toLowerCase());
   if(h){
-    h.pokemon = h.pokemon || [];
-    h.pokemon.push(v);
+    h.pokemon = [...t.rosters[p]];
+    h.team = teamName(t, p);
   } else {
     teamHistory[p].push({
       tournament: t.name,
       tournamentId: t.id,
       team: teamName(t, p),
-      pokemon: [v]
+      pokemon: [...t.rosters[p]]
     });
   }
 
   if(t.id === ongoingT()?.id){
-    roster[p] = roster[p] || [];
-    if(!roster[p].includes(v)) roster[p].push(v);
+    roster[p] = [...t.rosters[p]];
   }
 
   persistLeague();
@@ -639,9 +686,12 @@ function removeTournamentRosterMon(p, tId, idx){
   if(t.rosters?.[p]){
     t.rosters[p].splice(idx, 1);
   }
-  let h = (teamHistory[p]||[]).find(x => (x.tournamentId && x.tournamentId === t.id) || x.tournament === t.name || x.tournament === (t.name + ' · ' + t.season));
+  let h = (teamHistory[p]||[]).find(x => (x.tournamentId && x.tournamentId === t.id) || x.tournament === t.name || x.tournament === (t.name + ' · ' + t.season) || String(x.tournament).toLowerCase() === String(t.name).toLowerCase());
   if(h?.pokemon){
     h.pokemon.splice(idx, 1);
+  }
+  if(t.id === ongoingT()?.id && roster[p]){
+    roster[p] = [...(t.rosters[p]||[])];
   }
   persistLeague();
   openProfile(p);
@@ -2301,7 +2351,19 @@ function safeRecord(p){let raw=String(profiles[p]?.record||'0-0'),parts=raw.spli
 
 
 async function endGroupStage(){let t=ongoingT();if(!t)return;if(t.matches.some(m=>m.as===''||m.bs==='')){alert('Enter a score for every group-stage match before ending the group stage.');return}t.finalStandings=Object.fromEntries(Object.keys(groupsOf(t)).map(g=>[g,getStand(t,g).map(x=>x.p)]));t.phase='topcut';await createTopCutStage(t);persistLeague();current='Top Cut';render()}
-function endTournament(){let t=ongoingT();if(!t||!t.topCutCache?.complete){alert('Complete every Top Cut match before ending the tournament.');return}if(!confirm(`End ${t.name} and record ${t.topCutCache.champion} as champion?`))return;t.champion=t.topCutCache.champion;t.status='COMPLETE';t.phase='complete';rebuildAllPlayerStats();persistLeague();current='Home';render()}
+function endTournament(){
+  let t=ongoingT();
+  if(!t||!t.topCutCache?.complete){alert('Complete every Top Cut match before ending the tournament.');return}
+  if(!confirm(`End ${t.name} and record ${t.topCutCache.champion} as champion?`))return;
+  t.champion=t.topCutCache.champion;
+  t.status='COMPLETE';
+  t.phase='complete';
+  snapshotTournamentRosters(t);
+  rebuildAllPlayerStats();
+  persistLeague();
+  current='Home';
+  render();
+}
 
 
 
@@ -2371,7 +2433,21 @@ function playerCareerStats(p){
   let totalGames=wins+losses,winPct=totalGames>0?Math.round(wins/totalGames*100):0;
   return {wins,losses,record:`${wins}-${losses}`,titles,topCuts,tournaments,winPct,championshipCups};
 }
-function rebuildAllPlayerStats(){Object.keys(profiles).forEach(ensureProfile);Object.values(tournamentData).forEach(t=>{(t.players||[]).forEach(ensureProfile)});Object.keys(profiles).forEach(p=>{let s=playerCareerStats(p);profiles[p].record=s.record;profiles[p].tops=s.topCuts;profiles[p].cups=[...s.championshipCups]})}
+function rebuildAllPlayerStats(){
+  Object.keys(profiles).forEach(ensureProfile);
+  Object.values(tournamentData).forEach(t=>{
+    (t.players||[]).forEach(ensureProfile);
+    if(t.status==='COMPLETE' || t.phase==='topcut' || t.phase==='complete'){
+      snapshotTournamentRosters(t);
+    }
+  });
+  Object.keys(profiles).forEach(p=>{
+    let s=playerCareerStats(p);
+    profiles[p].record=s.record;
+    profiles[p].tops=s.topCuts;
+    profiles[p].cups=[...s.championshipCups];
+  });
+}
 function resyncTournamentStats(id){let t=tournamentData[id];if(!t){alert('Tournament not found.');return}if(t.status!=='COMPLETE'){alert('Only completed tournaments can be resynced.');return}rebuildAllPlayerStats();persistLeague();render();alert(`Stats resynced for ${t.name}.`)}
 
 
@@ -3260,7 +3336,25 @@ function esc(s){return String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').
 function jsArg(s){return esc(String(s??'').replace(/\\/g,'\\\\').replace(/'/g,"\\'"))}
 function hueOf(s){let h=0;for(let i=0;i<String(s).length;i++)h=(h*31+String(s).charCodeAt(i))%360;return h}
 function fallbackArt(label){let h=hueOf(label||'team');return `linear-gradient(135deg,hsl(${h} 42% 26%),hsl(${(h+38)%360} 38% 11%))`}
-function monSprite(name){let slug=String(name||'').toLowerCase().trim().replace(/[.'’:%]/g,'').replace(/\s+/g,'-');return `https://play.pokemonshowdown.com/sprites/gen5/${slug}.png`}
+function monSprite(name){
+  let raw = String(name || '').toLowerCase().trim();
+  let slug = raw.replace(/[.'’:%]/g, '')
+    .replace(/^alolan\s+/i, '')
+    .replace(/^galarian\s+/i, '')
+    .replace(/^hisuian\s+/i, '')
+    .replace(/^paldean\s+/i, '')
+    .replace(/^bloodmoon\s+/i, '')
+    .replace(/\s+/g, '-');
+  
+  if(raw.startsWith('alolan ')) slug += '-alola';
+  else if(raw.startsWith('galarian ')) slug += '-galar';
+  else if(raw.startsWith('hisuian ')) slug += '-hisui';
+  else if(raw.startsWith('paldean ')) slug += '-paldea';
+  else if(raw.startsWith('bloodmoon ')) slug = 'ursaluna-bloodmoon';
+  else if(slug === 'urshifu-rapid-strike') slug = 'urshifu-rapidstrike';
+  else if(slug === 'urshifu-single-strike') slug = 'urshifu';
+  return `https://play.pokemonshowdown.com/sprites/gen5/${slug}.png`;
+}
 
 /* ══ 1. TEAM COVERS: compress uploads ══════════════════════════════
    Same editor, same teamCovers storage — only the file handler
