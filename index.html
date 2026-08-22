@@ -612,7 +612,8 @@ function getTournamentRoster(p, t){
 }
 
 function addMon(p){
-  let v = document.querySelector('#newMon')?.value.trim();
+  let input = document.querySelector('#newMon');
+  let v = input?.value.trim();
   if(!v) return;
   roster[p] = roster[p] || [];
   roster[p].push(v);
@@ -629,10 +630,24 @@ function addMon(p){
     } else {
       teamHistory[p].push({ tournament: active.name, tournamentId: active.id, team: teamName(active, p), pokemon: [...roster[p]] });
     }
+    let histGrid = document.getElementById('histMonGrid_' + active.id);
+    if(histGrid) histGrid.innerHTML = renderTournamentRosterGrid(p, active.id);
+    let histCount = document.getElementById('histCount_' + active.id);
+    if(histCount) histCount.textContent = `${active.rosters[p].length} Pokémon`;
   }
   
   persistLeague();
-  openProfile(p);
+
+  let rList = document.querySelector('#rosterList');
+  if(rList) rList.innerHTML = rosterList(p);
+  let countEl = document.querySelector('#activeRosterCount');
+  if(countEl) countEl.textContent = `${(roster[p]||[]).length} Pokémon`;
+
+  if(input){
+    input.value = '';
+    updateMonAddPreview('', 'newMonPreview');
+    input.focus();
+  }
 }
 
 function removeMon(p, i){
@@ -643,9 +658,40 @@ function removeMon(p, i){
     active.rosters[p] = [...(roster[p]||[])];
     let h = (teamHistory[p]||[]).find(x => (x.tournamentId && x.tournamentId === active.id) || x.tournament === active.name || x.tournament === (active.name + ' · ' + active.season) || String(x.tournament).toLowerCase() === String(active.name).toLowerCase());
     if(h) h.pokemon = [...(roster[p]||[])];
+    let histGrid = document.getElementById('histMonGrid_' + active.id);
+    if(histGrid) histGrid.innerHTML = renderTournamentRosterGrid(p, active.id);
+    let histCount = document.getElementById('histCount_' + active.id);
+    if(histCount) histCount.textContent = `${(active.rosters[p]||[]).length} Pokémon`;
   }
   persistLeague();
-  openProfile(p);
+
+  let rList = document.querySelector('#rosterList');
+  if(rList) rList.innerHTML = rosterList(p);
+  let countEl = document.querySelector('#activeRosterCount');
+  if(countEl) countEl.textContent = `${(roster[p]||[]).length} Pokémon`;
+}
+
+function renderTournamentRosterGrid(p, tId){
+  let t = tournamentData[tId];
+  if(!t) return '';
+  let tMons = getTournamentRoster(p, t);
+  let canEdit = moderator || (sessionUser && sessionUser === accountForPlayer(p));
+  if(!tMons.length){
+    return `<div class="pf-empty" style="padding:14px;border:1px dashed #2a2a38;background:#0d0d12;border-radius:6px;margin-bottom:8px">
+      <span style="font-size:11px;color:#8a8894">No Pokémon recorded for this tournament roster yet.</span>
+    </div>`;
+  }
+  return `<div class="mon-grid" style="grid-template-columns:repeat(auto-fill,minmax(128px,1fr));gap:6px">
+    ${tMons.map((m, idx) => `
+      <div class="mon-chip historic" style="padding:6px 8px;border-radius:6px">
+        <img src="${esc(monSprite(m))}" alt="${esc(m)}" style="width:30px;height:30px;object-fit:contain;image-rendering:pixelated;flex:none;filter:drop-shadow(0 2px 4px rgba(0,0,0,0.6))" loading="lazy" onerror="this.style.visibility='hidden'">
+        <div style="min-width:0;flex:1">
+          <span style="font:800 12px 'Barlow Condensed';color:#f5f3f0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:block">${esc(m)}</span>
+        </div>
+        ${canEdit ? `<button class="x" title="Remove ${esc(m)}" onclick="removeTournamentRosterMon('${jsArg(p)}', '${jsArg(t.id)}', ${idx})">×</button>` : ''}
+      </div>
+    `).join('')}
+  </div>`;
 }
 
 function addTournamentRosterMon(p, tId){
@@ -674,10 +720,24 @@ function addTournamentRosterMon(p, tId){
 
   if(t.id === ongoingT()?.id){
     roster[p] = [...t.rosters[p]];
+    let rList = document.querySelector('#rosterList');
+    if(rList) rList.innerHTML = rosterList(p);
+    let countEl = document.querySelector('#activeRosterCount');
+    if(countEl) countEl.textContent = `${(roster[p]||[]).length} Pokémon`;
   }
 
   persistLeague();
-  openProfile(p);
+
+  let gridEl = document.getElementById('histMonGrid_' + tId);
+  if(gridEl) gridEl.innerHTML = renderTournamentRosterGrid(p, tId);
+  let countEl = document.getElementById('histCount_' + tId);
+  if(countEl) countEl.textContent = `${t.rosters[p].length} Pokémon`;
+
+  if(input){
+    input.value = '';
+    updateMonAddPreview('', 'histMonPreview_' + tId);
+    input.focus();
+  }
 }
 
 function removeTournamentRosterMon(p, tId, idx){
@@ -692,9 +752,17 @@ function removeTournamentRosterMon(p, tId, idx){
   }
   if(t.id === ongoingT()?.id && roster[p]){
     roster[p] = [...(t.rosters[p]||[])];
+    let rList = document.querySelector('#rosterList');
+    if(rList) rList.innerHTML = rosterList(p);
+    let countEl = document.querySelector('#activeRosterCount');
+    if(countEl) countEl.textContent = `${(roster[p]||[]).length} Pokémon`;
   }
   persistLeague();
-  openProfile(p);
+
+  let gridEl = document.getElementById('histMonGrid_' + tId);
+  if(gridEl) gridEl.innerHTML = renderTournamentRosterGrid(p, tId);
+  let countEl = document.getElementById('histCount_' + tId);
+  if(countEl) countEl.textContent = `${(t.rosters[p]||[]).length} Pokémon`;
 }
 
 function addHistoryMon(p,i){let v=document.querySelector('#historyMon'+i)?.value.trim();if(v){teamHistory[p][i].pokemon.push(v);persistLeague();openProfile(p)}}
@@ -4078,28 +4146,11 @@ function pastTournaments(p){
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;padding-bottom:6px;border-bottom:1px solid #1f1f2a">
           <div style="display:flex;align-items:center;gap:8px">
             <span class="eyebrow" style="color:var(--amber);margin:0">Tournament Roster</span>
-            <span class="tag" style="background:#1c1c26;border-color:#323242;font-size:10px">${tMons.length} Pokémon</span>
+            <span id="histCount_${esc(t.id)}" class="tag" style="background:#1c1c26;border-color:#323242;font-size:10px">${tMons.length} Pokémon</span>
           </div>
-          <button class="btn ghost btn-sm" style="padding:3px 8px!important;font-size:10px!important" onclick="closeModal(); openTournament('${jsArg(t.id)}')">View Tournament →</button>
         </div>
 
-        ${tMons.length ? `
-          <div class="mon-grid" style="grid-template-columns:repeat(auto-fill,minmax(128px,1fr));gap:6px">
-            ${tMons.map((m, idx) => `
-              <div class="mon-chip historic" style="padding:6px 8px;border-radius:6px">
-                <img src="${esc(monSprite(m))}" alt="${esc(m)}" style="width:30px;height:30px;object-fit:contain;image-rendering:pixelated;flex:none;filter:drop-shadow(0 2px 4px rgba(0,0,0,0.6))" loading="lazy" onerror="this.style.visibility='hidden'">
-                <div style="min-width:0;flex:1">
-                  <span style="font:800 12px 'Barlow Condensed';color:#f5f3f0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:block">${esc(m)}</span>
-                </div>
-                ${canEdit ? `<button class="x" title="Remove ${esc(m)}" onclick="removeTournamentRosterMon('${jsArg(p)}', '${jsArg(t.id)}', ${idx})">×</button>` : ''}
-              </div>
-            `).join('')}
-          </div>
-        ` : `
-          <div class="pf-empty" style="padding:14px;border:1px dashed #2a2a38;background:#0d0d12;border-radius:6px;margin-bottom:8px">
-            <span style="font-size:11px;color:#8a8894">No Pokémon recorded for this tournament roster yet.</span>
-          </div>
-        `}
+        <div id="histMonGrid_${esc(t.id)}">${renderTournamentRosterGrid(p, t.id)}</div>
 
         ${canEdit ? `
           <div style="margin-top:10px;padding-top:10px;border-top:1px solid #1a1a24;display:flex;gap:8px;align-items:center">
@@ -4301,7 +4352,7 @@ function openProfile(p){
         <div class="pf-section">
           <div class="pf-head">
             <h4>Active Roster</h4>
-            <span class="pf-count">${(roster[p]||[]).length} Pokémon</span>
+            <span id="activeRosterCount" class="pf-count">${(roster[p]||[]).length} Pokémon</span>
           </div>
           ${(moderator||(sessionUser&&sessionUser===accountForPlayer(p)))?`
             <div class="poke-search-modern" style="margin-bottom:14px;display:flex;gap:8px;align-items:center">
