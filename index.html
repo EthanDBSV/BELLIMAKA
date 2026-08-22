@@ -202,14 +202,30 @@
 .pf-mod-box{background:#121217;border:1px solid #2d2d38;border-radius:8px;padding:12px}
 .pf-mod-actions{display:grid;grid-template-columns:1fr 1fr;gap:6px}
 .btn-sm{padding:7px 8px!important;font-size:10px!important;font-weight:800!important;text-align:center;justify-content:center}
-.mon-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(132px,1fr));gap:8px}
-.mon-chip{position:relative;display:flex;align-items:center;gap:8px;background:linear-gradient(135deg,#212128,#191920);border:1px solid #34343d;border-left:3px solid var(--red);border-radius:6px;padding:7px 9px;min-width:0}
-.mon-chip img{width:36px;height:36px;object-fit:contain;image-rendering:pixelated;flex:none;filter:drop-shadow(0 2px 4px #0008)}
-.mon-chip span{font-size:11px;font-weight:700;line-height:1.25;overflow:hidden;text-overflow:ellipsis}
-.mon-chip .x{position:absolute;top:3px;right:4px;border:0;background:none;color:#ff7a80;cursor:pointer;font-size:14px;line-height:1;opacity:0;transition:.15s;padding:1px 3px}
+.mon-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(136px,1fr));gap:8px}
+.mon-chip{position:relative;display:flex;align-items:center;gap:9px;background:linear-gradient(135deg,#1f1f29,#161620);border:1px solid #363646;border-left:3px solid var(--red);border-radius:7px;padding:7px 9px;min-width:0;transition:transform .15s ease,border-color .15s ease}
+.mon-chip:hover{border-color:#5c242c;transform:translateY(-1px)}
+.mon-chip img{width:36px;height:36px;object-fit:contain;image-rendering:pixelated;flex:none;filter:drop-shadow(0 2px 4px rgba(0,0,0,0.6))}
+.mon-chip span{font:800 13px/1.2 'Barlow Condensed';letter-spacing:.3px;color:#f5f3f0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.mon-chip .x{position:absolute;top:3px;right:5px;border:0;background:none;color:#ff858b;cursor:pointer;font-size:15px;line-height:1;opacity:0.4;transition:opacity .15s;padding:0 3px}
 .mon-chip:hover .x{opacity:1}
-.mon-chip.historic{border-left-color:#5a5a66;background:linear-gradient(135deg,#1c1c22,#17171c)}
-.mon-chip.historic img{filter:grayscale(.28) drop-shadow(0 2px 4px #0008)}
+.mon-chip.historic{border-left-color:#6366f1;background:linear-gradient(135deg,#191924,#13131c)}
+.mon-chip.historic img{filter:drop-shadow(0 2px 4px rgba(0,0,0,0.6))}
+
+/* Modern Expandable Past Tournaments Accordion */
+.past-tourney-card{border:1px solid #2f2f3c;border-left:3px solid #4a4a58;border-radius:8px;margin-top:8px;background:#15151e;overflow:hidden;transition:border-color .15s ease, background .15s ease}
+.past-tourney-card.gold{border-left-color:#f3c245;background:linear-gradient(90deg,rgba(243,194,69,0.12),#15151e 40%)}
+.past-tourney-card.silver{border-left-color:#c8c8d2;background:linear-gradient(90deg,rgba(200,200,210,0.10),#15151e 40%)}
+.past-tourney-card.bronze{border-left-color:#cd7f32;background:linear-gradient(90deg,rgba(205,127,50,0.12),#15151e 40%)}
+.past-tourney-card.cut{border-left-color:#a855f7;background:linear-gradient(90deg,rgba(168,85,247,0.10),#15151e 40%)}
+
+.past-tourney-summary{display:grid;grid-template-columns:58px minmax(0,1fr) auto 24px;gap:12px;align-items:center;padding:10px 14px;cursor:pointer;user-select:none;list-style:none}
+.past-tourney-summary::-webkit-details-marker{display:none}
+.past-tourney-summary:hover{background:rgba(255,255,255,0.03)}
+.past-chevron{font-size:11px;color:#8e8c95;transition:transform .2s ease;display:grid;place-items:center;user-select:none}
+details[open] > .past-tourney-summary .past-chevron{transform:rotate(180deg);color:var(--amber)}
+.past-tourney-body{padding:12px 14px 14px;background:#101016;border-top:1px solid #232330}
+
 .past-row{display:grid;grid-template-columns:58px minmax(0,1fr) auto;gap:12px;align-items:center;padding:10px 12px;border:1px solid #2f2f38;border-left:3px solid #4a4a55;border-radius:7px;margin-top:8px;background:#17171d}
 .past-row.gold{border-left-color:#f3c245;background:linear-gradient(90deg,rgba(243,194,69,0.18),#17171d 55%)}
 .past-row.silver{border-left-color:#c8c8d2;background:linear-gradient(90deg,rgba(200,200,210,0.15),#17171d 55%)}
@@ -509,7 +525,130 @@ function noTournament(){return head('No active tournament','League management')+
 function closeModal(){document.querySelector('#modal').innerHTML='';render()}
 
 
-function addMon(p){let v=document.querySelector('#newMon').value.trim();if(v){roster[p]??=[];roster[p].push(v);persistLeague();openProfile(p)}}function removeMon(p,i){roster[p].splice(i,1);persistLeague();openProfile(p)}function addHistoryMon(p,i){let v=document.querySelector('#historyMon'+i).value.trim();if(v){teamHistory[p][i].pokemon.push(v);persistLeague();openProfile(p)}}function removeHistoryMon(p,i,j){teamHistory[p][i].pokemon.splice(j,1);persistLeague();openProfile(p)}
+function updateMonAddPreview(val, imgId='newMonPreview'){
+  let img = document.getElementById(imgId);
+  if(!img) return;
+  let clean = (val || '').trim();
+  if(!clean){
+    img.style.opacity = '0';
+    img.src = '';
+  } else {
+    img.src = monSprite(clean);
+    img.onload = () => { img.style.opacity = '1'; };
+    img.onerror = () => { img.style.opacity = '0'; };
+  }
+}
+
+function getPokemonDatalistHtml(){
+  let names = new Set([
+    'Garchomp','Great Tusk','Iron Valiant','Kingambit','Ogerpon','Flutter Mane','Dragonite',
+    'Roaring Moon','Rillaboom','Urshifu','Chien-Pao','Chi-Yu','Landorus','Ting-Lu','Dondozo',
+    'Tatsugiri','Gholdengo','Incineroar','Enamorus','Walking Wake','Gouging Fire','Raging Bolt',
+    'Iron Boulder','Iron Crown','Torkoal','Pelipper','Politoed','Ninetales','Tyranitar',
+    'Hippowdon','Abomasnow','Baxcalibur','Dragapult','Volcarona','Heatran','Amoonguss',
+    'Sinistcha','Primarina','Skeledirge','Meowscarada','Quaquaval','Annihilape','Iron Hands',
+    'Iron Bundle','Iron Moth','Iron Treads','Iron Jugulis','Brute Bonnet','Scream Tail',
+    'Sandy Shocks','Slither Wing','Gengar','Clefable','Snorlax','Zapdos','Moltres','Articuno',
+    'Raikou','Entei','Suicune','Latios','Latias','Corviknight','Gliscor','Garganacl','Torterra',
+    'Empoleon','Infernape','Greninja','Cinderace','Lucario','Scizor','Breloom','Ursaluna',
+    'Archaludon','Hydreigon','Kommo-o','Goodra','Salamence','Metagross','Gyarados','Milotic'
+  ]);
+  if(typeof draftPool !== 'undefined' && draftPool?.items){
+    draftPool.items.forEach(x => { if(x.name) names.add(x.name); });
+  }
+  Object.values(roster||{}).forEach(arr => { (arr||[]).forEach(m => names.add(m)); });
+  Object.values(teamHistory||{}).forEach(arr => { (arr||[]).forEach(h => (h.pokemon||[]).forEach(m => names.add(m))); });
+  Object.values(tournamentData||{}).forEach(t => { Object.values(t.rosters||{}).forEach(arr => (arr||[]).forEach(m => names.add(m))); });
+  return `<datalist id="allPokemonDatalist">${Array.from(names).sort().map(m => `<option value="${esc(m)}">`).join('')}</datalist>`;
+}
+
+function getTournamentRoster(p, t){
+  if(t?.rosters?.[p]?.length) return t.rosters[p];
+  let h = (teamHistory[p]||[]).find(x => (x.tournamentId && x.tournamentId === t.id) || x.tournament === t.name || x.tournament === (t.name + ' · ' + t.season) || String(x.tournament).toLowerCase() === String(t.name).toLowerCase());
+  if(h?.pokemon?.length) return h.pokemon;
+  let activeId = ongoingT()?.id;
+  if(t.id === activeId && roster[p]?.length) return roster[p];
+  return [];
+}
+
+function addMon(p){
+  let v = document.querySelector('#newMon')?.value.trim();
+  if(!v) return;
+  roster[p] = roster[p] || [];
+  roster[p].push(v);
+  let active = ongoingT();
+  if(active && (active.players||[]).includes(p)){
+    active.rosters = active.rosters || {};
+    active.rosters[p] = active.rosters[p] || [];
+    if(!active.rosters[p].includes(v)) active.rosters[p].push(v);
+    teamHistory[p] = teamHistory[p] || [];
+    let h = teamHistory[p].find(x => x.tournamentId === active.id || x.tournament === active.name);
+    if(h){
+      h.pokemon = h.pokemon || [];
+      if(!h.pokemon.includes(v)) h.pokemon.push(v);
+    } else {
+      teamHistory[p].push({ tournament: active.name, tournamentId: active.id, team: teamName(active, p), pokemon: [v] });
+    }
+  }
+  persistLeague();
+  openProfile(p);
+}
+
+function removeMon(p, i){
+  if(roster[p]) roster[p].splice(i, 1);
+  persistLeague();
+  openProfile(p);
+}
+
+function addTournamentRosterMon(p, tId){
+  let input = document.getElementById('histMon_' + tId);
+  let v = input?.value.trim();
+  if(!v) return;
+  let t = tournamentData[tId];
+  if(!t) return;
+  t.rosters = t.rosters || {};
+  t.rosters[p] = t.rosters[p] || [];
+  t.rosters[p].push(v);
+
+  teamHistory[p] = teamHistory[p] || [];
+  let h = teamHistory[p].find(x => (x.tournamentId && x.tournamentId === t.id) || x.tournament === t.name || x.tournament === (t.name + ' · ' + t.season));
+  if(h){
+    h.pokemon = h.pokemon || [];
+    h.pokemon.push(v);
+  } else {
+    teamHistory[p].push({
+      tournament: t.name,
+      tournamentId: t.id,
+      team: teamName(t, p),
+      pokemon: [v]
+    });
+  }
+
+  if(t.id === ongoingT()?.id){
+    roster[p] = roster[p] || [];
+    if(!roster[p].includes(v)) roster[p].push(v);
+  }
+
+  persistLeague();
+  openProfile(p);
+}
+
+function removeTournamentRosterMon(p, tId, idx){
+  let t = tournamentData[tId];
+  if(!t) return;
+  if(t.rosters?.[p]){
+    t.rosters[p].splice(idx, 1);
+  }
+  let h = (teamHistory[p]||[]).find(x => (x.tournamentId && x.tournamentId === t.id) || x.tournament === t.name || x.tournament === (t.name + ' · ' + t.season));
+  if(h?.pokemon){
+    h.pokemon.splice(idx, 1);
+  }
+  persistLeague();
+  openProfile(p);
+}
+
+function addHistoryMon(p,i){let v=document.querySelector('#historyMon'+i)?.value.trim();if(v){teamHistory[p][i].pokemon.push(v);persistLeague();openProfile(p)}}
+function removeHistoryMon(p,i,j){if(teamHistory[p]?.[i]?.pokemon){teamHistory[p][i].pokemon.splice(j,1);persistLeague();openProfile(p)}}
 
 
 
@@ -3679,12 +3818,23 @@ const LEAGUE={
 /* --- current roster --- */
 function rosterList(p){
   let mons=roster[p]||[];
-  if(!mons.length)return `<div class="pf-empty">No Pokémon drafted yet.</div>`;
-  return `<div class="mon-grid">${mons.map((m,i)=>`<div class="mon-chip">
-    <img src="${esc(monSprite(m))}" alt="" loading="lazy" onerror="this.style.visibility='hidden'">
-    <span>${esc(m)}</span>
-    ${moderator?`<button class="x" title="Remove ${esc(m)}" onclick="removeMon('${jsArg(p)}',${i})">×</button>`:''}
-  </div>`).join('')}</div>`
+  let canEdit=moderator||(sessionUser&&sessionUser===accountForPlayer(p));
+  if(!mons.length){
+    return `<div class="pf-empty" style="border:1px dashed #343444;border-radius:8px;padding:20px 16px;text-align:center;color:#8e8c95;font-size:12px;background:#121218">
+      <div style="font-size:24px;margin-bottom:6px;opacity:0.6">⚡</div>
+      <div style="font-weight:800;color:#e2e0e8;font-size:13px">No Pokémon on active roster</div>
+      <div style="font-size:11px;margin-top:3px;color:#7e7c88">Use the input above to add Pokémon to this trainer's draft roster.</div>
+    </div>`;
+  }
+  return `<div class="mon-grid">${mons.map((m,i)=>`
+    <div class="mon-chip">
+      <img src="${esc(monSprite(m))}" alt="${esc(m)}" style="width:36px;height:36px;object-fit:contain;image-rendering:pixelated;flex:none;filter:drop-shadow(0 2px 4px rgba(0,0,0,0.6))" loading="lazy" onerror="this.style.visibility='hidden'">
+      <div style="min-width:0;flex:1">
+        <span title="${esc(m)}">${esc(m)}</span>
+      </div>
+      ${canEdit?`<button class="x" title="Remove ${esc(m)}" onclick="removeMon('${jsArg(p)}',${i})">×</button>`:''}
+    </div>
+  `).join('')}</div>`;
 }
 
 /* --- team history --- */
@@ -3705,7 +3855,7 @@ function historyList(p){
   </div>`).join('')
 }
 
-/* --- past tournaments (automatic) ---
+/* --- past tournaments (automatic & expandable) ---
    Everything here is derived from tournament data that already exists:
    the same record maths the stats engine uses, plus the finish worked
    out from the champion, the bracket cache, and the group standings. */
@@ -3809,20 +3959,67 @@ function pastTournaments(p){
       if(sa && sb && sa !== sb) return sb - sa;
       return String(b.id||'').localeCompare(String(a.id||''));
     });
-  if(!played.length)return `<div class="pf-empty">No tournament appearances recorded yet.</div>`;
+  if(!played.length)return `<div class="pf-empty" style="border:1px dashed #343444;border-radius:8px;padding:20px;text-align:center;color:#8e8c95;font-size:12px;background:#121218">No tournament appearances recorded yet.</div>`;
+
+  let canEdit = moderator || (sessionUser && sessionUser === accountForPlayer(p));
+
   return played.map(t=>{
     let rec=tournamentRecord(t,p);
     let f=tournamentFinish(t,p);
-    let hist=(teamHistory[p]||[]).find(h=>h.tournament===t.name||h.tournament===(t.name+' · '+t.season));
-    return `<div class="past-row ${f.cls}">
-      <div class="past-place">${esc(f.label)}<small>${t.status==='ONGOING'?'so far':'finish'}</small></div>
-      <div style="min-width:0">
-        <div class="past-name">${esc(t.name)}</div>
-        <div class="past-meta">${esc([t.season,f.note,teamName(t,p)].filter(x=>x&&x!=='Unassigned team').join(' · '))}</div>
-        ${hist?.pokemon?.length?`<div class="mon-grid" style="margin-top:6px;grid-template-columns:repeat(auto-fill,minmax(90px,1fr));gap:5px">${hist.pokemon.map(m=>`<div class="mon-chip historic" style="padding:3px 6px"><img src="${esc(monSprite(m))}" alt="" style="width:24px;height:24px" loading="lazy" onerror="this.style.visibility='hidden'"><span style="font-size:10px">${esc(m)}</span></div>`).join('')}</div>`:''}
+    let tTeam=teamName(t,p);
+    let tMons=getTournamentRoster(p,t);
+
+    return `<details class="past-tourney-card ${f.cls}">
+      <summary class="past-tourney-summary">
+        <div class="past-place">${esc(f.label)}<small>${t.status==='ONGOING'?'so far':'finish'}</small></div>
+        <div style="min-width:0">
+          <div class="past-name">${esc(t.name)}</div>
+          <div class="past-meta">${esc([t.season,f.note,(tTeam&&tTeam!=='Unassigned team')?tTeam:null].filter(Boolean).join(' · '))}</div>
+        </div>
+        <div class="past-rec">${esc(rec)}<small>W-L</small></div>
+        <div class="past-chevron">▼</div>
+      </summary>
+
+      <div class="past-tourney-body">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;padding-bottom:6px;border-bottom:1px solid #1f1f2a">
+          <div style="display:flex;align-items:center;gap:8px">
+            <span class="eyebrow" style="color:var(--amber);margin:0">Tournament Roster</span>
+            <span class="tag" style="background:#1c1c26;border-color:#323242;font-size:10px">${tMons.length} Pokémon</span>
+          </div>
+          <button class="btn ghost btn-sm" style="padding:3px 8px!important;font-size:10px!important" onclick="closeModal(); openTournament('${jsArg(t.id)}')">View Tournament →</button>
+        </div>
+
+        ${tMons.length ? `
+          <div class="mon-grid" style="grid-template-columns:repeat(auto-fill,minmax(128px,1fr));gap:6px">
+            ${tMons.map((m, idx) => `
+              <div class="mon-chip historic" style="padding:6px 8px;border-radius:6px">
+                <img src="${esc(monSprite(m))}" alt="${esc(m)}" style="width:30px;height:30px;object-fit:contain;image-rendering:pixelated;flex:none;filter:drop-shadow(0 2px 4px rgba(0,0,0,0.6))" loading="lazy" onerror="this.style.visibility='hidden'">
+                <div style="min-width:0;flex:1">
+                  <span style="font:800 12px 'Barlow Condensed';color:#f5f3f0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:block">${esc(m)}</span>
+                </div>
+                ${canEdit ? `<button class="x" title="Remove ${esc(m)}" onclick="removeTournamentRosterMon('${jsArg(p)}', '${jsArg(t.id)}', ${idx})">×</button>` : ''}
+              </div>
+            `).join('')}
+          </div>
+        ` : `
+          <div class="pf-empty" style="padding:14px;border:1px dashed #2a2a38;background:#0d0d12;border-radius:6px;margin-bottom:8px">
+            <span style="font-size:11px;color:#8a8894">No Pokémon recorded for this tournament roster yet.</span>
+          </div>
+        `}
+
+        ${canEdit ? `
+          <div style="margin-top:10px;padding-top:10px;border-top:1px solid #1a1a24;display:flex;gap:8px;align-items:center">
+            <div style="position:relative;flex:1;display:flex;align-items:center">
+              <div style="position:absolute;left:8px;width:24px;height:24px;display:grid;place-items:center;pointer-events:none">
+                <img id="histMonPreview_${esc(t.id)}" src="" alt="" style="width:22px;height:22px;object-fit:contain;opacity:0;transition:opacity .15s ease" onerror="this.style.opacity='0'">
+              </div>
+              <input id="histMon_${esc(t.id)}" list="allPokemonDatalist" placeholder="Add Pokémon to ${esc(t.name)} roster..." style="width:100%;padding-left:36px;background:#14141c;border:1px solid #2e2e3e;border-radius:5px;color:#f5f3f0;font-size:11px;height:32px" oninput="updateMonAddPreview(this.value, 'histMonPreview_${esc(t.id)}')" onkeydown="if(event.key==='Enter'){event.preventDefault();addTournamentRosterMon('${jsArg(p)}', '${jsArg(t.id)}')}">
+            </div>
+            <button class="btn btn-sm" style="height:32px;padding:0 12px!important" onclick="addTournamentRosterMon('${jsArg(p)}', '${jsArg(t.id)}')">+ Add</button>
+          </div>
+        ` : ''}
       </div>
-      <div class="past-rec">${esc(rec)}<small>W-L</small></div>
-    </div>`
+    </details>`;
   }).join('');
 }
 
@@ -4009,13 +4206,18 @@ function openProfile(p){
       <section class="card roster-editor" style="padding:18px">
         <div class="pf-section">
           <div class="pf-head">
-            <h4>Current Roster</h4>
+            <h4>Active Roster</h4>
             <span class="pf-count">${(roster[p]||[]).length} Pokémon</span>
           </div>
-          ${moderator?`
-            <div class="poke-search" style="margin-bottom:12px;display:flex;gap:8px">
-              <input id="newMon" placeholder="Search / add a Pokémon" style="flex:1" onkeydown="if(event.key==='Enter'){event.preventDefault();addMon('${jsArg(p)}')}">
-              <button class="btn" onclick="addMon('${jsArg(p)}')">Add</button>
+          ${(moderator||(sessionUser&&sessionUser===accountForPlayer(p)))?`
+            <div class="poke-search-modern" style="margin-bottom:14px;display:flex;gap:8px;align-items:center">
+              <div style="position:relative;flex:1;display:flex;align-items:center">
+                <div style="position:absolute;left:10px;width:28px;height:28px;display:grid;place-items:center;pointer-events:none">
+                  <img id="newMonPreview" src="" alt="" style="width:26px;height:26px;object-fit:contain;opacity:0;transition:opacity .15s ease" onerror="this.style.opacity='0'">
+                </div>
+                <input id="newMon" list="allPokemonDatalist" placeholder="Type Pokémon name (e.g. Garchomp, Kingambit)..." style="width:100%;padding-left:42px;background:#14141d;border:1px solid #333344;border-radius:6px;color:#f5f3f0;font-size:12px;height:38px" oninput="updateMonAddPreview(this.value, 'newMonPreview')" onkeydown="if(event.key==='Enter'){event.preventDefault();addMon('${jsArg(p)}')}">
+              </div>
+              <button class="btn" style="height:38px;padding:0 16px;font-weight:800" onclick="addMon('${jsArg(p)}')">+ Add</button>
             </div>
           `:''}
           <div id="rosterList">${rosterList(p)}</div>
@@ -4026,10 +4228,15 @@ function openProfile(p){
             <h4>Tournament History</h4>
             <span class="pf-count">${career.tournaments} tournament${career.tournaments===1?'':'s'}</span>
           </div>
-          ${pastTournaments(p)}
+          <p class="sub" style="margin-top:-6px;margin-bottom:10px;font-size:11px">Click any tournament below to expand and view the roster used in that event.</p>
+          <div style="display:flex;flex-direction:column;gap:8px">
+            ${pastTournaments(p)}
+          </div>
         </div>
       </section>
-    </div></div></div>`
+    </div>
+    ${getPokemonDatalistHtml()}
+  </div></div>`
 }
 
 function openBadgeManager(p){
