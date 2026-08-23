@@ -6869,29 +6869,52 @@ function saveBracketPredictionPick(mId, choice){
   }
 }
 
+function setPredStageTab(tab){
+  try {
+    localStorage.setItem('draftdex-pred-stage-tab', tab);
+  } catch(e){}
+  render();
+}
+
 function predictions(t=activeT()){
   if(!t) return noTournament();
   let started = (t.matches || []).some(x => x.as !== '' && x.as != null);
   let groups = groupsOf(t);
+  let groupsList = Object.keys(groups);
   setTimeout(() => renderPredictionLeaders(t), 0);
   let leaderboard = leaderboardShell(t);
 
-  // If Top Cut is active or locked in, render the Interactive Top Cut Prediction Bracket!
-  if(t.phase === 'topcut' || t.status === 'COMPLETE' || t.bracketManagerData){
-    return `<div class="pred-layout">
-      <div style="min-width:0">
-        ${topCutPredictionBracket(t)}
-      </div>
-      ${leaderboard}
-    </div>`;
-  }
+  let defaultStage = (t.phase === 'topcut' || t.status === 'COMPLETE' || !!t.bracketManagerData) ? 'topcut' : 'group';
+  let savedStage = null;
+  try { savedStage = localStorage.getItem('draftdex-pred-stage-tab'); } catch(e){}
+  let activeStage = (savedStage === 'topcut' || savedStage === 'group') ? savedStage : defaultStage;
 
-  // Group Stage Predictions
   let champQuestion = 'Who will be the ' + t.name + ' Champion?';
   let games = t.matches || [];
 
-  return `<div class="pred-layout">
-    <div style="min-width:0;display:flex;flex-direction:column;gap:20px">
+  let stageTabs = `
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:16px;padding-bottom:12px;border-bottom:1px solid #23232d">
+      <div style="display:flex;gap:8px">
+        <button class="btn ${activeStage === 'topcut' ? '' : 'ghost'}" style="${activeStage === 'topcut' ? 'background:#ffd166;color:#121212;font-weight:900;border-color:#ffd166;' : 'color:#c0bec8;border-color:#343440;'}"
+          onclick="setPredStageTab('topcut')">
+          🏆 Top Cut Bracket
+        </button>
+        <button class="btn ${activeStage === 'group' ? '' : 'ghost'}" style="${activeStage === 'group' ? 'background:#ffd166;color:#121212;font-weight:900;border-color:#ffd166;' : 'color:#c0bec8;border-color:#343440;'}"
+          onclick="setPredStageTab('group')">
+          ⚔️ Group Stage Pick'ems
+        </button>
+      </div>
+      <div style="font-size:11px;color:#8e8c95">
+        ${activeStage === 'topcut' ? '20 PTS per bracket match · Double elimination' : '100 PTS Champ · 45 PTS Groups · 8 PTS Matches'}
+      </div>
+    </div>
+  `;
+
+  let mainContent = '';
+  if(activeStage === 'topcut'){
+    mainContent = topCutPredictionBracket(t);
+  } else {
+    mainContent = `<div style="display:flex;flex-direction:column;gap:20px">
       <!-- 1. Champion Contender Outright Picker (100 PTS) -->
       ${renderChampionPredictionPicker(t, champQuestion, started)}
 
@@ -6913,8 +6936,28 @@ function predictions(t=activeT()){
           </div>
         ` : '<div class="card empty"><p class="sub">No fixtures scheduled yet.</p></div>'}
       </section>
+    </div>`;
+  }
+
+  let sideRail = `
+    <div style="display:flex;flex-direction:column;gap:16px">
+      ${leaderboard}
+      <aside class="card side" style="padding:16px 18px">
+        <div class="card-title" style="font-size:11px;letter-spacing:1px;color:#ffd166;text-transform:uppercase">Tournament Record</div>
+        <div class="side-line" style="padding:8px 0;font-size:11px">${esc(t.regulation || '')}</div>
+        <div class="side-line" style="padding:8px 0;font-size:11px"><b>${t.players?.length || 0}</b> Trainers · ${groupsList.length} Group${groupsList.length === 1 ? '' : 's'}</div>
+        <div class="side-line" style="padding:8px 0;font-size:11px">Top ${advancePerGroup(t)} Per Group</div>
+        <div class="side-line" style="padding:8px 0;font-size:11px">${esc(t.start || '')} → ${esc(t.end || '')}</div>
+      </aside>
     </div>
-    ${leaderboard}
+  `;
+
+  return `<div class="pred-layout">
+    <div style="min-width:0">
+      ${stageTabs}
+      ${mainContent}
+    </div>
+    ${sideRail}
   </div>`;
 }
 /* ------------------------------------------------------------ 4. HALL OF FAME & LEAGUE RECORDS ENGINE ------------------------------------------------------------ */
@@ -7841,14 +7884,19 @@ function tournamentDetail(){
     :detailTab==='Top Cut'?topCutSection(t,!t.bracketManagerData)
     :predictions(t);
   let edit=moderator?` <button class="btn ghost" onclick="openTournamentEdit('${jsArg(t.id)}')">Edit</button>`:'';
-  return head(t.name,t.season + ' · ' + t.status,`<div><button class="btn ghost" onclick="go('Tournaments')">← Archive</button>${edit}${moderator?` <button class="btn ghost" style="color:#ff9ba1" onclick="deleteTournament('${jsArg(t.id)}')">Delete</button>`:''}</div>`)
-    +`<div class="tabs">${['Standings','Group Stage','Top Cut','Predictions'].map(x=>`<button class="${detailTab===x?'active':''}" onclick="detailTab='${x}';try{localStorage.setItem('draftdex-detail-tab','${x}')}catch(e){};render()">${x}</button>`).join('')}</div>`
-    +`<div class="detail-layout"><div>${content}</div><aside class="card side">
+  let headerHtml = head(t.name,t.season + ' · ' + t.status,`<div><button class="btn ghost" onclick="go('Tournaments')">← Archive</button>${edit}${moderator?` <button class="btn ghost" style="color:#ff9ba1" onclick="deleteTournament('${jsArg(t.id)}')">Delete</button>`:''}</div>`)
+    +`<div class="tabs">${['Standings','Group Stage','Top Cut','Predictions'].map(x=>`<button class="${detailTab===x?'active':''}" onclick="detailTab='${x}';try{localStorage.setItem('draftdex-detail-tab','${x}')}catch(e){};render()">${x}</button>`).join('')}</div>`;
+
+  if(detailTab === 'Predictions'){
+    return headerHtml + `<div>${content}</div>`;
+  }
+
+  return headerHtml + `<div class="detail-layout"><div>${content}</div><aside class="card side">
       <div class="card-title">Tournament Record</div>
       <div class="side-line">${esc(t.regulation||'')}</div>
       <div class="side-line"><b>${t.players.length}</b> Trainers · ${groups.length} Group${groups.length===1?'':'s'}</div>
       <div class="side-line">Top ${advancePerGroup(t)} Per Group</div>
-      <div class="side-line">${esc(t.start||'')} → ${esc(t.end||'')}</div></aside></div>`
+      <div class="side-line">${esc(t.start||'')} → ${esc(t.end||'')}</div></aside></div>`;
 }
 function openTournamentEdit(id){
   if(!moderator)return;
