@@ -436,6 +436,53 @@ details[open] > .past-tourney-summary .past-chevron{transform:rotate(180deg);col
 .leader.me{background:#241318;margin:0 -8px;padding-left:8px;padding-right:8px;border-radius:5px}
 .leader .pts{margin-left:auto;font:800 15px 'Barlow Condensed';color:var(--amber)}
 .leader-note{font-size:10px;color:#8e8c95;padding-top:11px;line-height:1.5}
+/* ------------------------------------------------------------ Live Draft Room & Interactive Draft Board ------------------------------------------------------------ */
+.draft-room-layout{display:flex;flex-direction:column;gap:18px;width:100%}
+.draft-hud{background:linear-gradient(135deg,#1c1618,#121217 60%);border:1px solid #3d242a;border-radius:10px;padding:18px 20px;position:relative;overflow:hidden;box-shadow:0 8px 28px rgba(0,0,0,0.5)}
+.draft-hud-head{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;margin-bottom:16px}
+.draft-hud-hero{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px;align-items:stretch}
+
+.draft-clock-card{background:linear-gradient(135deg,#2e1217,#17171e 75%);border:2px solid #ef3038;border-radius:8px;padding:16px;display:flex;align-items:center;gap:16px;box-shadow:0 0 24px rgba(239,48,56,0.25),inset 0 0 12px rgba(239,48,56,0.06);position:relative;overflow:hidden}
+.draft-clock-card.paused{border-color:#f59e0b;background:linear-gradient(135deg,#2e2208,#17171e 75%);box-shadow:0 0 20px rgba(245,158,11,0.2)}
+.draft-clock-card.completed{border-color:#10b981;background:linear-gradient(135deg,#0d2d1f,#17171e 75%);box-shadow:0 0 20px rgba(16,185,129,0.2)}
+.draft-clock-avatar{width:56px;height:56px;border-radius:50%;flex:none;background-size:cover;background-position:center;border:2px solid #fff;display:grid;place-items:center;font:800 20px 'Barlow Condensed';color:#fff;box-shadow:0 4px 12px rgba(0,0,0,0.6)}
+
+.draft-info-card{background:#17171e;border:1px solid #2d2d38;border-radius:8px;padding:14px 18px;display:flex;flex-direction:column;justify-content:space-between}
+
+.draft-snake-strip-wrap{margin-top:14px;background:#14141a;border:1px solid #282834;border-radius:8px;padding:10px 14px;overflow-x:auto}
+.draft-snake-strip{display:flex;align-items:center;gap:8px;min-width:max-content}
+.draft-pick-chip{display:inline-flex;align-items:center;gap:7px;padding:5px 10px;border-radius:6px;background:#1e1e28;border:1px solid #363644;font-size:11px;font-weight:700;color:#c8c7d2;white-space:nowrap;transition:all .15s ease}
+.draft-pick-chip.current{background:linear-gradient(135deg,#ef3038,#b51821);border-color:#ff8087;color:#fff;box-shadow:0 0 14px rgba(239,48,56,0.6);transform:scale(1.05);z-index:2}
+.draft-pick-chip.done{background:#111116;border-color:#22222a;color:#6b6a75;opacity:.65}
+
+.draft-recent-bar{display:flex;align-items:center;gap:10px;overflow-x:auto;padding:4px 0}
+.draft-recent-item{display:flex;align-items:center;gap:8px;background:#181822;border:1px solid #2f2f3e;padding:6px 12px;border-radius:6px;flex:none;font-size:11px}
+
+.draft-board-wrap{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:14px;align-items:start}
+.draft-tier-col{background:#15151c;border:1px solid #2a2a36;border-radius:8px;overflow:hidden;display:flex;flex-direction:column}
+.draft-tier-head{padding:10px 14px;display:flex;justify-content:space-between;align-items:center;background:#1c1c26;border-bottom:1px solid #2a2a36;font:800 13px/1 'Barlow Condensed';letter-spacing:.5px;text-transform:uppercase}
+.draft-tier-items{display:flex;flex-direction:column;gap:5px;padding:8px;max-height:580px;overflow-y:auto}
+
+.draft-mon-card{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:6px 10px;background:#1a1a24;border:1px solid #2e2e3e;border-radius:6px;transition:all .12s ease;user-select:none;cursor:pointer}
+.draft-mon-card:hover{background:#242432;border-color:#5c242c;transform:translateX(2px)}
+.draft-mon-card.drafted{background:#121217;border-color:#202028;opacity:.45;cursor:not-allowed}
+.draft-mon-card.drafted:hover{transform:none;background:#121217;border-color:#202028}
+.draft-mon-card.on-clock-target{border-color:#ffd166;box-shadow:0 0 10px rgba(255,209,102,0.25)}
+
+.draft-sprite{width:36px;height:36px;object-fit:contain;flex:none;filter:drop-shadow(0 2px 4px rgba(0,0,0,0.5))}
+.draft-mon-name{font:800 13px 'Barlow Condensed';letter-spacing:.3px;color:#f5f3f0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.draft-mon-cost{font:800 12px 'Barlow Condensed';color:#ffd166;background:#2d2412;border:1px solid #5a4218;padding:2px 6px;border-radius:4px;flex:none}
+
+.draft-rosters-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:12px}
+.draft-roster-box{background:#14141a;border:1px solid #282834;border-radius:8px;padding:12px;display:flex;flex-direction:column;gap:8px}
+.draft-roster-head{display:flex;justify-content:space-between;align-items:center;padding-bottom:8px;border-bottom:1px solid #22222c}
+.draft-roster-mons{display:grid;grid-template-columns:repeat(auto-fill,minmax(60px,1fr));gap:6px}
+.draft-roster-mon-tile{background:#1c1c24;border:1px solid #2c2c3a;border-radius:6px;padding:4px;display:flex;flex-direction:column;align-items:center;text-align:center;font-size:9px;font-weight:700;overflow:hidden}
+
+.draft-import-dropzone{border:2px dashed #444458;border-radius:8px;background:#14141a;padding:20px;text-align:center;cursor:pointer;transition:border-color .15s}
+.draft-import-dropzone:hover{border-color:var(--red);background:#1a1418}
+.draft-import-textarea{width:100%;height:180px;background:#0f0f14;border:1px solid #2d2d3c;border-radius:6px;padding:12px;color:#f5f3f0;font-family:monospace;font-size:12px;resize:vertical}
+
 /* ------------------------------------------------------------ Modern Matches UI ------------------------------------------------------------ */
 .match-layout-modern{display:flex;flex-direction:column;gap:18px;width:100%}
 .match-controls-bar{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px;background:#14141a;border:1px solid #2b2b36;border-radius:8px;padding:12px 16px}
@@ -554,6 +601,7 @@ function esc(s){return String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').
 function jsArg(s){return esc(String(s??'').replace(/\\/g,'\\\\').replace(/'/g,"\\'"))}
 function hueOf(s){let h=0;for(let i=0;i<String(s).length;i++)h=(h*31+String(s).charCodeAt(i))%360;return h}
 function fallbackArt(label){let h=hueOf(label||'team');return `linear-gradient(135deg,hsl(${h} 42% 26%),hsl(${(h+38)%360} 38% 11%))`}
+function pokeSprite(name){ return monSprite(name); }
 function monSprite(name){
   let raw = String(name || '').toLowerCase().trim();
   
@@ -1212,7 +1260,73 @@ function historyTournamentOptions(){let past=Object.values(tournamentData).filte
 function openProfile(p){let q=ensureProfile(p);document.querySelector('#modal').innerHTML=`<div class="modal-wrap"><div class="modal"><div class="modal-head"><div><div class="eyebrow">Player profile · linked account</div><h2>${p}</h2></div><button class="close" onclick="closeModal()">×</button></div><div class="profile-layout" style="margin-top:18px"><aside class="card profile-card"><div class="avatar" style="background:${profileArt(p)}">${profilePictures[p]||teamCovers[p]?``:p[0]}</div><div class="profile-name">${p}</div><div class="mini-stats"><div><b>${q.cups.length}x</b><span>Champion</span></div><div><b>${q.tops}x</b><span>Top Cut</span></div><div><b>${q.record}</b><span>All-time W-L</span></div></div>${q.cups.length?`<div style="margin-top:14px"><div class="card-title">Championships</div>${q.cups.map(c=>`<div class="sub" style="margin-top:4px">🏆 ${c}</div>`).join('')}</div>`:''}${moderator?`<div class="card" style="padding:14px;margin-top:14px;background:#111116;border-color:#32323a"><div class="eyebrow">Profile art</div><div class="sub" style="margin-top:6px">Update the player photo and the team cover used across the site.</div><div class="creator-actions" style="justify-content:flex-start;flex-wrap:wrap"><button class="btn ghost" onclick="openProfilePictureEditor('${p}')">Edit profile picture</button><button class="btn ghost" onclick="openTeamCoverEditor('${p}')">Edit team cover</button></div></div>`:''}</aside><section class="card roster-editor"><div class="card-title">Current roster</div>${moderator?`<div class="poke-search"><input id="newMon" placeholder="Search / add a Pokémon"><button class="btn" onclick="addMon('${p}')">Add</button></div>`:''}<div class="roster-edit-list" id="rosterList">${rosterList(p)}</div><div class="section"><div class="card-title">Team history</div>${historyList(p)}${moderator?`<div class="card" style="padding:14px;margin-top:12px"><div class="field"><label>Previous tournament</label><select id="historyTournament">${historyTournamentOptions()}</select></div><div class="field"><label>Team name in that tournament</label><input id="historyTeam" placeholder="e.g. Obsidian Owls"></div><button class="btn ghost" style="margin-top:12px" onclick="addHistoryTeam('${p}')">+ Add historical team</button></div>`:''}</div></section></div></div></div>`}
 function addHistoryTeam(p){let tournament=document.querySelector('#historyTournament').value,team=document.querySelector('#historyTeam').value.trim()||'Unnamed team';if(tournament==='No completed tournaments yet'){alert('Complete a tournament first.');return}teamHistory[p]??=[];teamHistory[p].push({tournament,team,pokemon:[]});persistLeague();openProfile(p)}
 
-function createTournament(){let name=document.querySelector('#tn').value.trim()||'Untitled Cup',selected=[...document.querySelectorAll('.profileChoice:checked')].map(x=>x.value),newPs=document.querySelector('#newPlayers').value.split(',').map(x=>x.trim()).filter(Boolean);newPs.forEach(p=>{if(!profiles[p]){profiles[p]={team:'Unassigned team',record:'0-0',tops:0,cups:[]};roster[p]=[];teamHistory[p]=[]}if(!selected.includes(p))selected.push(p)});if(selected.length<2){alert('Choose at least two existing profiles or add new players.');return}let stillOngoing=ongoingT();if(stillOngoing){alert(`"${stillOngoing.name}" is still ongoing. End it (from the Top Cut page) or delete it from the archive before starting a new tournament, so its stats aren't lost.`);return}let id='t'+Date.now(),groupCount=Math.min(+document.querySelector('#gc').value,selected.length),perGroup=Math.max(1,+document.querySelector('#ap').value||1);tournamentData[id]={id,name,status:'ONGOING',start:document.querySelector('#sd').value||'TBD',end:document.querySelector('#ed').value||'TBD',regulation:document.querySelector('#tr').value||'Custom regulation',players:selected,groups:groupCount,groupCount,advancePerGroup:perGroup,matches:[],champion:null,pred:selected.map(p=>[p,0])};tournamentData[id].matches=groupSchedule(tournamentData[id]);syncTournamentSeasons();viewTournament=id;current='Tournament Detail';rebuildAllPlayerStats();persistLeague();closeModal();render()}
+function createTournament(){
+  let name=document.querySelector('#tn').value.trim()||'Untitled Cup';
+  let selected=[...document.querySelectorAll('.profileChoice:checked')].map(x=>x.value);
+  let newPs=document.querySelector('#newPlayers').value.split(',').map(x=>x.trim()).filter(Boolean);
+  newPs.forEach(p=>{
+    if(!profiles[p]){
+      profiles[p]={team:'Unassigned team',record:'0-0',tops:0,cups:[]};
+      roster[p]=[];
+      teamHistory[p]=[];
+    }
+    if(!selected.includes(p)) selected.push(p);
+  });
+  if(selected.length<2){
+    alert('Choose at least two existing profiles or add new players.');
+    return;
+  }
+  let stillOngoing=ongoingT();
+  if(stillOngoing){
+    alert(`"${stillOngoing.name}" is still ongoing. End it (from the Top Cut page) or delete it from the archive before starting a new tournament, so its stats aren't lost.`);
+    return;
+  }
+  let id='t'+Date.now();
+  let groupCount=Math.min(+document.querySelector('#gc').value,selected.length);
+  let perGroup=Math.max(1,+document.querySelector('#ap').value||1);
+  let enableDraft = document.querySelector('#enableDraft')?.checked ?? true;
+  let draftBudget = Math.max(0, +(document.querySelector('#draftBudget')?.value || 100));
+  let draftRounds = Math.max(1, +(document.querySelector('#draftRounds')?.value || 10));
+
+  tournamentData[id]={
+    id,
+    name,
+    status:'ONGOING',
+    phase: enableDraft ? 'draft' : 'group',
+    hasDraft: enableDraft,
+    start:document.querySelector('#sd').value||'TBD',
+    end:document.querySelector('#ed').value||'TBD',
+    regulation:document.querySelector('#tr').value||'Custom regulation',
+    players:selected,
+    groups:groupCount,
+    groupCount,
+    advancePerGroup:perGroup,
+    matches:[],
+    champion:null,
+    pred:selected.map(p=>[p,0]),
+    rosters:{},
+    draftData: enableDraft ? {
+      status: 'pending',
+      pointBudget: draftBudget,
+      maxRosterSize: draftRounds,
+      order: [...selected],
+      currentPickIndex: 0,
+      board: [],
+      picks: []
+    } : null
+  };
+  selected.forEach(p => {
+    if(!tournamentData[id].rosters[p]) tournamentData[id].rosters[p] = [];
+  });
+  tournamentData[id].matches=groupSchedule(tournamentData[id]);
+  syncTournamentSeasons();
+  viewTournament=id;
+  current= enableDraft ? 'Draft Tools' : 'Tournament Detail';
+  rebuildAllPlayerStats();
+  persistLeague();
+  closeModal();
+  render();
+}
 
 /* Final league-management controls */
 function teamName(t,p){return t&&Object.prototype.hasOwnProperty.call(t,'teamNames')?(t.teamNames[p]||'Unassigned team'):(profiles[p]?.team||'Unassigned team')}
@@ -1365,12 +1479,28 @@ function openTournamentRecordEditor(id){
           <input id="recordEnd" value="${esc(t.end)}" placeholder="YYYY-MM-DD or TBD" style="background:#181822;border:1px solid #363646;border-radius:6px;padding:10px 12px;color:#f5f3f0">
         </div>
       </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:14px">
+        <div class="field" style="margin-top:0">
+          <label style="font-weight:800;color:#e2e0e8;margin-bottom:6px">Current Phase</label>
+          <select id="recordPhase" style="background:#181822;border:1px solid #363646;border-radius:6px;padding:10px 12px;color:#f5f3f0">
+            <option value="draft" ${t.phase === 'draft' ? 'selected' : ''}>Live Draft Room</option>
+            <option value="group" ${t.phase === 'group' || !t.phase ? 'selected' : ''}>Group Stage</option>
+            <option value="topcut" ${t.phase === 'topcut' ? 'selected' : ''}>Top Cut Playoffs</option>
+          </select>
+        </div>
+
+        <div class="field" style="margin-top:0">
+          <label style="font-weight:800;color:#e2e0e8;margin-bottom:6px">Coach Point Budget</label>
+          <input id="recordBudget" type="number" min="0" value="${t.draftData?.pointBudget ?? 100}" placeholder="100 (0 for no limit)" style="background:#181822;border:1px solid #363646;border-radius:6px;padding:10px 12px;color:#f5f3f0">
+        </div>
+      </div>
     </div>
 
     <div style="background:#0d0d12;border:1px dashed #2a2a38;border-radius:8px;padding:12px 14px;margin-top:14px;display:flex;align-items:flex-start;gap:10px">
       <span style="font-size:16px;flex:none;margin-top:1px">💡</span>
       <div style="font-size:11px;color:#9d9ba6;line-height:1.4">
-        Tournament teams and rosters can be edited from <b style="color:#e2e0e8">Edit players & teams</b> or directly on trainer profiles. Saved dates and details update across all archive standings and records automatically.
+        Tournament teams and rosters can be edited from <b style="color:#e2e0e8">Edit players & teams</b> or directly on trainer profiles. Setting phase to <b>Live Draft Room</b> activates the live snake draft room.
       </div>
     </div>
 
@@ -1388,6 +1518,17 @@ function saveTournamentRecord(id){
   t.start = document.querySelector('#recordStart').value.trim() || t.start;
   t.end = document.querySelector('#recordEnd').value.trim() || t.end;
   t.regulation = document.querySelector('#recordRule').value.trim() || t.regulation;
+  let newPhase = document.querySelector('#recordPhase')?.value || t.phase;
+  t.phase = newPhase;
+  if(newPhase === 'draft') t.hasDraft = true;
+
+  if(!t.draftData && t.hasDraft){
+    ensureTournamentDraft(t);
+  }
+  if(t.draftData){
+    t.draftData.pointBudget = Math.max(0, +(document.querySelector('#recordBudget')?.value ?? 100));
+  }
+
   syncTournamentSeasons();
   rebuildAllPlayerStats();
   persistLeague();
@@ -2589,6 +2730,32 @@ function openCreator(){
       </div>
     </div>
 
+    <!-- Live Draft League Options -->
+    <div class="card" style="padding:16px;margin-top:14px;background:linear-gradient(135deg,#1c1518,#121217 65%);border-color:#3d242c">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <label style="display:flex;align-items:center;gap:10px;cursor:pointer">
+          <input type="checkbox" id="enableDraft" checked style="width:17px;height:17px;accent-color:var(--red);cursor:pointer" onchange="document.getElementById('draftSettingsContainer').style.display=this.checked?'grid':'none'">
+          <div>
+            <div style="font-weight:800;font-size:13px;color:#f5f3f0">Enable Live Draft Room</div>
+            <div style="font-size:11px;color:#a09fa8;margin-top:2px">Host live snake draft on website with Showdown sprites before group stage starts</div>
+          </div>
+        </label>
+      </div>
+
+      <div id="draftSettingsContainer" style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:14px;padding-top:12px;border-top:1px solid #2d2025">
+        <div class="field" style="margin:0">
+          <label style="margin:0;font-size:11px">Coach Point Budget</label>
+          <input id="draftBudget" type="number" min="0" value="100" placeholder="100 (0 for no limit)">
+          <span style="font-size:10px;color:#8e8c95">e.g. 100 points budget per coach (0 for unlimited)</span>
+        </div>
+        <div class="field" style="margin:0">
+          <label style="margin:0;font-size:11px">Roster Size (Draft Rounds)</label>
+          <input id="draftRounds" type="number" min="1" max="15" value="10" placeholder="10">
+          <span style="font-size:10px;color:#8e8c95">Total Pokémon to draft per coach (e.g. 10 or 11)</span>
+        </div>
+      </div>
+    </div>
+
     <div style="margin-top:20px">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
         <div style="display:flex;align-items:center;gap:8px">
@@ -3078,13 +3245,61 @@ function matchupOfTheWeekCard(t){
   </aside>`;
 }
 
+function draftStageHeroCard(t){
+  let d = ensureTournamentDraft(t);
+  let turn = getDraftCurrentTurn(t);
+  let curPlayer = turn.player;
+  let faceArt = curPlayer ? (profilePictures[curPlayer] ? `url('${esc(profilePictures[curPlayer])}')` : (teamCovers[curPlayer] ? `url('${esc(teamCovers[curPlayer])}')` : fallbackArt(curPlayer))) : '';
+  let faceLetter = curPlayer ? ((profilePictures[curPlayer] || teamCovers[curPlayer]) ? '' : esc(curPlayer[0])) : '—';
+  let curOvr = curPlayer ? calculatePlayerOVR(curPlayer) : null;
+  let coachStats = curPlayer ? getDraftCoachStats(t, curPlayer) : null;
+
+  return `
+    <aside class="card matchup-hero-card" style="background:linear-gradient(135deg,#1f1318 0%,#13131c 65%);border-color:#3d242c">
+      <div class="matchup-hero-banner">
+        <div style="display:flex;align-items:center;gap:6px">
+          <span style="font-size:13px">🎯</span>
+          <span class="eyebrow" style="color:#ffd166;margin:0;letter-spacing:1px">LIVE DRAFT ROOM</span>
+        </div>
+        <span class="tag" style="background:#00000070;border:1px solid #ffffff25;font-size:9px;font-weight:900;letter-spacing:1px;color:#ff9fa6;padding:3px 8px;border-radius:4px">
+          ${d.status === 'active' ? 'IN PROGRESS' : (d.status === 'paused' ? 'PAUSED' : 'PENDING')}
+        </span>
+      </div>
+
+      <div style="padding:16px 20px;display:flex;align-items:center;gap:16px">
+        <div style="position:relative">
+          <span class="avatar" style="background-image:${faceArt};background-size:cover;background-position:center;width:56px;height:56px;font-size:24px;border-radius:50%;border:2px solid ${curOvr?.color || '#fff'};box-shadow:0 4px 16px rgba(0,0,0,0.6);display:grid;place-items:center">${faceLetter}</span>
+          ${curOvr ? `<span style="position:absolute;bottom:-4px;right:-4px">${curOvr.badgeHtml}</span>` : ''}
+        </div>
+        <div style="min-width:0;flex:1">
+          <div style="font-size:10px;font-weight:800;color:var(--red);letter-spacing:1px;text-transform:uppercase">⏳ On The Clock</div>
+          <div style="font:800 20px 'Barlow Condensed';color:#f5f3f0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${turn.isComplete ? 'Draft Completed' : esc(curPlayer)}</div>
+          <div style="font-size:11px;color:#a09fa8">${turn.isComplete ? 'Ready for Group Stage' : esc(teamName(t, curPlayer))}</div>
+        </div>
+        ${coachStats ? `
+          <div style="text-align:right;border-left:1px solid #2e242c;padding-left:12px">
+            <div style="font:800 16px 'Barlow Condensed';color:#ffd166">${coachStats.budget > 0 ? `${coachStats.remainingBudget} pts` : 'Unlimited'}</div>
+            <div style="font-size:10px;color:#8e8c95">${coachStats.count}/${coachStats.maxSlots} picks</div>
+          </div>
+        ` : ''}
+      </div>
+
+      <div class="matchup-hero-foot" style="justify-content:space-between;padding:8px 14px">
+        <span style="font-size:11px;color:#a09fa8">Pick <b>#${turn.currentPickNumber} of ${turn.totalPicks}</b> · Round <b>${turn.currentRound}</b></span>
+        <button class="btn btn-sm" style="padding:4px 12px!important" onclick="go('Draft Tools')">Draft Room →</button>
+      </div>
+    </aside>
+  `;
+}
+
 function Home(){
   let t = ongoingT();
   if(!t) return OffseasonHome();
   viewTournament = t.id;
   let results = allResults(t);
   let groups = Object.keys(groupsOf(t));
-  let target = t.phase === 'topcut' ? 'Top Cut' : 'Matches';
+  let isDraftPhase = (t.phase === 'draft');
+  let target = isDraftPhase ? 'Draft Tools' : (t.phase === 'topcut' ? 'Top Cut' : 'Matches');
 
   // Metrics
   let matches = t.matches || [];
@@ -3092,18 +3307,21 @@ function Home(){
   let completedCount = results.length;
   let completionPct = totalMatchesCount > 0 ? Math.min(100, Math.round((completedCount / totalMatchesCount) * 100)) : 0;
 
+  let turn = isDraftPhase ? getDraftCurrentTurn(t) : null;
+  let draftPct = (turn && turn.totalPicks > 0) ? Math.min(100, Math.round(((turn.currentPickNumber - 1) / turn.totalPicks) * 100)) : 0;
+
   // Standings leader
   let allStandings = groups.flatMap(g => getStand(t, g));
   allStandings.sort((a, b) => b.w - a.w || b.gw - a.gw || (b.gw - b.gl) - (a.gw - a.gl));
   let topPlayer = allStandings[0] || null;
 
-  return head(t.season + ': ' + t.name, 'Current Tournament', moderator ? `<button class="btn" onclick="current='${target}';render();window.scrollTo(0,0)">Enter match scores</button>` : '') + `
+  return head(t.season + ': ' + t.name, 'Current Tournament', moderator ? `<button class="btn" onclick="current='${target}';render();window.scrollTo(0,0)">${isDraftPhase ? 'Open Draft Room' : 'Enter match scores'}</button>` : '') + `
     <!-- Top In-Season Showcase & Primetime Hero -->
     <section class="in-season-hero">
       <div class="card tourney-showcase-card">
         <div class="tourney-showcase-info">
           <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-            <span class="status"><i></i>${t.phase === 'topcut' ? 'TOP CUT LIVE' : 'GROUP STAGE LIVE'}</span>
+            <span class="status"><i></i>${isDraftPhase ? 'DRAFT ROOM LIVE' : (t.phase === 'topcut' ? 'TOP CUT LIVE' : 'GROUP STAGE LIVE')}</span>
             <span class="eyebrow" style="margin:0;color:#ffd166;letter-spacing:1px">${esc(t.season)}</span>
           </div>
           <div class="tourney-showcase-title">${esc(t.name.toUpperCase())}</div>
@@ -3111,13 +3329,23 @@ function Home(){
           <div class="tourney-chips-row">
             <span class="tourney-chip">🎮 <b>${esc(t.regulation || 'Standard')}</b></span>
             <span class="tourney-chip">👥 <b>${t.players.length}</b> Trainers</span>
-            <span class="tourney-chip">⚔️ <b>${completedCount}/${totalMatchesCount}</b> Matches (${completionPct}%)</span>
-            <span class="tourney-chip">🎖️ Top <b>${advancePerGroup(t)}</b> Advance</span>
+            ${isDraftPhase && turn ? `
+              <span class="tourney-chip">📋 Pick <b>${turn.currentPickNumber}/${turn.totalPicks}</b> (Round ${turn.currentRound})</span>
+              <span class="tourney-chip">💰 <b>${t.draftData?.pointBudget ? `${t.draftData.pointBudget} Pts` : 'Tier Draft'}</b></span>
+            ` : `
+              <span class="tourney-chip">⚔️ <b>${completedCount}/${totalMatchesCount}</b> Matches (${completionPct}%)</span>
+              <span class="tourney-chip">🎖️ Top <b>${advancePerGroup(t)}</b> Advance</span>
+            `}
           </div>
 
           <div style="margin-top:auto;padding-top:14px;display:flex;gap:8px;flex-wrap:wrap;align-items:center">
-            <button class="btn btn-sm" style="padding:8px 12px!important" onclick="current='${target}';render()">${t.phase === 'topcut' ? 'View Championship Bracket →' : 'View Group Matches →'}</button>
-            <button class="btn ghost btn-sm" style="padding:8px 12px!important" onclick="go('Standings')">Live Leaderboard</button>
+            <button class="btn btn-sm" style="padding:8px 12px!important" onclick="current='${target}';render()">${isDraftPhase ? 'Enter Live Draft Room →' : (t.phase === 'topcut' ? 'View Championship Bracket →' : 'View Group Matches →')}</button>
+            ${isDraftPhase ? `
+              ${moderator ? `<button class="btn ghost btn-sm" style="padding:8px 12px!important" onclick="openDraftBoardImporter('${jsArg(t.id)}')">📥 Import Board</button>` : ''}
+              <button class="btn ghost btn-sm" style="padding:8px 12px!important" onclick="go('Teams')">View Rosters</button>
+            ` : `
+              <button class="btn ghost btn-sm" style="padding:8px 12px!important" onclick="go('Standings')">Live Leaderboard</button>
+            `}
             ${moderator ? `<button class="btn ghost btn-sm" style="padding:8px 10px!important" onclick="openTournamentEdit('${jsArg(t.id)}')">⚙️ Edit</button>` : ''}
           </div>
         </div>
@@ -3136,20 +3364,22 @@ function Home(){
         </div>
       </div>
 
-      ${matchupOfTheWeekCard(t)}
+      ${isDraftPhase ? draftStageHeroCard(t) : matchupOfTheWeekCard(t)}
     </section>
+
+    ${isDraftPhase ? draftRecentTickerHtml(t) : ''}
 
     <!-- Tournament Quick Stats Pulse Strip -->
     <div class="pulse-stats-strip">
       <div class="card pulse-stat-box">
         <span class="pulse-stat-label">Tournament Phase</span>
-        <div class="pulse-stat-val">${t.phase === 'topcut' ? 'Top Cut' : 'Group Stage'}</div>
+        <div class="pulse-stat-val">${isDraftPhase ? 'Live Draft' : (t.phase === 'topcut' ? 'Top Cut' : 'Group Stage')}</div>
         <div class="pulse-stat-sub">${t.players.length} Competitors</div>
       </div>
       <div class="card pulse-stat-box">
-        <span class="pulse-stat-label">Fixtures Recorded</span>
-        <div class="pulse-stat-val">${completedCount} <small style="font-size:13px;color:#8e8c95;font-weight:700">/ ${totalMatchesCount}</small></div>
-        <div class="progress" style="margin-top:5px;height:5px"><span style="width:${completionPct}%"></span></div>
+        <span class="pulse-stat-label">${isDraftPhase ? 'Draft Picks Made' : 'Fixtures Recorded'}</span>
+        <div class="pulse-stat-val">${isDraftPhase && turn ? `${turn.currentPickNumber - 1} <small style="font-size:13px;color:#8e8c95;font-weight:700">/ ${turn.totalPicks}</small>` : `${completedCount} <small style="font-size:13px;color:#8e8c95;font-weight:700">/ ${totalMatchesCount}</small>`}</div>
+        <div class="progress" style="margin-top:5px;height:5px"><span style="width:${isDraftPhase ? draftPct : completionPct}%"></span></div>
       </div>
       <div class="card pulse-stat-box" style="cursor:pointer;transition:border-color .15s ease" onclick="go('Standings')" title="Click to view full Playoff Odds chart">
         <span class="pulse-stat-label" style="display:flex;justify-content:space-between;align-items:center"><span>Tournament Favorite</span><span style="color:#ffd166;font-size:10px">↗</span></span>
@@ -8211,15 +8441,25 @@ function tournamentDetail(){
   let t=activeT();if(!t)return noTournament();
   window.editingTournamentId=t.id;
   let groups=Object.keys(groupsOf(t));
-  let content=detailTab==='Standings'?`<div style="display:grid;grid-template-columns:repeat(${groups.length>1?2:1},minmax(0,1fr));gap:16px;align-items:start">${groups.map(g=>`<div class="card table-wrap" style="align-self:start">${standingTable(t,g)}</div>`).join('')}</div>`
+  let hasDraft = Boolean(t.hasDraft || t.draftData);
+  let availableTabs = hasDraft 
+    ? ['Draft', 'Standings', 'Group Stage', 'Top Cut', 'Predictions'] 
+    : ['Standings', 'Group Stage', 'Top Cut', 'Predictions'];
+
+  if(!availableTabs.includes(detailTab)){
+    detailTab = (t.phase === 'draft') ? 'Draft' : 'Standings';
+  }
+
+  let content=detailTab==='Draft'?DraftRoom(t)
+    :detailTab==='Standings'?`<div style="display:grid;grid-template-columns:repeat(${groups.length>1?2:1},minmax(0,1fr));gap:16px;align-items:start">${groups.map(g=>`<div class="card table-wrap" style="align-self:start">${standingTable(t,g)}</div>`).join('')}</div>`
     :detailTab==='Group Stage'?matchesView(t,false)
     :detailTab==='Top Cut'?topCutSection(t,!t.bracketManagerData)
     :predictions(t);
   let edit=moderator?` <button class="btn ghost" onclick="openTournamentEdit('${jsArg(t.id)}')">Edit</button>`:'';
   let headerHtml = head(t.name,t.season + ' · ' + t.status,`<div><button class="btn ghost" onclick="go('Tournaments')">← Archive</button>${edit}${moderator?` <button class="btn ghost" style="color:#ff9ba1" onclick="deleteTournament('${jsArg(t.id)}')">Delete</button>`:''}</div>`)
-    +`<div class="tabs">${['Standings','Group Stage','Top Cut','Predictions'].map(x=>`<button class="${detailTab===x?'active':''}" onclick="detailTab='${x}';try{localStorage.setItem('draftdex-detail-tab','${x}')}catch(e){};render()">${x}</button>`).join('')}</div>`;
+    +`<div class="tabs">${availableTabs.map(x=>`<button class="${detailTab===x?'active':''}" onclick="detailTab='${x}';try{localStorage.setItem('draftdex-detail-tab','${x}')}catch(e){};render()">${x}</button>`).join('')}</div>`;
 
-  if(detailTab === 'Predictions'){
+  if(detailTab === 'Predictions' || detailTab === 'Draft'){
     return headerHtml + `<div>${content}</div>`;
   }
 
@@ -8239,6 +8479,8 @@ function openTournamentEdit(id){
     <div class="modal-head"><div><div class="eyebrow">Moderator only</div><h2>Edit ${esc(t.name)}</h2></div><button class="close" onclick="closeModal()">×</button></div>
     <p class="sub">${esc(t.season||'')} · ${esc(t.status)}</p>
     <div class="section" style="display:grid;gap:9px">
+      <button class="btn ghost" onclick="openDraftBoardImporter('${jsArg(t.id)}')">📥 Import / Edit Draft Board</button>
+      <button class="btn ghost" onclick="openDraftOrderEditor('${jsArg(t.id)}')">🔀 Edit Draft Snake Order</button>
       <button class="btn ghost" onclick="openTournamentRecordEditor('${jsArg(t.id)}')">Edit Details</button>
       <button class="btn ghost" onclick="openSettings()">Edit Qualification</button>
       <button class="btn ghost" ${locked?'disabled style="opacity:.5;cursor:not-allowed"':`onclick="openGroupPlacementEditor()"`}>Arrange Groups${locked?' (Locked in Top Cut)':''}</button>
@@ -8887,8 +9129,1035 @@ function builderHTML(){
     <p class="tm-note">Teams are private and saved to ${esc(who)}${s.key!=='guest'?' — they follow your account when you sign in elsewhere':''}.</p>`
 }
 
-/* --- the page: spreadsheet and planner together --- */
+/* ------------------------------------------------------------
+   SPRINT 4: INTERACTIVE LIVE DRAFT ROOM & GOOGLE SHEETS IMPORTER
+   ------------------------------------------------------------ */
+var draftRoomSubTab = 'room'; // 'room' | 'board' | 'rosters' | 'planner' | 'sheet'
+var draftBoardSearch = '';
+var draftBoardTierFilter = 'all';
+var draftBoardAvailOnly = false;
+var draftPendingImport = null;
+
+function ensureTournamentDraft(t){
+  if(!t) return null;
+  if(!t.draftData){
+    t.draftData = {
+      status: 'pending',
+      pointBudget: 100,
+      maxRosterSize: 10,
+      order: [...(t.players || [])],
+      currentPickIndex: 0,
+      board: [],
+      picks: []
+    };
+  }
+  if(!t.draftData.order || !t.draftData.order.length){
+    t.draftData.order = [...(t.players || [])];
+  }
+  if(!t.draftData.picks) t.draftData.picks = [];
+  if(!t.draftData.board) t.draftData.board = [];
+  if(t.draftData.pointBudget === undefined) t.draftData.pointBudget = 100;
+  if(t.draftData.maxRosterSize === undefined) t.draftData.maxRosterSize = 10;
+  return t.draftData;
+}
+
+function getDraftOrderList(t){
+  let d = ensureTournamentDraft(t);
+  return (d && d.order && d.order.length) ? d.order : (t?.players || []);
+}
+
+function getDraftTotalPicks(t){
+  let order = getDraftOrderList(t);
+  let rounds = t?.draftData?.maxRosterSize || 10;
+  return order.length * rounds;
+}
+
+function getDraftPickDetails(t, pickIdx){
+  let order = getDraftOrderList(t);
+  let n = Math.max(1, order.length);
+  let round = Math.floor(pickIdx / n) + 1;
+  let posInRound = pickIdx % n;
+  let player = (round % 2 === 1) ? order[posInRound] : order[n - 1 - posInRound];
+  let pickNumber = pickIdx + 1;
+  return { round, pickNumber, player, pickIdx };
+}
+
+function getDraftCurrentTurn(t){
+  let d = ensureTournamentDraft(t);
+  if(!d) return null;
+  let totalPicks = getDraftTotalPicks(t);
+  let picks = d.picks || [];
+  let isComplete = (picks.length >= totalPicks);
+  let currentPickDetails = isComplete ? null : getDraftPickDetails(t, picks.length);
+  let upcoming = [];
+  if(!isComplete){
+    for(let i = 1; i <= 8; i++){
+      let nextIdx = picks.length + i;
+      if(nextIdx < totalPicks){
+        upcoming.push(getDraftPickDetails(t, nextIdx));
+      }
+    }
+  }
+  let order = getDraftOrderList(t);
+  return {
+    isComplete,
+    status: d.status || (isComplete ? 'completed' : 'pending'),
+    totalPicks,
+    currentPickNumber: picks.length + 1,
+    currentRound: currentPickDetails?.round || Math.ceil(totalPicks / Math.max(1, order.length)),
+    player: currentPickDetails?.player || null,
+    pickIdx: picks.length,
+    upcoming
+  };
+}
+
+function getDraftCoachStats(t, p){
+  let d = ensureTournamentDraft(t);
+  let picks = (d?.picks || []).filter(x => x.player === p);
+  let pointsSpent = picks.reduce((sum, x) => sum + (x.cost || 0), 0);
+  let budget = d?.pointBudget || 0;
+  let maxSlots = d?.maxRosterSize || 10;
+  let remainingBudget = budget > 0 ? (budget - pointsSpent) : null;
+  return {
+    player: p,
+    picks,
+    count: picks.length,
+    maxSlots,
+    pointsSpent,
+    budget,
+    remainingBudget,
+    isRosterFull: picks.length >= maxSlots
+  };
+}
+
+function findPokemonCostOnBoard(t, pokemonName){
+  let d = ensureTournamentDraft(t);
+  if(!d || !d.board) return 0;
+  let cleanTarget = (pokemonName || '').toLowerCase().trim();
+  for(let tier of d.board){
+    for(let mon of (tier.pokemon || [])){
+      if(mon.toLowerCase().trim() === cleanTarget){
+        return tier.cost || 0;
+      }
+    }
+  }
+  return 0;
+}
+
+function parseDraftBoardData(rawText){
+  if(!rawText || !rawText.trim()){
+    return { tiers: [], totalMons: 0, error: 'Empty text provided.' };
+  }
+
+  let lines = rawText.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+  if(!lines.length) return { tiers: [], totalMons: 0, error: 'No data lines found.' };
+
+  let isTab = lines.some(l => l.includes('\t'));
+  let delimiter = isTab ? '\t' : (lines.some(l => l.includes(',')) ? ',' : '\t');
+
+  let grid = lines.map(line => {
+    if(delimiter === ','){
+      let row = [];
+      let inQ = false, cur = '';
+      for(let i = 0; i < line.length; i++){
+        let c = line[i];
+        if(c === '"'){ inQ = !inQ; }
+        else if(c === ',' && !inQ){ row.push(cur.trim()); cur = ''; }
+        else { cur += c; }
+      }
+      row.push(cur.trim());
+      return row;
+    }
+    return line.split(delimiter).map(c => c.trim());
+  });
+
+  // Check row-pair structure (Pokemon, Cost)
+  let firstRow = grid[0] || [];
+  let isRowPair = (firstRow.length === 2 && (Number.isFinite(+firstRow[1]) || Number.isFinite(+firstRow[0])));
+  if(isRowPair){
+    let map = {};
+    grid.forEach(row => {
+      let mon = '', cost = 0;
+      if(Number.isFinite(+row[1])){
+        mon = row[0]; cost = Math.max(0, +row[1]);
+      } else if(Number.isFinite(+row[0])){
+        cost = Math.max(0, +row[0]); mon = row[1];
+      }
+      if(mon && isNaN(+mon)){
+        let tierKey = 'cost_' + cost;
+        if(!map[tierKey]){
+          map[tierKey] = { id: 'tier-' + cost, name: `${cost} Points`, cost, pokemon: [] };
+        }
+        let clean = mon.replace(/\s*\(\d+.*?\)$/, '').trim();
+        if(clean && !map[tierKey].pokemon.includes(clean)){
+          map[tierKey].pokemon.push(clean);
+        }
+      }
+    });
+    let tiers = Object.values(map).sort((a,b) => b.cost - a.cost);
+    let totalMons = tiers.reduce((sum, t) => sum + t.pokemon.length, 0);
+    return { tiers, totalMons, type: 'row-pairs' };
+  }
+
+  // Column-based tiers
+  let headers = grid[0] || [];
+  let colTiers = [];
+
+  headers.forEach((h, colIdx) => {
+    if(!h) return;
+    let costMatch = h.match(/(?:Tier\s*\d+.*?(\d+)|(\d+)\s*(?:pts?|points?)|\b(\d{1,2})\b)/i);
+    let cost = costMatch ? +(costMatch[1] || costMatch[2] || costMatch[3]) : Math.max(1, 20 - colIdx * 2);
+    let name = h || `Tier ${colIdx + 1} (${cost} Pts)`;
+
+    let mons = [];
+    for(let r = 1; r < grid.length; r++){
+      let val = grid[r]?.[colIdx];
+      if(val && isNaN(+val) && val.length >= 2){
+        let cleaned = val.replace(/\s*\(\d+.*?\)$/, '').trim();
+        if(cleaned && !mons.includes(cleaned)){
+          mons.push(cleaned);
+        }
+      }
+    }
+    if(mons.length > 0){
+      colTiers.push({
+        id: 'tier-' + cost + '-' + colIdx,
+        name: name,
+        cost: cost,
+        pokemon: mons
+      });
+    }
+  });
+
+  colTiers.sort((a,b) => b.cost - a.cost || a.name.localeCompare(b.name));
+  let totalMons = colTiers.reduce((sum, t) => sum + t.pokemon.length, 0);
+  return { tiers: colTiers, totalMons, type: 'columns' };
+}
+
+function openDraftBoardImporter(tId){
+  if(!moderator) return;
+  let t = tournamentData[tId] || ongoingT() || activeT();
+  if(!t) return;
+  window.importingTournamentId = t.id;
+  let d = ensureTournamentDraft(t);
+  draftPendingImport = d.board?.length ? { tiers: JSON.parse(JSON.stringify(d.board)), totalMons: d.board.reduce((s,x)=>s+x.pokemon.length,0) } : null;
+
+  document.querySelector('#modal').innerHTML = `
+    <div class="modal-wrap">
+      <div class="modal" style="max-width:820px">
+        <div class="modal-head">
+          <div>
+            <div class="eyebrow" style="color:var(--red)">Moderator Only</div>
+            <h2>Import Draft Board · Google Sheets</h2>
+            <p class="sub" style="margin-top:2px">Copy and paste your draft board directly from Google Sheets or Excel.</p>
+          </div>
+          <button class="close" onclick="closeModal()">×</button>
+        </div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:14px">
+          <div class="field" style="margin:0">
+            <label style="font-size:11px;font-weight:800;color:#e2e0e8">Coach Point Budget</label>
+            <input id="importBudget" type="number" min="0" value="${d.pointBudget || 100}" placeholder="100 (0 for no limit)">
+            <span style="font-size:10px;color:#8e8c95">Points limit per coach (0 for unlimited)</span>
+          </div>
+          <div class="field" style="margin:0">
+            <label style="font-size:11px;font-weight:800;color:#e2e0e8">Draft Rounds / Roster Size</label>
+            <input id="importRounds" type="number" min="1" max="15" value="${d.maxRosterSize || 10}" placeholder="10">
+            <span style="font-size:10px;color:#8e8c95">Total Pokémon drafted per coach</span>
+          </div>
+        </div>
+
+        <div class="field" style="margin-top:14px">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+            <label style="font-weight:800;color:#e2e0e8;margin:0">Paste Google Sheets Columns or CSV</label>
+            <div style="display:flex;gap:6px">
+              <button type="button" class="btn ghost btn-sm" style="padding:2px 8px!important;font-size:10px!important" onclick="loadSampleDraftBoard()">Load Sample Board</button>
+              <button type="button" class="btn ghost btn-sm" style="padding:2px 8px!important;font-size:10px!important" onclick="document.getElementById('importDraftText').value=''">Clear</button>
+            </div>
+          </div>
+          <textarea id="importDraftText" class="draft-import-textarea" placeholder="Paste columns copied from Google Sheets here...
+Example column layout:
+Tier 1 (18 Pts)	Tier 2 (16 Pts)	Tier 3 (14 Pts)
+Great Tusk	Dragonite	Garchomp
+Iron Valiant	Kingambit	Roaring Moon"></textarea>
+        </div>
+
+        <div style="display:flex;gap:10px;margin-top:10px">
+          <button class="btn ghost" style="flex:1" onclick="previewDraftBoardImport()">🔍 Parse & Preview Board</button>
+        </div>
+
+        <div id="draftImportPreviewArea" style="margin-top:16px;max-height:280px;overflow-y:auto;border:1px solid #282834;border-radius:8px;padding:12px;background:#111116">
+          ${renderDraftImportPreviewHtml(draftPendingImport)}
+        </div>
+
+        <div class="creator-actions" style="margin-top:20px;display:flex;justify-content:space-between">
+          <button class="btn ghost" onclick="closeModal()">Cancel</button>
+          <button class="btn" style="padding:10px 24px;font-weight:800" onclick="saveImportedDraftBoard('${jsArg(t.id)}')">💾 Save Draft Board</button>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function renderDraftImportPreviewHtml(parsed){
+  if(!parsed || !parsed.tiers || !parsed.tiers.length){
+    return `<div style="text-align:center;padding:24px;color:#8e8c95;font-size:12px">No draft board parsed yet. Paste Google Sheets columns above and click <b>Parse & Preview</b>.</div>`;
+  }
+
+  return `
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+      <span class="tag" style="background:#22222a;color:#a09fa8"><b>${parsed.tiers.length}</b> Tiers · <b>${parsed.totalMons}</b> Pokémon Loaded</span>
+      <span style="font-size:11px;color:#4bdd91">✓ Ready to import</span>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px">
+      ${parsed.tiers.map((tier, tIdx) => `
+        <div style="background:#181822;border:1px solid #2d2d3c;border-radius:6px;padding:8px">
+          <div style="display:flex;justify-content:space-between;align-items:center;padding-bottom:6px;border-bottom:1px solid #282834;font:800 12px 'Barlow Condensed'">
+            <span style="color:#ffd166">${esc(tier.name)}</span>
+            <span class="tag" style="background:#2f2310;color:#ffd166;padding:1px 6px;font-size:10px">${tier.cost} pts</span>
+          </div>
+          <div style="font-size:11px;color:#c0bfca;margin-top:6px;max-height:120px;overflow-y:auto;display:flex;flex-direction:column;gap:3px">
+            ${tier.pokemon.map(m => `
+              <div style="display:flex;align-items:center;gap:6px">
+                <img src="${esc(pokeSprite(m))}" style="width:20px;height:20px;object-fit:contain" onerror="this.style.display='none'">
+                <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(m)}</span>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+      `).join('')}
+    </div>
+  `;
+}
+
+function previewDraftBoardImport(){
+  let text = document.getElementById('importDraftText')?.value || '';
+  let parsed = parseDraftBoardData(text);
+  if(!parsed.tiers.length){
+    alert(parsed.error || 'Could not parse any tiers or Pokémon from the provided text.');
+    return;
+  }
+  draftPendingImport = parsed;
+  let host = document.getElementById('draftImportPreviewArea');
+  if(host) host.innerHTML = renderDraftImportPreviewHtml(parsed);
+}
+
+function loadSampleDraftBoard(){
+  let sample = `Tier 1 (18 Pts)\tTier 2 (16 Pts)\tTier 3 (14 Pts)\tTier 4 (12 Pts)\tTier 5 (10 Pts)
+Great Tusk\tDragonite\tGarchomp\tTyranitar\tTinkaton
+Iron Valiant\tKingambit\tRoaring Moon\tSkeledirge\tRotom-Wash
+Walking Wake\tOgerpon-Wellspring\tCinderace\tRillaboom\tCorviknight
+Flutter Mane\tGholdengo\tIron Moth\tMeowscarada\tGrimmsnarl
+Baxcalibur\tLandorus-Therian\tIron Hands\tSlowking-Galar\tClodsire`;
+  let box = document.getElementById('importDraftText');
+  if(box){
+    box.value = sample;
+    previewDraftBoardImport();
+  }
+}
+
+function saveImportedDraftBoard(tId){
+  if(!moderator) return;
+  let t = tournamentData[tId] || activeT();
+  if(!t) return;
+  let d = ensureTournamentDraft(t);
+
+  let budget = Math.max(0, +(document.getElementById('importBudget')?.value || 100));
+  let rounds = Math.max(1, +(document.getElementById('importRounds')?.value || 10));
+
+  let text = document.getElementById('importDraftText')?.value || '';
+  let parsed = draftPendingImport || parseDraftBoardData(text);
+
+  if(!parsed.tiers.length){
+    alert('Please parse a valid draft board with at least one tier before saving.');
+    return;
+  }
+
+  d.pointBudget = budget;
+  d.maxRosterSize = rounds;
+  d.board = parsed.tiers;
+  t.hasDraft = true;
+
+  persistLeague();
+  closeModal();
+  render();
+}
+
+function openDraftOrderEditor(tId){
+  if(!moderator) return;
+  let t = tournamentData[tId] || activeT();
+  if(!t) return;
+  let d = ensureTournamentDraft(t);
+  let order = [...d.order];
+
+  document.querySelector('#modal').innerHTML = `
+    <div class="modal-wrap">
+      <div class="modal" style="max-width:540px">
+        <div class="modal-head">
+          <div>
+            <div class="eyebrow" style="color:var(--red)">Moderator Only</div>
+            <h2>Draft Snake Order</h2>
+            <p class="sub" style="margin-top:2px">Set the Round 1 picking order. Snake draft reverses each subsequent round.</p>
+          </div>
+          <button class="close" onclick="closeModal()">×</button>
+        </div>
+
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-top:14px;margin-bottom:10px">
+          <span style="font-size:12px;font-weight:800;color:#f5f3f0">Coaches (${order.length})</span>
+          <button class="btn ghost btn-sm" onclick="randomizeDraftOrder('${jsArg(t.id)}')">🎲 Randomize Order (Shuffle)</button>
+        </div>
+
+        <div id="draftOrderListContainer" class="card" style="padding:10px;background:#111116;border-color:#2a2a36;max-height:340px;overflow-y:auto;display:flex;flex-direction:column;gap:6px">
+          ${renderDraftOrderListRows(order, t.id)}
+        </div>
+
+        <div class="creator-actions" style="margin-top:20px;display:flex;justify-content:space-between">
+          <button class="btn ghost" onclick="closeModal()">Cancel</button>
+          <button class="btn" style="padding:10px 24px;font-weight:800" onclick="saveDraftOrder('${jsArg(t.id)}')">Save Order</button>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function renderDraftOrderListRows(order, tId){
+  return order.map((p, idx) => {
+    let faceArt = profilePictures[p] ? `url('${esc(profilePictures[p])}')` : (teamCovers[p] ? `url('${esc(teamCovers[p])}')` : fallbackArt(p));
+    let faceLetter = (profilePictures[p] || teamCovers[p]) ? '' : esc((p || '?')[0]);
+    let ovrObj = calculatePlayerOVR(p);
+
+    return `
+      <div class="draft-order-row" data-player="${esc(p)}" style="display:flex;align-items:center;justify-content:space-between;padding:8px 12px;background:#181822;border:1px solid #2e2e3e;border-radius:6px">
+        <div style="display:flex;align-items:center;gap:10px">
+          <span style="font:800 14px 'Barlow Condensed';color:var(--amber);width:20px">#${idx + 1}</span>
+          <span class="avatar mini" style="background-image:${faceArt};background-size:cover;background-position:center;width:28px;height:28px;border-radius:50%;display:grid;place-items:center;border:1px solid #ffffff25">${faceLetter}</span>
+          <div>
+            <div style="font-weight:800;font-size:13px;color:#f5f3f0">${esc(p)}</div>
+            <div style="font-size:10px;color:#8e8c95">${esc(teamName(tournamentData[tId], p))}</div>
+          </div>
+          ${ovrObj.badgeHtml}
+        </div>
+        <div style="display:flex;gap:4px">
+          <button class="btn ghost btn-sm" style="padding:2px 8px!important" ${idx === 0 ? 'disabled style="opacity:.3"' : `onclick="moveDraftOrder('${jsArg(tId)}', ${idx}, -1)"`}>▲</button>
+          <button class="btn ghost btn-sm" style="padding:2px 8px!important" ${idx === order.length - 1 ? 'disabled style="opacity:.3"' : `onclick="moveDraftOrder('${jsArg(tId)}', ${idx}, 1)"`}>▼</button>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+function moveDraftOrder(tId, idx, dir){
+  let t = tournamentData[tId] || activeT();
+  if(!t) return;
+  let d = ensureTournamentDraft(t);
+  let order = d.order;
+  let target = idx + dir;
+  if(target < 0 || target >= order.length) return;
+  let temp = order[idx];
+  order[idx] = order[target];
+  order[target] = temp;
+  let host = document.getElementById('draftOrderListContainer');
+  if(host) host.innerHTML = renderDraftOrderListRows(order, tId);
+}
+
+function randomizeDraftOrder(tId){
+  let t = tournamentData[tId] || activeT();
+  if(!t) return;
+  let d = ensureTournamentDraft(t);
+  let order = d.order;
+  for(let i = order.length - 1; i > 0; i--){
+    let j = Math.floor(Math.random() * (i + 1));
+    let temp = order[i];
+    order[i] = order[j];
+    order[j] = temp;
+  }
+  let host = document.getElementById('draftOrderListContainer');
+  if(host) host.innerHTML = renderDraftOrderListRows(order, tId);
+}
+
+function saveDraftOrder(tId){
+  let t = tournamentData[tId] || activeT();
+  if(!t) return;
+  persistLeague();
+  closeModal();
+  render();
+}
+
+function openDraftConfirmationModal(tId, monName, cost, tierName){
+  let t = tournamentData[tId] || activeT();
+  if(!t) return;
+  let d = ensureTournamentDraft(t);
+  let turn = getDraftCurrentTurn(t);
+  if(!turn || turn.isComplete) return;
+
+  let pickingCoach = turn.player;
+  let coachStats = getDraftCoachStats(t, pickingCoach);
+  let spriteUrl = pokeSprite(monName);
+
+  let isMe = (window.currentAccount?.username === pickingCoach || (typeof playerForAccount === 'function' && playerForAccount(window.currentAccount?.username) === pickingCoach));
+  let canPick = moderator || isMe;
+  let hasBudget = (coachStats.budget === 0 || coachStats.remainingBudget >= cost);
+  let hasSlots = !coachStats.isRosterFull;
+
+  document.querySelector('#modal').innerHTML = `
+    <div class="modal-wrap">
+      <div class="modal" style="max-width:460px;text-align:center">
+        <div class="modal-head" style="justify-content:flex-end">
+          <button class="close" onclick="closeModal()">×</button>
+        </div>
+
+        <div style="margin-top:-10px">
+          <div style="background:radial-gradient(circle,rgba(239,48,56,0.15) 0%,transparent 70%);padding:14px;border-radius:12px;display:inline-block">
+            <img src="${esc(spriteUrl)}" alt="${esc(monName)}" style="width:96px;height:96px;object-fit:contain;filter:drop-shadow(0 6px 12px rgba(0,0,0,0.6))" onerror="this.src='https://play.pokemonshowdown.com/sprites/dex/substitute.png'">
+          </div>
+          <h2 style="margin:10px 0 4px;font:800 24px 'Barlow Condensed';letter-spacing:.5px">${esc(monName)}</h2>
+          <div style="display:flex;justify-content:center;align-items:center;gap:8px;margin-bottom:16px">
+            <span class="tag" style="background:#22222c;color:#a09fa8">${esc(tierName)}</span>
+            <span class="tag" style="background:#3d2c12;color:#ffd166;font-weight:800;border:1px solid #6b4d1b">${cost} Points</span>
+          </div>
+
+          <div class="card" style="padding:14px;background:#14141c;border-color:#2a2a3a;text-align:left;margin-bottom:18px">
+            <div style="display:flex;align-items:center;justify-content:space-between">
+              <div>
+                <div style="font-size:10px;font-weight:800;color:#8e8c95;text-transform:uppercase">Drafting Coach</div>
+                <div style="font-weight:800;font-size:15px;color:#f5f3f0">${esc(pickingCoach)}</div>
+              </div>
+              <div style="text-align:right">
+                <div style="font-size:10px;font-weight:800;color:#8e8c95;text-transform:uppercase">Points Balance</div>
+                <div style="font:800 15px 'Barlow Condensed';color:${hasBudget ? '#4bdd91' : '#ff4b54'}">${coachStats.budget > 0 ? `${coachStats.remainingBudget} / ${coachStats.budget} pts` : 'Unlimited'}</div>
+              </div>
+            </div>
+            <div style="margin-top:8px;font-size:11px;color:#9d9ba6">
+              Pick <b>#${turn.currentPickNumber}</b> · Round <b>${turn.currentRound}</b> · Team slot <b>${coachStats.count + 1}/${coachStats.maxSlots}</b>
+            </div>
+          </div>
+
+          ${!canPick ? `<div class="sub" style="color:#ff8e95;margin-bottom:14px">Only <b>${esc(pickingCoach)}</b> or a Moderator can make this selection.</div>` : ''}
+          ${canPick && !hasBudget ? `<div class="sub" style="color:#ff4b54;margin-bottom:14px">⚠️ Not enough points. ${esc(pickingCoach)} only has ${coachStats.remainingBudget} pts remaining.</div>` : ''}
+          ${canPick && !hasSlots ? `<div class="sub" style="color:#ff4b54;margin-bottom:14px">⚠️ Roster is full (${coachStats.maxSlots}/${coachStats.maxSlots}).</div>` : ''}
+
+          <div class="creator-actions" style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+            <button class="btn ghost" onclick="closeModal()">Cancel</button>
+            <button class="btn" ${(!canPick || !hasBudget || !hasSlots) ? 'disabled style="opacity:.4;cursor:not-allowed"' : ''} style="padding:10px 16px;font-weight:800" onclick="makeDraftPick('${jsArg(t.id)}', '${jsArg(monName)}');closeModal()">Draft Pokémon 🎯</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function makeDraftPick(tId, pokemonName, forcedPlayer = null){
+  let t = tournamentData[tId] || ongoingT() || activeT();
+  if(!t) return;
+  let d = ensureTournamentDraft(t);
+  if(!d) return;
+
+  if(d.status === 'paused'){
+    alert('The draft is currently paused by a moderator.');
+    return;
+  }
+  if(d.status === 'completed'){
+    alert('The draft has already finished!');
+    return;
+  }
+
+  let turn = getDraftCurrentTurn(t);
+  if(turn.isComplete){
+    alert('All draft picks have already been made.');
+    return;
+  }
+
+  let targetPlayer = forcedPlayer || turn.player;
+  if(!targetPlayer){
+    alert('No player is currently on the clock.');
+    return;
+  }
+
+  // Account authentication check
+  if(!moderator && !forcedPlayer){
+    let linked = (typeof playerForAccount === 'function' ? playerForAccount(window.currentAccount?.username) : null) || window.currentAccount?.username;
+    if(linked !== targetPlayer){
+      alert(`It is currently ${targetPlayer}'s turn to pick. Only ${targetPlayer} or a moderator can draft this Pokémon.`);
+      return;
+    }
+  }
+
+  let alreadyPicked = (d.picks || []).some(x => x.pokemon.toLowerCase().trim() === pokemonName.toLowerCase().trim());
+  if(alreadyPicked){
+    alert(`${pokemonName} has already been drafted!`);
+    return;
+  }
+
+  let cost = findPokemonCostOnBoard(t, pokemonName);
+  let stats = getDraftCoachStats(t, targetPlayer);
+
+  if(stats.budget > 0 && stats.remainingBudget < cost){
+    alert(`${targetPlayer} only has ${stats.remainingBudget} pts remaining, but ${pokemonName} costs ${cost} pts.`);
+    return;
+  }
+  if(stats.count >= stats.maxSlots){
+    alert(`${targetPlayer}'s roster is already full (${stats.maxSlots}/${stats.maxSlots} Pokémon).`);
+    return;
+  }
+
+  d.picks.push({
+    round: turn.currentRound,
+    pickNumber: turn.currentPickNumber,
+    player: targetPlayer,
+    pokemon: pokemonName,
+    cost: cost,
+    timestamp: Date.now()
+  });
+
+  // Automatically place Pokémon onto active tournament roster!
+  if(!t.rosters) t.rosters = {};
+  if(!t.rosters[targetPlayer]) t.rosters[targetPlayer] = [];
+  if(!t.rosters[targetPlayer].includes(pokemonName)){
+    t.rosters[targetPlayer].push(pokemonName);
+  }
+
+  if(!roster[targetPlayer]) roster[targetPlayer] = [];
+  if(!roster[targetPlayer].includes(pokemonName)){
+    roster[targetPlayer].push(pokemonName);
+  }
+
+  if(d.picks.length >= getDraftTotalPicks(t)){
+    d.status = 'completed';
+  }
+
+  persistLeague();
+  render();
+}
+
+function undoDraftPick(tId){
+  if(!moderator) return;
+  let t = tournamentData[tId] || activeT();
+  if(!t || !t.draftData || !t.draftData.picks?.length) return;
+  if(!confirm('Undo the last draft pick?')) return;
+
+  let lastPick = t.draftData.picks.pop();
+  if(lastPick){
+    let p = lastPick.player;
+    let mon = lastPick.pokemon;
+    if(t.rosters?.[p]){
+      t.rosters[p] = t.rosters[p].filter(m => m.toLowerCase().trim() !== mon.toLowerCase().trim());
+    }
+    if(roster[p]){
+      roster[p] = roster[p].filter(m => m.toLowerCase().trim() !== mon.toLowerCase().trim());
+    }
+    if(t.draftData.status === 'completed'){
+      t.draftData.status = 'active';
+    }
+  }
+
+  persistLeague();
+  render();
+}
+
+function startDraft(tId){
+  if(!moderator) return;
+  let t = tournamentData[tId] || activeT();
+  if(!t) return;
+  let d = ensureTournamentDraft(t);
+  d.status = 'active';
+  persistLeague();
+  render();
+}
+
+function pauseDraft(tId){
+  if(!moderator) return;
+  let t = tournamentData[tId] || activeT();
+  if(!t) return;
+  let d = ensureTournamentDraft(t);
+  d.status = 'paused';
+  persistLeague();
+  render();
+}
+
+function resumeDraft(tId){
+  if(!moderator) return;
+  let t = tournamentData[tId] || activeT();
+  if(!t) return;
+  let d = ensureTournamentDraft(t);
+  d.status = 'active';
+  persistLeague();
+  render();
+}
+
+function completeDraftAndAdvance(tId){
+  if(!moderator) return;
+  let t = tournamentData[tId] || activeT();
+  if(!t) return;
+  if(!confirm(`Finish draft for ${t.name} and advance to Group Stage? All drafted rosters will be locked in.`)) return;
+
+  let d = ensureTournamentDraft(t);
+  d.status = 'completed';
+  t.phase = 'group';
+  current = 'Matches';
+  persistLeague();
+  render();
+}
+
+function resetDraftPicks(tId){
+  if(!moderator) return;
+  let t = tournamentData[tId] || activeT();
+  if(!t) return;
+  if(!confirm(`Reset all draft picks for ${t.name}? Rosters will be cleared.`)) return;
+
+  let d = ensureTournamentDraft(t);
+  d.picks = [];
+  d.status = 'pending';
+  (t.players || []).forEach(p => {
+    if(t.rosters?.[p]) t.rosters[p] = [];
+    if(roster?.[p]) roster[p] = [];
+  });
+
+  persistLeague();
+  render();
+}
+
+/* --- Draft Views --- */
+function draftRecentTickerHtml(t){
+  let d = ensureTournamentDraft(t);
+  let recent = [...(d.picks || [])].reverse().slice(0, 8);
+  if(!recent.length) return '';
+
+  return `
+    <div style="margin-top:14px;background:#13131a;border:1px solid #282836;border-radius:8px;padding:8px 12px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+        <span style="font-size:10px;font-weight:800;color:#8e8c95;text-transform:uppercase;letter-spacing:.6px">Recent Draft Picks</span>
+        <span style="font-size:10px;color:#ffd166;font-weight:700">Latest ${recent.length}</span>
+      </div>
+      <div class="draft-recent-bar">
+        ${recent.map(p => `
+          <div class="draft-recent-item">
+            <span style="font:800 11px 'Barlow Condensed';color:var(--amber)">#${p.pickNumber}</span>
+            <img src="${esc(pokeSprite(p.pokemon))}" class="draft-sprite" style="width:26px;height:26px" onerror="this.style.display='none'">
+            <div style="min-width:0">
+              <div style="font-weight:800;color:#f5f3f0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(p.pokemon)}</div>
+              <div style="font-size:10px;color:#8e8c95">${esc(p.player)} · ${p.cost} pts</div>
+            </div>
+          </div>
+        `).join('')}
+      </div>
+    </div>
+  `;
+}
+
+function DraftRoom(t){
+  if(!t) t = ongoingT() || activeT();
+  if(!t) return noTournament();
+
+  let d = ensureTournamentDraft(t);
+  let turn = getDraftCurrentTurn(t);
+  let curPlayer = turn.player;
+  let coachStats = curPlayer ? getDraftCoachStats(t, curPlayer) : null;
+
+  let faceArt = curPlayer ? (profilePictures[curPlayer] ? `url('${esc(profilePictures[curPlayer])}')` : (teamCovers[curPlayer] ? `url('${esc(teamCovers[curPlayer])}')` : fallbackArt(curPlayer))) : '';
+  let faceLetter = curPlayer ? ((profilePictures[curPlayer] || teamCovers[curPlayer]) ? '' : esc(curPlayer[0])) : '—';
+  let curOvr = curPlayer ? calculatePlayerOVR(curPlayer) : null;
+
+  let isMe = curPlayer && (window.currentAccount?.username === curPlayer || (typeof playerForAccount === 'function' && playerForAccount(window.currentAccount?.username) === curPlayer));
+
+  // Draft HUD Controls
+  let statusBadge = d.status === 'active' 
+    ? '<span class="status"><i></i>DRAFT LIVE</span>' 
+    : (d.status === 'paused' 
+      ? '<span class="status" style="background:#3d2c12;border-color:#f59e0b;color:#f59e0b"><i style="background:#f59e0b"></i>PAUSED</span>' 
+      : (d.status === 'completed' 
+        ? '<span class="status" style="background:#0d2d1f;border-color:#10b981;color:#10b981"><i style="background:#10b981"></i>DRAFT COMPLETE</span>' 
+        : '<span class="status" style="background:#22222c;border-color:#4a4a58;color:#a09fa8"><i style="background:#a09fa8"></i>PENDING START</span>'));
+
+  let modActions = moderator ? `
+    <div style="display:flex;gap:6px;flex-wrap:wrap">
+      ${d.status === 'pending' ? `<button class="btn btn-sm" style="padding:6px 14px!important;font-weight:800" onclick="startDraft('${jsArg(t.id)}')">▶️ Start Draft</button>` : ''}
+      ${d.status === 'active' ? `<button class="btn ghost btn-sm" onclick="pauseDraft('${jsArg(t.id)}')">⏸️ Pause</button>` : ''}
+      ${d.status === 'paused' ? `<button class="btn btn-sm" onclick="resumeDraft('${jsArg(t.id)}')">▶️ Resume</button>` : ''}
+      ${d.picks?.length ? `<button class="btn ghost btn-sm" style="color:#ff9ba1" onclick="undoDraftPick('${jsArg(t.id)}')">↩️ Undo Pick</button>` : ''}
+      <button class="btn ghost btn-sm" onclick="openDraftOrderEditor('${jsArg(t.id)}')">🔀 Draft Order</button>
+      <button class="btn ghost btn-sm" onclick="openDraftBoardImporter('${jsArg(t.id)}')">📥 Import Sheet</button>
+      ${d.status === 'completed' || d.picks?.length >= getDraftTotalPicks(t) ? `<button class="btn btn-sm" style="background:#10b981;border-color:#34d399" onclick="completeDraftAndAdvance('${jsArg(t.id)}')">🏁 Start Group Stage →</button>` : ''}
+    </div>
+  ` : '';
+
+  return `
+    <div class="draft-room-layout">
+      <!-- Live Draft HUD -->
+      <div class="draft-hud">
+        <div class="draft-hud-head">
+          <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+            ${statusBadge}
+            <span class="eyebrow" style="margin:0;color:#ffd166;letter-spacing:1px">${esc(t.name)}</span>
+            <span class="tag" style="background:#1e1e28;color:#c0bfca">Round <b>${turn.currentRound}</b> · Pick <b>${turn.currentPickNumber} of ${turn.totalPicks}</b></span>
+          </div>
+          ${modActions}
+        </div>
+
+        <div class="draft-hud-hero">
+          <!-- On The Clock Card -->
+          <div class="draft-clock-card ${d.status === 'paused' ? 'paused' : (d.status === 'completed' ? 'completed' : '')}">
+            <div class="draft-clock-avatar" style="background-image:${faceArt};border-color:${curOvr?.color || '#fff'}">
+              ${faceLetter}
+            </div>
+            <div style="min-width:0;flex:1">
+              <div style="font-size:10px;font-weight:800;letter-spacing:1px;color:${d.status === 'active' ? '#ff858b' : '#ffd166'};text-transform:uppercase">
+                ${d.status === 'completed' ? 'Draft Finished' : (d.status === 'paused' ? 'Draft Paused' : (isMe ? '⭐ YOU ARE ON THE CLOCK!' : '⏳ ON THE CLOCK'))}
+              </div>
+              <div style="font:800 22px 'Barlow Condensed';color:#f5f3f0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;line-height:1.2">
+                ${turn.isComplete ? 'All Rosters Drafted' : esc(curPlayer)}
+              </div>
+              <div style="font-size:11px;color:#a09fa8;margin-top:2px">
+                ${turn.isComplete ? 'Ready for Group Stage' : esc(teamName(t, curPlayer))}
+              </div>
+            </div>
+
+            ${coachStats ? `
+              <div style="text-align:right;border-left:1px solid #3d242c;padding-left:14px">
+                <div style="font-size:10px;font-weight:800;color:#8e8c95;text-transform:uppercase">Budget Left</div>
+                <div style="font:800 18px 'Barlow Condensed';color:#ffd166">${coachStats.budget > 0 ? `${coachStats.remainingBudget} <small style="font-size:11px;color:#8e8c95">pts</small>` : 'Unlimited'}</div>
+                <div style="font-size:10px;color:#a09fa8;margin-top:2px">${coachStats.count}/${coachStats.maxSlots} drafted</div>
+              </div>
+            ` : ''}
+          </div>
+
+          <!-- Upcoming Picks -->
+          <div class="draft-info-card">
+            <div>
+              <div style="font-size:10px;font-weight:800;color:#8e8c95;text-transform:uppercase;letter-spacing:.6px;margin-bottom:8px">Next on the Clock</div>
+              <div style="display:flex;gap:6px;flex-wrap:wrap">
+                ${turn.upcoming.slice(0, 4).map(u => `
+                  <div class="draft-pick-chip">
+                    <span style="color:var(--amber)">#${u.pickNumber}</span>
+                    <span>${esc(u.player)}</span>
+                  </div>
+                `).join('') || '<span style="font-size:11px;color:#8e8c95">No upcoming picks remaining</span>'}
+              </div>
+            </div>
+            <div style="margin-top:10px;font-size:11px;color:#8e8c95;display:flex;justify-content:space-between">
+              <span>Snake Order: <b>${d.order.join(' → ')}</b></span>
+              <span>Point Limit: <b>${d.pointBudget ? d.pointBudget + ' pts' : 'None'}</b></span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Snake Order Strip -->
+        <div class="draft-snake-strip-wrap">
+          <div class="draft-snake-strip">
+            ${Array.from({length: Math.min(turn.totalPicks, 24)}, (_, idx) => {
+              let pickInfo = getDraftPickDetails(t, idx);
+              let isDone = idx < d.picks.length;
+              let isCurrent = idx === d.picks.length;
+              let pickedMon = d.picks[idx]?.pokemon;
+
+              return `
+                <div class="draft-pick-chip ${isCurrent ? 'current' : (isDone ? 'done' : '')}">
+                  <span style="font:800 11px 'Barlow Condensed'">${pickInfo.round}.${pickInfo.posInRound + 1 || (idx % (d.order.length || 1)) + 1}</span>
+                  <b>${esc(pickInfo.player)}</b>
+                  ${isDone && pickedMon ? `<span style="color:#ffd166;font-size:10px">(${esc(pickedMon)})</span>` : ''}
+                </div>
+              `;
+            }).join('')}
+          </div>
+        </div>
+
+        ${draftRecentTickerHtml(t)}
+      </div>
+
+      <!-- Navigation Subtabs -->
+      <div class="tabs" style="margin-top:4px">
+        <button class="${draftRoomSubTab === 'room' ? 'active' : ''}" onclick="draftRoomSubTab='room';render()">📋 Tiered Draft Board</button>
+        <button class="${draftRoomSubTab === 'rosters' ? 'active' : ''}" onclick="draftRoomSubTab='rosters';render()">👥 Coach Rosters & Budgets</button>
+        <button class="${draftRoomSubTab === 'planner' ? 'active' : ''}" onclick="draftRoomSubTab='planner';render()">📝 Team Planner</button>
+        <button class="${draftRoomSubTab === 'sheet' ? 'active' : ''}" onclick="draftRoomSubTab='sheet';render()">📊 Google Sheets Embed</button>
+      </div>
+
+      <!-- Tab Content Area -->
+      ${draftRoomSubTab === 'rosters' 
+        ? DraftRostersView(t) 
+        : (draftRoomSubTab === 'planner' 
+          ? `<div class="card builder" id="teamBuilder" style="max-width:540px;margin:0 auto">${builderHTML()}</div>`
+          : (draftRoomSubTab === 'sheet' 
+            ? `<div class="card">${sheetIds(boardLink).id ? `<iframe class="sheet-frame" src="${esc(sheetEmbedUrl())}" title="League draft sheet" loading="lazy"></iframe>` : `<div class="empty"><div class="card-title">Connect the cost sheet</div><p class="sub">Add the Google Sheets link in Board settings to show it here.</p></div>`}</div>`
+            : DraftBoardView(t)))}
+    </div>
+  `;
+}
+
+function DraftBoardView(t){
+  let d = ensureTournamentDraft(t);
+  let board = d.board || [];
+  let turn = getDraftCurrentTurn(t);
+  let draftedSet = new Set((d.picks || []).map(x => x.pokemon.toLowerCase().trim()));
+  let draftedByMap = {};
+  (d.picks || []).forEach(p => {
+    draftedByMap[p.pokemon.toLowerCase().trim()] = p;
+  });
+
+  if(!board.length){
+    return `
+      <div class="card empty" style="padding:36px 20px;text-align:center">
+        <span style="font-size:42px">📋</span>
+        <div class="card-title" style="margin-top:10px">No Draft Board Imported Yet</div>
+        <p class="sub" style="max-width:480px;margin:8px auto 16px">Copy your draft tiers from Google Sheets or Excel and import them to enable live interactive drafting.</p>
+        ${moderator ? `
+          <div style="display:flex;gap:10px;justify-content:center">
+            <button class="btn" onclick="openDraftBoardImporter('${jsArg(t.id)}')">📥 Import Google Sheet Board</button>
+            <button class="btn ghost" onclick="loadSampleDraftBoard();saveImportedDraftBoard('${jsArg(t.id)}')">Load Sample Tiers</button>
+          </div>
+        ` : `<p class="sub">A moderator will import the draft board before drafting starts.</p>`}
+      </div>
+    `;
+  }
+
+  // Filter logic
+  let filteredBoard = board.map(tier => {
+    let filteredMons = (tier.pokemon || []).filter(mon => {
+      let clean = mon.toLowerCase().trim();
+      let matchesSearch = !draftBoardSearch || clean.includes(draftBoardSearch.toLowerCase().trim());
+      let isDrafted = draftedSet.has(clean);
+      let matchesAvail = !draftBoardAvailOnly || !isDrafted;
+      let matchesTier = (draftBoardTierFilter === 'all' || tier.id === draftBoardTierFilter || String(tier.cost) === draftBoardTierFilter);
+      return matchesSearch && matchesAvail && matchesTier;
+    });
+    return { ...tier, filteredMons };
+  });
+
+  let totalAvailable = board.reduce((sum, tier) => sum + tier.pokemon.filter(m => !draftedSet.has(m.toLowerCase().trim())).length, 0);
+  let totalMons = board.reduce((sum, tier) => sum + tier.pokemon.length, 0);
+
+  return `
+    <div style="display:flex;flex-direction:column;gap:14px">
+      <!-- Search and Filter Bar -->
+      <div class="match-controls-bar">
+        <div style="display:flex;align-items:center;gap:10px;flex:1;max-width:380px">
+          <input type="text" placeholder="Search Pokémon on board..." value="${esc(draftBoardSearch)}" oninput="draftBoardSearch=this.value;render()" style="width:100%;padding:8px 12px;background:#181822;border:1px solid #363648;border-radius:6px;color:#f5f3f0;font-size:12px">
+        </div>
+
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+          <label style="display:flex;align-items:center;gap:6px;font-size:11px;color:#c0bfca;cursor:pointer;user-select:none">
+            <input type="checkbox" ${draftBoardAvailOnly ? 'checked' : ''} onchange="draftBoardAvailOnly=this.checked;render()" style="accent-color:var(--red)">
+            Available Only (${totalAvailable}/${totalMons})
+          </label>
+
+          <select onchange="draftBoardTierFilter=this.value;render()" style="padding:6px 10px;background:#181822;border:1px solid #363648;border-radius:6px;color:#f5f3f0;font-size:11px">
+            <option value="all">All Tiers (${board.length})</option>
+            ${board.map(tier => `<option value="${esc(tier.id)}" ${draftBoardTierFilter === tier.id ? 'selected' : ''}>${esc(tier.name)} · ${tier.cost} pts</option>`).join('')}
+          </select>
+
+          ${moderator ? `
+            <button class="btn ghost btn-sm" onclick="openDraftBoardImporter('${jsArg(t.id)}')">⚙️ Edit Board</button>
+          ` : ''}
+        </div>
+      </div>
+
+      <!-- Tier Columns Grid -->
+      <div class="draft-board-wrap">
+        ${filteredBoard.map(tier => {
+          let availCount = tier.pokemon.filter(m => !draftedSet.has(m.toLowerCase().trim())).length;
+          return `
+            <div class="draft-tier-col">
+              <div class="draft-tier-head">
+                <span style="color:#ffd166">${esc(tier.name)}</span>
+                <span class="tag" style="background:#2d2210;color:#ffd166;font-size:10px;border:1px solid #5a4218">${tier.cost} pts · ${availCount}/${tier.pokemon.length}</span>
+              </div>
+
+              <div class="draft-tier-items">
+                ${tier.filteredMons.map(mon => {
+                  let clean = mon.toLowerCase().trim();
+                  let isDrafted = draftedSet.has(clean);
+                  let draftInfo = isDrafted ? draftedByMap[clean] : null;
+                  let spriteUrl = pokeSprite(mon);
+
+                  return `
+                    <div class="draft-mon-card ${isDrafted ? 'drafted' : ''}" onclick="${isDrafted ? '' : `openDraftConfirmationModal('${jsArg(t.id)}', '${jsArg(mon)}', ${tier.cost}, '${jsArg(tier.name)}')`}">
+                      <div style="display:flex;align-items:center;gap:8px;min-width:0">
+                        <img src="${esc(spriteUrl)}" class="draft-sprite" alt="${esc(mon)}" loading="lazy" onerror="this.src='https://play.pokemonshowdown.com/sprites/dex/substitute.png'">
+                        <div style="min-width:0">
+                          <div class="draft-mon-name" title="${esc(mon)}">${esc(mon)}</div>
+                          ${isDrafted && draftInfo ? `
+                            <div style="font-size:9px;color:#ff8e95;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
+                              Drafted by ${esc(draftInfo.player)} (#${draftInfo.pickNumber})
+                            </div>
+                          ` : ''}
+                        </div>
+                      </div>
+
+                      ${!isDrafted ? `
+                        <span class="draft-mon-cost">${tier.cost} pts</span>
+                      ` : `
+                        <span style="font-size:11px;color:#6b6a75;font-weight:700">Picked</span>
+                      `}
+                    </div>
+                  `;
+                }).join('') || '<div style="padding:14px;font-size:11px;color:#6b6a75;text-align:center">No matches in this tier</div>'}
+              </div>
+            </div>
+          `;
+        }).join('')}
+      </div>
+    </div>
+  `;
+}
+
+function DraftRostersView(t){
+  let d = ensureTournamentDraft(t);
+  let order = getDraftOrderList(t);
+
+  return `
+    <div class="draft-rosters-grid">
+      ${order.map(p => {
+        let stats = getDraftCoachStats(t, p);
+        let faceArt = profilePictures[p] ? `url('${esc(profilePictures[p])}')` : (teamCovers[p] ? `url('${esc(teamCovers[p])}')` : fallbackArt(p));
+        let faceLetter = (profilePictures[p] || teamCovers[p]) ? '' : esc((p || '?')[0]);
+        let ovrObj = calculatePlayerOVR(p);
+        let freeSlots = Math.max(0, stats.maxSlots - stats.picks.length);
+
+        return `
+          <div class="draft-roster-box">
+            <div class="draft-roster-head">
+              <div style="display:flex;align-items:center;gap:8px">
+                <span class="avatar mini" style="background-image:${faceArt};background-size:cover;background-position:center;width:30px;height:30px;border-radius:50%;display:grid;place-items:center;border:1px solid ${ovrObj.color}">${faceLetter}</span>
+                <div>
+                  <div style="font-weight:800;font-size:13px;color:#f5f3f0">${playerLink(p)}</div>
+                  <div style="font-size:10px;color:#8e8c95">${esc(teamName(t, p))}</div>
+                </div>
+              </div>
+              <div style="text-align:right">
+                <div style="font:800 13px 'Barlow Condensed';color:#ffd166">${stats.budget > 0 ? `${stats.pointsSpent} / ${stats.budget} pts` : `${stats.pointsSpent} pts`}</div>
+                <div style="font-size:10px;color:#8e8c95">${stats.count} / ${stats.maxSlots} Pokémon</div>
+              </div>
+            </div>
+
+            <div class="draft-roster-mons">
+              ${stats.picks.map(pick => `
+                <div class="draft-roster-mon-tile" title="${esc(pick.pokemon)} (${pick.cost} pts)">
+                  <img src="${esc(pokeSprite(pick.pokemon))}" style="width:36px;height:36px;object-fit:contain" loading="lazy" onerror="this.src='https://play.pokemonshowdown.com/sprites/dex/substitute.png'">
+                  <span style="color:#f5f3f0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;width:100%">${esc(pick.pokemon)}</span>
+                  <span style="font-size:9px;color:#ffd166">${pick.cost}p</span>
+                </div>
+              `).join('')}
+              ${Array.from({length: freeSlots}, (_, i) => `
+                <div class="draft-roster-mon-tile" style="border-style:dashed;border-color:#2a2a38;opacity:.5;justify-content:center;min-height:56px">
+                  <span style="font-size:9px;color:#6b6a78">Slot ${stats.picks.length + i + 1}</span>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+        `;
+      }).join('')}
+    </div>
+  `;
+}
+
+/* --- Navigation & Board Main Handler --- */
 function Board(){
+  let t = ongoingT() || activeT();
+  let hasActiveDraft = t && (t.hasDraft || t.phase === 'draft' || t.draftData);
+
+  if(hasActiveDraft){
+    return head('Live Draft Room', (t.season || '') + ': ' + t.name + ' · Snake Draft & Board') + DraftRoom(t);
+  }
+
   let s=sheetIds(boardLink),embed=sheetEmbedUrl();
   let actions=`<div style="display:flex;gap:8px;flex-wrap:wrap">${moderator?`<button class="btn ghost" onclick="openBoardSettings()">Board settings</button>`:''}<button class="btn" onclick="openBoardLink()">Open in Google Sheets ↗</button></div>`;
   setTimeout(pullRemoteTeams,0);
@@ -8900,7 +10169,7 @@ function Board(){
                :`<div class="empty"><div class="card-title">Connect the cost sheet</div><p class="sub">Add the Google Sheets link in Board settings to show it here.</p></div>`}
       </div>
       <aside class="card builder" id="teamBuilder">${builderHTML()}</aside>
-    </div>`
+    </div>`;
 }
 function openBoardSettings(){
   if(!moderator)return;
