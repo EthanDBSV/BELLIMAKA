@@ -1864,15 +1864,15 @@ function getTournamentTopCutModel(t){
     gfMatches.push(gf1Match);
 
     let smGf2 = findStageMatch(bmd, 3, 2, 1);
-    let lbWonGf1 = gf1Match.isDone && isKnownPlayer(gf1Match.p1) && isKnownPlayer(gf1Match.p2) && (gf1Match.winner === gf1Match.p2 || (smGf2 && (smGf2.p1 || smGf2.raw?.opponent1?.id != null)));
-    if(lbWonGf1 || smGf2?.isDone){
+    let lbWonGf1 = gf1Match.isDone && isKnownPlayer(gf1Match.p1) && isKnownPlayer(gf1Match.p2) && gf1Match.winner === gf1Match.p2;
+    if(lbWonGf1 || (smGf2 && smGf2.isDone && smGf2.winner)){
       let gf2Match = {
         id:'gf2',
         title:'Grand Finals · Reset Match',
         p1: smGf2?.p1 || gf1Match.p1,
         p2: smGf2?.p2 || gf1Match.p2,
-        originP1:'GF1 Rematch',
-        originP2:'GF1 Rematch',
+        originP1:'Upper Bracket Finalist',
+        originP2:'Lower Bracket Finalist',
         isReset: true
       };
       if(smGf2){
@@ -1931,15 +1931,15 @@ function getTournamentTopCutModel(t){
     gfMatches.push(gf1Match);
 
     let smGf2 = findStageMatch(bmd, 3, 2, 1);
-    let lbWonGf1 = gf1Match.isDone && isKnownPlayer(gf1Match.p1) && isKnownPlayer(gf1Match.p2) && (gf1Match.winner === gf1Match.p2 || (smGf2 && (smGf2.p1 || smGf2.raw?.opponent1?.id != null)));
-    if(lbWonGf1 || smGf2?.isDone){
+    let lbWonGf1 = gf1Match.isDone && isKnownPlayer(gf1Match.p1) && isKnownPlayer(gf1Match.p2) && gf1Match.winner === gf1Match.p2;
+    if(lbWonGf1 || (smGf2 && smGf2.isDone && smGf2.winner)){
       let gf2Match = {
         id:'gf2',
         title:'Grand Finals · Reset Match',
         p1: smGf2?.p1 || gf1Match.p1,
         p2: smGf2?.p2 || gf1Match.p2,
-        originP1:'GF1 Rematch',
-        originP2:'GF1 Rematch',
+        originP1:'Upper Bracket Finalist',
+        originP2:'Lower Bracket Finalist',
         isReset: true
       };
       if(smGf2){
@@ -6275,10 +6275,17 @@ async function renderPredictionLeaders(t, forceFresh = false){
       <span class="pts">${x.pts} pts</span></div>`;
   }).join('') : '<p class="sub">No predictions submitted yet. Points are awarded once results come in.</p>';
   let note = `<div class="leader-note">${settled} scored · ${pending} still open. Points follow the sign-in account, so they stay with you across tournaments whether or not you are playing.</div>`;
-  let fullHtml = `<div class="card-title">Prediction leaders</div>${list}${note}`;
-
   predictionScoresCache[t.id] = { rows, accounts, html: fullHtml, timestamp: now };
   host.innerHTML = fullHtml;
+
+  if(board.length && board[0].pts > 0){
+    let topUser = board[0].u;
+    if(t.predictionKing !== topUser){
+      t.predictionKing = topUser;
+      try { persistLeague(); } catch(e){}
+      if(typeof rebuildAllPlayerStats === 'function') rebuildAllPlayerStats();
+    }
+  }
 }
 
 /* ------------------------------------------------------------ 3. MODERN PREDICTIONS & PICK'EMS ------------------------------------------------------------ */
@@ -7139,19 +7146,30 @@ function calculateLeagueRecords(){
           });
         }
 
-        // Prediction King: Top prediction score in a completed tournament
-        if(t.status==='COMPLETE'&&(t.predictionKing||t.predictionLeader||t.predictionWinner)){
-          let pk=t.predictionKing||t.predictionLeader||t.predictionWinner;
-          let pkPlayer=(typeof playerForAccount==='function'?playerForAccount(pk):null)||pk;
-          if(pkPlayer===p){
-            statsByPlayer[p].badges.push({
-              id:'prediction-king-'+t.id,
-              icon:'🔮',
-              name:`Prediction King (${t.name})`,
-              desc:`Scored the most prediction points in ${t.name}`,
-              category:'predictions',
-              color:'purple'
-            });
+        // Prediction King: Top prediction score in a tournament with predictions scored
+        let pk = t.predictionKing || t.predictionLeader || t.predictionWinner;
+        if(!pk && predictionScoresCache[t.id]?.rows?.length){
+          let accounts = predictionScoresCache[t.id].accounts || [];
+          let byId = Object.fromEntries(accounts.map(a => [a.id, a.username]));
+          let { rows: board } = scorePredictionRows(t, predictionScoresCache[t.id].rows, id => byId[id] || id);
+          if(board.length && board[0].pts > 0){
+            pk = board[0].u;
+            t.predictionKing = pk;
+          }
+        }
+        if(pk){
+          let pkPlayer = (typeof playerForAccount === 'function' ? playerForAccount(pk) : null) || (profiles[pk] ? pk : null) || pk;
+          if(pkPlayer === p){
+            if(!statsByPlayer[p].badges.some(b => b.id === 'prediction-king-' + t.id)){
+              statsByPlayer[p].badges.push({
+                id:'prediction-king-'+t.id,
+                icon:'🔮',
+                name:`Prediction King (${t.name})`,
+                desc:`Scored the most prediction points in ${t.name}`,
+                category:'predictions',
+                color:'purple'
+              });
+            }
           }
         }
 
