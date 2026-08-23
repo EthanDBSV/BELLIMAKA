@@ -4039,15 +4039,13 @@ function Standings(){
     let mpCard = '';
     if(rivalries?.mostPlayed){
       let mp = rivalries.mostPlayed;
-      let leader = mp.p1Wins > mp.p2Wins ? mp.p1 : (mp.p2Wins > mp.p1Wins ? mp.p2 : null);
-      let sub = leader ? `<span style="color:#ffd166;font-weight:700">${esc(leader)}</span> leads ${Math.max(mp.p1Wins, mp.p2Wins)}–${Math.min(mp.p1Wins, mp.p2Wins)}` : `<span style="color:#7df0aa;font-weight:700">Tied ${mp.p1Wins}–${mp.p2Wins}</span>`;
       mpCard = `
         <div class="card" style="padding:12px 16px;background:#141419;border-color:#2c2c36;display:flex;align-items:center;gap:12px">
           <span style="font-size:26px">⚔️</span>
           <div style="min-width:0">
             <div style="font-size:10px;font-weight:800;color:#ffb74d;text-transform:uppercase;letter-spacing:.6px">Most Played Rivalry</div>
             <div style="font:800 15px 'Barlow Condensed';color:#f5f3f0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${playerLink(mp.p1)} <span style="font-size:11px;color:#8e8c95;font-weight:400">vs</span> ${playerLink(mp.p2)}</div>
-            <div style="font-size:11px;color:#8e8c95;margin-top:2px"><b>${mp.total}</b> Matches · ${sub}</div>
+            <div style="font-size:11px;color:#8e8c95;margin-top:2px"><b>${mp.total}</b> Matches</div>
           </div>
         </div>`;
     }
@@ -4074,14 +4072,15 @@ function Standings(){
     let mcCard = '';
     if(rivalries?.mostContested){
       let mc = rivalries.mostContested;
-      let sub = (mc.p1Wins === mc.p2Wins) ? `<span style="color:#7df0aa;font-weight:700">Deadlocked 50/50</span> (${mc.total} games)` : `<span style="color:#7df0aa;font-weight:700">${Math.max(mc.p1Wins, mc.p2Wins)}–${Math.min(mc.p1Wins, mc.p2Wins)}</span> (${mc.total} games)`;
+      let leader = mc.p1Wins > mc.p2Wins ? mc.p1 : (mc.p2Wins > mc.p1Wins ? mc.p2 : null);
+      let sub = leader ? `<span style="color:#7df0aa;font-weight:700">${esc(leader)}</span> leads ${Math.max(mc.p1Wins, mc.p2Wins)}–${Math.min(mc.p1Wins, mc.p2Wins)}` : `<span style="color:#7df0aa;font-weight:700">Series Tied ${mc.p1Wins}–${mc.p2Wins}</span>`;
       mcCard = `
         <div class="card" style="padding:12px 16px;background:#141419;border-color:#2c2c36;display:flex;align-items:center;gap:12px">
           <span style="font-size:26px">🔥</span>
           <div style="min-width:0">
             <div style="font-size:10px;font-weight:800;color:#7df0aa;text-transform:uppercase;letter-spacing:.6px">Most Contested Rivalry</div>
             <div style="font:800 15px 'Barlow Condensed';color:#f5f3f0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${playerLink(mc.p1)} <span style="font-size:11px;color:#8e8c95;font-weight:400">vs</span> ${playerLink(mc.p2)}</div>
-            <div style="font-size:11px;color:#8e8c95;margin-top:2px"><b>${mc.p1Wins}–${mc.p2Wins}</b> Series · ${sub}</div>
+            <div style="font-size:11px;color:#8e8c95;margin-top:2px">${sub}</div>
           </div>
         </div>`;
     }
@@ -4091,9 +4090,8 @@ function Standings(){
       let pp = rivalries.peakPlayoff;
       let pLeader = pp.p1PlayoffWins > pp.p2PlayoffWins ? pp.p1 : (pp.p2PlayoffWins > pp.p1PlayoffWins ? pp.p2 : null);
       let playSeries = (pp.playoffMatches > 0)
-        ? (pLeader ? `<b style="color:#c084fc">${esc(pLeader)} leads ${Math.max(pp.p1PlayoffWins, pp.p2PlayoffWins)}–${Math.min(pp.p1PlayoffWins, pp.p2PlayoffWins)}</b> in Playoffs` : `<b style="color:#c084fc">Playoffs Tied ${pp.p1PlayoffWins}–${pp.p2PlayoffWins}</b>`)
-        : `Series: ${pp.p1Wins}–${pp.p2Wins}`;
-      let detail = `${playSeries} · ${pp.total} Total Matches (${pp.p1Wins}–${pp.p2Wins})`;
+        ? (pLeader ? `<span style="color:#c084fc;font-weight:700">${esc(pLeader)}</span> leads ${Math.max(pp.p1PlayoffWins, pp.p2PlayoffWins)}–${Math.min(pp.p1PlayoffWins, pp.p2PlayoffWins)}` : `<span style="color:#c084fc;font-weight:700">Playoffs Tied ${pp.p1PlayoffWins}–${pp.p2PlayoffWins}</span>`)
+        : (pp.p1Wins > pp.p2Wins ? `${esc(pp.p1)} leads ${pp.p1Wins}–${pp.p2Wins}` : `${esc(pp.p2)} leads ${pp.p2Wins}–${pp.p1Wins}`);
 
       ppCard = `
         <div class="card" style="padding:12px 16px;background:#141419;border-color:#2c2c36;display:flex;align-items:center;gap:12px">
@@ -4101,7 +4099,7 @@ function Standings(){
           <div style="min-width:0">
             <div style="font-size:10px;font-weight:800;color:#c084fc;text-transform:uppercase;letter-spacing:.6px">Peak Playoff Rivalry</div>
             <div style="font:800 15px 'Barlow Condensed';color:#f5f3f0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${playerLink(pp.p1)} <span style="font-size:11px;color:#8e8c95;font-weight:400">vs</span> ${playerLink(pp.p2)}</div>
-            <div style="font-size:11px;color:#8e8c95;margin-top:2px">${detail}</div>
+            <div style="font-size:11px;color:#8e8c95;margin-top:2px">${playSeries}</div>
           </div>
         </div>`;
     }
@@ -5144,7 +5142,15 @@ function calculatePlayerOVR(p, leagueData=null){
   let base=72;
 
   // 1. Dynamic Recent Tournament Form (Balanced recency with sample size anchoring)
-  let tf = s.tournamentFinishes || [];
+  // Live Tournament Rule: Ratings only update after group stage completes (top cut starts) or tournament completes
+  let allTfs = s.tournamentFinishes || [];
+  let tf = allTfs.filter(item => {
+    let t = item.tournament;
+    if(!t) return false;
+    if(t.status === 'COMPLETE') return true;
+    let isCompleteOrTopCut = (t.phase === 'topcut' || !!t.bracketManagerData || item.gComplete);
+    return isCompleteOrTopCut;
+  });
   let lastTFinish = tf[tf.length - 1] || null;
   let recentWins = lastTFinish ? (lastTFinish.w || 0) : 0;
   let recentLosses = lastTFinish ? (lastTFinish.l || 0) : 0;
@@ -6483,9 +6489,11 @@ function Records(){
           <div class="hof-card-val">${records.maxOvr.value} <span style="font-size:18px;font-weight:600;color:#ff8e95">OVR</span></div>
         </div>
         <div class="hof-card-holder">
-          <span style="font-size:11px;color:#8e8c95">All-Time Peak Record:</span>
-          <b>${records.maxOvr.holders.length?records.maxOvr.holders.map(p=>playerLink(p)).join(', '):'—'}</b>
-          ${records.maxOvr.tournament ? `<div style="font-size:10px;color:#ffd166;margin-top:3px;font-weight:600">🏆 Achieved in ${esc(records.maxOvr.tournament)}</div>` : ''}
+          <span style="font-size:11px;color:#8e8c95">Record Holder:</span>
+          <div style="text-align:right">
+            <b>${records.maxOvr.holders.length?records.maxOvr.holders.map(p=>playerLink(p)).join(', '):'—'}</b>
+            ${records.maxOvr.tournament ? `<div style="font-size:10px;color:#ffd166;font-weight:600;margin-top:1px">${esc(records.maxOvr.tournament)}</div>` : ''}
+          </div>
         </div>
       </div>
 
