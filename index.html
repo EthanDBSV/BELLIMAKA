@@ -1589,6 +1589,20 @@ function getTournamentTopCutModel(t){
   let seededNames = qualifiers.map(q => q.name);
   while(seededNames.length < count) seededNames.push(null);
 
+  function applyStageMatch(matchObj, sm){
+    if(!sm) return;
+    matchObj.actualMatchId = sm.id;
+    if(sm.p1 != null) matchObj.p1 = sm.p1;
+    else if(bmd) matchObj.p1 = null;
+    if(sm.p2 != null) matchObj.p2 = sm.p2;
+    else if(bmd) matchObj.p2 = null;
+    matchObj.s1 = sm.s1;
+    matchObj.s2 = sm.s2;
+    matchObj.isDone = sm.isDone;
+    matchObj.winner = sm.winner;
+    matchObj.loser = sm.loser;
+  }
+
   let wbRounds = [];
   let lbRounds = [];
   let gfMatches = [];
@@ -1605,11 +1619,7 @@ function getTournamentTopCutModel(t){
     [1, 2, 3, 4].forEach((num, idx)=>{
       let sm = findStageMatch(bmd, 1, 1, num);
       if(sm){
-        if(sm.p1) wb1Matches[idx].p1 = sm.p1;
-        if(sm.p2) wb1Matches[idx].p2 = sm.p2;
-        wb1Matches[idx].s1 = sm.s1; wb1Matches[idx].s2 = sm.s2;
-        wb1Matches[idx].isDone = sm.isDone; wb1Matches[idx].winner = sm.winner; wb1Matches[idx].loser = sm.loser;
-        wb1Matches[idx].actualMatchId = sm.id;
+        applyStageMatch(wb1Matches[idx], sm);
       } else if(wb1Matches[idx].p2 === 'BYE' && wb1Matches[idx].p1 && isKnownPlayer(wb1Matches[idx].p1)){
         wb1Matches[idx].isDone = true;
         wb1Matches[idx].winner = wb1Matches[idx].p1;
@@ -1627,11 +1637,7 @@ function getTournamentTopCutModel(t){
     [1, 2].forEach((num, idx)=>{
       let sm = findStageMatch(bmd, 1, 2, num);
       if(sm){
-        if(sm.p1) wb2Matches[idx].p1 = sm.p1;
-        if(sm.p2) wb2Matches[idx].p2 = sm.p2;
-        wb2Matches[idx].s1 = sm.s1; wb2Matches[idx].s2 = sm.s2;
-        wb2Matches[idx].isDone = sm.isDone; wb2Matches[idx].winner = sm.winner; wb2Matches[idx].loser = sm.loser;
-        wb2Matches[idx].actualMatchId = sm.id;
+        applyStageMatch(wb2Matches[idx], sm);
       }
     });
     wbRounds.push({ title:'Semifinals', name:'Round 2', matches:wb2Matches });
@@ -1641,155 +1647,78 @@ function getTournamentTopCutModel(t){
     ];
     let smWf = findStageMatch(bmd, 1, 3, 1);
     if(smWf){
-      if(smWf.p1) wb3Matches[0].p1 = smWf.p1;
-      if(smWf.p2) wb3Matches[0].p2 = smWf.p2;
-      wb3Matches[0].s1 = smWf.s1; wb3Matches[0].s2 = smWf.s2;
-      wb3Matches[0].isDone = smWf.isDone; wb3Matches[0].winner = smWf.winner; wb3Matches[0].loser = smWf.loser;
-      wb3Matches[0].actualMatchId = smWf.id;
+      applyStageMatch(wb3Matches[0], smWf);
     }
     wbRounds.push({ title:'Winners Final', name:'Round 3', matches:wb3Matches });
 
-    let qf1Loser = wb1Matches[0].loser || (wb1Matches[0].p2 === 'BYE' ? null : 'Loser QF 1');
+    let qf1Loser = wb1Matches[0].loser || (wb1Matches[0].p2 === 'BYE' ? 'BYE' : 'Loser QF 1');
     let qf2Loser = wb1Matches[1].loser || 'Loser QF 2';
-    let qf3Loser = wb1Matches[2].loser || (wb1Matches[2].p2 === 'BYE' ? null : 'Loser QF 3');
+    let qf3Loser = wb1Matches[2].loser || (wb1Matches[2].p2 === 'BYE' ? 'BYE' : 'Loser QF 3');
     let qf4Loser = wb1Matches[3].loser || 'Loser QF 4';
 
-    let lb1Matches = [];
-    if(qualifiers.length <= 6){
-      lb1Matches.push({
-        id:'lb1',
-        title:'LB Round 1',
-        p1: qf2Loser || 'Loser QF 2',
-        p2: qf4Loser || 'Loser QF 4',
-        originP1:'Loser of QF 2',
-        originP2:'Loser of QF 4'
-      });
-      let sm = findStageMatch(bmd, 2, 1, 1);
+    let lb1Matches = [
+      { id:'lb1', title:'LB Round 1 · Match 1', p1:qf1Loser||'BYE', p2:qf2Loser||'Loser QF 2', originP1:'BYE', originP2:'Loser of QF 2' },
+      { id:'lb2', title:'LB Round 1 · Match 2', p1:qf3Loser||'BYE', p2:qf4Loser||'Loser QF 4', originP1:'BYE', originP2:'Loser of QF 4' }
+    ];
+    [1, 2].forEach((num, idx)=>{
+      let sm = findStageMatch(bmd, 2, 1, num);
       if(sm){
-        if(sm.p1) lb1Matches[0].p1 = sm.p1;
-        if(sm.p2) lb1Matches[0].p2 = sm.p2;
-        lb1Matches[0].s1 = sm.s1; lb1Matches[0].s2 = sm.s2;
-        lb1Matches[0].isDone = sm.isDone; lb1Matches[0].winner = sm.winner; lb1Matches[0].loser = sm.loser;
-        lb1Matches[0].actualMatchId = sm.id;
+        applyStageMatch(lb1Matches[idx], sm);
+      } else if((lb1Matches[idx].p1 === 'BYE' || !lb1Matches[idx].p1) && lb1Matches[idx].p2 && isKnownPlayer(lb1Matches[idx].p2)){
+        lb1Matches[idx].isDone = true;
+        lb1Matches[idx].winner = lb1Matches[idx].p2;
+        lb1Matches[idx].loser = null;
+        lb1Matches[idx].s1 = 0;
+        lb1Matches[idx].s2 = 2;
+      } else if((lb1Matches[idx].p2 === 'BYE' || !lb1Matches[idx].p2) && lb1Matches[idx].p1 && isKnownPlayer(lb1Matches[idx].p1)){
+        lb1Matches[idx].isDone = true;
+        lb1Matches[idx].winner = lb1Matches[idx].p1;
+        lb1Matches[idx].loser = null;
+        lb1Matches[idx].s1 = 2;
+        lb1Matches[idx].s2 = 0;
       }
-    } else {
-      lb1Matches = [
-        { id:'lb1', title:'LB Round 1 · Match 1', p1:qf1Loser||'Loser QF 1', p2:qf2Loser||'Loser QF 2', originP1:'Loser of QF 1', originP2:'Loser of QF 2' },
-        { id:'lb2', title:'LB Round 1 · Match 2', p1:qf3Loser||'Loser QF 3', p2:qf4Loser||'Loser QF 4', originP1:'Loser of QF 3', originP2:'Loser of QF 4' }
-      ];
-      [1, 2].forEach((num, idx)=>{
-        let sm = findStageMatch(bmd, 2, 1, num);
-        if(sm){
-          if(sm.p1) lb1Matches[idx].p1 = sm.p1;
-          if(sm.p2) lb1Matches[idx].p2 = sm.p2;
-          lb1Matches[idx].s1 = sm.s1; lb1Matches[idx].s2 = sm.s2;
-          lb1Matches[idx].isDone = sm.isDone; lb1Matches[idx].winner = sm.winner; lb1Matches[idx].loser = sm.loser;
-          lb1Matches[idx].actualMatchId = sm.id;
-        }
-      });
-    }
+    });
     lbRounds.push({ title:'LB Round 1', name:'Round 1', matches:lb1Matches });
 
-    let lb2Matches = [];
-    if(qualifiers.length <= 6){
-      lb2Matches.push({
-        id:'lb3',
-        title:'LB Round 2',
-        p1: lb1Matches[0]?.winner || 'Winner LB R1',
-        p2: wb2Matches[1]?.loser || 'Loser WB Semi 2',
-        originP1:'Winner of LB R1',
-        originP2:'Loser of WB Semi 2'
-      });
-      let sm = findStageMatch(bmd, 2, 2, 1);
+    let lb2Matches = [
+      { id:'lb3', title:'LB Round 2 · Match 1', p1:lb1Matches[0]?.winner||'Winner LB R1.1', p2:wb2Matches[1]?.loser||'Loser WB Semi 2', originP1:'Winner of LB R1.1', originP2:'Loser of WB Semi 2' },
+      { id:'lb4', title:'LB Round 2 · Match 2', p1:lb1Matches[1]?.winner||'Winner LB R1.2', p2:wb2Matches[0]?.loser||'Loser WB Semi 1', originP1:'Winner of LB R1.2', originP2:'Loser of WB Semi 1' }
+    ];
+    [1, 2].forEach((num, idx)=>{
+      let sm = findStageMatch(bmd, 2, 2, num);
       if(sm){
-        if(sm.p1) lb2Matches[0].p1 = sm.p1;
-        if(sm.p2) lb2Matches[0].p2 = sm.p2;
-        lb2Matches[0].s1 = sm.s1; lb2Matches[0].s2 = sm.s2;
-        lb2Matches[0].isDone = sm.isDone; lb2Matches[0].winner = sm.winner; lb2Matches[0].loser = sm.loser;
-        lb2Matches[0].actualMatchId = sm.id;
+        applyStageMatch(lb2Matches[idx], sm);
       }
-    } else {
-      lb2Matches = [
-        { id:'lb3', title:'LB Round 2 · Match 1', p1:lb1Matches[0]?.winner||'Winner LB R1.1', p2:wb2Matches[1]?.loser||'Loser WB Semi 2', originP1:'Winner of LB R1.1', originP2:'Loser of WB Semi 2' },
-        { id:'lb4', title:'LB Round 2 · Match 2', p1:lb1Matches[1]?.winner||'Winner LB R1.2', p2:wb2Matches[0]?.loser||'Loser WB Semi 1', originP1:'Winner of LB R1.2', originP2:'Loser of WB Semi 1' }
-      ];
-      [1, 2].forEach((num, idx)=>{
-        let sm = findStageMatch(bmd, 2, 2, num);
-        if(sm){
-          if(sm.p1) lb2Matches[idx].p1 = sm.p1;
-          if(sm.p2) lb2Matches[idx].p2 = sm.p2;
-          lb2Matches[idx].s1 = sm.s1; lb2Matches[idx].s2 = sm.s2;
-          lb2Matches[idx].isDone = sm.isDone; lb2Matches[idx].winner = sm.winner; lb2Matches[idx].loser = sm.loser;
-          lb2Matches[idx].actualMatchId = sm.id;
-        }
-      });
-    }
+    });
     lbRounds.push({ title:'LB Round 2', name:'Round 2', matches:lb2Matches });
 
-    let lb3Matches = [];
-    if(qualifiers.length <= 6){
-      lb3Matches.push({
-        id:'lb5',
-        title:'Losers Semifinal',
-        p1: lb2Matches[0]?.winner || 'Winner LB R2',
-        p2: wb2Matches[0]?.loser || 'Loser WB Semi 1',
-        originP1:'Winner of LB R2',
-        originP2:'Loser of WB Semi 1'
-      });
-      let smLb3 = findStageMatch(bmd, 2, 3, 1);
-      if(smLb3){
-        if(smLb3.p1) lb3Matches[0].p1 = smLb3.p1;
-        if(smLb3.p2) lb3Matches[0].p2 = smLb3.p2;
-        lb3Matches[0].s1 = smLb3.s1; lb3Matches[0].s2 = smLb3.s2;
-        lb3Matches[0].isDone = smLb3.isDone; lb3Matches[0].winner = smLb3.winner; lb3Matches[0].loser = smLb3.loser;
-        lb3Matches[0].actualMatchId = smLb3.id;
-      }
-    } else {
-      lb3Matches.push({
-        id:'lb5',
-        title:'Losers Semifinal',
-        p1: lb2Matches[0]?.winner || 'Winner LB R2.1',
-        p2: lb2Matches[1]?.winner || 'Winner LB R2.2',
-        originP1:'Winner of LB R2.1',
-        originP2:'Winner of LB R2.2'
-      });
-      let smLb3 = findStageMatch(bmd, 2, 3, 1);
-      if(smLb3){
-        if(smLb3.p1) lb3Matches[0].p1 = smLb3.p1;
-        if(smLb3.p2) lb3Matches[0].p2 = smLb3.p2;
-        lb3Matches[0].s1 = smLb3.s1; lb3Matches[0].s2 = smLb3.s2;
-        lb3Matches[0].isDone = smLb3.isDone; lb3Matches[0].winner = smLb3.winner; lb3Matches[0].loser = smLb3.loser;
-        lb3Matches[0].actualMatchId = smLb3.id;
-      }
+    let lb3Matches = [
+      { id:'lb5', title:'Losers Semifinal', p1:lb2Matches[0]?.winner||'Winner LB R2.1', p2:lb2Matches[1]?.winner||'Winner LB R2.2', originP1:'Winner of LB R2.1', originP2:'Winner of LB R2.2' }
+    ];
+    let smLb3 = findStageMatch(bmd, 2, 3, 1);
+    if(smLb3){
+      applyStageMatch(lb3Matches[0], smLb3);
     }
     lbRounds.push({ title:'Losers Semifinal', name:'Round 3', matches:lb3Matches });
 
     let lb4Matches = [
-      { id:'lb6', title:'Losers Final', p1:lb3Matches[0]?.winner||'Winner LB Semi', p2:wb3Matches[0]?.loser||'Loser WB Final', originP1:'Winner of LB Semi', originP2:'Loser of WB Final' }
+      { id:'lb6', title:'Losers Final', p1:wb3Matches[0]?.loser||'Loser WB Final', p2:lb3Matches[0]?.winner||'Winner LB Semi', originP1:'Loser of WB Final', originP2:'Winner of LB Semi' }
     ];
     let smLb4 = findStageMatch(bmd, 2, 4, 1);
     if(smLb4){
-      if(smLb4.p1) lb4Matches[0].p1 = smLb4.p1;
-      if(smLb4.p2) lb4Matches[0].p2 = smLb4.p2;
-      lb4Matches[0].s1 = smLb4.s1; lb4Matches[0].s2 = smLb4.s2;
-      lb4Matches[0].isDone = smLb4.isDone; lb4Matches[0].winner = smLb4.winner; lb4Matches[0].loser = smLb4.loser;
-      lb4Matches[0].actualMatchId = smLb4.id;
+      applyStageMatch(lb4Matches[0], smLb4);
     }
     lbRounds.push({ title:'Losers Final', name:'Round 4', matches:lb4Matches });
 
     let gf1Match = { id:'gf1', title:'Grand Finals', p1:wb3Matches[0].winner||'WB Champion', p2:lb4Matches[0].winner||'LB Champion', originP1:'WB Champion', originP2:'LB Champion' };
     let smGf = findStageMatch(bmd, 3, 1, 1);
     if(smGf){
-      if(smGf.p1) gf1Match.p1 = smGf.p1;
-      if(smGf.p2) gf1Match.p2 = smGf.p2;
-      gf1Match.s1 = smGf.s1; gf1Match.s2 = smGf.s2;
-      gf1Match.isDone = smGf.isDone; gf1Match.winner = smGf.winner; gf1Match.loser = smGf.loser;
-      gf1Match.actualMatchId = smGf.id;
+      applyStageMatch(gf1Match, smGf);
     }
     gfMatches.push(gf1Match);
 
     let smGf2 = findStageMatch(bmd, 3, 2, 1);
-    let lbWonGf1 = gf1Match.isDone && isKnownPlayer(gf1Match.p1) && isKnownPlayer(gf1Match.p2) && (gf1Match.winner === gf1Match.p2 || (smGf2 && (smGf2.p1 || smGf2.opponent1?.id != null)));
+    let lbWonGf1 = gf1Match.isDone && isKnownPlayer(gf1Match.p1) && isKnownPlayer(gf1Match.p2) && (gf1Match.winner === gf1Match.p2 || (smGf2 && (smGf2.p1 || smGf2.raw?.opponent1?.id != null)));
     if(lbWonGf1 || smGf2?.isDone){
       let gf2Match = {
         id:'gf2',
@@ -1801,11 +1730,7 @@ function getTournamentTopCutModel(t){
         isReset: true
       };
       if(smGf2){
-        if(smGf2.p1) gf2Match.p1 = smGf2.p1;
-        if(smGf2.p2) gf2Match.p2 = smGf2.p2;
-        gf2Match.s1 = smGf2.s1; gf2Match.s2 = smGf2.s2;
-        gf2Match.isDone = smGf2.isDone; gf2Match.winner = smGf2.winner; gf2Match.loser = smGf2.loser;
-        gf2Match.actualMatchId = smGf2.id;
+        applyStageMatch(gf2Match, smGf2);
       }
       gfMatches.push(gf2Match);
     }
@@ -1817,19 +1742,11 @@ function getTournamentTopCutModel(t){
     ];
     let sm1 = findStageMatch(bmd, 1, 1, 1);
     if(sm1){
-      if(sm1.p1) wb1Matches[0].p1 = sm1.p1;
-      if(sm1.p2) wb1Matches[0].p2 = sm1.p2;
-      wb1Matches[0].s1 = sm1.s1; wb1Matches[0].s2 = sm1.s2;
-      wb1Matches[0].isDone = sm1.isDone; wb1Matches[0].winner = sm1.winner; wb1Matches[0].loser = sm1.loser;
-      wb1Matches[0].actualMatchId = sm1.id;
+      applyStageMatch(wb1Matches[0], sm1);
     }
     let sm2 = findStageMatch(bmd, 1, 1, 2);
     if(sm2){
-      if(sm2.p1) wb1Matches[1].p1 = sm2.p1;
-      if(sm2.p2) wb1Matches[1].p2 = sm2.p2;
-      wb1Matches[1].s1 = sm2.s1; wb1Matches[1].s2 = sm2.s2;
-      wb1Matches[1].isDone = sm2.isDone; wb1Matches[1].winner = sm2.winner; wb1Matches[1].loser = sm2.loser;
-      wb1Matches[1].actualMatchId = sm2.id;
+      applyStageMatch(wb1Matches[1], sm2);
     }
     wbRounds.push({ title:'Semifinals', name:'Round 1', matches:wb1Matches });
 
@@ -1838,11 +1755,7 @@ function getTournamentTopCutModel(t){
     ];
     let smWf = findStageMatch(bmd, 1, 2, 1);
     if(smWf){
-      if(smWf.p1) wb2Matches[0].p1 = smWf.p1;
-      if(smWf.p2) wb2Matches[0].p2 = smWf.p2;
-      wb2Matches[0].s1 = smWf.s1; wb2Matches[0].s2 = smWf.s2;
-      wb2Matches[0].isDone = smWf.isDone; wb2Matches[0].winner = smWf.winner; wb2Matches[0].loser = smWf.loser;
-      wb2Matches[0].actualMatchId = smWf.id;
+      applyStageMatch(wb2Matches[0], smWf);
     }
     wbRounds.push({ title:'Winners Final', name:'Round 2', matches:wb2Matches });
 
@@ -1851,11 +1764,7 @@ function getTournamentTopCutModel(t){
     ];
     let smLb1 = findStageMatch(bmd, 2, 1, 1);
     if(smLb1){
-      if(smLb1.p1) lb1Matches[0].p1 = smLb1.p1;
-      if(smLb1.p2) lb1Matches[0].p2 = smLb1.p2;
-      lb1Matches[0].s1 = smLb1.s1; lb1Matches[0].s2 = smLb1.s2;
-      lb1Matches[0].isDone = smLb1.isDone; lb1Matches[0].winner = smLb1.winner; lb1Matches[0].loser = smLb1.loser;
-      lb1Matches[0].actualMatchId = smLb1.id;
+      applyStageMatch(lb1Matches[0], smLb1);
     }
     lbRounds.push({ title:'LB Round 1', name:'Round 1', matches:lb1Matches });
 
@@ -1864,27 +1773,19 @@ function getTournamentTopCutModel(t){
     ];
     let smLb2 = findStageMatch(bmd, 2, 2, 1);
     if(smLb2){
-      if(smLb2.p1) lb2Matches[0].p1 = smLb2.p1;
-      if(smLb2.p2) lb2Matches[0].p2 = smLb2.p2;
-      lb2Matches[0].s1 = smLb2.s1; lb2Matches[0].s2 = smLb2.s2;
-      lb2Matches[0].isDone = smLb2.isDone; lb2Matches[0].winner = smLb2.winner; lb2Matches[0].loser = smLb2.loser;
-      lb2Matches[0].actualMatchId = smLb2.id;
+      applyStageMatch(lb2Matches[0], smLb2);
     }
     lbRounds.push({ title:'Losers Final', name:'Round 2', matches:lb2Matches });
 
     let gf1Match = { id:'gf1', title:'Grand Finals', p1:wb2Matches[0].winner||'WB Champion', p2:lb2Matches[0].winner||'LB Champion', originP1:'WB Champion', originP2:'LB Champion' };
     let smGf = findStageMatch(bmd, 3, 1, 1);
     if(smGf){
-      if(smGf.p1) gf1Match.p1 = smGf.p1;
-      if(smGf.p2) gf1Match.p2 = smGf.p2;
-      gf1Match.s1 = smGf.s1; gf1Match.s2 = smGf.s2;
-      gf1Match.isDone = smGf.isDone; gf1Match.winner = smGf.winner; gf1Match.loser = smGf.loser;
-      gf1Match.actualMatchId = smGf.id;
+      applyStageMatch(gf1Match, smGf);
     }
     gfMatches.push(gf1Match);
 
     let smGf2 = findStageMatch(bmd, 3, 2, 1);
-    let lbWonGf1 = gf1Match.isDone && isKnownPlayer(gf1Match.p1) && isKnownPlayer(gf1Match.p2) && (gf1Match.winner === gf1Match.p2 || (smGf2 && (smGf2.p1 || smGf2.opponent1?.id != null)));
+    let lbWonGf1 = gf1Match.isDone && isKnownPlayer(gf1Match.p1) && isKnownPlayer(gf1Match.p2) && (gf1Match.winner === gf1Match.p2 || (smGf2 && (smGf2.p1 || smGf2.raw?.opponent1?.id != null)));
     if(lbWonGf1 || smGf2?.isDone){
       let gf2Match = {
         id:'gf2',
@@ -1896,11 +1797,7 @@ function getTournamentTopCutModel(t){
         isReset: true
       };
       if(smGf2){
-        if(smGf2.p1) gf2Match.p1 = smGf2.p1;
-        if(smGf2.p2) gf2Match.p2 = smGf2.p2;
-        gf2Match.s1 = smGf2.s1; gf2Match.s2 = smGf2.s2;
-        gf2Match.isDone = smGf2.isDone; gf2Match.winner = smGf2.winner; gf2Match.loser = smGf2.loser;
-        gf2Match.actualMatchId = smGf2.id;
+        applyStageMatch(gf2Match, smGf2);
       }
       gfMatches.push(gf2Match);
     }
@@ -2936,7 +2833,11 @@ function matchupOfTheWeekCard(t){
   let face2 = profilePictures[p2] ? `url('${esc(profilePictures[p2])}')` : (teamCovers[p2] ? `url('${esc(teamCovers[p2])}')` : fallbackArt(p2));
   let letter2 = (profilePictures[p2] || teamCovers[p2]) ? '' : esc((p2 || '?')[0]);
 
-  let cardBg = t.backgroundImage ? `style="background-image:linear-gradient(135deg,rgba(26,14,20,0.85) 0%,rgba(18,18,26,0.88) 50%,rgba(16,20,32,0.88) 100%),url('${esc(t.backgroundImage)}');background-size:cover;background-position:center"` : '';
+  let primetimeCover = pulsePanelImages.primetime || pulsePanelImages.global;
+  if(!primetimeCover){
+    try { primetimeCover = localStorage.getItem('draftdex-primetime-cover') || ''; } catch(e){}
+  }
+  let cardBg = primetimeCover ? `style="background-image:linear-gradient(135deg,rgba(26,14,20,0.85) 0%,rgba(18,18,26,0.88) 50%,rgba(16,20,32,0.88) 100%),url('${esc(primetimeCover)}');background-size:cover;background-position:center"` : '';
 
   return `<aside class="card matchup-hero-card" ${cardBg}>
     <div class="matchup-hero-banner">
@@ -2946,7 +2847,7 @@ function matchupOfTheWeekCard(t){
       </div>
       <div style="display:flex;align-items:center;gap:6px">
         <span class="tag" style="background:#00000070;border:1px solid #ffffff25;font-size:9px;font-weight:900;letter-spacing:1px;color:#ff9fa6;padding:3px 8px;border-radius:4px">${item.isTopCut ? 'TOP CUT PLAYOFFS' : 'PRIMETIME'}</span>
-        ${moderator ? `<button class="cover-edit" style="position:static;padding:3px 8px;font-size:10px" onclick="event.stopPropagation();openCoverEditor('${jsArg(t.id)}')">Edit cover</button>` : ''}
+        ${moderator ? `<button class="cover-edit" style="position:static;padding:3px 8px;font-size:10px" onclick="event.stopPropagation();openPrimetimeCoverEditor()">Edit cover</button>` : ''}
       </div>
     </div>
 
@@ -3228,6 +3129,76 @@ function removeCover(id){
 function openCoverEditor(id){let t=tournamentData[id];document.querySelector('#modal').innerHTML=`<div class="modal-wrap"><div class="modal" style="max-width:510px"><div class="modal-head"><div><div class="eyebrow">Tournament cover</div><h2>${t.name}</h2></div><button class="close" onclick="closeModal()">×</button></div><p class="sub">Choose a Pokémon image up to 2 MB. This limit is for the current browser/JSON storage setup, not your website host.</p><div class="field"><label>Upload cover image</label><input id="coverFile" type="file" accept="image/png,image/jpeg,image/webp" onchange="previewCover(event)"></div><div id="coverPreview" style="height:190px;border-radius:6px;margin-top:14px;background:${t.backgroundImage?`url('${t.backgroundImage}') center/cover`:'#25252b'}"></div><div class="creator-actions"><button class="btn ghost" onclick="removeCover('${id}')">Remove cover</button><button class="btn" onclick="saveCover('${id}')">Save cover</button></div></div></div>`}
 function openRecapPanelCoverEditor(id){let t=tournamentData[id];let currentCover=pulsePanelImages.recap||t?.recapPanelImage||t?.backgroundImage||'';document.querySelector('#modal').innerHTML=`<div class="modal-wrap"><div class="modal" style="max-width:510px"><div class="modal-head"><div><div class="eyebrow">Recap panel cover</div><h2>${t?.name||'Off-Season Recap'}</h2></div><button class="close" onclick="closeModal()">×</button></div><p class="sub">This image is used as the off-season Last Tournament panel cover and carries over across tournaments so your off-season looks consistent.</p><div class="field"><label>Upload panel image</label><input id="recapPanelFile" type="file" accept="image/png,image/jpeg,image/webp" onchange="previewRecapPanelCover(event)"></div><div id="recapPanelPreview" style="height:190px;border-radius:6px;margin-top:14px;background:${currentCover?`url('${currentCover}') center/cover`:'#25252b'}"></div><div class="creator-actions"><button class="btn ghost" onclick="removeRecapPanelCover('${id}')">Remove panel cover</button><button class="btn" onclick="saveRecapPanelCover('${id}')">Save panel cover</button></div></div></div>`}
 function openPulsePanelCoverEditor(id){let t=tournamentData[id];document.querySelector('#modal').innerHTML=`<div class="modal-wrap"><div class="modal" style="max-width:510px"><div class="modal-head"><div><div class="eyebrow">Tournament pulse cover</div><h2>${t.name}</h2></div><button class="close" onclick="closeModal()">×</button></div><p class="sub">This is a league-wide cover for the Tournament Pulse panel and carries over to every tournament until you change it again.</p><div class="field"><label>Upload pulse image</label><input id="pulsePanelFile" type="file" accept="image/png,image/jpeg,image/webp" onchange="previewPulsePanelCover(event)"></div><div id="pulsePanelPreview" style="height:190px;border-radius:6px;margin-top:14px;background:${pulsePanelImages.global||t.backgroundImage?`url('${pulsePanelImages.global||t.backgroundImage}') center/cover`:'#25252b'}"></div><div class="creator-actions"><button class="btn ghost" onclick="removePulsePanelCover('${id}')">Remove panel cover</button><button class="btn" onclick="savePulsePanelCover('${id}')">Save panel cover</button></div></div></div>`}
+
+function previewPrimetimeCover(event){
+  let file=event.target.files[0];
+  if(!file)return;
+  if(file.size>2*1024*1024){alert('File size exceeds 2 MB.');return}
+  let reader=new FileReader();
+  reader.onload=function(e){
+    window.pendingPrimetimeCover=e.target.result;
+    let preview=document.querySelector('#primetimePreview');
+    if(preview){
+      preview.style.backgroundImage=`url('${e.target.result}')`;
+      preview.style.backgroundSize='cover';
+      preview.style.backgroundPosition='center';
+    }
+  };
+  reader.readAsDataURL(file);
+}
+
+function savePrimetimeCover(){
+  if(window.pendingPrimetimeCover){
+    pulsePanelImages.primetime=window.pendingPrimetimeCover;
+    pulsePanelImages.global=window.pendingPrimetimeCover;
+    window.pendingPrimetimeCover=null;
+    try{localStorage.setItem('draftdex-primetime-cover',pulsePanelImages.primetime)}catch(e){}
+    persistLeague();
+    closeModal();
+    render();
+  }else{
+    closeModal();
+  }
+}
+
+function removePrimetimeCover(){
+  delete pulsePanelImages.primetime;
+  delete pulsePanelImages.global;
+  window.pendingPrimetimeCover=null;
+  try{localStorage.removeItem('draftdex-primetime-cover')}catch(e){}
+  persistLeague();
+  closeModal();
+  render();
+}
+
+function openPrimetimeCoverEditor(){
+  if(!moderator)return;
+  let currentCover=pulsePanelImages.primetime||pulsePanelImages.global||'';
+  try{
+    let saved=localStorage.getItem('draftdex-primetime-cover');
+    if(saved&&!currentCover)currentCover=saved;
+  }catch(e){}
+
+  document.querySelector('#modal').innerHTML=`<div class="modal-wrap"><div class="modal" style="max-width:510px">
+    <div class="modal-head">
+      <div>
+        <div class="eyebrow">Primetime Broadcast Graphic</div>
+        <h2>Edit Primetime Cover</h2>
+      </div>
+      <button class="close" onclick="closeModal()">×</button>
+    </div>
+    <p class="sub">This image is used as the background graphic for the PRIMETIME Matchup card. It saves globally as the default across all tournaments until you change it.</p>
+    <div class="field">
+      <label>Upload Primetime Background</label>
+      <input id="primetimeFile" type="file" accept="image/png,image/jpeg,image/webp" onchange="previewPrimetimeCover(event)">
+    </div>
+    <div id="primetimePreview" style="height:190px;border-radius:6px;margin-top:14px;background:${currentCover?`url('${currentCover}') center/cover`:'#25252b'};border:1px solid #3d232c"></div>
+    <div class="creator-actions">
+      <button class="btn ghost" onclick="removePrimetimeCover()">Remove cover</button>
+      <button class="btn" onclick="savePrimetimeCover()">Save cover</button>
+    </div>
+  </div></div>`;
+}
 
 function seedTopCut(t){let groups=Object.keys(groupsOf(t)),per=advancePerGroup(t),entries=[];for(let rank=0;rank<per;rank++)groups.forEach(g=>{let x=getStand(t,g)[rank];if(x)entries.push(x.p)});return entries}
 function topCutBracketSeedOrder(size){let order=[1,2];for(let n=4;n<=size;n*=2)order=order.flatMap(seed=>[seed,n+1-seed]);return order}
