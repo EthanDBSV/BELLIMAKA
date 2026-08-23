@@ -115,6 +115,15 @@
 .tc-slot-tbd{font-size:11px;color:#75737e;font-style:italic;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .tc-slot-score{font:900 15px 'Barlow Condensed';color:#f5f3f0;min-width:20px;text-align:center;padding:2px 6px;border-radius:3px;background:#0b0b0f}
 .tc-slot.winner .tc-slot-score{background:#143822;color:#4bdd91;border:1px solid #28683f}
+.tc-slot.interactive{cursor:pointer;transition:background .12s,transform .12s}
+.tc-slot.interactive:hover{background:rgba(255,255,255,0.06);transform:translateX(2px)}
+.tc-slot.picked{background:linear-gradient(90deg,rgba(239,48,56,0.22),transparent)!important;border-left:3px solid var(--red)}
+.tc-slot.picked .tc-slot-name{color:#ffd166!important;font-weight:900}
+.tc-slot.picked .tc-slot-score{background:#3a1215;color:#ffd166;border:1px solid #732228}
+.tc-slot.hit{background:linear-gradient(90deg,rgba(75,221,145,0.22),transparent)!important;border-left:3px solid #4bdd91}
+.tc-slot.hit .tc-slot-name{color:#4bdd91!important}
+.tc-slot.hit .tc-slot-score{background:#143822;color:#4bdd91;border:1px solid #28683f}
+.tc-slot.miss{opacity:0.45;text-decoration:line-through}
 
 .tc-ledger-table{width:100%;border-collapse:collapse}
 .tc-ledger-table th{padding:9px 12px;font-size:9px;font-weight:800;letter-spacing:.7px;text-transform:uppercase;color:#8e8c95;border-bottom:1px solid #2a2a34;text-align:left}
@@ -6177,7 +6186,7 @@ function updateLocalPredictionInCache(tournamentId, question, choice, isRemoving
   if(!predictionScoresCache[tournamentId]) predictionScoresCache[tournamentId] = { rows: [], accounts: [] };
   let rows = predictionScoresCache[tournamentId].rows || [];
   let userIdentifier = sessionUser?.id || 'local_user';
-  let userName = window.currentAccount?.username || 'You';
+  let effectiveUsername = window.currentAccount?.username || (sessionUser?.user_metadata?.username) || 'You';
 
   if(isRemoving){
     rows = rows.filter(r => !(r.user_id === userIdentifier && r.prediction_key === question));
@@ -6192,22 +6201,25 @@ function updateLocalPredictionInCache(tournamentId, question, choice, isRemoving
   predictionScoresCache[tournamentId].rows = rows;
 
   let accounts = predictionScoresCache[tournamentId].accounts || [];
-  if(!accounts.some(a => a.id === userIdentifier)){
-    accounts.push({ id: userIdentifier, username: userName });
-    predictionScoresCache[tournamentId].accounts = accounts;
+  let userAcc = accounts.find(a => a.id === userIdentifier);
+  if(!userAcc){
+    accounts.push({ id: userIdentifier, username: effectiveUsername });
+  } else {
+    userAcc.username = effectiveUsername;
   }
+  predictionScoresCache[tournamentId].accounts = accounts;
 
   let t = ongoingT() || activeT();
   if(t && t.id === tournamentId){
     let byId = Object.fromEntries(accounts.map(a => [a.id, a.username]));
-    let { rows: board, settled, pending } = scorePredictionRows(t, rows, id => byId[id] || null);
-    let me = window.currentAccount?.username;
+    let { rows: board, settled, pending } = scorePredictionRows(t, rows, id => byId[id] || (sessionUser && id === sessionUser.id ? effectiveUsername : id));
+    let me = window.currentAccount?.username || effectiveUsername;
     let list = board.length ? board.map((x, i) => {
-      let player = playerForAccount(x.u);
+      let player = playerForAccount(x.u) || (profiles[x.u] ? x.u : null) || (x.u === me ? myPlayer() : null);
       return `<div class="leader ${x.u === me ? 'me' : ''}">
         <span class="rank">${i + 1}</span>
         <span class="mini-avatar" style="background-image:${player ? teamArt(player, t) : fallbackArt(x.u)};background-size:cover;background-position:center">${player && (teamCovers[player] || profilePictures[player]) ? '' : esc(x.u[0] || '')}</span>
-        <b>${esc(x.u)}${player ? `<span class="sub" style="display:block;font-size:9px">as ${esc(player)}</span>` : ''}</b>
+        <b>${esc(player || x.u)}${player && player !== x.u ? `<span class="sub" style="display:block;font-size:9px">as ${esc(x.u)}</span>` : ''}</b>
         <span class="pts">${x.pts} pts</span></div>`;
     }).join('') : '<p class="sub">No predictions submitted yet. Points are awarded once results come in.</p>';
     let note = `<div class="leader-note">${settled} scored · ${pending} still open. Points follow the sign-in account, so they stay with you across tournaments whether or not you are playing.</div>`;
@@ -6246,15 +6258,16 @@ async function renderPredictionLeaders(t, forceFresh = false){
   }
 
   if(document.querySelector('#predLeaders')?.dataset.tournament !== t.id) return;
+  let effectiveUsername = window.currentAccount?.username || (sessionUser?.user_metadata?.username) || 'You';
   let byId = Object.fromEntries((accounts || []).map(a => [a.id, a.username]));
-  let { rows: board, settled, pending } = scorePredictionRows(t, rows, id => byId[id] || null);
-  let me = window.currentAccount?.username;
+  let { rows: board, settled, pending } = scorePredictionRows(t, rows, id => byId[id] || (sessionUser && id === sessionUser.id ? effectiveUsername : id));
+  let me = window.currentAccount?.username || effectiveUsername;
   let list = board.length ? board.map((x, i) => {
-    let player = playerForAccount(x.u);
+    let player = playerForAccount(x.u) || (profiles[x.u] ? x.u : null) || (x.u === me ? myPlayer() : null);
     return `<div class="leader ${x.u === me ? 'me' : ''}">
       <span class="rank">${i + 1}</span>
       <span class="mini-avatar" style="background-image:${player ? teamArt(player, t) : fallbackArt(x.u)};background-size:cover;background-position:center">${player && (teamCovers[player] || profilePictures[player]) ? '' : esc(x.u[0] || '')}</span>
-      <b>${esc(x.u)}${player ? `<span class="sub" style="display:block;font-size:9px">as ${esc(player)}</span>` : ''}</b>
+      <b>${esc(player || x.u)}${player && player !== x.u ? `<span class="sub" style="display:block;font-size:9px">as ${esc(x.u)}</span>` : ''}</b>
       <span class="pts">${x.pts} pts</span></div>`;
   }).join('') : '<p class="sub">No predictions submitted yet. Points are awarded once results come in.</p>';
   let note = `<div class="leader-note">${settled} scored · ${pending} still open. Points follow the sign-in account, so they stay with you across tournaments whether or not you are playing.</div>`;
@@ -6266,7 +6279,7 @@ async function renderPredictionLeaders(t, forceFresh = false){
 
 /* ------------------------------------------------------------ 3. MODERN PREDICTIONS & PICK'EMS ------------------------------------------------------------ */
 
-async function savePredictionPick(question, choice, el){
+function savePredictionPick(question, choice, el){
   let t = ongoingT() || activeT();
   if(!t || !question || !choice) return;
 
@@ -6283,29 +6296,33 @@ async function savePredictionPick(question, choice, el){
 
   updateLocalPredictionInCache(t.id, question, choice, isTogglingOff);
 
-  if(supabaseClient && sessionUser){
-    try {
-      if(isTogglingOff){
-        await supabaseClient.from('predictions').delete().match({
-          user_id: sessionUser.id,
-          tournament_id: t.id,
-          prediction_key: question
-        });
-      } else {
-        await supabaseClient.from('predictions').upsert({
-          user_id: sessionUser.id,
-          tournament_id: t.id,
-          prediction_key: question,
-          selection: choice
-        }, { onConflict: 'user_id,tournament_id,prediction_key' });
-      }
-    } catch(e){
-      console.warn('Prediction Supabase sync error:', e);
-    }
-  }
-
+  // Synchronous, instant 0ms UI update!
   if(current === 'Predictions' || detailTab === 'Predictions'){
     render();
+  }
+
+  // Fire Supabase sync in background
+  if(supabaseClient && sessionUser){
+    (async () => {
+      try {
+        if(isTogglingOff){
+          await supabaseClient.from('predictions').delete().match({
+            user_id: sessionUser.id,
+            tournament_id: t.id,
+            prediction_key: question
+          });
+        } else {
+          await supabaseClient.from('predictions').upsert({
+            user_id: sessionUser.id,
+            tournament_id: t.id,
+            prediction_key: question,
+            selection: choice
+          }, { onConflict: 'user_id,tournament_id,prediction_key' });
+        }
+      } catch(e){
+        console.warn('Prediction background sync error:', e);
+      }
+    })();
   }
 }
 
@@ -6475,10 +6492,14 @@ function topCutPredictionBracket(t){
   if(!model) return '<div class="card empty"><p class="sub">Top Cut bracket data unavailable.</p></div>';
 
   function getBracketMatchPick(mId, p1, p2){
-    let key1 = (p1 && p2 && isKnownPlayer(p1) && isKnownPlayer(p2)) ? ('Top Cut · Who wins: ' + p1 + ' vs ' + p2) : '';
-    let key2 = (p1 && p2 && isKnownPlayer(p1) && isKnownPlayer(p2)) ? ('Top Cut · Who wins: ' + p2 + ' vs ' + p1) : '';
+    let prefix = (mId === 'gf2') ? 'Top Cut · Reset Match: ' : 'Top Cut · Who wins: ';
+    let key1 = (p1 && p2 && isKnownPlayer(p1) && isKnownPlayer(p2)) ? (prefix + p1 + ' vs ' + p2) : '';
+    let key2 = (p1 && p2 && isKnownPlayer(p1) && isKnownPlayer(p2)) ? (prefix + p2 + ' vs ' + p1) : '';
     let explicitPick = (key1 && savedPick(t, key1)) || (key2 && savedPick(t, key2)) || savedPick(t, 'draftdex-bpick-' + mId);
-    return explicitPick || '';
+    if(explicitPick && (explicitPick === p1 || explicitPick === p2)){
+      return explicitPick;
+    }
+    return '';
   }
 
   let predMap = {};
@@ -6598,7 +6619,7 @@ function topCutPredictionBracket(t){
     });
   });
 
-  // 3. Process Grand Finals
+  // 3. Process Grand Finals (gf1)
   let lastWbMatch = count === 8 ? predMap['wb7'] : (count === 4 ? predMap['wb3'] : predMap['wb1']);
   let lastLbMatch = count === 8 ? predMap['lb6'] : (count === 4 ? predMap['lb2'] : null);
 
@@ -6608,27 +6629,54 @@ function topCutPredictionBracket(t){
   let gfPick = getBracketMatchPick(gfId, gfP1, gfP2);
   let gfIsDone = model.gfMatches[0]?.isDone && model.gfMatches[0]?.winner;
   let gfWinner = (gfPick === gfP1 || gfPick === gfP2) ? gfPick : (gfIsDone ? model.gfMatches[0].winner : null);
+
   predMap[gfId] = {
     id: gfId,
-    title: model.gfMatches[0]?.title || 'Championship Final',
+    title: 'Championship Final',
     p1: gfP1,
     p2: gfP2,
     chosen: gfPick,
     winner: gfWinner,
+    loser: gfWinner ? (gfWinner === gfP1 ? gfP2 : gfP1) : null,
     isDone: gfIsDone,
     officialWinner: model.gfMatches[0]?.winner,
     originP1: 'Upper Bracket Winner',
     originP2: 'Lower Bracket Winner'
   };
 
-  let predictedChamp = gfWinner || gfPick || (gfP1 && isKnownPlayer(gfP1) ? gfP1 : null);
+  // 4. Bracket Reset (gf2)
+  let isResetRequired = (gfWinner && gfWinner === gfP2 && isKnownPlayer(gfP1) && isKnownPlayer(gfP2));
+  let gf2Pick = isResetRequired ? getBracketMatchPick('gf2', gfP1, gfP2) : '';
+  let gf2IsDone = model.gfMatches[1]?.isDone && model.gfMatches[1]?.winner;
+  let gf2Winner = isResetRequired ? ((gf2Pick === gfP1 || gf2Pick === gfP2) ? gf2Pick : (gf2IsDone ? model.gfMatches[1].winner : null)) : null;
+
+  if(isResetRequired || model.gfMatches[1]){
+    predMap['gf2'] = {
+      id: 'gf2',
+      title: 'Grand Finals · Reset Match',
+      p1: gfP1,
+      p2: gfP2,
+      chosen: gf2Pick,
+      winner: gf2Winner,
+      loser: gf2Winner ? (gf2Winner === gfP1 ? gfP2 : gfP1) : null,
+      isDone: gf2IsDone,
+      officialWinner: model.gfMatches[1]?.winner,
+      originP1: 'Upper Bracket Finalist',
+      originP2: 'Lower Bracket Finalist',
+      isReset: true
+    };
+  }
+
+  let predictedChamp = isResetRequired ? (gf2Winner || gf2Pick || 'TBD') : (gfWinner || 'TBD');
 
   function renderInteractivePredSlot(mObj, isP1){
+    if(!mObj) return '';
     let pName = isP1 ? mObj.p1 : mObj.p2;
     let opponent = isP1 ? mObj.p2 : mObj.p1;
     let seed = isP1 ? mObj.p1Seed : mObj.p2Seed;
     let mId = mObj.id;
     let isReal = isKnownPlayer(pName);
+    let isOpponentReal = isKnownPlayer(opponent);
 
     if(!isReal){
       return `<div class="tc-slot tbd" style="opacity:.45;cursor:default">
@@ -6648,21 +6696,22 @@ function topCutPredictionBracket(t){
     let faceArt = profilePictures[pName] ? `url('${esc(profilePictures[pName])}')` : (teamCovers[pName] ? `url('${esc(teamCovers[pName])}')` : fallbackArt(pName));
     let faceLetter = (profilePictures[pName] || teamCovers[pName]) ? '' : esc((pName || '?')[0]);
     let teamStr = teamName(t, pName);
-    let question = 'Top Cut · Who wins: ' + pName + ' vs ' + opponent;
+    let question = (isReal && isOpponentReal) ? ((mId === 'gf2' ? 'Top Cut · Reset Match: ' : 'Top Cut · Who wins: ') + pName + ' vs ' + opponent) : ('Top Cut · Who wins match ' + mId);
 
-    return `<div class="tc-slot ${isPicked ? 'winner' : ''} ${isHit ? 'is-winner-hit' : (isMiss ? 'loser' : '')}"
-      style="cursor:${mObj.isDone ? 'default' : 'pointer'};${isPicked ? 'background:linear-gradient(90deg,rgba(239,48,56,0.22),transparent);border-color:#ff858b;' : ''}"
-      ${mObj.isDone ? '' : `onclick="saveBracketPredictionPick('${jsArg(mId)}', '${jsArg(question)}', '${jsArg(pName)}')"`}
-      title="${mObj.isDone ? 'Match complete' : (isPicked ? 'Click to unselect ' + esc(pName) : 'Click to pick ' + esc(pName) + ' to advance')}">
+    let isClickable = !mObj.isDone && isReal && isOpponentReal;
+
+    return `<div class="tc-slot ${isClickable ? 'interactive' : ''} ${isPicked ? 'picked' : ''} ${isHit ? 'hit' : (isMiss ? 'miss' : '')}"
+      ${isClickable ? `onclick="saveBracketPredictionPick('${jsArg(mId)}', '${jsArg(question)}', '${jsArg(pName)}')"` : ''}
+      title="${mObj.isDone ? 'Match complete' : (!isOpponentReal ? 'Waiting for opponent' : (isPicked ? 'Click to unselect ' + esc(pName) : 'Click to pick ' + esc(pName) + ' to advance'))}">
       <span class="tc-slot-seed">${seed ? `#${seed}` : ''}</span>
       <div class="tc-slot-info">
         <span class="mrow-face" style="background-image:${faceArt};background-size:cover;background-position:center;width:24px;height:24px;font-size:10px;border-radius:50%;flex:none;display:grid;place-items:center;border:2px solid ${ovrObj.color}">${faceLetter}</span>
         <div style="min-width:0">
-          <div class="tc-slot-name" style="color:${isPicked ? '#ffd166' : '#f5f3f0'};font-weight:${isPicked ? '900' : '700'}">${esc(pName)}</div>
+          <div class="tc-slot-name">${esc(pName)}</div>
           <span class="team" style="font-size:9px;margin-top:1px">${esc(teamStr)}</span>
         </div>
       </div>
-      <span class="tc-slot-score" style="font-size:10px;font-weight:900;color:${isHit ? '#4bdd91' : (isMiss ? '#ff7079' : (isPicked ? '#ffd166' : '#8e8c95'))}">
+      <span class="tc-slot-score" style="font-size:10px;font-weight:900">
         ${isHit ? '✓ +20' : (isMiss ? '✗' : (isPicked ? '✓ PICK' : '—'))}
       </span>
     </div>`;
@@ -6678,7 +6727,7 @@ function topCutPredictionBracket(t){
         </div>
         <div class="card" style="padding:8px 16px;background:#0d0d13;border-color:#3a2028;text-align:center">
           <div style="font-size:9px;font-weight:800;color:#ffd166;letter-spacing:1px;text-transform:uppercase">Projected Champion</div>
-          <div style="font:900 20px 'Barlow Condensed';color:#fff;margin-top:2px">${esc(predictedChamp || 'TBD')}</div>
+          <div style="font:900 20px 'Barlow Condensed';color:#fff;margin-top:2px">${esc(predictedChamp)}</div>
         </div>
       </div>
     </div>
@@ -6714,17 +6763,25 @@ function topCutPredictionBracket(t){
           <div class="tc-round-col" style="border-left:1px dashed #3a3a46;padding-left:24px;width:280px">
             <div class="tc-round-head"><span style="color:#ffd166">👑 Grand Finals</span></div>
             <div class="tc-round-matches">
-              ${(model.gfMatches || []).map(m => {
-                let mObj = predMap[m.id] || m;
-                return `<div class="tc-match-card" style="border-color:#5c3510;box-shadow:0 0 16px rgba(243,194,69,0.2)">
-                  <div class="tc-match-head" style="background:#26180b;color:#ffd166">
-                    <span>Championship Final</span>
-                    <span style="color:${mObj.chosen ? '#ffd166' : '#8e8c95'}">${mObj.isDone ? 'FINAL' : (mObj.chosen ? 'PICKED' : 'OPEN')}</span>
+              <div class="tc-match-card" style="border-color:#5c3510;box-shadow:0 0 16px rgba(243,194,69,0.2)">
+                <div class="tc-match-head" style="background:#26180b;color:#ffd166">
+                  <span>Championship Final</span>
+                  <span style="color:${predMap[gfId]?.chosen ? '#ffd166' : '#8e8c95'}">${predMap[gfId]?.isDone ? 'FINAL' : (predMap[gfId]?.chosen ? 'PICKED' : 'OPEN')}</span>
+                </div>
+                ${renderInteractivePredSlot(predMap[gfId], true)}
+                ${renderInteractivePredSlot(predMap[gfId], false)}
+              </div>
+
+              ${isResetRequired ? `
+                <div class="tc-match-card" style="border-color:#e65c00;box-shadow:0 0 16px rgba(255,102,0,0.25);margin-top:12px">
+                  <div class="tc-match-head" style="background:#2a1205;color:#ff944d">
+                    <span>🔥 Bracket Reset Match</span>
+                    <span style="color:${predMap['gf2']?.chosen ? '#ffd166' : '#8e8c95'}">${predMap['gf2']?.isDone ? 'FINAL' : (predMap['gf2']?.chosen ? 'PICKED' : 'OPEN')}</span>
                   </div>
-                  ${renderInteractivePredSlot(mObj, true)}
-                  ${renderInteractivePredSlot(mObj, false)}
-                </div>`;
-              }).join('')}
+                  ${renderInteractivePredSlot(predMap['gf2'], true)}
+                  ${renderInteractivePredSlot(predMap['gf2'], false)}
+                </div>
+              ` : ''}
             </div>
           </div>
         </div>
@@ -6763,7 +6820,7 @@ function topCutPredictionBracket(t){
   </div>`;
 }
 
-async function saveBracketPredictionPick(mId, question, choice){
+function saveBracketPredictionPick(mId, question, choice){
   let t = ongoingT() || activeT();
   if(!t) return;
 
@@ -6782,27 +6839,33 @@ async function saveBracketPredictionPick(mId, question, choice){
 
   updateLocalPredictionInCache(t.id, question, choice, isTogglingOff);
 
-  if(supabaseClient && sessionUser){
-    try {
-      if(isTogglingOff){
-        await supabaseClient.from('predictions').delete().match({
-          user_id: sessionUser.id,
-          tournament_id: t.id,
-          prediction_key: question
-        });
-      } else {
-        await supabaseClient.from('predictions').upsert({
-          user_id: sessionUser.id,
-          tournament_id: t.id,
-          prediction_key: question,
-          selection: choice
-        }, { onConflict: 'user_id,tournament_id,prediction_key' });
-      }
-    } catch(e){}
-  }
-
+  // Synchronous, instant 0ms UI update!
   if(current === 'Predictions' || detailTab === 'Predictions'){
     render();
+  }
+
+  // Fire Supabase sync in background
+  if(supabaseClient && sessionUser){
+    (async () => {
+      try {
+        if(isTogglingOff){
+          await supabaseClient.from('predictions').delete().match({
+            user_id: sessionUser.id,
+            tournament_id: t.id,
+            prediction_key: question
+          });
+        } else {
+          await supabaseClient.from('predictions').upsert({
+            user_id: sessionUser.id,
+            tournament_id: t.id,
+            prediction_key: question,
+            selection: choice
+          }, { onConflict: 'user_id,tournament_id,prediction_key' });
+        }
+      } catch(e){
+        console.warn('Bracket prediction background sync error:', e);
+      }
+    })();
   }
 }
 
