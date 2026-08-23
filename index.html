@@ -119,11 +119,15 @@
 .tc-slot.interactive:hover{background:rgba(255,255,255,0.06);transform:translateX(2px)}
 .tc-slot.picked{background:linear-gradient(90deg,rgba(239,48,56,0.22),transparent)!important;border-left:3px solid var(--red)}
 .tc-slot.picked .tc-slot-name{color:#ffd166!important;font-weight:900}
-.tc-slot.picked .tc-slot-score{background:#3a1215;color:#ffd166;border:1px solid #732228}
 .tc-slot.hit{background:linear-gradient(90deg,rgba(75,221,145,0.22),transparent)!important;border-left:3px solid #4bdd91}
 .tc-slot.hit .tc-slot-name{color:#4bdd91!important}
-.tc-slot.hit .tc-slot-score{background:#143822;color:#4bdd91;border:1px solid #28683f}
 .tc-slot.miss{opacity:0.45;text-decoration:line-through}
+
+.tc-slot-pickbox{width:22px;height:22px;border-radius:4px;border:1px solid #3c3c4a;background:#14141c;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:900;color:#7e7c85;transition:all .15s ease;flex:none}
+.tc-slot.interactive:hover .tc-slot-pickbox{border-color:#ffd166;color:#ffd166;background:rgba(255,209,102,0.12)}
+.tc-slot.picked .tc-slot-pickbox{background:#ffd166!important;color:#121212!important;border-color:#ffd166!important;box-shadow:0 0 10px rgba(255,209,102,0.5)}
+.tc-slot.hit .tc-slot-pickbox{background:#4bdd91!important;color:#0b2214!important;border-color:#4bdd91!important;box-shadow:0 0 10px rgba(75,221,145,0.45)}
+.tc-slot.miss .tc-slot-pickbox{background:#2a1518!important;color:#ff7079!important;border-color:#5c2227!important}
 
 .tc-ledger-table{width:100%;border-collapse:collapse}
 .tc-ledger-table th{padding:9px 12px;font-size:9px;font-weight:800;letter-spacing:.7px;text-transform:uppercase;color:#8e8c95;border-bottom:1px solid #2a2a34;text-align:left}
@@ -6492,10 +6496,7 @@ function topCutPredictionBracket(t){
   if(!model) return '<div class="card empty"><p class="sub">Top Cut bracket data unavailable.</p></div>';
 
   function getBracketMatchPick(mId, p1, p2){
-    let prefix = (mId === 'gf2') ? 'Top Cut · Reset Match: ' : 'Top Cut · Who wins: ';
-    let key1 = (p1 && p2 && isKnownPlayer(p1) && isKnownPlayer(p2)) ? (prefix + p1 + ' vs ' + p2) : '';
-    let key2 = (p1 && p2 && isKnownPlayer(p1) && isKnownPlayer(p2)) ? (prefix + p2 + ' vs ' + p1) : '';
-    let explicitPick = (key1 && savedPick(t, key1)) || (key2 && savedPick(t, key2)) || savedPick(t, 'draftdex-bpick-' + mId);
+    let explicitPick = savedPick(t, 'draftdex-bpick-' + mId);
     if(explicitPick && (explicitPick === p1 || explicitPick === p2)){
       return explicitPick;
     }
@@ -6684,7 +6685,7 @@ function topCutPredictionBracket(t){
         <div class="tc-slot-info">
           <span class="tc-slot-tbd">${esc(pName || 'TBD')}</span>
         </div>
-        <span class="tc-slot-score">—</span>
+        <div class="tc-slot-pickbox" style="opacity:0.3">—</div>
       </div>`;
     }
 
@@ -6696,12 +6697,11 @@ function topCutPredictionBracket(t){
     let faceArt = profilePictures[pName] ? `url('${esc(profilePictures[pName])}')` : (teamCovers[pName] ? `url('${esc(teamCovers[pName])}')` : fallbackArt(pName));
     let faceLetter = (profilePictures[pName] || teamCovers[pName]) ? '' : esc((pName || '?')[0]);
     let teamStr = teamName(t, pName);
-    let question = (isReal && isOpponentReal) ? ((mId === 'gf2' ? 'Top Cut · Reset Match: ' : 'Top Cut · Who wins: ') + pName + ' vs ' + opponent) : ('Top Cut · Who wins match ' + mId);
 
     let isClickable = !mObj.isDone && isReal && isOpponentReal;
 
     return `<div class="tc-slot ${isClickable ? 'interactive' : ''} ${isPicked ? 'picked' : ''} ${isHit ? 'hit' : (isMiss ? 'miss' : '')}"
-      ${isClickable ? `onclick="saveBracketPredictionPick('${jsArg(mId)}', '${jsArg(question)}', '${jsArg(pName)}')"` : ''}
+      ${isClickable ? `onclick="saveBracketPredictionPick('${jsArg(mId)}', '${jsArg(pName)}')"` : ''}
       title="${mObj.isDone ? 'Match complete' : (!isOpponentReal ? 'Waiting for opponent' : (isPicked ? 'Click to unselect ' + esc(pName) : 'Click to pick ' + esc(pName) + ' to advance'))}">
       <span class="tc-slot-seed">${seed ? `#${seed}` : ''}</span>
       <div class="tc-slot-info">
@@ -6711,9 +6711,9 @@ function topCutPredictionBracket(t){
           <span class="team" style="font-size:9px;margin-top:1px">${esc(teamStr)}</span>
         </div>
       </div>
-      <span class="tc-slot-score" style="font-size:10px;font-weight:900">
-        ${isHit ? '✓ +20' : (isMiss ? '✗' : (isPicked ? '✓ PICK' : '—'))}
-      </span>
+      <div class="tc-slot-pickbox">
+        ${isHit ? '✓' : (isMiss ? '✗' : (isPicked ? '✓' : ''))}
+      </div>
     </div>`;
   }
 
@@ -6820,23 +6820,23 @@ function topCutPredictionBracket(t){
   </div>`;
 }
 
-function saveBracketPredictionPick(mId, question, choice){
+function saveBracketPredictionPick(mId, choice){
   let t = ongoingT() || activeT();
-  if(!t) return;
+  if(!t || !mId || !choice) return;
 
-  let currentPick = savedPick(t, question) || savedPick(t, 'draftdex-bpick-' + mId);
+  let bpickKey = 'draftdex-bpick-' + mId;
+  let currentPick = savedPick(t, bpickKey);
   let isTogglingOff = (currentPick === choice);
 
   try {
     if(isTogglingOff){
-      localStorage.removeItem('draftdex-pick-' + t.id + '-' + question);
-      localStorage.removeItem('draftdex-pick-' + t.id + '-draftdex-bpick-' + mId);
+      localStorage.removeItem('draftdex-pick-' + t.id + '-' + bpickKey);
     } else {
-      localStorage.setItem('draftdex-pick-' + t.id + '-' + question, choice);
-      localStorage.setItem('draftdex-pick-' + t.id + '-draftdex-bpick-' + mId, choice);
+      localStorage.setItem('draftdex-pick-' + t.id + '-' + bpickKey, choice);
     }
   } catch(e){}
 
+  let question = 'Top Cut Bracket Match · ' + mId;
   updateLocalPredictionInCache(t.id, question, choice, isTogglingOff);
 
   // Synchronous, instant 0ms UI update!
