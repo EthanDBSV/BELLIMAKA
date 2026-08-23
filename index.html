@@ -212,16 +212,17 @@
 .mon-chip:hover .swap-icon{opacity:1;transform:scale(1.15)}
 .mon-chip.historic{border-left-color:#6366f1;background:linear-gradient(135deg,#191924,#13131c)}
 .mon-chip.historic img{filter:drop-shadow(0 2px 4px rgba(0,0,0,0.6))}
-/* ------------------------------------------------------------ Matchup of the Week Broadcast Graphic ------------------------------------------------------------ */
-.matchup-hero-card{position:relative;overflow:hidden;border-radius:10px;border:1px solid #3d232c;background:linear-gradient(135deg,#1f1116 0%,#13131a 50%,#121622 100%);display:flex;flex-direction:column;justify-content:space-between;min-height:220px;box-shadow:0 8px 24px rgba(0,0,0,0.55)}
-.matchup-hero-banner{background:linear-gradient(90deg,#5a1c25,#281d2f);padding:7px 14px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid rgba(255,255,255,0.08)}
-.matchup-hero-body{position:relative;display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:10px;padding:16px 14px}
+/* ------------------------------------------------------------ Matchup of the Week / PRIMETIME Broadcast Graphic ------------------------------------------------------------ */
+.matchup-hero-card{position:relative;overflow:hidden;border-radius:10px;border:1px solid #4a2834;background:linear-gradient(135deg,#1f1116 0%,#13131a 50%,#121622 100%);display:flex;flex-direction:column;justify-content:space-between;min-height:220px;box-shadow:0 8px 24px rgba(0,0,0,0.55),0 0 16px rgba(230,57,70,0.18);transition:border-color .18s ease,box-shadow .18s ease}
+.matchup-hero-card:hover{border-color:#6e3345;box-shadow:0 10px 28px rgba(0,0,0,0.65),0 0 22px rgba(230,57,70,0.26)}
+.matchup-hero-banner{background:linear-gradient(90deg,#5a1c25,#281d2f);padding:7px 14px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid rgba(255,255,255,0.08);position:relative;z-index:2}
+.matchup-hero-body{position:relative;display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:10px;padding:16px 14px;z-index:2}
 .matchup-team-col{display:flex;flex-direction:column;align-items:center;text-align:center;gap:4px;min-width:0}
 .matchup-record-big{font:900 32px/1 'Barlow Condensed';color:#f5f3f0;letter-spacing:1px;text-shadow:0 2px 8px rgba(0,0,0,0.8)}
 .matchup-team-name{font:800 13px/1.1 'Barlow Condensed';color:#e2e0e8;max-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-top:2px}
 .matchup-vs-badge{display:flex;flex-direction:column;align-items:center;gap:4px}
 .matchup-vs-circle{width:42px;height:42px;border-radius:50%;background:linear-gradient(135deg,#e63946,#ff9f1c);display:grid;place-items:center;font:900 16px 'Barlow Condensed';color:#fff;box-shadow:0 0 16px rgba(230,57,70,0.6);border:2px solid #ffffff40}
-.matchup-hero-foot{background:#0e0e14c0;border-top:1px solid #20202c;padding:8px 14px;display:flex;justify-content:space-between;align-items:center}
+.matchup-hero-foot{background:#0e0e14c0;border-top:1px solid #20202c;padding:8px 14px;display:flex;justify-content:space-between;align-items:center;position:relative;z-index:2}
 
 /* Modern Expandable Past Tournaments Accordion */
 .past-tourney-card{border:1px solid #2f2f3c;border-left:3px solid #4a4a58;border-radius:8px;margin-top:8px;background:#15151e;overflow:hidden;transition:border-color .15s ease, background .15s ease}
@@ -292,7 +293,24 @@ details[open] > .past-tourney-summary .past-chevron{transform:rotate(180deg);col
 .ovr-badge-pill.ovr-bronze{background:linear-gradient(135deg,#8c542a,#543015);color:#eed;border:1px solid #b87747}
 
 .hof-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px;margin-bottom:24px}
-.hof-card{padding:18px;background:#17171d;border:1px solid #2d2d38;border-radius:8px;position:relative;overflow:hidden;display:flex;flex-direction:column;justify-content:space-between}
+.hof-card{padding:18px;background:#17171d;border:1px solid #2d2d38;border-radius:8px;position:relative;overflow:hidden;display:flex;flex-direction:column;justify-content:space-between;transition:transform .18s ease,border-color .18s ease,box-shadow .18s ease}
+.hof-card:hover{transform:translateY(-2px)}
+.hof-card.hof-glow-ovr{border-color:#ef3038;background:linear-gradient(135deg,#301016,#16161c 65%);box-shadow:0 0 20px rgba(239,48,56,0.28),inset 0 0 12px rgba(239,48,56,0.08)}
+.hof-card.hof-glow-ovr:hover{border-color:#ff5c64;box-shadow:0 0 28px rgba(239,48,56,0.48)}
+.hof-card.hof-glow-win-streak{border-color:#ff9f1c;background:linear-gradient(135deg,#331e0a,#16161c 65%);box-shadow:0 0 20px rgba(255,159,28,0.28),inset 0 0 12px rgba(255,159,28,0.08)}
+.hof-card.hof-glow-win-streak:hover{border-color:#ffb74d;box-shadow:0 0 28px rgba(255,159,28,0.48)}
+.hof-card.hof-glow-active-streak{border-color:#ffd166;background:linear-gradient(135deg,#2e240c,#16161c 65%);box-shadow:0 0 20px rgba(255,209,102,0.28),inset 0 0 12px rgba(255,209,102,0.08)}
+.hof-card.hof-glow-active-streak:hover{border-color:#ffe082;box-shadow:0 0 28px rgba(255,209,102,0.48)}
+.hof-card.hof-glow-titles{border-color:#e0ad2b;background:linear-gradient(135deg,#36280a,#16161c 65%);box-shadow:0 0 20px rgba(224,173,43,0.30),inset 0 0 12px rgba(224,173,43,0.10)}
+.hof-card.hof-glow-titles:hover{border-color:#ffd54f;box-shadow:0 0 28px rgba(224,173,43,0.50)}
+.hof-card.hof-glow-topcut{border-color:#a855f7;background:linear-gradient(135deg,#251233,#16161c 65%);box-shadow:0 0 20px rgba(168,85,247,0.28),inset 0 0 12px rgba(168,85,247,0.08)}
+.hof-card.hof-glow-topcut:hover{border-color:#c084fc;box-shadow:0 0 28px rgba(168,85,247,0.48)}
+.hof-card.hof-glow-wins{border-color:#4bdd91;background:linear-gradient(135deg,#102e1c,#16161c 65%);box-shadow:0 0 20px rgba(75,221,145,0.28),inset 0 0 12px rgba(75,221,145,0.08)}
+.hof-card.hof-glow-wins:hover{border-color:#6ee7b7;box-shadow:0 0 28px rgba(75,221,145,0.48)}
+.hof-card.hof-glow-cold-streak{border-color:#38bdf8;background:linear-gradient(135deg,#0e2738,#16161c 65%);box-shadow:0 0 20px rgba(56,189,248,0.32),inset 0 0 12px rgba(56,189,248,0.10)}
+.hof-card.hof-glow-cold-streak:hover{border-color:#7dd3fc;box-shadow:0 0 28px rgba(56,189,248,0.52)}
+.hof-card.hof-glow-loss-streak{border-color:#f43f5e;background:linear-gradient(135deg,#2e1018,#16161c 65%);box-shadow:0 0 20px rgba(244,63,94,0.28),inset 0 0 12px rgba(244,63,94,0.08)}
+.hof-card.hof-glow-loss-streak:hover{border-color:#fb7185;box-shadow:0 0 28px rgba(244,63,94,0.48)}
 .hof-card.gold-card{border-color:#6e501e;background:linear-gradient(135deg,#23190d,#16161c 65%)}
 .hof-card.red-card{border-color:#6b242e;background:linear-gradient(135deg,#261216,#16161c 65%)}
 .hof-card-icon{font-size:26px;margin-bottom:8px}
@@ -2918,13 +2936,18 @@ function matchupOfTheWeekCard(t){
   let face2 = profilePictures[p2] ? `url('${esc(profilePictures[p2])}')` : (teamCovers[p2] ? `url('${esc(teamCovers[p2])}')` : fallbackArt(p2));
   let letter2 = (profilePictures[p2] || teamCovers[p2]) ? '' : esc((p2 || '?')[0]);
 
-  return `<aside class="card matchup-hero-card">
+  let cardBg = t.backgroundImage ? `style="background-image:linear-gradient(135deg,rgba(26,14,20,0.85) 0%,rgba(18,18,26,0.88) 50%,rgba(16,20,32,0.88) 100%),url('${esc(t.backgroundImage)}');background-size:cover;background-position:center"` : '';
+
+  return `<aside class="card matchup-hero-card" ${cardBg}>
     <div class="matchup-hero-banner">
       <div style="display:flex;align-items:center;gap:6px">
         <span style="font-size:13px">🔥</span>
-        <span class="eyebrow" style="color:#ffd166;margin:0;letter-spacing:1px">${esc(item.group || 'MATCHUP OF THE WEEK')}</span>
+        <span class="eyebrow" style="color:#ffd166;margin:0;letter-spacing:1px">${esc(item.group || 'PRIMETIME MATCHUP')}</span>
       </div>
-      <span class="tag" style="background:#00000060;border-color:#ffffff20;font-size:9px;color:#ff9fa6">${item.isTopCut ? 'TOP CUT PLAYOFFS' : 'MARQUEE MATCHUP'}</span>
+      <div style="display:flex;align-items:center;gap:6px">
+        <span class="tag" style="background:#00000070;border:1px solid #ffffff25;font-size:9px;font-weight:900;letter-spacing:1px;color:#ff9fa6;padding:3px 8px;border-radius:4px">${item.isTopCut ? 'TOP CUT PLAYOFFS' : 'PRIMETIME'}</span>
+        ${moderator ? `<button class="cover-edit" style="position:static;padding:3px 8px;font-size:10px" onclick="event.stopPropagation();openCoverEditor('${jsArg(t.id)}')">Edit cover</button>` : ''}
+      </div>
     </div>
 
     <div class="matchup-hero-body">
@@ -2995,7 +3018,7 @@ function Home(){
       <div class="hero-main" data-season="S${tournamentNumber(t)}" ${heroBg}>
         <span class="status"><i></i>${t.phase === 'topcut' ? 'TOP CUT LIVE' : 'GROUP STAGE LIVE'}</span>
         <div class="hero-title">${t.name.toUpperCase().replace(' ', '<br>')}</div>
-        <div class="hero-info">${t.regulation} · ${t.players.length} trainers</div>
+        <div class="hero-info">${esc(t.regulation)} · ${t.players.length} Trainers</div>
         <div style="margin-top:16px;display:flex;gap:10px;flex-wrap:wrap">
           <button class="btn btn-sm" onclick="current='${target}';render()">${t.phase === 'topcut' ? 'View Bracket & Standings' : 'View Group Matches'}</button>
           <button class="btn ghost btn-sm" onclick="go('Standings')">Live Leaderboard</button>
@@ -3172,7 +3195,7 @@ function tournamentTotalMatches(t){
 function tournamentCard(t){
   let bg=t.backgroundImage?`style="background-image:linear-gradient(90deg,rgba(20,20,25,.92),rgba(20,20,25,.68)),url('${t.backgroundImage}') ;background-size:cover;background-position:center"`:'';
   let totalMatches = tournamentTotalMatches(t);
-  return `<button class="card archive-card" ${bg} onclick="openTournament('${t.id}')"><div class="${t.status==='ONGOING'?'status':'eyebrow'}">${t.status==='ONGOING'?'<i></i>':''}${t.status}</div><h3>${t.name} · ${t.season}</h3><p>${t.champion?'Champion: '+t.champion:'Group stage · '+t.players.length+' trainers'}<br>${t.regulation}</p><div class="archive-stats"><span><b>${totalMatches}</b>Matches</span><span><b>${t.start}</b>Started</span></div></button>`;
+  return `<button class="card archive-card" ${bg} onclick="openTournament('${t.id}')"><div class="${t.status==='ONGOING'?'status':'eyebrow'}">${t.status==='ONGOING'?'<i></i>':''}${t.status}</div><h3>${t.name} · ${t.season}</h3><p>${t.champion?'Champion: '+esc(t.champion):(t.phase==='topcut'?'Top Cut':'Group Stage')+' · '+t.players.length+' Trainers'}<br>${esc(t.regulation||'')}</p><div class="archive-stats"><span><b>${totalMatches}</b>Matches</span><span><b>${esc(t.start||'TBD')}</b>Started</span></div></button>`;
 }
 
 function Tournaments(){
@@ -6075,7 +6098,7 @@ function Records(){
 
   return head('Hall of Fame','League Records, Player Overalls & Historic Milestones')
     +`<div class="hof-grid">
-      <div class="hof-card red-card">
+      <div class="hof-card hof-glow-ovr">
         <div>
           <div class="hof-card-icon">💎</div>
           <div class="hof-card-title">Highest Overall Rating (OVR)</div>
@@ -6087,11 +6110,11 @@ function Records(){
         </div>
       </div>
 
-      <div class="hof-card gold-card">
+      <div class="hof-card hof-glow-win-streak">
         <div>
           <div class="hof-card-icon">🔥</div>
           <div class="hof-card-title">All-Time Win Streak</div>
-          <div class="hof-card-val">${records.maxWinStreak.value} <span style="font-size:18px;font-weight:600;color:#9d9ba4">Matches</span></div>
+          <div class="hof-card-val">${records.maxWinStreak.value} <span style="font-size:18px;font-weight:600;color:#ffb74d">Matches</span></div>
         </div>
         <div class="hof-card-holder">
           <span style="font-size:11px;color:#8e8c95">Record Holder:</span>
@@ -6099,11 +6122,11 @@ function Records(){
         </div>
       </div>
 
-      <div class="hof-card">
+      <div class="hof-card hof-glow-active-streak">
         <div>
           <div class="hof-card-icon">⚡</div>
           <div class="hof-card-title">Active Win Streak</div>
-          <div class="hof-card-val">${records.activeWinStreak.value} <span style="font-size:18px;font-weight:600;color:#9d9ba4">Matches</span></div>
+          <div class="hof-card-val">${records.activeWinStreak.value} <span style="font-size:18px;font-weight:600;color:#ffd166">Matches</span></div>
         </div>
         <div class="hof-card-holder">
           <span style="font-size:11px;color:#8e8c95">Current Leader:</span>
@@ -6111,11 +6134,11 @@ function Records(){
         </div>
       </div>
 
-      <div class="hof-card gold-card">
+      <div class="hof-card hof-glow-titles">
         <div>
           <div class="hof-card-icon">👑</div>
           <div class="hof-card-title">Championship Titles</div>
-          <div class="hof-card-val">${records.maxTitles.value} <span style="font-size:18px;font-weight:600;color:#9d9ba4">Titles</span></div>
+          <div class="hof-card-val">${records.maxTitles.value} <span style="font-size:18px;font-weight:600;color:#ffd54f">Titles</span></div>
         </div>
         <div class="hof-card-holder">
           <span style="font-size:11px;color:#8e8c95">Most Trophies:</span>
@@ -6123,11 +6146,11 @@ function Records(){
         </div>
       </div>
 
-      <div class="hof-card">
+      <div class="hof-card hof-glow-topcut">
         <div>
           <div class="hof-card-icon">🎖️</div>
           <div class="hof-card-title">Top Cut Appearances</div>
-          <div class="hof-card-val">${records.maxTopCuts.value} <span style="font-size:18px;font-weight:600;color:#9d9ba4">Playoffs</span></div>
+          <div class="hof-card-val">${records.maxTopCuts.value} <span style="font-size:18px;font-weight:600;color:#c084fc">Playoffs</span></div>
         </div>
         <div class="hof-card-holder">
           <span style="font-size:11px;color:#8e8c95">Playoff Leaders:</span>
@@ -6135,11 +6158,11 @@ function Records(){
         </div>
       </div>
 
-      <div class="hof-card">
+      <div class="hof-card hof-glow-wins">
         <div>
           <div class="hof-card-icon">🏆</div>
           <div class="hof-card-title">All-Time Match Wins</div>
-          <div class="hof-card-val">${records.maxCareerWins.value} <span style="font-size:18px;font-weight:600;color:#9d9ba4">Wins</span></div>
+          <div class="hof-card-val">${records.maxCareerWins.value} <span style="font-size:18px;font-weight:600;color:#7ff0aa">Wins</span></div>
         </div>
         <div class="hof-card-holder">
           <span style="font-size:11px;color:#8e8c95">Wins Leader:</span>
@@ -6147,11 +6170,11 @@ function Records(){
         </div>
       </div>
 
-      <div class="hof-card">
+      <div class="hof-card hof-glow-cold-streak">
         <div>
           <div class="hof-card-icon">❄️</div>
           <div class="hof-card-title">All-Time Cold Streak</div>
-          <div class="hof-card-val">${records.maxLossStreak.value} <span style="font-size:18px;font-weight:600;color:#9d9ba4">Matches</span></div>
+          <div class="hof-card-val">${records.maxLossStreak.value} <span style="font-size:18px;font-weight:600;color:#7dd3fc">Matches</span></div>
         </div>
         <div class="hof-card-holder">
           <span style="font-size:11px;color:#8e8c95">Historic Slump:</span>
@@ -6159,11 +6182,11 @@ function Records(){
         </div>
       </div>
 
-      <div class="hof-card">
+      <div class="hof-card hof-glow-loss-streak">
         <div>
           <div class="hof-card-icon">💀</div>
           <div class="hof-card-title">Active Loss Streak</div>
-          <div class="hof-card-val">${records.activeLossStreak.value} <span style="font-size:18px;font-weight:600;color:#9d9ba4">Matches</span></div>
+          <div class="hof-card-val">${records.activeLossStreak.value} <span style="font-size:18px;font-weight:600;color:#fb7185">Matches</span></div>
         </div>
         <div class="hof-card-holder">
           <span style="font-size:11px;color:#8e8c95">Current Slump:</span>
@@ -6363,10 +6386,10 @@ function tournamentDetail(){
   return head(t.name,t.season + ' · ' + t.status,`<div><button class="btn ghost" onclick="go('Tournaments')">← Archive</button>${edit}${moderator?` <button class="btn ghost" style="color:#ff9ba1" onclick="deleteTournament('${jsArg(t.id)}')">Delete</button>`:''}</div>`)
     +`<div class="tabs">${['Standings','Group Stage','Top Cut','Predictions'].map(x=>`<button class="${detailTab===x?'active':''}" onclick="detailTab='${x}';try{localStorage.setItem('draftdex-detail-tab','${x}')}catch(e){};render()">${x}</button>`).join('')}</div>`
     +`<div class="detail-layout"><div>${content}</div><aside class="card side">
-      <div class="card-title">Tournament record</div>
+      <div class="card-title">Tournament Record</div>
       <div class="side-line">${esc(t.regulation||'')}</div>
-      <div class="side-line"><b>${t.players.length}</b> players · ${groups.length} group${groups.length===1?'':'s'}</div>
-      <div class="side-line">Top ${advancePerGroup(t)} per group</div>
+      <div class="side-line"><b>${t.players.length}</b> Trainers · ${groups.length} Group${groups.length===1?'':'s'}</div>
+      <div class="side-line">Top ${advancePerGroup(t)} Per Group</div>
       <div class="side-line">${esc(t.start||'')} → ${esc(t.end||'')}</div></aside></div>`
 }
 function openTournamentEdit(id){
@@ -6378,12 +6401,12 @@ function openTournamentEdit(id){
     <div class="modal-head"><div><div class="eyebrow">Moderator only</div><h2>Edit ${esc(t.name)}</h2></div><button class="close" onclick="closeModal()">×</button></div>
     <p class="sub">${esc(t.season||'')} · ${esc(t.status)}</p>
     <div class="section" style="display:grid;gap:9px">
-      <button class="btn ghost" onclick="openTournamentRecordEditor('${jsArg(t.id)}')">Edit details</button>
-      <button class="btn ghost" onclick="openSettings()">Edit qualification</button>
-      <button class="btn ghost" ${locked?'disabled style="opacity:.5;cursor:not-allowed"':`onclick="openGroupPlacementEditor()"`}>Arrange groups${locked?' (locked in Top Cut)':''}</button>
-      <button class="btn ghost" onclick="openTournamentPlayers()">Edit players & teams</button>
-      <button class="btn ghost" onclick="openCoverEditor('${jsArg(t.id)}')">Edit cover image</button>
-      ${t.status==='COMPLETE'?`<button class="btn ghost" onclick="resyncTournamentStats('${jsArg(t.id)}')">Resync stats</button>`:''}
+      <button class="btn ghost" onclick="openTournamentRecordEditor('${jsArg(t.id)}')">Edit Details</button>
+      <button class="btn ghost" onclick="openSettings()">Edit Qualification</button>
+      <button class="btn ghost" ${locked?'disabled style="opacity:.5;cursor:not-allowed"':`onclick="openGroupPlacementEditor()"`}>Arrange Groups${locked?' (Locked in Top Cut)':''}</button>
+      <button class="btn ghost" onclick="openTournamentPlayers()">Edit Players & Teams</button>
+      <button class="btn ghost" onclick="openCoverEditor('${jsArg(t.id)}')">Edit Cover Image</button>
+      ${t.status==='COMPLETE'?`<button class="btn ghost" onclick="resyncTournamentStats('${jsArg(t.id)}')">Resync Stats</button>`:''}
     </div></div></div>`
 }
 /* ------------------------------------------------------------ 8. PLAYOFF "FORM" ON A 0-100 SCALE ------------------------------------------------------------
