@@ -372,9 +372,14 @@ details[open] > .past-tourney-summary .past-chevron{transform:rotate(180deg);col
 .badge-pill.silver{background:#23252d;color:#d8d9e2;border:1px solid #4a4d5e}
 .badge-pill.red{background:#381419;color:#ff8e95;border:1px solid #73242f}
 .badge-pill.amber{background:#382c12;color:#ffc857;border:1px solid #6e551f}
+.badge-pill.orange{background:#381a10;color:#ff9066;border:1px solid #7a3520}
 .badge-pill.blue{background:#122538;color:#7ad1ff;border:1px solid #234b73}
+.badge-pill.cyan{background:#0e2a36;color:#67e8f9;border:1px solid #155e75}
+.badge-pill.teal{background:#0d2d2a;color:#4dd4bf;border:1px solid #115e59}
 .badge-pill.green{background:#143320;color:#7ff0aa;border:1px solid #296b3f}
 .badge-pill.purple{background:#2b1836;color:#dca2f5;border:1px solid #5a3070}
+.badge-pill.magenta{background:#381425;color:#f472b6;border:1px solid #831843}
+.badge-pill.indigo{background:#1e1b4b;color:#a5b4fc;border:1px solid #3730a3}
 .badge-pill.gray{background:#202026;color:#a09fa8;border:1px solid #363640}
 /* ------------------------------------------------------------ Madden / FIFA Style OVR Cards & Badges ------------------------------------------------------------ */
 .ovr-card-bronze{background:linear-gradient(145deg,#2e1e12 0%,#19120c 60%,#26170d 100%)!important;border:2px solid #8c592e!important;box-shadow:0 8px 24px rgba(0,0,0,0.5)}
@@ -5659,23 +5664,24 @@ function openBadgeManager(p){
   let badgePresets = [
     { id: 'triple-crown', icon: '👑', name: 'Triple Crown', color: 'gold', desc: 'Legendary three-peat: Won 3 consecutive tournament championships.', perTournament: true },
     { id: 'unrivaled', icon: '⚜️', name: 'Unrivaled', color: 'gold', desc: 'Flawless tournament championship without dropping a single game (2-0 in every match).', perTournament: true },
-    { id: 'undefeated-champ', icon: '👑', name: 'Undefeated Champ', color: 'gold', desc: 'Won an entire tournament without dropping a single match in groups or playoffs.', perTournament: true },
+    { id: 'undefeated-champ', icon: '🌟', name: 'Undefeated Champ', color: 'gold', desc: 'Won an entire tournament without dropping a single match in groups or playoffs.', perTournament: true },
     { id: 'dark-horse', icon: '🐴', name: 'Dark Horse', color: 'amber', desc: 'Projected as a Dark Horse by pre-tournament playoff odds and went on to win the Championship.', perTournament: true },
-    { id: 'cleansheet', icon: '🛡️', name: 'Clean Sheet', color: 'blue', desc: 'Flawless group stage without dropping a single match.', perTournament: true },
-    { id: 'oracle', icon: '👁️', name: 'Oracle', color: 'purple', desc: 'Achieved 100% perfect prediction accuracy across ALL predictions in a tournament (0 misses).', perTournament: true },
+    { id: 'champion-badge', icon: '🏆', name: 'League Champion', color: 'gold', desc: 'Won a League Championship tournament.', perTournament: true },
+    { id: 'dynasty-badge', icon: '🏛️', name: 'Dynasty Champion', color: 'gold', desc: 'Won 2 or more League Championships.', perTournament: false },
+    { id: 'playoff-royalty', icon: '🏰', name: 'Playoff Royalty', color: 'purple', desc: 'Reached Top Cut in 5 or more tournaments.', perTournament: false },
+    { id: 'playoff-regular', icon: '🏅', name: 'Playoff Regular', color: 'silver', desc: 'Reached Top Cut in 3 or more tournaments.', perTournament: false },
+    { id: 'goat-badge', icon: '🐐', name: 'GOAT', color: 'gold', desc: 'The Greatest of All Time.', perTournament: false },
+    { id: 'oracle', icon: '👁️', name: 'Oracle', color: 'indigo', desc: 'Achieved 100% perfect prediction accuracy across ALL predictions in a tournament (0 misses).', perTournament: true },
     { id: 'prediction-king', icon: '🔮', name: 'Prediction King', color: 'purple', desc: 'Scored the most prediction points in a tournament.', perTournament: true },
-    { id: 'cinderella', icon: '✨', name: 'Cinderella Run', color: 'purple', desc: 'Underdog miracle run into Grand Finals / Championship.', perTournament: true },
+    { id: 'cleansheet', icon: '🛡️', name: 'Clean Sheet', color: 'teal', desc: 'Flawless group stage without dropping a single match.', perTournament: true },
+    { id: 'cinderella', icon: '✨', name: 'Cinderella Run', color: 'magenta', desc: 'Underdog miracle run into Grand Finals / Championship.', perTournament: true },
     { id: 'clutch-king', icon: '🎯', name: 'Clutch King', color: 'purple', desc: 'Won 4 or more intense Game-3 decider matches (2-1) in a tournament.', perTournament: true },
     { id: 'improved', icon: '🚀', name: 'Most Improved', color: 'green', desc: 'Largest tournament-to-tournament performance improvement.', perTournament: true },
     { id: 'blowout-king', icon: '💥', name: 'Blowout King (+5 GD)', color: 'amber', desc: 'Dominant +5 or higher game differential in a single tournament.', perTournament: true },
     { id: 'victim', icon: '💀', name: 'Victim', color: 'red', desc: 'Went winless (0 wins) in a completed group stage.', perTournament: true },
-    { id: 'champion-badge', icon: '🏆', name: 'League Champion', color: 'gold', desc: 'Won a League Championship tournament.', perTournament: true },
-    { id: 'playoff-royalty', icon: '👑', name: 'Playoff Royalty', color: 'purple', desc: 'Reached Top Cut in 5 or more tournaments.', perTournament: false },
-    { id: 'playoff-regular', icon: '🎖️', name: 'Playoff Regular', color: 'silver', desc: 'Reached Top Cut in 3 or more tournaments.', perTournament: false },
     { id: 'record-win-streak', icon: '🔥', name: 'All-Time Streak King', color: 'red', desc: 'All-time consecutive win streak record holder.', perTournament: false },
-    { id: 'active-win-streak', icon: '⚡', name: 'On Fire (3W+)', color: 'amber', desc: 'Active 3+ match win streak.', perTournament: false },
-    { id: 'active-loss-streak', icon: '❄️', name: 'Cold Slump (3L+)', color: 'blue', desc: 'Active 3+ match loss slump.', perTournament: false },
-    { id: 'goat-badge', icon: '🐐', name: 'GOAT', color: 'gold', desc: 'The Greatest of All Time.', perTournament: false }
+    { id: 'active-win-streak', icon: '⚡', name: 'On Fire (3W+)', color: 'orange', desc: 'Active 3+ match win streak.', perTournament: false },
+    { id: 'active-loss-streak', icon: '❄️', name: 'Cold Slump (3L+)', color: 'cyan', desc: 'Active 3+ match loss slump.', perTournament: false }
   ];
 
   let tournamentOptions = `<option value="">General / All-Time</option>` + pastTournaments.map(t => `<option value="${esc(t.name)}">${esc(t.name)} (${esc(t.season)})</option>`).join('');
@@ -7239,7 +7245,7 @@ function calculateLeagueRecords(){
           if(!statsByPlayer[p].badges.some(b => b.id === 'undefeated-champ-' + t.id)){
             statsByPlayer[p].badges.push({
               id: 'undefeated-champ-' + t.id,
-              icon: '👑',
+              icon: '🌟',
               name: `Undefeated Champ (${t.name})`,
               desc: `Won ${t.name} without dropping a single match (${w}-0)`,
               category: 'championship',
@@ -7257,7 +7263,7 @@ function calculateLeagueRecords(){
               name: `Clean Sheet (${t.name})`,
               desc: `Flawless group stage without a single match loss (${gw}-0) in ${t.name}`,
               category: 'dominance',
-              color: 'blue'
+              color: 'teal'
             });
           }
         }
@@ -7392,7 +7398,7 @@ function calculateLeagueRecords(){
                 name: `Oracle (${t.name})`,
                 desc: `Predicted 100% of ALL ${t.name} outcomes correctly (${totalSettledKeys.length}/${totalSettledKeys.length} perfect picks, 0 misses)`,
                 category: 'predictions',
-                color: 'purple'
+                color: 'indigo'
               });
             }
           }
@@ -7412,7 +7418,7 @@ function calculateLeagueRecords(){
                 name: `Cinderella Run (${t.name})`,
                 desc: `Underdog miracle run in ${t.name}, advancing from #${gSeed} group seed to ${finish.label} (${finish.note})`,
                 category: 'miracle',
-                color: 'purple'
+                color: 'magenta'
               });
             }
           }
@@ -7505,7 +7511,7 @@ function calculateLeagueRecords(){
         name:`On Fire (${s.currentWinStreak}W)`,
         desc:`Currently riding an active streak of ${s.currentWinStreak} consecutive match wins`,
         category:'streak',
-        color:'amber'
+        color:'orange'
       });
     }
 
@@ -7517,14 +7523,14 @@ function calculateLeagueRecords(){
         name:`Cold Slump (${s.currentLossStreak}L)`,
         desc:`Current active slump of ${s.currentLossStreak} matches`,
         category:'streak',
-        color:'blue'
+        color:'cyan'
       });
     }
 
     if(career.titles>=2){
       s.badges.push({
         id:'dynasty-badge',
-        icon:'👑',
+        icon:'🏛️',
         name:`${career.titles}x Dynasty Champion`,
         desc:`Won ${career.titles} League Championships: ${career.championshipCups.join(', ')}`,
         category:'trophy',
@@ -7566,7 +7572,7 @@ function calculateLeagueRecords(){
     if(career.topCuts>=5){
       s.badges.push({
         id:'playoff-royalty',
-        icon:'👑',
+        icon:'🏰',
         name:`${career.topCuts}x Playoff Royalty`,
         desc:`Reached Top Cut in ${career.topCuts} tournaments`,
         category:'playoffs',
@@ -7575,7 +7581,7 @@ function calculateLeagueRecords(){
     }else if(career.topCuts>=3){
       s.badges.push({
         id:'playoff-regular',
-        icon:'🎖️',
+        icon:'🏅',
         name:`${career.topCuts}x Playoff Regular`,
         desc:`Reached Top Cut in ${career.topCuts} tournaments`,
         category:'playoffs',
@@ -7912,26 +7918,26 @@ function openBadgeGuide(){
         { icon: '🐐', name: 'GOAT', color: 'gold', desc: 'Rated #1 Greatest of All Time based on composite ELO, titles, top cuts, and win rate.' },
         { icon: '👑', name: 'Triple Crown', color: 'gold', desc: 'Legendary three-peat: Won 3 consecutive league tournament championships in a row.' },
         { icon: '⚜️', name: 'Unrivaled', color: 'gold', desc: 'Flawless tournament championship without dropping a single game (2-0 in every match across groups & playoffs).' },
-        { icon: '👑', name: 'Dynasty Champion', color: 'gold', desc: 'Won 2 or more League Championships.' },
+        { icon: '🌟', name: 'Undefeated Champ', color: 'gold', desc: 'Won an entire tournament without dropping a single match in groups or playoffs.' },
+        { icon: '🏛️', name: 'Dynasty Champion', color: 'gold', desc: 'Won 2 or more League Championships.' },
         { icon: '🏆', name: 'League Champion', color: 'gold', desc: 'Won 1 League Championship.' },
-        { icon: '👑', name: 'Playoff Royalty', color: 'purple', desc: 'Reached Top Cut in 5 or more tournaments.' },
-        { icon: '🎖️', name: 'Playoff Regular', color: 'silver', desc: 'Reached Top Cut in 3 or more tournaments.' }
+        { icon: '🐴', name: 'Dark Horse', color: 'amber', desc: 'Projected as a Dark Horse by playoff odds before Match 1 and went on to win the Championship.' },
+        { icon: '🏰', name: 'Playoff Royalty', color: 'purple', desc: 'Reached Top Cut in 5 or more tournaments.' },
+        { icon: '🏅', name: 'Playoff Regular', color: 'silver', desc: 'Reached Top Cut in 3 or more tournaments.' }
       ]
     },
     {
       cat: 'Predictions & Acumen',
       badges: [
-        { icon: '👁️', name: 'Oracle', color: 'purple', desc: "Achieved 100% perfect prediction accuracy across ALL of a tournament's predictions without missing a single pick." },
+        { icon: '👁️', name: 'Oracle', color: 'indigo', desc: "Achieved 100% perfect prediction accuracy across ALL of a tournament's predictions without missing a single pick." },
         { icon: '🔮', name: 'Prediction King', color: 'purple', desc: 'Awarded to the trainer/account with the most prediction points in a tournament.' }
       ]
     },
     {
       cat: 'Tournament Feats & Miracles',
       badges: [
-        { icon: '👑', name: 'Undefeated Champ', color: 'gold', desc: 'Won an entire tournament without dropping a single match in groups or playoffs.' },
-        { icon: '🐴', name: 'Dark Horse', color: 'amber', desc: 'Projected as a Dark Horse by playoff odds before Match 1 and went on to win the Championship.' },
-        { icon: '🛡️', name: 'Clean Sheet', color: 'blue', desc: 'Flawless group stage without dropping a single match in a tournament.' },
-        { icon: '✨', name: 'Cinderella Run', color: 'purple', desc: 'Rare miracle feat awarded to a low-seed underdog who defied the odds to reach the Grand Finals or win the Championship.' },
+        { icon: '🛡️', name: 'Clean Sheet', color: 'teal', desc: 'Flawless group stage without dropping a single match in a tournament.' },
+        { icon: '✨', name: 'Cinderella Run', color: 'magenta', desc: 'Rare miracle feat awarded to a low-seed underdog who defied the odds to reach the Grand Finals or win the Championship.' },
         { icon: '🎯', name: 'Clutch King', color: 'purple', desc: 'Won 4 or more intense Game-3 decider matches (2-1) in a single tournament.' },
         { icon: '🚀', name: 'Most Improved', color: 'green', desc: 'Largest tournament-to-tournament rank and win improvement.' },
         { icon: '💥', name: 'Blowout King (+5 GD)', color: 'amber', desc: 'Dominant +5 or higher game differential in a single tournament.' },
@@ -7942,8 +7948,8 @@ function openBadgeGuide(){
       cat: 'Streaks & Performance',
       badges: [
         { icon: '🔥', name: 'All-Time Streak King', color: 'red', desc: 'Permanent badge held exclusively by the all-time consecutive win streak record holder.' },
-        { icon: '⚡', name: 'On Fire (3W+)', color: 'amber', desc: 'Active badge displayed while currently riding an active 3+ match win streak.' },
-        { icon: '❄️', name: 'Cold Slump (3L+)', color: 'blue', desc: 'Active badge displayed while currently on an active 3+ match loss slump.' },
+        { icon: '⚡', name: 'On Fire (3W+)', color: 'orange', desc: 'Active badge displayed while currently riding an active 3+ match win streak.' },
+        { icon: '❄️', name: 'Cold Slump (3L+)', color: 'cyan', desc: 'Active badge displayed while currently on an active 3+ match loss slump.' },
         { icon: '📈', name: '70%+ Win Rate', color: 'green', desc: 'Maintained a career win rate of 70% or higher (min. 5 matches).' }
       ]
     }
