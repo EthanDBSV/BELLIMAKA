@@ -5394,7 +5394,11 @@ function calculatePlayerOVR(p, leagueData=null){
     }
   }
   let s=recs?.statsByPlayer?.[p]||{wins:career.wins,losses:career.losses,maxWinStreak:0,currentWinStreak:0,currentLossStreak:0,bestGD:0,tournamentFinishes:[]};
-  let total=career.wins+career.losses;
+  let wins = (s.wins !== undefined) ? s.wins : career.wins;
+  let losses = (s.losses !== undefined) ? s.losses : career.losses;
+  let total = wins + losses;
+  let overallWinPct = total > 0 ? (wins / total) * 100 : (career.winPct || 50);
+
   if(total===0){
     return {
       ovr:70,
@@ -5425,13 +5429,13 @@ function calculatePlayerOVR(p, leagueData=null){
   let recentWins = lastTFinish ? (lastTFinish.w || 0) : 0;
   let recentLosses = lastTFinish ? (lastTFinish.l || 0) : 0;
   let recentTotal = recentWins + recentLosses;
-  let recentWinPct = recentTotal > 0 ? (recentWins / recentTotal) * 100 : career.winPct;
+  let recentWinPct = recentTotal > 0 ? (recentWins / recentTotal) * 100 : overallWinPct;
 
   // Balanced Volatility: Scale recent weight by sample size (up to max 38%) so a 3-game losing stint doesn't tank career
   let recentWeight = (recentTotal > 0) ? Math.min(0.38, Math.max(0.12, recentTotal * 0.06)) : 0;
   let effectiveWinPct = (recentTotal > 0)
-    ? (recentWinPct * recentWeight + career.winPct * (1 - recentWeight))
-    : career.winPct;
+    ? (recentWinPct * recentWeight + overallWinPct * (1 - recentWeight))
+    : overallWinPct;
 
   let winRateDiff = 0;
   if(effectiveWinPct >= 50){
@@ -7656,8 +7660,9 @@ function calculateLeagueRecords(){
     let s=statsByPlayer[p];
     let career=playerCareerStats(p);
     let tf = s.tournamentFinishes || [];
-    let playerPeak = 0;
-    let playerPeakTourney = '';
+    let prof = profiles[p] || {};
+    let playerPeak = prof.peakOvr || 0;
+    let playerPeakTourney = prof.peakOvrTourney || '';
 
     // 1. Evaluate historical OVR milestone after each completed tournament appearance
     tf.forEach((finishItem, fIdx) => {
@@ -7696,6 +7701,11 @@ function calculateLeagueRecords(){
       let rawSeason = (lastT?.season || lastT?.name || 'Season 1').replace(/[()]/g, '').trim();
       let seasonMatch = rawSeason.match(/Season\s*\d+/i);
       playerPeakTourney = seasonMatch ? seasonMatch[0].replace(/Season\s*/i, 'Season ') : (rawSeason || 'Season 1');
+    }
+
+    if(playerPeak > (prof.peakOvr || 0)){
+      prof.peakOvr = playerPeak;
+      prof.peakOvrTourney = playerPeakTourney;
     }
 
     s.peakOvr = playerPeak;
