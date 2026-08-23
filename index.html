@@ -150,6 +150,53 @@
 .versus-hint{color:#8e8c95;font-size:11px;margin:-4px 0 10px}
 @media(prefers-reduced-motion:no-preference){.pick.vs-side:hover:before{transform:scale(1.045)}}
 @media(max-width:560px){.pick.vs-side{height:132px;font-size:22px!important;padding-bottom:14px!important}.pick.vs-side.left{padding-right:40px!important;margin-right:-11px;clip-path:polygon(0 0,100% 0,calc(100% - 22px) 100%,0 100%)}.pick.vs-side.right{padding-left:40px!important;margin-left:-11px;clip-path:polygon(22px 0,100% 0,100% 100%,0 100%)}.vs-seam{transform:translateX(-50%) skewX(-9deg)}.vs-plate{width:36px;height:36px;font-size:13px}}
+
+/* ------------------------------------------------------------ Modern Predictions & Pick'em Clash ------------------------------------------------------------ */
+.pred-section{display:flex;flex-direction:column;gap:12px}
+.pred-clash-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(330px,1fr));gap:12px}
+.pred-clash-card{position:relative;display:grid;grid-template-columns:1fr 1fr;background:#15151d;border:1px solid #2b2b36;border-radius:9px;overflow:hidden;min-height:76px;box-shadow:0 4px 14px rgba(0,0,0,0.4);transition:border-color .15s ease,transform .15s ease}
+.pred-clash-card:hover{border-color:#482934;transform:translateY(-1px)}
+.pred-clash-meta{position:absolute;top:5px;left:50%;transform:translateX(-50%);z-index:4;font:800 9px 'Barlow Condensed';letter-spacing:.6px;color:#a09fa8;background:#0f0f14dd;padding:1px 6px;border-radius:3px;border:1px solid #ffffff15;pointer-events:none}
+.clash-side{position:relative;display:flex;align-items:center;gap:8px;padding:10px 12px;background:#16161f;border:0;cursor:pointer;text-align:left;overflow:hidden;transition:background .15s ease,filter .15s ease}
+.clash-side:before{content:'';position:absolute;inset:0;background-image:var(--art);background-size:cover;background-position:center;opacity:.28;filter:saturate(.8) brightness(.6);transition:opacity .2s,filter .2s,transform .3s}
+.clash-side:hover:before{opacity:.55;filter:saturate(1.2) brightness(.85);transform:scale(1.05)}
+.clash-side.left{border-right:1px solid #242430;padding-right:24px}
+.clash-side.right{border-left:1px solid #242430;padding-left:24px;flex-direction:row-reverse;text-align:right}
+.clash-side.is-selected{background:linear-gradient(135deg,#38141c,#1f1318);box-shadow:inset 0 0 0 2px var(--red)}
+.clash-side.is-selected:before{opacity:.7;filter:saturate(1.2) brightness(1)}
+.clash-side.is-hit{background:linear-gradient(135deg,#12331c,#141f17)!important;box-shadow:inset 0 0 0 2px #4bdd91!important}
+.clash-side.is-miss{opacity:.55;filter:grayscale(.6)}
+.clash-side[disabled]{cursor:default}
+.clash-side-badge{position:absolute;bottom:4px;font:900 8px 'DM Sans';letter-spacing:.6px;text-transform:uppercase;padding:1px 5px;border-radius:3px;z-index:3;pointer-events:none}
+.clash-side.left .clash-side-badge{left:8px}
+.clash-side.right .clash-side-badge{right:8px}
+.badge-picked{background:var(--red);color:#fff;box-shadow:0 0 8px rgba(239,48,56,0.6)}
+.badge-hit{background:#237a3d;color:#7df0aa}
+.badge-miss{background:#4a1c22;color:#ff858b}
+.clash-center-vs{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);z-index:3;width:24px;height:24px;border-radius:50%;background:#0d0d12;border:1px solid #3d242d;display:grid;place-items:center;font:900 10px 'Barlow Condensed';color:#ff858b;box-shadow:0 2px 8px rgba(0,0,0,0.8);pointer-events:none}
+
+/* Modern Contender Outright Pickers */
+.pred-contender-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(145px,1fr));gap:8px}
+.pred-contender-card{display:flex;align-items:center;gap:8px;padding:8px 10px;background:#16161e;border:1px solid #2d2d38;border-radius:7px;cursor:pointer;transition:border-color .15s,transform .15s,background .15s;text-align:left;position:relative}
+.pred-contender-card:hover{border-color:#5c242c;transform:translateY(-1px);background:#1c1c27}
+.pred-contender-card.is-selected{background:linear-gradient(135deg,#38161f,#1c1622);border-color:#f3c245;box-shadow:0 0 12px rgba(243,194,69,0.25)}
+.pred-contender-card.is-champ-hit{border-color:#4bdd91;box-shadow:0 0 12px rgba(75,221,145,0.35)}
+.pred-contender-card.is-champ-miss{opacity:.5;filter:grayscale(.6)}
+.pred-contender-card[disabled]{cursor:default}
+.pred-check-pill{position:absolute;top:4px;right:4px;font-size:9px;font-weight:900;background:var(--amber);color:#121216;padding:1px 4px;border-radius:3px}
+
+/* Top Cut Interactive Bracket Predictions */
+.pred-bracket-wrap{background:#13131a;border:1px solid #2e2e3a;border-radius:10px;padding:18px;overflow-x:auto}
+.pred-bracket-tree{display:flex;gap:20px;align-items:flex-start;min-width:700px}
+.pred-bracket-col{display:flex;flex-direction:column;gap:14px;flex:1;min-width:180px}
+.pred-bracket-match{background:#171722;border:1px solid #2d2d3c;border-radius:7px;overflow:hidden;box-shadow:0 4px 12px rgba(0,0,0,0.5)}
+.pred-bracket-match-title{font:800 10px 'Barlow Condensed';letter-spacing:.6px;color:#8e8c95;padding:4px 8px;background:#101016;border-bottom:1px solid #232330;text-transform:uppercase}
+.pred-bracket-slot{display:flex;justify-content:space-between;align-items:center;padding:7px 9px;border-bottom:1px solid #22222d;cursor:pointer;transition:background .12s ease;font-size:12px;color:#e2e0e8}
+.pred-bracket-slot:last-child{border-bottom:0}
+.pred-bracket-slot:hover{background:rgba(255,255,255,0.04)}
+.pred-bracket-slot.is-advanced{background:linear-gradient(90deg,rgba(239,48,56,0.18),transparent);font-weight:800;color:#fff}
+.pred-bracket-slot.is-winner-hit{background:linear-gradient(90deg,rgba(75,221,145,0.22),transparent)!important;color:#7df0aa!important}
+.pred-bracket-slot.is-winner-miss{opacity:.5;text-decoration:line-through}
 /* ------------------------------------------------------------ Draft board ------------------------------------------------------------ */
 .sheet-frame{width:100%;height:74vh;min-height:520px;border:0;border-radius:7px;background:#fff;display:block}
 .board-note{display:flex;gap:14px;align-items:center;justify-content:space-between;flex-wrap:wrap;padding:14px 18px;border-bottom:1px solid var(--line);font-size:12px;color:#b6b4bb}
@@ -4923,7 +4970,7 @@ function versusBlock(t,over,question,a,b,locked){
     </div>
   </div>`
 }
-function predictions(t=activeT()){
+function predictionsClassic(t=activeT()){
   let started=(t.matches||[]).some(x=>x.as!==''&&x.as!=null),groups=groupsOf(t);
   let block=(over,q,opts,locked=false)=>{
     if(opts.length===2&&opts.every(x=>x&&x!=='TBD'&&x!=='BYE'))return versusBlock(t,over,q,opts[0],opts[1],locked);
@@ -6152,33 +6199,402 @@ async function renderPredictionLeaders(t){
   if(target)target.innerHTML=`<div class="card-title">Prediction leaders</div>${list}${note}`
 }
 
-/* predictions(): same layout, account-based leaderboard */
-function predictions(t=activeT()){
-  let started=(t.matches||[]).some(x=>x.as!==''&&x.as!=null),groups=groupsOf(t);
-  let block=(over,q,opts,locked=false)=>{
-    if(opts.length===2&&opts.every(x=>x&&x!=='TBD'&&x!=='BYE'))return versusBlock(t,over,q,opts[0],opts[1],locked);
-    let chosen=savedPick(t,q);
-    return `<div class="prediction card"><div class="eyebrow">${esc(over)}</div><h3>${esc(q)}</h3>
-      <div class="pick-options">${opts.map(x=>predictionPick(x,locked,chosen===x)).join('')}</div>
-      ${locked?'<p class="sub">Prediction locked.</p>':''}</div>`
-  };
-  setTimeout(()=>renderPredictionLeaders(t),0);
-  let leaderboard=leaderboardShell(t);
-  if(t.phase==='topcut'){
-    let live=(t.bracketMatches||t.topCutCache?.playable||[]).filter(m=>m.p1&&m.p2&&m.p1!=='BYE'&&m.p2!=='BYE');
-    return `<div class="pred-layout"><div><div class="eyebrow" style="margin:4px 0 8px">Live Top Cut predictions · 20 points each</div>
-      ${live.length?'<p class="versus-hint">Tap a side to lock in your pick. Each matchup locks once it is scored.</p>':''}
-      ${live.map(m=>block('20 points · '+m.title,'Top Cut · Who wins: '+m.p1+' vs '+m.p2,[m.p1,m.p2],m.s1!==''&&m.s2!=='')).join('')}
-      <p class="sub">New predictions appear automatically whenever the bracket produces a new playable matchup. Each locks when that matchup is scored.</p></div>${leaderboard}</div>`
+/* ------------------------------------------------------------ 3. MODERN PREDICTIONS & PICK'EMS ------------------------------------------------------------ */
+
+async function savePredictionPick(question, choice, el){
+  let t = ongoingT() || activeT();
+  if(!t || !question || !choice) return;
+
+  try {
+    localStorage.setItem('draftdex-pick-' + t.id + '-' + question, choice);
+  } catch(e){}
+
+  if(supabaseClient && sessionUser){
+    try {
+      await supabaseClient.from('predictions').upsert({
+        user_id: sessionUser.id,
+        tournament_id: t.id,
+        prediction_key: question,
+        selection: choice
+      }, { onConflict: 'user_id,tournament_id,prediction_key' });
+    } catch(e){
+      console.warn('Prediction Supabase sync error:', e);
+    }
   }
-  let games=t.matches||[];
-  return `<div class="pred-layout"><div>
-    ${block('100 points · tournament outcome','Who will be the '+t.name+' Champion?',t.players,started)}
-    ${Object.entries(groups).map(([g,ps])=>block('45 points · '+g+' outcome','Who will top '+g+'?',ps,started)).join('')}
-    <div class="eyebrow" style="margin:22px 0 8px">Group-stage match predictions · 8 points each</div>
-    ${games.length?'<p class="versus-hint">Tap a side to lock in your pick. Each matchup locks once it is scored.</p>':''}
-    ${games.map(m=>block('8 points · '+(m.group||'Group A'),'Who wins: '+m.a+' vs '+m.b,[m.a,m.b],m.as!==''&&m.bs!=='')).join('')}
-  </div>${leaderboard}</div>`
+
+  if(current === 'Predictions' || detailTab === 'Predictions'){
+    render();
+  }
+}
+
+function renderChampionPredictionPicker(t, question, locked){
+  let chosen = savedPick(t, question);
+  let outcome = predictionOutcome(t, question);
+  let isSettled = outcome.answer != null;
+  let players = t.players || [];
+
+  return `<section class="pred-section">
+    <div class="card" style="padding:16px 18px;background:linear-gradient(135deg,#1f1318 0%,#15151c 60%,#121520 100%);border-color:#5c242d">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:8px;margin-bottom:12px">
+        <div>
+          <div class="eyebrow" style="color:var(--amber);margin-bottom:2px">100 PTS · TOURNAMENT OUTCOME</div>
+          <h2 style="font-size:20px">${esc(question)}</h2>
+        </div>
+        ${locked ? '<span class="tag" style="background:#262630;color:#a09fa8;border:1px solid #3a3a46">LOCKED</span>' : '<span class="tag" style="background:#163821;color:#7df0aa;border:1px solid #2b5c39">PICKS OPEN</span>'}
+      </div>
+
+      <div class="pred-contender-grid">
+        ${players.map(p => {
+          let isChosen = (chosen === p);
+          let ovr = calculatePlayerOVR(p);
+          let tName = teamName(t, p);
+          let face = profilePictures[p] ? `url('${esc(profilePictures[p])}')` : (teamCovers[p] ? `url('${esc(teamCovers[p])}')` : fallbackArt(p));
+          let letter = (profilePictures[p] || teamCovers[p]) ? '' : esc((p || '?')[0]);
+          let isHit = isSettled && outcome.answer === p && isChosen;
+          let isMiss = isSettled && outcome.answer !== p && isChosen;
+
+          return `<button class="pred-contender-card ${isChosen ? 'is-selected' : ''} ${isHit ? 'is-champ-hit' : (isMiss ? 'is-champ-miss' : '')}"
+            ${locked ? 'disabled' : ''}
+            onclick="savePredictionPick('${jsArg(question)}', '${jsArg(p)}', this)">
+            <span class="avatar mini" style="background-image:${face};background-size:cover;background-position:center;width:30px;height:30px;border-radius:50%;font-size:12px;border:1px solid ${ovr.color};display:grid;place-items:center;flex:none">${letter}</span>
+            <div style="min-width:0;flex:1">
+              <div style="font-size:13px;font-weight:800;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;line-height:1.2">${esc(p)}</div>
+              <div style="font-size:10px;color:#8e8c95;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(tName)}</div>
+            </div>
+            ${isChosen ? `<span class="pred-check-pill">${isHit ? '✓ HIT' : (isMiss ? '✗' : '✓ PICK')}</span>` : ''}
+          </button>`;
+        }).join('')}
+      </div>
+    </div>
+  </section>`;
+}
+
+function renderGroupWinnersPredictionPicker(t, groups, locked){
+  let groupEntries = Object.entries(groups);
+  if(!groupEntries.length) return '';
+
+  return `<section class="pred-section">
+    <div class="section-head" style="margin-bottom:10px">
+      <div>
+        <div class="eyebrow" style="color:#ffd166;margin-bottom:2px">45 PTS EACH · DIVISION OUTCOMES</div>
+        <h2>GROUP STAGE WINNERS</h2>
+      </div>
+      <span style="font-size:11px;color:#8e8c95">Predict which trainer tops each division</span>
+    </div>
+
+    <div style="display:grid;grid-template-columns:repeat(${groupEntries.length > 1 ? 2 : 1}, minmax(0, 1fr));gap:12px">
+      ${groupEntries.map(([g, ps]) => {
+        let question = 'Who will top ' + g + '?';
+        let chosen = savedPick(t, question);
+        let outcome = predictionOutcome(t, question);
+        let isSettled = outcome.answer != null;
+
+        return `<div class="card" style="padding:14px;background:#14141c;border-color:#2a2a36">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;padding-bottom:6px;border-bottom:1px solid #232330">
+            <span style="font:800 15px 'Barlow Condensed';letter-spacing:0.6px;color:#f5f3f0;text-transform:uppercase">${esc(g)}</span>
+            <span style="font-size:9px;font-weight:800;color:#ffd166;letter-spacing:0.5px">45 PTS</span>
+          </div>
+
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:6px">
+            ${ps.map(p => {
+              let isChosen = (chosen === p);
+              let ovr = calculatePlayerOVR(p);
+              let face = profilePictures[p] ? `url('${esc(profilePictures[p])}')` : (teamCovers[p] ? `url('${esc(teamCovers[p])}')` : fallbackArt(p));
+              let letter = (profilePictures[p] || teamCovers[p]) ? '' : esc((p || '?')[0]);
+              let isHit = isSettled && outcome.answer === p && isChosen;
+              let isMiss = isSettled && outcome.answer !== p && isChosen;
+
+              return `<button class="pred-contender-card ${isChosen ? 'is-selected' : ''} ${isHit ? 'is-champ-hit' : (isMiss ? 'is-champ-miss' : '')}"
+                style="padding:6px 8px"
+                ${locked ? 'disabled' : ''}
+                onclick="savePredictionPick('${jsArg(question)}', '${jsArg(p)}', this)">
+                <span class="avatar mini" style="background-image:${face};background-size:cover;background-position:center;width:24px;height:24px;border-radius:50%;font-size:10px;border:1px solid ${ovr.color};display:grid;place-items:center;flex:none">${letter}</span>
+                <span style="font-size:12px;font-weight:800;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1">${esc(p)}</span>
+                ${isChosen ? `<span class="pred-check-pill" style="font-size:8px">${isHit ? '✓' : (isMiss ? '✗' : '✓')}</span>` : ''}
+              </button>`;
+            }).join('')}
+          </div>
+        </div>`;
+      }).join('')}
+    </div>
+  </section>`;
+}
+
+function compactMatchPredictionCard(t, m){
+  let p1 = m.a, p2 = m.b;
+  let question = 'Who wins: ' + p1 + ' vs ' + p2;
+  let locked = (m.as !== '' && m.bs !== '' && m.as != null && m.bs != null);
+  let isDecided = locked && +m.as !== +m.bs;
+  let winner = isDecided ? (+m.as > +m.bs ? p1 : p2) : null;
+  let chosen = savedPick(t, question);
+
+  let ovr1 = calculatePlayerOVR(p1);
+  let ovr2 = calculatePlayerOVR(p2);
+  let t1Name = teamName(t, p1);
+  let t2Name = teamName(t, p2);
+
+  let face1 = profilePictures[p1] ? `url('${esc(profilePictures[p1])}')` : (teamCovers[p1] ? `url('${esc(teamCovers[p1])}')` : fallbackArt(p1));
+  let letter1 = (profilePictures[p1] || teamCovers[p1]) ? '' : esc((p1 || '?')[0]);
+  let face2 = profilePictures[p2] ? `url('${esc(profilePictures[p2])}')` : (teamCovers[p2] ? `url('${esc(teamCovers[p2])}')` : fallbackArt(p2));
+  let letter2 = (profilePictures[p2] || teamCovers[p2]) ? '' : esc((p2 || '?')[0]);
+
+  let isHit1 = (chosen === p1 && winner === p1);
+  let isMiss1 = (chosen === p1 && winner && winner !== p1);
+  let isHit2 = (chosen === p2 && winner === p2);
+  let isMiss2 = (chosen === p2 && winner && winner !== p2);
+
+  return `<article class="pred-clash-card">
+    <div class="pred-clash-meta">${esc(m.group || 'Fixture')} · 8 PTS</div>
+    
+    <!-- Left Side: Player 1 -->
+    <button class="clash-side left ${chosen === p1 ? 'is-selected' : ''} ${isHit1 ? 'is-hit' : (isMiss1 ? 'is-miss' : '')}"
+      style="--art:${teamArt(p1, t)}"
+      ${locked ? 'disabled' : ''}
+      onclick="savePredictionPick('${jsArg(question)}', '${jsArg(p1)}', this)">
+      <span class="avatar mini" style="background-image:${face1};background-size:cover;background-position:center;width:28px;height:28px;border-radius:50%;font-size:12px;border:1px solid ${ovr1.color};display:grid;place-items:center;flex:none;position:relative;z-index:2">${letter1}</span>
+      <div style="min-width:0;position:relative;z-index:2">
+        <div style="font-size:13px;font-weight:800;line-height:1.2;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(p1)}</div>
+        <div style="font-size:10px;color:#a09fa8;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(t1Name)}</div>
+      </div>
+      ${chosen === p1 ? `
+        <span class="clash-side-badge ${isHit1 ? 'badge-hit' : (isMiss1 ? 'badge-miss' : 'badge-picked')}">
+          ${isHit1 ? '✓ +8 PTS' : (isMiss1 ? '✗ MISSED' : 'YOUR PICK')}
+        </span>
+      ` : ''}
+    </button>
+
+    <div class="clash-center-vs">VS</div>
+
+    <!-- Right Side: Player 2 -->
+    <button class="clash-side right ${chosen === p2 ? 'is-selected' : ''} ${isHit2 ? 'is-hit' : (isMiss2 ? 'is-miss' : '')}"
+      style="--art:${teamArt(p2, t)}"
+      ${locked ? 'disabled' : ''}
+      onclick="savePredictionPick('${jsArg(question)}', '${jsArg(p2)}', this)">
+      <span class="avatar mini" style="background-image:${face2};background-size:cover;background-position:center;width:28px;height:28px;border-radius:50%;font-size:12px;border:1px solid ${ovr2.color};display:grid;place-items:center;flex:none;position:relative;z-index:2">${letter2}</span>
+      <div style="min-width:0;position:relative;z-index:2">
+        <div style="font-size:13px;font-weight:800;line-height:1.2;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(p2)}</div>
+        <div style="font-size:10px;color:#a09fa8;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(t2Name)}</div>
+      </div>
+      ${chosen === p2 ? `
+        <span class="clash-side-badge ${isHit2 ? 'badge-hit' : (isMiss2 ? 'badge-miss' : 'badge-picked')}">
+          ${isHit2 ? '✓ +8 PTS' : (isMiss2 ? '✗ MISSED' : 'YOUR PICK')}
+        </span>
+      ` : ''}
+    </button>
+  </article>`;
+}
+
+function topCutPredictionBracket(t){
+  let model = getTournamentTopCutModel(t);
+  if(!model) return '<div class="card empty"><p class="sub">Top Cut bracket data unavailable.</p></div>';
+
+  function getBracketMatchPick(mId, defaultP1, defaultP2){
+    let key1 = 'Top Cut · Who wins: ' + defaultP1 + ' vs ' + defaultP2;
+    let key2 = 'Top Cut · Who wins: ' + defaultP2 + ' vs ' + defaultP1;
+    let explicitPick = savedPick(t, key1) || savedPick(t, key2) || savedPick(t, 'draftdex-bpick-' + mId);
+    return explicitPick || '';
+  }
+
+  let wb1Picks = (model.wbRounds[0]?.matches || []).map(m => {
+    let p1 = m.p1, p2 = m.p2;
+    let pick = getBracketMatchPick(m.id, p1, p2);
+    let isOfficialDone = m.isDone && m.winner;
+    return {
+      match: m,
+      p1, p2,
+      chosen: pick,
+      winner: pick || (isOfficialDone ? m.winner : null) || p1
+    };
+  });
+
+  let sf1P1 = wb1Picks[0]?.winner || model.wbRounds[1]?.matches[0]?.p1 || 'Winner QF 1';
+  let sf1P2 = wb1Picks[1]?.winner || model.wbRounds[1]?.matches[0]?.p2 || 'Winner QF 2';
+  let sf2P1 = wb1Picks[2]?.winner || model.wbRounds[1]?.matches[1]?.p1 || 'Winner QF 3';
+  let sf2P2 = wb1Picks[3]?.winner || model.wbRounds[1]?.matches[1]?.p2 || 'Winner QF 4';
+
+  let sf1Pick = getBracketMatchPick('wb5', sf1P1, sf1P2);
+  let sf2Pick = getBracketMatchPick('wb6', sf2P1, sf2P2);
+
+  let sf1Winner = sf1Pick || (model.wbRounds[1]?.matches[0]?.isDone ? model.wbRounds[1]?.matches[0]?.winner : null) || sf1P1;
+  let sf2Winner = sf2Pick || (model.wbRounds[1]?.matches[1]?.isDone ? model.wbRounds[1]?.matches[1]?.winner : null) || sf2P1;
+
+  let wfP1 = sf1Winner || 'Winner SF 1';
+  let wfP2 = sf2Winner || 'Winner SF 2';
+  let wfPick = getBracketMatchPick('wb7', wfP1, wfP2);
+  let wfWinner = wfPick || (model.wbRounds[2]?.matches[0]?.isDone ? model.wbRounds[2]?.matches[0]?.winner : null) || wfP1;
+
+  let gfP1 = wfWinner || 'Winners Bracket Champ';
+  let gfP2 = model.gfMatches[0]?.p2 || 'Losers Bracket Champ';
+  let gfPick = getBracketMatchPick('gf1', gfP1, gfP2);
+  let predictedChamp = gfPick || gfP1;
+
+  function renderInteractiveSlot(mId, pName, opponentName, isWinner, isLoser, isOfficialDone, officialWinner){
+    if(!pName || pName === 'TBD' || pName.startsWith('Winner') || pName.startsWith('Loser') || pName === 'BYE'){
+      return `<div class="pred-bracket-slot" style="opacity:.5;cursor:default">
+        <span>${esc(pName || 'TBD')}</span>
+      </div>`;
+    }
+
+    let question = 'Top Cut · Who wins: ' + pName + ' vs ' + opponentName;
+    let chosen = savedPick(t, question) || savedPick(t, 'Top Cut · Who wins: ' + opponentName + ' vs ' + pName) || savedPick(t, 'draftdex-bpick-' + mId);
+    let isPicked = (chosen === pName);
+    let isHit = isOfficialDone && officialWinner === pName && isPicked;
+    let isMiss = isOfficialDone && officialWinner && officialWinner !== pName && isPicked;
+
+    let ovr = calculatePlayerOVR(pName);
+    let face = profilePictures[pName] ? `url('${esc(profilePictures[pName])}')` : (teamCovers[pName] ? `url('${esc(teamCovers[pName])}')` : fallbackArt(pName));
+    let letter = (profilePictures[pName] || teamCovers[pName]) ? '' : esc((pName || '?')[0]);
+
+    return `<div class="pred-bracket-slot ${isPicked ? 'is-advanced' : ''} ${isHit ? 'is-winner-hit' : (isMiss ? 'is-winner-miss' : '')}"
+      ${isOfficialDone ? '' : `onclick="saveBracketPredictionPick('${jsArg(mId)}', '${jsArg(question)}', '${jsArg(pName)}')"`}>
+      <div style="display:flex;align-items:center;gap:6px;min-width:0">
+        <span class="avatar mini" style="background-image:${face};background-size:cover;background-position:center;width:22px;height:22px;border-radius:50%;font-size:10px;border:1px solid ${ovr.color};display:grid;place-items:center;flex:none">${letter}</span>
+        <span style="font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(pName)}</span>
+      </div>
+      ${isPicked ? `<span class="pred-check-pill" style="font-size:8px">${isHit ? '✓ +20' : (isMiss ? '✗' : '✓ PICK')}</span>` : ''}
+    </div>`;
+  }
+
+  return `<div class="pred-section">
+    <div class="card" style="padding:18px;background:linear-gradient(135deg,#1f1318 0%,#15151c 60%,#10131d 100%);border-color:#5c242d;margin-bottom:14px">
+      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
+        <div>
+          <div class="eyebrow" style="color:#ffd166;margin-bottom:2px">20 PTS PER MATCH · FULL BRACKET PICK'EM</div>
+          <h2 style="font-size:22px">TOP CUT PREDICTION BRACKET</h2>
+          <p class="sub" style="margin:4px 0 0">Click any trainer to advance them to the next round. Predictions lock as matches start.</p>
+        </div>
+        <div class="card" style="padding:8px 14px;background:#0d0d13;border-color:#3a2028;text-align:center">
+          <div style="font-size:9px;font-weight:800;color:#ffd166;letter-spacing:1px;text-transform:uppercase">Projected Champion</div>
+          <div style="font:900 18px 'Barlow Condensed';color:#fff;margin-top:2px">${esc(predictedChamp || 'TBD')}</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="pred-bracket-wrap">
+      <div class="pred-bracket-tree">
+        <!-- Quarterfinals -->
+        <div class="pred-bracket-col">
+          <div class="eyebrow" style="color:#a09fa8;margin:0 0 6px">Quarterfinals (20 pts)</div>
+          ${(model.wbRounds[0]?.matches || []).map(m => `
+            <div class="pred-bracket-match">
+              <div class="pred-bracket-match-title">${esc(m.title)}</div>
+              ${renderInteractiveSlot(m.id, m.p1, m.p2, false, false, m.isDone, m.winner)}
+              ${renderInteractiveSlot(m.id, m.p2, m.p1, false, false, m.isDone, m.winner)}
+            </div>
+          `).join('')}
+        </div>
+
+        <!-- Semifinals -->
+        <div class="pred-bracket-col" style="margin-top:38px">
+          <div class="eyebrow" style="color:#a09fa8;margin:0 0 6px">Semifinals (20 pts)</div>
+          <div class="pred-bracket-match">
+            <div class="pred-bracket-match-title">WB Semifinal 1</div>
+            ${renderInteractiveSlot('wb5', sf1P1, sf1P2, false, false, model.wbRounds[1]?.matches[0]?.isDone, model.wbRounds[1]?.matches[0]?.winner)}
+            ${renderInteractiveSlot('wb5', sf1P2, sf1P1, false, false, model.wbRounds[1]?.matches[0]?.isDone, model.wbRounds[1]?.matches[0]?.winner)}
+          </div>
+          <div class="pred-bracket-match" style="margin-top:28px">
+            <div class="pred-bracket-match-title">WB Semifinal 2</div>
+            ${renderInteractiveSlot('wb6', sf2P1, sf2P2, false, false, model.wbRounds[1]?.matches[1]?.isDone, model.wbRounds[1]?.matches[1]?.winner)}
+            ${renderInteractiveSlot('wb6', sf2P2, sf2P1, false, false, model.wbRounds[1]?.matches[1]?.isDone, model.wbRounds[1]?.matches[1]?.winner)}
+          </div>
+        </div>
+
+        <!-- Winners Final -->
+        <div class="pred-bracket-col" style="margin-top:90px">
+          <div class="eyebrow" style="color:#a09fa8;margin:0 0 6px">Winners Final (20 pts)</div>
+          <div class="pred-bracket-match">
+            <div class="pred-bracket-match-title">Winners Final</div>
+            ${renderInteractiveSlot('wb7', wfP1, wfP2, false, false, model.wbRounds[2]?.matches[0]?.isDone, model.wbRounds[2]?.matches[0]?.winner)}
+            ${renderInteractiveSlot('wb7', wfP2, wfP1, false, false, model.wbRounds[2]?.matches[0]?.isDone, model.wbRounds[2]?.matches[0]?.winner)}
+          </div>
+        </div>
+
+        <!-- Grand Finals -->
+        <div class="pred-bracket-col" style="margin-top:90px">
+          <div class="eyebrow" style="color:var(--amber);margin:0 0 6px">Grand Finals (20 pts)</div>
+          <div class="pred-bracket-match" style="border-color:#5c3510;box-shadow:0 0 16px rgba(243,194,69,0.2)">
+            <div class="pred-bracket-match-title" style="background:#26180b;color:#ffd166">Championship Final</div>
+            ${renderInteractiveSlot('gf1', gfP1, gfP2, false, false, model.gfMatches[0]?.isDone, model.gfMatches[0]?.winner)}
+            ${renderInteractiveSlot('gf1', gfP2, gfP1, false, false, model.gfMatches[0]?.isDone, model.gfMatches[0]?.winner)}
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>`;
+}
+
+async function saveBracketPredictionPick(mId, question, choice){
+  let t = ongoingT() || activeT();
+  if(!t) return;
+
+  try {
+    localStorage.setItem('draftdex-pick-' + t.id + '-' + question, choice);
+    localStorage.setItem('draftdex-pick-' + t.id + '-draftdex-bpick-' + mId, choice);
+  } catch(e){}
+
+  if(supabaseClient && sessionUser){
+    try {
+      await supabaseClient.from('predictions').upsert({
+        user_id: sessionUser.id,
+        tournament_id: t.id,
+        prediction_key: question,
+        selection: choice
+      }, { onConflict: 'user_id,tournament_id,prediction_key' });
+    } catch(e){}
+  }
+
+  if(current === 'Predictions' || detailTab === 'Predictions'){
+    render();
+  }
+}
+
+function predictions(t=activeT()){
+  if(!t) return noTournament();
+  let started = (t.matches || []).some(x => x.as !== '' && x.as != null);
+  let groups = groupsOf(t);
+  setTimeout(() => renderPredictionLeaders(t), 0);
+  let leaderboard = leaderboardShell(t);
+
+  // If Top Cut is active or locked in, render the Interactive Top Cut Prediction Bracket!
+  if(t.phase === 'topcut' || t.status === 'COMPLETE' || t.bracketManagerData){
+    return `<div class="pred-layout">
+      <div style="min-width:0">
+        ${topCutPredictionBracket(t)}
+      </div>
+      ${leaderboard}
+    </div>`;
+  }
+
+  // Group Stage Predictions
+  let champQuestion = 'Who will be the ' + t.name + ' Champion?';
+  let games = t.matches || [];
+
+  return `<div class="pred-layout">
+    <div style="min-width:0;display:flex;flex-direction:column;gap:20px">
+      <!-- 1. Champion Contender Outright Picker (100 PTS) -->
+      ${renderChampionPredictionPicker(t, champQuestion, started)}
+
+      <!-- 2. Group Winner Outright Pickers (45 PTS each) -->
+      ${renderGroupWinnersPredictionPicker(t, groups, started)}
+
+      <!-- 3. Compact Pick'em Match Clash Grid (8 PTS each) -->
+      <section class="pred-section">
+        <div class="section-head" style="margin-bottom:12px">
+          <div>
+            <div class="eyebrow" style="color:var(--red);margin-bottom:2px">Group Stage Matchups · 8 PTS Each</div>
+            <h2>HEAD-TO-HEAD PICK'EMS</h2>
+          </div>
+          <span style="font-size:11px;color:#8e8c95">Tap a trainer to lock in your pick</span>
+        </div>
+        ${games.length ? `
+          <div class="pred-clash-grid">
+            ${games.map(m => compactMatchPredictionCard(t, m)).join('')}
+          </div>
+        ` : '<div class="card empty"><p class="sub">No fixtures scheduled yet.</p></div>'}
+      </section>
+    </div>
+    ${leaderboard}
+  </div>`;
 }
 /* ------------------------------------------------------------ 4. HALL OF FAME & LEAGUE RECORDS ENGINE ------------------------------------------------------------ */
 function getChronologicalMatches(){
