@@ -3951,13 +3951,66 @@ document.addEventListener('dragstart',e=>{let x=e.target.closest('.rank-placemen
 document.addEventListener('dragover',e=>{let target=e.target.closest('.rank-placement-drag');if(target&&moderator)e.preventDefault()});
 document.addEventListener('drop',e=>{let target=e.target.closest('.rank-placement-drag'),raw=e.dataTransfer.getData('application/cherrymoon-rank-player');if(!target||!raw||!moderator)return;let source;try{source=JSON.parse(raw)}catch{return}if(source.group!==target.dataset.rankGroup)return;e.preventDefault();swapStandingRanks(source.player,target.dataset.player,source.group)});
 
+function calculateLeagueRivalries(allMatches){
+  let pairs = {};
+  (allMatches||[]).forEach(m => {
+    if(!m.a || !m.b || m.a === m.b) return;
+    let [p1, p2] = [m.a, m.b].sort();
+    let key = `${p1}|||${p2}`;
+    if(!pairs[key]){
+      pairs[key] = { p1, p2, total: 0, p1Wins: 0, p2Wins: 0, playoffMatches: 0, matches: [] };
+    }
+    pairs[key].total++;
+    if(m.stage === 'topcut') pairs[key].playoffMatches++;
+    if(m.winner === p1) pairs[key].p1Wins++;
+    else if(m.winner === p2) pairs[key].p2Wins++;
+    pairs[key].matches.push(m);
+  });
+
+  let list = Object.values(pairs);
+  if(!list.length) return null;
+
+  // 1. Most Played Rivalry (min 5 games if possible, fallback to max played >= 2)
+  let playedEligible = list.filter(r => r.total >= 5);
+  if(!playedEligible.length) playedEligible = list.filter(r => r.total >= 3);
+  if(!playedEligible.length) playedEligible = list.filter(r => r.total >= 2);
+  playedEligible.sort((a, b) => b.total - a.total || Math.abs(a.p1Wins - a.p2Wins) - Math.abs(b.p1Wins - b.p2Wins));
+  let mostPlayed = playedEligible[0] || null;
+
+  // 2. Most One-Sided Rivalry (min 3 games, highest win differential / dominance)
+  let oneSidedEligible = list.filter(r => r.total >= 3);
+  if(!oneSidedEligible.length) oneSidedEligible = list.filter(r => r.total >= 2);
+  oneSidedEligible.sort((a, b) => {
+    let aDiff = Math.abs(a.p1Wins - a.p2Wins) / a.total;
+    let bDiff = Math.abs(b.p1Wins - b.p2Wins) / b.total;
+    return bDiff - aDiff || b.total - a.total;
+  });
+  let mostOneSided = oneSidedEligible[0] || null;
+
+  // 3. Most Contested / Heated Rivalry (closest to 50/50 winrate, min 3 games, prioritized by total games)
+  let contestedEligible = list.filter(r => r.total >= 3);
+  if(!contestedEligible.length) contestedEligible = list.filter(r => r.total >= 2);
+  contestedEligible.sort((a, b) => {
+    let aDiff = Math.abs(a.p1Wins - a.p2Wins);
+    let bDiff = Math.abs(b.p1Wins - b.p2Wins);
+    return aDiff - bDiff || b.total - a.total;
+  });
+  let mostContested = contestedEligible[0] || null;
+
+  // 4. Peak Playoff Rivalry
+  let playoffEligible = [...list].sort((a, b) => (b.playoffMatches * 2 + b.total) - (a.playoffMatches * 2 + a.total));
+  let peakPlayoff = (playoffEligible[0]?.playoffMatches > 0) ? playoffEligible[0] : (list.find(r => r !== mostPlayed && r !== mostOneSided && r !== mostContested) || mostPlayed);
+
+  return { mostPlayed, mostOneSided, mostContested, peakPlayoff, totalRivalries: list.length };
+}
+
 function Standings(){
   let t=ongoingT();
   if(!t){
     let {statsByPlayer, records}=calculateLeagueRecords();
+    let {allMatches}=getChronologicalMatches();
     let r=recapRankings();
-    let completedTournaments = Object.values(tournamentData).filter(x => x.status === 'COMPLETE').sort((a,b) => (Date.parse(b.start)||0) - (Date.parse(a.start)||0));
-    let lastChamp = completedTournaments[0]?.champion || null;
+    let rivalries = calculateLeagueRivalries(allMatches);
 
     let actions = `
       <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
@@ -3971,41 +4024,83 @@ function Standings(){
       </div>
     `;
 
-    return head('Standings', 'All-Time League Power Rankings & Overall Standings', actions) + `
-      <!-- Top Metrics Quick Summary Strip -->
-      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px;margin-bottom:20px">
+    let mpCard = '';
+    if(rivalries?.mostPlayed){
+      let mp = rivalries.mostPlayed;
+      let leader = mp.p1Wins > mp.p2Wins ? mp.p1 : (mp.p2Wins > mp.p1Wins ? mp.p2 : null);
+      let sub = leader ? `<span style="color:#ffd166;font-weight:700">${esc(leader)}</span> leads ${Math.max(mp.p1Wins, mp.p2Wins)}–${Math.min(mp.p1Wins, mp.p2Wins)}` : `<span style="color:#7df0aa;font-weight:700">Tied ${mp.p1Wins}–${mp.p2Wins}</span>`;
+      mpCard = `
         <div class="card" style="padding:12px 16px;background:#141419;border-color:#2c2c36;display:flex;align-items:center;gap:12px">
-          <span style="font-size:26px">🏆</span>
-          <div>
-            <div style="font-size:10px;font-weight:800;color:#a09fa8;text-transform:uppercase;letter-spacing:.6px">Reigning Champion</div>
-            <div style="font:800 18px 'Barlow Condensed';color:#f5f3f0">${lastChamp ? playerLink(lastChamp) : 'None yet'}</div>
+          <span style="font-size:26px">⚔️</span>
+          <div style="min-width:0">
+            <div style="font-size:10px;font-weight:800;color:#ffb74d;text-transform:uppercase;letter-spacing:.6px">Most Played Rivalry</div>
+            <div style="font:800 15px 'Barlow Condensed';color:#f5f3f0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${playerLink(mp.p1)} <span style="font-size:11px;color:#8e8c95;font-weight:400">vs</span> ${playerLink(mp.p2)}</div>
+            <div style="font-size:11px;color:#8e8c95;margin-top:2px"><b>${mp.total}</b> Matches · ${sub}</div>
           </div>
-        </div>
+        </div>`;
+    }
 
+    let osCard = '';
+    if(rivalries?.mostOneSided){
+      let os = rivalries.mostOneSided;
+      let dominant = os.p1Wins >= os.p2Wins ? os.p1 : os.p2;
+      let trailer = os.p1Wins >= os.p2Wins ? os.p2 : os.p1;
+      let domWins = Math.max(os.p1Wins, os.p2Wins);
+      let trailWins = Math.min(os.p1Wins, os.p2Wins);
+      let domPct = Math.round((domWins / os.total) * 100);
+      osCard = `
         <div class="card" style="padding:12px 16px;background:#141419;border-color:#2c2c36;display:flex;align-items:center;gap:12px">
-          <span style="font-size:26px">👥</span>
-          <div>
-            <div style="font-size:10px;font-weight:800;color:#a09fa8;text-transform:uppercase;letter-spacing:.6px">Total Registered Coaches</div>
-            <div style="font:800 18px 'Barlow Condensed';color:#f5f3f0">${r.length} <small style="font-size:11px;color:#8e8c95;font-weight:700">Trainers</small></div>
+          <span style="font-size:26px">🎯</span>
+          <div style="min-width:0">
+            <div style="font-size:10px;font-weight:800;color:#ff8e95;text-transform:uppercase;letter-spacing:.6px">Most One-Sided Rivalry</div>
+            <div style="font:800 15px 'Barlow Condensed';color:#f5f3f0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${playerLink(dominant)} <span style="font-size:11px;color:#8e8c95;font-weight:400">over</span> ${playerLink(trailer)}</div>
+            <div style="font-size:11px;color:#8e8c95;margin-top:2px"><b style="color:#ff8e95">${domWins}–${trailWins}</b> Record (${domPct}% Dominance)</div>
           </div>
-        </div>
+        </div>`;
+    }
 
+    let mcCard = '';
+    if(rivalries?.mostContested){
+      let mc = rivalries.mostContested;
+      let sub = (mc.p1Wins === mc.p2Wins) ? `<span style="color:#7df0aa;font-weight:700">Deadlocked 50/50</span> (${mc.total} games)` : `<span style="color:#7df0aa;font-weight:700">${Math.max(mc.p1Wins, mc.p2Wins)}–${Math.min(mc.p1Wins, mc.p2Wins)}</span> (${mc.total} games)`;
+      mcCard = `
         <div class="card" style="padding:12px 16px;background:#141419;border-color:#2c2c36;display:flex;align-items:center;gap:12px">
-          <span style="font-size:26px">⚡</span>
-          <div>
-            <div style="font-size:10px;font-weight:800;color:#a09fa8;text-transform:uppercase;letter-spacing:.6px">Active Streak Leader</div>
-            <div style="font:800 18px 'Barlow Condensed';color:#f5f3f0">${records.activeWinStreak.holders.length ? records.activeWinStreak.holders.map(p => playerLink(p)).join(', ') + ' (' + records.activeWinStreak.value + 'W)' : 'None'}</div>
+          <span style="font-size:26px">🔥</span>
+          <div style="min-width:0">
+            <div style="font-size:10px;font-weight:800;color:#7df0aa;text-transform:uppercase;letter-spacing:.6px">Most Contested Rivalry</div>
+            <div style="font:800 15px 'Barlow Condensed';color:#f5f3f0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${playerLink(mc.p1)} <span style="font-size:11px;color:#8e8c95;font-weight:400">vs</span> ${playerLink(mc.p2)}</div>
+            <div style="font-size:11px;color:#8e8c95;margin-top:2px"><b>${mc.p1Wins}–${mc.p2Wins}</b> Series · ${sub}</div>
           </div>
-        </div>
+        </div>`;
+    }
 
+    let ppCard = '';
+    if(rivalries?.peakPlayoff){
+      let pp = rivalries.peakPlayoff;
+      let sub = pp.playoffMatches > 0 ? `<b style="color:#c084fc">${pp.playoffMatches}</b> Playoff Meetings (${pp.total} Total)` : `<b>${pp.total}</b> Total League Matches`;
+      ppCard = `
         <div class="card" style="padding:12px 16px;background:#141419;border-color:#2c2c36;display:flex;align-items:center;gap:12px">
-          <span style="font-size:26px">⭐</span>
-          <div>
-            <div style="font-size:10px;font-weight:800;color:#a09fa8;text-transform:uppercase;letter-spacing:.6px">Peak Rating Leader</div>
-            <div style="font:800 18px 'Barlow Condensed';color:#f5f3f0">${records.maxOvr.holders.length ? records.maxOvr.holders.map(p => playerLink(p)).join(', ') + ' (' + records.maxOvr.value + ' OVR)' : 'None'}</div>
+          <span style="font-size:26px">👑</span>
+          <div style="min-width:0">
+            <div style="font-size:10px;font-weight:800;color:#c084fc;text-transform:uppercase;letter-spacing:.6px">Peak Playoff Rivalry</div>
+            <div style="font:800 15px 'Barlow Condensed';color:#f5f3f0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${playerLink(pp.p1)} <span style="font-size:11px;color:#8e8c95;font-weight:400">vs</span> ${playerLink(pp.p2)}</div>
+            <div style="font-size:11px;color:#8e8c95;margin-top:2px">${sub} · Series: ${pp.p1Wins}–${pp.p2Wins}</div>
           </div>
-        </div>
+        </div>`;
+    }
+
+    let rivalryStrip = (mpCard || osCard || mcCard || ppCard) ? `
+      <!-- League Rivalry Highlights Strip -->
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:14px;margin-bottom:20px">
+        ${mpCard}
+        ${osCard}
+        ${mcCard}
+        ${ppCard}
       </div>
+    ` : '';
+
+    return head('Standings', 'All-Time League Power Rankings & Overall Standings', actions) + `
+      ${rivalryStrip}
 
       <div class="card table-wrap">
         <table class="standings">
@@ -5046,27 +5141,27 @@ function calculatePlayerOVR(p, leagueData=null){
 
   let winRateDiff = 0;
   if(effectiveWinPct >= 50){
-    winRateDiff = (effectiveWinPct - 50) * 0.22;
+    winRateDiff = (effectiveWinPct - 50) * 0.28;
   } else {
     // Forgiving floor: gentle slope down
-    winRateDiff = (effectiveWinPct - 50) * 0.18;
+    winRateDiff = (effectiveWinPct - 50) * 0.22;
   }
 
   // 2. Playoff Placements & Championship Hardware (Exact placement matters! 1st > 2nd > 3rd > 4th > 5th-6th > 7th-8th)
   let lastPlace = lastTFinish?.finish?.place || 999;
   let recentPlacementBonus = 0;
   if(lastPlace === 1){
-    recentPlacementBonus = 6.5; // Reigning Champion
+    recentPlacementBonus = 7.5; // Reigning Champion
   } else if(lastPlace === 2){
-    recentPlacementBonus = 4.8; // Runner-up / Grand Finalist
+    recentPlacementBonus = 5.8; // Runner-up / Grand Finalist
   } else if(lastPlace === 3){
-    recentPlacementBonus = 3.8; // 3rd Place / Losers Finalist
+    recentPlacementBonus = 4.8; // 3rd Place / Losers Finalist
   } else if(lastPlace === 4){
-    recentPlacementBonus = 2.8; // 4th Place / Losers Semifinalist
+    recentPlacementBonus = 3.8; // 4th Place / Losers Semifinalist
   } else if(lastPlace <= 6){
-    recentPlacementBonus = 1.8; // 5th-6th Place / Top 6
+    recentPlacementBonus = 2.4; // 5th-6th Place / Top 6
   } else if(lastPlace <= 8){
-    recentPlacementBonus = 0.8; // 7th-8th Place / Top 8
+    recentPlacementBonus = 1.2; // 7th-8th Place / Top 8
   }
 
   // Older / Career Playoff Pedigree with Recency Decay
@@ -5074,21 +5169,22 @@ function calculatePlayerOVR(p, leagueData=null){
   let olderFinishes = tf.slice(0, -1);
   olderFinishes.forEach(f => {
     let pRank = f.finish?.place || 999;
-    if(pRank === 1) olderPlacementBonus += 2.0; // Past Championship
-    else if(pRank === 2) olderPlacementBonus += 1.2; // Past Runner-up
-    else if(pRank === 3) olderPlacementBonus += 0.8; // Past 3rd Place
-    else if(pRank === 4) olderPlacementBonus += 0.6; // Past 4th Place
-    else if(pRank <= 6) olderPlacementBonus += 0.3; // Past Top 6
-    else if(pRank <= 8) olderPlacementBonus += 0.15; // Past Top 8
+    if(pRank === 1) olderPlacementBonus += 3.0;      // Past Championship
+    else if(pRank === 2) olderPlacementBonus += 1.8; // Past Runner-up
+    else if(pRank === 3) olderPlacementBonus += 1.2; // Past 3rd Place
+    else if(pRank === 4) olderPlacementBonus += 0.8; // Past 4th Place
+    else if(pRank <= 6) olderPlacementBonus += 0.4; // Past Top 6
+    else if(pRank <= 8) olderPlacementBonus += 0.2; // Past Top 8
   });
-  // Cap historical playoff pedigree at +4.5 so current form still dominates
-  olderPlacementBonus = Math.min(4.5, olderPlacementBonus);
+  // Cap historical playoff pedigree at +6.0 so multi-time contenders maintain high baseline
+  olderPlacementBonus = Math.min(6.0, olderPlacementBonus);
 
   // 3. Active Momentum & Streak Volatility
   // Active Win Streak: fast surge (+1.2 per active win, cap +5.0)
-  // Active Loss Streak: fast drop (-1.4 per active loss, cap -5.5)
+  // Top 4 playoff finishers do not suffer artificial loss-streak penalties from bracket exit
+  let isTopFourFinish = (lastPlace <= 4);
   let activeStreakBonus = Math.min(5.0, (s.currentWinStreak || 0) * 1.2);
-  let activeLossPenalty = Math.min(5.5, (s.currentLossStreak || 0) * 1.4);
+  let activeLossPenalty = isTopFourFinish ? 0 : Math.min(5.5, (s.currentLossStreak || 0) * 1.4);
 
   // All-time historic streak legacy: modest +0.35 per game (cap +2.5)
   let maxStreakBonus = Math.min(2.5, (s.maxWinStreak || 0) * 0.35);
