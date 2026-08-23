@@ -222,7 +222,37 @@
 .matchup-team-name{font:800 13px/1.1 'Barlow Condensed';color:#e2e0e8;max-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-top:2px}
 .matchup-vs-badge{display:flex;flex-direction:column;align-items:center;gap:4px}
 .matchup-vs-circle{width:42px;height:42px;border-radius:50%;background:linear-gradient(135deg,#e63946,#ff9f1c);display:grid;place-items:center;font:900 16px 'Barlow Condensed';color:#fff;box-shadow:0 0 16px rgba(230,57,70,0.6);border:2px solid #ffffff40}
-.matchup-hero-foot{background:#0e0e14c0;border-top:1px solid #20202c;padding:8px 14px;display:flex;justify-content:space-between;align-items:center;position:relative;z-index:2}
+/* ------------------------------------------------------------ Modern In-Season Hero & Showcase ------------------------------------------------------------ */
+.in-season-hero{display:grid;grid-template-columns:1.18fr .82fr;gap:18px;align-items:stretch}
+.tourney-showcase-card{display:grid;grid-template-columns:minmax(0,1fr) 230px;gap:18px;padding:22px;background:linear-gradient(135deg,#1b1216 0%,#15151c 60%,#11141c 100%);border:1px solid #4a2832;border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,0.55),0 0 16px rgba(239,48,56,0.12);min-height:220px}
+.tourney-showcase-info{display:flex;flex-direction:column;min-width:0}
+.tourney-showcase-title{font:900 36px/1.05 'Barlow Condensed';color:#f5f3f0;letter-spacing:.5px;margin:10px 0 12px}
+.tourney-chips-row{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px}
+.tourney-chip{display:inline-flex;align-items:center;gap:5px;background:#00000060;border:1px solid #ffffff18;border-radius:5px;padding:4px 9px;font-size:11px;color:#c8c6ce}
+.tourney-chip b{color:#f5f3f0}
+.tourney-poster-frame{position:relative;width:100%;height:100%;min-height:185px;border-radius:8px;overflow:hidden;border:1px solid rgba(255,255,255,0.14);box-shadow:0 6px 18px rgba(0,0,0,0.65);background:#111116}
+.tourney-poster-img{width:100%;height:100%;background-size:cover;background-position:center;transition:transform .25s ease}
+.tourney-poster-frame:hover .tourney-poster-img{transform:scale(1.03)}
+.tourney-poster-placeholder{width:100%;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;background:linear-gradient(135deg,#24141a,#15151c);padding:14px;text-align:center}
+
+/* Modern Pulse Stat Strip */
+.pulse-stats-strip{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin-top:18px}
+.pulse-stat-box{padding:14px 16px;background:#15151d;border-color:#2b2b36;display:flex;flex-direction:column;justify-content:space-between}
+.pulse-stat-label{font-size:9px;font-weight:800;letter-spacing:.8px;color:#8e8c95;text-transform:uppercase}
+.pulse-stat-val{font:800 20px 'Barlow Condensed';color:#f5f3f0;margin:4px 0 2px}
+.pulse-stat-sub{font-size:11px;color:#a09fa8}
+
+/* Modern Match Cards */
+.modern-match-card{padding:14px;background:#16161d;border:1px solid #2b2b36;border-radius:8px;transition:border-color .15s ease,transform .15s ease}
+.modern-match-card:hover{border-color:#5c242c;transform:translateY(-2px)}
+.modern-match-card.latest-highlight{border-color:#6a242d;background:linear-gradient(135deg,#211216,#16161e);box-shadow:0 4px 16px rgba(239,48,56,0.15)}
+.modern-match-body{display:flex;flex-direction:column;gap:7px;margin-top:10px}
+.modern-match-player{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:6px 8px;border-radius:6px;background:#111116;border:1px solid #22222b}
+.modern-match-player.is-winner{background:rgba(239,48,56,0.10);border-color:rgba(239,48,56,0.30)}
+.match-score-pill{font:900 16px 'Barlow Condensed';color:#8e8c95;padding:2px 8px;border-radius:4px;min-width:24px;text-align:center;background:#0b0b0f}
+.match-score-pill.winner-pill{color:#fff;background:var(--red);box-shadow:0 0 8px rgba(239,48,56,0.4)}
+
+@media(max-width:960px){.in-season-hero{grid-template-columns:1fr}.tourney-showcase-card{grid-template-columns:1fr}.tourney-poster-frame{height:200px}}
 
 /* Modern Expandable Past Tournaments Accordion */
 .past-tourney-card{border:1px solid #2f2f3c;border-left:3px solid #4a4a58;border-radius:8px;margin-top:8px;background:#15151e;overflow:hidden;transition:border-color .15s ease, background .15s ease}
@@ -1142,7 +1172,52 @@ function topScore(i){let t=ongoingT(),m=t.topCutMatches[i],a=document.querySelec
 
 function playerLink(p){return `<button class="player-link" onclick="openProfile('${jsArg(p)}')" onmouseenter="highlightMatches('${jsArg(p)}', true)" onmouseleave="highlightMatches('', false)">${esc(p)}</button>`}
 
-function matchCard(m,latest=false){return `<article class="card match-card ${latest?'latest':''}"><div class="match-meta"><span>${latest?'Latest result':m.group||m.round}</span><span>${m.date}</span></div><div class="pair"><div class="pair-row ${+m.as>+m.bs?'win':''}"><span>${playerLink(m.a)}</span><span class="score">${m.as}</span></div><div class="pair-row ${+m.bs>+m.as?'win':''}"><span>${playerLink(m.b)}</span><span class="score">${m.bs}</span></div></div></article>`}
+function matchCard(m,latest=false){
+  let p1 = m.a, p2 = m.b;
+  let s1 = m.as, s2 = m.bs;
+  let t = activeT() || ongoingT();
+  let t1Name = teamName(t, p1) || 'Team 1';
+  let t2Name = teamName(t, p2) || 'Team 2';
+  let ovr1 = calculatePlayerOVR(p1);
+  let ovr2 = calculatePlayerOVR(p2);
+  let p1Won = (s1 !== '' && s2 !== '' && s1 != null && s2 != null && +s1 > +s2);
+  let p2Won = (s1 !== '' && s2 !== '' && s1 != null && s2 != null && +s2 > +s1);
+
+  let face1 = profilePictures[p1] ? `url('${esc(profilePictures[p1])}')` : (teamCovers[p1] ? `url('${esc(teamCovers[p1])}')` : fallbackArt(p1));
+  let letter1 = (profilePictures[p1] || teamCovers[p1]) ? '' : esc((p1 || '?')[0]);
+  let face2 = profilePictures[p2] ? `url('${esc(profilePictures[p2])}')` : (teamCovers[p2] ? `url('${esc(teamCovers[p2])}')` : fallbackArt(p2));
+  let letter2 = (profilePictures[p2] || teamCovers[p2]) ? '' : esc((p2 || '?')[0]);
+
+  return `<article class="card modern-match-card ${latest ? 'latest-highlight' : ''}">
+    <div class="match-meta">
+      <span style="font-weight:800;color:${latest ? '#ff858b' : '#a09fa8'}">${latest ? '🔥 LATEST RESULT' : esc(m.label || m.group || m.round || 'Fixture')}</span>
+      <span>${esc(m.date || 'Final')}</span>
+    </div>
+    <div class="modern-match-body">
+      <div class="modern-match-player ${p1Won ? 'is-winner' : (p2Won ? 'is-loser' : '')}">
+        <div style="display:flex;align-items:center;gap:8px;min-width:0">
+          <span class="avatar mini" style="background-image:${face1};background-size:cover;background-position:center;width:28px;height:28px;border-radius:50%;font-size:12px;border:1px solid ${ovr1.color};display:grid;place-items:center;flex:none">${letter1}</span>
+          <div style="min-width:0">
+            <div style="font-size:13px;font-weight:800;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${playerLink(p1)}</div>
+            <div style="font-size:10px;color:#8e8c95;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(t1Name)}</div>
+          </div>
+        </div>
+        <span class="match-score-pill ${p1Won ? 'winner-pill' : ''}">${s1 !== '' && s1 != null ? s1 : '-'}</span>
+      </div>
+
+      <div class="modern-match-player ${p2Won ? 'is-winner' : (p1Won ? 'is-loser' : '')}">
+        <div style="display:flex;align-items:center;gap:8px;min-width:0">
+          <span class="avatar mini" style="background-image:${face2};background-size:cover;background-position:center;width:28px;height:28px;border-radius:50%;font-size:12px;border:1px solid ${ovr2.color};display:grid;place-items:center;flex:none">${letter2}</span>
+          <div style="min-width:0">
+            <div style="font-size:13px;font-weight:800;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${playerLink(p2)}</div>
+            <div style="font-size:10px;color:#8e8c95;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(t2Name)}</div>
+          </div>
+        </div>
+        <span class="match-score-pill ${p2Won ? 'winner-pill' : ''}">${s2 !== '' && s2 != null ? s2 : '-'}</span>
+      </div>
+    </div>
+  </article>`;
+}
 
 
 
@@ -2944,37 +3019,112 @@ function Home(){
   let results = allResults(t);
   let groups = Object.keys(groupsOf(t));
   let target = t.phase === 'topcut' ? 'Top Cut' : 'Matches';
-  let heroBg = t.backgroundImage ? `style="background-image:linear-gradient(90deg,rgba(18,18,24,0.94) 0%,rgba(18,18,24,0.72) 42%,rgba(18,18,24,0.12) 100%),url('${t.backgroundImage}');background-size:cover;background-position:center"` : '';
 
-  return head(t.season + ': ' + t.name, 'Current tournament', moderator ? `<button class="btn" onclick="current='${target}';render();window.scrollTo(0,0)">Enter match scores</button>` : '') + `
-    <section class="hero">
-      <div class="hero-main" data-season="S${tournamentNumber(t)}" ${heroBg}>
-        <span class="status"><i></i>${t.phase === 'topcut' ? 'TOP CUT LIVE' : 'GROUP STAGE LIVE'}</span>
-        <div class="hero-title">${t.name.toUpperCase().replace(' ', '<br>')}</div>
-        <div class="hero-info">${esc(t.regulation)} · ${t.players.length} Trainers</div>
-        <div style="margin-top:16px;display:flex;gap:10px;flex-wrap:wrap">
-          <button class="btn btn-sm" onclick="current='${target}';render()">${t.phase === 'topcut' ? 'View Bracket & Standings' : 'View Group Matches'}</button>
-          <button class="btn ghost btn-sm" onclick="go('Standings')">Live Leaderboard</button>
+  // Metrics
+  let matches = t.matches || [];
+  let totalMatchesCount = tournamentTotalMatches(t);
+  let completedCount = results.length;
+  let completionPct = totalMatchesCount > 0 ? Math.min(100, Math.round((completedCount / totalMatchesCount) * 100)) : 0;
+
+  // Standings leader
+  let allStandings = groups.flatMap(g => getStand(t, g));
+  allStandings.sort((a, b) => b.w - a.w || b.gw - a.gw || (b.gw - b.gl) - (a.gw - a.gl));
+  let topPlayer = allStandings[0] || null;
+
+  return head(t.season + ': ' + t.name, 'Current Tournament', moderator ? `<button class="btn" onclick="current='${target}';render();window.scrollTo(0,0)">Enter match scores</button>` : '') + `
+    <!-- Top In-Season Showcase & Primetime Hero -->
+    <section class="in-season-hero">
+      <div class="card tourney-showcase-card">
+        <div class="tourney-showcase-info">
+          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+            <span class="status"><i></i>${t.phase === 'topcut' ? 'TOP CUT LIVE' : 'GROUP STAGE LIVE'}</span>
+            <span class="eyebrow" style="margin:0;color:#ffd166;letter-spacing:1px">${esc(t.season)}</span>
+          </div>
+          <div class="tourney-showcase-title">${esc(t.name.toUpperCase())}</div>
+
+          <div class="tourney-chips-row">
+            <span class="tourney-chip">🎮 <b>${esc(t.regulation || 'Standard')}</b></span>
+            <span class="tourney-chip">👥 <b>${t.players.length}</b> Trainers</span>
+            <span class="tourney-chip">⚔️ <b>${completedCount}/${totalMatchesCount}</b> Matches (${completionPct}%)</span>
+            <span class="tourney-chip">🎖️ Top <b>${advancePerGroup(t)}</b> Advance</span>
+          </div>
+
+          <div style="margin-top:auto;padding-top:14px;display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+            <button class="btn btn-sm" style="padding:8px 12px!important" onclick="current='${target}';render()">${t.phase === 'topcut' ? 'View Championship Bracket →' : 'View Group Matches →'}</button>
+            <button class="btn ghost btn-sm" style="padding:8px 12px!important" onclick="go('Standings')">Live Leaderboard</button>
+            ${moderator ? `<button class="btn ghost btn-sm" style="padding:8px 10px!important" onclick="openTournamentEdit('${jsArg(t.id)}')">⚙️ Edit</button>` : ''}
+          </div>
+        </div>
+
+        <div class="tourney-poster-frame">
+          ${t.backgroundImage ? `
+            <div class="tourney-poster-img" style="background-image:url('${esc(t.backgroundImage)}')"></div>
+            ${moderator ? `<button class="cover-edit" style="position:absolute;bottom:8px;right:8px;padding:3px 8px;font-size:10px" onclick="event.stopPropagation();openCoverEditor('${jsArg(t.id)}')">Edit cover</button>` : ''}
+          ` : `
+            <div class="tourney-poster-placeholder">
+              <span style="font-size:38px">🏆</span>
+              <span style="font:800 12px 'Barlow Condensed';color:#8e8c95;letter-spacing:1px;margin-top:6px;text-transform:uppercase">${esc(t.name)}</span>
+              ${moderator ? `<button class="btn ghost btn-sm" style="margin-top:8px" onclick="event.stopPropagation();openCoverEditor('${jsArg(t.id)}')">+ Add cover</button>` : ''}
+            </div>
+          `}
         </div>
       </div>
+
       ${matchupOfTheWeekCard(t)}
     </section>
 
+    <!-- Tournament Quick Stats Pulse Strip -->
+    <div class="pulse-stats-strip">
+      <div class="card pulse-stat-box">
+        <span class="pulse-stat-label">Tournament Phase</span>
+        <div class="pulse-stat-val">${t.phase === 'topcut' ? 'Top Cut Playoffs' : `Group Stage (${groups.length} Group${groups.length > 1 ? 's' : ''})`}</div>
+        <div class="pulse-stat-sub">${t.players.length} Trainers in Competition</div>
+      </div>
+      <div class="card pulse-stat-box">
+        <span class="pulse-stat-label">Fixtures Recorded</span>
+        <div class="pulse-stat-val">${completedCount} <small style="font-size:13px;color:#8e8c95;font-weight:700">/ ${totalMatchesCount}</small></div>
+        <div class="progress" style="margin-top:5px;height:5px"><span style="width:${completionPct}%"></span></div>
+      </div>
+      <div class="card pulse-stat-box">
+        <span class="pulse-stat-label">Division Leader</span>
+        <div class="pulse-stat-val">${topPlayer ? playerLink(topPlayer.p) : 'TBD'}</div>
+        <div class="pulse-stat-sub">${topPlayer ? `${topPlayer.w}-${topPlayer.l} Record (${topPlayer.gw} GW)` : 'Matches underway'}</div>
+      </div>
+      <div class="card pulse-stat-box">
+        <span class="pulse-stat-label">Top Cut Cutoff</span>
+        <div class="pulse-stat-val">Top ${advancePerGroup(t)} Per Group</div>
+        <div class="pulse-stat-sub"><a href="javascript:void(0)" onclick="go('Standings')" style="color:#ffd166;text-decoration:none;font-weight:700">View Full Leaderboard & Odds →</a></div>
+      </div>
+    </div>
+
+    <!-- Recent Results Section -->
     <section class="section">
       <div class="section-head">
-        <h2>RECENT RESULTS</h2>
-        <button class="link" onclick="current='${target}';render()">VIEW ALL →</button>
+        <div>
+          <div class="eyebrow" style="color:var(--red);margin-bottom:2px">Activity</div>
+          <h2>RECENT RESULTS</h2>
+        </div>
+        <button class="link" onclick="current='${target}';render()">VIEW ALL FIXTURES →</button>
       </div>
-      <div class="match-grid">${results.slice(0,3).map((m,i)=>matchCard(m,i===0)).join('')}</div>
+      <div class="match-grid">
+        ${results.length ? results.slice(0, 3).map((m, i) => matchCard(m, i === 0)).join('') : '<div class="empty card" style="grid-column:1/-1">No matches completed yet. Scores entered in Matches will appear here.</div>'}
+      </div>
     </section>
 
+    <!-- Group Standings Section -->
     <section class="section">
       <div class="section-head">
-        <h2>GROUP STANDINGS</h2>
-        <button class="link" onclick="go('Standings')">FULL STANDINGS →</button>
+        <div>
+          <div class="eyebrow" style="color:#ffd166;margin-bottom:2px">Leaderboard</div>
+          <h2>GROUP STANDINGS</h2>
+        </div>
+        <button class="link" onclick="go('Standings')">FULL STANDINGS & PLAYOFF ODDS →</button>
       </div>
-      <div style="display:grid;grid-template-columns:repeat(${groups.length>1?2:1},minmax(0,1fr));gap:14px">
-        ${groups.map(g=>`<div class="card table-wrap">${standingTable(t,g)}</div>`).join('')}
+      <div style="display:grid;grid-template-columns:repeat(${groups.length > 1 ? 2 : 1}, minmax(0, 1fr));gap:14px">
+        ${groups.map(g => `<div class="card table-wrap">${standingTable(t, g)}</div>`).join('')}
+      </div>
+      <div style="text-align:center;margin-top:16px">
+        <button class="btn ghost" style="padding:10px 20px;font-size:12px" onclick="go('Standings')">📊 View Full Standings, Playoff Probability & Head-to-Head Odds →</button>
       </div>
     </section>
   `;
