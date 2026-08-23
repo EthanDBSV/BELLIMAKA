@@ -4971,47 +4971,6 @@ function mockView(){
    Question text is byte-identical to the friend's version, so
    already-saved picks and the Supabase predictions table still match. */
 function savedPick(t,question){try{return localStorage.getItem('draftdex-pick-'+(t?.id||'')+'-'+question)||''}catch{return ''}}
-function versusBlock(t,over,question,a,b,locked){
-  let chosen=savedPick(t,question);
-  let side=(p,cls)=>`<button class="pick vs-side ${cls} ${chosen===p?'active':''}" ${locked?'disabled':''} data-team="${esc(teamName(t,p))}" data-pick="${esc(p)}" style="--art:${teamArt(p,t)}" onclick="pick(this)"><span class="vs-scrim"></span>${esc(p)}</button>`;
-  return `<div class="prediction card versus-card">
-    <div class="eyebrow">${esc(over)}</div><h3>${esc(question)}</h3>
-    <div class="pick-options versus-stage ${locked?'decided':''}">
-      ${side(a,'left')}<span class="vs-seam"></span><span class="vs-plate">VS</span>${side(b,'right')}
-      <span class="vs-tag left ${chosen===a?'show':''}" data-pick-tag="${esc(a)}">Your pick</span><span class="vs-tag right ${chosen===b?'show':''}" data-pick-tag="${esc(b)}">Your pick</span>
-      ${locked?'<span class="vs-locked">Locked</span>':''}
-    </div>
-  </div>`
-}
-function predictionsClassic(t=activeT()){
-  let started=(t.matches||[]).some(x=>x.as!==''&&x.as!=null),groups=groupsOf(t);
-  let block=(over,q,opts,locked=false)=>{
-    if(opts.length===2&&opts.every(x=>x&&x!=='TBD'&&x!=='BYE'))return versusBlock(t,over,q,opts[0],opts[1],locked);
-    let chosen=savedPick(t,q);
-    return `<div class="prediction card"><div class="eyebrow">${esc(over)}</div><h3>${esc(q)}</h3>
-      <div class="pick-options">${opts.map(x=>predictionPick(x,locked,chosen===x)).join('')}</div>
-      ${locked?'<p class="sub">Prediction locked.</p>':''}</div>`
-  };
-  let leaderboard=`<aside class="card leaderboard"><div class="card-title">Prediction leaders</div>${(t.pred||[]).map(([p,pt],i)=>`<div class="leader"><span class="rank">${i+1}</span><span class="mini-avatar" style="background-image:${profileArt(p,t)};background-size:cover;background-position:center">${profilePictures[p]||teamCovers[p]?'':esc(p[0]||'')}</span><b>${esc(p)}</b><span class="pts">${pt} pts</span></div>`).join('')}</aside>`;
-  if(t.phase==='topcut'){
-    let live=[...(t.topCutCache?.playable||[]).map(m=>({p1:m.p1,p2:m.p2,title:m.title,locked:false})),...(t.topCutCache?.results||[]).map(m=>({p1:m.p1,p2:m.p2,title:m.title,locked:true}))];
-    return `<div class="pred-layout"><div><div class="eyebrow" style="margin:4px 0 8px">Live Top Cut predictions · 20 points each</div>
-      ${live.length?'<p class="versus-hint">Tap a side to lock in your pick. Each matchup locks once it is scored.</p>':''}
-      ${live.map(m=>block('20 points · '+m.title,'Who wins: '+m.p1+' vs '+m.p2,[m.p1,m.p2],m.locked)).join('')}
-      <p class="sub">New predictions appear automatically whenever the bracket produces a new playable matchup. Each locks when that matchup is scored.</p></div>${leaderboard}</div>`
-  }
-  let games=t.matches||[];
-  return `<div class="pred-layout"><div>
-    ${block('100 points · tournament outcome','Who will be the '+t.name+' Champion?',t.players,started)}
-    ${Object.entries(groups).map(([g,ps])=>block('45 points · '+g+' outcome','Who will top '+g+'?',ps,started)).join('')}
-    <div class="eyebrow" style="margin:22px 0 8px">Group-stage match predictions · 8 points each</div>
-    ${games.length?'<p class="versus-hint">Tap a side to lock in your pick. Each matchup locks once it is scored.</p>':''}
-    ${games.map(m=>block('8 points · '+(m.group||'Group A'),'Who wins: '+m.a+' vs '+m.b,[m.a,m.b],m.as!==''&&m.bs!=='')).join('')}
-  </div>${leaderboard}</div>`
-}
-function predictionPick(label,locked=false,active=false){
-  return `<button class="pick ${active?'active':''}" ${locked?'disabled style="opacity:.55;cursor:not-allowed"':''} onclick="pick(this)">${esc(label)}</button>`
-}
 /* ------------------------------------------------------------ shared state: carry the draft pool through the rev-tracked sync */
 async function flushSync(){
   if(!supabaseClient||!moderator)return;
@@ -6984,15 +6943,22 @@ function predictions(t=activeT()){
   setTimeout(() => renderPredictionLeaders(t), 0);
   let leaderboard = leaderboardShell(t);
 
-  let defaultStage = (t.phase === 'topcut' || t.status === 'COMPLETE' || !!t.bracketManagerData) ? 'topcut' : 'group';
-  let savedStage = null;
-  try { savedStage = localStorage.getItem('draftdex-pred-stage-tab'); } catch(e){}
-  let activeStage = (savedStage === 'topcut' || savedStage === 'group') ? savedStage : defaultStage;
+  let isArchive = (t.status === 'COMPLETE');
+  let activeStage = 'group';
+
+  if(isArchive){
+    let savedStage = null;
+    try { savedStage = localStorage.getItem('draftdex-pred-stage-tab'); } catch(e){}
+    activeStage = (savedStage === 'topcut' || savedStage === 'group') ? savedStage : 'topcut';
+  } else {
+    // During an active in-season tournament, show Group pick'ems during group stage and Top Cut during playoffs
+    activeStage = (t.phase === 'topcut' || !!t.bracketManagerData) ? 'topcut' : 'group';
+  }
 
   let champQuestion = 'Who will be the ' + t.name + ' Champion?';
   let games = t.matches || [];
 
-  let stageTabs = `
+  let stageTabs = isArchive ? `
     <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:16px;padding-bottom:12px;border-bottom:1px solid #23232d">
       <div style="display:flex;gap:8px">
         <button class="btn ${activeStage === 'topcut' ? '' : 'ghost'}" style="${activeStage === 'topcut' ? 'background:#ffd166;color:#121212;font-weight:900;border-color:#ffd166;' : 'color:#c0bec8;border-color:#343440;'}"
@@ -7008,7 +6974,7 @@ function predictions(t=activeT()){
         ${activeStage === 'topcut' ? '20 PTS per bracket match · Double elimination' : '100 PTS Champ · 45 PTS Groups · 8 PTS Matches'}
       </div>
     </div>
-  `;
+  ` : '';
 
   let mainContent = '';
   if(activeStage === 'topcut'){
