@@ -6205,18 +6205,33 @@ async function savePredictionPick(question, choice, el){
   let t = ongoingT() || activeT();
   if(!t || !question || !choice) return;
 
+  let currentPick = savedPick(t, question);
+  let isTogglingOff = (currentPick === choice);
+
   try {
-    localStorage.setItem('draftdex-pick-' + t.id + '-' + question, choice);
+    if(isTogglingOff){
+      localStorage.removeItem('draftdex-pick-' + t.id + '-' + question);
+    } else {
+      localStorage.setItem('draftdex-pick-' + t.id + '-' + question, choice);
+    }
   } catch(e){}
 
   if(supabaseClient && sessionUser){
     try {
-      await supabaseClient.from('predictions').upsert({
-        user_id: sessionUser.id,
-        tournament_id: t.id,
-        prediction_key: question,
-        selection: choice
-      }, { onConflict: 'user_id,tournament_id,prediction_key' });
+      if(isTogglingOff){
+        await supabaseClient.from('predictions').delete().match({
+          user_id: sessionUser.id,
+          tournament_id: t.id,
+          prediction_key: question
+        });
+      } else {
+        await supabaseClient.from('predictions').upsert({
+          user_id: sessionUser.id,
+          tournament_id: t.id,
+          prediction_key: question,
+          selection: choice
+        }, { onConflict: 'user_id,tournament_id,prediction_key' });
+      }
     } catch(e){
       console.warn('Prediction Supabase sync error:', e);
     }
@@ -6255,6 +6270,7 @@ function renderChampionPredictionPicker(t, question, locked){
 
           return `<button class="pred-contender-card ${isChosen ? 'is-selected' : ''} ${isHit ? 'is-champ-hit' : (isMiss ? 'is-champ-miss' : '')}"
             ${locked ? 'disabled' : ''}
+            title="${isChosen ? 'Click to unselect ' + esc(p) : 'Click to pick ' + esc(p)}"
             onclick="savePredictionPick('${jsArg(question)}', '${jsArg(p)}', this)">
             <span class="avatar mini" style="background-image:${face};background-size:cover;background-position:center;width:30px;height:30px;border-radius:50%;font-size:12px;border:1px solid ${ovr.color};display:grid;place-items:center;flex:none">${letter}</span>
             <div style="min-width:0;flex:1">
@@ -6307,6 +6323,7 @@ function renderGroupWinnersPredictionPicker(t, groups, locked){
               return `<button class="pred-contender-card ${isChosen ? 'is-selected' : ''} ${isHit ? 'is-champ-hit' : (isMiss ? 'is-champ-miss' : '')}"
                 style="padding:6px 8px"
                 ${locked ? 'disabled' : ''}
+                title="${isChosen ? 'Click to unselect ' + esc(p) : 'Click to pick ' + esc(p)}"
                 onclick="savePredictionPick('${jsArg(question)}', '${jsArg(p)}', this)">
                 <span class="avatar mini" style="background-image:${face};background-size:cover;background-position:center;width:24px;height:24px;border-radius:50%;font-size:10px;border:1px solid ${ovr.color};display:grid;place-items:center;flex:none">${letter}</span>
                 <span style="font-size:12px;font-weight:800;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1">${esc(p)}</span>
@@ -6350,6 +6367,7 @@ function compactMatchPredictionCard(t, m){
     <button class="clash-side left ${chosen === p1 ? 'is-selected' : ''} ${isHit1 ? 'is-hit' : (isMiss1 ? 'is-miss' : '')}"
       style="--art:${teamArt(p1, t)}"
       ${locked ? 'disabled' : ''}
+      title="${chosen === p1 ? 'Click to unselect ' + esc(p1) : 'Click to pick ' + esc(p1)}"
       onclick="savePredictionPick('${jsArg(question)}', '${jsArg(p1)}', this)">
       <span class="avatar mini" style="background-image:${face1};background-size:cover;background-position:center;width:28px;height:28px;border-radius:50%;font-size:12px;border:1px solid ${ovr1.color};display:grid;place-items:center;flex:none;position:relative;z-index:2">${letter1}</span>
       <div style="min-width:0;position:relative;z-index:2">
@@ -6369,6 +6387,7 @@ function compactMatchPredictionCard(t, m){
     <button class="clash-side right ${chosen === p2 ? 'is-selected' : ''} ${isHit2 ? 'is-hit' : (isMiss2 ? 'is-miss' : '')}"
       style="--art:${teamArt(p2, t)}"
       ${locked ? 'disabled' : ''}
+      title="${chosen === p2 ? 'Click to unselect ' + esc(p2) : 'Click to pick ' + esc(p2)}"
       onclick="savePredictionPick('${jsArg(question)}', '${jsArg(p2)}', this)">
       <span class="avatar mini" style="background-image:${face2};background-size:cover;background-position:center;width:28px;height:28px;border-radius:50%;font-size:12px;border:1px solid ${ovr2.color};display:grid;place-items:center;flex:none;position:relative;z-index:2">${letter2}</span>
       <div style="min-width:0;position:relative;z-index:2">
@@ -6388,137 +6407,269 @@ function topCutPredictionBracket(t){
   let model = getTournamentTopCutModel(t);
   if(!model) return '<div class="card empty"><p class="sub">Top Cut bracket data unavailable.</p></div>';
 
-  function getBracketMatchPick(mId, defaultP1, defaultP2){
-    let key1 = 'Top Cut · Who wins: ' + defaultP1 + ' vs ' + defaultP2;
-    let key2 = 'Top Cut · Who wins: ' + defaultP2 + ' vs ' + defaultP1;
-    let explicitPick = savedPick(t, key1) || savedPick(t, key2) || savedPick(t, 'draftdex-bpick-' + mId);
+  function getBracketMatchPick(mId, p1, p2){
+    let key1 = (p1 && p2 && isKnownPlayer(p1) && isKnownPlayer(p2)) ? ('Top Cut · Who wins: ' + p1 + ' vs ' + p2) : '';
+    let key2 = (p1 && p2 && isKnownPlayer(p1) && isKnownPlayer(p2)) ? ('Top Cut · Who wins: ' + p2 + ' vs ' + p1) : '';
+    let explicitPick = (key1 && savedPick(t, key1)) || (key2 && savedPick(t, key2)) || savedPick(t, 'draftdex-bpick-' + mId);
     return explicitPick || '';
   }
 
-  let wb1Picks = (model.wbRounds[0]?.matches || []).map(m => {
-    let p1 = m.p1, p2 = m.p2;
-    let pick = getBracketMatchPick(m.id, p1, p2);
-    let isOfficialDone = m.isDone && m.winner;
-    return {
-      match: m,
-      p1, p2,
-      chosen: pick,
-      winner: pick || (isOfficialDone ? m.winner : null) || p1
-    };
+  let predMap = {};
+
+  // 1. Process Winners Bracket rounds
+  (model.wbRounds || []).forEach((r, rIdx) => {
+    r.matches.forEach((m, mIdx) => {
+      let p1 = m.p1;
+      let p2 = m.p2;
+
+      if(rIdx === 1){ // Semifinals
+        let feed1 = predMap['wb' + (mIdx * 2 + 1)];
+        let feed2 = predMap['wb' + (mIdx * 2 + 2)];
+        if(feed1?.winner) p1 = feed1.winner;
+        if(feed2?.winner) p2 = feed2.winner;
+      } else if(rIdx === 2){ // Winners Final
+        let feed1 = predMap['wb5'] || predMap['wb1'];
+        let feed2 = predMap['wb6'] || predMap['wb2'];
+        if(feed1?.winner) p1 = feed1.winner;
+        if(feed2?.winner) p2 = feed2.winner;
+      }
+
+      let pick = getBracketMatchPick(m.id, p1, p2);
+      let isDone = m.isDone && m.winner;
+      let winner = (pick === p1 || pick === p2) ? pick : (isDone ? m.winner : null);
+      let loser = winner ? (winner === p1 ? p2 : p1) : null;
+
+      predMap[m.id] = {
+        id: m.id,
+        title: m.title,
+        p1, p2,
+        p1Seed: m.p1Seed,
+        p2Seed: m.p2Seed,
+        chosen: pick,
+        winner,
+        loser,
+        isDone,
+        officialWinner: m.winner,
+        originP1: m.originP1,
+        originP2: m.originP2
+      };
+    });
   });
 
-  let sf1P1 = wb1Picks[0]?.winner || model.wbRounds[1]?.matches[0]?.p1 || 'Winner QF 1';
-  let sf1P2 = wb1Picks[1]?.winner || model.wbRounds[1]?.matches[0]?.p2 || 'Winner QF 2';
-  let sf2P1 = wb1Picks[2]?.winner || model.wbRounds[1]?.matches[1]?.p1 || 'Winner QF 3';
-  let sf2P2 = wb1Picks[3]?.winner || model.wbRounds[1]?.matches[1]?.p2 || 'Winner QF 4';
+  // 2. Process Losers Bracket rounds
+  (model.lbRounds || []).forEach((r, rIdx) => {
+    r.matches.forEach((m, mIdx) => {
+      let p1 = m.p1;
+      let p2 = m.p2;
 
-  let sf1Pick = getBracketMatchPick('wb5', sf1P1, sf1P2);
-  let sf2Pick = getBracketMatchPick('wb6', sf2P1, sf2P2);
+      if(rIdx === 0){ // LB R1
+        let wbFeed1 = predMap['wb' + (mIdx * 2 + 1)];
+        let wbFeed2 = predMap['wb' + (mIdx * 2 + 2)];
+        if(wbFeed1?.loser) p1 = wbFeed1.loser;
+        if(wbFeed2?.loser) p2 = wbFeed2.loser;
+        if(p1 === 'BYE' && p2 && p2 !== 'BYE') p1 = p2;
+      } else if(rIdx === 1){ // LB R2
+        let lbFeed = predMap['lb' + (mIdx + 1)];
+        let wbFeed = predMap['wb' + (6 - mIdx)]; // wb6 / wb5 crossed
+        if(lbFeed?.winner) p1 = lbFeed.winner;
+        if(wbFeed?.loser) p2 = wbFeed.loser;
+      } else if(rIdx === 2){ // LB R3 (LB Semi)
+        let feed1 = predMap['lb3'];
+        let feed2 = predMap['lb4'];
+        if(feed1?.winner) p1 = feed1.winner;
+        if(feed2?.winner) p2 = feed2.winner;
+      } else if(rIdx === 3){ // LB R4 (LB Final)
+        let lbFeed = predMap['lb5'] || predMap['lb3'] || predMap['lb1'];
+        let wfFeed = predMap['wb7'] || predMap['wb3'];
+        if(lbFeed?.winner) p1 = lbFeed.winner;
+        if(wfFeed?.loser) p2 = wfFeed.loser;
+      }
 
-  let sf1Winner = sf1Pick || (model.wbRounds[1]?.matches[0]?.isDone ? model.wbRounds[1]?.matches[0]?.winner : null) || sf1P1;
-  let sf2Winner = sf2Pick || (model.wbRounds[1]?.matches[1]?.isDone ? model.wbRounds[1]?.matches[1]?.winner : null) || sf2P1;
+      let pick = getBracketMatchPick(m.id, p1, p2);
+      let isDone = m.isDone && m.winner;
+      let winner = (pick === p1 || pick === p2) ? pick : (isDone ? m.winner : null);
+      let loser = winner ? (winner === p1 ? p2 : p1) : null;
 
-  let wfP1 = sf1Winner || 'Winner SF 1';
-  let wfP2 = sf2Winner || 'Winner SF 2';
-  let wfPick = getBracketMatchPick('wb7', wfP1, wfP2);
-  let wfWinner = wfPick || (model.wbRounds[2]?.matches[0]?.isDone ? model.wbRounds[2]?.matches[0]?.winner : null) || wfP1;
+      predMap[m.id] = {
+        id: m.id,
+        title: m.title,
+        p1, p2,
+        p1Seed: m.p1Seed,
+        p2Seed: m.p2Seed,
+        chosen: pick,
+        winner,
+        loser,
+        isDone,
+        officialWinner: m.winner,
+        originP1: m.originP1,
+        originP2: m.originP2
+      };
+    });
+  });
 
-  let gfP1 = wfWinner || 'Winners Bracket Champ';
-  let gfP2 = model.gfMatches[0]?.p2 || 'Losers Bracket Champ';
-  let gfPick = getBracketMatchPick('gf1', gfP1, gfP2);
-  let predictedChamp = gfPick || gfP1;
+  // 3. Process Grand Finals
+  let lastWbMatch = predMap['wb7'] || predMap['wb3'] || predMap['wb1'] || model.wbRounds[model.wbRounds.length - 1]?.matches[0];
+  let lastLbRound = model.lbRounds?.[model.lbRounds.length - 1];
+  let lastLbMatchId = lastLbRound?.matches[0]?.id || 'lb6';
+  let lastLbMatch = predMap[lastLbMatchId] || predMap['lb2'] || predMap['lb1'] || lastLbRound?.matches[0];
 
-  function renderInteractiveSlot(mId, pName, opponentName, isWinner, isLoser, isOfficialDone, officialWinner){
-    if(!pName || pName === 'TBD' || pName.startsWith('Winner') || pName.startsWith('Loser') || pName === 'BYE'){
-      return `<div class="pred-bracket-slot" style="opacity:.5;cursor:default">
-        <span>${esc(pName || 'TBD')}</span>
+  let gfP1 = lastWbMatch?.winner || model.gfMatches[0]?.p1 || 'Upper Bracket Winner';
+  let gfP2 = lastLbMatch?.winner || model.gfMatches[0]?.p2 || 'Lower Bracket Winner';
+  let gfId = model.gfMatches[0]?.id || 'gf1';
+  let gfPick = getBracketMatchPick(gfId, gfP1, gfP2);
+  let gfIsDone = model.gfMatches[0]?.isDone && model.gfMatches[0]?.winner;
+  let gfWinner = (gfPick === gfP1 || gfPick === gfP2) ? gfPick : (gfIsDone ? model.gfMatches[0].winner : null);
+  predMap[gfId] = {
+    id: gfId,
+    title: model.gfMatches[0]?.title || 'Championship Final',
+    p1: gfP1,
+    p2: gfP2,
+    chosen: gfPick,
+    winner: gfWinner,
+    isDone: gfIsDone,
+    officialWinner: model.gfMatches[0]?.winner,
+    originP1: 'Upper Bracket Winner',
+    originP2: 'Lower Bracket Winner'
+  };
+
+  let predictedChamp = gfWinner || gfPick || (gfP1 && isKnownPlayer(gfP1) ? gfP1 : null);
+
+  function renderInteractivePredSlot(mObj, isP1){
+    let pName = isP1 ? mObj.p1 : mObj.p2;
+    let opponent = isP1 ? mObj.p2 : mObj.p1;
+    let seed = isP1 ? mObj.p1Seed : mObj.p2Seed;
+    let mId = mObj.id;
+    let isReal = isKnownPlayer(pName);
+
+    if(!isReal){
+      return `<div class="tc-slot tbd" style="opacity:.45;cursor:default">
+        <span class="tc-slot-seed">—</span>
+        <div class="tc-slot-info">
+          <span class="tc-slot-tbd">${esc(pName || 'TBD')}</span>
+        </div>
+        <span class="tc-slot-score">—</span>
       </div>`;
     }
 
-    let question = 'Top Cut · Who wins: ' + pName + ' vs ' + opponentName;
-    let chosen = savedPick(t, question) || savedPick(t, 'Top Cut · Who wins: ' + opponentName + ' vs ' + pName) || savedPick(t, 'draftdex-bpick-' + mId);
-    let isPicked = (chosen === pName);
-    let isHit = isOfficialDone && officialWinner === pName && isPicked;
-    let isMiss = isOfficialDone && officialWinner && officialWinner !== pName && isPicked;
+    let isPicked = (mObj.chosen === pName);
+    let isHit = mObj.isDone && mObj.officialWinner === pName && isPicked;
+    let isMiss = mObj.isDone && mObj.officialWinner && mObj.officialWinner !== pName && isPicked;
 
-    let ovr = calculatePlayerOVR(pName);
-    let face = profilePictures[pName] ? `url('${esc(profilePictures[pName])}')` : (teamCovers[pName] ? `url('${esc(teamCovers[pName])}')` : fallbackArt(pName));
-    let letter = (profilePictures[pName] || teamCovers[pName]) ? '' : esc((pName || '?')[0]);
+    let ovrObj = calculatePlayerOVR(pName);
+    let faceArt = profilePictures[pName] ? `url('${esc(profilePictures[pName])}')` : (teamCovers[pName] ? `url('${esc(teamCovers[pName])}')` : fallbackArt(pName));
+    let faceLetter = (profilePictures[pName] || teamCovers[pName]) ? '' : esc((pName || '?')[0]);
+    let teamStr = teamName(t, pName);
+    let question = 'Top Cut · Who wins: ' + pName + ' vs ' + opponent;
 
-    return `<div class="pred-bracket-slot ${isPicked ? 'is-advanced' : ''} ${isHit ? 'is-winner-hit' : (isMiss ? 'is-winner-miss' : '')}"
-      ${isOfficialDone ? '' : `onclick="saveBracketPredictionPick('${jsArg(mId)}', '${jsArg(question)}', '${jsArg(pName)}')"`}>
-      <div style="display:flex;align-items:center;gap:6px;min-width:0">
-        <span class="avatar mini" style="background-image:${face};background-size:cover;background-position:center;width:22px;height:22px;border-radius:50%;font-size:10px;border:1px solid ${ovr.color};display:grid;place-items:center;flex:none">${letter}</span>
-        <span style="font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(pName)}</span>
+    return `<div class="tc-slot ${isPicked ? 'winner' : ''} ${isHit ? 'is-winner-hit' : (isMiss ? 'loser' : '')}"
+      style="cursor:${mObj.isDone ? 'default' : 'pointer'};${isPicked ? 'background:linear-gradient(90deg,rgba(239,48,56,0.22),transparent);border-color:#ff858b;' : ''}"
+      ${mObj.isDone ? '' : `onclick="saveBracketPredictionPick('${jsArg(mId)}', '${jsArg(question)}', '${jsArg(pName)}')"`}
+      title="${mObj.isDone ? 'Match complete' : (isPicked ? 'Click to unselect ' + esc(pName) : 'Click to pick ' + esc(pName) + ' to advance')}">
+      <span class="tc-slot-seed">${seed ? `#${seed}` : ''}</span>
+      <div class="tc-slot-info">
+        <span class="mrow-face" style="background-image:${faceArt};background-size:cover;background-position:center;width:24px;height:24px;font-size:10px;border-radius:50%;flex:none;display:grid;place-items:center;border:2px solid ${ovrObj.color}">${faceLetter}</span>
+        <div style="min-width:0">
+          <div class="tc-slot-name" style="color:${isPicked ? '#ffd166' : '#f5f3f0'};font-weight:${isPicked ? '900' : '700'}">${esc(pName)}</div>
+          <span class="team" style="font-size:9px;margin-top:1px">${esc(teamStr)}</span>
+        </div>
       </div>
-      ${isPicked ? `<span class="pred-check-pill" style="font-size:8px">${isHit ? '✓ +20' : (isMiss ? '✗' : '✓ PICK')}</span>` : ''}
+      <span class="tc-slot-score" style="font-size:10px;font-weight:900;color:${isHit ? '#4bdd91' : (isMiss ? '#ff7079' : (isPicked ? '#ffd166' : '#8e8c95'))}">
+        ${isHit ? '✓ +20' : (isMiss ? '✗' : (isPicked ? '✓ PICK' : '—'))}
+      </span>
     </div>`;
   }
 
-  return `<div class="pred-section">
-    <div class="card" style="padding:18px;background:linear-gradient(135deg,#1f1318 0%,#15151c 60%,#10131d 100%);border-color:#5c242d;margin-bottom:14px">
-      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
+  return `<div class="tc-container">
+    <div class="card" style="padding:18px 22px;background:linear-gradient(135deg,#1f1318 0%,#15151c 60%,#10131d 100%);border-color:#5c242d;margin-bottom:14px">
+      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px">
         <div>
-          <div class="eyebrow" style="color:#ffd166;margin-bottom:2px">20 PTS PER MATCH · FULL BRACKET PICK'EM</div>
-          <h2 style="font-size:22px">TOP CUT PREDICTION BRACKET</h2>
-          <p class="sub" style="margin:4px 0 0">Click any trainer to advance them to the next round. Predictions lock as matches start.</p>
+          <div class="eyebrow" style="color:#ffd166;margin-bottom:2px">20 PTS PER MATCH · FULL BRACKET PREDICTION</div>
+          <div style="font:900 24px 'Barlow Condensed';letter-spacing:.6px;color:#f5f3f0;text-transform:uppercase">Top Cut Prediction Bracket</div>
+          <p class="sub" style="margin:4px 0 0">Click any trainer to advance them to the next round. Click again to unselect.</p>
         </div>
-        <div class="card" style="padding:8px 14px;background:#0d0d13;border-color:#3a2028;text-align:center">
+        <div class="card" style="padding:8px 16px;background:#0d0d13;border-color:#3a2028;text-align:center">
           <div style="font-size:9px;font-weight:800;color:#ffd166;letter-spacing:1px;text-transform:uppercase">Projected Champion</div>
-          <div style="font:900 18px 'Barlow Condensed';color:#fff;margin-top:2px">${esc(predictedChamp || 'TBD')}</div>
+          <div style="font:900 20px 'Barlow Condensed';color:#fff;margin-top:2px">${esc(predictedChamp || 'TBD')}</div>
         </div>
       </div>
     </div>
 
-    <div class="pred-bracket-wrap">
-      <div class="pred-bracket-tree">
-        <!-- Quarterfinals -->
-        <div class="pred-bracket-col">
-          <div class="eyebrow" style="color:#a09fa8;margin:0 0 6px">Quarterfinals (20 pts)</div>
-          ${(model.wbRounds[0]?.matches || []).map(m => `
-            <div class="pred-bracket-match">
-              <div class="pred-bracket-match-title">${esc(m.title)}</div>
-              ${renderInteractiveSlot(m.id, m.p1, m.p2, false, false, m.isDone, m.winner)}
-              ${renderInteractiveSlot(m.id, m.p2, m.p1, false, false, m.isDone, m.winner)}
+    <div class="card" style="padding:22px;background:#101015;border-color:#2e2e38">
+      <!-- 1. Winners Bracket -->
+      <div style="margin-bottom:28px">
+        <div class="tc-section-header">
+          <h3><span style="color:#ffd166">🏆</span> Winners Bracket & Finals</h3>
+          <span style="font-size:10px;font-weight:800;letter-spacing:.8px;color:#8e8c95;text-transform:uppercase">Upper Bracket Path (20 PTS Each)</span>
+        </div>
+        <div class="tc-bracket-grid">
+          ${model.wbRounds.map(r => `
+            <div class="tc-round-col">
+              <div class="tc-round-head"><span>${esc(r.title)}</span></div>
+              <div class="tc-round-matches">
+                ${r.matches.map(m => {
+                  let mObj = predMap[m.id] || m;
+                  return `<div class="tc-match-card ${mObj.isDone ? 'completed' : ''}">
+                    <div class="tc-match-head">
+                      <span>${esc(m.title)}</span>
+                      <span style="color:${mObj.chosen ? '#ffd166' : '#8e8c95'}">${mObj.isDone ? 'FINAL' : (mObj.chosen ? 'PICKED' : 'OPEN')}</span>
+                    </div>
+                    ${renderInteractivePredSlot(mObj, true)}
+                    ${renderInteractivePredSlot(mObj, false)}
+                  </div>`;
+                }).join('')}
+              </div>
             </div>
           `).join('')}
-        </div>
 
-        <!-- Semifinals -->
-        <div class="pred-bracket-col" style="margin-top:38px">
-          <div class="eyebrow" style="color:#a09fa8;margin:0 0 6px">Semifinals (20 pts)</div>
-          <div class="pred-bracket-match">
-            <div class="pred-bracket-match-title">WB Semifinal 1</div>
-            ${renderInteractiveSlot('wb5', sf1P1, sf1P2, false, false, model.wbRounds[1]?.matches[0]?.isDone, model.wbRounds[1]?.matches[0]?.winner)}
-            ${renderInteractiveSlot('wb5', sf1P2, sf1P1, false, false, model.wbRounds[1]?.matches[0]?.isDone, model.wbRounds[1]?.matches[0]?.winner)}
-          </div>
-          <div class="pred-bracket-match" style="margin-top:28px">
-            <div class="pred-bracket-match-title">WB Semifinal 2</div>
-            ${renderInteractiveSlot('wb6', sf2P1, sf2P2, false, false, model.wbRounds[1]?.matches[1]?.isDone, model.wbRounds[1]?.matches[1]?.winner)}
-            ${renderInteractiveSlot('wb6', sf2P2, sf2P1, false, false, model.wbRounds[1]?.matches[1]?.isDone, model.wbRounds[1]?.matches[1]?.winner)}
-          </div>
-        </div>
-
-        <!-- Winners Final -->
-        <div class="pred-bracket-col" style="margin-top:90px">
-          <div class="eyebrow" style="color:#a09fa8;margin:0 0 6px">Winners Final (20 pts)</div>
-          <div class="pred-bracket-match">
-            <div class="pred-bracket-match-title">Winners Final</div>
-            ${renderInteractiveSlot('wb7', wfP1, wfP2, false, false, model.wbRounds[2]?.matches[0]?.isDone, model.wbRounds[2]?.matches[0]?.winner)}
-            ${renderInteractiveSlot('wb7', wfP2, wfP1, false, false, model.wbRounds[2]?.matches[0]?.isDone, model.wbRounds[2]?.matches[0]?.winner)}
-          </div>
-        </div>
-
-        <!-- Grand Finals -->
-        <div class="pred-bracket-col" style="margin-top:90px">
-          <div class="eyebrow" style="color:var(--amber);margin:0 0 6px">Grand Finals (20 pts)</div>
-          <div class="pred-bracket-match" style="border-color:#5c3510;box-shadow:0 0 16px rgba(243,194,69,0.2)">
-            <div class="pred-bracket-match-title" style="background:#26180b;color:#ffd166">Championship Final</div>
-            ${renderInteractiveSlot('gf1', gfP1, gfP2, false, false, model.gfMatches[0]?.isDone, model.gfMatches[0]?.winner)}
-            ${renderInteractiveSlot('gf1', gfP2, gfP1, false, false, model.gfMatches[0]?.isDone, model.gfMatches[0]?.winner)}
+          <!-- Grand Finals Column -->
+          <div class="tc-round-col" style="border-left:1px dashed #3a3a46;padding-left:24px;width:280px">
+            <div class="tc-round-head"><span style="color:#ffd166">👑 Grand Finals</span></div>
+            <div class="tc-round-matches">
+              ${(model.gfMatches || []).map(m => {
+                let mObj = predMap[m.id] || m;
+                return `<div class="tc-match-card" style="border-color:#5c3510;box-shadow:0 0 16px rgba(243,194,69,0.2)">
+                  <div class="tc-match-head" style="background:#26180b;color:#ffd166">
+                    <span>Championship Final</span>
+                    <span style="color:${mObj.chosen ? '#ffd166' : '#8e8c95'}">${mObj.isDone ? 'FINAL' : (mObj.chosen ? 'PICKED' : 'OPEN')}</span>
+                  </div>
+                  ${renderInteractivePredSlot(mObj, true)}
+                  ${renderInteractivePredSlot(mObj, false)}
+                </div>`;
+              }).join('')}
+            </div>
           </div>
         </div>
       </div>
+
+      <!-- 2. Losers Bracket -->
+      ${model.lbRounds?.length ? `
+        <div>
+          <div class="tc-section-header">
+            <h3><span style="color:#7ad1ff">🛡️</span> Losers Bracket</h3>
+            <span style="font-size:10px;font-weight:800;letter-spacing:.8px;color:#8e8c95;text-transform:uppercase">Lower Elimination Path (20 PTS Each)</span>
+          </div>
+          <div class="tc-bracket-grid">
+            ${model.lbRounds.map(r => `
+              <div class="tc-round-col">
+                <div class="tc-round-head"><span>${esc(r.title)}</span></div>
+                <div class="tc-round-matches">
+                  ${r.matches.map(m => {
+                    let mObj = predMap[m.id] || m;
+                    return `<div class="tc-match-card ${mObj.isDone ? 'completed' : ''}">
+                      <div class="tc-match-head">
+                        <span>${esc(m.title)}</span>
+                        <span style="color:${mObj.chosen ? '#ffd166' : '#8e8c95'}">${mObj.isDone ? 'FINAL' : (mObj.chosen ? 'PICKED' : 'OPEN')}</span>
+                      </div>
+                      ${renderInteractivePredSlot(mObj, true)}
+                      ${renderInteractivePredSlot(mObj, false)}
+                    </div>`;
+                  }).join('')}
+                </div>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+      ` : ''}
     </div>
   </div>`;
 }
@@ -6527,19 +6678,35 @@ async function saveBracketPredictionPick(mId, question, choice){
   let t = ongoingT() || activeT();
   if(!t) return;
 
+  let currentPick = savedPick(t, question) || savedPick(t, 'draftdex-bpick-' + mId);
+  let isTogglingOff = (currentPick === choice);
+
   try {
-    localStorage.setItem('draftdex-pick-' + t.id + '-' + question, choice);
-    localStorage.setItem('draftdex-pick-' + t.id + '-draftdex-bpick-' + mId, choice);
+    if(isTogglingOff){
+      localStorage.removeItem('draftdex-pick-' + t.id + '-' + question);
+      localStorage.removeItem('draftdex-pick-' + t.id + '-draftdex-bpick-' + mId);
+    } else {
+      localStorage.setItem('draftdex-pick-' + t.id + '-' + question, choice);
+      localStorage.setItem('draftdex-pick-' + t.id + '-draftdex-bpick-' + mId, choice);
+    }
   } catch(e){}
 
   if(supabaseClient && sessionUser){
     try {
-      await supabaseClient.from('predictions').upsert({
-        user_id: sessionUser.id,
-        tournament_id: t.id,
-        prediction_key: question,
-        selection: choice
-      }, { onConflict: 'user_id,tournament_id,prediction_key' });
+      if(isTogglingOff){
+        await supabaseClient.from('predictions').delete().match({
+          user_id: sessionUser.id,
+          tournament_id: t.id,
+          prediction_key: question
+        });
+      } else {
+        await supabaseClient.from('predictions').upsert({
+          user_id: sessionUser.id,
+          tournament_id: t.id,
+          prediction_key: question,
+          selection: choice
+        }, { onConflict: 'user_id,tournament_id,prediction_key' });
+      }
     } catch(e){}
   }
 
