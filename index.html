@@ -6121,59 +6121,125 @@ function openProfileManager(){
 /* A group-stage question and a Top Cut question can produce the exact
    same key ("Who wins: A vs B"), so resolve the answer and its point
    value together rather than guessing the value from the key alone. */
-function predictionOutcome(t,key){
-  if(/^Who will be the .* Champion\?$/.test(key))
-    return {value:100,answer:(t.champion&&t.champion!=='TBD'&&t.champion!=='BYE')?t.champion:null};
-  let top=key.match(/^Who will top (.+)\?$/);
+function predictionOutcome(t, key){
+  if(!t || !key) return { value: 0, answer: null };
+
+  if(/^Who will be the .* Champion\?$/.test(key)){
+    let champ = (t.champion && t.champion !== 'TBD' && t.champion !== 'BYE') ? t.champion : null;
+    return { value: 100, answer: champ };
+  }
+
+  let top = key.match(/^Who will top (.+)\?$/);
   if(top){
-    let g=top[1],buckets=groupsOf(t);
-    if(!buckets[g])return {value:45,answer:null};
-    let done=(t.matches||[]).filter(m=>(m.group||'Group A')===g).every(m=>m.as!==''&&m.as!=null);
-    if(!done)return {value:45,answer:null};
-    try{return {value:45,answer:getStand(t,g)[0]?.p||null}}catch(e){return {value:45,answer:null}}
+    let g = top[1], buckets = groupsOf(t);
+    if(!buckets[g]) return { value: 45, answer: null };
+    let gMatches = (t.matches || []).filter(m => (m.group || 'Group A') === g);
+    let done = gMatches.length > 0 && gMatches.every(m => m.as !== '' && m.as != null && m.bs !== '' && m.bs != null);
+    if(!done && t.status !== 'COMPLETE' && t.phase !== 'topcut') return { value: 45, answer: null };
+    try {
+      let leader = getStand(t, g)[0]?.p || null;
+      return { value: 45, answer: leader };
+    } catch(e){ return { value: 45, answer: null }; }
   }
-  /* Top Cut questions carry a prefix so a bracket rematch of a group
-     pairing can never be scored against the group result. */
-  let cut=key.match(/^Top Cut · Who wins: (.+) vs (.+)$/);
-  if(cut){
-    let bm=(t.topCutCache?.results||[]).find(x=>(x.p1===cut[1]&&x.p2===cut[2])||(x.p1===cut[2]&&x.p2===cut[1]));
-    if(bm&&+bm.s1!==+bm.s2)return {value:20,answer:+bm.s1>+bm.s2?bm.p1:bm.p2};
-    return {value:20,answer:null};
-  }
-  let vs=key.match(/^Who wins: (.+) vs (.+)$/);
-  if(vs){
-    let [,a,b]=vs;
-    let m=(t.matches||[]).find(x=>(x.a===a&&x.b===b)||(x.a===b&&x.b===a));
-    if(m){
-      if(m.as===''||m.as==null||m.bs===''||m.bs==null||+m.as===+m.bs)return {value:8,answer:null};
-      return {value:8,answer:+m.as>+m.bs?m.a:m.b};
+
+  // Bracket Slot Predictions (draftdex-bpick-wb1, Top Cut Bracket Match · wb1, etc.)
+  let bSlot = key.match(/^(?:draftdex-bpick-|Top Cut Bracket Match · )(.+)$/);
+  if(bSlot){
+    let slotId = bSlot[1];
+    let model = getTournamentTopCutModel(t);
+    let allBracketMatches = [...(model?.wbRounds || []).flatMap(r => r.matches), ...(model?.lbRounds || []).flatMap(r => r.matches), ...(model?.gfMatches || [])];
+    let bm = allBracketMatches.find(m => m.id === slotId);
+    if(bm && bm.isDone && bm.winner && isKnownPlayer(bm.winner)){
+      return { value: 20, answer: bm.winner };
     }
-    /* legacy rows written before the prefix existed */
-    let bm=(t.topCutCache?.results||[]).find(x=>(x.p1===a&&x.p2===b)||(x.p1===b&&x.p2===a));
-    if(bm&&+bm.s1!==+bm.s2)return {value:20,answer:+bm.s1>+bm.s2?bm.p1:bm.p2};
-    return {value:20,answer:null};
+    return { value: 20, answer: null };
   }
-  return {value:0,answer:null}
+
+  /* Top Cut questions carry a prefix so a bracket rematch of a group pairing can never be scored against the group result */
+  let cut = key.match(/^Top Cut · Who wins: (.+) vs (.+)$/);
+  if(cut){
+    let model = getTournamentTopCutModel(t);
+    let allBracketMatches = [...(model?.wbRounds || []).flatMap(r => r.matches), ...(model?.lbRounds || []).flatMap(r => r.matches), ...(model?.gfMatches || [])];
+    let bm = allBracketMatches.find(x => (x.p1 === cut[1] && x.p2 === cut[2]) || (x.p1 === cut[2] && x.p2 === cut[1]));
+    if(bm && bm.isDone && bm.winner) return { value: 20, answer: bm.winner };
+    return { value: 20, answer: null };
+  }
+
+  let vs = key.match(/^Who wins: (.+) vs (.+)$/);
+  if(vs){
+    let [, a, b] = vs;
+    let m = (t.matches || []).find(x => (x.a === a && x.b === b) || (x.a === b && x.b === a));
+    if(m){
+      if(m.as === '' || m.as == null || m.bs === '' || m.bs == null || +m.as === +m.bs) return { value: 8, answer: null };
+      return { value: 8, answer: +m.as > +m.bs ? m.a : m.b };
+    }
+    /* legacy rows */
+    let model = getTournamentTopCutModel(t);
+    let allBracketMatches = [...(model?.wbRounds || []).flatMap(r => r.matches), ...(model?.lbRounds || []).flatMap(r => r.matches), ...(model?.gfMatches || [])];
+    let bm = allBracketMatches.find(x => (x.p1 === a && x.p2 === b) || (x.p1 === b && x.p2 === a));
+    if(bm && bm.isDone && bm.winner) return { value: 20, answer: bm.winner };
+    return { value: 20, answer: null };
+  }
+
+  return { value: 0, answer: null };
 }
+
 function predictionAnswer(t,key){return predictionOutcome(t,key).answer}
 function predictionValue(key,t){return predictionOutcome(t,key).value}
+
 function scorePredictionRows(t,rows,nameOf){
   let totals={},settled=0,pending=0,cache={};
   rows.forEach(r=>{
-    if(!(r.prediction_key in cache))cache[r.prediction_key]=predictionOutcome(t,r.prediction_key);
-    let {answer,value}=cache[r.prediction_key];
-    let who=nameOf(r.user_id);
-    if(!who)return;
-    totals[who]=totals[who]||{pts:0,hits:0,made:0,open:0};
+    if(!(r.prediction_key in cache)) cache[r.prediction_key] = predictionOutcome(t, r.prediction_key);
+    let { answer, value } = cache[r.prediction_key];
+    let who = nameOf ? nameOf(r.user_id) : r.user_id;
+    if(!who) who = r.user_id || 'Player';
+    totals[who] = totals[who] || { pts: 0, hits: 0, made: 0, open: 0 };
     totals[who].made++;
-    if(answer==null){totals[who].open++;pending++;return}
+    if(answer == null){
+      totals[who].open++;
+      pending++;
+      return;
+    }
     settled++;
-    if(answer===r.selection){totals[who].pts+=value;totals[who].hits++}
+    if(answer === r.selection){
+      totals[who].pts += value;
+      totals[who].hits++;
+    }
   });
-  return {rows:Object.entries(totals).map(([u,v])=>({u,...v})).sort((a,b)=>b.pts-a.pts||b.hits-a.hits||a.u.localeCompare(b.u)),settled,pending}
+  return {
+    rows: Object.entries(totals).map(([u, v]) => ({ u, ...v })).sort((a, b) => b.pts - a.pts || b.hits - a.hits || a.u.localeCompare(b.u)),
+    settled,
+    pending
+  };
 }
 
 let predictionScoresCache = {}; // tournament_id -> { rows, accounts, html, timestamp }
+
+function getLocalPredictionRows(tournamentId){
+  if(!tournamentId) return [];
+  let prefix = 'draftdex-pick-' + tournamentId + '-';
+  let rows = [];
+  let userIdentifier = sessionUser?.id || (window.currentAccount?.username || 'local_user');
+  try {
+    for(let i = 0; i < localStorage.length; i++){
+      let k = localStorage.key(i);
+      if(k && k.startsWith(prefix)){
+        let question = k.slice(prefix.length);
+        let selection = localStorage.getItem(k);
+        if(selection){
+          rows.push({
+            user_id: userIdentifier,
+            tournament_id: tournamentId,
+            prediction_key: question,
+            selection: selection
+          });
+        }
+      }
+    }
+  } catch(e){}
+  return rows;
+}
 
 function leaderboardShell(t){
   let cached = predictionScoresCache[t?.id];
@@ -6189,34 +6255,49 @@ function updateLocalPredictionInCache(tournamentId, question, choice, isRemoving
   if(!tournamentId) return;
   if(!predictionScoresCache[tournamentId]) predictionScoresCache[tournamentId] = { rows: [], accounts: [] };
   let rows = predictionScoresCache[tournamentId].rows || [];
-  let userIdentifier = sessionUser?.id || 'local_user';
   let effectiveUsername = window.currentAccount?.username || (sessionUser?.user_metadata?.username) || 'You';
+  let userIdentifier = sessionUser?.id || effectiveUsername;
 
   if(isRemoving){
-    rows = rows.filter(r => !(r.user_id === userIdentifier && r.prediction_key === question));
+    rows = rows.filter(r => !( (r.user_id === userIdentifier || r.user_id === 'local_user') && r.prediction_key === question));
   } else {
-    let existing = rows.find(r => r.user_id === userIdentifier && r.prediction_key === question);
+    let existing = rows.find(r => (r.user_id === userIdentifier || r.user_id === 'local_user') && r.prediction_key === question);
     if(existing){
       existing.selection = choice;
+      existing.user_id = userIdentifier;
     } else {
       rows.push({ user_id: userIdentifier, tournament_id: tournamentId, prediction_key: question, selection: choice });
     }
   }
+
+  // Ensure all local picks from localStorage are incorporated
+  let localRows = getLocalPredictionRows(tournamentId);
+  localRows.forEach(lr => {
+    let matchIdx = rows.findIndex(r => (r.user_id === userIdentifier || r.user_id === 'local_user') && r.prediction_key === lr.prediction_key);
+    if(matchIdx >= 0){
+      rows[matchIdx].selection = lr.selection;
+      rows[matchIdx].user_id = userIdentifier;
+    } else {
+      rows.push({ ...lr, user_id: userIdentifier });
+    }
+  });
+
   predictionScoresCache[tournamentId].rows = rows;
 
   let accounts = predictionScoresCache[tournamentId].accounts || [];
-  let userAcc = accounts.find(a => a.id === userIdentifier);
+  let userAcc = accounts.find(a => a.id === userIdentifier || a.username === effectiveUsername);
   if(!userAcc){
     accounts.push({ id: userIdentifier, username: effectiveUsername });
   } else {
     userAcc.username = effectiveUsername;
+    userAcc.id = userIdentifier;
   }
   predictionScoresCache[tournamentId].accounts = accounts;
 
   let t = ongoingT() || activeT();
   if(t && t.id === tournamentId){
     let byId = Object.fromEntries(accounts.map(a => [a.id, a.username]));
-    let { rows: board, settled, pending } = scorePredictionRows(t, rows, id => byId[id] || (sessionUser && id === sessionUser.id ? effectiveUsername : id));
+    let { rows: board, settled, pending } = scorePredictionRows(t, rows, id => byId[id] || (id === userIdentifier ? effectiveUsername : id));
     let me = window.currentAccount?.username || effectiveUsername;
     let list = board.length ? board.map((x, i) => {
       let player = playerForAccount(x.u) || (profiles[x.u] ? x.u : null) || (x.u === me ? myPlayer() : null);
@@ -6227,7 +6308,13 @@ function updateLocalPredictionInCache(tournamentId, question, choice, isRemoving
         <span class="pts">${x.pts} pts</span></div>`;
     }).join('') : '<p class="sub">No predictions submitted yet. Points are awarded once results come in.</p>';
     let note = `<div class="leader-note">${settled} scored · ${pending} still open. Points follow the sign-in account, so they stay with you across tournaments whether or not you are playing.</div>`;
-    predictionScoresCache[tournamentId].html = `<div class="card-title">Prediction leaders</div>${list}${note}`;
+    let fullHtml = `<div class="card-title">Prediction leaders</div>${list}${note}`;
+    predictionScoresCache[tournamentId].html = fullHtml;
+
+    let host = document.querySelector('#predLeaders');
+    if(host && host.dataset.tournament === tournamentId){
+      host.innerHTML = fullHtml;
+    }
   }
 }
 
@@ -6235,36 +6322,38 @@ async function renderPredictionLeaders(t, forceFresh = false){
   let host = document.querySelector('#predLeaders');
   if(!host || !t) return;
 
-  if(!supabaseClient || !supabaseReady()){
-    let body = host.querySelector('#predLeadersBody');
-    if(body) body.outerHTML = `<p class="sub" id="predLeadersBody">Sign-in is not configured, so prediction points cannot be tracked yet.</p>`;
-    return;
-  }
-
-  let cached = predictionScoresCache[t.id];
-  let now = Date.now();
-  if(!forceFresh && cached && cached.html && (now - (cached.timestamp || 0) < 30000)){
-    host.innerHTML = cached.html;
-    return;
-  }
-
   let rows = [], accounts = [];
-  try{
-    let res = await supabaseClient.from('predictions').select('user_id,prediction_key,selection').eq('tournament_id', t.id);
-    rows = res.data || [];
-    accounts = await loadAccounts();
-  }catch(e){
-    if(!cached?.html){
-      let el = host.querySelector('#predLeadersBody');
-      if(el) el.textContent = 'Prediction scores could not be loaded right now.';
+  let effectiveUsername = window.currentAccount?.username || (sessionUser?.user_metadata?.username) || 'You';
+  let currentUserId = sessionUser?.id || effectiveUsername;
+
+  if(supabaseClient && supabaseReady()){
+    try {
+      let res = await supabaseClient.from('predictions').select('user_id,prediction_key,selection').eq('tournament_id', t.id);
+      rows = res.data || [];
+      accounts = await loadAccounts();
+    } catch(e){
+      console.warn('Prediction scores load error:', e);
     }
-    return;
   }
 
-  if(document.querySelector('#predLeaders')?.dataset.tournament !== t.id) return;
-  let effectiveUsername = window.currentAccount?.username || (sessionUser?.user_metadata?.username) || 'You';
+  // Merge local predictions from localStorage for the active user so points are always calculated
+  let localRows = getLocalPredictionRows(t.id);
+  localRows.forEach(lr => {
+    let matchIdx = rows.findIndex(r => (r.user_id === currentUserId || r.user_id === sessionUser?.id || r.user_id === 'local_user') && r.prediction_key === lr.prediction_key);
+    if(matchIdx >= 0){
+      rows[matchIdx].selection = lr.selection;
+      rows[matchIdx].user_id = currentUserId;
+    } else {
+      rows.push({ ...lr, user_id: currentUserId });
+    }
+  });
+
+  if(!accounts.some(a => a.id === currentUserId || a.username === effectiveUsername)){
+    accounts.push({ id: currentUserId, username: effectiveUsername });
+  }
+
   let byId = Object.fromEntries((accounts || []).map(a => [a.id, a.username]));
-  let { rows: board, settled, pending } = scorePredictionRows(t, rows, id => byId[id] || (sessionUser && id === sessionUser.id ? effectiveUsername : id));
+  let { rows: board, settled, pending } = scorePredictionRows(t, rows, id => byId[id] || (id === currentUserId ? effectiveUsername : id));
   let me = window.currentAccount?.username || effectiveUsername;
   let list = board.length ? board.map((x, i) => {
     let player = playerForAccount(x.u) || (profiles[x.u] ? x.u : null) || (x.u === me ? myPlayer() : null);
@@ -6275,8 +6364,12 @@ async function renderPredictionLeaders(t, forceFresh = false){
       <span class="pts">${x.pts} pts</span></div>`;
   }).join('') : '<p class="sub">No predictions submitted yet. Points are awarded once results come in.</p>';
   let note = `<div class="leader-note">${settled} scored · ${pending} still open. Points follow the sign-in account, so they stay with you across tournaments whether or not you are playing.</div>`;
-  predictionScoresCache[t.id] = { rows, accounts, html: fullHtml, timestamp: now };
-  host.innerHTML = fullHtml;
+  let fullHtml = `<div class="card-title">Prediction leaders</div>${list}${note}`;
+
+  predictionScoresCache[t.id] = { rows, accounts, html: fullHtml, timestamp: Date.now() };
+  if(document.querySelector('#predLeaders')?.dataset.tournament === t.id){
+    host.innerHTML = fullHtml;
+  }
 
   if(board.length && board[0].pts > 0){
     let topUser = board[0].u;
