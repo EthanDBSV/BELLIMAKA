@@ -1078,7 +1078,7 @@ function saveBracket(){let t=activeT();t.bracket=[['bm1a','bm1b'],['bm2a','bm2b'
 
 
 
-try{let savedLeague=JSON.parse(localStorage.getItem('draftdex-tournaments')||'null');if(savedLeague){Object.keys(tournamentData).forEach(k=>delete tournamentData[k]);Object.assign(tournamentData,savedLeague)}let savedProfiles=JSON.parse(localStorage.getItem('draftdex-profiles')||'null');if(savedProfiles)Object.assign(profiles,savedProfiles);let savedRosters=JSON.parse(localStorage.getItem('draftdex-rosters')||'null');if(savedRosters)Object.assign(roster,savedRosters);let savedHistory=JSON.parse(localStorage.getItem('draftdex-history')||'null');if(savedHistory)Object.assign(teamHistory,savedHistory);let savedCovers=JSON.parse(localStorage.getItem('draftdex-teamcovers')||'null');if(savedCovers)Object.assign(teamCovers,savedCovers);let savedPics=JSON.parse(localStorage.getItem('draftdex-profilepics')||'null');if(savedPics)Object.assign(profilePictures,savedPics);let savedPulse=JSON.parse(localStorage.getItem('draftdex-pulsepanels')||'null');if(savedPulse)Object.assign(pulsePanelImages,savedPulse);let savedAccountLinks=JSON.parse(localStorage.getItem('draftdex-accountlinks')||'null');if(savedAccountLinks&&typeof accountLinks!=='undefined')Object.assign(accountLinks,savedAccountLinks);migrateAllBrackets();rebuildAllPlayerStats()}catch(e){}
+try{let savedLeague=JSON.parse(localStorage.getItem('draftdex-tournaments')||'null');if(savedLeague){Object.keys(tournamentData).forEach(k=>delete tournamentData[k]);Object.assign(tournamentData,savedLeague)}let savedProfiles=JSON.parse(localStorage.getItem('draftdex-profiles')||'null');if(savedProfiles)Object.assign(profiles,savedProfiles);let savedRosters=JSON.parse(localStorage.getItem('draftdex-rosters')||'null');if(savedRosters)Object.assign(roster,savedRosters);let savedHistory=JSON.parse(localStorage.getItem('draftdex-history')||'null');if(savedHistory)Object.assign(teamHistory,savedHistory);let savedCovers=JSON.parse(localStorage.getItem('draftdex-teamcovers')||'null');if(savedCovers)Object.assign(teamCovers,savedCovers);let savedPics=JSON.parse(localStorage.getItem('draftdex-profilepics')||'null');if(savedPics)Object.assign(profilePictures,savedPics);let savedPulse=JSON.parse(localStorage.getItem('draftdex-pulsepanels')||'null');if(savedPulse)Object.assign(pulsePanelImages,savedPulse);if(!pulsePanelImages.primetimeSlots)pulsePanelImages.primetimeSlots={};for(let i=0;i<5;i++){let sh=localStorage.getItem('draftdex-primetime-slot-'+i);if(sh&&!pulsePanelImages.primetimeSlots[i])pulsePanelImages.primetimeSlots[i]=sh}let savedAccountLinks=JSON.parse(localStorage.getItem('draftdex-accountlinks')||'null');if(savedAccountLinks&&typeof accountLinks!=='undefined')Object.assign(accountLinks,savedAccountLinks);migrateAllBrackets();rebuildAllPlayerStats()}catch(e){}
 addEventListener('beforeunload',()=>{clearTimeout(syncTimer);flushSync()});
 /* Group-stage and flexible-cut upgrades */
 
@@ -2266,7 +2266,7 @@ async function saveTopCutScore(matchId){
   render();
 }
 
-function applySharedState(data){if(!data||!data.tournaments)return;Object.keys(tournamentData).forEach(k=>delete tournamentData[k]);Object.assign(tournamentData,data.tournaments||{});Object.keys(profiles).forEach(k=>delete profiles[k]);Object.assign(profiles,data.profiles||{});Object.keys(roster).forEach(k=>delete roster[k]);Object.assign(roster,data.roster||{});Object.keys(teamHistory).forEach(k=>delete teamHistory[k]);Object.assign(teamHistory,data.teamHistory||{});Object.keys(teamCovers).forEach(k=>delete teamCovers[k]);Object.assign(teamCovers,data.teamCovers||{});Object.keys(profilePictures).forEach(k=>delete profilePictures[k]);Object.assign(profilePictures,data.profilePictures||{});Object.keys(pulsePanelImages).forEach(k=>delete pulsePanelImages[k]);Object.assign(pulsePanelImages,data.pulsePanelImages||{});cut=data.cut||cut;boardLink=data.boardLink||boardLink;try{localStorage.setItem('draftdex-tournaments',JSON.stringify(tournamentData));localStorage.setItem('draftdex-profiles',JSON.stringify(profiles));localStorage.setItem('draftdex-rosters',JSON.stringify(roster));localStorage.setItem('draftdex-history',JSON.stringify(teamHistory));localStorage.setItem('draftdex-teamcovers',JSON.stringify(teamCovers));localStorage.setItem('draftdex-profilepics',JSON.stringify(profilePictures));localStorage.setItem('draftdex-pulsepanels',JSON.stringify(pulsePanelImages));if(data.cut)localStorage.setItem('draftdex-cut',data.cut);if(data.boardLink)localStorage.setItem('draftdex-board',data.boardLink)}catch(e){}syncTournamentSeasons();migrateAllBrackets();rebuildAllPlayerStats()}
+function applySharedState(data){if(!data||!data.tournaments)return;Object.keys(tournamentData).forEach(k=>delete tournamentData[k]);Object.assign(tournamentData,data.tournaments||{});Object.keys(profiles).forEach(k=>delete profiles[k]);Object.assign(profiles,data.profiles||{});Object.keys(roster).forEach(k=>delete roster[k]);Object.assign(roster,data.roster||{});Object.keys(teamHistory).forEach(k=>delete teamHistory[k]);Object.assign(teamHistory,data.teamHistory||{});Object.keys(teamCovers).forEach(k=>delete teamCovers[k]);Object.assign(teamCovers,data.teamCovers||{});Object.keys(profilePictures).forEach(k=>delete profilePictures[k]);Object.assign(profilePictures,data.profilePictures||{});Object.keys(pulsePanelImages).forEach(k=>delete pulsePanelImages[k]);Object.assign(pulsePanelImages,data.pulsePanelImages||{});if(!pulsePanelImages.primetimeSlots)pulsePanelImages.primetimeSlots={};for(let i=0;i<5;i++){let sh=localStorage.getItem('draftdex-primetime-slot-'+i);if(sh&&!pulsePanelImages.primetimeSlots[i])pulsePanelImages.primetimeSlots[i]=sh}cut=data.cut||cut;boardLink=data.boardLink||boardLink;try{localStorage.setItem('draftdex-tournaments',JSON.stringify(tournamentData));localStorage.setItem('draftdex-profiles',JSON.stringify(profiles));localStorage.setItem('draftdex-rosters',JSON.stringify(roster));localStorage.setItem('draftdex-history',JSON.stringify(teamHistory));localStorage.setItem('draftdex-teamcovers',JSON.stringify(teamCovers));localStorage.setItem('draftdex-profilepics',JSON.stringify(profilePictures));localStorage.setItem('draftdex-pulsepanels',JSON.stringify(pulsePanelImages));if(data.cut)localStorage.setItem('draftdex-cut',data.cut);if(data.boardLink)localStorage.setItem('draftdex-board',data.boardLink)}catch(e){}syncTournamentSeasons();migrateAllBrackets();rebuildAllPlayerStats()}
 window.applySharedState = applySharedState;
 var supabaseInited=false;
 async function initSupabase(){if(!supabaseReady()||supabaseInited)return;supabaseInited=true;supabaseClient=window.supabase.createClient(window.DRAFTDEX_SUPABASE.url,window.DRAFTDEX_SUPABASE.anonKey);let {data:{session}}=await supabaseClient.auth.getSession();await updateSession(session);supabaseClient.auth.onAuthStateChange(async(_,s)=>await updateSession(s));supabaseClient.channel('league-state').on('postgres_changes',{event:'UPDATE',schema:'public',table:'league_state',filter:'id=eq.main'},p=>{let incoming=p.new.data;if(shouldApply(incoming)){applySharedState(incoming);render()}}).subscribe()}
@@ -3169,21 +3169,63 @@ function openCoverEditor(id){let t=tournamentData[id];document.querySelector('#m
 function openRecapPanelCoverEditor(id){let t=tournamentData[id];let currentCover=pulsePanelImages.recap||t?.recapPanelImage||t?.backgroundImage||'';document.querySelector('#modal').innerHTML=`<div class="modal-wrap"><div class="modal" style="max-width:510px"><div class="modal-head"><div><div class="eyebrow">Recap panel cover</div><h2>${t?.name||'Off-Season Recap'}</h2></div><button class="close" onclick="closeModal()">×</button></div><p class="sub">This image is used as the off-season Last Tournament panel cover and carries over across tournaments so your off-season looks consistent.</p><div class="field"><label>Upload panel image</label><input id="recapPanelFile" type="file" accept="image/png,image/jpeg,image/webp" onchange="previewRecapPanelCover(event)"></div><div id="recapPanelPreview" style="height:190px;border-radius:6px;margin-top:14px;background:${currentCover?`url('${currentCover}') center/cover`:'#25252b'}"></div><div class="creator-actions"><button class="btn ghost" onclick="removeRecapPanelCover('${id}')">Remove panel cover</button><button class="btn" onclick="saveRecapPanelCover('${id}')">Save panel cover</button></div></div></div>`}
 function openPulsePanelCoverEditor(id){let t=tournamentData[id];document.querySelector('#modal').innerHTML=`<div class="modal-wrap"><div class="modal" style="max-width:510px"><div class="modal-head"><div><div class="eyebrow">Tournament pulse cover</div><h2>${t.name}</h2></div><button class="close" onclick="closeModal()">×</button></div><p class="sub">This is a league-wide cover for the Tournament Pulse panel and carries over to every tournament until you change it again.</p><div class="field"><label>Upload pulse image</label><input id="pulsePanelFile" type="file" accept="image/png,image/jpeg,image/webp" onchange="previewPulsePanelCover(event)"></div><div id="pulsePanelPreview" style="height:190px;border-radius:6px;margin-top:14px;background:${pulsePanelImages.global||t.backgroundImage?`url('${pulsePanelImages.global||t.backgroundImage}') center/cover`:'#25252b'}"></div><div class="creator-actions"><button class="btn ghost" onclick="removePulsePanelCover('${id}')">Remove panel cover</button><button class="btn" onclick="savePulsePanelCover('${id}')">Save panel cover</button></div></div></div>`}
 
-function previewPrimetimeCover(event){
+function compressImage(file, maxWidth=1200, maxHeight=800, quality=0.82){
+  return new Promise((resolve, reject) => {
+    let reader = new FileReader();
+    reader.onload = function(e){
+      let img = new Image();
+      img.onload = function(){
+        let canvas = document.createElement('canvas');
+        let width = img.width;
+        let height = img.height;
+
+        if(width > maxWidth || height > maxHeight){
+          let ratio = Math.min(maxWidth / width, maxHeight / height);
+          width = Math.round(width * ratio);
+          height = Math.round(height * ratio);
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+        let ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, width, height);
+
+        let dataUrl = canvas.toDataURL('image/jpeg', quality);
+        resolve(dataUrl);
+      };
+      img.onerror = reject;
+      img.src = e.target.result;
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+async function previewPrimetimeCover(event){
   let file=event.target.files[0];
   if(!file)return;
-  if(file.size>2*1024*1024){alert('File size exceeds 2 MB.');return}
-  let reader=new FileReader();
-  reader.onload=function(e){
-    window.pendingPrimetimeCover=e.target.result;
-    let preview=document.querySelector('#primetimePreview');
+  try {
+    let compressedData = await compressImage(file, 1200, 700, 0.82);
+    window.pendingPrimetimeCover = compressedData;
+    let preview = document.querySelector('#primetimePreview');
     if(preview){
-      preview.style.backgroundImage=`url('${e.target.result}')`;
-      preview.style.backgroundSize='cover';
-      preview.style.backgroundPosition='center';
+      preview.style.backgroundImage = `url('${compressedData}')`;
+      preview.style.backgroundSize = 'cover';
+      preview.style.backgroundPosition = 'center';
     }
-  };
-  reader.readAsDataURL(file);
+  } catch(err){
+    let reader=new FileReader();
+    reader.onload=function(e){
+      window.pendingPrimetimeCover=e.target.result;
+      let preview=document.querySelector('#primetimePreview');
+      if(preview){
+        preview.style.backgroundImage=`url('${e.target.result}')`;
+        preview.style.backgroundSize='cover';
+        preview.style.backgroundPosition='center';
+      }
+    };
+    reader.readAsDataURL(file);
+  }
 }
 
 function savePrimetimeCover(slotIdx=0){
@@ -3192,10 +3234,11 @@ function savePrimetimeCover(slotIdx=0){
     pulsePanelImages.primetimeSlots[slotIdx] = window.pendingPrimetimeCover;
     pulsePanelImages.primetime = window.pendingPrimetimeCover;
     pulsePanelImages.global = window.pendingPrimetimeCover;
+    let toSave = window.pendingPrimetimeCover;
     window.pendingPrimetimeCover = null;
     try {
-      localStorage.setItem(`draftdex-primetime-slot-${slotIdx}`, pulsePanelImages.primetimeSlots[slotIdx]);
-      localStorage.setItem('draftdex-primetime-cover', pulsePanelImages.primetime);
+      localStorage.setItem(`draftdex-primetime-slot-${slotIdx}`, toSave);
+      localStorage.setItem('draftdex-primetime-cover', toSave);
     } catch(e){}
     persistLeague();
     closeModal();
@@ -6412,7 +6455,9 @@ function calculateLeagueRecords(){
       let histObj = calculatePlayerOVR(p, simulatedStats);
       if(histObj.ovr > playerPeak){
         playerPeak = histObj.ovr;
-        playerPeakTourney = tObj.name ? `${tObj.name}${tObj.season ? ' (' + tObj.season + ')' : ''}` : (tObj.season || 'Championship Run');
+        let rawSeason = (tObj.season || tObj.name || 'Season 1').replace(/[()]/g, '').trim();
+        let seasonMatch = rawSeason.match(/Season\s*\d+/i);
+        playerPeakTourney = seasonMatch ? seasonMatch[0].replace(/Season\s*/i, 'Season ') : (rawSeason || 'Season 1');
       }
     });
 
@@ -6421,7 +6466,9 @@ function calculateLeagueRecords(){
     if(currentObj.ovr >= playerPeak){
       playerPeak = currentObj.ovr;
       let lastT = tf[tf.length - 1]?.tournament;
-      playerPeakTourney = lastT?.name ? `${lastT.name}${lastT.season ? ' (' + lastT.season + ')' : ''}` : 'Current Season';
+      let rawSeason = (lastT?.season || lastT?.name || 'Season 1').replace(/[()]/g, '').trim();
+      let seasonMatch = rawSeason.match(/Season\s*\d+/i);
+      playerPeakTourney = seasonMatch ? seasonMatch[0].replace(/Season\s*/i, 'Season ') : (rawSeason || 'Season 1');
     }
 
     s.peakOvr = playerPeak;
