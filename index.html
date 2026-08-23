@@ -1270,11 +1270,17 @@ function saveProfile(p){ensureProfile(p);let teamVal=document.querySelector('#ed
 
 
 function groupsOf(t){
-  let count=Math.max(1,Number(t.groupCount||t.groups||1)),names=Array.from({length:count},(_,i)=>'Group '+String.fromCharCode(65+i)),buckets=Object.fromEntries(names.map(x=>[x,[]]));
+  if(t.groups && typeof t.groups === 'object' && !Array.isArray(t.groups)) {
+    return t.groups;
+  }
+  let rawCount = t.groupCount || (typeof t.groups === 'number' ? t.groups : 1);
+  let count = Math.max(1, Number(rawCount) || 1);
+  let names = Array.from({length:count},(_,i)=>'Group '+String.fromCharCode(65+i));
+  let buckets = Object.fromEntries(names.map(x=>[x,[]]));
   if(t.groupAssignments){
     Object.entries(t.groupAssignments).forEach(([p,g])=>{if(buckets[g])buckets[g].push(p)});
-    t.players.filter(p=>!Object.hasOwn(t.groupAssignments,p)).forEach((p,i)=>buckets[names[i%count]].push(p));
-  } else t.players.forEach((p,i)=>buckets[names[i%count]].push(p));
+    (t.players||[]).filter(p=>!Object.hasOwn(t.groupAssignments,p)).forEach((p,i)=>buckets[names[i%count]]?.push(p));
+  } else (t.players||[]).forEach((p,i)=>buckets[names[i%count]]?.push(p));
   return buckets;
 }
 
@@ -2859,9 +2865,16 @@ function matchupOfTheWeekCard(t){
   let face2 = profilePictures[p2] ? `url('${esc(profilePictures[p2])}')` : (teamCovers[p2] ? `url('${esc(teamCovers[p2])}')` : fallbackArt(p2));
   let letter2 = (profilePictures[p2] || teamCovers[p2]) ? '' : esc((p2 || '?')[0]);
 
-  let primetimeCover = pulsePanelImages.primetime || pulsePanelImages.global;
+  let primetimeCover = (pulsePanelImages.primetimeSlots && pulsePanelImages.primetimeSlots[curIdx])
+    || (pulsePanelImages.primetimeBySlot && pulsePanelImages.primetimeBySlot[curIdx]);
   if(!primetimeCover){
-    try { primetimeCover = localStorage.getItem('draftdex-primetime-cover') || ''; } catch(e){}
+    try {
+      primetimeCover = localStorage.getItem(`draftdex-primetime-slot-${curIdx}`)
+        || localStorage.getItem('draftdex-primetime-cover')
+        || pulsePanelImages.primetime
+        || pulsePanelImages.global
+        || '';
+    } catch(e){}
   }
   let cardBg = primetimeCover ? `style="background-image:linear-gradient(135deg,rgba(26,14,20,0.85) 0%,rgba(18,18,26,0.88) 50%,rgba(16,20,32,0.88) 100%),url('${esc(primetimeCover)}');background-size:cover;background-position:center"` : '';
 
@@ -2872,8 +2885,8 @@ function matchupOfTheWeekCard(t){
         <span class="eyebrow" style="color:#ffd166;margin:0;letter-spacing:1px">${esc(item.group || 'PRIMETIME MATCHUP')}</span>
       </div>
       <div style="display:flex;align-items:center;gap:6px">
-        <span class="tag" style="background:#00000070;border:1px solid #ffffff25;font-size:9px;font-weight:900;letter-spacing:1px;color:#ff9fa6;padding:3px 8px;border-radius:4px">${item.isTopCut ? 'TOP CUT PLAYOFFS' : 'PRIMETIME'}</span>
-        ${moderator ? `<button class="cover-edit" style="position:static;padding:3px 8px;font-size:10px" onclick="event.stopPropagation();openPrimetimeCoverEditor()">Edit cover</button>` : ''}
+        <span class="tag" style="background:#00000070;border:1px solid #ffffff25;font-size:9px;font-weight:900;letter-spacing:1px;color:#ff9fa6;padding:3px 8px;border-radius:4px">${item.isTopCut ? 'TOP CUT PLAYOFFS' : `PRIMETIME #${curIdx + 1}`}</span>
+        ${moderator ? `<button class="cover-edit" style="position:static;padding:3px 8px;font-size:10px" onclick="event.stopPropagation();openPrimetimeCoverEditor(${curIdx})">Edit cover</button>` : ''}
       </div>
     </div>
 
@@ -3173,55 +3186,64 @@ function previewPrimetimeCover(event){
   reader.readAsDataURL(file);
 }
 
-function savePrimetimeCover(){
+function savePrimetimeCover(slotIdx=0){
   if(window.pendingPrimetimeCover){
-    pulsePanelImages.primetime=window.pendingPrimetimeCover;
-    pulsePanelImages.global=window.pendingPrimetimeCover;
-    window.pendingPrimetimeCover=null;
-    try{localStorage.setItem('draftdex-primetime-cover',pulsePanelImages.primetime)}catch(e){}
+    if(!pulsePanelImages.primetimeSlots) pulsePanelImages.primetimeSlots = {};
+    pulsePanelImages.primetimeSlots[slotIdx] = window.pendingPrimetimeCover;
+    pulsePanelImages.primetime = window.pendingPrimetimeCover;
+    pulsePanelImages.global = window.pendingPrimetimeCover;
+    window.pendingPrimetimeCover = null;
+    try {
+      localStorage.setItem(`draftdex-primetime-slot-${slotIdx}`, pulsePanelImages.primetimeSlots[slotIdx]);
+      localStorage.setItem('draftdex-primetime-cover', pulsePanelImages.primetime);
+    } catch(e){}
     persistLeague();
     closeModal();
     render();
-  }else{
+  } else {
     closeModal();
   }
 }
 
-function removePrimetimeCover(){
-  delete pulsePanelImages.primetime;
-  delete pulsePanelImages.global;
-  window.pendingPrimetimeCover=null;
-  try{localStorage.removeItem('draftdex-primetime-cover')}catch(e){}
+function removePrimetimeCover(slotIdx=0){
+  if(pulsePanelImages.primetimeSlots) delete pulsePanelImages.primetimeSlots[slotIdx];
+  window.pendingPrimetimeCover = null;
+  try {
+    localStorage.removeItem(`draftdex-primetime-slot-${slotIdx}`);
+  } catch(e){}
   persistLeague();
   closeModal();
   render();
 }
 
-function openPrimetimeCoverEditor(){
+function openPrimetimeCoverEditor(slotIdx=0){
   if(!moderator)return;
-  let currentCover=pulsePanelImages.primetime||pulsePanelImages.global||'';
-  try{
-    let saved=localStorage.getItem('draftdex-primetime-cover');
-    if(saved&&!currentCover)currentCover=saved;
-  }catch(e){}
+  let currentCover = (pulsePanelImages.primetimeSlots && pulsePanelImages.primetimeSlots[slotIdx])
+    || pulsePanelImages.primetime
+    || pulsePanelImages.global
+    || '';
+  try {
+    let saved = localStorage.getItem(`draftdex-primetime-slot-${slotIdx}`) || localStorage.getItem('draftdex-primetime-cover');
+    if(saved && !currentCover) currentCover = saved;
+  } catch(e){}
 
   document.querySelector('#modal').innerHTML=`<div class="modal-wrap"><div class="modal" style="max-width:510px">
     <div class="modal-head">
       <div>
-        <div class="eyebrow">Primetime Broadcast Graphic</div>
-        <h2>Edit Primetime Cover</h2>
+        <div class="eyebrow">Primetime Game #${slotIdx + 1} Graphic</div>
+        <h2>Edit Primetime #${slotIdx + 1} Cover</h2>
       </div>
       <button class="close" onclick="closeModal()">×</button>
     </div>
-    <p class="sub">This image is used as the background graphic for the PRIMETIME Matchup card. It saves globally as the default across all tournaments until you change it.</p>
+    <p class="sub">Set a custom background photo specifically for Primetime Matchup #${slotIdx + 1}. It is saved globally as the default across all tournaments until you change it.</p>
     <div class="field">
-      <label>Upload Primetime Background</label>
+      <label>Upload Game #${slotIdx + 1} Cover</label>
       <input id="primetimeFile" type="file" accept="image/png,image/jpeg,image/webp" onchange="previewPrimetimeCover(event)">
     </div>
     <div id="primetimePreview" style="height:190px;border-radius:6px;margin-top:14px;background:${currentCover?`url('${currentCover}') center/cover`:'#25252b'};border:1px solid #3d232c"></div>
     <div class="creator-actions">
-      <button class="btn ghost" onclick="removePrimetimeCover()">Remove cover</button>
-      <button class="btn" onclick="savePrimetimeCover()">Save cover</button>
+      <button class="btn ghost" onclick="removePrimetimeCover(${slotIdx})">Remove cover</button>
+      <button class="btn" onclick="savePrimetimeCover(${slotIdx})">Save cover</button>
     </div>
   </div></div>`;
 }
@@ -6490,10 +6512,7 @@ function Records(){
         </div>
         <div class="hof-card-holder">
           <span style="font-size:11px;color:#8e8c95">Record Holder:</span>
-          <div style="text-align:right">
-            <b>${records.maxOvr.holders.length?records.maxOvr.holders.map(p=>playerLink(p)).join(', '):'—'}</b>
-            ${records.maxOvr.tournament ? `<div style="font-size:10px;color:#ffd166;font-weight:600;margin-top:1px">${esc(records.maxOvr.tournament)}</div>` : ''}
-          </div>
+          <b>${records.maxOvr.holders.length?records.maxOvr.holders.map(p=>playerLink(p)).join(', '):'—'}${records.maxOvr.tournament ? ` <span style="font-size:10px;color:#ffd166;font-weight:700">(${esc(records.maxOvr.tournament)})</span>` : ''}</b>
         </div>
       </div>
 
