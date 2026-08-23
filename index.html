@@ -601,101 +601,244 @@ function esc(s){return String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').
 function jsArg(s){return esc(String(s??'').replace(/\\/g,'\\\\').replace(/'/g,"\\'"))}
 function hueOf(s){let h=0;for(let i=0;i<String(s).length;i++)h=(h*31+String(s).charCodeAt(i))%360;return h}
 function fallbackArt(label){let h=hueOf(label||'team');return `linear-gradient(135deg,hsl(${h} 42% 26%),hsl(${(h+38)%360} 38% 11%))`}
-function pokeSprite(name){ return monSprite(name); }
-function monSprite(name){
-  let raw = String(name || '').toLowerCase().trim();
-  
-  const overrides = {
-    'paldean tauros': 'tauros-paldeacombat',
-    'tauros-paldea': 'tauros-paldeacombat',
-    'tauros-paldean': 'tauros-paldeacombat',
-    'paldean tauros combat': 'tauros-paldeacombat',
-    'paldean tauros-combat': 'tauros-paldeacombat',
-    'paldean tauros blaze': 'tauros-paldeablaze',
-    'paldean tauros-blaze': 'tauros-paldeablaze',
-    'paldean tauros aqua': 'tauros-paldeaaqua',
-    'paldean tauros-aqua': 'tauros-paldeaaqua',
-    'chi-yu': 'chiyu',
-    'chiyu': 'chiyu',
-    'chien-pao': 'chienpao',
-    'chienpao': 'chienpao',
-    'ting-lu': 'tinglu',
-    'tinglu': 'tinglu',
-    'wo-chien': 'wochien',
-    'wochien': 'wochien',
-    'type: null': 'typenull',
-    'type null': 'typenull',
-    'typenull': 'typenull',
-    'mr. mime': 'mrmime',
-    'mr mime': 'mrmime',
-    'mrmime': 'mrmime',
-    'mr. rime': 'mrrime',
-    'mr rime': 'mrrime',
-    'mrrime': 'mrrime',
-    'mime jr.': 'mimejr',
-    'mime jr': 'mimejr',
-    'mimejr': 'mimejr',
-    'ho-oh': 'hooh',
-    'hooh': 'hooh',
-    'porygon-z': 'porygonz',
-    'porygonz': 'porygonz',
-    'jangmo-o': 'jangmoo',
-    'jangmoo': 'jangmoo',
-    'hakamo-o': 'hakamoo',
-    'hakamoo': 'hakamoo',
-    'kommo-o': 'kommoo',
-    'kommoo': 'kommoo',
-    'bloodmoon ursaluna': 'ursaluna-bloodmoon',
-    'ursaluna-bloodmoon': 'ursaluna-bloodmoon',
-    'urshifu-rapid-strike': 'urshifu-rapidstrike',
-    'urshifu-single-strike': 'urshifu'
+function resolvePokemonData(rawInput) {
+  let raw = String(rawInput || '').trim();
+  if(!raw) return { name: '', slug: '', sprite: 'https://play.pokemonshowdown.com/sprites/dex/substitute.png' };
+
+  let s = raw.toLowerCase()
+    .replace(/[.'':%]/g, '')
+    .replace(/\s*\(\d+.*?\)$/, '') // remove point annotations like (18) or (18 pts)
+    .trim();
+
+  // Common typos & nicknames normalization
+  s = s.replace(/\barch+i?nine\b/g, 'arcanine');
+  s = s.replace(/\barcanine-h\b/g, 'arcanine-hisui');
+  s = s.replace(/\bh-arcanine\b/g, 'arcanine-hisui');
+  s = s.replace(/\blando\b/g, 'landorus');
+  s = s.replace(/\bthundy\b/g, 'thundurus');
+  s = s.replace(/\btorny\b/g, 'tornadus');
+  s = s.replace(/\benam\b/g, 'enamorus');
+
+  // Specific multi-word or special Showdown sprite overrides
+  const directMap = {
+    'chi-yu': { slug: 'chiyu', name: 'Chi-Yu' },
+    'chiyu': { slug: 'chiyu', name: 'Chi-Yu' },
+    'chien-pao': { slug: 'chienpao', name: 'Chien-Pao' },
+    'chienpao': { slug: 'chienpao', name: 'Chien-Pao' },
+    'ting-lu': { slug: 'tinglu', name: 'Ting-Lu' },
+    'tinglu': { slug: 'tinglu', name: 'Ting-Lu' },
+    'wo-chien': { slug: 'wochien', name: 'Wo-Chien' },
+    'wochien': { slug: 'wochien', name: 'Wo-Chien' },
+    'type null': { slug: 'typenull', name: 'Type: Null' },
+    'typenull': { slug: 'typenull', name: 'Type: Null' },
+    'type-null': { slug: 'typenull', name: 'Type: Null' },
+    'mr mime': { slug: 'mrmime', name: 'Mr. Mime' },
+    'mrmime': { slug: 'mrmime', name: 'Mr. Mime' },
+    'mr rime': { slug: 'mrrime', name: 'Mr. Rime' },
+    'mrrime': { slug: 'mrrime', name: 'Mr. Rime' },
+    'mime jr': { slug: 'mimejr', name: 'Mime Jr.' },
+    'mimejr': { slug: 'mimejr', name: 'Mime Jr.' },
+    'ho-oh': { slug: 'hooh', name: 'Ho-Oh' },
+    'hooh': { slug: 'hooh', name: 'Ho-Oh' },
+    'porygon-z': { slug: 'porygonz', name: 'Porygon-Z' },
+    'porygonz': { slug: 'porygonz', name: 'Porygon-Z' },
+    'jangmo-o': { slug: 'jangmoo', name: 'Jangmo-o' },
+    'jangmoo': { slug: 'jangmoo', name: 'Jangmo-o' },
+    'hakamo-o': { slug: 'hakamoo', name: 'Hakamo-o' },
+    'hakamoo': { slug: 'hakamoo', name: 'Hakamo-o' },
+    'kommo-o': { slug: 'kommoo', name: 'Kommo-o' },
+    'kommoo': { slug: 'kommoo', name: 'Kommo-o' },
+    'bloodmoon ursaluna': { slug: 'ursaluna-bloodmoon', name: 'Bloodmoon Ursaluna' },
+    'ursaluna-bloodmoon': { slug: 'ursaluna-bloodmoon', name: 'Bloodmoon Ursaluna' },
+    'ursaluna bloodmoon': { slug: 'ursaluna-bloodmoon', name: 'Bloodmoon Ursaluna' },
+    'bm-ursaluna': { slug: 'ursaluna-bloodmoon', name: 'Bloodmoon Ursaluna' },
+    'ursaluna-bm': { slug: 'ursaluna-bloodmoon', name: 'Bloodmoon Ursaluna' },
+    'urshifu-rapid-strike': { slug: 'urshifu-rapidstrike', name: 'Urshifu-Rapid-Strike' },
+    'urshifu-rapidstrike': { slug: 'urshifu-rapidstrike', name: 'Urshifu-Rapid-Strike' },
+    'urshifu-rs': { slug: 'urshifu-rapidstrike', name: 'Urshifu-Rapid-Strike' },
+    'urshifu (rs)': { slug: 'urshifu-rapidstrike', name: 'Urshifu-Rapid-Strike' },
+    'urshifu-r': { slug: 'urshifu-rapidstrike', name: 'Urshifu-Rapid-Strike' },
+    'urshifu (r)': { slug: 'urshifu-rapidstrike', name: 'Urshifu-Rapid-Strike' },
+    'rs-urshifu': { slug: 'urshifu-rapidstrike', name: 'Urshifu-Rapid-Strike' },
+    'urshifu-single-strike': { slug: 'urshifu', name: 'Urshifu-Single-Strike' },
+    'urshifu-singlestrike': { slug: 'urshifu', name: 'Urshifu-Single-Strike' },
+    'urshifu-ss': { slug: 'urshifu', name: 'Urshifu-Single-Strike' },
+    'urshifu (ss)': { slug: 'urshifu', name: 'Urshifu-Single-Strike' },
+    'urshifu-s': { slug: 'urshifu', name: 'Urshifu-Single-Strike' },
+    'urshifu (s)': { slug: 'urshifu', name: 'Urshifu-Single-Strike' },
+    'ss-urshifu': { slug: 'urshifu', name: 'Urshifu-Single-Strike' }
   };
 
-  if(overrides[raw]) return `https://play.pokemonshowdown.com/sprites/gen5/${overrides[raw]}.png`;
-
-  if(raw.startsWith('mega ')){
-    let base = raw.slice(5).replace(/[.'':%]/g, '').replace(/[\s-]/g, '');
-    if(base === 'charizardx') return 'https://play.pokemonshowdown.com/sprites/gen5/charizard-megax.png';
-    if(base === 'charizardy') return 'https://play.pokemonshowdown.com/sprites/gen5/charizard-megay.png';
-    if(base === 'mewtwox') return 'https://play.pokemonshowdown.com/sprites/gen5/mewtwo-megax.png';
-    if(base === 'mewtwoy') return 'https://play.pokemonshowdown.com/sprites/gen5/mewtwo-megay.png';
-    return `https://play.pokemonshowdown.com/sprites/gen5/${base}-mega.png`;
-  }
-  if(raw.startsWith('primal ')){
-    let base = raw.slice(7).replace(/[.'':%]/g, '').replace(/[\s-]/g, '');
-    return `https://play.pokemonshowdown.com/sprites/gen5/${base}-primal.png`;
+  if(directMap[s]){
+    let res = directMap[s];
+    return { name: res.name, slug: res.slug, sprite: `https://play.pokemonshowdown.com/sprites/gen5/${res.slug}.png` };
   }
 
-  if(raw.startsWith('alolan ')){
-    let base = raw.slice(7).replace(/[.'':%]/g, '').replace(/[\s-]/g, '');
-    return `https://play.pokemonshowdown.com/sprites/gen5/${base}-alola.png`;
-  }
-  if(raw.startsWith('galarian ')){
-    let base = raw.slice(9).replace(/[.'':%]/g, '').replace(/[\s-]/g, '');
-    return `https://play.pokemonshowdown.com/sprites/gen5/${base}-galar.png`;
-  }
-  if(raw.startsWith('hisuian ')){
-    let base = raw.slice(8).replace(/[.'':%]/g, '').replace(/[\s-]/g, '');
-    return `https://play.pokemonshowdown.com/sprites/gen5/${base}-hisui.png`;
-  }
-  if(raw.startsWith('paldean ')){
-    let base = raw.slice(8).replace(/[.'':%]/g, '').replace(/[\s-]/g, '');
-    if(base === 'tauros') return `https://play.pokemonshowdown.com/sprites/gen5/tauros-paldeacombat.png`;
-    return `https://play.pokemonshowdown.com/sprites/gen5/${base}-paldea.png`;
+  // Rotom forms
+  let rotomMatch = s.match(/^rotom[- ]?([whmfs]|wash|heat|mow|frost|fan|spin)$|^([whmfs]|wash|heat|mow|frost|fan|spin)[- ]rotom$/);
+  if(rotomMatch){
+    let f = (rotomMatch[1] || rotomMatch[2]).toLowerCase();
+    let map = { w: 'wash', wash: 'wash', h: 'heat', heat: 'heat', m: 'mow', mow: 'mow', f: 'frost', frost: 'frost', s: 'fan', fan: 'fan', spin: 'fan' };
+    let form = map[f] || 'wash';
+    let cap = form.charAt(0).toUpperCase() + form.slice(1);
+    return { name: `Rotom-${cap}`, slug: `rotom-${form}`, sprite: `https://play.pokemonshowdown.com/sprites/gen5/rotom-${form}.png` };
   }
 
+  // Ogerpon masks
+  let ogerponMatch = s.match(/^ogerpon[- ]?([whct]|wellspring|hearthflame|cornerstone|teal|well|hearth|corner)$|^([whct]|wellspring|hearthflame|cornerstone|teal|well|hearth|corner)[- ]ogerpon$/);
+  if(ogerponMatch){
+    let f = (ogerponMatch[1] || ogerponMatch[2]).toLowerCase();
+    if(f === 'w' || f === 'wellspring' || f === 'well') return { name: 'Ogerpon-Wellspring', slug: 'ogerpon-wellspring', sprite: 'https://play.pokemonshowdown.com/sprites/gen5/ogerpon-wellspring.png' };
+    if(f === 'h' || f === 'hearthflame' || f === 'hearth') return { name: 'Ogerpon-Hearthflame', slug: 'ogerpon-hearthflame', sprite: 'https://play.pokemonshowdown.com/sprites/gen5/ogerpon-hearthflame.png' };
+    if(f === 'c' || f === 'cornerstone' || f === 'corner') return { name: 'Ogerpon-Cornerstone', slug: 'ogerpon-cornerstone', sprite: 'https://play.pokemonshowdown.com/sprites/gen5/ogerpon-cornerstone.png' };
+    return { name: 'Ogerpon', slug: 'ogerpon', sprite: 'https://play.pokemonshowdown.com/sprites/gen5/ogerpon.png' };
+  }
+
+  // Calyrex forms
+  let calyrexMatch = s.match(/^calyrex[- ]?([si]|shadow|ice|shadow-rider|ice-rider)$|^([si]|shadow|ice)[- ]calyrex$/);
+  if(calyrexMatch){
+    let f = (calyrexMatch[1] || calyrexMatch[2]).toLowerCase();
+    if(f === 's' || f.startsWith('shadow')) return { name: 'Calyrex-Shadow', slug: 'calyrex-shadow', sprite: 'https://play.pokemonshowdown.com/sprites/gen5/calyrex-shadow.png' };
+    if(f === 'i' || f.startsWith('ice')) return { name: 'Calyrex-Ice', slug: 'calyrex-ice', sprite: 'https://play.pokemonshowdown.com/sprites/gen5/calyrex-ice.png' };
+  }
+
+  // Kyurem forms
+  let kyuremMatch = s.match(/^kyurem[- ]?([bw]|black|white)$|^([bw]|black|white)[- ]kyurem$/);
+  if(kyuremMatch){
+    let f = (kyuremMatch[1] || kyuremMatch[2]).toLowerCase();
+    let form = (f === 'b' || f === 'black') ? 'black' : 'white';
+    let cap = (form === 'black') ? 'Black' : 'White';
+    return { name: `Kyurem-${cap}`, slug: `kyurem-${form}`, sprite: `https://play.pokemonshowdown.com/sprites/gen5/kyurem-${form}.png` };
+  }
+
+  // Deoxys forms
+  let deoxysMatch = s.match(/^deoxys[- ]?([ads]|attack|defense|speed)$|^([ads]|attack|defense|speed)[- ]deoxys$/);
+  if(deoxysMatch){
+    let f = (deoxysMatch[1] || deoxysMatch[2]).toLowerCase();
+    let map = { a: 'attack', attack: 'attack', d: 'defense', defense: 'defense', s: 'speed', speed: 'speed' };
+    let form = map[f] || 'attack';
+    let cap = form.charAt(0).toUpperCase() + form.slice(1);
+    return { name: `Deoxys-${cap}`, slug: `deoxys-${form}`, sprite: `https://play.pokemonshowdown.com/sprites/gen5/deoxys-${form}.png` };
+  }
+
+  // Necrozma forms
+  let necrozmaMatch = s.match(/^necrozma[- ]?(dm|dw|dusk|dawn|dusk-mane|dawn-wings|ultra)$|^(dm|dw|dusk|dawn)[- ]necrozma$/);
+  if(necrozmaMatch){
+    let f = (necrozmaMatch[1] || necrozmaMatch[2]).toLowerCase();
+    if(f === 'dm' || f.startsWith('dusk')) return { name: 'Necrozma-Dusk-Mane', slug: 'necrozma-duskmane', sprite: 'https://play.pokemonshowdown.com/sprites/gen5/necrozma-duskmane.png' };
+    if(f === 'dw' || f.startsWith('dawn')) return { name: 'Necrozma-Dawn-Wings', slug: 'necrozma-dawnwings', sprite: 'https://play.pokemonshowdown.com/sprites/gen5/necrozma-dawnwings.png' };
+    if(f === 'ultra') return { name: 'Ultra Necrozma', slug: 'necrozma-ultra', sprite: 'https://play.pokemonshowdown.com/sprites/gen5/necrozma-ultra.png' };
+  }
+
+  // Tauros Paldea Breeds
+  if(s.includes('tauros') && (s.includes('paldea') || s.includes('aqua') || s.includes('blaze') || s.includes('combat') || s.includes('water') || s.includes('fire') || s.startsWith('p-') || s.endsWith('-p'))){
+    if(s.includes('aqua') || s.includes('water')) return { name: 'Paldean Tauros (Aqua)', slug: 'tauros-paldeaaqua', sprite: 'https://play.pokemonshowdown.com/sprites/gen5/tauros-paldeaaqua.png' };
+    if(s.includes('blaze') || s.includes('fire')) return { name: 'Paldean Tauros (Blaze)', slug: 'tauros-paldeablaze', sprite: 'https://play.pokemonshowdown.com/sprites/gen5/tauros-paldeablaze.png' };
+    return { name: 'Paldean Tauros', slug: 'tauros-paldeacombat', sprite: 'https://play.pokemonshowdown.com/sprites/gen5/tauros-paldeacombat.png' };
+  }
+
+  // Helper: check prefix/suffix for generic forms (H, A, G, P, T, I, M, O, C, F)
+  let cleanName = s.replace(/[()[\]]/g, '').trim();
+
+  // Pattern: [Prefix]-Base OR Base-[Suffix] OR "Hisuian Base"
+  // Form tags: H/Hisui, A/Alola, G/Galar, P/Paldea, T/Therian, I/Incarnate, M/Mega, O/Origin, C/Crowned, F/Female
+  let formType = null, baseMon = cleanName;
+
+  // 1. Check prefixes like "h-arcanine", "hisui-arcanine", "hisuian arcanine", "t-thundurus", "mega-scizor"
+  let prefixMatch = cleanName.match(/^(h|hisui|hisuian|a|alola|alolan|g|galar|galarian|p|paldea|paldean|t|therian|i|incarnate|m|mega|o|origin|c|crowned)[- ]+(.+)$/i);
+  if(prefixMatch){
+    formType = prefixMatch[1].toLowerCase();
+    baseMon = prefixMatch[2].trim();
+  } else {
+    // 2. Check suffixes like "arcanine-h", "arcanine (h)", "arcanine-hisui", "thundurus-t", "scizor-m", "indeedee-f"
+    let suffixMatch = cleanName.match(/^(.+?)[- ]+(h|hisui|hisuian|a|alola|alolan|g|galar|galarian|p|paldea|paldean|t|therian|i|incarnate|m|mega|o|origin|c|crowned|f|female)$/i);
+    if(suffixMatch){
+      baseMon = suffixMatch[1].trim();
+      formType = suffixMatch[2].toLowerCase();
+    }
+  }
+
+  // Normalize base name capitalization
+  let baseClean = baseMon.replace(/[\s-]/g, '');
+  let basePretty = baseMon.split(/[\s-]+/).map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+
+  if(formType){
+    // Hisuian
+    if(formType === 'h' || formType === 'hisui' || formType === 'hisuian'){
+      return { name: `Hisuian ${basePretty}`, slug: `${baseClean}-hisui`, sprite: `https://play.pokemonshowdown.com/sprites/gen5/${baseClean}-hisui.png` };
+    }
+    // Alolan
+    if(formType === 'a' || formType === 'alola' || formType === 'alolan'){
+      return { name: `Alolan ${basePretty}`, slug: `${baseClean}-alola`, sprite: `https://play.pokemonshowdown.com/sprites/gen5/${baseClean}-alola.png` };
+    }
+    // Galarian
+    if(formType === 'g' || formType === 'galar' || formType === 'galarian'){
+      return { name: `Galarian ${basePretty}`, slug: `${baseClean}-galar`, sprite: `https://play.pokemonshowdown.com/sprites/gen5/${baseClean}-galar.png` };
+    }
+    // Paldean
+    if(formType === 'p' || formType === 'paldea' || formType === 'paldean'){
+      if(baseClean === 'tauros') return { name: 'Paldean Tauros', slug: 'tauros-paldeacombat', sprite: 'https://play.pokemonshowdown.com/sprites/gen5/tauros-paldeacombat.png' };
+      return { name: `Paldean ${basePretty}`, slug: `${baseClean}-paldea`, sprite: `https://play.pokemonshowdown.com/sprites/gen5/${baseClean}-paldea.png` };
+    }
+    // Therian
+    if(formType === 't' || formType === 'therian'){
+      return { name: `${basePretty}-Therian`, slug: `${baseClean}-therian`, sprite: `https://play.pokemonshowdown.com/sprites/gen5/${baseClean}-therian.png` };
+    }
+    // Incarnate
+    if(formType === 'i' || formType === 'incarnate'){
+      return { name: `${basePretty}-Incarnate`, slug: `${baseClean}`, sprite: `https://play.pokemonshowdown.com/sprites/gen5/${baseClean}.png` };
+    }
+    // Mega
+    if(formType === 'm' || formType === 'mega'){
+      if(baseClean === 'charizardx') return { name: 'Mega Charizard X', slug: 'charizard-megax', sprite: 'https://play.pokemonshowdown.com/sprites/gen5/charizard-megax.png' };
+      if(baseClean === 'charizardy') return { name: 'Mega Charizard Y', slug: 'charizard-megay', sprite: 'https://play.pokemonshowdown.com/sprites/gen5/charizard-megay.png' };
+      if(baseClean === 'mewtwox') return { name: 'Mega Mewtwo X', slug: 'mewtwo-megax', sprite: 'https://play.pokemonshowdown.com/sprites/gen5/mewtwo-megax.png' };
+      if(baseClean === 'mewtwoy') return { name: 'Mega Mewtwo Y', slug: 'mewtwo-megay', sprite: 'https://play.pokemonshowdown.com/sprites/gen5/mewtwo-megay.png' };
+      return { name: `Mega ${basePretty}`, slug: `${baseClean}-mega`, sprite: `https://play.pokemonshowdown.com/sprites/gen5/${baseClean}-mega.png` };
+    }
+    // Origin
+    if(formType === 'o' || formType === 'origin'){
+      return { name: `${basePretty}-Origin`, slug: `${baseClean}-origin`, sprite: `https://play.pokemonshowdown.com/sprites/gen5/${baseClean}-origin.png` };
+    }
+    // Crowned
+    if(formType === 'c' || formType === 'crowned'){
+      return { name: `${basePretty}-Crowned`, slug: `${baseClean}-crowned`, sprite: `https://play.pokemonshowdown.com/sprites/gen5/${baseClean}-crowned.png` };
+    }
+    // Female
+    if(formType === 'f' || formType === 'female'){
+      return { name: `${basePretty}-F`, slug: `${baseClean}-f`, sprite: `https://play.pokemonshowdown.com/sprites/gen5/${baseClean}-f.png` };
+    }
+  }
+
+  // Paradox & Tapu multi-word checks without hyphens in Showdown sprites
   const noHyphenWords = [
     'great tusk','scream tail','brute bonnet','flutter mane','slither wing','sandy shocks','roaring moon',
     'walking wake','gouging fire','raging bolt','iron treads','iron bundle','iron hands','iron jugulis',
     'iron moth','iron thorns','iron valiant','iron leaves','iron boulder','iron crown','tapu koko',
     'tapu lele','tapu bulu','tapu fini'
   ];
-  if(noHyphenWords.includes(raw)){
-    return `https://play.pokemonshowdown.com/sprites/gen5/${raw.replace(/\s+/g, '')}.png`;
+  if(noHyphenWords.includes(s)){
+    let pretty = s.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+    let slug = s.replace(/\s+/g, '');
+    return { name: pretty, slug, sprite: `https://play.pokemonshowdown.com/sprites/gen5/${slug}.png` };
   }
 
-  let slug = raw.replace(/[.'':%]/g, '').replace(/\s+/g, '-');
-  return `https://play.pokemonshowdown.com/sprites/gen5/${slug}.png`;
+  // General default fallback
+  let slug = s.replace(/\s+/g, '-');
+  let pretty = raw.replace(/\s*\(\d+.*?\)$/, '').trim();
+  return { name: pretty, slug, sprite: `https://play.pokemonshowdown.com/sprites/gen5/${slug}.png` };
+}
+
+function formatPokemonDisplayName(name) {
+  return resolvePokemonData(name).name || name;
+}
+
+function pokeSprite(name) {
+  return resolvePokemonData(name).sprite;
+}
+
+function monSprite(name) {
+  return resolvePokemonData(name).sprite;
 }
 
 window.onerror = function(msg, url, line, col, error) {
@@ -4753,99 +4896,7 @@ function jsArg(s){return esc(String(s??'').replace(/\\/g,'\\\\').replace(/'/g,"\
 function hueOf(s){let h=0;for(let i=0;i<String(s).length;i++)h=(h*31+String(s).charCodeAt(i))%360;return h}
 function fallbackArt(label){let h=hueOf(label||'team');return `linear-gradient(135deg,hsl(${h} 42% 26%),hsl(${(h+38)%360} 38% 11%))`}
 function monSprite(name){
-  let raw = String(name || '').toLowerCase().trim();
-  
-  const overrides = {
-    'paldean tauros': 'tauros-paldeacombat',
-    'tauros-paldea': 'tauros-paldeacombat',
-    'tauros-paldean': 'tauros-paldeacombat',
-    'paldean tauros combat': 'tauros-paldeacombat',
-    'paldean tauros-combat': 'tauros-paldeacombat',
-    'paldean tauros blaze': 'tauros-paldeablaze',
-    'paldean tauros-blaze': 'tauros-paldeablaze',
-    'paldean tauros aqua': 'tauros-paldeaaqua',
-    'paldean tauros-aqua': 'tauros-paldeaaqua',
-    'chi-yu': 'chiyu',
-    'chiyu': 'chiyu',
-    'chien-pao': 'chienpao',
-    'chienpao': 'chienpao',
-    'ting-lu': 'tinglu',
-    'tinglu': 'tinglu',
-    'wo-chien': 'wochien',
-    'wochien': 'wochien',
-    'type: null': 'typenull',
-    'type null': 'typenull',
-    'typenull': 'typenull',
-    'mr. mime': 'mrmime',
-    'mr mime': 'mrmime',
-    'mrmime': 'mrmime',
-    'mr. rime': 'mrrime',
-    'mr rime': 'mrrime',
-    'mrrime': 'mrrime',
-    'mime jr.': 'mimejr',
-    'mime jr': 'mimejr',
-    'mimejr': 'mimejr',
-    'ho-oh': 'hooh',
-    'hooh': 'hooh',
-    'porygon-z': 'porygonz',
-    'porygonz': 'porygonz',
-    'jangmo-o': 'jangmoo',
-    'jangmoo': 'jangmoo',
-    'hakamo-o': 'hakamoo',
-    'hakamoo': 'hakamoo',
-    'kommo-o': 'kommoo',
-    'kommoo': 'kommoo',
-    'bloodmoon ursaluna': 'ursaluna-bloodmoon',
-    'ursaluna-bloodmoon': 'ursaluna-bloodmoon',
-    'urshifu-rapid-strike': 'urshifu-rapidstrike',
-    'urshifu-single-strike': 'urshifu'
-  };
-
-  if(overrides[raw]) return `https://play.pokemonshowdown.com/sprites/gen5/${overrides[raw]}.png`;
-
-  if(raw.startsWith('mega ')){
-    let base = raw.slice(5).replace(/[.'':%]/g, '').replace(/[\s-]/g, '');
-    if(base === 'charizardx') return 'https://play.pokemonshowdown.com/sprites/gen5/charizard-megax.png';
-    if(base === 'charizardy') return 'https://play.pokemonshowdown.com/sprites/gen5/charizard-megay.png';
-    if(base === 'mewtwox') return 'https://play.pokemonshowdown.com/sprites/gen5/mewtwo-megax.png';
-    if(base === 'mewtwoy') return 'https://play.pokemonshowdown.com/sprites/gen5/mewtwo-megay.png';
-    return `https://play.pokemonshowdown.com/sprites/gen5/${base}-mega.png`;
-  }
-  if(raw.startsWith('primal ')){
-    let base = raw.slice(7).replace(/[.'':%]/g, '').replace(/[\s-]/g, '');
-    return `https://play.pokemonshowdown.com/sprites/gen5/${base}-primal.png`;
-  }
-
-  if(raw.startsWith('alolan ')){
-    let base = raw.slice(7).replace(/[.'':%]/g, '').replace(/[\s-]/g, '');
-    return `https://play.pokemonshowdown.com/sprites/gen5/${base}-alola.png`;
-  }
-  if(raw.startsWith('galarian ')){
-    let base = raw.slice(9).replace(/[.'':%]/g, '').replace(/[\s-]/g, '');
-    return `https://play.pokemonshowdown.com/sprites/gen5/${base}-galar.png`;
-  }
-  if(raw.startsWith('hisuian ')){
-    let base = raw.slice(8).replace(/[.'':%]/g, '').replace(/[\s-]/g, '');
-    return `https://play.pokemonshowdown.com/sprites/gen5/${base}-hisui.png`;
-  }
-  if(raw.startsWith('paldean ')){
-    let base = raw.slice(8).replace(/[.'':%]/g, '').replace(/[\s-]/g, '');
-    if(base === 'tauros') return `https://play.pokemonshowdown.com/sprites/gen5/tauros-paldeacombat.png`;
-    return `https://play.pokemonshowdown.com/sprites/gen5/${base}-paldea.png`;
-  }
-
-  const noHyphenWords = [
-    'great tusk','scream tail','brute bonnet','flutter mane','slither wing','sandy shocks','roaring moon',
-    'walking wake','gouging fire','raging bolt','iron treads','iron bundle','iron hands','iron jugulis',
-    'iron moth','iron thorns','iron valiant','iron leaves','iron boulder','iron crown','tapu koko',
-    'tapu lele','tapu bulu','tapu fini'
-  ];
-  if(noHyphenWords.includes(raw)){
-    return `https://play.pokemonshowdown.com/sprites/gen5/${raw.replace(/\s+/g, '')}.png`;
-  }
-
-  let slug = raw.replace(/[.'':%]/g, '').replace(/\s+/g, '-');
-  return `https://play.pokemonshowdown.com/sprites/gen5/${slug}.png`;
+  return resolvePokemonData(name).sprite;
 }
 /* ------------------------------------------------------------ 1. TEAM COVERS: compress uploads ------------------------------------------------------------
    Same editor, same teamCovers storage — only the file handler
@@ -9288,7 +9339,7 @@ function parseDraftBoardData(rawText){
         if(!map[tierKey]){
           map[tierKey] = { id: 'tier-' + cost, name: `${cost} Points`, cost, pokemon: [] };
         }
-        let clean = mon.replace(/\s*\(\d+.*?\)$/, '').trim();
+        let clean = formatPokemonDisplayName(mon.replace(/\s*\(\d+.*?\)$/, '').trim());
         if(clean && !map[tierKey].pokemon.includes(clean)){
           map[tierKey].pokemon.push(clean);
         }
@@ -9313,7 +9364,7 @@ function parseDraftBoardData(rawText){
     for(let r = 1; r < grid.length; r++){
       let val = grid[r]?.[colIdx];
       if(val && isNaN(+val) && val.length >= 2){
-        let cleaned = val.replace(/\s*\(\d+.*?\)$/, '').trim();
+        let cleaned = formatPokemonDisplayName(val.replace(/\s*\(\d+.*?\)$/, '').trim());
         if(cleaned && !mons.includes(cleaned)){
           mons.push(cleaned);
         }
