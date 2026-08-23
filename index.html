@@ -3734,6 +3734,12 @@ function getTournamentOddsChecksum(t){
   });
 }
 
+function isOddsDarkHorse(x, i, totalCount = 8){
+  if(!x || i < 3) return false;
+  let cutoffRank = Math.max(5, Math.ceil(totalCount * 0.6));
+  return (x.champPct >= 3.5) || (i < cutoffRank && x.champPct >= 2.0) || (x.topCutPct >= 14 && x.champPct >= 1.5);
+}
+
 function getOrComputeTournamentOdds(t){
   if(!t || !t.players || !t.players.length) return { data: {}, sim: {} };
   let key = getTournamentOddsChecksum(t);
@@ -3754,6 +3760,22 @@ function getOrComputeTournamentOdds(t){
   });
 
   t.oddsSnapshot = { key, data, sim, updatedAt: Date.now() };
+
+  // If this simulation is running before any match has a score recorded, record preTournamentOdds
+  let isPreTournament = !(t.matches || []).some(m => m.as !== '' && m.as != null);
+  if(isPreTournament || !t.preTournamentOdds){
+    let list = Object.values(sim).sort((a, b) => b.champPct - a.champPct || b.topCutPct - a.topCutPct);
+    let darkHorses = [];
+    list.forEach((x, i) => {
+      if(isOddsDarkHorse(x, i, list.length)){
+        darkHorses.push(x.player);
+      }
+    });
+    if(isPreTournament || !t.preTournamentOdds){
+      t.preTournamentOdds = { sim, list, darkHorses };
+    }
+  }
+
   return t.oddsSnapshot;
 }
 
@@ -3761,20 +3783,20 @@ function playoffOddsData(t){
   return getOrComputeTournamentOdds(t).data;
 }
 
-function getPreTournamentOdds(t){
+function getPreTournamentOdds(t, passedLeagueRecs = null){
   if(!t || !t.players || !t.players.length) return null;
-  if(t.preTournamentOdds && t.preTournamentOdds.darkHorses) return t.preTournamentOdds;
+  if(t.preTournamentOdds && t.preTournamentOdds.darkHorses && t.preTournamentOdds.darkHorses.length) return t.preTournamentOdds;
 
   let unplayedMatches = (t.matches || []).map(m => ({ ...m, as: '', bs: '' }));
   let preT = { ...t, matches: unplayedMatches, bracketManagerData: null, phase: 'group', champion: null };
   let prng = createPrng(t.id + '-pre-tournament-odds-v1');
-  let sim = simulateTournamentOdds(preT, 2000, prng);
+  let sim = simulateTournamentOdds(preT, 2000, prng, passedLeagueRecs);
   let list = Object.values(sim).sort((a, b) => b.champPct - a.champPct || b.topCutPct - a.topCutPct);
   
-  // Projected Dark Horses: outside top 3 favorites (rank 4+) with at least 4% championship odds
+  // Projected Dark Horses: outside top 3 favorites (rank 4+) with qualifying dark horse equity
   let darkHorses = [];
   list.forEach((x, i) => {
-    if(i >= 3 && x.champPct >= 4){
+    if(isOddsDarkHorse(x, i, list.length)){
       darkHorses.push(x.player);
     }
   });
@@ -7284,9 +7306,24 @@ function calculateLeagueRecords(){
         }
 
         // Dark Horse: Projected as a Dark Horse by playoff odds before Match 1 and won the Championship
-        if(finish && finish.place === 1){
-          let preOdds = getPreTournamentOdds(t);
+        let isChamp = (t.champion === p) || (finish && finish.place === 1);
+        if(!isChamp && typeof getTournamentTopCutModel === 'function'){
+          let topCutModel = getTournamentTopCutModel(t);
+          let gf = topCutModel?.gfMatches || [];
+          let lastGf = gf[gf.length - 1];
+          if(lastGf?.isDone && lastGf.winner === p){
+            isChamp = true;
+          }
+        }
+        if(isChamp){
+          let preOdds = getPreTournamentOdds(t, { statsByPlayer });
           let isDarkHorse = preOdds?.darkHorses?.includes(p);
+          if(!isDarkHorse && preOdds?.list){
+            let idx = preOdds.list.findIndex(x => x.player === p);
+            if(idx >= 3 && ((preOdds.list[idx]?.champPct || 0) >= 3.5 || (idx <= 5 && (preOdds.list[idx]?.champPct || 0) >= 2.5))){
+              isDarkHorse = true;
+            }
+          }
           if(isDarkHorse){
             if(!statsByPlayer[p].badges.some(b => b.id === 'dark-horse-' + t.id)){
               statsByPlayer[p].badges.push({
@@ -7294,7 +7331,7 @@ function calculateLeagueRecords(){
                 icon: '🐴',
                 name: `Dark Horse (${t.name})`,
                 desc: `Projected as a Dark Horse by pre-tournament odds and went on to win the ${t.name} Championship`,
-                category: 'miracle',
+                category: 'championship',
                 color: 'amber'
               });
             }
@@ -8279,16 +8316,17 @@ function playoffOdds(){
     html += `
       <div class="odds-grid">
         ${list.map((x, i) => {
-          let tierCls = i === 0 ? 'tier-1' : (i < 3 ? 'tier-2' : (x.champPct >= 5 ? 'tier-3' : ''));
+          let isDarkHorse = isOddsDarkHorse(x, i, list.length);
+          let tierCls = i === 0 ? 'tier-1' : (i < 3 ? 'tier-2' : (isDarkHorse ? 'tier-3' : ''));
           let badgeTag = i === 0 ? '<span class="odds-badge-chip fav">👑 Favorite</span>' 
             : (i < 3 ? '<span class="odds-badge-chip contender">⚡ Contender</span>' 
-            : (x.champPct >= 5 ? '<span class="odds-badge-chip darkhorse">🔥 Dark Horse</span>' 
+            : (isDarkHorse ? '<span class="odds-badge-chip darkhorse">🔥 Dark Horse</span>' 
             : '<span class="odds-badge-chip longshot">🎲 Longshot</span>'));
           
           let barPct = Math.min(100, Math.max(x.champPct > 0 ? 2 : 0, +x.champPct.toFixed(1)));
           let barGradient = i === 0 ? 'linear-gradient(90deg,#ffd166,#ef3038)' 
             : (i < 3 ? 'linear-gradient(90deg,#ff8e95,#ef3038)' 
-            : (x.champPct >= 5 ? 'linear-gradient(90deg,#dca2f5,#a855f7)' : 'linear-gradient(90deg,#7ad1ff,#3b82f6)'));
+            : (isDarkHorse ? 'linear-gradient(90deg,#dca2f5,#a855f7)' : 'linear-gradient(90deg,#7ad1ff,#3b82f6)'));
 
           let faceImg = (typeof profilePictures !== 'undefined' && profilePictures[x.player]) || (typeof teamCovers !== 'undefined' && teamCovers[x.player]) || '';
           let faceArt = faceImg ? `url('${esc(faceImg)}')` : fallbackArt(x.player);
