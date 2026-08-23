@@ -222,6 +222,11 @@
 .matchup-team-name{font:800 13px/1.1 'Barlow Condensed';color:#e2e0e8;max-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-top:2px}
 .matchup-vs-badge{display:flex;flex-direction:column;align-items:center;gap:4px}
 .matchup-vs-circle{width:42px;height:42px;border-radius:50%;background:linear-gradient(135deg,#e63946,#ff9f1c);display:grid;place-items:center;font:900 16px 'Barlow Condensed';color:#fff;box-shadow:0 0 16px rgba(230,57,70,0.6);border:2px solid #ffffff40}
+.matchup-nav-arrow{position:absolute;top:50%;transform:translateY(-50%);width:28px;height:28px;border-radius:50%;background:rgba(18,18,24,0.7);border:1px solid rgba(255,255,255,0.15);color:#c8c6ce;font-size:16px;line-height:1;display:grid;place-items:center;cursor:pointer;z-index:5;transition:all .15s ease;backdrop-filter:blur(4px);padding:0}
+.matchup-nav-arrow:hover{background:rgba(239,48,56,0.4);border-color:var(--red);color:#fff;transform:translateY(-50%) scale(1.1)}
+.matchup-nav-arrow.left{left:6px}
+.matchup-nav-arrow.right{right:6px}
+.matchup-hero-foot{background:#0e0e14c0;border-top:1px solid #20202c;padding:6px 14px;display:flex;justify-content:center;align-items:center;position:relative;z-index:2}
 /* ------------------------------------------------------------ Modern In-Season Hero & Showcase ------------------------------------------------------------ */
 .in-season-hero{display:grid;grid-template-columns:1.18fr .82fr;gap:18px;align-items:stretch}
 .tourney-showcase-card{display:grid;grid-template-columns:minmax(0,1fr) 230px;gap:18px;padding:22px;background:linear-gradient(135deg,#1b1216 0%,#15151c 60%,#11141c 100%);border:1px solid #4a2832;border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,0.55),0 0 16px rgba(239,48,56,0.12);min-height:220px}
@@ -2958,7 +2963,11 @@ function matchupOfTheWeekCard(t){
       </div>
     </div>
 
-    <div class="matchup-hero-body">
+    <div class="matchup-hero-body" style="position:relative;padding:16px 28px">
+      ${total > 1 ? `
+        <button class="matchup-nav-arrow left" onclick="event.stopPropagation();cycleFeaturedMatch(-1, ${total})" title="Previous Matchup">‹</button>
+      ` : ''}
+
       <!-- Team 1 -->
       <div class="matchup-team-col">
         <div style="position:relative;cursor:pointer" onclick="openProfile('${jsArg(p1)}')">
@@ -2986,28 +2995,20 @@ function matchupOfTheWeekCard(t){
         <div class="matchup-team-name" title="${esc(t2Name)}">${esc(t2Name)}</div>
         <div style="font-size:12px;font-weight:800">${playerLink(p2)}</div>
       </div>
+
+      ${total > 1 ? `
+        <button class="matchup-nav-arrow right" onclick="event.stopPropagation();cycleFeaturedMatch(1, ${total})" title="Next Matchup">›</button>
+      ` : ''}
     </div>
 
-    <div class="matchup-hero-foot">
-      <div style="display:flex;align-items:center;gap:6px">
-        ${total > 1 ? `
-          <button class="btn ghost btn-sm" style="padding:2px 7px!important;font-size:11px!important;height:24px" onclick="cycleFeaturedMatch(-1, ${total})" title="Previous Matchup">‹</button>
-          <div style="display:flex;gap:4px;align-items:center">
-            ${Array.from({length: total}, (_, i) => `
-              <span onclick="setFeaturedMatch(${i})" style="width:${i === curIdx ? '16px' : '6px'};height:6px;border-radius:3px;background:${i === curIdx ? 'var(--amber)' : '#ffffff30'};cursor:pointer;transition:all .2s ease"></span>
-            `).join('')}
-          </div>
-          <button class="btn ghost btn-sm" style="padding:2px 7px!important;font-size:11px!important;height:24px" onclick="cycleFeaturedMatch(1, ${total})" title="Next Matchup">›</button>
-        ` : `<span style="font-size:10px;color:#8e8c95">Spotlight</span>`}
-      </div>
-
-      <div style="display:flex;gap:6px">
-        ${item.isTopCut ? `
-          <button class="btn btn-sm" style="padding:3px 10px!important;font-size:10px!important" onclick="go('Top Cut')">View Bracket →</button>
-        ` : `
-          <button class="btn btn-sm" style="padding:3px 10px!important;font-size:10px!important" onclick="current='Matches';render()">All Matches →</button>
-        `}
-      </div>
+    <div class="matchup-hero-foot" style="justify-content:center;padding:7px 14px">
+      ${total > 1 ? `
+        <div style="display:flex;gap:5px;align-items:center">
+          ${Array.from({length: total}, (_, i) => `
+            <span onclick="setFeaturedMatch(${i})" style="width:${i === curIdx ? '16px' : '6px'};height:5px;border-radius:3px;background:${i === curIdx ? 'var(--amber)' : '#ffffff25'};cursor:pointer;transition:all .2s ease"></span>
+          `).join('')}
+        </div>
+      ` : `<span style="font-size:10px;color:#8e8c95">Spotlight Matchup</span>`}
     </div>
   </aside>`;
 }
@@ -3077,23 +3078,33 @@ function Home(){
     <div class="pulse-stats-strip">
       <div class="card pulse-stat-box">
         <span class="pulse-stat-label">Tournament Phase</span>
-        <div class="pulse-stat-val">${t.phase === 'topcut' ? 'Top Cut Playoffs' : `Group Stage (${groups.length} Group${groups.length > 1 ? 's' : ''})`}</div>
-        <div class="pulse-stat-sub">${t.players.length} Trainers in Competition</div>
+        <div class="pulse-stat-val">${t.phase === 'topcut' ? 'Top Cut' : 'Group Stage'}</div>
+        <div class="pulse-stat-sub">${t.players.length} Competitors</div>
       </div>
       <div class="card pulse-stat-box">
         <span class="pulse-stat-label">Fixtures Recorded</span>
         <div class="pulse-stat-val">${completedCount} <small style="font-size:13px;color:#8e8c95;font-weight:700">/ ${totalMatchesCount}</small></div>
         <div class="progress" style="margin-top:5px;height:5px"><span style="width:${completionPct}%"></span></div>
       </div>
-      <div class="card pulse-stat-box">
-        <span class="pulse-stat-label">Division Leader</span>
-        <div class="pulse-stat-val">${topPlayer ? playerLink(topPlayer.p) : 'TBD'}</div>
-        <div class="pulse-stat-sub">${topPlayer ? `${topPlayer.w}-${topPlayer.l} Record (${topPlayer.gw} GW)` : 'Matches underway'}</div>
+      <div class="card pulse-stat-box" style="cursor:pointer;transition:border-color .15s ease" onclick="go('Standings')" title="Click to view full Playoff Odds chart">
+        <span class="pulse-stat-label" style="display:flex;justify-content:space-between;align-items:center"><span>Tournament Favorite</span><span style="color:#ffd166;font-size:10px">↗</span></span>
+        <div class="pulse-stat-val" style="color:var(--amber)">${(() => {
+          let oddsSnap = getOrComputeTournamentOdds(t);
+          let oddsList = Object.values(oddsSnap.sim || {}).sort((a, b) => b.champPct - a.champPct || b.topCutPct - a.topCutPct);
+          let fav = oddsList[0];
+          return fav ? `${playerLink(fav.player)}` : 'TBD';
+        })()}</div>
+        <div class="pulse-stat-sub">${(() => {
+          let oddsSnap = getOrComputeTournamentOdds(t);
+          let oddsList = Object.values(oddsSnap.sim || {}).sort((a, b) => b.champPct - a.champPct || b.topCutPct - a.topCutPct);
+          let fav = oddsList[0];
+          return fav ? `<b>${fav.champPct}%</b> Title Chance · <span style="color:#ffd166">View Odds Chart →</span>` : 'View Playoff Odds →';
+        })()}</div>
       </div>
-      <div class="card pulse-stat-box">
-        <span class="pulse-stat-label">Top Cut Cutoff</span>
+      <div class="card pulse-stat-box" style="cursor:pointer" onclick="go('Standings')" title="Click to view Standings & Cutoff Lines">
+        <span class="pulse-stat-label" style="display:flex;justify-content:space-between;align-items:center"><span>Top Cut Cutoff</span><span style="color:#ffd166;font-size:10px">↗</span></span>
         <div class="pulse-stat-val">Top ${advancePerGroup(t)} Per Group</div>
-        <div class="pulse-stat-sub"><a href="javascript:void(0)" onclick="go('Standings')" style="color:#ffd166;text-decoration:none;font-weight:700">View Full Leaderboard & Odds →</a></div>
+        <div class="pulse-stat-sub" style="color:#ffd166;font-weight:700">Open Full Standings Tab →</div>
       </div>
     </div>
 
@@ -3108,23 +3119,6 @@ function Home(){
       </div>
       <div class="match-grid">
         ${results.length ? results.slice(0, 3).map((m, i) => matchCard(m, i === 0)).join('') : '<div class="empty card" style="grid-column:1/-1">No matches completed yet. Scores entered in Matches will appear here.</div>'}
-      </div>
-    </section>
-
-    <!-- Group Standings Section -->
-    <section class="section">
-      <div class="section-head">
-        <div>
-          <div class="eyebrow" style="color:#ffd166;margin-bottom:2px">Leaderboard</div>
-          <h2>GROUP STANDINGS</h2>
-        </div>
-        <button class="link" onclick="go('Standings')">FULL STANDINGS & PLAYOFF ODDS →</button>
-      </div>
-      <div style="display:grid;grid-template-columns:repeat(${groups.length > 1 ? 2 : 1}, minmax(0, 1fr));gap:14px">
-        ${groups.map(g => `<div class="card table-wrap">${standingTable(t, g)}</div>`).join('')}
-      </div>
-      <div style="text-align:center;margin-top:16px">
-        <button class="btn ghost" style="padding:10px 20px;font-size:12px" onclick="go('Standings')">📊 View Full Standings, Playoff Probability & Head-to-Head Odds →</button>
       </div>
     </section>
   `;
