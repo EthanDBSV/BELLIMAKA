@@ -2342,16 +2342,34 @@ function recapRankings(){
   let stats=leagueRecs?.statsByPlayer||{};
   return Object.entries(profiles).map(([p,q])=>{
     let career=playerCareerStats(p);
-    let s=stats[p]||{wins:career.wins,losses:career.losses,maxWinStreak:0,badges:[]};
+    let s=stats[p]||{wins:career.wins,losses:career.losses,maxWinStreak:0,tournamentFinishes:[],badges:[]};
     let ovrObj=calculatePlayerOVR(p, leagueRecs);
     let cups=career.championshipCups||[];
     let tops=career.topCuts||0;
     let [w,l]=[career.wins,career.losses];
-    
-    // Modernized ELO Formula: Base 1000 + Titles (160) + Top Cuts (60) + Net Impact (18W / -10L) + Streaks + OVR Form
-    let streakBonus=(s.maxWinStreak||0)*5;
-    let ovrImpact=Math.max(0, (ovrObj.ovr-70)*4);
-    let score=Math.max(0, Math.round(1000 + cups.length*160 + tops*60 + (w*18 - l*10) + streakBonus + ovrImpact));
+
+    // Detailed Placement Points from Tournament Finishes (1st > 2nd > 3rd > 4th > 5th-6th > 7th-8th)
+    let finishPoints = 0;
+    let tfList = s.tournamentFinishes || [];
+    if(tfList.length > 0){
+      tfList.forEach(tf => {
+        let place = tf.finish?.place || 999;
+        if(place === 1) finishPoints += 180;        // Champion
+        else if(place === 2) finishPoints += 110;   // 2nd Place / Runner-up
+        else if(place === 3) finishPoints += 75;    // 3rd Place / Losers Finalist
+        else if(place === 4) finishPoints += 50;    // 4th Place / Losers Semifinalist
+        else if(place <= 6) finishPoints += 30;     // 5th-6th Place (Top 6)
+        else if(place <= 8) finishPoints += 15;     // 7th-8th Place (Top 8)
+        else if(place < 100) finishPoints += 10;
+      });
+    } else {
+      finishPoints = cups.length * 180 + Math.max(0, tops - cups.length) * 45;
+    }
+
+    // Modernized ELO Formula: Base 1000 + Finish Points + Net Match Impact (16W / -8L) + Streaks + OVR Form
+    let streakBonus = (s.maxWinStreak||0) * 5;
+    let ovrImpact = Math.max(0, (ovrObj.ovr - 70) * 4);
+    let score = Math.max(0, Math.round(1000 + finishPoints + (w * 16 - l * 8) + streakBonus + ovrImpact));
 
     return {
       p,
@@ -4780,51 +4798,107 @@ function historyList(p){
    the same record maths the stats engine uses, plus the finish worked
    out from the champion, the bracket cache, and the group standings. */
 function tournamentFinish(t,p){
-  if(t.champion===p)return {place:1,label:'1st',note:'Champion',cls:'gold'};
+  if(!t || !p) return {place:999,label:'—',note:'Participating',cls:''};
+  if(t.champion===p) return {place:1,label:'1st',note:'Champion',cls:'gold'};
+
+  // 1. Bracket Model Data (Double Elimination Stages)
+  if(t.bracketManagerData || t.phase==='topcut' || t.status==='COMPLETE'){
+    try{
+      let model=getTournamentTopCutModel(t);
+      if(model && (model.wbRounds?.length || model.lbRounds?.length)){
+        let qualifiers = qualified(t).map(x => x.p);
+        if(t.bracketManagerData?.participant?.length){
+          qualifiers = t.bracketManagerData.participant.map(pt => pt.name);
+        }
+        let inBracket = qualifiers.includes(p);
+
+        if(inBracket){
+          let gf = model.gfMatches || [];
+          let lastGf = gf[gf.length - 1];
+          let gf1 = gf[0];
+
+          if(lastGf?.isDone && lastGf.winner === p){
+            return {place:1, label:'1st', note:'Champion', cls:'gold'};
+          }
+          if((lastGf?.isDone && lastGf.loser === p) || (gf1?.isDone && !lastGf?.isDone && gf1.loser === p && gf.length === 1)){
+            return {place:2, label:'2nd', note:'Runner-up', cls:'silver'};
+          }
+
+          // Losers Bracket Rounds (checked in reverse from Final to R1)
+          let lbRounds = model.lbRounds || [];
+          let lbFinal = lbRounds.find(r => r.title.toLowerCase().includes('losers final') || r.name.toLowerCase().includes('round 4'))?.matches?.[0];
+          if(lbFinal?.isDone && lbFinal.loser === p){
+            return {place:3, label:'3rd', note:'3rd Place', cls:'bronze'};
+          }
+
+          let lbSemi = lbRounds.find(r => r.title.toLowerCase().includes('semifinal') || r.name.toLowerCase().includes('round 3'))?.matches?.[0];
+          if(lbSemi?.isDone && lbSemi.loser === p){
+            return {place:4, label:'4th', note:'4th Place', cls:'cut'};
+          }
+
+          let lbR2 = lbRounds.find(r => r.title.toLowerCase().includes('lb round 2') || r.name.toLowerCase().includes('round 2'))?.matches || [];
+          if(lbR2.some(m => m.isDone && m.loser === p)){
+            return {place:5, label:'Top 6', note:'5th-6th Place', cls:'cut'};
+          }
+
+          let lbR1 = lbRounds.find(r => r.title.toLowerCase().includes('lb round 1') || r.name.toLowerCase().includes('round 1'))?.matches || [];
+          if(lbR1.some(m => m.isDone && m.loser === p)){
+            let count = qualifiers.length;
+            if(count <= 4) return {place:4, label:'4th', note:'4th Place', cls:'cut'};
+            return {place:7, label:'Top 8', note:'7th-8th Place', cls:'cut'};
+          }
+
+          // Active / undefeated so far in Top Cut
+          return {place:3, label:'Top Cut', note: t.status === 'COMPLETE' ? 'Top Cut' : 'In Top Cut', cls:'cut'};
+        }
+      }
+    }catch(e){}
+  }
+
+  // 2. Legacy / Cached Top Cut
   let cache=t.topCutCache,inCut=false;
-  let isTopCutLive=(t.phase==='topcut'||t.status==='COMPLETE'||!!t.bracketManagerData);
-  if(isTopCutLive){
-    if(cache&&Array.isArray(cache.participants)&&cache.participants.length)inCut=cache.participants.includes(p);
-    else if(cache&&Array.isArray(cache.results))inCut=cache.results.some(x=>x.p1===p||x.p2===p);
-    else if(t.finalStandings)inCut=Object.values(t.finalStandings).some(arr=>arr.slice(0,advancePerGroup(t)).includes(p));
-    if(inCut){
-      let isChamp=(t.champion===p||(cache?.champion===p));
-      if(isChamp) return {place:1,label:'1st',note:'Champion',cls:'gold'};
+  if(cache&&Array.isArray(cache.participants)&&cache.participants.length)inCut=cache.participants.includes(p);
+  else if(cache&&Array.isArray(cache.results))inCut=cache.results.some(x=>x.p1===p||x.p2===p);
+  else if(t.finalStandings)inCut=Object.values(t.finalStandings).some(arr=>arr.slice(0,advancePerGroup(t)).includes(p));
 
-      let losses=(cache?.results||[]).filter(m=>(m.p1===p&&+m.s2>+m.s1)||(m.p2===p&&+m.s1>+m.s2));
-      if(!losses.length){
-        return {place:3,label:'Top Cut',note:t.status==='COMPLETE'?'Top Cut':'In Top Cut',cls:'cut'};
-      }
+  if(inCut){
+    let isChamp=(t.champion===p||(cache?.champion===p));
+    if(isChamp) return {place:1,label:'1st',note:'Champion',cls:'gold'};
 
-      losses.sort((a,b)=>(b.completedAt||0)-(a.completedAt||0));
-      let lastLoss=losses[0];
-      let title=(lastLoss.title||'').toLowerCase();
+    let losses=(cache?.results||[]).filter(m=>(m.p1===p&&+m.s2>+m.s1)||(m.p2===p&&+m.s1>+m.s2));
+    if(!losses.length){
+      return {place:3,label:'Top Cut',note:t.status==='COMPLETE'?'Top Cut':'In Top Cut',cls:'cut'};
+    }
 
-      if(title.includes('grand final')||title.includes('bracket reset')){
-        return {place:2,label:'2nd',note:'Runner-up',cls:'silver'};
-      }
-      if(title.includes('losers final')){
-        return {place:3,label:'3rd',note:'3rd Place',cls:'bronze'};
-      }
-      if(title.includes('losers round 3')||title.includes('losers semifinal')){
+    losses.sort((a,b)=>(b.completedAt||0)-(a.completedAt||0));
+    let lastLoss=losses[0];
+    let title=(lastLoss.title||'').toLowerCase();
+
+    if(title.includes('grand final')||title.includes('bracket reset')){
+      return {place:2,label:'2nd',note:'Runner-up',cls:'silver'};
+    }
+    if(title.includes('losers final')){
+      return {place:3,label:'3rd',note:'3rd Place',cls:'bronze'};
+    }
+    if(title.includes('losers round 3')||title.includes('losers semifinal')){
+      return {place:4,label:'4th',note:'4th Place',cls:'cut'};
+    }
+    if(title.includes('losers round 2')){
+      return {place:5,label:'Top 6',note:'5th-6th Place',cls:'cut'};
+    }
+    if(title.includes('losers round 1')){
+      let count=(cache?.participants||[]).length;
+      if(count<=4){
         return {place:4,label:'4th',note:'4th Place',cls:'cut'};
       }
-      if(title.includes('losers round 2')){
-        return {place:5,label:'Top 6',note:'5th-6th Place',cls:'cut'};
-      }
-      if(title.includes('losers round 1')){
-        let count=(cache?.participants||[]).length;
-        if(count<=4){
-          return {place:4,label:'4th',note:'4th Place',cls:'cut'};
-        }
-        return {place:7,label:'Top 8',note:'7th-8th Place',cls:'cut'};
-      }
-      if(title.includes('winners final')){
-        return {place:3,label:'Top 3',note:'Winners Finalist',cls:'bronze'};
-      }
-      return {place:3,label:'Top Cut',note:lastLoss.title||'Top Cut',cls:'cut'};
+      return {place:7,label:'Top 8',note:'7th-8th Place',cls:'cut'};
     }
+    if(title.includes('winners final')){
+      return {place:3,label:'Top 3',note:'Winners Finalist',cls:'bronze'};
+    }
+    return {place:3,label:'Top Cut',note:lastLoss.title||'Top Cut',cls:'cut'};
   }
+
   /* group stage only — report where they placed overall/in group */
   let buckets=groupsOf(t);
   let totalGroups=Object.keys(buckets).length;
@@ -4978,34 +5052,39 @@ function calculatePlayerOVR(p, leagueData=null){
     winRateDiff = (effectiveWinPct - 50) * 0.18;
   }
 
-  // 2. Championships with Recency Decay (Past glory fades unless renewed!)
-  let sortedT = typeof sortedTournamentsChronological === 'function' ? sortedTournamentsChronological() : Object.values(tournamentData);
-  let latestCompletedT = sortedT.filter(t => t.status === 'COMPLETE').pop() || sortedT[sortedT.length - 1] || null;
-  let ongoing = typeof ongoingT === 'function' ? ongoingT() : null;
-  let isReigningChamp = (latestCompletedT && latestCompletedT.champion === p) || (ongoing && ongoing.champion === p);
-
-  let titleBonus = 0;
-  if(isReigningChamp){
-    titleBonus += 6.5; // Full reigning crown bonus
-    let olderTitles = Math.max(0, (career.titles || 0) - 1);
-    titleBonus += Math.min(4.0, olderTitles * 2.0); // Older titles decay
-  } else {
-    // Historic champion who lost or hasn't won recently: titles decayed
-    titleBonus += Math.min(5.0, (career.titles || 0) * 2.0);
+  // 2. Playoff Placements & Championship Hardware (Exact placement matters! 1st > 2nd > 3rd > 4th > 5th-6th > 7th-8th)
+  let lastPlace = lastTFinish?.finish?.place || 999;
+  let recentPlacementBonus = 0;
+  if(lastPlace === 1){
+    recentPlacementBonus = 6.5; // Reigning Champion
+  } else if(lastPlace === 2){
+    recentPlacementBonus = 4.8; // Runner-up / Grand Finalist
+  } else if(lastPlace === 3){
+    recentPlacementBonus = 3.8; // 3rd Place / Losers Finalist
+  } else if(lastPlace === 4){
+    recentPlacementBonus = 2.8; // 4th Place / Losers Semifinalist
+  } else if(lastPlace <= 6){
+    recentPlacementBonus = 1.8; // 5th-6th Place / Top 6
+  } else if(lastPlace <= 8){
+    recentPlacementBonus = 0.8; // 7th-8th Place / Top 8
   }
 
-  // 3. Top Cut Form with Recency Decay
-  let lastInCut = lastTFinish && (lastTFinish.finish?.place <= 4 || String(lastTFinish.finish?.label || '').includes('Winner') || String(lastTFinish.finish?.label || '').includes('Final') || String(lastTFinish.finish?.label || '').includes('3rd') || String(lastTFinish.finish?.label || '').includes('4th'));
-  let topCutBonus = 0;
-  if(lastInCut){
-    topCutBonus += 3.5;
-    let olderCuts = Math.max(0, (career.topCuts || 0) - 1);
-    topCutBonus += Math.min(2.5, olderCuts * 1.0);
-  } else {
-    topCutBonus += Math.min(3.5, (career.topCuts || 0) * 1.0);
-  }
+  // Older / Career Playoff Pedigree with Recency Decay
+  let olderPlacementBonus = 0;
+  let olderFinishes = tf.slice(0, -1);
+  olderFinishes.forEach(f => {
+    let pRank = f.finish?.place || 999;
+    if(pRank === 1) olderPlacementBonus += 2.0; // Past Championship
+    else if(pRank === 2) olderPlacementBonus += 1.2; // Past Runner-up
+    else if(pRank === 3) olderPlacementBonus += 0.8; // Past 3rd Place
+    else if(pRank === 4) olderPlacementBonus += 0.6; // Past 4th Place
+    else if(pRank <= 6) olderPlacementBonus += 0.3; // Past Top 6
+    else if(pRank <= 8) olderPlacementBonus += 0.15; // Past Top 8
+  });
+  // Cap historical playoff pedigree at +4.5 so current form still dominates
+  olderPlacementBonus = Math.min(4.5, olderPlacementBonus);
 
-  // 4. Active Momentum & Streak Volatility
+  // 3. Active Momentum & Streak Volatility
   // Active Win Streak: fast surge (+1.2 per active win, cap +5.0)
   // Active Loss Streak: fast drop (-1.4 per active loss, cap -5.5)
   let activeStreakBonus = Math.min(5.0, (s.currentWinStreak || 0) * 1.2);
@@ -5014,9 +5093,9 @@ function calculatePlayerOVR(p, leagueData=null){
   // All-time historic streak legacy: modest +0.35 per game (cap +2.5)
   let maxStreakBonus = Math.min(2.5, (s.maxWinStreak || 0) * 0.35);
 
-  let rawOvr = base + titleBonus + topCutBonus + winRateDiff + activeStreakBonus - activeLossPenalty + maxStreakBonus;
+  let rawOvr = base + recentPlacementBonus + olderPlacementBonus + winRateDiff + activeStreakBonus - activeLossPenalty + maxStreakBonus;
 
-  // 5. Scarcity Curve at the Very Top (Extremely hard to hit 90+, near-impossible to hit 96-99 without absolute dominance)
+  // 4. Scarcity Curve at the Very Top (Extremely hard to hit 90+, near-impossible to hit 96-99 without absolute dominance)
   if(rawOvr > 86){
     rawOvr = 86 + (rawOvr - 86) * 0.48;
   }
@@ -5044,7 +5123,7 @@ function calculatePlayerOVR(p, leagueData=null){
     tierUpper = 'GOLD';
     color = '#ffd166';
     badgeCls = 'ovr-gold';
-  } else if(finalOvr >= 68){
+  } else if(finalOvr >= 70){
     tier = 'silver';
     tierName = 'Silver';
     tierUpper = 'SILVER';
@@ -6464,7 +6543,7 @@ function openBadgeGuide(){
 function openOvrGuide(){
   document.querySelector('#modal').innerHTML = `
     <div class="modal-wrap">
-      <div class="modal" style="max-width:800px">
+      <div class="modal" style="max-width:820px">
         <div class="modal-head">
           <div>
             <div class="eyebrow">Rating & Volatility System</div>
@@ -6472,7 +6551,7 @@ function openOvrGuide(){
           </div>
           <button class="close" onclick="closeModal()">×</button>
         </div>
-        <p class="sub" style="margin-top:6px">The OVR system evaluates a trainer's live performance, recent form, championship hardware, and active streaks. It is highly dynamic and volatile — your rating reflects your current competitive form, so past glory alone won't last forever.</p>
+        <p class="sub" style="margin-top:6px">The OVR system evaluates a trainer's live performance, recent form, tournament placement depth, championship hardware, and active streaks. It is highly dynamic and volatile — your rating reflects your current competitive form, so past glory alone won't last forever.</p>
         
         <div style="margin-top:16px;display:flex;flex-direction:column;gap:16px;max-height:68vh;overflow-y:auto;padding-right:4px">
           
@@ -6494,21 +6573,21 @@ function openOvrGuide(){
                   <span style="font:800 13px 'Barlow Condensed';letter-spacing:.8px;color:#ffd166">GOLD</span>
                   <span class="ovr-badge-pill ovr-gold">80–89</span>
                 </div>
-                <p style="font-size:10px;color:#dcd0a0;line-height:1.35;margin:0">Top playoff contenders & finalists. Achieved with 60%+ win rates, top cut appearances, and solid winning form.</p>
+                <p style="font-size:10px;color:#dcd0a0;line-height:1.35;margin:0">Top playoff contenders & finalists. Achieved with deep top cut runs (1st–4th), 60%+ win rates, and solid winning form.</p>
               </div>
 
               <div class="card ovr-card-silver" style="padding:12px;display:flex;flex-direction:column;gap:6px">
                 <div style="display:flex;justify-content:space-between;align-items:center">
                   <span style="font:800 13px 'Barlow Condensed';letter-spacing:.8px;color:#d0d0dc">SILVER</span>
-                  <span class="ovr-badge-pill ovr-silver">68–79</span>
+                  <span class="ovr-badge-pill ovr-silver">70–79</span>
                 </div>
-                <p style="font-size:10px;color:#b0b0bc;line-height:1.35;margin:0">Standard competitive core. Forgiving baseline for active and developing trainers (40%–55% win rates) to sit comfortably without harsh penalties.</p>
+                <p style="font-size:10px;color:#b0b0bc;line-height:1.35;margin:0">Standard competitive core. Baseline for active and developing trainers (40%–55% win rates) to sit comfortably without harsh penalties.</p>
               </div>
 
               <div class="card ovr-card-bronze" style="padding:12px;display:flex;flex-direction:column;gap:6px">
                 <div style="display:flex;justify-content:space-between;align-items:center">
                   <span style="font:800 13px 'Barlow Condensed';letter-spacing:.8px;color:#cd7f32">BRONZE</span>
-                  <span class="ovr-badge-pill ovr-bronze">50–67</span>
+                  <span class="ovr-badge-pill ovr-bronze">50–69</span>
                 </div>
                 <p style="font-size:10px;color:#bca090;line-height:1.35;margin:0">Cold slump / rebuilding tier. Reserved for coaches on losing skids or battling through tough slumps under 35% win rates.</p>
               </div>
@@ -6518,46 +6597,56 @@ function openOvrGuide(){
 
           <!-- Formula & Volatility Breakdown Table -->
           <div class="card" style="padding:14px;background:#141419;border-color:#2e2e38">
-            <div class="eyebrow" style="margin-bottom:10px;color:#7df0aa">OVR Mechanics & Volatility Engine</div>
+            <div class="eyebrow" style="margin-bottom:10px;color:#7df0aa">OVR Mechanics & Placement Engine</div>
             <div class="table-wrap" style="border:1px solid #282834;border-radius:6px;overflow:hidden">
               <table class="standings" style="margin:0;font-size:11px">
                 <thead>
                   <tr style="background:#1a1a24">
                     <th style="width:160px">Metric / Mechanic</th>
-                    <th style="width:230px">How It Works</th>
-                    <th>Impact on Rating & Volatility</th>
+                    <th style="width:240px">How It Works</th>
+                    <th>Impact on Rating & Placement Differentiation</th>
                   </tr>
                 </thead>
                 <tbody>
                   <tr>
-                    <td><b style="color:#f5f3f0">Silver Baseline</b><div style="font-size:10px;color:#8e8c95">Forgiving Entry Floor</div></td>
-                    <td>Starting baseline score set to <b>72 pts</b>. Bronze threshold set to <b>&lt; 68</b>.</td>
-                    <td style="color:#d0d0dc">Prevents beginners and average players (40%–55% win rates) from being unfairly trapped in Bronze.</td>
+                    <td><b style="color:#f5f3f0">Silver Baseline</b><div style="font-size:10px;color:#8e8c95">Starting Rating Floor</div></td>
+                    <td>Starting baseline score is <b>72 pts</b>. Silver bracket spans <b>70–79</b>. Bronze is <b>50–69</b>.</td>
+                    <td style="color:#d0d0dc">Average trainers (40%–55% win rates) sit in Silver, while Bronze is reserved for deeper slumps.</td>
                   </tr>
                   <tr>
                     <td><b style="color:#ffd166">Heavy Recency Weighting</b><div style="font-size:10px;color:#8e8c95">Recent Tournament Form</div></td>
                     <td><b>55%</b> of win-rate calculation comes from the <b>most recent tournament</b>, and 45% from career.</td>
-                    <td style="color:#d0d0dc">High volatility: going 4–1 in the current tournament surges your rating; going 1–4 causes a noticeable drop.</td>
+                    <td style="color:#d0d0dc">High volatility: going 4–1 in the current tournament surges your rating; going 1–4 causes a sharp drop.</td>
                   </tr>
                   <tr>
-                    <td><b style="color:#ff8e95">Championship Hardware & Decay</b><div style="font-size:10px;color:#8e8c95">Title Prestige</div></td>
-                    <td><b>Reigning Champion</b> receives <b>+6.5 pts</b>. Past/older titles decay to <b>+2.0 pts</b> each (capped at +4.0).</td>
-                    <td style="color:#d0d0dc">Past trophies alone won't keep anyone at 95+ forever. Ratings fade if recent performance slips.</td>
+                    <td><b style="color:#ff8e95">Exact Playoff Placements</b><div style="font-size:10px;color:#8e8c95">Depth of Run Matters</div></td>
+                    <td>
+                      Recent Tournament Placements:
+                      <div style="font-size:10px;color:#b0b0bc;margin-top:3px;line-height:1.4">
+                        • <b>1st (Champion)</b>: +6.5 pts<br>
+                        • <b>2nd (Runner-up)</b>: +4.8 pts<br>
+                        • <b>3rd (Losers Final)</b>: +3.8 pts<br>
+                        • <b>4th (Losers Semi)</b>: +2.8 pts<br>
+                        • <b>5th–6th (Top 6)</b>: +1.8 pts<br>
+                        • <b>7th–8th (Top 8)</b>: +0.8 pts
+                      </div>
+                    </td>
+                    <td style="color:#d0d0dc"><b>4th place is distinctly rewarded over 8th place</b> (+2.8 vs +0.8 pts). Deeper playoff runs directly fuel higher Gold and Elite ratings.</td>
                   </tr>
                   <tr>
-                    <td><b style="color:#c084fc">Top Cut Form & Decay</b><div style="font-size:10px;color:#8e8c95">Playoff Regulars</div></td>
-                    <td>Reaching Top Cut in the latest tournament awards <b>+3.5 pts</b>. Older top cuts decay to <b>+1.0 pt</b> (cap +2.5).</td>
-                    <td style="color:#d0d0dc">Consistent playoff appearances sustain Gold; missing playoffs leads to gradual regression.</td>
+                    <td><b style="color:#c084fc">Career Pedigree & Decay</b><div style="font-size:10px;color:#8e8c95">Past Hardware Fades</div></td>
+                    <td>Older tournament finishes decay (1st: +2.0, 2nd: +1.2, 3rd: +0.8, 4th: +0.6, 5th-8th: +0.3; cap +4.5).</td>
+                    <td style="color:#d0d0dc">Past trophies provide foundation, but decaying points ensure nobody stays 90+ without active performance.</td>
                   </tr>
                   <tr>
                     <td><b style="color:#ffb74d">Active Streak Momentum</b><div style="font-size:10px;color:#8e8c95">Hot Runs vs Cold Slumps</div></td>
                     <td>Active win streaks add up to <b>+5.0 pts</b> (+1.2/game); active losing skids penalize up to <b>-5.5 pts</b> (-1.4/game).</td>
-                    <td style="color:#d0d0dc">Riding a heater gives an immediate rating surge; hitting a cold slump immediately pulls you down a tier.</td>
+                    <td style="color:#d0d0dc">Riding a heater gives an immediate rating surge; hitting a cold slump immediately drags your tier down.</td>
                   </tr>
                   <tr>
                     <td><b style="color:#ff4d58">Scarcity Compression at 90+</b><div style="font-size:10px;color:#8e8c95">Pinnacle Ceiling</div></td>
                     <td>Progressive diminishing returns applied above <b>86</b> (50% compression) and <b>92</b> (68% compression).</td>
-                    <td style="color:#d0d0dc"><b>Gold (80–89)</b> is achievable for regular winners. <b>Elite (90–99)</b> is a rare status requiring reigning gold, playoff runs, and active heaters.</td>
+                    <td style="color:#d0d0dc"><b>Gold (80–89)</b> is achievable for regular contenders. <b>Elite (90–99)</b> requires a championship, top cut runs, and an active winning streak.</td>
                   </tr>
                 </tbody>
               </table>
@@ -6568,7 +6657,7 @@ function openOvrGuide(){
           <div style="padding:12px 14px;background:linear-gradient(135deg,#231418,#161622);border:1px solid #4a222c;border-radius:8px;display:flex;align-items:center;gap:12px">
             <span style="font-size:24px;flex:none">⚡</span>
             <p style="font-size:11px;color:#d8d6e0;margin:0;line-height:1.4">
-              <b>Every Match Matters:</b> Because current form and active streaks heavily shape your overall rating, a single tournament or playoff series can shift your standing across the league leaderboard.
+              <b>Every Match and Placement Matters:</b> Finishing 4th awards significantly more OVR and ELO than bowing out in 8th place, rewarding consistently deep tournament bracket runs while maintaining high competitive volatility.
             </p>
           </div>
 
