@@ -6289,41 +6289,25 @@ function openBadgeGuide(){
           ${categories.map(c => `
             <div class="card" style="padding:14px;background:#141419;border-color:#2e2e38">
               <div class="eyebrow" style="margin-bottom:10px;color:#ff9ba1">${esc(c.cat)}</div>
-              <div style=              return `<tr>
-                <td class="rank" style="text-align:center">${i===0?'👑':(i+1)}</td>
-                <td class="player">
-                  <div style="display:flex;align-items:center;gap:9px">
-                    <span class="mrow-face" style="background-image:${faceArt};background-size:cover;background-position:center;width:30px;height:30px;font-size:13px;border-radius:50%;flex:none;display:grid;place-items:center;border:2px solid ${ovrObj.color}">${faceLetter}</span>
+              <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:10px">
+                ${c.badges.map(b => `
+                  <div style="display:flex;align-items:flex-start;gap:10px;padding:10px;background:#1b1b22;border:1px solid #333340;border-radius:6px">
+                    <span style="font-size:22px;flex:none">${b.icon}</span>
                     <div style="min-width:0">
-                      <div style="font-size:13px;font-weight:800;line-height:1.2">${playerLink(p)}</div>
-                      <span class="team" style="margin-top:2px">${esc(profiles[p]?.team||'')}</span>
+                      <div style="display:flex;align-items:center;gap:6px">
+                        <span class="badge-pill ${b.color}">${b.icon} ${esc(b.name)}</span>
+                      </div>
+                      <p style="font-size:11px;color:#9d9ba4;margin:4px 0 0;line-height:1.4">${esc(b.desc)}</p>
                     </div>
                   </div>
-                </td>
-                <td style="text-align:center;white-space:nowrap">${ovrObj.badgeHtml}</td>
-                <td style="text-align:center;white-space:nowrap"><b style="font:800 15px 'Barlow Condensed';letter-spacing:.3px;color:#f5f3f0">${x.score}</b></td>
-                <td>
-                  <div style="display:flex;flex-wrap:wrap;gap:4px">
-                    ${badges.length?badges.slice(0,3).map(b=>`<span class="badge-pill ${b.color}" title="${esc(b.desc)}">${b.icon} ${esc(b.name)}</span>`).join('')+(badges.length>3?`<span class="badge-pill gray">+${badges.length-3}</span>`:''):'<span style="color:#6d6b75;font-size:11px">—</span>'}
-                  </div>
-                </td>
-                <td style="text-align:center;white-space:nowrap"><b>${esc(x.record)}</b></td>
-                <td style="text-align:center;white-space:nowrap">${x.winPct}%</td>
-                <td style="text-align:center;white-space:nowrap">${x.champ>0?`<span style="color:#ffd166;font-weight:800">👑 ${x.champ}</span>`:'0'}</td>
-                <td style="text-align:center;white-space:nowrap">${x.tops>0?`<span style="color:#d8d9e2;font-weight:800">🎖️ ${x.tops}</span>`:'0'}</td>
-              </tr>`;
-            }).join('')}
-          </tbody>
-        </table>
+                `).join('')}
+              </div>
+            </div>
+          `).join('')}
+        </div>
       </div>
-      <p class="sub" style="margin-top:14px">ELO integrates championship cups, playoff qualification history, match win differential, streaks, and overall player rating.</p>`;
-  }
-  viewTournament=t.id;
-  let groups=Object.keys(groupsOf(t));
-  let controls=`<div style="display:flex;gap:8px">${moderator?`<button class="btn ghost" onclick="openRankingEditor()">Arrange rankings</button>`:''}<button class="btn ghost" onclick="go('Records')">🏆 Hall of Fame →</button></div>`;
-  return head('Standings',t.name+' · group stage',controls)
-    +`<div style="display:grid;grid-template-columns:repeat(${groups.length>1?2:1},minmax(0,1fr));gap:15px">${groups.map(g=>`<div class="card table-wrap">${standingTable(t,g)}</div>`).join('')}</div>`
-    +`<p class="sub">The default order is W-L, games won, game differential, then head-to-head.</p>`;
+    </div>
+  `;
 }
 /* qualification + group placement now act on the tournament being viewed */
 function openSettings(){
