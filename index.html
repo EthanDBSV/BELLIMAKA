@@ -6219,6 +6219,9 @@ function Records(){
           <button class="btn ghost btn-sm" style="display:inline-flex;align-items:center;gap:6px;padding:4px 10px;font-size:11px;border-radius:20px;border-color:#40404c;cursor:pointer" onclick="openBadgeGuide()" title="View all earnable badges and unlock requirements">
             <span style="font-size:13px">📖</span> Badge Guide
           </button>
+          <button class="btn ghost btn-sm" style="display:inline-flex;align-items:center;gap:6px;padding:4px 10px;font-size:11px;border-radius:20px;border-color:#40404c;cursor:pointer" onclick="openOvrGuide()" title="View how Trainer Overalls (OVR) are calculated, tier brackets, and volatility rules">
+            <span style="font-size:13px">⭐</span> OVR Rating Guide
+          </button>
         </div>
       </div>
       <div class="card table-wrap">
@@ -6344,6 +6347,123 @@ function openBadgeGuide(){
               </div>
             </div>
           `).join('')}
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function openOvrGuide(){
+  document.querySelector('#modal').innerHTML = `
+    <div class="modal-wrap">
+      <div class="modal" style="max-width:800px">
+        <div class="modal-head">
+          <div>
+            <div class="eyebrow">Rating & Volatility System</div>
+            <h2>Trainer Overall (OVR) Guide</h2>
+          </div>
+          <button class="close" onclick="closeModal()">×</button>
+        </div>
+        <p class="sub" style="margin-top:6px">The OVR system evaluates a trainer's live performance, recent form, championship hardware, and active streaks. It is highly dynamic and volatile — your rating reflects your current competitive form, so past glory alone won't last forever.</p>
+        
+        <div style="margin-top:16px;display:flex;flex-direction:column;gap:16px;max-height:68vh;overflow-y:auto;padding-right:4px">
+          
+          <!-- Rating Tier Overview Cards -->
+          <div class="card" style="padding:14px;background:#141419;border-color:#2e2e38">
+            <div class="eyebrow" style="margin-bottom:10px;color:#ffd166">Rating Tiers & Brackets</div>
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(165px,1fr));gap:10px">
+              
+              <div class="card ovr-card-elite" style="padding:12px;display:flex;flex-direction:column;gap:6px">
+                <div style="display:flex;justify-content:space-between;align-items:center">
+                  <span style="font:800 13px 'Barlow Condensed';letter-spacing:.8px;color:#ff8e95">ELITE</span>
+                  <span class="ovr-badge-pill ovr-elite">90–99</span>
+                </div>
+                <p style="font-size:10px;color:#d0b0b4;line-height:1.35;margin:0">The pinnacle of excellence. Requires reigning championship gold, high active win streaks, and 80%+ current win rates. Extremely scarce.</p>
+              </div>
+
+              <div class="card ovr-card-gold" style="padding:12px;display:flex;flex-direction:column;gap:6px">
+                <div style="display:flex;justify-content:space-between;align-items:center">
+                  <span style="font:800 13px 'Barlow Condensed';letter-spacing:.8px;color:#ffd166">GOLD</span>
+                  <span class="ovr-badge-pill ovr-gold">80–89</span>
+                </div>
+                <p style="font-size:10px;color:#dcd0a0;line-height:1.35;margin:0">Top playoff contenders & finalists. Achieved with 60%+ win rates, top cut appearances, and solid winning form.</p>
+              </div>
+
+              <div class="card ovr-card-silver" style="padding:12px;display:flex;flex-direction:column;gap:6px">
+                <div style="display:flex;justify-content:space-between;align-items:center">
+                  <span style="font:800 13px 'Barlow Condensed';letter-spacing:.8px;color:#d0d0dc">SILVER</span>
+                  <span class="ovr-badge-pill ovr-silver">68–79</span>
+                </div>
+                <p style="font-size:10px;color:#b0b0bc;line-height:1.35;margin:0">Standard competitive core. Forgiving baseline for active and developing trainers (40%–55% win rates) to sit comfortably without harsh penalties.</p>
+              </div>
+
+              <div class="card ovr-card-bronze" style="padding:12px;display:flex;flex-direction:column;gap:6px">
+                <div style="display:flex;justify-content:space-between;align-items:center">
+                  <span style="font:800 13px 'Barlow Condensed';letter-spacing:.8px;color:#cd7f32">BRONZE</span>
+                  <span class="ovr-badge-pill ovr-bronze">50–67</span>
+                </div>
+                <p style="font-size:10px;color:#bca090;line-height:1.35;margin:0">Cold slump / rebuilding tier. Reserved for coaches on losing skids or battling through tough slumps under 35% win rates.</p>
+              </div>
+
+            </div>
+          </div>
+
+          <!-- Formula & Volatility Breakdown Table -->
+          <div class="card" style="padding:14px;background:#141419;border-color:#2e2e38">
+            <div class="eyebrow" style="margin-bottom:10px;color:#7df0aa">OVR Mechanics & Volatility Engine</div>
+            <div class="table-wrap" style="border:1px solid #282834;border-radius:6px;overflow:hidden">
+              <table class="standings" style="margin:0;font-size:11px">
+                <thead>
+                  <tr style="background:#1a1a24">
+                    <th style="width:160px">Metric / Mechanic</th>
+                    <th style="width:230px">How It Works</th>
+                    <th>Impact on Rating & Volatility</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td><b style="color:#f5f3f0">Silver Baseline</b><div style="font-size:10px;color:#8e8c95">Forgiving Entry Floor</div></td>
+                    <td>Starting baseline score set to <b>72 pts</b>. Bronze threshold set to <b>&lt; 68</b>.</td>
+                    <td style="color:#d0d0dc">Prevents beginners and average players (40%–55% win rates) from being unfairly trapped in Bronze.</td>
+                  </tr>
+                  <tr>
+                    <td><b style="color:#ffd166">Heavy Recency Weighting</b><div style="font-size:10px;color:#8e8c95">Recent Tournament Form</div></td>
+                    <td><b>55%</b> of win-rate calculation comes from the <b>most recent tournament</b>, and 45% from career.</td>
+                    <td style="color:#d0d0dc">High volatility: going 4–1 in the current tournament surges your rating; going 1–4 causes a noticeable drop.</td>
+                  </tr>
+                  <tr>
+                    <td><b style="color:#ff8e95">Championship Hardware & Decay</b><div style="font-size:10px;color:#8e8c95">Title Prestige</div></td>
+                    <td><b>Reigning Champion</b> receives <b>+6.5 pts</b>. Past/older titles decay to <b>+2.0 pts</b> each (capped at +4.0).</td>
+                    <td style="color:#d0d0dc">Past trophies alone won't keep anyone at 95+ forever. Ratings fade if recent performance slips.</td>
+                  </tr>
+                  <tr>
+                    <td><b style="color:#c084fc">Top Cut Form & Decay</b><div style="font-size:10px;color:#8e8c95">Playoff Regulars</div></td>
+                    <td>Reaching Top Cut in the latest tournament awards <b>+3.5 pts</b>. Older top cuts decay to <b>+1.0 pt</b> (cap +2.5).</td>
+                    <td style="color:#d0d0dc">Consistent playoff appearances sustain Gold; missing playoffs leads to gradual regression.</td>
+                  </tr>
+                  <tr>
+                    <td><b style="color:#ffb74d">Active Streak Momentum</b><div style="font-size:10px;color:#8e8c95">Hot Runs vs Cold Slumps</div></td>
+                    <td>Active win streaks add up to <b>+5.0 pts</b> (+1.2/game); active losing skids penalize up to <b>-5.5 pts</b> (-1.4/game).</td>
+                    <td style="color:#d0d0dc">Riding a heater gives an immediate rating surge; hitting a cold slump immediately pulls you down a tier.</td>
+                  </tr>
+                  <tr>
+                    <td><b style="color:#ff4d58">Scarcity Compression at 90+</b><div style="font-size:10px;color:#8e8c95">Pinnacle Ceiling</div></td>
+                    <td>Progressive diminishing returns applied above <b>86</b> (50% compression) and <b>92</b> (68% compression).</td>
+                    <td style="color:#d0d0dc"><b>Gold (80–89)</b> is achievable for regular winners. <b>Elite (90–99)</b> is a rare status requiring reigning gold, playoff runs, and active heaters.</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Highlight Box -->
+          <div style="padding:12px 14px;background:linear-gradient(135deg,#231418,#161622);border:1px solid #4a222c;border-radius:8px;display:flex;align-items:center;gap:12px">
+            <span style="font-size:24px;flex:none">⚡</span>
+            <p style="font-size:11px;color:#d8d6e0;margin:0;line-height:1.4">
+              <b>Every Match Matters:</b> Because current form and active streaks heavily shape your overall rating, a single tournament or playoff series can shift your standing across the league leaderboard.
+            </p>
+          </div>
+
         </div>
       </div>
     </div>
