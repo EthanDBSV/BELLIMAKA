@@ -2350,7 +2350,7 @@ function recapRankings(){
     
     // Modernized ELO Formula: Base 1000 + Titles (160) + Top Cuts (60) + Net Impact (18W / -10L) + Streaks + OVR Form
     let streakBonus=(s.maxWinStreak||0)*5;
-    let ovrImpact=Math.max(0, (ovrObj.ovr-63)*4);
+    let ovrImpact=Math.max(0, (ovrObj.ovr-70)*4);
     let score=Math.max(0, Math.round(1000 + cups.length*160 + tops*60 + (w*18 - l*10) + streakBonus + ovrImpact));
 
     return {
@@ -2471,7 +2471,8 @@ function OffseasonHome(){
   let champOvr = calculatePlayerOVR(champ);
   let champTeam = champ ? teamName(last, champ) : '';
   let champRecord = last && champ ? tournamentRecord(last, champ) : '—';
-  let champHistory = champ ? (teamHistory[champ] || []).find(h => h.tournament === last?.name || h.tournament === (last?.name + ' · ' + last?.season)) : null;
+  let champHistory = champ ? (teamHistory[champ] || []).find(h => h.tournament === last?.name || h.tournament === (last?.name + ' · ' + last?.season) || h.tournament === last?.season) : null;
+  let winningRoster = (champHistory?.pokemon?.length) ? champHistory.pokemon : (last ? getTournamentRoster(champ, last) : (roster[champ] || []));
 
   let panelImage = pulsePanelImages.recap || last?.recapPanelImage || pulsePanelImages.global || last?.backgroundImage || '';
   let lastPanel = panelImage ? `linear-gradient(135deg,rgba(6,6,9,.45),rgba(6,6,9,.75) 62%),url('${panelImage}')` : 'linear-gradient(135deg,#221117,#17171d 65%)';
@@ -2557,14 +2558,14 @@ function OffseasonHome(){
                 <div style="font:800 20px 'Barlow Condensed';margin-top:3px;color:#f5f3f0">${champRecord}</div>
               </div>
 
-              ${champHistory?.pokemon?.length ? `
+              ${winningRoster.length ? `
                 <div style="margin-top:12px;padding-top:10px;border-top:1px solid #272734">
                   <div class="eyebrow" style="font-size:9px;margin-bottom:6px">Winning Draft Roster</div>
-                  <div class="mon-grid" style="grid-template-columns:repeat(auto-fill,minmax(80px,1fr));gap:6px">
-                    ${champHistory.pokemon.slice(0, 6).map(m => `
-                      <div class="mon-chip historic" style="padding:3px 5px;gap:4px">
+                  <div class="mon-grid" style="grid-template-columns:repeat(auto-fill,minmax(84px,1fr));gap:6px">
+                    ${winningRoster.map(m => `
+                      <div class="mon-chip historic" style="padding:3px 6px;gap:4px">
                         <img src="${esc(monSprite(m))}" alt="" style="width:20px;height:20px" loading="lazy" onerror="this.style.visibility='hidden'">
-                        <span style="font-size:9px;font-weight:700">${esc(m)}</span>
+                        <span style="font-size:9px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(m)}">${esc(m)}</span>
                       </div>
                     `).join('')}
                   </div>
@@ -4830,87 +4831,132 @@ function calculatePlayerOVR(p, leagueData=null){
       _calculatingRecords = false;
     }
   }
-  let s=recs?.statsByPlayer?.[p]||{wins:career.wins,losses:career.losses,maxWinStreak:0,currentWinStreak:0,bestGD:0};
+  let s=recs?.statsByPlayer?.[p]||{wins:career.wins,losses:career.losses,maxWinStreak:0,currentWinStreak:0,currentLossStreak:0,bestGD:0,tournamentFinishes:[]};
   let total=career.wins+career.losses;
   if(total===0){
     return {
-      ovr:60,
-      tier:'bronze',
-      tierName:'Bronze',
-      tierUpper:'BRONZE',
-      color:'#cd7f32',
-      badgeCls:'ovr-bronze',
-      badgeHtml:'<span class="ovr-badge-pill ovr-bronze">60</span>',
+      ovr:70,
+      tier:'silver',
+      tierName:'Silver',
+      tierUpper:'SILVER',
+      color:'#d0d0dc',
+      badgeCls:'ovr-silver',
+      badgeHtml:'<span class="ovr-badge-pill ovr-silver">70</span>',
       subStats:{win:50,tit:0,cut:0,strk:0}
     };
   }
 
-  // Base starting baseline: 63 (makes higher ratings a true scarcity)
-  let base=63;
+  // Baseline: 72 (Forgiving in lower overalls; average players sit safely in Silver ~72-76)
+  let base=72;
 
-  // Championships impact: +11 per title (Championship hardware carries significant prestige)
-  let titleBonus=(career.titles||0)*11;
+  // 1. Dynamic Recent Tournament Form (Heavy recency weighting for high volatility!)
+  let tf = s.tournamentFinishes || [];
+  let lastTFinish = tf[tf.length - 1] || null;
+  let recentWins = lastTFinish ? (lastTFinish.w || 0) : 0;
+  let recentLosses = lastTFinish ? (lastTFinish.l || 0) : 0;
+  let recentTotal = recentWins + recentLosses;
+  let recentWinPct = recentTotal > 0 ? (recentWins / recentTotal) * 100 : career.winPct;
 
-  // Top Cut appearances impact: +4 per appearance (cap +12)
-  let topCutBonus=Math.min(12, (career.topCuts||0)*4);
+  // High volatility: Recent tournament form is weighted 55%, career win rate 45%
+  let effectiveWinPct = recentTotal >= 2
+    ? (recentWinPct * 0.55 + career.winPct * 0.45)
+    : (recentWinPct * 0.25 + career.winPct * 0.75);
 
-  // Win rate impact:
-  // Above 50%: +0.22 per % above 50 (100% gives +11, 75% gives +5.5, 60% gives +2.2)
-  // Below 50%: gentle -0.14 per % below 50 so tough playoff competition doesn't overpenalize champions
-  let winRateDiff = career.winPct >= 50
-    ? (career.winPct - 50) * 0.22
-    : (career.winPct - 50) * 0.14;
+  let winRateDiff = 0;
+  if(effectiveWinPct >= 50){
+    winRateDiff = (effectiveWinPct - 50) * 0.22;
+  } else {
+    // Forgiving floor: gentle slope down
+    winRateDiff = (effectiveWinPct - 50) * 0.18;
+  }
 
-  // Longest Win Streak impact: +0.65 per match (cap +5.5)
-  let maxStreakBonus=Math.min(5.5, (s.maxWinStreak||0)*0.65);
+  // 2. Championships with Recency Decay (Past glory fades unless renewed!)
+  let sortedT = typeof sortedTournamentsChronological === 'function' ? sortedTournamentsChronological() : Object.values(tournamentData);
+  let latestCompletedT = sortedT.filter(t => t.status === 'COMPLETE').pop() || sortedT[sortedT.length - 1] || null;
+  let ongoing = typeof ongoingT === 'function' ? ongoingT() : null;
+  let isReigningChamp = (latestCompletedT && latestCompletedT.champion === p) || (ongoing && ongoing.champion === p);
 
-  // Active win streak form: +0.4 per match (cap +2.5)
-  let activeBonus=Math.min(2.5, (s.currentWinStreak||0)*0.4);
+  let titleBonus = 0;
+  if(isReigningChamp){
+    titleBonus += 6.5; // Full reigning crown bonus
+    let olderTitles = Math.max(0, (career.titles || 0) - 1);
+    titleBonus += Math.min(4.0, olderTitles * 2.0); // Older titles decay
+  } else {
+    // Historic champion who lost or hasn't won recently: titles decayed
+    titleBonus += Math.min(5.0, (career.titles || 0) * 2.0);
+  }
 
-  let rawOvr=base+titleBonus+topCutBonus+winRateDiff+maxStreakBonus+activeBonus;
+  // 3. Top Cut Form with Recency Decay
+  let lastInCut = lastTFinish && (lastTFinish.finish?.place <= 4 || String(lastTFinish.finish?.label || '').includes('Winner') || String(lastTFinish.finish?.label || '').includes('Final') || String(lastTFinish.finish?.label || '').includes('3rd') || String(lastTFinish.finish?.label || '').includes('4th'));
+  let topCutBonus = 0;
+  if(lastInCut){
+    topCutBonus += 3.5;
+    let olderCuts = Math.max(0, (career.topCuts || 0) - 1);
+    topCutBonus += Math.min(2.5, olderCuts * 1.0);
+  } else {
+    topCutBonus += Math.min(3.5, (career.topCuts || 0) * 1.0);
+  }
 
-  // Regression / confidence weighting for low sample size (< 5 games)
-  let sampleWeight=Math.min(1.0, total/5);
-  let finalOvr=Math.round(63*(1-sampleWeight) + rawOvr*sampleWeight);
+  // 4. Active Momentum & Streak Volatility
+  // Active Win Streak: fast surge (+1.2 per active win, cap +5.0)
+  // Active Loss Streak: fast drop (-1.4 per active loss, cap -5.5)
+  let activeStreakBonus = Math.min(5.0, (s.currentWinStreak || 0) * 1.2);
+  let activeLossPenalty = Math.min(5.5, (s.currentLossStreak || 0) * 1.4);
 
-  // Hard clamp from 50 to 99
-  finalOvr=Math.max(50, Math.min(99, finalOvr));
+  // All-time historic streak legacy: modest +0.35 per game (cap +2.5)
+  let maxStreakBonus = Math.min(2.5, (s.maxWinStreak || 0) * 0.35);
 
-  let tier='bronze',tierName='Bronze',tierUpper='BRONZE',color='#cd7f32',badgeCls='ovr-bronze',badgePrefix='';
-  if(finalOvr>=90){
-    tier='elite';
-    tierName='Elite';
-    tierUpper='ELITE';
-    color='#ff4d58';
-    badgeCls='ovr-elite';
-    badgePrefix='';
-  }else if(finalOvr>=80){
-    tier='gold';
-    tierName='Gold';
-    tierUpper='GOLD';
-    color='#ffd166';
-    badgeCls='ovr-gold';
-  }else if(finalOvr>=70){
-    tier='silver';
-    tierName='Silver';
-    tierUpper='SILVER';
-    color='#d0d0dc';
-    badgeCls='ovr-silver';
+  let rawOvr = base + titleBonus + topCutBonus + winRateDiff + activeStreakBonus - activeLossPenalty + maxStreakBonus;
+
+  // 5. Scarcity Curve at the Very Top (Extremely hard to hit 90+, near-impossible to hit 96-99 without absolute dominance)
+  if(rawOvr > 86){
+    rawOvr = 86 + (rawOvr - 86) * 0.48;
+  }
+  if(rawOvr > 92){
+    rawOvr = 92 + (rawOvr - 92) * 0.32;
+  }
+
+  // Regression / confidence weighting for low sample size (< 4 games)
+  let sampleWeight = Math.min(1.0, total / 4);
+  let finalOvr = Math.round(70 * (1 - sampleWeight) + rawOvr * sampleWeight);
+
+  // Hard clamp between 50 and 99
+  finalOvr = Math.max(50, Math.min(99, finalOvr));
+
+  let tier = 'bronze', tierName = 'Bronze', tierUpper = 'BRONZE', color = '#cd7f32', badgeCls = 'ovr-bronze', badgePrefix = '';
+  if(finalOvr >= 90){
+    tier = 'elite';
+    tierName = 'Elite';
+    tierUpper = 'ELITE';
+    color = '#ff4d58';
+    badgeCls = 'ovr-elite';
+  } else if(finalOvr >= 80){
+    tier = 'gold';
+    tierName = 'Gold';
+    tierUpper = 'GOLD';
+    color = '#ffd166';
+    badgeCls = 'ovr-gold';
+  } else if(finalOvr >= 68){
+    tier = 'silver';
+    tierName = 'Silver';
+    tierUpper = 'SILVER';
+    color = '#d0d0dc';
+    badgeCls = 'ovr-silver';
   }
 
   return {
-    ovr:finalOvr,
+    ovr: finalOvr,
     tier,
     tierName,
     tierUpper,
     color,
     badgeCls,
-    badgeHtml:`<span class="ovr-badge-pill ${badgeCls}">${badgePrefix}${finalOvr}</span>`,
-    subStats:{
-      win:career.winPct,
-      tit:career.titles,
-      cut:career.topCuts,
-      strk:s.maxWinStreak||0
+    badgeHtml: `<span class="ovr-badge-pill ${badgeCls}">${badgePrefix}${finalOvr}</span>`,
+    subStats: {
+      win: Math.round(effectiveWinPct),
+      tit: career.titles,
+      cut: career.topCuts,
+      strk: s.maxWinStreak || 0
     }
   };
 }
