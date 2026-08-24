@@ -614,6 +614,15 @@ function esc(s){return String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').
 function jsArg(s){return esc(String(s??'').replace(/\\/g,'\\\\').replace(/'/g,"\\'"))}
 function hueOf(s){let h=0;for(let i=0;i<String(s).length;i++)h=(h*31+String(s).charCodeAt(i))%360;return h}
 function fallbackArt(label){let h=hueOf(label||'team');return `linear-gradient(135deg,hsl(${h} 42% 26%),hsl(${(h+38)%360} 38% 11%))`}
+const CANON_MEGAS = new Set([
+  'abomasnow', 'absol', 'aerodactyl', 'aggron', 'alakazam', 'altaria', 'ampharos', 'audino',
+  'banette', 'beedrill', 'blastoise', 'blaziken', 'camerupt', 'charizard', 'diancie', 'gallade',
+  'garchomp', 'gardevoir', 'gengar', 'glalie', 'gyarados', 'heracross', 'houndoom', 'kangaskhan',
+  'latias', 'latios', 'lopunny', 'lucario', 'manectric', 'mawile', 'medicham', 'metagross',
+  'mewtwo', 'pidgeot', 'pinsir', 'rayquaza', 'sableye', 'salamence', 'sceptile', 'scizor',
+  'sharpedo', 'slowbro', 'steelix', 'swampert', 'tyranitar', 'venusaur'
+]);
+
 function resolvePokemonData(rawInput) {
   let raw = String(rawInput || '').trim();
   if(!raw) return { name: '', slug: '', sprite: 'https://play.pokemonshowdown.com/sprites/dex/substitute.png' };
@@ -807,7 +816,24 @@ function resolvePokemonData(rawInput) {
       if(baseClean === 'charizardy') return { name: 'Mega Charizard Y', slug: 'charizard-megay', sprite: 'https://play.pokemonshowdown.com/sprites/gen5/charizard-megay.png' };
       if(baseClean === 'mewtwox') return { name: 'Mega Mewtwo X', slug: 'mewtwo-megax', sprite: 'https://play.pokemonshowdown.com/sprites/gen5/mewtwo-megax.png' };
       if(baseClean === 'mewtwoy') return { name: 'Mega Mewtwo Y', slug: 'mewtwo-megay', sprite: 'https://play.pokemonshowdown.com/sprites/gen5/mewtwo-megay.png' };
-      return { name: `Mega ${basePretty}`, slug: `${baseClean}-mega`, sprite: `https://play.pokemonshowdown.com/sprites/gen5/${baseClean}-mega.png` };
+
+      // Handle custom Mega X / Y (e.g. Mega Raichu X / Mega Raichu Y)
+      let xyMatch = baseClean.match(/^(.+?)(x|y)$/);
+      if(xyMatch && !CANON_MEGAS.has(baseClean)){
+        let rootMon = xyMatch[1];
+        let letter = xyMatch[2].toUpperCase();
+        let rootPretty = rootMon.charAt(0).toUpperCase() + rootMon.slice(1);
+        return { name: `Mega ${rootPretty} ${letter}`, slug: rootMon, sprite: `https://play.pokemonshowdown.com/sprites/gen5/${rootMon}.png` };
+      }
+
+      // Canon Showdown Megas (e.g. Mega Garchomp, Mega Lucario, Mega Mawile)
+      if(CANON_MEGAS.has(baseClean)){
+        return { name: `Mega ${basePretty}`, slug: `${baseClean}-mega`, sprite: `https://play.pokemonshowdown.com/sprites/gen5/${baseClean}-mega.png` };
+      }
+
+      // Non-canon / New / Modded Megas (e.g. Mega Staraptor, Mega Raichu, Mega Flygon, Mega Dragonite):
+      // Gracefully fall back to the base Pokemon's sprite so they render smoothly!
+      return { name: `Mega ${basePretty}`, slug: baseClean, sprite: `https://play.pokemonshowdown.com/sprites/gen5/${baseClean}.png` };
     }
     // Origin
     if(formType === 'o' || formType === 'origin'){
