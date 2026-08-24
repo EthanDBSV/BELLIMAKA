@@ -10942,6 +10942,27 @@ function copyTeam(){
 }
 function teamKeydown(e){if(e.key==='Enter'){e.preventDefault();addTeamMon()}}
 
+function openDraftFromPlanner(monName, cost){
+  let t = ongoingT() || activeT();
+  if(!t){
+    alert(`To draft ${monName}, select an active tournament with a draft.`);
+    return;
+  }
+  let d = ensureTournamentDraft(t);
+  if(!d){
+    alert(`No draft found for ${t.name}.`);
+    return;
+  }
+
+  let tierName = `${cost} Points`;
+  if(d.board && Array.isArray(d.board)){
+    let foundTier = d.board.find(tier => (tier.pokemon || []).some(m => m.toLowerCase().trim() === (monName||'').toLowerCase().trim()));
+    if(foundTier) tierName = foundTier.name || `${foundTier.cost} Points`;
+  }
+
+  openDraftConfirmationModal(t.id, monName, cost, tierName);
+}
+
 /* --- markup --- */
 function builderHTML(){
   let s=ensureTeams(),team=activeTeam(),who=s.key==='guest'?'this browser':(window.currentAccount?.username||'your account');
@@ -10972,11 +10993,11 @@ function builderHTML(){
     <div class="budget-bar ${over?'over':''}"><span style="width:${Math.min(100,spent/TEAM_BUDGET*100)}%"></span></div>
     <div class="budget-sub">${over?fmtPts(Math.abs(left))+' points over budget':left+' points left'}</div>
     <div class="tm-list">
-      ${team.picks.map((x,i)=>`<div class="tm-item"><img src="${esc(monSprite(x.name))}" alt="" loading="lazy" onerror="handleSpriteError(this)"><span>${esc(x.name)}</span><b>${fmtPts(x.cost)}</b><button title="Remove ${esc(x.name)}" onclick="removeTeamMon(${i})">×</button></div>`).join('')}
+      ${team.picks.map((x,i)=>`<div class="tm-item" style="cursor:pointer;transition:all .15s ease" title="Click to draft ${esc(x.name)}" onclick="openDraftFromPlanner('${jsArg(x.name)}', ${x.cost})"><img src="${esc(monSprite(x.name))}" alt="" loading="lazy" onerror="handleSpriteError(this)"><span style="font-weight:700;flex:1;text-align:left;color:#f5f3f0">${esc(x.name)}</span><b style="color:#ffd166;font-size:12px;background:#282014;padding:2px 6px;border-radius:4px;border:1px solid #4a3818">${fmtPts(x.cost)}</b><button title="Remove ${esc(x.name)}" onclick="event.stopPropagation();removeTeamMon(${i})">×</button></div>`).join('')}
       ${Array.from({length:free},(_,i)=>`<div class="tm-slot-free">Slot ${team.picks.length+i+1} open</div>`).join('')}
     </div>
     <div class="mock-actions"><button class="chip" onclick="copyTeam()">Copy list</button><button class="chip" onclick="deleteTeam()" style="color:#ff9ba1">Delete team</button></div>
-    <p class="tm-note">Teams are private and saved to ${esc(who)}${s.key!=='guest'?' — they follow your account when you sign in elsewhere':''}.</p>`
+    <p class="tm-note">Teams are private and saved to ${esc(who)}${s.key!=='guest'?' — they follow your account when you sign in elsewhere':''}. Click any Pokémon above to draft it on the board.</p>`
 }
 
 /* ------------------------------------------------------------
@@ -12714,13 +12735,73 @@ function DraftRostersView(t){
   `;
 }
 
+var completedDraftSubTab = 'rosters'; // 'rosters' | 'board' | 'sheet'
+
+function DraftCompletedView(t){
+  let d = ensureTournamentDraft(t);
+  let totalPicks = (d.picks || []).length;
+  let order = getDraftOrderList(t);
+
+  return `
+    <div style="display:flex;flex-direction:column;gap:16px">
+      <!-- Quick Status & Actions Bar -->
+      <div class="card" style="padding:12px 16px;background:#14141c;border-color:#282836;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px">
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+          <span class="tag" style="background:#0d2d1f;border:1px solid #10b981;color:#52e3a4;font-weight:800;letter-spacing:.5px">🏁 DRAFT COMPLETED</span>
+          <span style="font-size:12px;color:#a09fa8">${order.length} Coaches · ${totalPicks} Total Drafted Pokémon · Budget Cap: ${d.pointBudget ? d.pointBudget + ' pts' : 'Unlimited'}</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+          ${moderator ? `
+            <button class="btn ghost btn-sm" onclick="openDraftOrderEditor('${jsArg(t.id)}')">🔀 Draft Order</button>
+            <button class="btn ghost btn-sm" onclick="openGroupDrawCeremony('${jsArg(t.id)}')">🎩 Group Draw</button>
+            <button class="btn ghost btn-sm" style="color:#ffd166;border-color:#5a441c" onclick="reopenDraftPhase('${jsArg(t.id)}')">↩️ Reopen Live Draft</button>
+          ` : ''}
+        </div>
+      </div>
+
+      <!-- Navigation Subtabs -->
+      <div class="tabs" style="margin:0">
+        <button class="${completedDraftSubTab === 'rosters' ? 'active' : ''}" onclick="completedDraftSubTab='rosters';render()">👥 Coach Rosters & Budgets (Draft Board)</button>
+        <button class="${completedDraftSubTab === 'board' ? 'active' : ''}" onclick="completedDraftSubTab='board';render()">📋 Tiered Draft Board</button>
+        <button class="${completedDraftSubTab === 'sheet' ? 'active' : ''}" onclick="completedDraftSubTab='sheet';render()">📊 Google Sheets Embed</button>
+      </div>
+
+      <!-- Tab Content Area -->
+      ${completedDraftSubTab === 'rosters' 
+        ? DraftRostersView(t) 
+        : (completedDraftSubTab === 'board' 
+          ? DraftBoardView(t) 
+          : `<div class="card">${sheetIds(boardLink).id ? `<iframe class="sheet-frame" src="${esc(sheetEmbedUrl())}" title="League draft sheet" loading="lazy"></iframe>` : `<div class="empty"><div class="card-title">Connect the cost sheet</div><p class="sub">Add the Google Sheets link in Board settings to show it here.</p></div>`}</div>`)}
+    </div>
+  `;
+}
+
+function reopenDraftPhase(tId){
+  if(!moderator) return;
+  let t = tournamentData[tId] || activeT();
+  if(!t) return;
+  if(!confirm(`Reopen the live draft room for ${t.name}?`)) return;
+  let d = ensureTournamentDraft(t);
+  d.status = 'active';
+  t.phase = 'draft';
+  persistLeague();
+  render();
+}
+
 /* --- Navigation & Board Main Handler --- */
 function Board(){
   let t = ongoingT() || activeT();
-  let hasActiveDraft = t && (t.hasDraft || t.phase === 'draft' || t.draftData);
+  let hasDraftData = t && (t.hasDraft || t.phase === 'draft' || t.draftData);
 
-  if(hasActiveDraft){
-    return head('Live Draft Room', (t.season || '') + ': ' + t.name + ' · Snake Draft & Board') + DraftRoom(t);
+  if(hasDraftData){
+    let d = ensureTournamentDraft(t);
+    let isDraftOver = (t.phase === 'group' || t.phase === 'groups' || t.phase === 'topcut' || t.phase === 'complete' || d.status === 'completed');
+
+    if(isDraftOver){
+      return head('Draft Rosters & Budgets', (t.season || '') + ': ' + t.name + ' · Completed Draft Board & Rosters') + DraftCompletedView(t);
+    } else {
+      return head('Live Draft Room', (t.season || '') + ': ' + t.name + ' · Snake Draft & Board') + DraftRoom(t);
+    }
   }
 
   let s=sheetIds(boardLink),embed=sheetEmbedUrl();
