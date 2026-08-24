@@ -9199,16 +9199,43 @@ function deleteTeam(){
   s.activeId=s.teams[0]?.id||null;
   builderStatus='';writeTeams();refreshBuilder()
 }
-function addTeamMon(){
-  let team=activeTeam();if(!team)return;
-  let nameBox=document.querySelector('#tmName'),costBox=document.querySelector('#tmCost');
-  let name=(nameBox?.value||'').trim(),cost=parseFloat(costBox?.value);
-  if(!name||!Number.isFinite(cost)||cost<0){builderStatus='Enter a Pokémon and its cost from the sheet.';refreshBuilder();setTimeout(()=>document.querySelector(name?'#tmCost':'#tmName')?.focus(),0);return}
-  if(team.picks.length>=TEAM_SLOTS){builderStatus='That is all '+TEAM_SLOTS+' slots — remove a Pokémon to add another.';refreshBuilder();return}
-  if(team.picks.some(x=>x.name.toLowerCase()===name.toLowerCase())){builderStatus=name+' is already on this team.';refreshBuilder();setTimeout(()=>document.querySelector('#tmName')?.focus(),0);return}
-  team.picks.push({name:name.slice(0,30),cost:fmtPts(cost)});
-  builderStatus='';writeTeams();refreshBuilder();
-  setTimeout(()=>{let b=document.querySelector('#tmName');if(b){b.value='';b.focus()}let c=document.querySelector('#tmCost');if(c)c.value=''},0)
+function addTeamMon(directName, directCost){
+  let s = ensureTeams(), team = activeTeam();
+  if(!team){
+    let newT = { id: teamId(), name: 'My Draft Plan', picks: [] };
+    s.teams.push(newT);
+    s.activeId = newT.id;
+    team = newT;
+  }
+  let nameBox = document.querySelector('#tmName'), costBox = document.querySelector('#tmCost');
+  let name = directName !== undefined ? String(directName).trim() : (nameBox?.value || '').trim();
+  let cost = directCost !== undefined ? parseFloat(directCost) : parseFloat(costBox?.value);
+
+  if(!name || !Number.isFinite(cost) || cost < 0){
+    builderStatus = 'Enter a Pokémon and its cost from the sheet.';
+    refreshBuilder();
+    setTimeout(() => document.querySelector(name ? '#tmCost' : '#tmName')?.focus(), 0);
+    return;
+  }
+  if(team.picks.length >= TEAM_SLOTS){
+    builderStatus = 'That is all ' + TEAM_SLOTS + ' slots — remove a Pokémon to add another.';
+    refreshBuilder();
+    return;
+  }
+  if(team.picks.some(x => x.name.toLowerCase() === name.toLowerCase())){
+    builderStatus = name + ' is already on this team.';
+    refreshBuilder();
+    setTimeout(() => document.querySelector('#tmName')?.focus(), 0);
+    return;
+  }
+  team.picks.push({ name: name.slice(0, 30), cost: fmtPts(cost) });
+  builderStatus = 'Added ' + name + ' to ' + team.name + '!';
+  writeTeams();
+  refreshBuilder();
+  setTimeout(() => {
+    let b = document.querySelector('#tmName'); if(b){ b.value = ''; b.focus(); }
+    let c = document.querySelector('#tmCost'); if(c) c.value = '';
+  }, 0);
 }
 function removeTeamMon(i){let team=activeTeam();if(!team)return;team.picks.splice(i,1);builderStatus='';writeTeams();refreshBuilder()}
 function copyTeam(){
@@ -9751,29 +9778,37 @@ function openDraftConfirmationModal(tId, monName, cost, tierName){
             <span class="tag" style="background:#3d2c12;color:#ffd166;font-weight:800;border:1px solid #6b4d1b">${cost} Points</span>
           </div>
 
-          <div class="card" style="padding:14px;background:#14141c;border-color:#2a2a3a;text-align:left;margin-bottom:18px">
+          <div class="card" style="padding:14px;background:#14141c;border-color:#2a2a3a;text-align:left;margin-bottom:14px">
             <div style="display:flex;align-items:center;justify-content:space-between">
               <div>
-                <div style="font-size:10px;font-weight:800;color:#8e8c95;text-transform:uppercase">Drafting Coach</div>
-                <div style="font-weight:800;font-size:15px;color:#f5f3f0">${esc(pickingCoach)}</div>
+                <div style="font-size:10px;font-weight:800;color:#8e8c95;text-transform:uppercase">On The Clock</div>
+                <div style="font-weight:800;font-size:15px;color:#f5f3f0">${esc(pickingCoach)} ${isMe ? '⭐ (You)' : ''}</div>
               </div>
               <div style="text-align:right">
-                <div style="font-size:10px;font-weight:800;color:#8e8c95;text-transform:uppercase">Points Balance</div>
+                <div style="font-size:10px;font-weight:800;color:#8e8c95;text-transform:uppercase">Clock Budget</div>
                 <div style="font:800 15px 'Barlow Condensed';color:${hasBudget ? '#4bdd91' : '#ff4b54'}">${coachStats.budget > 0 ? `${coachStats.remainingBudget} / ${coachStats.budget} pts` : 'Unlimited'}</div>
               </div>
             </div>
             <div style="margin-top:8px;font-size:11px;color:#9d9ba6">
-              Pick <b>#${turn.currentPickNumber}</b> · Round <b>${turn.currentRound}</b> · Team slot <b>${coachStats.count + 1}/${coachStats.maxSlots}</b>
+              Pick <b>#${turn.currentPickNumber}</b> · Round <b>${turn.currentRound}</b> · Slot <b>${coachStats.count + 1}/${coachStats.maxSlots}</b>
             </div>
           </div>
 
-          ${!canPick ? `<div class="sub" style="color:#ff8e95;margin-bottom:14px">Only <b>${esc(pickingCoach)}</b> or a Moderator can make this selection.</div>` : ''}
-          ${canPick && !hasBudget ? `<div class="sub" style="color:#ff4b54;margin-bottom:14px">⚠️ Not enough points. ${esc(pickingCoach)} only has ${coachStats.remainingBudget} pts remaining.</div>` : ''}
-          ${canPick && !hasSlots ? `<div class="sub" style="color:#ff4b54;margin-bottom:14px">⚠️ Roster is full (${coachStats.maxSlots}/${coachStats.maxSlots}).</div>` : ''}
+          <div style="display:flex;flex-direction:column;gap:8px">
+            ${canPick ? `
+              <button class="btn" ${(!hasBudget || !hasSlots) ? 'disabled style="opacity:.4;cursor:not-allowed"' : ''} style="padding:11px 16px;font-weight:800;width:100%" onclick="makeDraftPick('${jsArg(t.id)}', '${jsArg(monName)}');closeModal()">
+                🎯 Official Draft Pick (${esc(monName)})
+              </button>
+            ` : `
+              <div class="sub" style="color:#a09fa8;margin-bottom:4px">
+                Waiting for <b>${esc(pickingCoach)}</b> to make official Pick #${turn.currentPickNumber}.
+              </div>
+            `}
 
-          <div class="creator-actions" style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+            <button class="btn ghost" style="color:#ffd166;border-color:#5a441c;width:100%" onclick="addTeamMon('${jsArg(monName)}', ${cost});closeModal()">
+              📝 Add to My Private Team Plan
+            </button>
             <button class="btn ghost" onclick="closeModal()">Cancel</button>
-            <button class="btn" ${(!canPick || !hasBudget || !hasSlots) ? 'disabled style="opacity:.4;cursor:not-allowed"' : ''} style="padding:10px 16px;font-weight:800" onclick="makeDraftPick('${jsArg(t.id)}', '${jsArg(monName)}');closeModal()">Draft Pokémon 🎯</button>
           </div>
         </div>
       </div>
@@ -9976,89 +10011,6 @@ function draftRecentTickerHtml(t){
         `).join('')}
       </div>
     </div>
-  `;
-}
-
-var draftPlannerSelectedCoach = null;
-
-function draftRoomPlannerSidebar(t){
-  let d = ensureTournamentDraft(t);
-  let order = getDraftOrderList(t);
-  let myUser = window.currentAccount?.username;
-  let defaultCoach = (myUser && order.includes(myUser)) 
-    ? myUser 
-    : (draftPlannerSelectedCoach || getDraftCurrentTurn(t).player || order[0] || 'Coach');
-  
-  if(!order.includes(defaultCoach) && order.length){
-    defaultCoach = order[0];
-  }
-  let coach = defaultCoach;
-  let stats = getDraftCoachStats(t, coach);
-  let faceArt = profilePictures[coach] ? `url('${esc(profilePictures[coach])}')` : (teamCovers[coach] ? `url('${esc(teamCovers[coach])}')` : fallbackArt(coach));
-  let faceLetter = (profilePictures[coach] || teamCovers[coach]) ? '' : esc((coach || '?')[0]);
-  let ovrObj = calculatePlayerOVR(coach);
-  let freeSlots = Math.max(0, stats.maxSlots - stats.picks.length);
-  let pctSpent = stats.budget > 0 ? Math.min(100, Math.round((stats.pointsSpent / stats.budget) * 100)) : 0;
-
-  return `
-    <aside class="draft-planner-sidebar">
-      <div style="display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #2a2a38;padding-bottom:10px">
-        <div>
-          <div class="eyebrow" style="color:var(--amber);margin:0;font-size:10px">📝 Team Planner</div>
-          <div style="font:800 15px 'Barlow Condensed';color:#f5f3f0;margin-top:2px">Coach Roster & Budget</div>
-        </div>
-        <select onchange="draftPlannerSelectedCoach=this.value;render()" style="padding:4px 8px;font-size:11px;background:#1b1b26;border:1px solid #36364a;color:#ffd166;border-radius:5px;font-weight:700;max-width:125px">
-          ${order.map(p => `<option value="${esc(p)}" ${p === coach ? 'selected' : ''}>${esc(p)}</option>`).join('')}
-        </select>
-      </div>
-
-      <!-- Coach Header Card -->
-      <div style="display:flex;align-items:center;gap:10px;background:#181822;border:1px solid #2b2b3a;padding:10px 12px;border-radius:8px">
-        <span class="avatar mini" style="background-image:${faceArt};background-size:cover;background-position:center;width:34px;height:34px;border-radius:50%;display:grid;place-items:center;border:1px solid ${ovrObj.color}">${faceLetter}</span>
-        <div style="min-width:0;flex:1">
-          <div style="font:800 14px 'Barlow Condensed';color:#f5f3f0;line-height:1.2">${playerLink(coach)}</div>
-          <div style="font-size:10px;color:#8e8c95;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(teamName(t, coach))}</div>
-        </div>
-        <div style="text-align:right">
-          <div style="font:800 14px 'Barlow Condensed';color:#ffd166">${stats.budget > 0 ? `${stats.pointsSpent}/${stats.budget}p` : `${stats.pointsSpent}p`}</div>
-          <div style="font-size:9px;color:#8e8c95">${stats.count}/${stats.maxSlots} Mons</div>
-        </div>
-      </div>
-
-      <!-- Budget Progress Bar -->
-      ${stats.budget > 0 ? `
-        <div>
-          <div style="display:flex;justify-content:space-between;font-size:10px;font-weight:800;color:#a09fa8;margin-bottom:4px">
-            <span>Budget Remaining</span>
-            <span style="color:#ffd166">${stats.remainingBudget} pts left</span>
-          </div>
-          <div class="progress" style="height:6px;background:#20202c"><span style="width:${pctSpent}%;background:${pctSpent > 90 ? '#ff8e95' : 'var(--amber)'}"></span></div>
-        </div>
-      ` : ''}
-
-      <!-- Drafted Mons / Slots List -->
-      <div style="display:flex;flex-direction:column;gap:6px;max-height:480px;overflow-y:auto;padding-right:2px">
-        ${stats.picks.map(pick => `
-          <div class="draft-planner-slot">
-            <div style="display:flex;align-items:center;gap:8px;min-width:0">
-              <img src="${esc(pokeSprite(pick.pokemon))}" style="width:28px;height:28px;object-fit:contain" onerror="this.src='https://play.pokemonshowdown.com/sprites/dex/substitute.png'">
-              <div style="min-width:0">
-                <div style="font:800 12px 'Barlow Condensed';color:#f5f3f0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(pick.pokemon)}</div>
-                <div style="font-size:9px;color:#8e8c95">Pick #${pick.pickNumber} (R${pick.round})</div>
-              </div>
-            </div>
-            <span class="tag" style="background:#2d2210;color:#ffd166;font-size:9px;font-weight:800;border:1px solid #5a4218;padding:1px 5px">${pick.cost} pts</span>
-          </div>
-        `).join('')}
-
-        ${Array.from({length: freeSlots}, (_, i) => `
-          <div class="draft-planner-slot empty">
-            <span style="font-size:10px;color:#6b6a78;font-weight:700">Slot ${stats.picks.length + i + 1} (Open)</span>
-            <span style="font-size:9px;color:#4a4a5a">Click mon to draft</span>
-          </div>
-        `).join('')}
-      </div>
-    </aside>
   `;
 }
 
@@ -10339,8 +10291,10 @@ function DraftBoardView(t){
         </div>
       </div>
 
-      <!-- Docked Side Team Planner -->
-      ${draftRoomPlannerSidebar(t)}
+      <!-- Docked Private Side Team Planner -->
+      <aside class="card builder" id="teamBuilder" style="position:sticky;top:70px;margin:0;max-height:calc(100vh - 84px);overflow-y:auto">
+        ${builderHTML()}
+      </aside>
     </div>
   `;
 }
