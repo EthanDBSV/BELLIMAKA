@@ -623,15 +623,18 @@ details[open] > .past-tourney-summary .past-chevron{transform:rotate(180deg);col
 .tm-add input{background:#101014;border:1px solid #3a3a42;border-radius:5px;padding:9px 10px;color:#fff;min-width:0}
 .tm-count{display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin-top:16px}
 .tm-count .slots{font-size:11px;font-weight:800;color:#9d9ba4;letter-spacing:.4px}
-.tm-count .slots b{color:#e9e7ec}
 .tm-list{margin-top:8px}
-.tm-item{display:flex;align-items:center;gap:9px;padding:8px 0;border-bottom:1px solid #2b2b32;font-size:12px}
-.tm-item:last-of-type{border:0}
-.tm-item img{width:28px;height:28px;object-fit:contain;image-rendering:pixelated;flex:none}
-.tm-item span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:700}
-.tm-item b{margin-left:auto;font:800 16px 'Barlow Condensed';color:var(--amber);flex:none}
-.tm-item button{border:0;background:none;color:#ff7a80;cursor:pointer;font-size:15px;line-height:1;padding:0 2px;flex:none}
-.tm-slot-free{padding:7px 0;border-bottom:1px dashed #26262d;font-size:10px;color:#55535d;letter-spacing:.5px;text-transform:uppercase;font-weight:800}
+.tm-item{display:flex;align-items:center;gap:9px;padding:7px 10px;border-radius:6px;border:1px solid transparent;border-bottom:1px solid #2b2b32;font-size:12px;cursor:pointer;transition:all .18s ease;user-select:none}
+.tm-item:hover{background:linear-gradient(90deg,rgba(255,209,102,0.14) 0%,rgba(255,209,102,0.04) 100%);border:1px solid rgba(255,209,102,0.45);box-shadow:0 0 14px rgba(255,209,102,0.22),inset 0 0 8px rgba(255,209,102,0.08);transform:translateX(3px)}
+.tm-item:hover span{color:#ffd166;text-shadow:0 0 8px rgba(255,209,102,0.4)}
+.tm-item:hover img{transform:scale(1.15);filter:drop-shadow(0 2px 6px rgba(255,209,102,0.5))}
+.tm-item:last-of-type{border-bottom:1px solid transparent}
+.tm-item img{width:28px;height:28px;object-fit:contain;image-rendering:pixelated;flex:none;transition:transform .18s ease,filter .18s ease}
+.tm-item span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:700;transition:color .18s ease,text-shadow .18s ease}
+.tm-item b{margin-left:auto;font:800 15px 'Barlow Condensed';color:var(--amber);flex:none}
+.tm-item button{border:0;background:none;color:#ff7a80;cursor:pointer;font-size:15px;line-height:1;padding:2px 5px;border-radius:4px;flex:none;transition:background .15s ease,color .15s ease}
+.tm-item button:hover{background:rgba(255,75,84,0.25);color:#ff4b54}
+.tm-slot-free{padding:7px 10px;border-bottom:1px dashed #26262d;font-size:10px;color:#55535d;letter-spacing:.5px;text-transform:uppercase;font-weight:800}
 .tm-slot-free:last-of-type{border:0}
 .tm-note{font-size:10px;color:#8e8c95;margin-top:12px;line-height:1.5}
 .tm-status{font-size:11px;color:#ffb0b5;margin-top:9px;min-height:14px}
@@ -3536,7 +3539,7 @@ async function signOut(btnEl){
   try {
     for(let i = localStorage.length - 1; i >= 0; i--){
       let key = localStorage.key(i);
-      if(key && (key.startsWith('sb-') || key.includes('supabase.auth.token') || key === 'draftdex-moderator')){
+      if(key && (key.startsWith('sb-') || key.includes('supabase.auth.token') || key === 'draftdex-moderator' || key === 'draftdex-mod-mode')){
         localStorage.removeItem(key);
       }
     }
@@ -4531,10 +4534,14 @@ function toggleModerator(){
   // Only users whose verified role in Supabase is 'moderator' can toggle between active moderator tools and spectator preview
   if(!window.currentAccount || window.currentAccount.role !== 'moderator'){
     moderator = false;
+    try { localStorage.removeItem('draftdex-mod-mode'); } catch(e){}
     render();
     return;
   }
   moderator = !moderator;
+  try {
+    localStorage.setItem('draftdex-mod-mode', moderator ? 'on' : 'off');
+  } catch(e){}
   let label = document.querySelector('#accountText');
   if(label) label.textContent = window.currentAccount?.username ? (moderator ? `${window.currentAccount.username} 👑` : window.currentAccount.username) : (moderator ? 'Moderator' : 'Player');
   render();
@@ -4550,7 +4557,14 @@ async function updateSession(session){
     try{
       let {data}=await supabaseClient.from('user_profiles').select('role,username,prediction_points').eq('id',sessionUser.id).maybeSingle();
       if(myReq===sessionReqId && data){
-        if(data.role==='moderator') isMod=true;
+        if(data.role==='moderator'){
+          let pref = localStorage.getItem('draftdex-mod-mode');
+          // If user explicitly toggled spectator mode ('off'), honor their choice across browsing/refreshes
+          isMod = (pref !== 'off');
+        } else {
+          try { localStorage.removeItem('draftdex-mod-mode'); } catch(e){}
+          isMod = false;
+        }
         nextAccount=data;
       }
     }catch(e){}
