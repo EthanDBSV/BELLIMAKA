@@ -2268,6 +2268,11 @@ function rebuildSchedulePreserving(t){
     }
   });
   t.matches = fresh;
+  t.oddsSnapshot = null;
+  let hasStarted = fresh.some(m => m.as !== '' && m.as != null);
+  if(!hasStarted && t.status !== 'COMPLETE'){
+    t.preTournamentOdds = null;
+  }
 }
 
 
@@ -5162,9 +5167,9 @@ function getOrComputeTournamentOdds(t){
 
   t.oddsSnapshot = { key, data, sim, updatedAt: Date.now() };
 
-  // If this simulation is running before any match has a score recorded, record preTournamentOdds
+  // If this simulation is running before any match has a score recorded, record preTournamentOdds once groups & draft are locked in
   let isPreTournament = !(t.matches || []).some(m => m.as !== '' && m.as != null);
-  if(isPreTournament || !t.preTournamentOdds){
+  if(isPreTournament && t.phase !== 'draft'){
     let list = Object.values(sim).sort((a, b) => b.champPct - a.champPct || b.topCutPct - a.topCutPct);
     let darkHorses = [];
     list.forEach((x, i) => {
@@ -5172,9 +5177,7 @@ function getOrComputeTournamentOdds(t){
         darkHorses.push(x.player);
       }
     });
-    if(isPreTournament || !t.preTournamentOdds){
-      t.preTournamentOdds = { sim, list, darkHorses };
-    }
+    t.preTournamentOdds = { sim, list, darkHorses, lockedAt: Date.now() };
   }
 
   return t.oddsSnapshot;
@@ -5186,7 +5189,12 @@ function playoffOddsData(t){
 
 function getPreTournamentOdds(t, passedLeagueRecs = null){
   if(!t || !t.players || !t.players.length) return null;
-  if(t.preTournamentOdds && t.preTournamentOdds.darkHorses && t.preTournamentOdds.darkHorses.length) return t.preTournamentOdds;
+  let hasStartedMatches = (t.matches || []).some(m => m.as !== '' && m.as != null);
+  if(hasStartedMatches || t.status === 'COMPLETE'){
+    if(t.preTournamentOdds && t.preTournamentOdds.darkHorses && t.preTournamentOdds.darkHorses.length){
+      return t.preTournamentOdds;
+    }
+  }
 
   let unplayedMatches = (t.matches || []).map(m => ({ ...m, as: '', bs: '' }));
   let preT = { ...t, matches: unplayedMatches, bracketManagerData: null, phase: 'group', champion: null };
@@ -5201,8 +5209,11 @@ function getPreTournamentOdds(t, passedLeagueRecs = null){
       darkHorses.push(x.player);
     }
   });
-  t.preTournamentOdds = { sim, list, darkHorses };
-  return t.preTournamentOdds;
+  let snapshot = { sim, list, darkHorses };
+  if(t.phase !== 'draft'){
+    t.preTournamentOdds = snapshot;
+  }
+  return snapshot;
 }
 
 
