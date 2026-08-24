@@ -7197,6 +7197,7 @@ function restorePlayerBadge(p, revokedKey){
    claim to be someone else. Keyed by account username. */
 var accountLinks=(()=>{try{return JSON.parse(localStorage.getItem('draftdex-accountlinks')||'{}')||{}}catch{return {}}})();
 /* Links are validated against live profiles, so a deleted player can
+   never leave an account pointing at a profile that no longer exists. */
 function accountForPlayer(p){
   if(!p) return null;
   let cleanP = String(p).trim().toLowerCase();
