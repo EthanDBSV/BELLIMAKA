@@ -701,10 +701,17 @@ function handleSpriteError(img){
   img.src = 'https://play.pokemonshowdown.com/sprites/dex/substitute.png';
 }
 
+const _spriteDataCache = new Map();
 function resolvePokemonData(rawInput) {
   let raw = String(rawInput || '').trim();
   if(!raw) return { name: '', slug: '', sprite: 'https://play.pokemonshowdown.com/sprites/dex/substitute.png' };
+  if(_spriteDataCache.has(raw)) return _spriteDataCache.get(raw);
+  let res = _resolvePokemonDataUncached(raw);
+  _spriteDataCache.set(raw, res);
+  return res;
+}
 
+function _resolvePokemonDataUncached(raw) {
   let s = raw.toLowerCase()
     .replace(/[.'':%]/g, '')
     .replace(/\s*\(\d+.*?\)$/, '') // remove point annotations like (18) or (18 pts)
@@ -3033,6 +3040,7 @@ async function flushSync(){
 function persistLeague(){
   knownRev = (knownRev || 0) + 1;
   lastLocalUpdate = Date.now();
+  if(typeof invalidateLeagueCache === 'function') invalidateLeagueCache();
   try{
     localStorage.setItem('draftdex-rev', String(knownRev));
     localStorage.setItem('draftdex-updated-at', String(lastLocalUpdate));
@@ -6044,8 +6052,24 @@ function pastTournaments(p){
   }).join('');
 }
 
+var _cachedLeagueRecords = null;
+var _cachedLeagueRecordsTime = 0;
+var _cachedPlayerOVR = {};
+
+function invalidateLeagueCache(){
+  _cachedLeagueRecords = null;
+  _cachedLeagueRecordsTime = 0;
+  _cachedPlayerOVR = {};
+}
+
 var _calculatingRecords = false;
 function calculatePlayerOVR(p, leagueData=null){
+  if(!p) return { ovr:70, tier:'silver', tierName:'Silver', tierUpper:'SILVER', color:'#d0d0dc', badgeCls:'ovr-silver', badgeHtml:'<span class="ovr-badge-pill ovr-silver">70</span>', subStats:{win:50,tit:0,cut:0,strk:0} };
+
+  if(!leagueData && _cachedPlayerOVR[p]){
+    return _cachedPlayerOVR[p];
+  }
+
   let career=playerCareerStats(p);
   let recs = (leagueData && leagueData.statsByPlayer) ? leagueData : null;
   if(!recs && !_calculatingRecords && typeof calculateLeagueRecords === 'function'){
@@ -6064,7 +6088,7 @@ function calculatePlayerOVR(p, leagueData=null){
   let overallWinPct = total > 0 ? (wins / total) * 100 : (career.winPct || 50);
 
   if(total===0){
-    return {
+    let res = {
       ovr:70,
       tier:'silver',
       tierName:'Silver',
@@ -6074,6 +6098,8 @@ function calculatePlayerOVR(p, leagueData=null){
       badgeHtml:'<span class="ovr-badge-pill ovr-silver">70</span>',
       subStats:{win:50,tit:0,cut:0,strk:0}
     };
+    if(!leagueData) _cachedPlayerOVR[p] = res;
+    return res;
   }
 
   // Baseline: 72 (Forgiving in lower overalls; average players sit safely in Silver ~72-76)
@@ -6207,7 +6233,7 @@ function calculatePlayerOVR(p, leagueData=null){
     badgeCls = 'ovr-silver';
   }
 
-  return {
+  let result = {
     ovr: finalOvr,
     tier,
     tierName,
@@ -6222,6 +6248,8 @@ function calculatePlayerOVR(p, leagueData=null){
       strk: s.maxWinStreak || 0
     }
   };
+  if(!leagueData) _cachedPlayerOVR[p] = result;
+  return result;
 }
 
 /* --- the profile modal --- */
@@ -7807,9 +7835,12 @@ function getChronologicalMatches(){
 }
 
 var isCalculatingRecords = false;
-function calculateLeagueRecords(){
+function calculateLeagueRecords(forceRefresh = false){
+  if(!forceRefresh && _cachedLeagueRecords && (Date.now() - _cachedLeagueRecordsTime < 10000)){
+    return _cachedLeagueRecords;
+  }
   if(isCalculatingRecords){
-    return {
+    return _cachedLeagueRecords || {
       statsByPlayer: {},
       records: {
         maxOvr: { value: 0, holders: [], tournament: '' },
@@ -8433,7 +8464,7 @@ function calculateLeagueRecords(){
     });
   });
 
-    return {
+    let result = {
       statsByPlayer,
       records:{
         maxOvr:{value:maxOvrAll,holders:maxOvrHolders,tournament:maxOvrTournament},
@@ -8446,6 +8477,9 @@ function calculateLeagueRecords(){
         activeLossStreak:{value:maxActiveLossAll,holders:allPlayers.filter(p=>statsByPlayer[p].currentLossStreak===maxActiveLossAll&&maxActiveLossAll>0)}
       }
     };
+    _cachedLeagueRecords = result;
+    _cachedLeagueRecordsTime = Date.now();
+    return result;
   } finally {
     isCalculatingRecords = false;
   }
@@ -9719,15 +9753,17 @@ function getDraftCoachStats(t, p){
 function findPokemonCostOnBoard(t, pokemonName){
   let d = ensureTournamentDraft(t);
   if(!d || !d.board) return 0;
-  let cleanTarget = (pokemonName || '').toLowerCase().trim();
-  for(let tier of d.board){
-    for(let mon of (tier.pokemon || [])){
-      if(mon.toLowerCase().trim() === cleanTarget){
-        return tier.cost || 0;
-      }
-    }
+  if(!d._monCostMap){
+    let map = {};
+    (d.board || []).forEach(tier => {
+      (tier.pokemon || []).forEach(mon => {
+        if(mon) map[mon.toLowerCase().trim()] = tier.cost || 0;
+      });
+    });
+    d._monCostMap = map;
   }
-  return 0;
+  let cleanTarget = (pokemonName || '').toLowerCase().trim();
+  return d._monCostMap[cleanTarget] ?? 0;
 }
 
 function parseDraftBoardData(rawText){
