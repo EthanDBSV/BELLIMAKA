@@ -3272,6 +3272,148 @@ function applySharedState(data){
 }
 window.applySharedState = applySharedState;
 var supabaseInited=false;
+var draftRealtimeChannel=null;
+var draftPollTimer=null;
+
+function showDraftToast(msg){
+  let existing = document.querySelector('#draftToast');
+  if(!existing){
+    existing = document.createElement('div');
+    existing.id = 'draftToast';
+    existing.style.cssText = 'position:fixed;bottom:24px;right:24px;background:linear-gradient(135deg,#1c1c26,#12121a);color:#fff;padding:12px 18px;border-radius:8px;border:1px solid #4ade80;box-shadow:0 8px 24px rgba(0,0,0,0.6);font-size:13px;font-weight:700;z-index:99999;display:flex;align-items:center;gap:10px;animation:fadeIn .2s ease;transition:opacity .3s ease;';
+    document.body.appendChild(existing);
+  }
+  existing.innerHTML = `<span>⚡</span> <span>${esc(msg)}</span>`;
+  existing.style.opacity = '1';
+  clearTimeout(window._draftToastTimer);
+  window._draftToastTimer = setTimeout(() => {
+    if(existing) existing.style.opacity = '0';
+  }, 3500);
+}
+
+function setupDraftRealtime(){
+  if(!supabaseClient) return;
+  if(draftRealtimeChannel){
+    try { supabaseClient.removeChannel(draftRealtimeChannel); } catch(e){}
+  }
+
+  draftRealtimeChannel = supabaseClient.channel('draftdex-realtime-draft', {
+    config: { broadcast: { self: false } }
+  });
+
+  // Listen for instant live draft picks from online players
+  draftRealtimeChannel.on('broadcast', { event: 'draft-pick' }, ({ payload }) => {
+    if(payload && payload.tournamentId && payload.pokemon){
+      applyRemoteDraftPick(payload);
+    }
+  });
+
+  // Listen for draft control actions (pause, resume, undo, start)
+  draftRealtimeChannel.on('broadcast', { event: 'draft-control' }, ({ payload }) => {
+    if(payload && payload.tournamentId){
+      applyRemoteDraftControl(payload);
+    }
+  });
+
+  draftRealtimeChannel.subscribe((status) => {
+    console.log('Draftdex Realtime broadcast status:', status);
+  });
+
+  // Background polling safety net (every 2.5 seconds when on draft tab)
+  if(!draftPollTimer){
+    draftPollTimer = setInterval(async () => {
+      if(current === 'Draft' && supabaseClient){
+        try {
+          let { data } = await supabaseClient.from('league_state').select('data').eq('id', 'main').maybeSingle();
+          if(data?.data && shouldApply(data.data)){
+            applySharedState(data.data);
+            render();
+          }
+        } catch(e){}
+      }
+    }, 2500);
+  }
+}
+
+function applyRemoteDraftPick(payload){
+  let t = tournamentData[payload.tournamentId];
+  if(!t) return;
+  let d = ensureTournamentDraft(t);
+  if(!d) return;
+
+  // Check if pick already recorded
+  let exists = (d.picks || []).some(x => x.pickNumber === payload.pickNumber || (x.player === payload.player && x.pokemon.toLowerCase().trim() === payload.pokemon.toLowerCase().trim()));
+  if(exists) return;
+
+  d.picks = d.picks || [];
+  d.picks.push({
+    round: payload.round,
+    pickNumber: payload.pickNumber,
+    player: payload.player,
+    pokemon: payload.pokemon,
+    cost: payload.cost,
+    timestamp: payload.timestamp || Date.now()
+  });
+
+  if(!t.rosters) t.rosters = {};
+  if(!t.rosters[payload.player]) t.rosters[payload.player] = [];
+  if(!t.rosters[payload.player].includes(payload.pokemon)){
+    t.rosters[payload.player].push(payload.pokemon);
+  }
+
+  if(!roster[payload.player]) roster[payload.player] = [];
+  if(!roster[payload.player].includes(payload.pokemon)){
+    roster[payload.player].push(payload.pokemon);
+  }
+
+  if(d.picks.length >= getDraftTotalPicks(t)){
+    d.status = 'completed';
+  }
+
+  try {
+    localStorage.setItem('draftdex-tournaments', JSON.stringify(tournamentData));
+    localStorage.setItem('draftdex-rosters', JSON.stringify(roster));
+  } catch(e){}
+
+  // Moderator client automatically writes authoritative state to Supabase
+  if(moderator){
+    persistLeague();
+  }
+
+  render();
+  showDraftToast(`${payload.player} drafted ${payload.pokemon}!`);
+}
+
+function applyRemoteDraftControl(payload){
+  let t = tournamentData[payload.tournamentId];
+  if(!t) return;
+  let d = ensureTournamentDraft(t);
+  if(!d) return;
+
+  if(payload.action === 'start' || payload.action === 'resume'){
+    d.status = 'active';
+  } else if(payload.action === 'pause'){
+    d.status = 'paused';
+  } else if(payload.action === 'undo'){
+    let lastPick = (d.picks || []).pop();
+    if(lastPick){
+      let p = lastPick.player;
+      let mon = lastPick.pokemon;
+      if(t.rosters?.[p]) t.rosters[p] = t.rosters[p].filter(m => m.toLowerCase().trim() !== mon.toLowerCase().trim());
+      if(roster[p]) roster[p] = roster[p].filter(m => m.toLowerCase().trim() !== mon.toLowerCase().trim());
+      if(d.status === 'completed') d.status = 'active';
+    }
+  }
+
+  try {
+    localStorage.setItem('draftdex-tournaments', JSON.stringify(tournamentData));
+    localStorage.setItem('draftdex-rosters', JSON.stringify(roster));
+  } catch(e){}
+
+  if(moderator) persistLeague();
+  render();
+}
+
 async function initSupabase(){
   if(!supabaseReady()||supabaseInited) return;
   supabaseInited=true;
@@ -3279,6 +3421,8 @@ async function initSupabase(){
   let {data:{session}} = await supabaseClient.auth.getSession();
   await updateSession(session);
   supabaseClient.auth.onAuthStateChange(async(_,s)=>await updateSession(s));
+  
+  // 1. Listen for database table updates
   supabaseClient.channel('league-state').on('postgres_changes', {event:'UPDATE', schema:'public', table:'league_state', filter:'id=eq.main'}, p=>{
     let incoming = p.new.data;
     if(shouldApply(incoming)){
@@ -3286,11 +3430,13 @@ async function initSupabase(){
       render();
     }
   }).subscribe();
+
+  // 2. Setup low-latency Realtime WebSocket Broadcast channel
+  setupDraftRealtime();
 }
 
 async function flushSync(){
   if(!supabaseClient) return;
-  if(!moderator && !sessionUser) return;
   let payload = {
     rev: knownRev,
     updatedAt: lastLocalUpdate,
@@ -11672,14 +11818,15 @@ function makeDraftPick(tId, pokemonName, forcedPlayer = null){
     return;
   }
 
-  d.picks.push({
+  let pickObj = {
     round: turn.currentRound,
     pickNumber: turn.currentPickNumber,
     player: targetPlayer,
     pokemon: pokemonName,
     cost: cost,
     timestamp: Date.now()
-  });
+  };
+  d.picks.push(pickObj);
 
   // Automatically place Pokémon onto active tournament roster!
   if(!t.rosters) t.rosters = {};
@@ -11699,6 +11846,25 @@ function makeDraftPick(tId, pokemonName, forcedPlayer = null){
 
   persistLeague();
   render();
+
+  // Instant Realtime Broadcast to all online draft participants (< 100ms)
+  if(draftRealtimeChannel){
+    try {
+      draftRealtimeChannel.send({
+        type: 'broadcast',
+        event: 'draft-pick',
+        payload: {
+          tournamentId: t.id,
+          pokemon: pokemonName,
+          player: targetPlayer,
+          cost: cost,
+          round: pickObj.round,
+          pickNumber: pickObj.pickNumber,
+          timestamp: pickObj.timestamp
+        }
+      });
+    } catch(e){}
+  }
 }
 
 function undoDraftPick(tId){
@@ -11724,6 +11890,16 @@ function undoDraftPick(tId){
 
   persistLeague();
   render();
+
+  if(draftRealtimeChannel){
+    try {
+      draftRealtimeChannel.send({
+        type: 'broadcast',
+        event: 'draft-control',
+        payload: { tournamentId: t.id, action: 'undo', timestamp: Date.now() }
+      });
+    } catch(e){}
+  }
 }
 
 function startDraft(tId){
@@ -11734,6 +11910,16 @@ function startDraft(tId){
   d.status = 'active';
   persistLeague();
   render();
+
+  if(draftRealtimeChannel){
+    try {
+      draftRealtimeChannel.send({
+        type: 'broadcast',
+        event: 'draft-control',
+        payload: { tournamentId: t.id, action: 'start', timestamp: Date.now() }
+      });
+    } catch(e){}
+  }
 }
 
 function pauseDraft(tId){
@@ -11744,6 +11930,16 @@ function pauseDraft(tId){
   d.status = 'paused';
   persistLeague();
   render();
+
+  if(draftRealtimeChannel){
+    try {
+      draftRealtimeChannel.send({
+        type: 'broadcast',
+        event: 'draft-control',
+        payload: { tournamentId: t.id, action: 'pause', timestamp: Date.now() }
+      });
+    } catch(e){}
+  }
 }
 
 function resumeDraft(tId){
@@ -11754,6 +11950,16 @@ function resumeDraft(tId){
   d.status = 'active';
   persistLeague();
   render();
+
+  if(draftRealtimeChannel){
+    try {
+      draftRealtimeChannel.send({
+        type: 'broadcast',
+        event: 'draft-control',
+        payload: { tournamentId: t.id, action: 'resume', timestamp: Date.now() }
+      });
+    } catch(e){}
+  }
 }
 
 function completeDraftAndAdvance(tId){
