@@ -10546,33 +10546,6 @@ function resetDraftPicks(tId){
 }
 
 /* --- Draft Views --- */
-function draftRecentTickerHtml(t){
-  let d = ensureTournamentDraft(t);
-  let recent = [...(d.picks || [])].reverse().slice(0, 8);
-  if(!recent.length) return '';
-
-  return `
-    <div style="margin-top:14px;background:#13131a;border:1px solid #282836;border-radius:8px;padding:8px 12px">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
-        <span style="font-size:10px;font-weight:800;color:#8e8c95;text-transform:uppercase;letter-spacing:.6px">Recent Draft Picks</span>
-        <span style="font-size:10px;color:#ffd166;font-weight:700">Latest ${recent.length}</span>
-      </div>
-      <div class="draft-recent-bar">
-        ${recent.map(p => `
-          <div class="draft-recent-item">
-            <span style="font:800 11px 'Barlow Condensed';color:var(--amber)">#${p.pickNumber}</span>
-            <img src="${esc(pokeSprite(p.pokemon))}" class="draft-sprite" style="width:26px;height:26px" onerror="handleSpriteError(this)">
-            <div style="min-width:0">
-              <div style="font-weight:800;color:#f5f3f0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(p.pokemon)}</div>
-              <div style="font-size:10px;color:#8e8c95">${esc(p.player)} · ${p.cost} pts</div>
-            </div>
-          </div>
-        `).join('')}
-      </div>
-    </div>
-  `;
-}
-
 function DraftRoom(t){
   if(!t) t = ongoingT() || activeT();
   if(!t) return noTournament();
@@ -10713,8 +10686,6 @@ function DraftRoom(t){
             }).join('')}
           </div>
         </div>
-
-        ${draftRecentTickerHtml(t)}
       </div>
 
       <!-- Navigation Subtabs -->
