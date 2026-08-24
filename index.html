@@ -704,7 +704,7 @@ details[open] > .past-tourney-summary .past-chevron{transform:rotate(180deg);col
 <style>.playerGroup{background:#fff!important;color:#111!important}</style>
 <style>.match-row.aligned{grid-template-columns:145px minmax(115px,1fr) 34px minmax(115px,1fr) 118px 78px auto}</style>
 <style>#newMon{background:#fff!important;color:#111!important}#newMon::placeholder{color:#666}.hero-main:after{content:attr(data-season)!important}.player-link{border:0;background:none;color:#f5f3f0;padding:0;font:inherit;font-weight:800;cursor:pointer;text-align:left}.player-link:hover{color:#ff777d;text-decoration:underline}.match-row.aligned{grid-template-columns:145px minmax(115px,1fr) 34px minmax(115px,1fr) 118px 78px}.match-row.aligned .match-player{font-size:12px;min-width:0}.match-row.aligned .match-vs{text-align:center;color:#85838d;font-size:10px;font-weight:800}.bracket-match input{width:36px;background:#0f0f13;border:1px solid #474750;border-radius:3px;color:white;text-align:center;padding:3px}.bracket-grid-final{display:grid;grid-template-columns:repeat(4,210px);gap:42px;align-items:center;min-width:960px}.bracket-grid-final>div{display:grid;gap:38px}.bracket-grid-final>div:nth-child(2){padding-top:45px}.bracket-grid-final>div:nth-child(3){padding-top:115px}.bracket-grid-final>div:nth-child(4){padding-top:80px}.bracket-box{position:relative}.bracket-match-title{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.7px;color:var(--amber);margin:0 0 6px 2px}@media(max-width:560px){.match-row.aligned{grid-template-columns:75px 1fr 30px 1fr}.match-row.aligned .score-edit{grid-column:2/4}.match-row.aligned .save{grid-column:2/4}}</style>
-<body><div class="shell"><header class="topbar"><div class="brand"><span class="ball"></span>DRAFTDEX</div><nav class="nav" id="nav"></nav><button class="account" onclick="go('Account')"><span class="mode-dot"></span><span id="accountText">Ethan · Moderator</span></button></header><main class="page" id="app"></main></div><div id="modal"></div>
+<body><div class="shell"><header class="topbar"><div class="brand"><span class="ball"></span>DRAFTDEX</div><nav class="nav" id="nav"></nav><button class="account" onclick="go('Account')"><span class="mode-dot"></span><span id="accountText">Sign in</span></button></header><main class="page" id="app"></main></div><div id="modal"></div>
 <script>
 function esc(s){return String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;')}
 function jsArg(s){return esc(String(s??'').replace(/\\/g,'\\\\').replace(/'/g,"\\'"))}
@@ -1286,7 +1286,7 @@ const profiles={};
 const roster={};
 function rr(names){let out=[],r=1;for(let i=0;i<names.length;i++)for(let j=i+1;j<names.length;j++){out.push({id:r+'-'+i+j,round:'Round '+r,a:names[i],b:names[j],as:'',bs:'',date:'TBD'});r=r===5?1:r+1}return out}
 const tournamentData={};
-let cut=+localStorage.getItem('draftdex-cut')||4,boardLink=localStorage.getItem('draftdex-board')||'https://docs.google.com/spreadsheets/';let moderator=(localStorage.getItem('draftdex-moderator')!=='false');
+let cut=+localStorage.getItem('draftdex-cut')||4,boardLink=localStorage.getItem('draftdex-board')||'https://docs.google.com/spreadsheets/';let moderator=false;
 function save(){localStorage.setItem('draftdex-cut',cut);localStorage.setItem('draftdex-board',boardLink)}
 
 function head(title,over,action=''){return `<div class="page-head"><div><div class="eyebrow">${over}</div><h1>${title}</h1></div>${action}</div>`}
@@ -4225,16 +4225,16 @@ function resyncTournamentStats(id){let t=tournamentData[id];if(!t){alert('Tourna
 
 
 
-function getStoredModeratorState(){
-  let saved = localStorage.getItem('draftdex-moderator');
-  return saved !== null ? saved === 'true' : true;
-}
-
 function toggleModerator(){
+  // Only users whose verified role in Supabase is 'moderator' can toggle between active moderator tools and spectator preview
+  if(!window.currentAccount || window.currentAccount.role !== 'moderator'){
+    moderator = false;
+    render();
+    return;
+  }
   moderator = !moderator;
-  localStorage.setItem('draftdex-moderator', moderator ? 'true' : 'false');
   let label = document.querySelector('#accountText');
-  if(label) label.textContent = sessionUser ? (moderator ? 'Moderator' : 'Player') : (moderator ? 'Moderator' : 'Sign in');
+  if(label) label.textContent = window.currentAccount?.username ? (moderator ? `${window.currentAccount.username} 👑` : window.currentAccount.username) : (moderator ? 'Moderator' : 'Player');
   render();
 }
 
@@ -4243,21 +4243,21 @@ async function updateSession(session){
   let myReq=++sessionReqId;
   let newUser=session?.user||null;
   sessionUser=newUser;
-  let nextModerator=getStoredModeratorState(),nextAccount=null;
+  let isMod=false,nextAccount=null;
   if(sessionUser&&supabaseClient){
     try{
       let {data}=await supabaseClient.from('user_profiles').select('role,username,prediction_points').eq('id',sessionUser.id).maybeSingle();
       if(myReq===sessionReqId && data){
-        if(data.role==='moderator') nextModerator=true;
+        if(data.role==='moderator') isMod=true;
         nextAccount=data;
       }
     }catch(e){}
   }
-  moderator=nextModerator;
+  moderator=isMod;
   window.currentAccount=nextAccount;
   sessionResolvedFor=sessionUser?sessionUser.id:null;
   let label=document.querySelector('#accountText');
-  if(label)label.textContent=sessionUser?(moderator?'Moderator':'Player'):(moderator?'Moderator':'Sign in');
+  if(label) label.textContent=sessionUser ? (moderator ? (nextAccount?.username ? `${nextAccount.username} 👑` : 'Moderator') : (nextAccount?.username || 'Player')) : 'Sign in';
   if(supabaseClient){
     try{
       let {data}=await supabaseClient.from('league_state').select('data').eq('id','main').maybeSingle();
@@ -5132,9 +5132,9 @@ function renderAuthComponent(isModal = false, prefillUsername = ''){
           <span>
             ${isSignIn ? `Don't have an account? <button type="button" class="auth-link" onclick="switchAuthTab('signup')">Create one</button>` : `Already registered? <button type="button" class="auth-link" onclick="switchAuthTab('signin')">Sign in</button>`}
           </span>
-          <button type="button" class="auth-link" style="color:#a09fa8" onclick="toggleModerator()">
-            ${moderator ? '👑 Moderator Active' : '🎮 Spectator Mode'}
-          </button>
+          <span style="color:#7e7c88">
+            🔒 League Account Portal
+          </span>
         </div>
 
       </div>
@@ -7182,6 +7182,8 @@ function Account(){
   let faceLetter=mine?((profilePictures[mine]||teamCovers[mine])?'':esc(mine[0]||'')):esc(username[0]||'T');
   let myTeam=mine?esc(profiles[mine]?.team||'No default team'):'';
 
+  let isActualMod = (window.currentAccount?.role === 'moderator');
+
   return head('Your Account','Identity & Permissions')+`
     <div class="acct-grid">
       <aside class="card acct-user-card">
@@ -7189,12 +7191,18 @@ function Account(){
           <div class="avatar" style="background-image:${faceArt};background-size:cover;background-position:center;width:76px;height:76px;font-size:30px;border:2px solid #ffffff20;border-radius:50%;box-shadow:0 8px 20px rgba(0,0,0,0.5);display:grid;place-items:center">${faceLetter}</div>
           <h2 style="font:800 28px 'Barlow Condensed';margin:14px 0 6px;letter-spacing:.5px">${esc(username)}</h2>
           <div style="margin-bottom:8px">
-            ${moderator?`<span class="tag" style="background:#3b1319;color:#ff8e95;border:1px solid #6b242e;font-size:10px;padding:4px 10px;letter-spacing:.7px">👑 Moderator</span>`:`<span class="tag" style="background:#162c1e;color:#7df0aa;border:1px solid #2f5c3b;font-size:10px;padding:4px 10px;letter-spacing:.7px">🎮 Trainer</span>`}
+            ${isActualMod ? `<span class="tag" style="background:#3b1319;color:#ff8e95;border:1px solid #6b242e;font-size:10px;padding:4px 10px;letter-spacing:.7px">👑 Verified Moderator</span>` : `<span class="tag" style="background:#162c1e;color:#7df0aa;border:1px solid #2f5c3b;font-size:10px;padding:4px 10px;letter-spacing:.7px">🎮 Trainer (Player Account)</span>`}
           </div>
-          <div style="margin: 4px 0 16px; width: 100%; display: flex; flex-direction: column; align-items: center; gap: 5px;">
-            <button class="btn ${moderator ? '' : 'ghost'}" style="width:100%; font-size: 11px; padding: 7px 10px; border-radius: 4px;" onclick="toggleModerator()">${moderator ? '👑 Moderator: ON' : '🎮 Moderator: OFF'}</button>
-            <span class="sub" style="font-size:10px; text-align:center">${moderator ? 'Admin & score editing enabled' : 'Viewing site in spectator mode'}</span>
-          </div>
+          ${isActualMod ? `
+            <div style="margin: 4px 0 16px; width: 100%; display: flex; flex-direction: column; align-items: center; gap: 5px;">
+              <button class="btn ${moderator ? '' : 'ghost'}" style="width:100%; font-size: 11px; padding: 7px 10px; border-radius: 4px;" onclick="toggleModerator()">${moderator ? '👑 Moderator Tools: ON' : '👁️ Spectator Preview: ON'}</button>
+              <span class="sub" style="font-size:10px; text-align:center">${moderator ? 'Admin & score editing active' : 'Previewing site as standard trainer'}</span>
+            </div>
+          ` : `
+            <div style="margin: 4px 0 16px; font-size:11px; color:#8e8c95; text-align:center">
+              Role: <b>Player</b> · Predictions & Standings
+            </div>
+          `}
         </div>
 
         <div class="acct-section-box">
