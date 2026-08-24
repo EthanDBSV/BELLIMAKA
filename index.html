@@ -1286,6 +1286,7 @@ const profiles={};
 const roster={};
 function rr(names){let out=[],r=1;for(let i=0;i<names.length;i++)for(let j=i+1;j<names.length;j++){out.push({id:r+'-'+i+j,round:'Round '+r,a:names[i],b:names[j],as:'',bs:'',date:'TBD'});r=r===5?1:r+1}return out}
 const tournamentData={};
+var accountLinks=(()=>{try{return JSON.parse(localStorage.getItem('draftdex-accountlinks')||'{}')||{}}catch{return {}}})();
 let cut=+localStorage.getItem('draftdex-cut')||4,boardLink=localStorage.getItem('draftdex-board')||'https://docs.google.com/spreadsheets/';let moderator=false;
 function save(){localStorage.setItem('draftdex-cut',cut);localStorage.setItem('draftdex-board',boardLink)}
 
@@ -3199,13 +3200,70 @@ async function saveTopCutScore(matchId){
   render();
 }
 
-function applySharedState(data){if(!data||!data.tournaments)return;Object.keys(tournamentData).forEach(k=>delete tournamentData[k]);Object.assign(tournamentData,data.tournaments||{});Object.keys(profiles).forEach(k=>delete profiles[k]);Object.assign(profiles,data.profiles||{});Object.keys(roster).forEach(k=>delete roster[k]);Object.assign(roster,data.roster||{});Object.keys(teamHistory).forEach(k=>delete teamHistory[k]);Object.assign(teamHistory,data.teamHistory||{});Object.keys(teamCovers).forEach(k=>delete teamCovers[k]);Object.assign(teamCovers,data.teamCovers||{});Object.keys(profilePictures).forEach(k=>delete profilePictures[k]);Object.assign(profilePictures,data.profilePictures||{});Object.keys(pulsePanelImages).forEach(k=>delete pulsePanelImages[k]);Object.assign(pulsePanelImages,data.pulsePanelImages||{});if(pulsePanelImages.primetimeSlots)delete pulsePanelImages.primetimeSlots;for(let i=0;i<10;i++)try{localStorage.removeItem('draftdex-primetime-slot-'+i)}catch(e){}cut=data.cut||cut;boardLink=data.boardLink||boardLink;try{localStorage.setItem('draftdex-tournaments',JSON.stringify(tournamentData));localStorage.setItem('draftdex-profiles',JSON.stringify(profiles));localStorage.setItem('draftdex-rosters',JSON.stringify(roster));localStorage.setItem('draftdex-history',JSON.stringify(teamHistory));localStorage.setItem('draftdex-teamcovers',JSON.stringify(teamCovers));localStorage.setItem('draftdex-profilepics',JSON.stringify(profilePictures));localStorage.setItem('draftdex-pulsepanels',JSON.stringify(pulsePanelImages));if(data.cut)localStorage.setItem('draftdex-cut',data.cut);if(data.boardLink)localStorage.setItem('draftdex-board',data.boardLink)}catch(e){}syncTournamentSeasons();migrateAllBrackets();rebuildAllPlayerStats()}
+function applySharedState(data){
+  if(!data || !data.tournaments) return;
+  Object.keys(tournamentData).forEach(k=>delete tournamentData[k]);
+  Object.assign(tournamentData, data.tournaments || {});
+  Object.keys(profiles).forEach(k=>delete profiles[k]);
+  Object.assign(profiles, data.profiles || {});
+  Object.keys(roster).forEach(k=>delete roster[k]);
+  Object.assign(roster, data.roster || {});
+  Object.keys(teamHistory).forEach(k=>delete teamHistory[k]);
+  Object.assign(teamHistory, data.teamHistory || {});
+  Object.keys(teamCovers).forEach(k=>delete teamCovers[k]);
+  Object.assign(teamCovers, data.teamCovers || {});
+  Object.keys(profilePictures).forEach(k=>delete profilePictures[k]);
+  Object.assign(profilePictures, data.profilePictures || {});
+  Object.keys(pulsePanelImages).forEach(k=>delete pulsePanelImages[k]);
+  Object.assign(pulsePanelImages, data.pulsePanelImages || {});
+  if(data.accountLinks && typeof data.accountLinks === 'object'){
+    Object.keys(accountLinks).forEach(k=>delete accountLinks[k]);
+    Object.assign(accountLinks, data.accountLinks);
+    try{ localStorage.setItem('draftdex-accountlinks', JSON.stringify(accountLinks)); }catch(e){}
+  }
+  if(data.draftPool && typeof data.draftPool === 'object' && typeof draftPool !== 'undefined'){
+    draftPool = data.draftPool;
+  }
+  if(pulsePanelImages.primetimeSlots) delete pulsePanelImages.primetimeSlots;
+  for(let i=0; i<10; i++) try{ localStorage.removeItem('draftdex-primetime-slot-'+i); }catch(e){}
+  cut = data.cut || cut;
+  boardLink = data.boardLink || boardLink;
+  try{
+    localStorage.setItem('draftdex-tournaments', JSON.stringify(tournamentData));
+    localStorage.setItem('draftdex-profiles', JSON.stringify(profiles));
+    localStorage.setItem('draftdex-rosters', JSON.stringify(roster));
+    localStorage.setItem('draftdex-history', JSON.stringify(teamHistory));
+    localStorage.setItem('draftdex-teamcovers', JSON.stringify(teamCovers));
+    localStorage.setItem('draftdex-profilepics', JSON.stringify(profilePictures));
+    localStorage.setItem('draftdex-pulsepanels', JSON.stringify(pulsePanelImages));
+    if(data.cut) localStorage.setItem('draftdex-cut', data.cut);
+    if(data.boardLink) localStorage.setItem('draftdex-board', data.boardLink);
+  }catch(e){}
+  syncTournamentSeasons();
+  migrateAllBrackets();
+  rebuildAllPlayerStats();
+}
 window.applySharedState = applySharedState;
 var supabaseInited=false;
-async function initSupabase(){if(!supabaseReady()||supabaseInited)return;supabaseInited=true;supabaseClient=window.supabase.createClient(window.DRAFTDEX_SUPABASE.url,window.DRAFTDEX_SUPABASE.anonKey);let {data:{session}}=await supabaseClient.auth.getSession();await updateSession(session);supabaseClient.auth.onAuthStateChange(async(_,s)=>await updateSession(s));supabaseClient.channel('league-state').on('postgres_changes',{event:'UPDATE',schema:'public',table:'league_state',filter:'id=eq.main'},p=>{let incoming=p.new.data;if(shouldApply(incoming)){applySharedState(incoming);render()}}).subscribe()}
+async function initSupabase(){
+  if(!supabaseReady()||supabaseInited) return;
+  supabaseInited=true;
+  supabaseClient=window.supabase.createClient(window.DRAFTDEX_SUPABASE.url, window.DRAFTDEX_SUPABASE.anonKey);
+  let {data:{session}} = await supabaseClient.auth.getSession();
+  await updateSession(session);
+  supabaseClient.auth.onAuthStateChange(async(_,s)=>await updateSession(s));
+  supabaseClient.channel('league-state').on('postgres_changes', {event:'UPDATE', schema:'public', table:'league_state', filter:'id=eq.main'}, p=>{
+    let incoming = p.new.data;
+    if(shouldApply(incoming)){
+      applySharedState(incoming);
+      render();
+    }
+  }).subscribe();
+}
 
 async function flushSync(){
-  if(!supabaseClient || !moderator) return;
+  if(!supabaseClient) return;
+  if(!moderator && !sessionUser) return;
   let payload = {
     rev: knownRev,
     updatedAt: lastLocalUpdate,
@@ -3217,7 +3275,9 @@ async function flushSync(){
     profilePictures: profilePictures,
     pulsePanelImages: pulsePanelImages,
     cut: cut,
-    boardLink: boardLink
+    boardLink: boardLink,
+    draftPool: (typeof draftPool !== 'undefined' ? draftPool : null),
+    accountLinks: accountLinks
   };
   let serialized = JSON.stringify(payload);
   if(serialized === lastSentSnapshot) return;
@@ -3249,10 +3309,11 @@ function persistLeague(){
     localStorage.setItem('draftdex-pulsepanels', JSON.stringify(pulsePanelImages));
     if(typeof accountLinks!=='undefined') localStorage.setItem('draftdex-accountlinks', JSON.stringify(accountLinks));
   }catch(e){}
-  if(!supabaseClient || !moderator) return;
+  if(!supabaseClient || (!moderator && !sessionUser)) return;
   clearTimeout(syncTimer);
-  syncTimer = setTimeout(flushSync, 500);
+  syncTimer = setTimeout(flushSync, 300);
 }
+
 
 
 
@@ -6236,23 +6297,6 @@ function mockView(){
    Question text is byte-identical to the friend's version, so
    already-saved picks and the Supabase predictions table still match. */
 function savedPick(t,question){try{return localStorage.getItem('draftdex-pick-'+(t?.id||'')+'-'+question)||''}catch{return ''}}
-/* ------------------------------------------------------------ shared state: carry the draft pool through the rev-tracked sync */
-async function flushSync(){
-  if(!supabaseClient||!moderator)return;
-  let snapshotJson=JSON.stringify({tournaments:tournamentData,profiles,roster,teamHistory,teamCovers,profilePictures,pulsePanelImages,cut,boardLink,draftPool});
-  if(snapshotJson===lastSentSnapshot)return;
-  lastSentSnapshot=snapshotJson;knownRev++;
-  let payload=JSON.parse(snapshotJson);payload.rev=knownRev;
-  await supabaseClient.from('league_state').update({data:payload,updated_at:new Date().toISOString()}).eq('id','main')
-}
-(function(){
-  let base=window.applySharedState;
-  window.applySharedState=function(data){
-    base(data);
-    if(data&&data.draftPool&&Array.isArray(data.draftPool.items)&&data.draftPool.items.length>=(draftPool.items||[]).length)draftPool=data.draftPool;
-    if(!sheetIds(boardLink).id)boardLink=LEAGUE_SHEET;
-  }
-})();
 /* ------------------------------------------------------------ 4. NAVIGATION: league order, and "Draft" tab ------------------------------------------------------------ */
 tabs.length=0;
 tabs.push('Home','Standings','Teams','Draft','Matches','Top Cut','Playoff Odds','Predictions','Records','Tournaments');
@@ -7153,9 +7197,33 @@ function restorePlayerBadge(p, revokedKey){
    claim to be someone else. Keyed by account username. */
 var accountLinks=(()=>{try{return JSON.parse(localStorage.getItem('draftdex-accountlinks')||'{}')||{}}catch{return {}}})();
 /* Links are validated against live profiles, so a deleted player can
-   never leave an account pointing at a profile that no longer exists. */
-function accountForPlayer(p){return (p&&profiles[p])?(Object.keys(accountLinks).find(u=>accountLinks[u]===p)||null):null}
-function playerForAccount(u){let p=u?accountLinks[u]:null;return (p&&profiles[p])?p:null}
+function accountForPlayer(p){
+  if(!p) return null;
+  let cleanP = String(p).trim().toLowerCase();
+  for(let k in accountLinks){
+    let mappedPlayer = (accountLinks[k] || '').trim().toLowerCase();
+    if(mappedPlayer === cleanP){
+      return k;
+    }
+  }
+  return null;
+}
+
+function playerForAccount(u){
+  if(!u) return null;
+  let cleanU = String(u).trim().toLowerCase();
+  for(let k in accountLinks){
+    if(k && k.trim().toLowerCase() === cleanU){
+      let p = accountLinks[k];
+      if(p && profiles[p]) return p;
+      let matchedProfile = Object.keys(profiles).find(pk => pk.toLowerCase() === (p||'').trim().toLowerCase());
+      if(matchedProfile) return matchedProfile;
+      return p || null;
+    }
+  }
+  return null;
+}
+
 (function(){
   let base=window.deleteProfile;
   if(typeof base!=='function')return;
@@ -7167,13 +7235,19 @@ function playerForAccount(u){let p=u?accountLinks[u]:null;return (p&&profiles[p]
     if(had){try{localStorage.setItem('draftdex-accountlinks',JSON.stringify(accountLinks))}catch{}persistLeague()}
   }
 })();
-function myPlayer(){return playerForAccount(window.currentAccount?.username)}
+
+function myPlayer(){
+  let uname = window.currentAccount?.username || sessionUser?.user_metadata?.username || sessionUser?.email?.split('@')[0] || '';
+  return playerForAccount(uname);
+}
+
 function knownAccounts(){
   let names=new Set(Object.keys(accountLinks));
   (window.leagueAccounts||[]).forEach(a=>names.add(a.username));
   if(window.currentAccount?.username)names.add(window.currentAccount.username);
   return [...names].filter(Boolean).sort((a,b)=>a.localeCompare(b))
 }
+
 async function loadAccounts(){
   if(!supabaseClient)return window.leagueAccounts||[];
   try{
@@ -7182,33 +7256,58 @@ async function loadAccounts(){
   }catch(e){}
   return window.leagueAccounts||[]
 }
+
 function openAccountLinks(focusPlayer){
   if(!moderator)return;
   loadAccounts().then(()=>{
     let players=Object.keys(profiles).sort((a,b)=>a.localeCompare(b));
     let accounts=knownAccounts();
-    let rows=accounts.length?accounts.map(u=>`<div class="link-row">
-      <div><b>${esc(u)}</b><div class="sub" style="margin:2px 0 0">${accountLinks[u]?'Plays as '+esc(accountLinks[u]):'Not linked to a player yet'}</div></div>
-      <select class="accountLink" data-account="${esc(u)}">
-        <option value="">— no player —</option>
-        ${players.map(p=>`<option value="${esc(p)}" ${accountLinks[u]===p?'selected':''} ${accountForPlayer(p)&&accountForPlayer(p)!==u?'disabled':''}>${esc(p)}${accountForPlayer(p)&&accountForPlayer(p)!==u?' (taken)':''}</option>`).join('')}
-      </select></div>`).join(''):'<p class="sub">No accounts found yet. Accounts appear here once somebody signs up.</p>';
+    let rows=accounts.length?accounts.map(u=>{
+      let linkedP = playerForAccount(u);
+      return `<div class="link-row">
+        <div>
+          <b style="font-size:14px;color:#f5f3f0">${esc(u)}</b>
+          <div class="sub" style="margin:2px 0 0;font-size:11px">${linkedP ? 'Plays as <b style="color:var(--amber)">' + esc(linkedP) + '</b>' : '<span style="color:#8e8c95">Not linked to a player yet</span>'}</div>
+        </div>
+        <select class="accountLink" data-account="${esc(u)}" style="background:#101014;border:1px solid #3a3a48;border-radius:6px;padding:8px 10px;color:#fff">
+          <option value="">— no player —</option>
+          ${players.map(p=>{
+            let isSelected = (linkedP && linkedP.toLowerCase() === p.toLowerCase());
+            let takenBy = accountForPlayer(p);
+            let isTaken = takenBy && takenBy.toLowerCase() !== u.toLowerCase();
+            return `<option value="${esc(p)}" ${isSelected ? 'selected' : ''} ${isTaken ? 'disabled' : ''}>${esc(p)}${isTaken ? ` (taken by ${esc(takenBy)})` : ''}</option>`;
+          }).join('')}
+        </select>
+      </div>`;
+    }).join(''):'<p class="sub">No accounts found yet. Accounts appear here once somebody signs up.</p>';
+
     document.querySelector('#modal').innerHTML=`<div class="modal-wrap"><div class="modal" style="max-width:620px">
-      <div class="modal-head"><div><div class="eyebrow">Moderator only</div><h2>Link accounts to players</h2></div><button class="close" onclick="closeModal()">×</button></div>
-      <p class="sub">Connect each sign-in account to the player profile it belongs to. Linked players see their own profile from the account page, and prediction points are tracked against the account.</p>
-      ${focusPlayer&&!accountForPlayer(focusPlayer)?`<p class="sub" style="color:#ffb0b5">${esc(focusPlayer)} has no account linked yet.</p>`:''}
-      <div class="card" style="padding:6px 14px">${rows}</div>
-      <div class="creator-actions"><button class="btn" onclick="saveAccountLinks()">Save links</button></div>
+      <div class="modal-head"><div><div class="eyebrow" style="color:var(--amber)">MODERATOR ONLY</div><h2>Link accounts to players</h2></div><button class="close" onclick="closeModal()">×</button></div>
+      <p class="sub" style="margin:8px 0 16px;line-height:1.4">Connect each sign-in account to the player profile it belongs to. Linked players can make their official draft picks when on the clock and view their team dashboard.</p>
+      ${focusPlayer&&!accountForPlayer(focusPlayer)?`<p class="sub" style="color:#ffb0b5;font-weight:700">${esc(focusPlayer)} has no account linked yet.</p>`:''}
+      <div class="card" style="padding:6px 16px;background:#131318;border-color:#2e2e3e">${rows}</div>
+      <div class="creator-actions" style="margin-top:16px">
+        <button class="btn ghost" onclick="closeModal()">Cancel</button>
+        <button class="btn" onclick="saveAccountLinks()">Save links</button>
+      </div>
     </div></div>`
   })
 }
-function saveAccountLinks(){
+
+async function saveAccountLinks(){
   if(!moderator)return;
   let next={};
-  document.querySelectorAll('.accountLink').forEach(sel=>{let p=sel.value.trim();if(p)next[sel.dataset.account]=p});
+  document.querySelectorAll('.accountLink').forEach(sel=>{
+    let p=sel.value.trim();
+    let acct=sel.dataset.account;
+    if(p && acct) next[acct]=p;
+  });
   accountLinks=next;
   try{localStorage.setItem('draftdex-accountlinks',JSON.stringify(accountLinks))}catch{}
-  persistLeague();closeModal();render()
+  persistLeague();
+  closeModal();
+  render();
+  if(typeof flushSync==='function') await flushSync();
 }
 
 function Account(){
@@ -10444,26 +10543,6 @@ function savedPick(t,question){
     return ''
   }catch{return ''}
 }
-/* ------------------------------------------------------------ SHARED STATE: carry account links alongside everything else ------------------------------------------------------------ */
-async function flushSync(){
-  if(!supabaseClient||!moderator)return;
-  let snapshotJson=JSON.stringify({tournaments:tournamentData,profiles,roster,teamHistory,teamCovers,profilePictures,pulsePanelImages,cut,boardLink,draftPool,accountLinks});
-  if(snapshotJson===lastSentSnapshot)return;
-  lastSentSnapshot=snapshotJson;knownRev++;
-  let payload=JSON.parse(snapshotJson);payload.rev=knownRev;
-  await supabaseClient.from('league_state').update({data:payload,updated_at:new Date().toISOString()}).eq('id','main')
-}
-(function(){
-  let base=window.applySharedState;
-  window.applySharedState=function(data){
-    base(data);
-    if(data&&data.accountLinks&&typeof data.accountLinks==='object'){
-      accountLinks=data.accountLinks;
-      try{localStorage.setItem('draftdex-accountlinks',JSON.stringify(accountLinks))}catch{}
-    }
-  }
-})();
-
 if(supabaseReady())loadAccounts();
 /* ------------------------------------------------------------
    5. DRAFT TOOLS REWORK
@@ -11373,7 +11452,10 @@ function openDraftConfirmationModal(tId, monName, cost, tierName){
   let coachStats = getDraftCoachStats(t, pickingCoach);
   let spriteUrl = pokeSprite(monName);
 
-  let isMe = (window.currentAccount?.username === pickingCoach || (typeof playerForAccount === 'function' && playerForAccount(window.currentAccount?.username) === pickingCoach));
+  let currentUsername = window.currentAccount?.username || sessionUser?.user_metadata?.username || sessionUser?.email?.split('@')[0] || '';
+  let linkedPlayerName = typeof playerForAccount === 'function' ? playerForAccount(currentUsername) : null;
+  let isMe = (currentUsername && currentUsername.toLowerCase() === (pickingCoach || '').toLowerCase()) ||
+             (linkedPlayerName && linkedPlayerName.toLowerCase() === (pickingCoach || '').toLowerCase());
   let canPick = moderator || isMe;
   let hasDirectBudget = (coachStats.budget === 0 || coachStats.remainingBudget >= cost);
   let satisfiesReserve = (coachStats.budget === 0 || cost <= coachStats.maxAffordableCost);
@@ -11479,9 +11561,10 @@ function makeDraftPick(tId, pokemonName, forcedPlayer = null){
 
   // Account authentication check
   if(!moderator && !forcedPlayer){
-    let linked = (typeof playerForAccount === 'function' ? playerForAccount(window.currentAccount?.username) : null) || window.currentAccount?.username;
-    if(linked !== targetPlayer){
-      alert(`It is currently ${targetPlayer}'s turn to pick. Only ${targetPlayer} or a moderator can draft this Pokémon.`);
+    let currentUsername = window.currentAccount?.username || sessionUser?.user_metadata?.username || sessionUser?.email?.split('@')[0] || '';
+    let linked = (typeof playerForAccount === 'function' ? playerForAccount(currentUsername) : null) || currentUsername;
+    if(!linked || linked.toLowerCase() !== (targetPlayer || '').toLowerCase()){
+      alert(`It is currently ${targetPlayer}'s turn to pick. Only ${targetPlayer} (or a moderator) can draft this Pokémon.`);
       return;
     }
   }
@@ -11638,7 +11721,10 @@ function DraftRoom(t){
   let faceLetter = curPlayer ? ((profilePictures[curPlayer] || teamCovers[curPlayer]) ? '' : esc(curPlayer[0])) : '—';
   let curOvr = curPlayer ? calculatePlayerOVR(curPlayer) : null;
 
-  let isMe = curPlayer && (window.currentAccount?.username === curPlayer || (typeof playerForAccount === 'function' && playerForAccount(window.currentAccount?.username) === curPlayer));
+  let currentUsername = window.currentAccount?.username || sessionUser?.user_metadata?.username || sessionUser?.email?.split('@')[0] || '';
+  let linkedPlayerName = typeof playerForAccount === 'function' ? playerForAccount(currentUsername) : null;
+  let isMe = curPlayer && ((currentUsername && currentUsername.toLowerCase() === curPlayer.toLowerCase()) ||
+              (linkedPlayerName && linkedPlayerName.toLowerCase() === curPlayer.toLowerCase()));
 
   // Draft HUD Controls
   let statusBadge = d.status === 'active' 
