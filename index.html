@@ -8488,27 +8488,6 @@ function swapGroupPlacements(first,second,targetGroup){
   }else if(targetGroup&&source!==targetGroup){assign[first]=targetGroup}
   t.groupAssignments=assign;rebuildSchedulePreserving(t);persistLeague();openGroupPlacementEditor();render()
 }
-function ArchiveDraftRostersSection(t){
-  let d = ensureTournamentDraft(t);
-  return `
-    <div class="card" style="padding:20px;background:#101015;border-color:#2a2a38">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:8px">
-        <div style="display:flex;align-items:center;gap:8px">
-          <span style="font-size:18px">👥</span>
-          <div>
-            <h3 style="margin:0;font:800 18px 'Barlow Condensed';letter-spacing:.8px;text-transform:uppercase;color:#f5f3f0">Coach Rosters & Budgets</h3>
-            <p class="sub" style="margin:0;font-size:11px">Official drafted Pokémon rosters and point expenditures for ${esc(t.name)}</p>
-          </div>
-        </div>
-        <span class="tag" style="background:#ffd16620;color:#ffd166;border:1px solid #ffd16640;font-size:10px;font-weight:800;padding:3px 10px;border-radius:4px">
-          ${t.draftData?.pointBudget ? `${t.draftData.pointBudget} Pts Budget` : 'Draft League'}
-        </span>
-      </div>
-      ${DraftRostersView(t)}
-    </div>
-  `;
-}
-
 function tournamentDetail(){
   let t=activeT();if(!t)return noTournament();
   window.editingTournamentId=t.id;
@@ -8519,10 +8498,10 @@ function tournamentDetail(){
     : ['Standings', 'Group Stage', 'Top Cut', 'Predictions'];
 
   if(!availableTabs.includes(detailTab)){
-    detailTab = (t.phase === 'draft') ? 'Draft' : 'Standings';
+    detailTab = (t.phase === 'draft' && t.status === 'ONGOING') ? 'Draft' : 'Standings';
   }
 
-  let content=detailTab==='Draft'?(t.phase==='draft' && t.status==='ONGOING' ? DraftRoom(t) : ArchiveDraftRostersSection(t))
+  let content=detailTab==='Draft'?DraftRostersView(t)
     :detailTab==='Standings'?`<div style="display:grid;grid-template-columns:repeat(${groups.length>1?2:1},minmax(0,1fr));gap:16px;align-items:start">${groups.map(g=>`<div class="card table-wrap" style="align-self:start">${standingTable(t,g)}</div>`).join('')}</div>`
     :detailTab==='Group Stage'?matchesView(t,false)
     :detailTab==='Top Cut'?topCutSection(t,!t.bracketManagerData)
@@ -8547,12 +8526,15 @@ function openTournamentEdit(id){
   let t=tournamentData[id]||activeT();if(!t)return;
   window.editingTournamentId=t.id;
   let locked=t.phase==='topcut';
+  let canEditDraft = (t.status === 'ONGOING' && (t.hasDraft || t.phase === 'draft'));
   document.querySelector('#modal').innerHTML=`<div class="modal-wrap"><div class="modal" style="max-width:520px">
     <div class="modal-head"><div><div class="eyebrow">Moderator only</div><h2>Edit ${esc(t.name)}</h2></div><button class="close" onclick="closeModal()">×</button></div>
     <p class="sub">${esc(t.season||'')} · ${esc(t.status)}</p>
     <div class="section" style="display:grid;gap:9px">
-      <button class="btn ghost" onclick="openDraftBoardImporter('${jsArg(t.id)}')">📥 Import / Edit Draft Board</button>
-      <button class="btn ghost" onclick="openDraftOrderEditor('${jsArg(t.id)}')">🔀 Edit Draft Snake Order</button>
+      ${canEditDraft ? `
+        <button class="btn ghost" onclick="openDraftBoardImporter('${jsArg(t.id)}')">📥 Import / Edit Draft Board</button>
+        <button class="btn ghost" onclick="openDraftOrderEditor('${jsArg(t.id)}')">🔀 Edit Draft Snake Order</button>
+      ` : ''}
       <button class="btn ghost" onclick="openTournamentRecordEditor('${jsArg(t.id)}')">Edit Details</button>
       <button class="btn ghost" onclick="openSettings()">Edit Qualification</button>
       <button class="btn ghost" ${locked?'disabled style="opacity:.5;cursor:not-allowed"':`onclick="openGroupPlacementEditor()"`}>Arrange Groups${locked?' (Locked in Top Cut)':''}</button>
