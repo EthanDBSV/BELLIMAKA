@@ -320,6 +320,10 @@
 
 @media(max-width:960px){.in-season-hero{grid-template-columns:1fr}.tourney-showcase-card{grid-template-columns:1fr}.tourney-poster-frame{height:200px}}
 
+.draft-picks-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+@media(max-width:1100px){.draft-picks-grid{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:580px){.draft-picks-grid{grid-template-columns:1fr}}
+
 /* Modern Expandable Past Tournaments Accordion */
 .past-tourney-card{border:1px solid #2f2f3c;border-left:3px solid #4a4a58;border-radius:8px;margin-top:8px;background:#15151e;overflow:hidden;transition:border-color .15s ease, background .15s ease}
 .past-tourney-card.gold{border-left-color:#f3c245;background:linear-gradient(90deg,rgba(243,194,69,0.12),#15151e 40%)}
@@ -3706,7 +3710,7 @@ function homeDraftPicksSection(t){
       </div>
 
       ${picks.length > 0 ? `
-        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:12px">
+        <div class="draft-picks-grid">
           ${picks.slice(0, 8).map((p, idx) => {
             let faceArt = profilePictures[p.player] ? `url('${esc(profilePictures[p.player])}')` : (teamCovers[p.player] ? `url('${esc(teamCovers[p.player])}')` : fallbackArt(p.player));
             let faceLetter = (profilePictures[p.player] || teamCovers[p.player]) ? '' : esc((p.player || '?')[0]);
