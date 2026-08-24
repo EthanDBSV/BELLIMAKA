@@ -1,4 +1,4 @@
-<!doctype html>
+﻿<!doctype html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
@@ -1065,6 +1065,86 @@ function pokeSprite(name) {
 function monSprite(name) {
   return resolvePokemonData(name).sprite;
 }
+
+const POKEMON_TYPE_DEFS = {
+  Normal: 'pidgey,pidgeotto,pidgeot,pidgeot-mega,rattata,raticate,spearow,fearow,jigglypuff,wigglytuff,meowth,meowth-gmax,persian,farfetchâd,doduo,dodrio,lickitung,chansey,kangaskhan,kangaskhan-mega,tauros,ditto,eevee,eevee-starter,eevee-gmax,porygon,snorlax,snorlax-gmax,sentret,furret,hoothoot,noctowl,igglybuff,aipom,girafarig,dunsparce,teddiursa,ursaring,porygon2,stantler,smeargle,miltank,blissey,zigzagoon,linoone,taillow,swellow,slakoth,vigoroth,slaking,whismur,loudred,exploud,azurill,skitty,delcatty,spinda,swablu,zangoose,castform,kecleon,starly,staravia,staraptor,bidoof,bibarel,ambipom,buneary,lopunny,lopunny-mega,glameow,purugly,happiny,chatot,munchlax,lickilicky,porygon-z,regigigas,arceus,patrat,watchog,lillipup,herdier,stoutland,pidove,tranquill,unfezant,audino,audino-mega,zorua-hisui,zoroark-hisui,minccino,cinccino,deerling,sawsbuck,bouffalant,rufflet,braviary,meloetta,meloetta-pirouette,bunnelby,diggersby,fletchling,furfrou,pikipek,trumbeak,toucannon,yungoos,gumshoos,gumshoos-totem,stufful,bewear,oranguru,type: null,silvally,komala,drampa,drampa-mega,skwovet,greedent,wooloo,dubwool,wyrdeer,lechonk,oinkologne,oinkologne-f,tandemaus,maushold,maushold-four,squawkabilly,squawkabilly-blue,squawkabilly-yellow,squawkabilly-white,farigiraf,dudunsparce,dudunsparce-three-segment,terapagos,terapagos-terastal,terapagos-stellar,voodoll,scratchet,flox,shox,pokestar smeargle,pokestar giant,pokestar humanoid',
+  Fire: 'charmander,charmeleon,charizard,charizard-mega-x,charizard-mega-y,charizard-gmax,vulpix,ninetales,growlithe,growlithe-hisui,arcanine,arcanine-hisui,ponyta,rapidash,marowak-alola,marowak-alola-totem,magmar,flareon,moltres,cyndaquil,quilava,typhlosion,typhlosion-hisui,slugma,magcargo,magby,entei,ho-oh,torchic,combusken,blaziken,blaziken-mega,numel,camerupt,camerupt-mega,torkoal,castform-sunny,chimchar,monferno,infernape,magmortar,heatran,heatran-mega,arceus-fire,tepig,pignite,emboar,emboar-mega,pansear,simisear,darumaka,darmanitan,darmanitan-zen,heatmor,fennekin,braixen,delphox,delphox-mega,fletchinder,talonflame,litleo,pyroar,pyroar-mega,volcanion,litten,torracat,incineroar,oricorio,silvally-fire,turtonator,blacephalon,scorbunny,raboot,cinderace,cinderace-gmax,sizzlipede,centiskorch,centiskorch-gmax,fuecoco,crocalor,skeledirge,charcadet,armarouge,ceruledge,iron moth,gouging fire,embirch,flarelm,pyroak,mollux,smogecko,smoguana,smokomodo,solotl,astrolotl,ramnarok,ramnarok-radiant,pokestar white door,mega charizard x,mega charizard y',
+  Water: 'squirtle,wartortle,blastoise,blastoise-mega,blastoise-gmax,psyduck,golduck,poliwag,poliwhirl,poliwrath,tentacool,tentacruel,slowpoke,slowbro,slowbro-mega,seel,dewgong,shellder,cloyster,krabby,kingler,kingler-gmax,horsea,seadra,goldeen,seaking,staryu,starmie,starmie-mega,magikarp,gyarados,gyarados-mega,lapras,lapras-gmax,vaporeon,totodile,croconaw,feraligatr,feraligatr-mega,chinchou,lanturn,marill,azumarill,politoed,wooper,quagsire,slowking,qwilfish,corsola,remoraid,octillery,mantine,kingdra,suicune,mudkip,marshtomp,swampert,swampert-mega,lotad,lombre,ludicolo,wingull,pelipper,carvanha,sharpedo,sharpedo-mega,wailmer,wailord,barboach,whiscash,corphish,crawdaunt,feebas,milotic,castform-rainy,clamperl,huntail,gorebyss,relicanth,luvdisc,kyogre,kyogre-primal,piplup,prinplup,empoleon,buizel,floatzel,shellos,gastrodon,finneon,lumineon,mantyke,palkia,palkia-origin,phione,manaphy,arceus-water,oshawott,dewott,samurott,samurott-hisui,panpour,simipour,tympole,palpitoad,seismitoad,basculin,basculin-blue-striped,basculin-white-striped,tirtouga,carracosta,ducklett,swanna,frillish,jellicent,alomomola,keldeo,keldeo-resolute,froakie,frogadier,greninja,greninja-bond,greninja-ash,greninja-mega,clauncher,clawitzer,popplio,brionne,primarina,wishiwashi,wishiwashi-school,dewpider,araquanid,araquanid-totem,pyukumuku,silvally-water,bruxish,tapu fini,sobble,drizzile,inteleon,inteleon-gmax,chewtle,drednaw,drednaw-gmax,arrokuda,barraskewda,dracovish,arctovish,basculegion,basculegion-f,quaxly,quaxwell,quaquaval,wiglett,wugtrio,finizen,palafin,palafin-hero,veluza,dondozo,walking wake,privatyke,arghonaut,volkritter,volkraken,floatoy,caimanoe,naviathan,swirlpool,coribalis,snaelstrom,cresceidon,mega blastoise',
+  Grass: 'bulbasaur,ivysaur,venusaur,venusaur-mega,venusaur-gmax,oddish,gloom,vileplume,bellsprout,weepinbell,victreebel,victreebel-mega,exeggcute,exeggutor,exeggutor-alola,tangela,chikorita,bayleef,meganium,meganium-mega,bellossom,hoppip,skiploom,jumpluff,sunkern,sunflora,treecko,grovyle,sceptile,sceptile-mega,seedot,nuzleaf,shiftry,shroomish,breloom,roselia,cacnea,cacturne,tropius,turtwig,grotle,torterra,budew,roserade,cherubi,cherrim,cherrim-sunshine,carnivine,snover,abomasnow,abomasnow-mega,tangrowth,leafeon,shaymin,shaymin-sky,arceus-grass,snivy,servine,serperior,pansage,simisage,cottonee,whimsicott,petilil,lilligant,lilligant-hisui,maractus,foongus,amoonguss,ferroseed,ferrothorn,virizion,chespin,quilladin,chesnaught,chesnaught-mega,skiddo,gogoat,rowlet,dartrix,decidueye,decidueye-hisui,fomantis,lurantis,lurantis-totem,morelull,shiinotic,bounsweet,steenee,tsareena,silvally-grass,tapu bulu,kartana,grookey,thwackey,rillaboom,rillaboom-gmax,gossifleur,eldegoss,applin,flapple,flapple-gmax,appletun,appletun-gmax,sprigatito,floragato,meowscarada,smoliv,dolliv,arboliva,bramblin,brambleghast,capsakid,scovillain,scovillain-mega,brute bonnet,iron leaves,dipplin,poltchageist,poltchageist-artisan,sinistcha,sinistcha-masterpiece,ogerpon,ogerpon-wellspring,ogerpon-hearthflame,ogerpon-cornerstone,ogerpon-teal-tera,ogerpon-wellspring-tera,ogerpon-hearthflame-tera,ogerpon-cornerstone-tera,hydrapple,necturine,necturna,mumbao,jumbao,fawnifer,electrelk,caribolt,pokestar black door,mega venusaur',
+  Electric: 'pikachu,pikachu-cosplay,pikachu-rock-star,pikachu-belle,pikachu-pop-star,pikachu-phd,pikachu-libre,pikachu-original,pikachu-hoenn,pikachu-sinnoh,pikachu-unova,pikachu-kalos,pikachu-alola,pikachu-partner,pikachu-starter,pikachu-gmax,pikachu-world,raichu,raichu-alola,raichu-mega-x,raichu-mega-y,magnemite,magneton,voltorb,voltorb-hisui,electrode,electrode-hisui,electabuzz,jolteon,zapdos,pichu,pichu-spiky-eared,mareep,flaaffy,ampharos,ampharos-mega,elekid,raikou,electrike,manectric,manectric-mega,plusle,minun,shinx,luxio,luxray,pachirisu,magnezone,electivire,rotom,rotom-heat,rotom-wash,rotom-frost,rotom-fan,rotom-mow,arceus-electric,blitzle,zebstrika,emolga,tynamo,eelektrik,eelektross,eelektross-mega,thundurus,thundurus-therian,helioptile,heliolisk,dedenne,oricorio-pom-pom,silvally-electric,togedemaru,togedemaru-totem,tapu koko,xurkitree,zeraora,zeraora-mega,yamper,boltund,toxel,toxtricity,toxtricity-low-key,toxtricity-gmax,toxtricity-low-key-gmax,pincurchin,morpeko,morpeko-hangry,dracozolt,arctozolt,regieleki,pawmi,pawmo,pawmot,tadbulb,bellibolt,wattrel,kilowattrel,sandy shocks,miraidon,raging bolt,cyclohm,krilowatt,snugglow,plasmanta,monohm,duohm,protowatt',
+  Ice: 'sandshrew-alola,sandslash-alola,vulpix-alola,ninetales-alola,mr. mime-galar,jynx,articuno,swinub,piloswine,delibird,smoochum,castform-snowy,snorunt,glalie,glalie-mega,spheal,sealeo,walrein,regice,glaceon,mamoswine,froslass,froslass-mega,arceus-ice,darumaka-galar,darmanitan-galar,darmanitan-galar-zen,vanillite,vanillish,vanilluxe,cubchoo,beartic,cryogonal,bergmite,avalugg,avalugg-hisui,silvally-ice,mr. rime,snom,frosmoth,eiscue,eiscue-noice,glastrier,cetoddle,cetitan,iron bundle,syclar,syclant',
+  Fighting: 'mankey,primeape,machop,machoke,machamp,machamp-gmax,farfetchâd-galar,hitmonlee,hitmonchan,tauros-paldea-combat,tauros-paldea-blaze,tauros-paldea-aqua,zapdos-galar,sneasel-hisui,tyrogue,hitmontop,makuhita,hariyama,meditite,medicham,medicham-mega,staraptor-mega,riolu,lucario,lucario-mega,lucario-mega-z,arceus-fighting,timburr,gurdurr,conkeldurr,throh,sawk,mienfoo,mienshao,pancham,pangoro,hawlucha,hawlucha-mega,crabrawler,crabominable,crabominable-mega,passimian,silvally-fighting,marshadow,clobbopus,grapploct,sirfetchâd,falinks,falinks-mega,zamazenta,zamazenta-crowned,kubfu,urshifu,urshifu-rapid-strike,urshifu-gmax,urshifu-rapid-strike-gmax,sneasler,annihilape,iron hands,koraidon,voodoom,pokestar black belt',
+  Poison: 'ekans,arbok,nidoran-f,nidorina,nidoqueen,nidoran-m,nidorino,nidoking,zubat,golbat,slowbro-galar,grimer,grimer-alola,muk,muk-alola,koffing,weezing,weezing-galar,crobat,wooper-paldea,slowking-galar,gulpin,swalot,seviper,stunky,skuntank,skorupi,drapion,croagunk,toxicroak,arceus-poison,trubbish,garbodor,garbodor-gmax,skrelp,dragalge,dragalge-mega,mareanie,toxapex,salandit,salazzle,salazzle-totem,silvally-poison,poipole,naganadel,eternatus,eternatus-eternamax,shroodle,grafaiai,clodsire,okidogi,munkidori,fezandipiti,pecharunt,breezi,fidgit,venomicon,venomicon-epilogue',
+  Ground: 'sandshrew,sandslash,diglett,diglett-alola,dugtrio,dugtrio-alola,cubone,marowak,rhyhorn,rhydon,gligar,phanpy,donphan,trapinch,vibrava,flygon,baltoy,claydol,groudon,groudon-primal,hippopotas,hippowdon,rhyperior,gliscor,arceus-ground,drilbur,excadrill,excadrill-mega,sandile,krokorok,krookodile,yamask-galar,stunfisk,stunfisk-galar,golett,golurk,golurk-mega,landorus,landorus-therian,mudbray,mudsdale,silvally-ground,silicobra,sandaconda,sandaconda-gmax,runerigus,ursaluna,ursaluna-bloodmoon,toedscool,toedscruel,great tusk,iron treads,colossoil,dorsoil,saharascal,saharaja',
+  Flying: 'arceus-flying,tornadus,tornadus-therian,noibat,noivern,silvally-flying,rookidee,corvisquire,corviknight,corviknight-gmax,cramorant,cramorant-gulping,cramorant-gorging,bombirdier,flamigo,tomohawk,pokestar ufo',
+  Psychic: 'abra,kadabra,alakazam,alakazam-mega,ponyta-galar,rapidash-galar,slowpoke-galar,drowzee,hypno,mr. mime,articuno-galar,mewtwo,mewtwo-mega-x,mewtwo-mega-y,mew,natu,xatu,espeon,unown,wobbuffet,lugia,celebi,ralts,kirlia,gardevoir,gardevoir-mega,spoink,grumpig,chimecho,chimecho-mega,wynaut,deoxys,deoxys-attack,deoxys-defense,deoxys-speed,chingling,mime jr.,gallade,gallade-mega,uxie,mesprit,azelf,cresselia,arceus-psychic,victini,munna,musharna,woobat,swoobat,sigilyph,gothita,gothorita,gothitelle,solosis,duosion,reuniclus,elgyem,beheeyem,braviary-hisui,espurr,meowstic,meowstic-f,meowstic-m-mega,meowstic-f-mega,hoopa,hoopa-unbound,oricorio-pa'u,silvally-psychic,tapu lele,cosmog,cosmoem,solgaleo,lunala,necrozma,necrozma-dusk-mane,necrozma-dawn-wings,necrozma-ultra,hatenna,hattrem,hatterene,hatterene-gmax,indeedee,indeedee-f,calyrex,calyrex-ice,calyrex-shadow,flittle,espathra,pokestar ufo-2,pokestar ufo-propu2,mega mewtwo x,mega mewtwo y',
+  Bug: 'caterpie,metapod,butterfree,butterfree-gmax,weedle,kakuna,beedrill,beedrill-mega,paras,parasect,venonat,venomoth,scyther,pinsir,pinsir-mega,ledyba,ledian,spinarak,ariados,yanma,pineco,forretress,scizor,scizor-mega,shuckle,heracross,heracross-mega,wurmple,silcoon,beautifly,cascoon,dustox,surskit,masquerain,nincada,ninjask,shedinja,volbeat,illumise,kricketot,kricketune,burmy,wormadam,wormadam-sandy,wormadam-trash,mothim,combee,vespiquen,yanmega,arceus-bug,sewaddle,swadloon,leavanny,venipede,whirlipede,scolipede,scolipede-mega,dwebble,crustle,karrablast,escavalier,joltik,galvantula,shelmet,accelgor,durant,larvesta,volcarona,genesect,genesect-douse,genesect-shock,genesect-burn,genesect-chill,scatterbug,spewpa,vivillon,vivillon-fancy,vivillon-pokeball,grubbin,charjabug,vikavolt,vikavolt-totem,cutiefly,ribombee,ribombee-totem,wimpod,golisopod,golisopod-mega,silvally-bug,buzzwole,pheromosa,blipbug,dottler,orbeetle,orbeetle-gmax,kleavor,tarountula,spidops,nymble,lokix,rellor,rabsca,slither wing,cupra,argalis,aurumoth,miasmite,miasmaw',
+  Rock: 'geodude,geodude-alola,graveler,graveler-alola,golem,golem-alola,onix,omanyte,omastar,kabuto,kabutops,aerodactyl,aerodactyl-mega,sudowoodo,larvitar,pupitar,tyranitar,tyranitar-mega,nosepass,lunatone,solrock,lileep,cradily,anorith,armaldo,regirock,cranidos,rampardos,shieldon,bastiodon,bonsly,probopass,arceus-rock,roggenrola,boldore,gigalith,archen,archeops,terrakion,binacle,barbaracle,barbaracle-mega,tyrunt,tyrantrum,amaura,aurorus,carbink,diancie,diancie-mega,rockruff,rockruff-dusk,lycanroc,lycanroc-midnight,lycanroc-dusk,silvally-rock,minior,minior-meteor,nihilego,stakataka,rolycoly,carkol,coalossal,coalossal-gmax,stonjourner,nacli,naclstack,garganacl,klawf,glimmet,glimmora,glimmora-mega,iron thorns,iron boulder,rebble,tactite,stratagem,crucibelle,crucibelle-mega',
+  Ghost: 'gastly,haunter,gengar,gengar-mega,gengar-gmax,misdreavus,corsola-galar,shuppet,banette,banette-mega,duskull,dusclops,drifloon,drifblim,mismagius,spiritomb,dusknoir,giratina,giratina-origin,arceus-ghost,yamask,cofagrigus,litwick,lampent,chandelure,chandelure-mega,phantump,trevenant,pumpkaboo,pumpkaboo-small,pumpkaboo-large,pumpkaboo-super,gourgeist,gourgeist-small,gourgeist-large,gourgeist-super,oricorio-sensu,sandygast,palossand,silvally-ghost,mimikyu,mimikyu-busted,mimikyu-totem,mimikyu-busted-totem,dhelmise,sinistea,sinistea-antique,polteageist,polteageist-antique,cursola,spectrier,greavard,houndstone,flutter mane,gimmighoul,gimmighoul-roaming,revenankh,kitsunoh,nohface,mega gengar',
+  Dragon: 'dratini,dragonair,dragonite,dragonite-mega,altaria,altaria-mega,bagon,shelgon,salamence,salamence-mega,latias,latias-mega,latios,latios-mega,rayquaza,rayquaza-mega,gible,gabite,garchomp,garchomp-mega,garchomp-mega-z,arceus-dragon,axew,fraxure,haxorus,druddigon,reshiram,zekrom,kyurem,kyurem-black,kyurem-white,goomy,sliggoo,goodra,zygarde,zygarde-10%,zygarde-complete,zygarde-mega,silvally-dragon,jangmo-o,hakamo-o,kommo-o,kommo-o-totem,dreepy,drakloak,dragapult,regidrago,cyclizar,tatsugiri,tatsugiri-droopy,tatsugiri-stretchy,tatsugiri-curly-mega,tatsugiri-droopy-mega,tatsugiri-stretchy-mega,frigibax,arctibax,baxcalibur,baxcalibur-mega,roaring moon,pajantom,chuggon,draggalong,chuggalong,mega garchomp',
+  Steel: 'meowth-galar,steelix,steelix-mega,skarmory,skarmory-mega,mawile,mawile-mega,aron,lairon,aggron,aggron-mega,beldum,metang,metagross,metagross-mega,registeel,jirachi,bronzor,bronzong,dialga,dialga-origin,arceus-steel,klink,klang,klinklang,cobalion,honedge,doublade,aegislash,aegislash-blade,sliggoo-hisui,goodra-hisui,klefki,silvally-steel,celesteela,magearna,magearna-original,magearna-mega,magearna-original-mega,meltan,melmetal,melmetal-gmax,perrserker,cufant,copperajah,copperajah-gmax,duraludon,duraludon-gmax,varoom,revavroom,orthworm,gholdengo,archaludon,iron crown,cawdet,cawmodore,justyke,equilibra,pokestar mt,pokestar mt2,pokestar transport,pokestar f-00,pokestar f-002,mega steelix',
+  Dark: 'rattata-alola,raticate-alola,raticate-alola-totem,meowth-alola,persian-alola,moltres-galar,umbreon,murkrow,qwilfish-hisui,sneasel,houndour,houndoom,houndoom-mega,poochyena,mightyena,zigzagoon-galar,linoone-galar,sableye,sableye-mega,absol,absol-mega,absol-mega-z,honchkrow,weavile,darkrai,darkrai-mega,arceus-dark,purrloin,liepard,scraggy,scrafty,scrafty-mega,zorua,zoroark,pawniard,bisharp,vullaby,mandibuzz,deino,zweilous,hydreigon,inkay,malamar,malamar-mega,yveltal,silvally-dark,guzzlord,nickit,thievul,impidimp,morgrem,grimmsnarl,grimmsnarl-gmax,obstagoon,zarude,zarude-dada,overqwil,maschiff,mabosstiff,kingambit,iron jugulis,wo-chien,chien-pao,ting-lu,chi-yu,brattler,malaconda,chromera,obliteryx,pokestar brycen-man,pokestar monster,pokestar spirit,mega absol',
+  Fairy: 'clefairy,clefable,clefable-mega,cleffa,togepi,togetic,snubbull,granbull,togekiss,arceus-fairy,flabeìbeì,floette,floette-eternal,floette-mega,florges,spritzee,aromatisse,swirlix,slurpuff,sylveon,xerneas,xerneas-neutral,comfey,silvally-fairy,milcery,alcremie,alcremie-gmax,zacian,zacian-crowned,enamorus,enamorus-therian,fidough,dachsbun,tinkatink,tinkatuff,tinkaton,scream tail,iron valiant,pluffle,kerfluffle,ababo,scattervein,hemogoblin',
+};
+const TYPE_THEMES = {
+  Normal:   { name: 'Normal',   bg: '#1c1c24', border: '#3e3e4f', badgeBg: '#2a2a36', badgeText: '#a0a0b2', accent: '#9298a4', glow: 'rgba(146,152,164,0.12)' },
+  Fire:     { name: 'Fire',     bg: '#251214', border: '#5a2226', badgeBg: '#3d161a', badgeText: '#ff7b7d', accent: '#ff4d52', glow: 'rgba(255,77,82,0.18)' },
+  Water:    { name: 'Water',    bg: '#0f1c2b', border: '#1e3e60', badgeBg: '#142c44', badgeText: '#70b6ff', accent: '#3b9bf5', glow: 'rgba(59,155,245,0.18)' },
+  Grass:    { name: 'Grass',    bg: '#112215', border: '#234d2c', badgeBg: '#19361f', badgeText: '#7ee08d', accent: '#47c963', glow: 'rgba(71,201,99,0.18)' },
+  Electric: { name: 'Electric', bg: '#26220e', border: '#5c4e18', badgeBg: '#3d3410', badgeText: '#ffe066', accent: '#f5c518', glow: 'rgba(245,197,24,0.18)' },
+  Ice:      { name: 'Ice',      bg: '#102229', border: '#214e5c', badgeBg: '#163842', badgeText: '#7be3f5', accent: '#40bad5', glow: 'rgba(64,186,213,0.18)' },
+  Fighting: { name: 'Fighting', bg: '#261410', border: '#59291e', badgeBg: '#3d1c14', badgeText: '#ff987a', accent: '#d9532f', glow: 'rgba(217,83,47,0.18)' },
+  Poison:   { name: 'Poison',   bg: '#221126', border: '#4d2057', badgeBg: '#36163d', badgeText: '#df87f5', accent: '#b54ddb', glow: 'rgba(181,77,219,0.18)' },
+  Ground:   { name: 'Ground',   bg: '#241b12', border: '#543b22', badgeBg: '#382816', badgeText: '#e5b882', accent: '#c49356', glow: 'rgba(196,147,86,0.18)' },
+  Flying:   { name: 'Flying',   bg: '#141c2c', border: '#293e63', badgeBg: '#1c2c47', badgeText: '#99b8ff', accent: '#688ff2', glow: 'rgba(104,143,242,0.18)' },
+  Psychic:  { name: 'Psychic',  bg: '#28111f', border: '#5c2244', badgeBg: '#3e162f', badgeText: '#ff80b7', accent: '#f2448d', glow: 'rgba(242,68,141,0.18)' },
+  Bug:      { name: 'Bug',      bg: '#1b230f', border: '#3e521e', badgeBg: '#2a3814', badgeText: '#bfe665', accent: '#95c72a', glow: 'rgba(149,199,42,0.18)' },
+  Rock:     { name: 'Rock',     bg: '#242017', border: '#544730', badgeBg: '#383020', badgeText: '#d6c196', accent: '#b59f6e', glow: 'rgba(181,159,110,0.18)' },
+  Ghost:    { name: 'Ghost',    bg: '#1a142b', border: '#3b2a63', badgeBg: '#271c42', badgeText: '#be9eff', accent: '#8b5cf6', glow: 'rgba(139,92,246,0.18)' },
+  Dragon:   { name: 'Dragon',   bg: '#16132e', border: '#32286b', badgeBg: '#211a47', badgeText: '#a48fff', accent: '#704df7', glow: 'rgba(112,77,247,0.18)' },
+  Steel:    { name: 'Steel',    bg: '#161c22', border: '#32404f', badgeBg: '#212c36', badgeText: '#a2b8cc', accent: '#728da3', glow: 'rgba(114,141,163,0.18)' },
+  Dark:     { name: 'Dark',     bg: '#18151a', border: '#382f3d', badgeBg: '#262029', badgeText: '#ba9ebf', accent: '#7c6582', glow: 'rgba(124,101,130,0.18)' },
+  Fairy:    { name: 'Fairy',    bg: '#281423', border: '#5c274d', badgeBg: '#3e1b34', badgeText: '#fcaed9', accent: '#ea65b1', glow: 'rgba(234,101,177,0.18)' }
+};
+
+var _pokemonTypeMap = null;
+function getPokemonPrimaryType(name){
+  if(!_pokemonTypeMap){
+    _pokemonTypeMap = new Map();
+    for(let [type, str] of Object.entries(POKEMON_TYPE_DEFS)){
+      let list = str.split(',');
+      for(let m of list){
+        if(m) {
+          _pokemonTypeMap.set(m.toLowerCase().trim(), type);
+          _pokemonTypeMap.set(m.replace(/[\s-]/g, '').toLowerCase().trim(), type);
+        }
+      }
+    }
+  }
+
+  let clean = String(name || '').toLowerCase().trim().replace(/\s*\(\d+.*?\)$/, '');
+  if(_pokemonTypeMap.has(clean)) return _pokemonTypeMap.get(clean);
+  let noSpace = clean.replace(/[\s-]/g, '');
+  if(_pokemonTypeMap.has(noSpace)) return _pokemonTypeMap.get(noSpace);
+
+  // Check base pokemon if Mega or Form
+  let resolved = resolvePokemonData(name);
+  if(resolved && resolved.name){
+    let resClean = resolved.name.toLowerCase().trim();
+    if(_pokemonTypeMap.has(resClean)) return _pokemonTypeMap.get(resClean);
+    let resNoSpace = resClean.replace(/[\s-]/g, '');
+    if(_pokemonTypeMap.has(resNoSpace)) return _pokemonTypeMap.get(resNoSpace);
+  }
+
+  return 'Normal';
+}
+
+function getPokemonTypeTheme(name){
+  let type = getPokemonPrimaryType(name);
+  return TYPE_THEMES[type] || TYPE_THEMES['Normal'];
+}
+
+
 
 window.onerror = function(msg, url, line, col, error) {
   console.error('Global error:', msg, 'at line', line, error);
@@ -10826,9 +10906,10 @@ function renderDraftBoardTierColumns(t){
             let isDrafted = draftedSet.has(clean);
             let draftInfo = isDrafted ? draftedByMap[clean] : null;
             let spriteUrl = pokeSprite(mon);
+            let theme = getPokemonTypeTheme(mon);
 
             return `
-              <div class="draft-mon-card ${isDrafted ? 'drafted' : ''}" onclick="${isDrafted ? '' : `openDraftConfirmationModal('${jsArg(t.id)}', '${jsArg(mon)}', ${tier.cost}, '${jsArg(tier.name)}')`}">
+              <div class="draft-mon-card ${isDrafted ? 'drafted' : ''}" style="${isDrafted ? '' : `border-left:3px solid ${theme.accent};background:linear-gradient(90deg, ${theme.glow.replace('0.18', '0.08').replace('0.2', '0.08').replace('0.22', '0.08')} 0%, #171722 100%);`}" onclick="${isDrafted ? '' : `openDraftConfirmationModal('${jsArg(t.id)}', '${jsArg(mon)}', ${tier.cost}, '${jsArg(tier.name)}')`}">
                 <div style="display:flex;align-items:center;gap:8px;min-width:0">
                   <img src="${esc(spriteUrl)}" class="draft-sprite" alt="${esc(mon)}" loading="lazy" onerror="handleSpriteError(this)">
                   <div style="min-width:0">
@@ -10842,7 +10923,7 @@ function renderDraftBoardTierColumns(t){
                 </div>
 
                 ${!isDrafted ? `
-                  <span class="draft-mon-cost">${tier.cost} PTS</span>
+                  <span class="draft-mon-cost" style="background:${theme.badgeBg};border-color:${theme.border};color:${theme.badgeText}">${tier.cost} PTS</span>
                 ` : `
                   <span style="font-size:11px;color:#6b6a75;font-weight:700">Picked</span>
                 `}
@@ -11252,13 +11333,15 @@ function DraftRostersView(t){
 
               if(pickObj){
                 let spriteUrl = pokeSprite(pickObj.pokemon);
+                let theme = getPokemonTypeTheme(pickObj.pokemon);
                 return `
                   <div class="draft-matrix-cell drafted ${moderator ? 'mod-clickable' : ''}"
-                       title="${esc(pickObj.pokemon)} (${pickObj.cost} pts) · Round ${roundNum}, Pick #${pickNumber}${moderator ? ' · Click to swap out' : ''}"
+                       style="background:linear-gradient(135deg, ${theme.bg} 0%, #111116 100%);border-color:${theme.border};box-shadow:inset 0 0 14px ${theme.glow}"
+                       title="${esc(pickObj.pokemon)} (${theme.name} · ${pickObj.cost} pts) · Round ${roundNum}, Pick #${pickNumber}${moderator ? ' · Click to swap out' : ''}"
                        ${moderator ? `onclick="openModeratorSwapModal('${jsArg(t.id)}', '${jsArg(coach)}', '${jsArg(pickObj.pokemon)}', ${pickObj.round || roundNum}, ${pickObj.pickNumber || pickNumber}, ${pickObj.cost || 0})"` : ''}>
                     <div class="draft-matrix-cell-head">
-                      <span class="draft-matrix-pick-num">${roundNum}.${posInRound + 1}</span>
-                      <span class="draft-matrix-cost">${pickObj.cost} PTS</span>
+                      <span class="draft-matrix-pick-num" style="color:${theme.accent}">${roundNum}.${posInRound + 1}</span>
+                      <span class="draft-matrix-cost" style="background:${theme.badgeBg};border-color:${theme.border};color:${theme.badgeText}">${pickObj.cost} PTS</span>
                     </div>
                     <div class="draft-matrix-cell-body">
                       <img src="${esc(spriteUrl)}" class="draft-matrix-sprite" alt="${esc(pickObj.pokemon)}" loading="lazy" onerror="handleSpriteError(this)">
