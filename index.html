@@ -635,6 +635,33 @@ details[open] > .past-tourney-summary .past-chevron{transform:rotate(180deg);col
 .tm-slot-free:last-of-type{border:0}
 .tm-note{font-size:10px;color:#8e8c95;margin-top:12px;line-height:1.5}
 .tm-status{font-size:11px;color:#ffb0b5;margin-top:9px;min-height:14px}
+/* ------------------------------------------------------------ Group Draw Ceremony & Draft-Locked Styles ------------------------------------------------------------ */
+.group-draw-ceremony-modal{max-width:840px;width:100%}
+.hat-stage{background:radial-gradient(circle at center, #261622 0%, #13131a 70%);border:1px solid #3d2432;border-radius:12px;padding:24px 20px;text-align:center;position:relative;overflow:hidden;box-shadow:0 8px 32px rgba(0,0,0,0.6)}
+.hat-emblem{font-size:62px;display:inline-block;cursor:pointer;filter:drop-shadow(0 6px 16px rgba(255,209,102,0.35));transition:transform .25s cubic-bezier(0.34,1.56,0.64,1)}
+.hat-emblem:hover{transform:scale(1.1) rotate(-6deg)}
+.hat-emblem.drawing{animation:hatWobble .32s infinite alternate ease-in-out}
+
+@keyframes hatWobble {
+  0% { transform: scale(1.05) rotate(-12deg) translateY(-4px); filter: drop-shadow(0 8px 20px rgba(239,48,56,0.6)); }
+  100% { transform: scale(1.18) rotate(12deg) translateY(-10px); filter: drop-shadow(0 12px 28px rgba(255,209,102,0.7)); }
+}
+
+@keyframes popDrawnSlot {
+  0% { transform: scale(0.7) translateY(12px); opacity: 0; }
+  65% { transform: scale(1.06) translateY(-2px); opacity: 1; }
+  100% { transform: scale(1) translateY(0); opacity: 1; }
+}
+
+.draw-revealed-card{animation:popDrawnSlot .42s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards}
+.draw-group-column{background:#121218;border:1px solid #282836;border-radius:10px;padding:12px;display:flex;flex-direction:column;gap:8px;min-height:220px}
+.draw-slot-card{background:#181822;border:1px solid #2e2e3e;border-radius:6px;padding:8px 10px;display:flex;align-items:center;justify-content:space-between;gap:8px;transition:all .2s ease}
+.draw-slot-card.empty{border:1px dashed #2d2d3c;background:#111116;opacity:.55;justify-content:center;color:#6b6a75;font-size:11px;font-weight:700}
+.draw-slot-card.active-target{border:1px solid var(--amber);background:#221e14;box-shadow:0 0 14px rgba(255,209,102,0.22)}
+
+.draft-locked-card{background:linear-gradient(135deg,#18141c 0%,#111116 100%);border:1px solid #3d2432;border-radius:12px;padding:36px 24px;text-align:center;max-width:680px;margin:24px auto;box-shadow:0 12px 40px rgba(0,0,0,0.6)}
+.draft-locked-icon{font-size:48px;display:inline-block;margin-bottom:12px;filter:drop-shadow(0 4px 12px rgba(239,48,56,0.3))}
+
 @media(max-width:900px){.tools-layout{grid-template-columns:1fr}.builder{position:static;order:-1;max-height:none}}
 </style>
 </head>
@@ -4800,8 +4827,7 @@ async function signUp(){
     }
   }
 }
-function openGroupPlacementEditor(){let t=ongoingT();if(!moderator||!t||t.phase==='topcut')return;let groups=groupsOf(t);document.querySelector('#modal').innerHTML=`<div class="modal-wrap"><div class="modal" style="max-width:760px"><div class="modal-head"><div><div class="eyebrow">Moderator only</div><h2>Arrange group placements</h2></div><button class="close" onclick="closeModal()">×</button></div><p class="sub">Drag a trainer onto another trainer to swap their group placements. Moving players between groups rebuilds the round-robin schedule while preserving scores for matchups that still exist.</p><div class="group-placement-grid">${Object.entries(groups).map(([g,players])=>`<section class="group-dropzone" data-group="${g}"><div class="eyebrow">${g}</div>${players.map(p=>`<button class="group-placement-drag" draggable="true" data-player="${p}" data-group="${g}">${p}</button>`).join('')||'<p class="sub">Drop a trainer here</p>'}</section>`).join('')}</div></div></div>`}
-function swapGroupPlacements(first,second,targetGroup){let t=ongoingT();if(!t||!first||!moderator||t.phase==='topcut')return;let buckets=groupsOf(t),assign={};Object.entries(buckets).forEach(([g,players])=>players.forEach(p=>assign[p]=g));let source=assign[first];if(second){let other=assign[second];assign[first]=other;assign[second]=source;if(source===other){let ai=t.players.indexOf(first),bi=t.players.indexOf(second);if(ai>=0&&bi>=0)[t.players[ai],t.players[bi]]=[t.players[bi],t.players[ai]]}}else if(targetGroup&&source!==targetGroup){assign[first]=targetGroup}t.groupAssignments=assign;rebuildSchedulePreserving(t);persistLeague();openGroupPlacementEditor();render()}
+
 document.addEventListener('dragstart',e=>{let x=e.target.closest('.group-placement-drag');if(x&&moderator)e.dataTransfer.setData('application/cherrymoon-group-player',x.dataset.player)});
 document.addEventListener('dragover',e=>{let zone=e.target.closest('.group-dropzone');if(zone&&moderator){e.preventDefault();zone.classList.add('over')}});
 document.addEventListener('dragleave',e=>e.target.closest('.group-dropzone')?.classList.remove('over'));
@@ -4934,6 +4960,10 @@ function Matches(){
   if(!t) return noTournament();
   viewTournament = t.id;
 
+  if(t.phase === 'draft' && t.status === 'ONGOING'){
+    return renderDraftLockedMatches(t);
+  }
+
   let groups = Object.keys(groupsOf(t));
   let allMatches = t.matches || [];
   let totalMatches = allMatches.length;
@@ -4943,6 +4973,7 @@ function Matches(){
 
   let modActions = (moderator && t.status === 'ONGOING' && t.phase !== 'topcut') ? `
     <div style="display:flex;align-items:center;flex-wrap:wrap;gap:8px">
+      <button class="btn ghost" style="padding:6px 11px;font-size:11px" onclick="openGroupDrawCeremony('${jsArg(t.id)}')">🎩 Draw ceremony</button>
       <button class="btn ghost" style="padding:6px 11px;font-size:11px" onclick="openGroupPlacementEditor()">👥 Arrange groups</button>
       <button class="btn ghost" style="padding:6px 11px;font-size:11px" onclick="addCustom()">⚡ Custom match</button>
       <button class="btn ghost" style="padding:6px 11px;font-size:11px;color:#ff9ba1;border-color:#4a242a" onclick="resetGroupStageScores()">➔ Reset group scores</button>
@@ -5391,7 +5422,10 @@ function Standings(){
     `;
   }
   viewTournament=t.id;
-  let groups=Object.keys(groupsOf(t)),controls=moderator?`<div><button class="btn ghost" onclick="openRankingEditor()">Arrange rankings</button> <button class="btn ghost" onclick="openSettings()">Edit qualification</button></div>`:'';
+  if(t.phase === 'draft' && t.status === 'ONGOING'){
+    return renderDraftLockedStandings(t);
+  }
+  let groups=Object.keys(groupsOf(t)),controls=moderator?`<div><button class="btn ghost" onclick="openGroupDrawCeremony('${jsArg(t.id)}')">🎩 Draw ceremony</button> <button class="btn ghost" onclick="openRankingEditor()">Arrange rankings</button> <button class="btn ghost" onclick="openSettings()">Edit qualification</button></div>`:'';
   return head('Standings',t.name+' · group stage',controls)+`<div style="display:grid;grid-template-columns:repeat(${groups.length>1?2:1},minmax(0,1fr));gap:15px">${groups.map(g=>`<div class="card table-wrap">${standingTable(t,g)}</div>`).join('')}</div><p class="sub">The default order is W-L, games won, game differential, then head-to-head. Moderators can use Arrange rankings to apply a manual standings override.</p>`;
 }
 
@@ -9025,14 +9059,477 @@ function saveQualification(){
   if(t.id==='scarlet')cut=value*Object.keys(groupsOf(t)).length;
   persistLeague();closeModal();render()
 }
+/* ============================================================
+   GROUP RANDOMIZATION & LIVE HAT DRAW CEREMONY
+   ============================================================ */
+
+function randomizeTournamentGroups(tId, promptConfirm = false){
+  let t = tournamentData[tId] || ongoingT() || activeT();
+  if(!t || !moderator) return;
+  if(promptConfirm && !confirm(`Randomly shuffle all ${t.players.length} coaches into groups for "${t.name}"?`)) return;
+
+  let groupNames = Object.keys(groupsOf(t));
+  let count = groupNames.length;
+  if(count <= 0) count = 1;
+
+  let shuffled = [...t.players];
+  for(let i = shuffled.length - 1; i > 0; i--){
+    let j = Math.floor(Math.random() * (i + 1));
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
+
+  let assign = {};
+  shuffled.forEach((p, i) => {
+    assign[p] = groupNames[i % count];
+  });
+
+  t.groupAssignments = assign;
+  rebuildSchedulePreserving(t);
+  persistLeague();
+  
+  if(document.querySelector('.group-dropzone')){
+    openGroupPlacementEditor();
+  }
+  render();
+}
+
+window.groupDrawCeremonyState = null;
+
+function openGroupDrawCeremony(tId){
+  let t = tournamentData[tId] || ongoingT() || activeT();
+  if(!t) return;
+  if(!moderator){
+    alert('Group draw ceremony is only available to moderators.');
+    return;
+  }
+
+  let groupNames = Object.keys(groupsOf(t));
+  let allPlayers = [...t.players];
+  let slotsPerGroup = Math.ceil(allPlayers.length / groupNames.length);
+
+  let pool = [...allPlayers];
+  for(let i = pool.length - 1; i > 0; i--){
+    let j = Math.floor(Math.random() * (i + 1));
+    [pool[i], pool[j]] = [pool[j], pool[i]];
+  }
+
+  let drawn = {};
+  groupNames.forEach(g => drawn[g] = []);
+
+  window.groupDrawCeremonyState = {
+    tournamentId: t.id,
+    groupNames: groupNames,
+    slotsPerGroup: slotsPerGroup,
+    allPlayers: allPlayers,
+    pool: pool,
+    drawn: drawn,
+    currentGroupIdx: 0,
+    isDrawing: false,
+    autoTimer: null,
+    latestDrawn: null
+  };
+
+  renderGroupDrawCeremonyModal();
+}
+
+function renderGroupDrawCeremonyModal(){
+  let state = window.groupDrawCeremonyState;
+  if(!state) return;
+  let t = tournamentData[state.tournamentId] || activeT();
+  if(!t) return;
+
+  let totalCount = state.allPlayers.length;
+  let drawnCount = Object.values(state.drawn).reduce((sum, arr) => sum + arr.length, 0);
+  let remainingCount = state.pool.length;
+  let isComplete = remainingCount === 0;
+  let nextGroup = state.groupNames[state.currentGroupIdx % state.groupNames.length];
+
+  let modalHtml = `
+    <div class="modal-wrap">
+      <div class="modal group-draw-ceremony-modal" style="background:#111116;border:1px solid #363648;border-radius:14px;box-shadow:0 24px 70px rgba(0,0,0,0.9);padding:24px">
+        <div class="modal-head" style="border-bottom:1px solid #232330;padding-bottom:12px;margin-bottom:16px">
+          <div>
+            <div class="eyebrow" style="color:var(--amber);letter-spacing:1px">🎩 Live Tournament Ceremony</div>
+            <h2 style="font:900 26px 'Barlow Condensed';margin:2px 0 0;color:#f5f3f0">${esc(t.name)} · Group Stage Draw</h2>
+          </div>
+          <button class="close" onclick="closeGroupDrawCeremony()">×</button>
+        </div>
+
+        <!-- Center Hat Stage -->
+        <div class="hat-stage" id="hatDrawStage">
+          ${renderHatStageContent(state, t)}
+        </div>
+
+        <!-- Stage Group Podiums Grid -->
+        <div style="display:grid;grid-template-columns:repeat(${state.groupNames.length > 1 ? (state.groupNames.length > 2 ? 3 : 2) : 1},minmax(0,1fr));gap:12px;margin-top:18px">
+          ${state.groupNames.map(g => {
+            let members = state.drawn[g] || [];
+            let isTargetGroup = (!isComplete && g === nextGroup);
+            return `
+              <div class="draw-group-column" style="border-color:${isTargetGroup ? '#ffd166' : '#282836'};background:${isTargetGroup ? 'linear-gradient(180deg,#1c171e 0%,#121218 100%)' : '#121218'}">
+                <div style="display:flex;justify-content:space-between;align-items:center;padding-bottom:6px;border-bottom:1px solid #242432">
+                  <span style="font:900 18px 'Barlow Condensed';color:${isTargetGroup ? '#ffd166' : '#f5f3f0'}">${esc(g)}</span>
+                  <span class="tag" style="background:#1f1f28;color:#a09fa8;font-size:10px">${members.length}/${state.slotsPerGroup} Coaches</span>
+                </div>
+
+                <div style="display:flex;flex-direction:column;gap:6px;margin-top:4px">
+                  ${Array.from({length: state.slotsPerGroup}, (_, slotIdx) => {
+                    let p = members[slotIdx];
+                    if(p){
+                      let faceArt = profilePictures[p] ? `url('${esc(profilePictures[p])}')` : (teamCovers[p] ? `url('${esc(teamCovers[p])}')` : fallbackArt(p));
+                      let faceLetter = (profilePictures[p] || teamCovers[p]) ? '' : esc((p || '?')[0]);
+                      let ovrObj = calculatePlayerOVR(p);
+                      let isLatest = (state.latestDrawn && state.latestDrawn.player === p && state.latestDrawn.group === g);
+                      return `
+                        <div class="draw-slot-card ${isLatest ? 'draw-revealed-card' : ''}" style="${isLatest ? 'border-color:#4bdd91;box-shadow:0 0 16px rgba(75,221,145,0.25)' : ''}">
+                          <div style="display:flex;align-items:center;gap:8px;min-width:0">
+                            <span class="avatar mini" style="background-image:${faceArt};background-size:cover;background-position:center;width:26px;height:26px;border-radius:50%;display:grid;place-items:center;border:1px solid ${ovrObj.color};font-size:10px;flex:none">${faceLetter}</span>
+                            <div style="min-width:0">
+                              <div style="font:800 14px 'Barlow Condensed';color:#f5f3f0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(p)}</div>
+                              <div style="font-size:10px;color:#8e8c95;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(teamName(t, p))}</div>
+                            </div>
+                          </div>
+                          ${ovrObj.badgeHtml}
+                        </div>
+                      `;
+                    } else {
+                      let isNextSlot = (isTargetGroup && slotIdx === members.length);
+                      return `
+                        <div class="draw-slot-card empty ${isNextSlot ? 'active-target' : ''}">
+                          <span>${isNextSlot ? '🎯 Next In Hat' : `Slot #${slotIdx + 1}`}</span>
+                        </div>
+                      `;
+                    }
+                  }).join('')}
+                </div>
+              </div>
+            `;
+          }).join('')}
+        </div>
+
+        <!-- Footer Actions -->
+        <div class="creator-actions" style="margin-top:20px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;border-top:1px solid #232330;padding-top:16px">
+          <div style="display:flex;gap:8px">
+            <button class="btn ghost btn-sm" onclick="resetGroupDrawCeremony()">🔄 Reset Hat</button>
+            <button class="btn ghost btn-sm" onclick="instantFillRemainingDraw()">⚡ Fast-Forward All</button>
+          </div>
+
+          <div style="display:flex;gap:8px;align-items:center">
+            <button class="btn ghost" onclick="closeGroupDrawCeremony()">Cancel</button>
+            <button class="btn" style="${isComplete ? 'background:#10b981;border-color:#34d399;font-weight:900;padding:10px 24px' : 'opacity:.5;pointer-events:none'}" ${!isComplete ? 'disabled' : ''} onclick="commitGroupDrawCeremony()">
+              ${isComplete ? '💾 Lock Groups & Unlock Group Stage →' : `Draw all coaches (${drawnCount}/${totalCount})`}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+
+  document.querySelector('#modal').innerHTML = modalHtml;
+}
+
+function renderHatStageContent(state, t){
+  let totalCount = state.allPlayers.length;
+  let remainingCount = state.pool.length;
+  let isComplete = remainingCount === 0;
+  let nextGroup = state.groupNames[state.currentGroupIdx % state.groupNames.length];
+
+  if(isComplete){
+    return `
+      <div>
+        <div style="font-size:52px;margin-bottom:6px">🏆</div>
+        <div style="font:900 24px 'Barlow Condensed';color:#4bdd91;letter-spacing:.6px">DRAW CEREMONY COMPLETE!</div>
+        <p class="sub" style="margin:4px auto 14px;max-width:500px;font-size:12px;color:#d8d6e0">All ${totalCount} coaches have been drawn into their official group placements.</p>
+        <button class="btn" style="background:#10b981;border-color:#34d399;font-weight:900;padding:10px 26px;font-size:13px" onclick="commitGroupDrawCeremony()">
+          💾 Save Placements & Start Group Stage →
+        </button>
+      </div>
+    `;
+  }
+
+  let latest = state.latestDrawn;
+  let latestHtml = '';
+  if(latest && !state.isDrawing){
+    let p = latest.player;
+    let faceArt = profilePictures[p] ? `url('${esc(profilePictures[p])}')` : (teamCovers[p] ? `url('${esc(teamCovers[p])}')` : fallbackArt(p));
+    let faceLetter = (profilePictures[p] || teamCovers[p]) ? '' : esc((p || '?')[0]);
+    let ovrObj = calculatePlayerOVR(p);
+    latestHtml = `
+      <div style="margin-top:12px;display:inline-flex;align-items:center;gap:12px;background:#181822;border:1px solid #3d2d38;border-radius:10px;padding:8px 16px" class="draw-revealed-card">
+        <span class="avatar" style="background-image:${faceArt};background-size:cover;background-position:center;width:42px;height:42px;border-radius:50%;display:grid;place-items:center;border:2px solid ${ovrObj.color};font-size:16px">${faceLetter}</span>
+        <div style="text-align:left">
+          <div style="font-size:10px;font-weight:800;color:var(--amber);text-transform:uppercase">Placed in ${esc(latest.group)}</div>
+          <div style="font:900 18px 'Barlow Condensed';color:#f5f3f0">${esc(p)} <span style="font-size:12px;color:#a09fa8">(${esc(teamName(t, p))})</span></div>
+        </div>
+        ${ovrObj.badgeHtml}
+      </div>
+    `;
+  }
+
+  return `
+    <div>
+      <div class="hat-emblem ${state.isDrawing ? 'drawing' : ''}" onclick="${state.isDrawing ? '' : 'drawNextGroupCoach()'}">
+        🎩
+      </div>
+      <div style="font:800 20px 'Barlow Condensed';color:#ffd166;letter-spacing:.5px;margin-top:6px" id="hatTickerName">
+        ${state.isDrawing ? 'Drawing from the hat...' : `Hat contains ${remainingCount} coach${remainingCount === 1 ? '' : 'es'}`}
+      </div>
+      <div style="font-size:12px;color:#a09fa8;margin-top:2px">
+        Next Coach will be placed into <b style="color:#ffd166;font-size:13px">${esc(nextGroup)}</b>
+      </div>
+
+      ${latestHtml}
+
+      <div style="display:flex;justify-content:center;gap:10px;margin-top:16px;flex-wrap:wrap">
+        <button class="btn" style="padding:10px 24px;font-weight:900;font-size:13px" ${state.isDrawing ? 'disabled style="opacity:.5"' : ''} onclick="drawNextGroupCoach()">
+          🎩 Draw Next Name
+        </button>
+        ${state.autoTimer ? `
+          <button class="btn ghost" style="color:#ff8e95;border-color:#5c242c" onclick="pauseAutoGroupDraw()">⏸️ Pause Show</button>
+        ` : `
+          <button class="btn ghost" style="border-color:#ffd166;color:#ffd166" ${state.isDrawing ? 'disabled' : ''} onclick="startAutoGroupDraw()">⚡ Auto-Draw Show (1.3s)</button>
+        `}
+      </div>
+    </div>
+  `;
+}
+
+function drawNextGroupCoach(){
+  let state = window.groupDrawCeremonyState;
+  if(!state || state.isDrawing || state.pool.length === 0) return;
+
+  state.isDrawing = true;
+  let stageEl = document.getElementById('hatDrawStage');
+  let hatEl = document.querySelector('.hat-emblem');
+  let tickerEl = document.getElementById('hatTickerName');
+  if(hatEl) hatEl.classList.add('drawing');
+
+  let pool = state.pool;
+  let tickerInterval = setInterval(() => {
+    let randomIdx = Math.floor(Math.random() * pool.length);
+    let samplePlayer = pool[randomIdx];
+    if(tickerEl) tickerEl.textContent = `✨ ${samplePlayer}...`;
+  }, 75);
+
+  setTimeout(() => {
+    clearInterval(tickerInterval);
+    if(hatEl) hatEl.classList.remove('drawing');
+
+    let pickedIdx = Math.floor(Math.random() * pool.length);
+    let pickedPlayer = pool.splice(pickedIdx, 1)[0];
+
+    let targetGroup = state.groupNames[state.currentGroupIdx % state.groupNames.length];
+    state.drawn[targetGroup].push(pickedPlayer);
+    state.currentGroupIdx++;
+    state.isDrawing = false;
+    state.latestDrawn = { player: pickedPlayer, group: targetGroup, slot: state.drawn[targetGroup].length };
+
+    renderGroupDrawCeremonyModal();
+
+    if(state.autoTimer && state.pool.length > 0){
+      state.autoTimer = setTimeout(drawNextGroupCoach, 1300);
+    } else if(state.pool.length === 0){
+      pauseAutoGroupDraw();
+    }
+  }, 1100);
+}
+
+function startAutoGroupDraw(){
+  let state = window.groupDrawCeremonyState;
+  if(!state || state.pool.length === 0) return;
+  state.autoTimer = true;
+  drawNextGroupCoach();
+}
+
+function pauseAutoGroupDraw(){
+  let state = window.groupDrawCeremonyState;
+  if(state && state.autoTimer){
+    clearTimeout(state.autoTimer);
+    state.autoTimer = null;
+    renderGroupDrawCeremonyModal();
+  }
+}
+
+function instantFillRemainingDraw(){
+  let state = window.groupDrawCeremonyState;
+  if(!state) return;
+  pauseAutoGroupDraw();
+
+  while(state.pool.length > 0){
+    let pickedIdx = Math.floor(Math.random() * state.pool.length);
+    let pickedPlayer = state.pool.splice(pickedIdx, 1)[0];
+    let targetGroup = state.groupNames[state.currentGroupIdx % state.groupNames.length];
+    state.drawn[targetGroup].push(pickedPlayer);
+    state.currentGroupIdx++;
+  }
+
+  state.isDrawing = false;
+  state.latestDrawn = null;
+  renderGroupDrawCeremonyModal();
+}
+
+function resetGroupDrawCeremony(){
+  let state = window.groupDrawCeremonyState;
+  if(!state) return;
+  pauseAutoGroupDraw();
+  openGroupDrawCeremony(state.tournamentId);
+}
+
+function closeGroupDrawCeremony(){
+  pauseAutoGroupDraw();
+  window.groupDrawCeremonyState = null;
+  closeModal();
+}
+
+function commitGroupDrawCeremony(){
+  let state = window.groupDrawCeremonyState;
+  if(!state) return;
+  let t = tournamentData[state.tournamentId] || activeT();
+  if(!t) return;
+
+  pauseAutoGroupDraw();
+
+  let assign = {};
+  Object.entries(state.drawn).forEach(([g, players]) => {
+    players.forEach(p => {
+      assign[p] = g;
+    });
+  });
+
+  t.groupAssignments = assign;
+  rebuildSchedulePreserving(t);
+
+  if(t.phase === 'draft'){
+    let d = ensureTournamentDraft(t);
+    d.status = 'completed';
+    t.phase = 'group';
+  }
+
+  persistLeague();
+  closeGroupDrawCeremony();
+  current = 'Matches';
+  render();
+}
+
+/* --- Draft-Stage Locked View Renderers --- */
+function renderDraftLockedStandings(t, isDetailTab = false){
+  let d = ensureTournamentDraft(t);
+  let totalPicks = getDraftTotalPicks(t);
+  let completedPicks = d.picks ? d.picks.length : 0;
+  let pct = totalPicks > 0 ? Math.min(100, Math.round((completedPicks / totalPicks) * 100)) : 0;
+
+  let modControls = moderator ? `
+    <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-top:16px">
+      <button class="btn" style="padding:10px 20px;font-weight:900" onclick="openGroupDrawCeremony('${jsArg(t.id)}')">🎩 Draw Groups Ceremony (Names from Hat) →</button>
+      <button class="btn ghost" onclick="randomizeTournamentGroups('${jsArg(t.id)}')">🎲 Randomize Groups</button>
+      <button class="btn ghost" style="color:#4bdd91;border-color:#2a5438" onclick="completeDraftAndAdvance('${jsArg(t.id)}')">⚡ Finalize Draft & Unlock Group Stage</button>
+    </div>
+  ` : '';
+
+  let cardHtml = `
+    <div class="draft-locked-card">
+      <div class="draft-locked-icon">🎯</div>
+      <div class="eyebrow" style="color:var(--amber);margin-bottom:4px;letter-spacing:1.2px">DRAFT STAGE IN PROGRESS</div>
+      <h2 style="font:900 28px 'Barlow Condensed';color:#f5f3f0;letter-spacing:.4px;margin:4px 0 10px">Group Stage Standings Locked</h2>
+      <p class="sub" style="max-width:520px;margin:0 auto 18px;font-size:13px;line-height:1.5">
+        Group stage standings, division tables, and playoff qualification will unlock once the live draft concludes and rosters are locked.
+      </p>
+
+      <!-- Progress bar -->
+      <div style="max-width:400px;margin:0 auto 16px;background:#111116;border:1px solid #2b2b38;border-radius:8px;padding:12px 14px">
+        <div style="display:flex;justify-content:space-between;align-items:baseline;font-size:11px;margin-bottom:6px">
+          <span style="font-weight:800;color:#c0bfca">Draft Progress</span>
+          <span style="font:800 14px 'Barlow Condensed';color:#ffd166">${completedPicks} of ${totalPicks} Picks (${pct}%)</span>
+        </div>
+        <div style="height:8px;background:#1c1c26;border-radius:4px;overflow:hidden">
+          <div style="width:${pct}%;height:100%;background:linear-gradient(90deg,var(--red),var(--amber));border-radius:4px;transition:width .3s ease"></div>
+        </div>
+      </div>
+
+      <button class="btn" style="padding:11px 28px;font-weight:900;font-size:13px" onclick="go('Draft')">
+        🎯 Enter Live Draft Room →
+      </button>
+
+      ${modControls}
+    </div>
+  `;
+
+  if(isDetailTab){
+    return cardHtml;
+  }
+  return head('Standings', t.name + ' · draft stage', moderator ? `<button class="btn" onclick="go('Draft')">Live Draft Room</button>` : '') + cardHtml;
+}
+
+function renderDraftLockedMatches(t, isDetailTab = false){
+  let d = ensureTournamentDraft(t);
+  let totalPicks = getDraftTotalPicks(t);
+  let completedPicks = d.picks ? d.picks.length : 0;
+  let pct = totalPicks > 0 ? Math.min(100, Math.round((completedPicks / totalPicks) * 100)) : 0;
+
+  let modControls = moderator ? `
+    <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-top:16px">
+      <button class="btn" style="padding:10px 20px;font-weight:900" onclick="openGroupDrawCeremony('${jsArg(t.id)}')">🎩 Draw Groups Ceremony (Names from Hat) →</button>
+      <button class="btn ghost" onclick="randomizeTournamentGroups('${jsArg(t.id)}')">🎲 Randomize Groups</button>
+      <button class="btn ghost" style="color:#4bdd91;border-color:#2a5438" onclick="completeDraftAndAdvance('${jsArg(t.id)}')">⚡ Finalize Draft & Unlock Group Stage</button>
+    </div>
+  ` : '';
+
+  let cardHtml = `
+    <div class="draft-locked-card">
+      <div class="draft-locked-icon">⚔️</div>
+      <div class="eyebrow" style="color:var(--amber);margin-bottom:4px;letter-spacing:1.2px">DRAFT STAGE IN PROGRESS</div>
+      <h2 style="font:900 28px 'Barlow Condensed';color:#f5f3f0;letter-spacing:.4px;margin:4px 0 10px">Match Fixtures & Schedule Locked</h2>
+      <p class="sub" style="max-width:520px;margin:0 auto 18px;font-size:13px;line-height:1.5">
+        Round-robin fixtures, divisional matchups, and score reporting will unlock once all draft picks are submitted and groups are set.
+      </p>
+
+      <!-- Progress bar -->
+      <div style="max-width:400px;margin:0 auto 16px;background:#111116;border:1px solid #2b2b38;border-radius:8px;padding:12px 14px">
+        <div style="display:flex;justify-content:space-between;align-items:baseline;font-size:11px;margin-bottom:6px">
+          <span style="font-weight:800;color:#c0bfca">Draft Progress</span>
+          <span style="font:800 14px 'Barlow Condensed';color:#ffd166">${completedPicks} of ${totalPicks} Picks (${pct}%)</span>
+        </div>
+        <div style="height:8px;background:#1c1c26;border-radius:4px;overflow:hidden">
+          <div style="width:${pct}%;height:100%;background:linear-gradient(90deg,var(--red),var(--amber));border-radius:4px;transition:width .3s ease"></div>
+        </div>
+      </div>
+
+      <button class="btn" style="padding:11px 28px;font-weight:900;font-size:13px" onclick="go('Draft')">
+        🎯 Enter Live Draft Room →
+      </button>
+
+      ${modControls}
+    </div>
+  `;
+
+  if(isDetailTab){
+    return cardHtml;
+  }
+  return head('Matches', t.name + ' · draft stage', moderator ? `<button class="btn" onclick="go('Draft')">Live Draft Room</button>` : '') + cardHtml;
+}
+
 function openGroupPlacementEditor(){
   let t=activeT();
   if(!moderator||!t||t.phase==='topcut')return;
   window.editingTournamentId=t.id;
   let groups=groupsOf(t);
-  document.querySelector('#modal').innerHTML=`<div class="modal-wrap"><div class="modal" style="max-width:760px">
-    <div class="modal-head"><div><div class="eyebrow">Moderator only · ${esc(t.name)}</div><h2>Arrange group placements</h2></div><button class="close" onclick="closeModal()">×</button></div>
-    <p class="sub">Drag a trainer onto another trainer to swap their group placements. Moving players between groups rebuilds the round-robin schedule while preserving scores for matchups that still exist.</p>
+  document.querySelector('#modal').innerHTML=`<div class="modal-wrap"><div class="modal" style="max-width:780px">
+    <div class="modal-head">
+      <div>
+        <div class="eyebrow">Moderator only · ${esc(t.name)}</div>
+        <h2>Arrange Group Placements</h2>
+      </div>
+      <button class="close" onclick="closeModal()">×</button>
+    </div>
+    
+    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin:10px 0 14px">
+      <p class="sub" style="margin:0;max-width:440px">Drag a trainer onto another trainer to swap their group placements, or use the live Hat Draw Ceremony.</p>
+      <div style="display:flex;gap:6px">
+        <button class="btn btn-sm" onclick="openGroupDrawCeremony('${jsArg(t.id)}')">🎩 Hat Draw Ceremony</button>
+        <button class="btn ghost btn-sm" onclick="randomizeTournamentGroups('${jsArg(t.id)}')">🎲 Shuffle Groups</button>
+      </div>
+    </div>
+
     <div class="group-placement-grid">${Object.entries(groups).map(([g,players])=>`<section class="group-dropzone" data-group="${esc(g)}"><div class="eyebrow">${esc(g)}</div>${players.map(p=>`<button class="group-placement-drag" draggable="true" data-player="${esc(p)}" data-group="${esc(g)}">${esc(p)}</button>`).join('')||'<p class="sub">Drop a trainer here</p>'}</section>`).join('')}</div>
   </div></div>`
 }
@@ -9053,17 +9550,18 @@ function tournamentDetail(){
   window.editingTournamentId=t.id;
   let groups=Object.keys(groupsOf(t));
   let hasDraft = Boolean(t.hasDraft || t.draftData?.picks?.length || t.draftData?.board?.length);
+  let isDraftOngoing = (t.status === 'ONGOING' && t.phase === 'draft');
   let availableTabs = hasDraft 
     ? ['Standings', 'Draft', 'Group Stage', 'Top Cut', 'Predictions'] 
     : ['Standings', 'Group Stage', 'Top Cut', 'Predictions'];
 
   if(!availableTabs.includes(detailTab)){
-    detailTab = (t.phase === 'draft' && t.status === 'ONGOING') ? 'Draft' : 'Standings';
+    detailTab = isDraftOngoing ? 'Draft' : 'Standings';
   }
 
   let content=detailTab==='Draft'?DraftRostersView(t)
-    :detailTab==='Standings'?`<div style="display:grid;grid-template-columns:repeat(${groups.length>1?2:1},minmax(0,1fr));gap:16px;align-items:start">${groups.map(g=>`<div class="card table-wrap" style="align-self:start">${standingTable(t,g)}</div>`).join('')}</div>`
-    :detailTab==='Group Stage'?matchesView(t,false)
+    :detailTab==='Standings'?(isDraftOngoing ? renderDraftLockedStandings(t, true) : `<div style="display:grid;grid-template-columns:repeat(${groups.length>1?2:1},minmax(0,1fr));gap:16px;align-items:start">${groups.map(g=>`<div class="card table-wrap" style="align-self:start">${standingTable(t,g)}</div>`).join('')}</div>`)
+    :detailTab==='Group Stage'?(isDraftOngoing ? renderDraftLockedMatches(t, true) : matchesView(t,false))
     :detailTab==='Top Cut'?topCutSection(t,!t.bracketManagerData)
     :predictions(t);
   let edit=moderator?` <button class="btn ghost" onclick="openTournamentEdit('${jsArg(t.id)}')">Edit</button>`:'';
@@ -9097,7 +9595,9 @@ function openTournamentEdit(id){
       ` : ''}
       <button class="btn ghost" onclick="openTournamentRecordEditor('${jsArg(t.id)}')">Edit Details</button>
       <button class="btn ghost" onclick="openSettings()">Edit Qualification</button>
-      <button class="btn ghost" ${locked?'disabled style="opacity:.5;cursor:not-allowed"':`onclick="openGroupPlacementEditor()"`}>Arrange Groups${locked?' (Locked in Top Cut)':''}</button>
+      <button class="btn ghost" ${locked?'disabled style="opacity:.5;cursor:not-allowed"':`onclick="openGroupDrawCeremony('${jsArg(t.id)}')"`}>🎩 Group Draw Ceremony (Hat Draw)</button>
+      <button class="btn ghost" ${locked?'disabled style="opacity:.5;cursor:not-allowed"':`onclick="openGroupPlacementEditor()"`}>👥 Arrange Groups${locked?' (Locked in Top Cut)':''}</button>
+      <button class="btn ghost" ${locked?'disabled style="opacity:.5;cursor:not-allowed"':`onclick="randomizeTournamentGroups('${jsArg(t.id)}', true)"`}>🎲 Randomize Groups (Shuffle)</button>
       <button class="btn ghost" onclick="openTournamentPlayers()">Edit Players & Teams</button>
       <button class="btn ghost" onclick="openCoverEditor('${jsArg(t.id)}')">Edit Cover Image</button>
       ${t.status==='COMPLETE'?`<button class="btn ghost" onclick="resyncTournamentStats('${jsArg(t.id)}')">Resync Stats</button>`:''}
@@ -10783,6 +11283,7 @@ function DraftRoom(t){
       ${d.picks?.length ? `<button class="btn ghost btn-sm" style="color:#ff9ba1" onclick="undoDraftPick('${jsArg(t.id)}')">↩️ Undo Pick</button>` : ''}
       <button class="btn ghost btn-sm" onclick="openDraftOrderEditor('${jsArg(t.id)}')">🔀 Draft Order</button>
       <button class="btn ghost btn-sm" onclick="openDraftBoardImporter('${jsArg(t.id)}')">📥 Import Sheet</button>
+      <button class="btn ghost btn-sm" onclick="openGroupDrawCeremony('${jsArg(t.id)}')">🎩 Group Draw</button>
       ${d.status === 'completed' || d.picks?.length >= getDraftTotalPicks(t) ? `<button class="btn btn-sm" style="background:#10b981;border-color:#34d399" onclick="completeDraftAndAdvance('${jsArg(t.id)}')">🏁 Start Group Stage →</button>` : ''}
     </div>
   ` : '';
