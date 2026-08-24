@@ -10137,6 +10137,129 @@ function saveDraftOrder(tId){
   render();
 }
 
+function openRenameBoardPokemonModal(tId, oldMonName, cost, tierName){
+  if(!moderator) return;
+  let t = tournamentData[tId] || ongoingT() || activeT();
+  if(!t) return;
+
+  document.querySelector('#modal').innerHTML = `
+    <div class="modal-wrap">
+      <div class="modal" style="max-width:440px">
+        <div class="modal-head">
+          <div>
+            <div class="eyebrow" style="color:var(--red)">Moderator Tool</div>
+            <h2 style="font:800 24px 'Barlow Condensed'">Rename Pokémon</h2>
+          </div>
+          <button class="close" onclick="openDraftConfirmationModal('${jsArg(tId)}', '${jsArg(oldMonName)}', ${cost}, '${jsArg(tierName)}')">×</button>
+        </div>
+
+        <p class="sub" style="margin-top:4px;font-size:12px">Fix typos or imported spreadsheet naming. This updates the draft board and roster records across the site.</p>
+
+        <div class="field" style="margin-top:14px">
+          <label style="font-size:11px;font-weight:800;color:#e0dee6">Pokémon Name</label>
+          <input id="renameMonInput" type="text" value="${esc(oldMonName)}" placeholder="e.g. Garchomp, Rotom-Wash, Farfetch'd..." oninput="updateRenamePreview(this.value)" style="background:#13131a;border:1px solid #3d3d4e;color:#f5f3f0;border-radius:6px;padding:10px 12px;font-weight:800;font-size:14px">
+        </div>
+
+        <div id="renamePreviewBox" style="display:flex;align-items:center;gap:12px;margin:14px 0;padding:12px 14px;background:#14141c;border:1px solid #282836;border-radius:8px">
+          <img id="renamePreviewSprite" src="${esc(pokeSprite(oldMonName))}" style="width:48px;height:48px;object-fit:contain" onerror="handleSpriteError(this)">
+          <div style="min-width:0">
+            <div id="renamePreviewName" style="font:800 16px 'Barlow Condensed';color:#f5f3f0">${esc(oldMonName)}</div>
+            <span class="tag" style="background:#2d2210;color:#ffd166;font-size:10px;border:1px solid #5a4218">${cost} pts · ${esc(tierName)}</span>
+          </div>
+        </div>
+
+        <div class="creator-actions" style="margin-top:18px">
+          <button class="btn ghost" onclick="openDraftConfirmationModal('${jsArg(tId)}', '${jsArg(oldMonName)}', ${cost}, '${jsArg(tierName)}')">Cancel</button>
+          <button class="btn" onclick="saveRenamedBoardPokemon('${jsArg(tId)}', '${jsArg(oldMonName)}', ${cost}, '${jsArg(tierName)}')">💾 Save Name</button>
+        </div>
+      </div>
+    </div>
+  `;
+
+  setTimeout(() => {
+    let inp = document.getElementById('renameMonInput');
+    if(inp){
+      inp.focus();
+      inp.select();
+    }
+  }, 50);
+}
+
+function updateRenamePreview(val){
+  let name = (val || '').trim() || 'Preview';
+  let spriteEl = document.getElementById('renamePreviewSprite');
+  let nameEl = document.getElementById('renamePreviewName');
+  if(nameEl) nameEl.textContent = name;
+  if(spriteEl) spriteEl.src = pokeSprite(name);
+}
+
+function saveRenamedBoardPokemon(tId, oldMonName, cost, tierName){
+  if(!moderator) return;
+  let t = tournamentData[tId] || ongoingT() || activeT();
+  if(!t) return;
+  let d = ensureTournamentDraft(t);
+  if(!d) return;
+
+  let inp = document.getElementById('renameMonInput');
+  let newName = inp ? inp.value.trim() : '';
+  if(!newName){
+    alert('Please enter a valid Pokémon name.');
+    return;
+  }
+
+  if(newName.toLowerCase() === oldMonName.toLowerCase()){
+    openDraftConfirmationModal(tId, oldMonName, cost, tierName);
+    return;
+  }
+
+  let oldClean = oldMonName.toLowerCase().trim();
+
+  // 1. Update in draft board tiers
+  let replacedInBoard = false;
+  (d.board || []).forEach(tier => {
+    if(Array.isArray(tier.pokemon)){
+      for(let i = 0; i < tier.pokemon.length; i++){
+        if(tier.pokemon[i].toLowerCase().trim() === oldClean){
+          tier.pokemon[i] = newName;
+          replacedInBoard = true;
+        }
+      }
+    }
+  });
+
+  if(!replacedInBoard && d.board?.length){
+    let targetTier = d.board.find(x => x.name === tierName || x.cost === cost) || d.board[0];
+    if(targetTier && Array.isArray(targetTier.pokemon)){
+      targetTier.pokemon.push(newName);
+    }
+  }
+
+  // 2. Update in draft picks
+  (d.picks || []).forEach(pick => {
+    if(pick.pokemon && pick.pokemon.toLowerCase().trim() === oldClean){
+      pick.pokemon = newName;
+    }
+  });
+
+  // 3. Update in tournament rosters
+  if(t.rosters){
+    Object.keys(t.rosters).forEach(coach => {
+      t.rosters[coach] = (t.rosters[coach] || []).map(m => m.toLowerCase().trim() === oldClean ? newName : m);
+    });
+  }
+
+  // 4. Update in global rosters
+  if(typeof roster !== 'undefined'){
+    Object.keys(roster).forEach(coach => {
+      roster[coach] = (roster[coach] || []).map(m => m.toLowerCase().trim() === oldClean ? newName : m);
+    });
+  }
+
+  persistLeague();
+  render();
+  openDraftConfirmationModal(t.id, newName, cost, tierName);
+}
+
 function openDraftConfirmationModal(tId, monName, cost, tierName){
   let t = tournamentData[tId] || activeT();
   if(!t) return;
@@ -10166,7 +10289,15 @@ function openDraftConfirmationModal(tId, monName, cost, tierName){
           <div style="background:radial-gradient(circle,rgba(239,48,56,0.15) 0%,transparent 70%);padding:14px;border-radius:12px;display:inline-block">
             <img src="${esc(spriteUrl)}" alt="${esc(monName)}" style="width:96px;height:96px;object-fit:contain;filter:drop-shadow(0 6px 12px rgba(0,0,0,0.6))" onerror="handleSpriteError(this)">
           </div>
-          <h2 style="margin:10px 0 4px;font:800 24px 'Barlow Condensed';letter-spacing:.5px">${esc(monName)}</h2>
+          <div style="display:flex;align-items:center;justify-content:center;gap:8px">
+            <h2 style="margin:10px 0 4px;font:800 24px 'Barlow Condensed';letter-spacing:.5px;${moderator ? 'cursor:pointer;display:inline-flex;align-items:center;gap:6px' : ''}" 
+                ${moderator ? `onclick="openRenameBoardPokemonModal('${jsArg(t.id)}', '${jsArg(monName)}', ${cost}, '${jsArg(tierName)}')"` : ''}
+                title="${moderator ? 'Click to rename this Pokémon on the draft board' : ''}">
+              ${esc(monName)}
+              ${moderator ? `<span style="font-size:13px;color:#ffd166;opacity:.85" title="Rename Pokémon">✏️</span>` : ''}
+            </h2>
+          </div>
+          ${moderator ? `<div style="font-size:10px;color:#ffd166;margin-bottom:6px;cursor:pointer;opacity:.8" onclick="openRenameBoardPokemonModal('${jsArg(t.id)}', '${jsArg(monName)}', ${cost}, '${jsArg(tierName)}')">Moderator: Click name to rename ✏️</div>` : ''}
           <div style="display:flex;justify-content:center;align-items:center;gap:8px;margin-bottom:16px">
             <span class="tag" style="background:#22222c;color:#a09fa8">${esc(tierName)}</span>
             <span class="tag" style="background:#3d2c12;color:#ffd166;font-weight:800;border:1px solid #6b4d1b">${cost} Points</span>
