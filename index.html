@@ -1879,7 +1879,15 @@ function tournamentNumber(t){let all=Object.values(tournamentData);return Math.m
 
 
 function topCutPredictionMatches(t){if(!t.topCutMatches){let q=qualified(t),out=[];for(let i=0;i<Math.ceil(q.length/2);i++)out.push({a:q[i]?.p||'BYE',b:q[q.length-1-i]?.p||'BYE',as:'',bs:'',round:'Top Cut opening round'});t.topCutMatches=out}return t.topCutMatches}
-function Predictions(){let t=ongoingT();if(!t)return head('Predictions','Tournament picks')+`<div class="card empty"><div class="card-title">Predictions are inactive</div><p class="sub">Predictions open automatically when a new tournament begins.</p></div>`;viewTournament=t.id;return head('Predictions',t.name+' · pick the outcomes')+predictions(t)}
+function Predictions(){
+  let t=ongoingT();
+  if(!t)return head('Predictions','Tournament picks')+`<div class="card empty"><div class="card-title">Predictions are inactive</div><p class="sub">Predictions open automatically when a new tournament begins.</p></div>`;
+  viewTournament=t.id;
+  if(t.phase === 'draft' && t.status === 'ONGOING'){
+    return renderDraftLockedPredictions(t);
+  }
+  return head('Predictions',t.name+' · pick the outcomes')+predictions(t);
+}
 
 function historyTournamentOptions(){let past=Object.values(tournamentData).filter(t=>t.status==='COMPLETE');return past.length?past.map(t=>`<option value="${t.name} · ${t.season}">${t.name} · ${t.season}</option>`).join(''):'<option>No completed tournaments yet</option>'}
 
@@ -2041,6 +2049,9 @@ function TopCut(){
   let t=ongoingT();
   if(!t)return noTournament();
   viewTournament=t.id;
+  if(t.phase === 'draft' && t.status === 'ONGOING'){
+    return renderDraftLockedTopCut(t);
+  }
   let isPreview = (!t.bracketManagerData && t.phase!=='topcut');
   let ready=t.topCutCache?.complete || (t.champion && t.champion!=='TBD');
   let champName=t.topCutCache?.champion || t.champion;
@@ -10416,6 +10427,82 @@ function renderDraftLockedMatches(t, isDetailTab = false){
   return head('Matches', t.name + ' · draft stage') + cardHtml;
 }
 
+function renderDraftLockedTopCut(t, isDetailTab = false){
+  let d = ensureTournamentDraft(t);
+  let totalPicks = getDraftTotalPicks(t);
+  let completedPicks = d.picks ? d.picks.length : 0;
+  let pct = totalPicks > 0 ? Math.min(100, Math.round((completedPicks / totalPicks) * 100)) : 0;
+
+  let cardHtml = `
+    <div class="draft-locked-card">
+      <div class="draft-locked-icon">🏆</div>
+      <div class="eyebrow" style="color:var(--amber);margin-bottom:4px;letter-spacing:1.2px">DRAFT STAGE IN PROGRESS</div>
+      <h2 style="font:900 28px 'Barlow Condensed';color:#f5f3f0;letter-spacing:.4px;margin:4px 0 10px">Championship Top Cut Locked</h2>
+      <p class="sub" style="max-width:520px;margin:0 auto 18px;font-size:13px;line-height:1.5">
+        The double-elimination championship bracket and playoff seeds generate after the regular group stage. The live draft is currently underway.
+      </p>
+
+      <!-- Progress bar -->
+      <div style="max-width:400px;margin:0 auto 16px;background:#111116;border:1px solid #2b2b38;border-radius:8px;padding:12px 14px">
+        <div style="display:flex;justify-content:space-between;align-items:baseline;font-size:11px;margin-bottom:6px">
+          <span style="font-weight:800;color:#c0bfca">Draft Progress</span>
+          <span style="font:800 14px 'Barlow Condensed';color:#ffd166">${completedPicks} of ${totalPicks} Picks (${pct}%)</span>
+        </div>
+        <div style="height:8px;background:#1c1c26;border-radius:4px;overflow:hidden">
+          <div style="width:${pct}%;height:100%;background:linear-gradient(90deg,var(--red),var(--amber));border-radius:4px;transition:width .3s ease"></div>
+        </div>
+      </div>
+
+      <button class="btn" style="padding:11px 28px;font-weight:900;font-size:13px" onclick="go('Draft')">
+        🎯 Enter Live Draft Room →
+      </button>
+    </div>
+  `;
+
+  if(isDetailTab){
+    return cardHtml;
+  }
+  return head('Top Cut', t.name + ' · draft stage') + cardHtml;
+}
+
+function renderDraftLockedPredictions(t, isDetailTab = false){
+  let d = ensureTournamentDraft(t);
+  let totalPicks = getDraftTotalPicks(t);
+  let completedPicks = d.picks ? d.picks.length : 0;
+  let pct = totalPicks > 0 ? Math.min(100, Math.round((completedPicks / totalPicks) * 100)) : 0;
+
+  let cardHtml = `
+    <div class="draft-locked-card">
+      <div class="draft-locked-icon">🔮</div>
+      <div class="eyebrow" style="color:var(--amber);margin-bottom:4px;letter-spacing:1.2px">DRAFT STAGE IN PROGRESS</div>
+      <h2 style="font:900 28px 'Barlow Condensed';color:#f5f3f0;letter-spacing:.4px;margin:4px 0 10px">Tournament Pick'ems Locked</h2>
+      <p class="sub" style="max-width:520px;margin:0 auto 18px;font-size:13px;line-height:1.5">
+        Match predictions and champion pick'ems will open for all trainers as soon as the live draft concludes and group schedules are established.
+      </p>
+
+      <!-- Progress bar -->
+      <div style="max-width:400px;margin:0 auto 16px;background:#111116;border:1px solid #2b2b38;border-radius:8px;padding:12px 14px">
+        <div style="display:flex;justify-content:space-between;align-items:baseline;font-size:11px;margin-bottom:6px">
+          <span style="font-weight:800;color:#c0bfca">Draft Progress</span>
+          <span style="font:800 14px 'Barlow Condensed';color:#ffd166">${completedPicks} of ${totalPicks} Picks (${pct}%)</span>
+        </div>
+        <div style="height:8px;background:#1c1c26;border-radius:4px;overflow:hidden">
+          <div style="width:${pct}%;height:100%;background:linear-gradient(90deg,var(--red),var(--amber));border-radius:4px;transition:width .3s ease"></div>
+        </div>
+      </div>
+
+      <button class="btn" style="padding:11px 28px;font-weight:900;font-size:13px" onclick="go('Draft')">
+        🎯 Enter Live Draft Room →
+      </button>
+    </div>
+  `;
+
+  if(isDetailTab){
+    return cardHtml;
+  }
+  return head('Predictions', t.name + ' · draft stage') + cardHtml;
+}
+
 function openGroupPlacementEditor(){
   let t=activeT();
   if(!moderator||!t||t.phase==='topcut')return;
@@ -10470,7 +10557,8 @@ function tournamentDetail(){
   let content=detailTab==='Draft'?DraftRostersView(t)
     :detailTab==='Standings'?(isDraftOngoing ? renderDraftLockedStandings(t, true) : `<div style="display:grid;grid-template-columns:repeat(${groups.length>1?2:1},minmax(0,1fr));gap:16px;align-items:start">${groups.map(g=>`<div class="card table-wrap" style="align-self:start">${standingTable(t,g)}</div>`).join('')}</div>`)
     :detailTab==='Group Stage'?(isDraftOngoing ? renderDraftLockedMatches(t, true) : matchesView(t,false))
-    :detailTab==='Top Cut'?topCutSection(t,!t.bracketManagerData)
+    :detailTab==='Top Cut'?(isDraftOngoing ? renderDraftLockedTopCut(t, true) : topCutSection(t,!t.bracketManagerData))
+    :detailTab==='Predictions'?(isDraftOngoing ? renderDraftLockedPredictions(t, true) : predictions(t))
     :predictions(t);
   let edit=moderator?` <button class="btn ghost" onclick="openTournamentEdit('${jsArg(t.id)}')">Edit</button>`:'';
   let headerHtml = head(t.name,t.season + ' · ' + t.status,`<div><button class="btn ghost" onclick="go('Tournaments')">← Archive</button>${edit}${moderator?` <button class="btn ghost" style="color:#ff9ba1" onclick="deleteTournament('${jsArg(t.id)}')">Delete</button>`:''}</div>`)
