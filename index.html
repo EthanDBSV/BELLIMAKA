@@ -977,17 +977,20 @@ function snapshotTournamentRosters(t){
   if(!t) return;
   t.rosters = t.rosters || {};
   (t.players || []).forEach(p => {
-    let currentMons = roster[p] || [];
+    let currentMons = (t.rosters[p] && t.rosters[p].length) ? t.rosters[p] : [];
+    if(!currentMons.length && t.draftData?.picks){
+      currentMons = t.draftData.picks.filter(x => x.player === p).map(x => x.pokemon);
+    }
+    if(!currentMons.length && (t.status === 'ONGOING' || t.id === ongoingT()?.id)){
+      currentMons = roster[p] || [];
+    }
     if(currentMons.length > 0){
-      if(!t.rosters[p] || !t.rosters[p].length){
-        t.rosters[p] = [...currentMons];
-      }
+      t.rosters[p] = [...currentMons];
       teamHistory[p] = teamHistory[p] || [];
       let entry = teamHistory[p].find(x => (x.tournamentId && x.tournamentId === t.id) || x.tournament === t.name || x.tournament === (t.name + ' · ' + t.season) || String(x.tournament).toLowerCase() === String(t.name).toLowerCase());
       if(entry){
-        if(!entry.pokemon || !entry.pokemon.length){
-          entry.pokemon = [...currentMons];
-        }
+        entry.pokemon = [...currentMons];
+        entry.tournamentId = t.id;
         if(!entry.team || entry.team === 'No default team'){
           entry.team = teamName(t, p);
         }
@@ -1003,14 +1006,56 @@ function snapshotTournamentRosters(t){
   });
 }
 
+function syncActiveRostersWithTournaments(){
+  let active = ongoingT();
+  let completedTournaments = Object.values(tournamentData).filter(t => t.status === 'COMPLETE');
+  let validTournamentIds = new Set(Object.keys(tournamentData));
+  let validTournamentNames = new Set(Object.values(tournamentData).map(t => String(t.name).toLowerCase().trim()));
+
+  // 1. Ensure all completed tournaments are properly snapshotted in teamHistory
+  completedTournaments.forEach(t => {
+    snapshotTournamentRosters(t);
+  });
+
+  // 2. Clean up orphaned teamHistory entries for tournaments that no longer exist
+  Object.keys(teamHistory).forEach(p => {
+    if(Array.isArray(teamHistory[p])){
+      teamHistory[p] = teamHistory[p].filter(entry => {
+        if(entry.tournamentId && !validTournamentIds.has(entry.tournamentId)) return false;
+        if(!entry.tournamentId && !validTournamentNames.has(String(entry.tournament).toLowerCase().trim())) return false;
+        return true;
+      });
+    }
+  });
+
+  // 3. Reconcile active rosters (roster[p])
+  Object.keys(profiles).forEach(p => {
+    if(active && (active.players || []).includes(p)){
+      // Ongoing tournament participant: active roster contains this ongoing tournament's squad
+      let activeMons = (active.rosters?.[p] && active.rosters[p].length) ? active.rosters[p] : [];
+      if(!activeMons.length && active.draftData?.picks){
+        activeMons = active.draftData.picks.filter(x => x.player === p).map(x => x.pokemon);
+      }
+      roster[p] = [...activeMons];
+    } else {
+      // Not in an ongoing tournament or NO tournament ongoing at all:
+      // Active roster should be empty (so past tournament mons only exist in past tournament history)
+      roster[p] = [];
+    }
+  });
+}
+
 function getTournamentRoster(p, t){
   if(!t) return [];
   if(t.rosters?.[p]?.length) return t.rosters[p];
   let h = (teamHistory[p]||[]).find(x => (x.tournamentId && x.tournamentId === t.id) || x.tournament === t.name || x.tournament === (t.name + ' · ' + t.season) || String(x.tournament).toLowerCase() === String(t.name).toLowerCase());
   if(h?.pokemon?.length) return h.pokemon;
+  if(t.draftData?.picks){
+    let draftMons = t.draftData.picks.filter(x => x.player === p).map(x => x.pokemon);
+    if(draftMons.length) return draftMons;
+  }
   let activeId = ongoingT()?.id;
   if((t.id === activeId || t.status === 'ONGOING') && roster[p]?.length) return roster[p];
-  if((t.players||[]).includes(p) && roster[p]?.length) return roster[p];
   return [];
 }
 
@@ -1696,14 +1741,51 @@ function deleteTournament(id){
   let t=tournamentData[id];
   if(!t)return;
   if(!confirm(`Delete "${t.name}" (${t.season})? This cannot be undone.`))return;
+
+  // 1. Remove this tournament's pokemon from active rosters
+  let tourneyMonsByPlayer = {};
+  (t.players || []).forEach(p => {
+    let mons = (t.rosters?.[p] || []);
+    if(t.draftData?.picks){
+      let draftMons = t.draftData.picks.filter(x => x.player === p).map(x => x.pokemon);
+      mons = [...new Set([...mons, ...draftMons])];
+    }
+    tourneyMonsByPlayer[p] = mons.map(m => m.toLowerCase().trim());
+  });
+
+  Object.keys(tourneyMonsByPlayer).forEach(p => {
+    let banned = new Set(tourneyMonsByPlayer[p]);
+    if(roster[p] && roster[p].length){
+      roster[p] = roster[p].filter(m => !banned.has(m.toLowerCase().trim()));
+    }
+  });
+
+  // 2. Remove team history entries for this deleted tournament
+  Object.keys(teamHistory).forEach(p => {
+    if(Array.isArray(teamHistory[p])){
+      teamHistory[p] = teamHistory[p].filter(x => !(
+        (x.tournamentId && x.tournamentId === id) ||
+        x.tournament === t.name ||
+        x.tournament === `${t.name} · ${t.season}` ||
+        String(x.tournament).toLowerCase().trim() === String(t.name).toLowerCase().trim()
+      ));
+    }
+  });
+
+  // 3. Delete tournament from state
   delete tournamentData[id];
+
+  // 4. Sync active rosters so only real ongoing tournament pokemon exist
+  syncActiveRostersWithTournaments();
+
   syncTournamentSeasons();
   if(viewTournament===id){
     viewTournament=ongoingT()?.id||Object.keys(tournamentData)[0]||null;
   }
   rebuildAllPlayerStats();
   persistLeague();
-  go('Tournaments');
+  current = 'Tournaments';
+  render();
 }
 
 function editProfile(p){let q=ensureProfile(p),career=playerCareerStats(p);document.querySelector('#modal').innerHTML=`<div class="modal-wrap"><div class="modal" style="max-width:520px"><div class="modal-head"><div><div class="eyebrow">Player profile</div><h2>Edit ${esc(p)}</h2></div><button class="close" onclick="closeModal()">×</button></div><div class="field"><label>Default team name</label><input id="editDefaultTeam" value="${esc(q.team)}"></div><div class="card" style="padding:14px;margin-top:14px;background:#111116;border-color:#32323a"><div class="eyebrow">Profile art</div><p class="sub" style="margin:7px 0 12px">Use the player photo on profile pages and the team cover on team cards.</p><div class="creator-actions" style="justify-content:start;flex-wrap:wrap">${moderator?`<button class="btn ghost" onclick="openProfilePictureEditor('${jsArg(p)}')">Edit profile picture</button><button class="btn ghost" onclick="openTeamCoverEditor('${jsArg(p)}')">Edit team cover</button>`:''}</div></div><div class="card" style="padding:14px;margin-top:14px;background:#111116;border-color:#32323a"><div class="eyebrow">Current snapshot</div><div class="mini-stats" style="margin-top:14px"><div><b>${career.titles}x</b><span>Champion</span></div><div><b>${career.topCuts}x</b><span>Top Cut</span></div><div><b>${esc(career.record)}</b><span>All-time W-L</span></div></div></div><div class="creator-actions"><button class="btn ghost" onclick="openProfileManager()">Back</button><button class="btn" onclick="saveProfile('${jsArg(p)}')">Save profile</button></div></div></div>`}
@@ -2840,8 +2922,6 @@ function recapRankings(){
   }).sort((a,b)=>b.score-a.score || b.ovr-a.ovr);
 }
 
-function deleteTournament(id){let t=tournamentData[id];if(!t||!confirm(`Delete ${t.name}?`))return;delete tournamentData[id];rebuildAllPlayerStats();persistLeague();viewTournament=ongoingT()?.id||Object.keys(tournamentData)[0]||null;current='Tournaments';render()}
-
 
 
 
@@ -3211,7 +3291,18 @@ function endTournament(){
   t.champion=t.topCutCache.champion;
   t.status='COMPLETE';
   t.phase='complete';
+
+  // 1. Snapshot tournament rosters into t.rosters and teamHistory[p]
   snapshotTournamentRosters(t);
+
+  // 2. Remove tournament pokemon from all participating coaches' active rosters
+  (t.players || []).forEach(p => {
+    roster[p] = [];
+  });
+
+  // 3. Sync and reconcile active rosters
+  syncActiveRostersWithTournaments();
+
   rebuildAllPlayerStats();
   persistLeague();
   current='Home';
@@ -3700,6 +3791,7 @@ function rebuildAllPlayerStats(){
       snapshotTournamentRosters(t);
     }
   });
+  syncActiveRostersWithTournaments();
   Object.keys(profiles).forEach(p=>{
     let s=playerCareerStats(p);
     profiles[p].record=s.record;
@@ -3707,6 +3799,17 @@ function rebuildAllPlayerStats(){
     profiles[p].cups=[...s.championshipCups];
   });
 }
+
+function cleanAndSyncRostersPrompt(){
+  if(!moderator) return;
+  if(!confirm('Clean all active rosters? Any Pokémon from ended tournaments will stay saved under Tournament History on player profiles, and test tournament draft Pokémon will be cleared.')) return;
+  syncActiveRostersWithTournaments();
+  rebuildAllPlayerStats();
+  persistLeague();
+  render();
+  alert('Active rosters have been cleaned and synchronized!');
+}
+
 function resyncTournamentStats(id){let t=tournamentData[id];if(!t){alert('Tournament not found.');return}if(t.status!=='COMPLETE'){alert('Only completed tournaments can be resynced.');return}rebuildAllPlayerStats();persistLeague();render();alert(`Stats resynced for ${t.name}.`)}
 
 
@@ -5992,6 +6095,7 @@ function openProfile(p){
               <button class="btn ghost btn-sm" onclick="openTeamCoverEditor('${jsArg(p)}')">Edit cover</button>
               <button class="btn ghost btn-sm" onclick="editProfile('${jsArg(p)}')">Default team</button>
               <button class="btn ghost btn-sm" onclick="openAccountLinks('${jsArg(p)}')">Link account</button>
+              <button class="btn ghost btn-sm" style="color:var(--amber);border-color:#5e4a1a;grid-column:1/-1" onclick="cleanAndSyncRostersPrompt()">🧹 Clean Active Rosters</button>
             </div>
           </div>
         `:''}
@@ -6476,7 +6580,8 @@ function openProfileManager(){
 
     <div style="display:flex;justify-content:space-between;align-items:center;margin-top:20px;margin-bottom:8px">
       <span class="eyebrow" style="color:#9d9ba4">Existing Profiles (${Object.keys(profiles).length})</span>
-      <div style="display:flex;gap:8px">
+      <div style="display:flex;gap:6px;flex-wrap:wrap">
+        <button class="btn ghost btn-sm" style="color:var(--amber);border-color:#5e4a1a" onclick="cleanAndSyncRostersPrompt()">🧹 Clean Active Rosters</button>
         <button class="btn ghost btn-sm" onclick="openAccountLinks()">Link Accounts</button>
         <button class="btn ghost btn-sm" style="color:#ff9ba1" onclick="removeStarterData()">Remove Sample Data</button>
       </div>
