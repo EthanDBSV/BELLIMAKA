@@ -3256,7 +3256,46 @@ function persistLeague(){
 
 
 
-async function signOut(){if(!supabaseClient)return;await supabaseClient.auth.signOut();sessionUser=null;moderator=false;sessionResolvedFor=null;window.currentAccount=null;let label=document.querySelector('#accountText');if(label)label.textContent='Sign in';render()}
+async function signOut(btnEl){
+  let btn = btnEl || document.querySelector('#signOutBtn');
+  if(btn){
+    btn.disabled = true;
+    btn.innerHTML = '<span>⏳ Signing Out...</span>';
+  }
+
+  // 1. Immediately reset all auth and permission state
+  sessionUser = null;
+  moderator = false;
+  sessionResolvedFor = null;
+  window.currentAccount = null;
+
+  // 2. Clear persisted auth and session tokens from localStorage
+  try {
+    for(let i = localStorage.length - 1; i >= 0; i--){
+      let key = localStorage.key(i);
+      if(key && (key.startsWith('sb-') || key.includes('supabase.auth.token') || key === 'draftdex-moderator')){
+        localStorage.removeItem(key);
+      }
+    }
+  } catch(e){}
+
+  // 3. Update topbar and re-render UI instantly
+  let label = document.querySelector('#accountText');
+  if(label) label.textContent = 'Sign in';
+  render();
+
+  // 4. Send signOut request to Supabase in background with timeout protection
+  if(supabaseClient){
+    try {
+      await Promise.race([
+        supabaseClient.auth.signOut(),
+        new Promise(resolve => setTimeout(resolve, 1200))
+      ]);
+    } catch(e){
+      console.warn('Background signOut note:', e);
+    }
+  }
+}
 
 setTimeout(initSupabase,0);
 document.addEventListener('click',e=>{let box=e.target.closest?.('[data-match-filter]');if(!box)return;toggleMatchFilter(box.dataset.matchFilter)});
@@ -7221,7 +7260,7 @@ function Account(){
         </div>
 
         <div style="margin-top:auto;padding-top:16px">
-          <button class="btn ghost" style="width:100%;color:#ff9ba1;border-color:#4a242a" onclick="signOut()">Sign Out</button>
+          <button id="signOutBtn" class="btn ghost" style="width:100%;color:#ff9ba1;border-color:#4a242a;cursor:pointer;transition:all .15s ease" onclick="signOut(this)">Sign Out</button>
         </div>
       </aside>
 
