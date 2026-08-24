@@ -289,8 +289,9 @@
 .matchup-hero-foot{background:#0e0e14c0;border-top:1px solid #20202c;padding:6px 14px;display:flex;justify-content:center;align-items:center;position:relative;z-index:2}
 /* ------------------------------------------------------------ Modern In-Season Hero & Showcase ------------------------------------------------------------ */
 .in-season-hero{display:grid;grid-template-columns:1.18fr .82fr;gap:18px;align-items:stretch}
-.tourney-showcase-card{display:grid;grid-template-columns:minmax(0,1fr) 230px;gap:18px;padding:22px;background:linear-gradient(135deg,#1b1216 0%,#15151c 60%,#11141c 100%);border:1px solid #4a2832;border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,0.55),0 0 16px rgba(239,48,56,0.12);min-height:220px}
-.tourney-showcase-info{display:flex;flex-direction:column;min-width:0}
+.tourney-showcase-card{position:relative;overflow:hidden;display:grid;grid-template-columns:minmax(0,1fr) 230px;gap:18px;padding:22px;background:linear-gradient(135deg,#1b1216 0%,#15151c 60%,#11141c 100%);border:1px solid #4a2832;border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,0.55),0 0 16px rgba(239,48,56,0.12);min-height:220px}
+.tourney-showcase-backdrop{position:absolute;inset:-24px;background-size:cover;background-position:center;filter:blur(32px) saturate(1.75) brightness(0.32);opacity:.9;pointer-events:none;z-index:0;transform:scale(1.1)}
+.tourney-showcase-info{display:flex;flex-direction:column;min-width:0;position:relative;z-index:1}
 .tourney-showcase-title{font:900 36px/1.05 'Barlow Condensed';color:#f5f3f0;letter-spacing:.5px;margin:10px 0 12px}
 .tourney-chips-row{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px}
 .tourney-chip{display:inline-flex;align-items:center;gap:5px;background:#00000060;border:1px solid #ffffff18;border-radius:5px;padding:4px 9px;font-size:11px;color:#c8c6ce}
@@ -3705,8 +3706,8 @@ function homeDraftPicksSection(t){
       </div>
 
       ${picks.length > 0 ? `
-        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(270px,1fr));gap:14px">
-          ${picks.slice(0, 6).map((p, idx) => {
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:12px">
+          ${picks.slice(0, 8).map((p, idx) => {
             let faceArt = profilePictures[p.player] ? `url('${esc(profilePictures[p.player])}')` : (teamCovers[p.player] ? `url('${esc(teamCovers[p.player])}')` : fallbackArt(p.player));
             let faceLetter = (profilePictures[p.player] || teamCovers[p.player]) ? '' : esc((p.player || '?')[0]);
             let ovrObj = calculatePlayerOVR(p.player);
@@ -3775,6 +3776,7 @@ function Home(){
     <!-- Top In-Season Showcase & Primetime Hero -->
     <section class="in-season-hero">
       <div class="card tourney-showcase-card">
+        ${t.backgroundImage ? `<div class="tourney-showcase-backdrop" style="background-image:url('${esc(t.backgroundImage)}')"></div>` : ''}
         <div class="tourney-showcase-info">
           <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
             <span class="status"><i></i>${isDraftPhase ? 'DRAFT ROOM LIVE' : (t.phase === 'topcut' ? 'TOP CUT LIVE' : 'GROUP STAGE LIVE')}</span>
