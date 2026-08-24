@@ -488,7 +488,9 @@ details[open] > .past-tourney-summary .past-chevron{transform:rotate(180deg);col
 .draft-roster-box{background:#14141a;border:1px solid #282834;border-radius:8px;padding:12px;display:flex;flex-direction:column;gap:8px}
 .draft-roster-head{display:flex;justify-content:space-between;align-items:center;padding-bottom:8px;border-bottom:1px solid #22222c}
 .draft-roster-mons{display:grid;grid-template-columns:repeat(auto-fill,minmax(60px,1fr));gap:6px}
-.draft-roster-mon-tile{background:#1c1c24;border:1px solid #2c2c3a;border-radius:6px;padding:4px;display:flex;flex-direction:column;align-items:center;text-align:center;font-size:9px;font-weight:700;overflow:hidden}
+.draft-roster-mon-tile{background:#1c1c24;border:1px solid #2c2c3a;border-radius:6px;padding:4px;display:flex;flex-direction:column;align-items:center;text-align:center;font-size:9px;font-weight:700;overflow:hidden;transition:all .12s ease}
+.draft-roster-mon-tile.mod-clickable{cursor:pointer;position:relative}
+.draft-roster-mon-tile.mod-clickable:hover{border-color:#ffd166;background:#252535;transform:translateY(-2px);box-shadow:0 4px 12px rgba(0,0,0,0.5)}
 
 .draft-import-dropzone{border:2px dashed #444458;border-radius:8px;background:#14141a;padding:20px;text-align:center;cursor:pointer;transition:border-color .15s}
 .draft-import-dropzone:hover{border-color:var(--red);background:#1a1418}
@@ -9380,14 +9382,23 @@ function getDraftCoachStats(t, p){
   let budget = d?.pointBudget || 0;
   let maxSlots = d?.maxRosterSize || Math.max(10, picks.length);
   let remainingBudget = budget > 0 ? (budget - pointsSpent) : null;
+  let openSlots = Math.max(0, maxSlots - picks.length);
+  let slotsAfterPick = Math.max(0, openSlots - 1);
+  let minPointsReserve = slotsAfterPick * 1; // 1 point minimum for each remaining slot
+  let maxAffordableCost = (budget > 0 && remainingBudget !== null) ? Math.max(0, remainingBudget - minPointsReserve) : Infinity;
+
   return {
     player: p,
     picks,
     count: picks.length,
     maxSlots,
+    openSlots,
+    slotsAfterPick,
     pointsSpent,
     budget,
     remainingBudget,
+    minPointsReserve,
+    maxAffordableCost,
     isRosterFull: picks.length >= maxSlots
   };
 }
@@ -9877,7 +9888,9 @@ function openDraftConfirmationModal(tId, monName, cost, tierName){
 
   let isMe = (window.currentAccount?.username === pickingCoach || (typeof playerForAccount === 'function' && playerForAccount(window.currentAccount?.username) === pickingCoach));
   let canPick = moderator || isMe;
-  let hasBudget = (coachStats.budget === 0 || coachStats.remainingBudget >= cost);
+  let hasDirectBudget = (coachStats.budget === 0 || coachStats.remainingBudget >= cost);
+  let satisfiesReserve = (coachStats.budget === 0 || cost <= coachStats.maxAffordableCost);
+  let hasBudget = hasDirectBudget && satisfiesReserve;
   let hasSlots = !coachStats.isRosterFull;
 
   document.querySelector('#modal').innerHTML = `
@@ -9904,25 +9917,32 @@ function openDraftConfirmationModal(tId, monName, cost, tierName){
                 <div style="font-weight:800;font-size:15px;color:#f5f3f0">${esc(pickingCoach)} ${isMe ? '⭐ (You)' : ''}</div>
               </div>
               <div style="text-align:right">
-                <div style="font-size:10px;font-weight:800;color:#8e8c95;text-transform:uppercase">Clock Budget</div>
+                <div style="font-size:10px;font-weight:800;color:#8e8c95;text-transform:uppercase">Points Balance</div>
                 <div style="font:800 15px 'Barlow Condensed';color:${hasBudget ? '#4bdd91' : '#ff4b54'}">${coachStats.budget > 0 ? `${coachStats.remainingBudget} / ${coachStats.budget} pts` : 'Unlimited'}</div>
               </div>
             </div>
-            <div style="margin-top:8px;font-size:11px;color:#9d9ba6">
-              Pick <b>#${turn.currentPickNumber}</b> · Round <b>${turn.currentRound}</b> · Slot <b>${coachStats.count + 1}/${coachStats.maxSlots}</b>
+            <div style="margin-top:8px;font-size:11px;color:#9d9ba6;display:flex;justify-content:space-between">
+              <span>Pick <b>#${turn.currentPickNumber}</b> (R${turn.currentRound}) · Slot <b>${coachStats.count + 1}/${coachStats.maxSlots}</b></span>
+              ${coachStats.budget > 0 ? `<span style="color:#ffd166">Max on pick: <b>${coachStats.maxAffordableCost}p</b></span>` : ''}
             </div>
+            ${coachStats.budget > 0 && coachStats.slotsAfterPick > 0 ? `
+              <div style="font-size:10px;color:#8e8c95;margin-top:4px;border-top:1px solid #242432;padding-top:4px">
+                🛡️ Reserving <b>${coachStats.minPointsReserve} pts</b> for ${coachStats.slotsAfterPick} remaining slot(s) (1 pt min per slot).
+              </div>
+            ` : ''}
           </div>
+
+          ${!canPick ? `<div class="sub" style="color:#a09fa8;margin-bottom:10px">Waiting for <b>${esc(pickingCoach)}</b> to make official Pick #${turn.currentPickNumber}.</div>` : ''}
+          ${canPick && !hasDirectBudget ? `<div class="sub" style="color:#ff4b54;margin-bottom:10px">⚠️ Not enough points. ${esc(pickingCoach)} only has ${coachStats.remainingBudget} pts remaining (costs ${cost} pts).</div>` : ''}
+          ${canPick && hasDirectBudget && !satisfiesReserve ? `<div class="sub" style="color:#ff4b54;margin-bottom:10px">⚠️ Roster Reserve Guardrail: You must keep at least 1 point for every remaining slot (${coachStats.minPointsReserve} pts for ${coachStats.slotsAfterPick} slot(s)). Maximum affordable on this pick is <b>${coachStats.maxAffordableCost} pts</b>.</div>` : ''}
+          ${canPick && !hasSlots ? `<div class="sub" style="color:#ff4b54;margin-bottom:10px">⚠️ Roster is already full (${coachStats.maxSlots}/${coachStats.maxSlots}).</div>` : ''}
 
           <div style="display:flex;flex-direction:column;gap:8px">
             ${canPick ? `
               <button class="btn" ${(!hasBudget || !hasSlots) ? 'disabled style="opacity:.4;cursor:not-allowed"' : ''} style="padding:11px 16px;font-weight:800;width:100%" onclick="makeDraftPick('${jsArg(t.id)}', '${jsArg(monName)}');closeModal()">
                 🎯 Official Draft Pick (${esc(monName)})
               </button>
-            ` : `
-              <div class="sub" style="color:#a09fa8;margin-bottom:4px">
-                Waiting for <b>${esc(pickingCoach)}</b> to make official Pick #${turn.currentPickNumber}.
-              </div>
-            `}
+            ` : ''}
 
             <button class="btn ghost" style="color:#ffd166;border-color:#5a441c;width:100%" onclick="addTeamMon('${jsArg(monName)}', ${cost});closeModal()">
               📝 Add to My Private Team Plan
@@ -9982,6 +10002,10 @@ function makeDraftPick(tId, pokemonName, forcedPlayer = null){
 
   if(stats.budget > 0 && stats.remainingBudget < cost){
     alert(`${targetPlayer} only has ${stats.remainingBudget} pts remaining, but ${pokemonName} costs ${cost} pts.`);
+    return;
+  }
+  if(stats.budget > 0 && cost > stats.maxAffordableCost){
+    alert(`Roster Reserve Guardrail: ${targetPlayer} must keep at least 1 point for every remaining slot (${stats.minPointsReserve} pts for ${stats.slotsAfterPick} slot(s)). Maximum affordable on this pick is ${stats.maxAffordableCost} pts.`);
     return;
   }
   if(stats.count >= stats.maxSlots){
@@ -10418,11 +10442,243 @@ function DraftBoardView(t){
   `;
 }
 
+function openModeratorSwapModal(tId, coach, currentMon, round, pickNumber, currentCost){
+  if(!moderator) return;
+  let t = tournamentData[tId] || ongoingT() || activeT();
+  if(!t) return;
+  let d = ensureTournamentDraft(t);
+  if(!d) return;
+
+  let stats = getDraftCoachStats(t, coach);
+  let board = d.board || [];
+  let draftedSet = new Set((d.picks || []).map(x => x.pokemon.toLowerCase().trim()));
+
+  let budgetForReplacement = (stats.remainingBudget !== null ? (stats.remainingBudget + currentCost) : null);
+  let minReserve = stats.openSlots * 1;
+  let maxAllowed = (stats.budget > 0 && budgetForReplacement !== null) ? Math.max(0, budgetForReplacement - minReserve) : Infinity;
+
+  // Group board pokemon by tier
+  let optionsHtml = '';
+  board.forEach(tier => {
+    let avail = (tier.pokemon || []).filter(m => !draftedSet.has(m.toLowerCase().trim()) || m.toLowerCase().trim() === currentMon.toLowerCase().trim());
+    if(avail.length > 0){
+      optionsHtml += `<optgroup label="${esc(tier.name)} · ${tier.cost} pts">`;
+      avail.forEach(m => {
+        let isCur = (m.toLowerCase().trim() === currentMon.toLowerCase().trim());
+        optionsHtml += `<option value="${esc(m)}" data-cost="${tier.cost}" ${isCur ? 'selected' : ''}>${esc(m)} (${tier.cost} pts)${isCur ? ' [Current]' : ''}</option>`;
+      });
+      optionsHtml += `</optgroup>`;
+    }
+  });
+
+  let curSprite = pokeSprite(currentMon);
+
+  document.querySelector('#modal').innerHTML = `
+    <div class="modal-wrap">
+      <div class="modal" style="max-width:520px">
+        <div class="modal-head">
+          <div>
+            <div class="eyebrow" style="color:var(--amber)">Moderator Action</div>
+            <h2>Swap Drafted Pokémon</h2>
+          </div>
+          <button class="close" onclick="closeModal()">×</button>
+        </div>
+
+        <!-- Coach Summary -->
+        <div style="background:#181822;border:1px solid #2b2b3a;padding:12px;border-radius:8px;display:flex;justify-content:space-between;align-items:center;margin-top:10px">
+          <div>
+            <div style="font-size:10px;font-weight:800;color:#8e8c95;text-transform:uppercase">Coach</div>
+            <div style="font:800 16px 'Barlow Condensed';color:#f5f3f0">${esc(coach)} <span style="font-size:12px;color:#a09fa8">(${esc(teamName(t, coach))})</span></div>
+            <div style="font-size:11px;color:#ffd166;margin-top:2px">Round ${round} · Pick #${pickNumber}</div>
+          </div>
+          <div style="text-align:right">
+            <div style="font-size:10px;font-weight:800;color:#8e8c95;text-transform:uppercase">Current Budget</div>
+            <div style="font:800 15px 'Barlow Condensed';color:#ffd166">${stats.budget > 0 ? `${stats.remainingBudget} / ${stats.budget} pts left` : 'Unlimited'}</div>
+            <div style="font-size:10px;color:#8e8c95">${stats.count}/${stats.maxSlots} slots filled</div>
+          </div>
+        </div>
+
+        <!-- Current Pokémon Card -->
+        <div style="margin-top:14px;background:#14141b;border:1px solid #282836;border-radius:8px;padding:10px 14px;display:flex;align-items:center;justify-content:space-between">
+          <div style="display:flex;align-items:center;gap:10px">
+            <img src="${esc(curSprite)}" style="width:40px;height:40px;object-fit:contain" onerror="this.src='https://play.pokemonshowdown.com/sprites/dex/substitute.png'">
+            <div>
+              <div style="font-size:10px;color:#8e8c95;font-weight:800;text-transform:uppercase">Currently Drafted</div>
+              <div style="font:800 16px 'Barlow Condensed';color:#ff8e95">${esc(currentMon)}</div>
+            </div>
+          </div>
+          <span class="tag" style="background:#2d2412;color:#ffd166;font-size:12px;font-weight:800;border:1px solid #5a4218">${currentCost} pts</span>
+        </div>
+
+        <!-- Replacement Selector -->
+        <div class="field" style="margin-top:16px">
+          <label style="font-weight:800;color:#e2e0e8;font-size:12px">Select Replacement Pokémon from Board</label>
+          <select id="modSwapMonSelect" onchange="updateModSwapPreview('${jsArg(t.id)}', '${jsArg(coach)}', ${currentCost}, ${stats.remainingBudget || 0}, ${stats.openSlots}, ${stats.budget || 0})" style="padding:10px;background:#181822;border:1px solid #3a3a4c;border-radius:6px;color:#f5f3f0;font-size:13px;width:100%">
+            ${optionsHtml || '<option value="">No available Pokémon found on board</option>'}
+          </select>
+          <span style="font-size:11px;color:#8e8c95;margin-top:4px;display:block">
+            Max replacement cost: <b style="color:#ffd166">${stats.budget > 0 ? `${maxAllowed} pts` : 'Unlimited'}</b> 
+            ${stats.budget > 0 && stats.openSlots > 0 ? `(reserving ${minReserve} pts for ${stats.openSlots} other open slots)` : ''}
+          </span>
+        </div>
+
+        <!-- Dynamic Live Swap Preview -->
+        <div id="modSwapPreviewBox" style="background:#121218;border:1px solid #262634;border-radius:8px;padding:10px 14px;margin-top:12px">
+          <div style="display:flex;justify-content:space-between;align-items:center;font-size:12px">
+            <span style="color:#a09fa8">New Budget Left:</span>
+            <span id="modSwapNewBudget" style="font:800 14px 'Barlow Condensed';color:#ffd166">${stats.remainingBudget !== null ? `${stats.remainingBudget} pts` : 'Unlimited'}</span>
+          </div>
+          <div id="modSwapStatusMsg" style="font-size:11px;margin-top:4px;color:#4bdd91">✓ Ready to swap</div>
+        </div>
+
+        <div class="creator-actions" style="margin-top:18px;display:flex;justify-content:space-between;gap:8px">
+          <button class="btn ghost" style="color:#ff8e95" onclick="executeModeratorRemovePick('${jsArg(t.id)}', '${jsArg(coach)}', '${jsArg(currentMon)}', ${pickNumber})">🗑️ Remove Pick</button>
+          <div style="display:flex;gap:8px">
+            <button class="btn ghost" onclick="closeModal()">Cancel</button>
+            <button id="modSwapConfirmBtn" class="btn" onclick="executeModeratorSwap('${jsArg(t.id)}', '${jsArg(coach)}', '${jsArg(currentMon)}', ${pickNumber})">🔄 Confirm Swap</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function updateModSwapPreview(tId, coach, oldCost, curRemaining, openSlots, totalBudget){
+  let select = document.getElementById('modSwapMonSelect');
+  if(!select) return;
+  let opt = select.selectedOptions[0];
+  let newCost = opt ? +(opt.getAttribute('data-cost') || 0) : 0;
+  let costDiff = newCost - oldCost;
+
+  let newRemaining = (totalBudget > 0) ? (curRemaining - costDiff) : null;
+  let minReserve = openSlots * 1;
+  let maxAllowed = (totalBudget > 0) ? (curRemaining + oldCost - minReserve) : Infinity;
+
+  let budgetEl = document.getElementById('modSwapNewBudget');
+  let statusEl = document.getElementById('modSwapStatusMsg');
+  let btn = document.getElementById('modSwapConfirmBtn');
+
+  if(budgetEl){
+    budgetEl.textContent = (newRemaining !== null) ? `${newRemaining} pts (${costDiff > 0 ? '+' : ''}${costDiff}p diff)` : 'Unlimited';
+    budgetEl.style.color = (newRemaining !== null && newRemaining < 0) ? '#ff4b54' : '#ffd166';
+  }
+
+  if(totalBudget > 0 && newCost > maxAllowed){
+    if(statusEl){
+      statusEl.style.color = '#ff4b54';
+      statusEl.innerHTML = `⚠️ Violates reserve rule: Needs at least ${minReserve} pts reserved for ${openSlots} other open slots (Max affordable: ${maxAllowed} pts).`;
+    }
+    if(btn){
+      btn.disabled = true;
+      btn.style.opacity = '0.4';
+      btn.style.cursor = 'not-allowed';
+    }
+  } else {
+    if(statusEl){
+      statusEl.style.color = '#4bdd91';
+      statusEl.innerHTML = `✓ Valid swap · Cost: ${newCost} pts (Within budget & reserve requirements)`;
+    }
+    if(btn){
+      btn.disabled = false;
+      btn.style.opacity = '1';
+      btn.style.cursor = 'pointer';
+    }
+  }
+}
+
+function executeModeratorSwap(tId, coach, oldMon, pickNumber){
+  if(!moderator) return;
+  let t = tournamentData[tId] || ongoingT() || activeT();
+  if(!t) return;
+  let d = ensureTournamentDraft(t);
+  if(!d) return;
+
+  let select = document.getElementById('modSwapMonSelect');
+  let newMon = select ? select.value : '';
+  if(!newMon || newMon === oldMon){
+    alert('Please select a different Pokémon to swap in.');
+    return;
+  }
+
+  let alreadyTaken = (d.picks || []).some(x => x.pokemon.toLowerCase().trim() === newMon.toLowerCase().trim() && !(x.player === coach && x.pickNumber === pickNumber));
+  if(alreadyTaken){
+    alert(`${newMon} has already been drafted by another coach!`);
+    return;
+  }
+
+  let newCost = findPokemonCostOnBoard(t, newMon);
+  let oldCost = findPokemonCostOnBoard(t, oldMon);
+  let stats = getDraftCoachStats(t, coach);
+
+  let budgetForReplacement = (stats.remainingBudget !== null ? (stats.remainingBudget + oldCost) : null);
+  let minReserveForRemaining = stats.openSlots * 1;
+  let maxAllowedCost = (stats.budget > 0 && budgetForReplacement !== null) ? (budgetForReplacement - minReserveForRemaining) : Infinity;
+
+  if(stats.budget > 0 && newCost > maxAllowedCost){
+    alert(`Cannot swap to ${newMon} (${newCost} pts). Maximum affordable replacement cost is ${maxAllowedCost} pts to reserve ${minReserveForRemaining} pts for ${stats.openSlots} other open slots.`);
+    return;
+  }
+
+  let pickObj = (d.picks || []).find(x => x.player === coach && (x.pickNumber === pickNumber || x.pokemon.toLowerCase().trim() === oldMon.toLowerCase().trim()));
+  if(pickObj){
+    pickObj.pokemon = newMon;
+    pickObj.cost = newCost;
+  }
+
+  if(t.rosters && t.rosters[coach]){
+    let idx = t.rosters[coach].findIndex(m => m.toLowerCase().trim() === oldMon.toLowerCase().trim());
+    if(idx !== -1){
+      t.rosters[coach][idx] = newMon;
+    } else {
+      t.rosters[coach].push(newMon);
+    }
+  }
+
+  if(roster && roster[coach]){
+    let idx = roster[coach].findIndex(m => m.toLowerCase().trim() === oldMon.toLowerCase().trim());
+    if(idx !== -1){
+      roster[coach][idx] = newMon;
+    }
+  }
+
+  persistLeague();
+  closeModal();
+  render();
+}
+
+function executeModeratorRemovePick(tId, coach, monName, pickNumber){
+  if(!moderator) return;
+  if(!confirm(`Are you sure you want to remove ${monName} from ${coach}'s roster? This pick slot will become open again.`)) return;
+
+  let t = tournamentData[tId] || ongoingT() || activeT();
+  if(!t) return;
+  let d = ensureTournamentDraft(t);
+  if(!d) return;
+
+  d.picks = (d.picks || []).filter(x => !(x.player === coach && (x.pickNumber === pickNumber || x.pokemon.toLowerCase().trim() === monName.toLowerCase().trim())));
+
+  if(t.rosters && t.rosters[coach]){
+    t.rosters[coach] = t.rosters[coach].filter(m => m.toLowerCase().trim() !== monName.toLowerCase().trim());
+  }
+  if(roster && roster[coach]){
+    roster[coach] = roster[coach].filter(m => m.toLowerCase().trim() !== monName.toLowerCase().trim());
+  }
+
+  persistLeague();
+  closeModal();
+  render();
+}
+
 function DraftRostersView(t){
   let d = ensureTournamentDraft(t);
   let order = getDraftOrderList(t);
 
   return `
+    ${moderator ? `
+      <div style="margin-bottom:12px;padding:9px 14px;background:#181524;border:1px solid #3d3554;border-radius:8px;font-size:11px;color:#ffd166;display:flex;align-items:center;gap:8px">
+        <span>👑 <b>Moderator Mode:</b> Click on any drafted Pokémon below to swap it for an undrafted Pokémon on the board or adjust a coach's roster.</span>
+      </div>
+    ` : ''}
     <div class="draft-rosters-grid">
       ${order.map(p => {
         let stats = getDraftCoachStats(t, p);
@@ -10449,10 +10705,12 @@ function DraftRostersView(t){
 
             <div class="draft-roster-mons">
               ${stats.picks.map(pick => `
-                <div class="draft-roster-mon-tile" title="${esc(pick.pokemon)} (${pick.cost} pts)">
+                <div class="draft-roster-mon-tile ${moderator ? 'mod-clickable' : ''}" 
+                     title="${esc(pick.pokemon)} (${pick.cost} pts)${moderator ? ' · Click to swap out' : ''}"
+                     ${moderator ? `onclick="openModeratorSwapModal('${jsArg(t.id)}', '${jsArg(p)}', '${jsArg(pick.pokemon)}', ${pick.round || 1}, ${pick.pickNumber || 1}, ${pick.cost || 0})"` : ''}>
                   <img src="${esc(pokeSprite(pick.pokemon))}" style="width:36px;height:36px;object-fit:contain" loading="lazy" onerror="this.src='https://play.pokemonshowdown.com/sprites/dex/substitute.png'">
                   <span style="color:#f5f3f0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;width:100%">${esc(pick.pokemon)}</span>
-                  <span style="font-size:9px;color:#ffd166">${pick.cost}p</span>
+                  <span style="font-size:9px;color:#ffd166">${pick.cost}p ${moderator ? '✏️' : ''}</span>
                 </div>
               `).join('')}
               ${Array.from({length: freeSlots}, (_, i) => `
