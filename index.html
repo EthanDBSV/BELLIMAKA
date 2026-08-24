@@ -2340,15 +2340,42 @@ function removeCustom(i){
 var supabaseClient=null,sessionUser=null;
 function supabaseReady(){let c=window.DRAFTDEX_SUPABASE;return Boolean(c&&c.url&&c.anonKey&&window.supabase)}
 var knownRev = Number(localStorage.getItem('draftdex-rev')) || 0;
-var lastLocalUpdate = Number(localStorage.getItem('draftdex-updated-at')) || Date.now();
+var lastLocalUpdate = Number(localStorage.getItem('draftdex-updated-at')) || 0;
 var syncTimer = null, lastSentSnapshot = '';
 function shouldApply(incoming){
   if(!incoming || typeof incoming !== 'object') return false;
+  if(!incoming.tournaments && !incoming.profiles && !incoming.accountLinks) return false;
+
   let incomingRev = typeof incoming.rev === 'number' ? incoming.rev : 0;
   let incomingTime = typeof incoming.updatedAt === 'number' ? incoming.updatedAt : (Date.parse(incoming.updated_at) || 0);
+
+  // If this device is NOT a moderator, cloud state from Supabase is always authoritative!
+  if(!moderator){
+    knownRev = incomingRev;
+    lastLocalUpdate = incomingTime || Date.now();
+    try {
+      localStorage.setItem('draftdex-rev', String(knownRev));
+      localStorage.setItem('draftdex-updated-at', String(lastLocalUpdate));
+    } catch(e){}
+    return true;
+  }
+
+  // If local has no saved rev and no saved update time, ALWAYS accept cloud state
+  let hasLocalData = localStorage.getItem('draftdex-updated-at') !== null || localStorage.getItem('draftdex-rev') !== null;
+  if(!hasLocalData || lastLocalUpdate === 0){
+    knownRev = incomingRev;
+    lastLocalUpdate = incomingTime || Date.now();
+    try {
+      localStorage.setItem('draftdex-rev', String(knownRev));
+      localStorage.setItem('draftdex-updated-at', String(lastLocalUpdate));
+    } catch(e){}
+    return true;
+  }
+
+  // For moderator: only reject if local edits are strictly newer than cloud state
   if(knownRev > incomingRev) return false;
-  if(knownRev === incomingRev) return false;
-  if(incomingTime && lastLocalUpdate && incomingTime < lastLocalUpdate) return false;
+  if(incomingTime && lastLocalUpdate && incomingTime < lastLocalUpdate && (knownRev === incomingRev)) return false;
+
   knownRev = incomingRev;
   lastLocalUpdate = incomingTime || Date.now();
   try {
@@ -7214,7 +7241,11 @@ function playerForAccount(u){
   if(!u) return null;
   let cleanU = String(u).trim().toLowerCase();
   for(let k in accountLinks){
-    if(k && k.trim().toLowerCase() === cleanU){
+    let cleanK = (k || '').trim().toLowerCase();
+    let kPrefix = cleanK.includes('@') ? cleanK.split('@')[0] : cleanK;
+    let uPrefix = cleanU.includes('@') ? cleanU.split('@')[0] : cleanU;
+
+    if(cleanK === cleanU || kPrefix === cleanU || cleanK === uPrefix || kPrefix === uPrefix){
       let p = accountLinks[k];
       if(p && profiles[p]) return p;
       let matchedProfile = Object.keys(profiles).find(pk => pk.toLowerCase() === (p||'').trim().toLowerCase());
@@ -7222,6 +7253,9 @@ function playerForAccount(u){
       return p || null;
     }
   }
+  if(profiles[u]) return u;
+  let directMatch = Object.keys(profiles).find(pk => pk.toLowerCase() === cleanU);
+  if(directMatch) return directMatch;
   return null;
 }
 
@@ -7238,8 +7272,21 @@ function playerForAccount(u){
 })();
 
 function myPlayer(){
-  let uname = window.currentAccount?.username || sessionUser?.user_metadata?.username || sessionUser?.email?.split('@')[0] || '';
-  return playerForAccount(uname);
+  if(!sessionUser && !window.currentAccount) return null;
+  let candidates = [
+    window.currentAccount?.username,
+    sessionUser?.user_metadata?.username,
+    sessionUser?.user_metadata?.display_name,
+    sessionUser?.email ? sessionUser.email.split('@')[0] : null,
+    sessionUser?.email,
+    sessionUser?.id
+  ].filter(Boolean);
+
+  for(let cand of candidates){
+    let p = playerForAccount(cand);
+    if(p) return p;
+  }
+  return null;
 }
 
 function knownAccounts(){
@@ -7308,7 +7355,33 @@ async function saveAccountLinks(){
   persistLeague();
   closeModal();
   render();
-  if(typeof flushSync==='function') await flushSync();
+
+  if(supabaseClient){
+    try {
+      let payload = {
+        rev: knownRev,
+        updatedAt: lastLocalUpdate,
+        tournaments: tournamentData,
+        profiles: profiles,
+        roster: roster,
+        teamHistory: teamHistory,
+        teamCovers: teamCovers,
+        profilePictures: profilePictures,
+        pulsePanelImages: pulsePanelImages,
+        cut: cut,
+        boardLink: boardLink,
+        draftPool: (typeof draftPool !== 'undefined' ? draftPool : null),
+        accountLinks: accountLinks
+      };
+      await supabaseClient.from('league_state').upsert({
+        id: 'main',
+        data: payload,
+        updated_at: new Date().toISOString()
+      });
+    } catch(err){
+      console.warn('Draftdex: Cloud upsert note:', err);
+    }
+  }
 }
 
 function Account(){
@@ -7316,7 +7389,8 @@ function Account(){
     return head('Trainer Portal', 'Authentication & Account Access') + renderAuthComponent();
   }
 
-  let username=window.currentAccount?.username||'Trainer',mine=myPlayer();
+  let username=window.currentAccount?.username||sessionUser?.user_metadata?.username||sessionUser?.email?.split('@')[0]||'Trainer';
+  let mine=myPlayer();
   let faceArt=mine?(profilePictures[mine]?`url('${esc(profilePictures[mine])}')`:(teamCovers[mine]?`url('${esc(teamCovers[mine])}')`:fallbackArt(mine))):fallbackArt(username);
   let faceLetter=mine?((profilePictures[mine]||teamCovers[mine])?'':esc(mine[0]||'')):esc(username[0]||'T');
   let myTeam=mine?esc(profiles[mine]?.team||'No default team'):'';
@@ -7349,13 +7423,19 @@ function Account(){
           ${mine?`
             <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;background:#141419;border:1px solid #2f2f38;border-radius:6px;padding:10px 12px;margin-top:8px">
               <div style="min-width:0">
-                <div style="font-size:14px;font-weight:800">${esc(mine)}</div>
+                <div style="font-size:14px;font-weight:800;color:var(--amber);display:flex;align-items:center;gap:6px">
+                  <span>🎮 ${esc(mine)}</span>
+                  <span class="tag" style="background:#1f3b28;color:#53e89c;border:1px solid #2d6b41;font-size:9px;padding:1px 6px">Linked</span>
+                </div>
                 <div style="font-size:10px;color:#9d9ba4;margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${myTeam}</div>
               </div>
               <button class="btn ghost btn-sm" onclick="openProfile('${jsArg(mine)}')">View</button>
             </div>
           `:`
-            <p class="sub" style="font-size:11px;margin:6px 0 0">Not linked to a trainer profile yet.${moderator?' Link it below.':''}</p>
+            <div style="padding:4px 0">
+              <p class="sub" style="font-size:11px;margin:4px 0 0;color:#9d9ba4">Account is active, but not linked to a player roster yet.</p>
+              ${moderator ? `<button class="btn ghost btn-sm" style="margin-top:8px;font-size:11px;width:100%" onclick="openAccountLinks('${jsArg(username)}')">🔗 Link to Player Profile</button>` : `<p class="sub" style="font-size:10px;color:#7e7c88;margin-top:6px">A moderator will link your account to your team roster.</p>`}
+            </div>
           `}
         </div>
 
@@ -11454,7 +11534,7 @@ function openDraftConfirmationModal(tId, monName, cost, tierName){
   let spriteUrl = pokeSprite(monName);
 
   let currentUsername = window.currentAccount?.username || sessionUser?.user_metadata?.username || sessionUser?.email?.split('@')[0] || '';
-  let linkedPlayerName = typeof playerForAccount === 'function' ? playerForAccount(currentUsername) : null;
+  let linkedPlayerName = (typeof myPlayer === 'function' ? myPlayer() : null) || (typeof playerForAccount === 'function' ? playerForAccount(currentUsername) : null);
   let isMe = (currentUsername && currentUsername.toLowerCase() === (pickingCoach || '').toLowerCase()) ||
              (linkedPlayerName && linkedPlayerName.toLowerCase() === (pickingCoach || '').toLowerCase());
   let canPick = moderator || isMe;
@@ -11563,7 +11643,7 @@ function makeDraftPick(tId, pokemonName, forcedPlayer = null){
   // Account authentication check
   if(!moderator && !forcedPlayer){
     let currentUsername = window.currentAccount?.username || sessionUser?.user_metadata?.username || sessionUser?.email?.split('@')[0] || '';
-    let linked = (typeof playerForAccount === 'function' ? playerForAccount(currentUsername) : null) || currentUsername;
+    let linked = (typeof myPlayer === 'function' ? myPlayer() : null) || (typeof playerForAccount === 'function' ? playerForAccount(currentUsername) : null) || currentUsername;
     if(!linked || linked.toLowerCase() !== (targetPlayer || '').toLowerCase()){
       alert(`It is currently ${targetPlayer}'s turn to pick. Only ${targetPlayer} (or a moderator) can draft this Pokémon.`);
       return;
@@ -11723,7 +11803,7 @@ function DraftRoom(t){
   let curOvr = curPlayer ? calculatePlayerOVR(curPlayer) : null;
 
   let currentUsername = window.currentAccount?.username || sessionUser?.user_metadata?.username || sessionUser?.email?.split('@')[0] || '';
-  let linkedPlayerName = typeof playerForAccount === 'function' ? playerForAccount(currentUsername) : null;
+  let linkedPlayerName = (typeof myPlayer === 'function' ? myPlayer() : null) || (typeof playerForAccount === 'function' ? playerForAccount(currentUsername) : null);
   let isMe = curPlayer && ((currentUsername && currentUsername.toLowerCase() === curPlayer.toLowerCase()) ||
               (linkedPlayerName && linkedPlayerName.toLowerCase() === curPlayer.toLowerCase()));
 
