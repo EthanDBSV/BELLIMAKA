@@ -623,6 +623,42 @@ const CANON_MEGAS = new Set([
   'sharpedo', 'slowbro', 'steelix', 'swampert', 'tyranitar', 'venusaur'
 ]);
 
+function handleSpriteError(img){
+  if(!img) return;
+  let src = img.src || '';
+  let stage = +(img.dataset.fallbackStage || 0);
+
+  // Stage 0: Try base pokemon if mega/custom suffix failed
+  if(stage === 0){
+    img.dataset.fallbackStage = '1';
+    if(/-mega[xyz]?\.png$/i.test(src)){
+      img.src = src.replace(/-mega[xyz]?\.png$/i, '.png');
+      return;
+    }
+    if(src.includes('lycanroc-midday.png')){
+      img.src = src.replace('lycanroc-midday.png', 'lycanroc.png');
+      return;
+    }
+    if(src.includes('/sprites/gen5/')){
+      img.src = src.replace('/sprites/gen5/', '/sprites/dex/');
+      return;
+    }
+  }
+
+  // Stage 1: Try Showdown dex directory
+  if(stage === 1){
+    img.dataset.fallbackStage = '2';
+    if(src.includes('/sprites/gen5/')){
+      img.src = src.replace('/sprites/gen5/', '/sprites/dex/');
+      return;
+    }
+  }
+
+  // Final fallback to substitute doll
+  img.dataset.fallbackStage = '3';
+  img.src = 'https://play.pokemonshowdown.com/sprites/dex/substitute.png';
+}
+
 function resolvePokemonData(rawInput) {
   let raw = String(rawInput || '').trim();
   if(!raw) return { name: '', slug: '', sprite: 'https://play.pokemonshowdown.com/sprites/dex/substitute.png' };
@@ -749,7 +785,24 @@ function resolvePokemonData(rawInput) {
     'mega magearna': { slug: 'magearna', name: 'Mega Magearna' },
     'magearna-mega': { slug: 'magearna', name: 'Mega Magearna' },
     'mega baxcalibur': { slug: 'baxcalibur', name: 'Mega Baxcalibur' },
-    'baxcalibur-mega': { slug: 'baxcalibur', name: 'Mega Baxcalibur' }
+    'baxcalibur-mega': { slug: 'baxcalibur', name: 'Mega Baxcalibur' },
+    'mega scrafty': { slug: 'scrafty', name: 'Mega Scrafty' },
+    'scrafty-mega': { slug: 'scrafty', name: 'Mega Scrafty' },
+
+    // Lycanroc forms
+    'lycanroc': { slug: 'lycanroc', name: 'Lycanroc-Midday' },
+    'lycanroc-midday': { slug: 'lycanroc', name: 'Lycanroc-Midday' },
+    'lycanroc midday': { slug: 'lycanroc', name: 'Lycanroc-Midday' },
+    'midday lycanroc': { slug: 'lycanroc', name: 'Lycanroc-Midday' },
+    'midday-lycanroc': { slug: 'lycanroc', name: 'Lycanroc-Midday' },
+    'lycanroc-midnight': { slug: 'lycanroc-midnight', name: 'Lycanroc-Midnight' },
+    'lycanroc midnight': { slug: 'lycanroc-midnight', name: 'Lycanroc-Midnight' },
+    'midnight lycanroc': { slug: 'lycanroc-midnight', name: 'Lycanroc-Midnight' },
+    'midnight-lycanroc': { slug: 'lycanroc-midnight', name: 'Lycanroc-Midnight' },
+    'lycanroc-dusk': { slug: 'lycanroc-dusk', name: 'Lycanroc-Dusk' },
+    'lycanroc dusk': { slug: 'lycanroc-dusk', name: 'Lycanroc-Dusk' },
+    'dusk lycanroc': { slug: 'lycanroc-dusk', name: 'Lycanroc-Dusk' },
+    'dusk-lycanroc': { slug: 'lycanroc-dusk', name: 'Lycanroc-Dusk' }
   };
 
   if(directMap[s]){
@@ -818,6 +871,13 @@ function resolvePokemonData(rawInput) {
     if(s.includes('aqua') || s.includes('water')) return { name: 'Paldean Tauros (Aqua)', slug: 'tauros-paldeaaqua', sprite: 'https://play.pokemonshowdown.com/sprites/gen5/tauros-paldeaaqua.png' };
     if(s.includes('blaze') || s.includes('fire')) return { name: 'Paldean Tauros (Blaze)', slug: 'tauros-paldeablaze', sprite: 'https://play.pokemonshowdown.com/sprites/gen5/tauros-paldeablaze.png' };
     return { name: 'Paldean Tauros', slug: 'tauros-paldeacombat', sprite: 'https://play.pokemonshowdown.com/sprites/gen5/tauros-paldeacombat.png' };
+  }
+
+  // Lycanroc forms
+  if(s.includes('lycanroc')){
+    if(s.includes('midnight')) return { name: 'Lycanroc-Midnight', slug: 'lycanroc-midnight', sprite: 'https://play.pokemonshowdown.com/sprites/gen5/lycanroc-midnight.png' };
+    if(s.includes('dusk')) return { name: 'Lycanroc-Dusk', slug: 'lycanroc-dusk', sprite: 'https://play.pokemonshowdown.com/sprites/gen5/lycanroc-dusk.png' };
+    return { name: 'Lycanroc-Midday', slug: 'lycanroc', sprite: 'https://play.pokemonshowdown.com/sprites/gen5/lycanroc.png' };
   }
 
   // Helper: check prefix/suffix for generic forms (H, A, G, P, T, I, M, O, C, F)
@@ -3654,7 +3714,7 @@ function homeDraftPicksSection(t){
                 ${idx === 0 ? `<div style="position:absolute;top:0;right:0;background:var(--red);color:#fff;font-size:8px;font-weight:900;letter-spacing:1px;padding:2px 8px;border-bottom-left-radius:6px;text-transform:uppercase">LATEST PICK</div>` : ''}
                 
                 <div style="position:relative;flex:none;background:#0d0d12;border:1px solid #282836;border-radius:10px;padding:4px;width:58px;height:58px;display:grid;place-items:center">
-                  <img src="${esc(spriteUrl)}" style="width:48px;height:48px;object-fit:contain;filter:drop-shadow(0 4px 8px rgba(0,0,0,0.6))" onerror="this.src='https://play.pokemonshowdown.com/sprites/dex/substitute.png'">
+                  <img src="${esc(spriteUrl)}" style="width:48px;height:48px;object-fit:contain;filter:drop-shadow(0 4px 8px rgba(0,0,0,0.6))" onerror="handleSpriteError(this)">
                 </div>
 
                 <div style="min-width:0;flex:1">
@@ -10095,7 +10155,7 @@ function openDraftConfirmationModal(tId, monName, cost, tierName){
 
         <div style="margin-top:-10px">
           <div style="background:radial-gradient(circle,rgba(239,48,56,0.15) 0%,transparent 70%);padding:14px;border-radius:12px;display:inline-block">
-            <img src="${esc(spriteUrl)}" alt="${esc(monName)}" style="width:96px;height:96px;object-fit:contain;filter:drop-shadow(0 6px 12px rgba(0,0,0,0.6))" onerror="this.src='https://play.pokemonshowdown.com/sprites/dex/substitute.png'">
+            <img src="${esc(spriteUrl)}" alt="${esc(monName)}" style="width:96px;height:96px;object-fit:contain;filter:drop-shadow(0 6px 12px rgba(0,0,0,0.6))" onerror="handleSpriteError(this)">
           </div>
           <h2 style="margin:10px 0 4px;font:800 24px 'Barlow Condensed';letter-spacing:.5px">${esc(monName)}</h2>
           <div style="display:flex;justify-content:center;align-items:center;gap:8px;margin-bottom:16px">
@@ -10481,7 +10541,7 @@ function DraftRoom(t){
                   <b>${esc(pickInfo.player)}</b>
                   ${isDone && pickObj ? `
                     <div style="display:inline-flex;align-items:center;gap:3px;margin-left:2px">
-                      <img src="${esc(pokeSprite(pickObj.pokemon))}" style="width:18px;height:18px;object-fit:contain" onerror="this.src='https://play.pokemonshowdown.com/sprites/dex/substitute.png'">
+                      <img src="${esc(pokeSprite(pickObj.pokemon))}" style="width:18px;height:18px;object-fit:contain" onerror="handleSpriteError(this)">
                       <span style="color:#ffd166;font-size:10px;font-weight:800">${esc(pickObj.pokemon)}</span>
                     </div>
                   ` : (isCurrent ? `<span style="font-size:9px;color:#fff;background:rgba(0,0,0,0.3);padding:1px 4px;border-radius:3px">ON CLOCK</span>` : '')}
@@ -10601,7 +10661,7 @@ function DraftBoardView(t){
                     return `
                       <div class="draft-mon-card ${isDrafted ? 'drafted' : ''}" onclick="${isDrafted ? '' : `openDraftConfirmationModal('${jsArg(t.id)}', '${jsArg(mon)}', ${tier.cost}, '${jsArg(tier.name)}')`}">
                         <div style="display:flex;align-items:center;gap:8px;min-width:0">
-                          <img src="${esc(spriteUrl)}" class="draft-sprite" alt="${esc(mon)}" loading="lazy" onerror="this.src='https://play.pokemonshowdown.com/sprites/dex/substitute.png'">
+                          <img src="${esc(spriteUrl)}" class="draft-sprite" alt="${esc(mon)}" loading="lazy" onerror="handleSpriteError(this)">
                           <div style="min-width:0">
                             <div class="draft-mon-name" title="${esc(mon)}">${esc(mon)}</div>
                             ${isDrafted && draftInfo ? `
@@ -10694,7 +10754,7 @@ function openModeratorSwapModal(tId, coach, currentMon, round, pickNumber, curre
         <!-- Current Pokémon Card -->
         <div style="margin-top:14px;background:#14141b;border:1px solid #282836;border-radius:8px;padding:10px 14px;display:flex;align-items:center;justify-content:space-between">
           <div style="display:flex;align-items:center;gap:10px">
-            <img src="${esc(curSprite)}" style="width:40px;height:40px;object-fit:contain" onerror="this.src='https://play.pokemonshowdown.com/sprites/dex/substitute.png'">
+            <img src="${esc(curSprite)}" style="width:40px;height:40px;object-fit:contain" onerror="handleSpriteError(this)">
             <div>
               <div style="font-size:10px;color:#8e8c95;font-weight:800;text-transform:uppercase">Currently Drafted</div>
               <div style="font:800 16px 'Barlow Condensed';color:#ff8e95">${esc(currentMon)}</div>
@@ -10901,7 +10961,7 @@ function DraftRostersView(t){
                 <div class="draft-roster-mon-tile ${moderator ? 'mod-clickable' : ''}" 
                      title="${esc(pick.pokemon)} (${pick.cost} pts)${moderator ? ' · Click to swap out' : ''}"
                      ${moderator ? `onclick="openModeratorSwapModal('${jsArg(t.id)}', '${jsArg(p)}', '${jsArg(pick.pokemon)}', ${pick.round || 1}, ${pick.pickNumber || 1}, ${pick.cost || 0})"` : ''}>
-                  <img src="${esc(pokeSprite(pick.pokemon))}" style="width:36px;height:36px;object-fit:contain" loading="lazy" onerror="this.src='https://play.pokemonshowdown.com/sprites/dex/substitute.png'">
+                  <img src="${esc(pokeSprite(pick.pokemon))}" style="width:36px;height:36px;object-fit:contain" loading="lazy" onerror="handleSpriteError(this)">
                   <span style="color:#f5f3f0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;width:100%">${esc(pick.pokemon)}</span>
                   <span style="font-size:9px;color:#ffd166">${pick.cost}p ${moderator ? '✏️' : ''}</span>
                 </div>
