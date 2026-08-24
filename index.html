@@ -498,6 +498,34 @@ details[open] > .past-tourney-summary .past-chevron{transform:rotate(180deg);col
 .draft-planner-slot{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:6px 10px;background:#191922;border:1px solid #2d2d3c;border-radius:6px}
 .draft-planner-slot.empty{border-style:dashed;border-color:#363646;background:transparent;opacity:.6}
 
+.draft-matrix-scroll-wrap{width:100%;overflow-x:auto;padding-bottom:12px;scroll-behavior:smooth;-webkit-overflow-scrolling:touch}
+.draft-matrix-scroll-wrap::-webkit-scrollbar{height:8px}
+.draft-matrix-scroll-wrap::-webkit-scrollbar-track{background:#0e0e13;border-radius:4px}
+.draft-matrix-scroll-wrap::-webkit-scrollbar-thumb{background:#343444;border-radius:4px}
+.draft-matrix-scroll-wrap::-webkit-scrollbar-thumb:hover{background:var(--red)}
+
+.draft-matrix-board{display:grid;gap:8px;min-width:max-content}
+.draft-matrix-header-cell{background:#181822;border:1px solid #2d2d3c;border-radius:8px;padding:10px 12px;display:flex;flex-direction:column;gap:6px}
+.draft-matrix-round-cell{background:#14141a;border:1px solid #252532;border-radius:8px;display:flex;flex-direction:column;align-items:center;justify-content:center;font:800 13px 'Barlow Condensed';color:var(--amber);padding:6px}
+
+.draft-matrix-cell{background:#181822;border:1px solid #2b2b3a;border-radius:8px;padding:8px 10px;display:flex;flex-direction:column;justify-content:space-between;min-height:78px;transition:all .14s ease}
+.draft-matrix-cell.drafted{background:linear-gradient(135deg,#1b1b26 0%,#13131a 100%);border-color:#38384d}
+.draft-matrix-cell.drafted:hover{border-color:#5c242c;transform:translateY(-2px);box-shadow:0 6px 16px rgba(0,0,0,0.5)}
+.draft-matrix-cell.mod-clickable{cursor:pointer}
+.draft-matrix-cell.mod-clickable:hover{border-color:#ffd166}
+
+.draft-matrix-cell.empty{background:#111116;border:1px dashed #282836;opacity:.55}
+.draft-matrix-cell-head{display:flex;justify-content:space-between;align-items:center;font-size:10px;font-weight:800;margin-bottom:4px}
+.draft-matrix-pick-num{color:#8e8c95;font:800 11px 'Barlow Condensed'}
+.draft-matrix-pick-num small{color:#62616e;margin-left:3px;font-size:9px}
+.draft-matrix-cost{color:#ffd166;font:800 10px 'Barlow Condensed';background:#2c2210;border:1px solid #5a4218;padding:1px 5px;border-radius:3px}
+.draft-matrix-dir{color:#5c5a68;font-weight:900}
+
+.draft-matrix-cell-body{display:flex;align-items:center;gap:8px;min-width:0}
+.draft-matrix-sprite{width:36px;height:36px;object-fit:contain;flex:none;filter:drop-shadow(0 2px 4px rgba(0,0,0,0.5))}
+.draft-matrix-mon-name{font:800 13px 'Barlow Condensed';letter-spacing:.3px;color:#f5f3f0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1}
+.draft-matrix-empty-slot{display:grid;place-items:center;height:100%;font-size:10px;color:#5a5866;font-weight:700}
+
 .draft-rosters-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:12px}
 .draft-roster-box{background:#14141a;border:1px solid #282834;border-radius:8px;padding:12px;display:flex;flex-direction:column;gap:8px}
 .draft-roster-head{display:flex;justify-content:space-between;align-items:center;padding-bottom:8px;border-bottom:1px solid #22222c}
@@ -11099,56 +11127,106 @@ function executeModeratorRemovePick(tId, coach, monName, pickNumber){
 function DraftRostersView(t){
   let d = ensureTournamentDraft(t);
   let order = getDraftOrderList(t);
+  if(!order || !order.length) return '<div class="empty card"><div class="card-title">No Coaches in Draft Order</div></div>';
+
+  let coachStatsMap = {};
+  order.forEach(p => {
+    coachStatsMap[p] = getDraftCoachStats(t, p);
+  });
+
+  let totalRounds = d.rounds || d.maxRosterSize || t?.draftData?.maxRosterSize || Math.max(10, ...order.map(p => coachStatsMap[p]?.picks?.length || 0));
 
   return `
     ${moderator ? `
-      <div style="margin-bottom:12px;padding:9px 14px;background:#181524;border:1px solid #3d3554;border-radius:8px;font-size:11px;color:#ffd166;display:flex;align-items:center;gap:8px">
-        <span>👑 <b>Moderator Mode:</b> Click on any drafted Pokémon below to swap it for an undrafted Pokémon on the board or adjust a coach's roster.</span>
+      <div style="margin-bottom:14px;padding:9px 14px;background:#181524;border:1px solid #3d3554;border-radius:8px;font-size:11px;color:#ffd166;display:flex;align-items:center;gap:8px">
+        <span>👑 <b>Moderator Mode:</b> Click on any drafted Pokémon cell below to swap it for an undrafted Pokémon on the board or adjust a coach's roster.</span>
       </div>
     ` : ''}
-    <div class="draft-rosters-grid">
-      ${order.map(p => {
-        let stats = getDraftCoachStats(t, p);
-        let faceArt = profilePictures[p] ? `url('${esc(profilePictures[p])}')` : (teamCovers[p] ? `url('${esc(teamCovers[p])}')` : fallbackArt(p));
-        let faceLetter = (profilePictures[p] || teamCovers[p]) ? '' : esc((p || '?')[0]);
-        let ovrObj = calculatePlayerOVR(p);
-        let freeSlots = Math.max(0, stats.maxSlots - stats.picks.length);
 
-        return `
-          <div class="draft-roster-box">
-            <div class="draft-roster-head">
-              <div style="display:flex;align-items:center;gap:8px">
-                <span class="avatar mini" style="background-image:${faceArt};background-size:cover;background-position:center;width:30px;height:30px;border-radius:50%;display:grid;place-items:center;border:1px solid ${ovrObj.color}">${faceLetter}</span>
-                <div>
-                  <div style="font-weight:800;font-size:13px;color:#f5f3f0">${playerLink(p)}</div>
-                  <div style="font-size:10px;color:#8e8c95">${esc(teamName(t, p))}</div>
+    <div class="draft-matrix-scroll-wrap">
+      <div class="draft-matrix-board" style="grid-template-columns: 74px repeat(${order.length}, minmax(180px, 1fr));">
+        <!-- Top Left Corner Cell -->
+        <div class="draft-matrix-header-cell" style="justify-content:center;align-items:center;text-align:center;background:#14141c">
+          <span style="font:800 11px 'Barlow Condensed';letter-spacing:.8px;color:#8e8c95;text-transform:uppercase">ROUND</span>
+          <span style="font-size:9px;color:#605e6c">Snake 🔀</span>
+        </div>
+
+        <!-- Coach Column Headers -->
+        ${order.map((p, colIdx) => {
+          let stats = coachStatsMap[p];
+          let faceArt = profilePictures[p] ? `url('${esc(profilePictures[p])}')` : (teamCovers[p] ? `url('${esc(teamCovers[p])}')` : fallbackArt(p));
+          let faceLetter = (profilePictures[p] || teamCovers[p]) ? '' : esc((p || '?')[0]);
+          let ovrObj = calculatePlayerOVR(p);
+
+          return `
+            <div class="draft-matrix-header-cell">
+              <div style="display:flex;align-items:center;gap:8px;min-width:0">
+                <span class="avatar mini" style="background-image:${faceArt};background-size:cover;background-position:center;width:28px;height:28px;border-radius:50%;display:grid;place-items:center;border:1px solid ${ovrObj.color};flex:none">${faceLetter}</span>
+                <div style="min-width:0;flex:1">
+                  <div style="font-weight:800;font-size:13px;color:#f5f3f0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${playerLink(p)}</div>
+                  <div style="font-size:10px;color:#8e8c95;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(teamName(t, p))}</div>
                 </div>
               </div>
-              <div style="text-align:right">
-                <div style="font:800 13px 'Barlow Condensed';color:#ffd166">${stats.budget > 0 ? `${stats.pointsSpent} / ${stats.budget} pts` : `${stats.pointsSpent} pts`}</div>
-                <div style="font-size:10px;color:#8e8c95">${stats.count} / ${stats.maxSlots} Pokémon</div>
+              <div style="display:flex;justify-content:space-between;align-items:center;border-top:1px solid #282836;padding-top:4px;font-size:10px">
+                <span style="color:#ffd166;font-weight:800;font-size:11px">${stats.budget > 0 ? `${stats.pointsSpent}/${stats.budget}p` : `${stats.pointsSpent}p`}</span>
+                <span style="color:#8e8c95;font-weight:700">${stats.count}/${stats.maxSlots} Mons</span>
               </div>
             </div>
+          `;
+        }).join('')}
 
-            <div class="draft-roster-mons">
-              ${stats.picks.map(pick => `
-                <div class="draft-roster-mon-tile ${moderator ? 'mod-clickable' : ''}" 
-                     title="${esc(pick.pokemon)} (${pick.cost} pts)${moderator ? ' · Click to swap out' : ''}"
-                     ${moderator ? `onclick="openModeratorSwapModal('${jsArg(t.id)}', '${jsArg(p)}', '${jsArg(pick.pokemon)}', ${pick.round || 1}, ${pick.pickNumber || 1}, ${pick.cost || 0})"` : ''}>
-                  <img src="${esc(pokeSprite(pick.pokemon))}" style="width:36px;height:36px;object-fit:contain" loading="lazy" onerror="handleSpriteError(this)">
-                  <span style="color:#f5f3f0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;width:100%">${esc(pick.pokemon)}</span>
-                  <span style="font-size:9px;color:#ffd166">${pick.cost}p ${moderator ? '✏️' : ''}</span>
-                </div>
-              `).join('')}
-              ${Array.from({length: freeSlots}, (_, i) => `
-                <div class="draft-roster-mon-tile" style="border-style:dashed;border-color:#2a2a38;opacity:.5;justify-content:center;min-height:56px">
-                  <span style="font-size:9px;color:#6b6a78">Slot ${stats.picks.length + i + 1}</span>
-                </div>
-              `).join('')}
+        <!-- Rounds Rows -->
+        ${Array.from({length: totalRounds}, (_, rIdx) => {
+          let roundNum = rIdx + 1;
+          let isReversed = (roundNum % 2 === 0);
+
+          return `
+            <!-- Round Header Cell -->
+            <div class="draft-matrix-round-cell">
+              <span style="font-size:12px;font-weight:900">R${roundNum}</span>
+              <span style="font-size:13px;color:${isReversed ? '#ff8e95' : '#4bdd91'};margin-top:2px">${isReversed ? '←' : '→'}</span>
             </div>
-          </div>
-        `;
-      }).join('')}
+
+            <!-- Team Pick Cells for this Round -->
+            ${order.map((coach, colIdx) => {
+              let posInRound = isReversed ? (order.length - 1 - colIdx) : colIdx;
+              let pickNumber = (roundNum - 1) * order.length + posInRound + 1;
+              let stats = coachStatsMap[coach];
+              let pickObj = (d.picks || []).find(x => x.pickNumber === pickNumber) || (d.picks || []).find(x => x.player === coach && x.round === roundNum) || (stats.picks && stats.picks[rIdx]);
+
+              if(pickObj){
+                let spriteUrl = pokeSprite(pickObj.pokemon);
+                return `
+                  <div class="draft-matrix-cell drafted ${moderator ? 'mod-clickable' : ''}"
+                       title="${esc(pickObj.pokemon)} (${pickObj.cost} pts) · Round ${roundNum}, Pick #${pickNumber}${moderator ? ' · Click to swap out' : ''}"
+                       ${moderator ? `onclick="openModeratorSwapModal('${jsArg(t.id)}', '${jsArg(coach)}', '${jsArg(pickObj.pokemon)}', ${pickObj.round || roundNum}, ${pickObj.pickNumber || pickNumber}, ${pickObj.cost || 0})"` : ''}>
+                    <div class="draft-matrix-cell-head">
+                      <span class="draft-matrix-pick-num">${roundNum}.${posInRound + 1} <small>#${pickNumber}</small></span>
+                      <span class="draft-matrix-cost">${pickObj.cost}p ${moderator ? '✏️' : ''}</span>
+                    </div>
+                    <div class="draft-matrix-cell-body">
+                      <img src="${esc(spriteUrl)}" class="draft-matrix-sprite" alt="${esc(pickObj.pokemon)}" loading="lazy" onerror="handleSpriteError(this)">
+                      <div class="draft-matrix-mon-name" title="${esc(pickObj.pokemon)}">${esc(pickObj.pokemon)}</div>
+                    </div>
+                  </div>
+                `;
+              } else {
+                return `
+                  <div class="draft-matrix-cell empty" title="Round ${roundNum} · Pick #${pickNumber} (Open slot)">
+                    <div class="draft-matrix-cell-head">
+                      <span class="draft-matrix-pick-num">${roundNum}.${posInRound + 1} <small>#${pickNumber}</small></span>
+                      <span class="draft-matrix-dir">${isReversed ? '←' : '→'}</span>
+                    </div>
+                    <div class="draft-matrix-empty-slot">
+                      <span>Slot ${roundNum}</span>
+                    </div>
+                  </div>
+                `;
+              }
+            }).join('')}
+          `;
+        }).join('')}
+      </div>
     </div>
   `;
 }
