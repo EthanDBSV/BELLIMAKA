@@ -3505,11 +3505,16 @@ async function flushSync(){
   if(serialized === lastSentSnapshot) return;
   lastSentSnapshot = serialized;
   try {
-    await supabaseClient.from('league_state').upsert({
+    let { error } = await supabaseClient.from('league_state').upsert({
       id: 'main',
       data: payload,
       updated_at: new Date(lastLocalUpdate).toISOString()
     });
+    if(error){
+      console.warn('Draftdex: Cloud sync error:', error);
+    } else {
+      console.log('Draftdex: Cloud sync SUCCESSful! Rev:', knownRev, 'Tournaments:', Object.keys(tournamentData).length);
+    }
   } catch(e) {
     console.warn('Draftdex: Cloud sync deferred or failed', e);
   }
@@ -3531,9 +3536,10 @@ function persistLeague(){
     localStorage.setItem('draftdex-pulsepanels', JSON.stringify(pulsePanelImages));
     if(typeof accountLinks!=='undefined') localStorage.setItem('draftdex-accountlinks', JSON.stringify(accountLinks));
   }catch(e){}
-  if(!supabaseClient || (!moderator && !sessionUser)) return;
+  let isAuth = Boolean(moderator || window.currentAccount?.role === 'moderator' || sessionUser);
+  if(!supabaseClient || !isAuth) return;
   clearTimeout(syncTimer);
-  syncTimer = setTimeout(flushSync, 300);
+  syncTimer = setTimeout(flushSync, 200);
 }
 
 
@@ -4598,7 +4604,7 @@ async function updateSession(session){
         let incoming=data.data;
         if(shouldApply(incoming)){
           applySharedState(incoming);
-        } else if(moderator && incoming && ((incoming.rev || 0) < knownRev || (incoming.updatedAt || 0) < lastLocalUpdate)){
+        } else if((moderator || window.currentAccount?.role === 'moderator') && incoming && ((incoming.rev || 0) < knownRev || (incoming.updatedAt || 0) < lastLocalUpdate)){
           flushSync();
         }
       }
@@ -7590,6 +7596,51 @@ async function saveAccountLinks(){
   }
 }
 
+async function forceCloudSync(){
+  if(!supabaseClient){
+    alert('Supabase is not connected.');
+    return;
+  }
+  let btn = document.getElementById('forceSyncBtn');
+  if(btn) { btn.disabled = true; btn.innerHTML = '⏳ Syncing...'; }
+  lastLocalUpdate = Date.now();
+  knownRev = (knownRev || 0) + 1;
+  lastSentSnapshot = '';
+  try {
+    let payload = {
+      rev: knownRev,
+      updatedAt: lastLocalUpdate,
+      tournaments: tournamentData,
+      profiles: profiles,
+      roster: roster,
+      teamHistory: teamHistory,
+      teamCovers: teamCovers,
+      profilePictures: profilePictures,
+      pulsePanelImages: pulsePanelImages,
+      cut: cut,
+      boardLink: boardLink,
+      draftPool: (typeof draftPool !== 'undefined' ? draftPool : null),
+      accountLinks: accountLinks
+    };
+    let { error } = await supabaseClient.from('league_state').upsert({
+      id: 'main',
+      data: payload,
+      updated_at: new Date(lastLocalUpdate).toISOString()
+    });
+    if(error){
+      alert('Cloud Sync error: ' + error.message);
+    } else {
+      if(typeof showDraftToast === 'function') showDraftToast('☁️ Synced all tournaments to Supabase!');
+      alert(`✓ Cloud Sync Successful!\n\nAll tournaments (${Object.keys(tournamentData).length} total) and rosters are now live in Supabase.\nAny phone or computer refreshing the site will now see this exact state.`);
+      render();
+    }
+  } catch(e){
+    alert('Cloud Sync Exception: ' + e.message);
+  } finally {
+    if(btn) { btn.disabled = false; btn.innerHTML = '☁️ Push to Cloud Now'; }
+  }
+}
+
 function Account(){
   if(!sessionUser){
     return head('Trainer Portal', 'Authentication & Account Access') + renderAuthComponent();
@@ -7658,7 +7709,7 @@ function Account(){
               <h2 style="font:800 24px 'Barlow Condensed';letter-spacing:.5px;margin:3px 0 0">Moderator Control Panel</h2>
             </div>
             <div style="display:flex;align-items:center;gap:8px">
-              <span class="tag" style="background:#22222a;color:#a09fa8;border:1px solid #363642">Active Tools</span>
+              <span class="tag" style="background:#22222a;color:#a09fa8;border:1px solid #363648">Active Tools</span>
             </div>
           </div>
 
@@ -7697,6 +7748,15 @@ function Account(){
                 <p>Start a new season with custom groups and qualifiers.</p>
               </div>
               <button class="btn ghost btn-sm" onclick="event.stopPropagation();openCreator()">New Season</button>
+            </div>
+
+            <div class="acct-tool-card" onclick="forceCloudSync()">
+              <div class="acct-tool-icon">☁️</div>
+              <div class="acct-tool-body">
+                <h4>Cloud Database Sync</h4>
+                <p>Push all local tournaments and rosters to Supabase so they show on all devices.</p>
+              </div>
+              <button id="forceSyncBtn" class="btn ghost btn-sm" style="color:#53e89c;border-color:#23613a" onclick="event.stopPropagation();forceCloudSync()">☁️ Push to Cloud Now</button>
             </div>
           </div>
         </section>
