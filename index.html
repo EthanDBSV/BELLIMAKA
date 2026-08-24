@@ -434,7 +434,7 @@ details[open] > .past-tourney-summary .past-chevron{transform:rotate(180deg);col
 .podium-card.rank-2 .podium-rank-badge{color:#d0d0dc}
 .podium-card.rank-3 .podium-rank-badge{color:#cd7f32}
 
-.t-player-tile{display:flex;align-items:center;gap:10px;padding:10px 12px;background:#141419;border:1px solid #2e2e38;border-radius:6px;cursor:pointer;transition:border-color .15s,background .15s;user-select:none}
+.t-player-tile{display:flex;align-items:center;gap:6px;padding:6px 8px;background:#141419;border:1px solid #2e2e38;border-radius:6px;cursor:pointer;transition:border-color .15s,background .15s;user-select:none;min-width:0}
 .t-player-tile:hover{border-color:#5c242c;background:#181822}
 .t-player-tile:has(input:checked){border-color:var(--red);background:#221317}
 
@@ -3148,16 +3148,16 @@ function openCreator(){
     let faceArt=profilePictures[p]?`url('${esc(profilePictures[p])}')`:(teamCovers[p]?`url('${esc(teamCovers[p])}')`:fallbackArt(p));
     let faceLetter=(profilePictures[p]||teamCovers[p])?'':esc((p||'?')[0]);
     return `<label class="t-player-tile">
-      <input class="profileChoice" type="checkbox" value="${esc(p)}" style="width:16px;height:16px;accent-color:var(--red);cursor:pointer;flex:none" onchange="updateCreatorSelectedCount()">
-      <span class="mrow-face" style="background-image:${faceArt};background-size:cover;background-position:center;width:28px;height:28px;font-size:12px;border-radius:50%;flex:none;display:grid;place-items:center;border:1px solid #ffffff1f">${faceLetter}</span>
+      <input class="profileChoice" type="checkbox" value="${esc(p)}" style="width:14px;height:14px;accent-color:var(--red);cursor:pointer;flex:none" onchange="updateCreatorSelectedCount()">
+      <span class="mrow-face" style="background-image:${faceArt};background-size:cover;background-position:center;width:22px;height:22px;font-size:9px;border-radius:50%;flex:none;display:grid;place-items:center;border:1px solid #ffffff1f">${faceLetter}</span>
       <div style="min-width:0;flex:1">
-        <div style="font-weight:800;font-size:13px;color:#f5f3f0;line-height:1.2;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(p)}</div>
-        <div style="font-size:10px;color:#9d9ba4;margin-top:1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(q.team||'No default team')}</div>
+        <div style="font-weight:800;font-size:11px;color:#f5f3f0;line-height:1.2;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(p)}</div>
+        <div style="font-size:9px;color:#8e8c95;margin-top:1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(q.team||'No default team')}</div>
       </div>
     </label>`;
   }).join('');
 
-  document.querySelector('#modal').innerHTML=`<div class="modal-wrap"><div class="modal" style="max-width:740px">
+  document.querySelector('#modal').innerHTML=`<div class="modal-wrap"><div class="modal" style="max-width:860px;width:95%">
     <div class="modal-head"><div><div class="eyebrow">Moderator Only</div><h2>Create Tournament</h2></div><button class="close" onclick="closeModal()">×</button></div>
     
     <div class="card" style="padding:16px;margin-top:14px;background:#121217;border-color:#2d2d38">
@@ -3210,8 +3210,8 @@ function openCreator(){
         </div>
       </div>
 
-      <div class="card" style="padding:12px;background:#111116;border-color:#2a2a33">
-        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:8px;max-height:260px;overflow-y:auto;padding-right:4px">
+      <div class="card" style="padding:10px;background:#111116;border-color:#2a2a33">
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:6px;max-height:280px;overflow-y:auto;padding-right:4px">
           ${playerTiles||'<p class="sub" style="grid-column:1/-1;margin:8px">No existing player profiles. Add player names below to create them automatically.</p>'}
         </div>
       </div>
