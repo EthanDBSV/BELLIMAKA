@@ -515,10 +515,9 @@ details[open] > .past-tourney-summary .past-chevron{transform:rotate(180deg);col
 .draft-matrix-cell.mod-clickable:hover{border-color:#ffd166}
 
 .draft-matrix-cell.empty{background:#111116;border:1px dashed #282836;opacity:.55}
-.draft-matrix-cell-head{display:flex;justify-content:space-between;align-items:center;font-size:10px;font-weight:800;margin-bottom:4px}
-.draft-matrix-pick-num{color:#8e8c95;font:800 11px 'Barlow Condensed'}
-.draft-matrix-pick-num small{color:#62616e;margin-left:3px;font-size:9px}
-.draft-matrix-cost{color:#ffd166;font:800 10px 'Barlow Condensed';background:#2c2210;border:1px solid #5a4218;padding:1px 5px;border-radius:3px}
+.draft-matrix-cell-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:4px}
+.draft-matrix-pick-num{color:#8e8c95;font:800 12px 'Barlow Condensed';letter-spacing:.3px}
+.draft-matrix-cost{color:#ffd166;font:800 10.5px 'Barlow Condensed';background:#2c2210;border:1px solid #5a4218;padding:1px 6px;border-radius:4px;letter-spacing:.4px}
 .draft-matrix-dir{color:#5c5a68;font-weight:900}
 
 .draft-matrix-cell-body{display:flex;align-items:center;gap:8px;min-width:0}
@@ -11237,8 +11236,8 @@ function DraftRostersView(t){
                        title="${esc(pickObj.pokemon)} (${pickObj.cost} pts) · Round ${roundNum}, Pick #${pickNumber}${moderator ? ' · Click to swap out' : ''}"
                        ${moderator ? `onclick="openModeratorSwapModal('${jsArg(t.id)}', '${jsArg(coach)}', '${jsArg(pickObj.pokemon)}', ${pickObj.round || roundNum}, ${pickObj.pickNumber || pickNumber}, ${pickObj.cost || 0})"` : ''}>
                     <div class="draft-matrix-cell-head">
-                      <span class="draft-matrix-pick-num">${roundNum}.${posInRound + 1} <small>#${pickNumber}</small></span>
-                      <span class="draft-matrix-cost">${pickObj.cost}p ${moderator ? '✏️' : ''}</span>
+                      <span class="draft-matrix-pick-num">${roundNum}.${posInRound + 1}</span>
+                      <span class="draft-matrix-cost">${pickObj.cost} PTS</span>
                     </div>
                     <div class="draft-matrix-cell-body">
                       <img src="${esc(spriteUrl)}" class="draft-matrix-sprite" alt="${esc(pickObj.pokemon)}" loading="lazy" onerror="handleSpriteError(this)">
@@ -11250,7 +11249,7 @@ function DraftRostersView(t){
                 return `
                   <div class="draft-matrix-cell empty" title="Round ${roundNum} · Pick #${pickNumber} (Open slot)">
                     <div class="draft-matrix-cell-head">
-                      <span class="draft-matrix-pick-num">${roundNum}.${posInRound + 1} <small>#${pickNumber}</small></span>
+                      <span class="draft-matrix-pick-num">${roundNum}.${posInRound + 1}</span>
                       <span class="draft-matrix-dir">${isReversed ? '←' : '→'}</span>
                     </div>
                     <div class="draft-matrix-empty-slot">
