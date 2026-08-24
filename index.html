@@ -660,7 +660,35 @@ details[open] > .past-tourney-summary .past-chevron{transform:rotate(180deg);col
 .draw-slot-card.active-target{border:1px solid var(--amber);background:#221e14;box-shadow:0 0 14px rgba(255,209,102,0.22)}
 
 .draft-locked-card{background:linear-gradient(135deg,#18141c 0%,#111116 100%);border:1px solid #3d2432;border-radius:12px;padding:36px 24px;text-align:center;max-width:680px;margin:24px auto;box-shadow:0 12px 40px rgba(0,0,0,0.6)}
-.draft-locked-icon{font-size:48px;display:inline-block;margin-bottom:12px;filter:drop-shadow(0 4px 12px rgba(239,48,56,0.3))}
+/* ------------------------------------------------------------ Modern Responsive Auth UI ------------------------------------------------------------ */
+.auth-wrapper{width:100%;max-width:480px;margin:16px auto 36px;display:flex;flex-direction:column;gap:16px;box-sizing:border-box}
+.auth-card{background:linear-gradient(180deg,#181822 0%,#111116 100%);border:1px solid #36364a;border-radius:14px;padding:30px 26px;box-shadow:0 16px 45px rgba(0,0,0,0.65);position:relative;overflow:hidden}
+.auth-card-head{display:flex;align-items:center;gap:14px;margin-bottom:20px}
+.auth-card-icon{width:46px;height:46px;border-radius:12px;background:radial-gradient(circle,#ff4d58 0%,#3d141c 100%);display:grid;place-items:center;font-size:22px;box-shadow:0 4px 14px rgba(239,48,56,0.35);flex:none}
+.auth-tabs{display:grid;grid-template-columns:1fr 1fr;background:#0d0d12;padding:4px;border-radius:8px;border:1px solid #292938;margin-bottom:20px;gap:4px}
+.auth-tab-btn{background:transparent;border:0;color:#9e9ca8;font:800 13px 'Barlow Condensed';letter-spacing:.6px;text-transform:uppercase;padding:10px 12px;border-radius:6px;cursor:pointer;transition:all .16s ease;display:flex;align-items:center;justify-content:center;gap:6px}
+.auth-tab-btn:hover{color:#fff;background:#181822}
+.auth-tab-btn.active{background:var(--red);color:#fff;box-shadow:0 2px 10px rgba(239,48,56,0.4)}
+.auth-field{display:flex;flex-direction:column;gap:6px;margin-bottom:14px;position:relative}
+.auth-field label{font-size:11px;font-weight:800;color:#c2c0cb;letter-spacing:.5px;text-transform:uppercase}
+.auth-input-box{position:relative;display:flex;align-items:center}
+.auth-input-box input{width:100%;background:#0f0f14;border:1px solid #323242;border-radius:7px;padding:11px 40px 11px 38px;color:#f5f3f0;font-size:13px;font-weight:600;transition:all .15s ease;box-sizing:border-box}
+.auth-input-box input:focus{border-color:var(--red);background:#13131c;box-shadow:0 0 0 3px rgba(239,48,56,0.18);outline:none}
+.auth-input-icon{position:absolute;left:12px;font-size:14px;color:#7e7c88;pointer-events:none}
+.auth-pw-toggle{position:absolute;right:10px;background:none;border:0;color:#8e8c96;cursor:pointer;font-size:15px;padding:4px 6px;line-height:1;transition:color .12s}
+.auth-pw-toggle:hover{color:#fff}
+.auth-hint{font-size:11px;color:#84828e;margin-top:3px;line-height:1.35}
+.auth-notice-card{padding:11px 14px;border-radius:7px;font-size:12px;font-weight:700;margin-top:14px;display:none;line-height:1.4}
+.auth-notice-card.err{background:#2b1216;border:1px solid #73242f;color:#ff8e95;display:block}
+.auth-notice-card.success{background:#10281b;border:1px solid #23613a;color:#53e89c;display:block}
+.auth-notice-card.info{background:#2b2211;border:1px solid #6b4d1b;color:#ffd166;display:block}
+.auth-submit-btn{width:100%;padding:13px;font:900 15px 'Barlow Condensed';letter-spacing:.6px;text-transform:uppercase;border-radius:8px;border:1px solid var(--red);background:linear-gradient(135deg,#ff4d58 0%,#d92b34 100%);color:#fff;cursor:pointer;box-shadow:0 6px 18px rgba(239,48,56,0.35);transition:all .15s ease;display:flex;align-items:center;justify-content:center;gap:8px;margin-top:10px}
+.auth-submit-btn:hover:not(:disabled){transform:translateY(-1px);box-shadow:0 8px 24px rgba(239,48,56,0.45);filter:brightness(1.08)}
+.auth-submit-btn:active:not(:disabled){transform:translateY(1px)}
+.auth-submit-btn:disabled{opacity:.65;cursor:not-allowed}
+.auth-footer-help{display:flex;align-items:center;justify-content:space-between;margin-top:18px;padding-top:14px;border-top:1px solid #252533;font-size:11px;color:#8e8c96;flex-wrap:wrap;gap:8px}
+.auth-link{color:#ffd166;font-weight:700;background:none;border:0;cursor:pointer;text-decoration:underline;padding:0;font-size:11px}
+.auth-link:hover{color:#fff}
 
 @media(max-width:900px){.tools-layout{grid-template-columns:1fr}.builder{position:static;order:-1;max-height:none}}
 </style>
@@ -4736,12 +4764,71 @@ function getPreTournamentOdds(t, passedLeagueRecs = null){
 }
 
 
-function authNotice(msg, isErr=false){
+/* ============================================================
+   RESPONSIVE TRAINER AUTHENTICATION & ACCOUNT SYSTEM
+   ============================================================ */
+
+var currentAuthTab = 'signin'; // 'signin' | 'signup'
+
+function usernameAuthEmail(identifier){
+  let clean = (identifier || '').trim().toLowerCase();
+  if(!clean) return '';
+  if(clean.includes('@')) return clean;
+  let local = clean.replace(/[^a-z0-9_.-]/g, '');
+  if(!local) local = 'trainer_' + Math.random().toString(36).slice(2, 8);
+  return `${local}@draftdex.league`;
+}
+
+function authNotice(msg, type = 'info'){
   let el = document.querySelector('#authNotice');
   if(!el) return;
+  if(!msg){
+    el.style.display = 'none';
+    el.className = 'auth-notice-card';
+    el.textContent = '';
+    return;
+  }
+
+  let isErr = (type === true || type === 'err' || type === 'error');
+  let isSuccess = (type === false || type === 'success' || type === 'ok');
+  let className = isErr ? 'auth-notice-card err' : (isSuccess ? 'auth-notice-card success' : 'auth-notice-card info');
+  
+  el.className = className;
   el.style.display = 'block';
-  el.style.color = isErr ? '#ff7a82' : '#4bdd91';
-  el.textContent = msg;
+  el.innerHTML = msg;
+}
+
+function switchAuthTab(tab, prefillUsername = ''){
+  currentAuthTab = tab;
+  let isModal = !!document.querySelector('.modal .auth-card');
+  let container = isModal ? document.querySelector('.modal .auth-form-card') : document.querySelector('#authContainerWrap');
+  if(container){
+    container.innerHTML = isModal ? `<div style="position:relative"><button class="close" onclick="closeModal()" style="position:absolute;right:14px;top:14px;z-index:10;background:#181822;border:1px solid #333344;border-radius:50%;width:30px;height:30px;display:grid;place-items:center;font-size:18px;color:#aaa">×</button>${renderAuthComponent(true, prefillUsername)}</div>` : renderAuthComponent(false, prefillUsername);
+    let firstInput = container.querySelector('input');
+    if(firstInput) firstInput.focus();
+  } else {
+    render();
+  }
+}
+
+function toggleAuthPassword(inputId, toggleBtn){
+  let input = document.getElementById(inputId);
+  if(!input) return;
+  if(input.type === 'password'){
+    input.type = 'text';
+    if(toggleBtn) toggleBtn.innerHTML = '🙈';
+  } else {
+    input.type = 'password';
+    if(toggleBtn) toggleBtn.innerHTML = '👁️';
+  }
+}
+
+function handleAuthKeypress(e, action){
+  if(e.key === 'Enter'){
+    e.preventDefault();
+    if(action === 'signin') signIn(e);
+    else if(action === 'signup') signUp(e);
+  }
 }
 
 async function ensureSupabase(){
@@ -4751,81 +4838,326 @@ async function ensureSupabase(){
   return !!supabaseClient;
 }
 
-async function signIn(){
-  if(!await ensureSupabase()){
-    authNotice('Supabase is not connected. Please check your internet connection or supabase-config.js credentials.', true);
-    return;
-  }
+async function signIn(event){
+  if(event && typeof event.preventDefault === 'function') event.preventDefault();
+  let btn = document.querySelector('#authSignInBtn') || document.querySelector('#authSubmitBtn');
+
   let usernameEl = document.querySelector('#authUsername');
   let passwordEl = document.querySelector('#authPassword');
   let username = usernameEl ? usernameEl.value.trim() : '';
   let password = passwordEl ? passwordEl.value : '';
-  let email = usernameAuthEmail(username);
-  if(!username || !password){
-    authNotice('Enter your username and password.', true);
+
+  if(!username){
+    authNotice('⚠️ Please enter your username or email address.', 'err');
+    if(usernameEl) usernameEl.focus();
     return;
   }
-  authNotice('Signing in...');
-  let result = await supabaseClient.auth.signInWithPassword({ email, password });
-  if(result.error){
-    let fallback = username.toLowerCase().replace(/[^a-z0-9_-]/g,'') + '@cherrymoon.local';
-    result = await supabaseClient.auth.signInWithPassword({ email: fallback, password });
+  if(!password){
+    authNotice('⚠️ Please enter your password.', 'err');
+    if(passwordEl) passwordEl.focus();
+    return;
   }
-  if(result.error){
-    authNotice(result.error.message, true);
-  } else {
-    authNotice('Signed in successfully!');
-    let { data: { session } } = await supabaseClient.auth.getSession();
-    await updateSession(session);
-    render();
+
+  if(!await ensureSupabase()){
+    authNotice('⚠️ Supabase connection is currently offline. Check internet connection or credentials.', 'err');
+    return;
+  }
+
+  authNotice('⏳ Signing in to Draftdex...', 'info');
+  if(btn){
+    btn.disabled = true;
+    btn.dataset.origHtml = btn.innerHTML;
+    btn.innerHTML = '<span>⏳ Signing In...</span>';
+  }
+
+  try {
+    let email = usernameAuthEmail(username);
+    let result = await supabaseClient.auth.signInWithPassword({ email, password });
+    
+    if(result.error && !username.includes('@')){
+      let fallback = username.toLowerCase().replace(/[^a-z0-9_.-]/g, '') + '@cherrymoon.local';
+      let fbRes = await supabaseClient.auth.signInWithPassword({ email: fallback, password });
+      if(!fbRes.error) result = fbRes;
+    }
+
+    if(result.error){
+      let msg = result.error.message || 'Authentication failed.';
+      if(msg.toLowerCase().includes('invalid login credentials') || msg.toLowerCase().includes('invalid_credentials') || msg.toLowerCase().includes('invalid_grant')){
+        msg = 'Invalid username/email or password. Please verify your credentials.';
+      }
+      authNotice('⚠️ ' + msg, 'err');
+    } else {
+      authNotice('✓ Signed in successfully! Welcome back.', 'success');
+      let { data: { session } } = await supabaseClient.auth.getSession();
+      await updateSession(session);
+      if(document.querySelector('#modal .auth-form-card')){
+        closeModal();
+      }
+      render();
+    }
+  } catch(err) {
+    console.error('Sign in exception:', err);
+    authNotice('⚠️ Sign in error: ' + (err.message || err), 'err');
+  } finally {
+    if(btn){
+      btn.disabled = false;
+      if(btn.dataset.origHtml) btn.innerHTML = btn.dataset.origHtml;
+    }
   }
 }
 
-async function signUp(){
-  if(!await ensureSupabase()){
-    authNotice('Supabase is not connected. Please check your internet connection or supabase-config.js credentials.', true);
+async function signUp(event){
+  if(event && typeof event.preventDefault === 'function') event.preventDefault();
+  let btn = document.querySelector('#authSignUpBtn') || document.querySelector('#authSubmitBtn');
+
+  let usernameEl = document.querySelector('#authNewUsername');
+  let emailEl = document.querySelector('#authNewEmail');
+  let passwordEl = document.querySelector('#authNewPassword');
+  let confirmEl = document.querySelector('#authConfirmPassword');
+
+  let username = usernameEl ? usernameEl.value.trim() : '';
+  let emailInput = emailEl ? emailEl.value.trim() : '';
+  let password = passwordEl ? passwordEl.value : '';
+  let confirmPass = confirmEl ? confirmEl.value : password;
+
+  if(!username){
+    authNotice('⚠️ Please choose a trainer username.', 'err');
+    if(usernameEl) usernameEl.focus();
     return;
   }
-  let usernameEl = document.querySelector('#authUsername');
-  let passwordEl = document.querySelector('#authPassword');
-  let username = usernameEl ? usernameEl.value.trim() : '';
-  let password = passwordEl ? passwordEl.value : '';
-  let email = usernameAuthEmail(username);
-  if(!username || !password){
-    authNotice('Enter a username and password to create an account.', true);
+  if(username.length < 2){
+    authNotice('⚠️ Username must be at least 2 characters long.', 'err');
+    if(usernameEl) usernameEl.focus();
+    return;
+  }
+  if(!password){
+    authNotice('⚠️ Please enter a secure password.', 'err');
+    if(passwordEl) passwordEl.focus();
     return;
   }
   if(password.length < 6){
-    authNotice('Password must be at least 6 characters long.', true);
+    authNotice('⚠️ Password must be at least 6 characters long.', 'err');
+    if(passwordEl) passwordEl.focus();
     return;
   }
-  authNotice('Creating account...');
-  let { data, error } = await supabaseClient.auth.signUp({
-    email,
-    password,
-    options: {
-      data: { username }
-    }
-  });
-  if(error){
-    authNotice(error.message, true);
-  } else {
-    if(data?.session){
-      authNotice('Account created and signed in!');
-      try {
-        await supabaseClient.from('user_profiles').upsert({
-          id: data.user.id,
+  if(confirmEl && password !== confirmPass){
+    authNotice('⚠️ Passwords do not match. Please re-enter your password.', 'err');
+    if(confirmEl) confirmEl.focus();
+    return;
+  }
+
+  if(!await ensureSupabase()){
+    authNotice('⚠️ Supabase connection is currently offline. Check internet connection or credentials.', 'err');
+    return;
+  }
+
+  authNotice('⏳ Creating your trainer account...', 'info');
+  if(btn){
+    btn.disabled = true;
+    btn.dataset.origHtml = btn.innerHTML;
+    btn.innerHTML = '<span>⏳ Creating Account...</span>';
+  }
+
+  try {
+    let email = (emailInput && emailInput.includes('@')) ? emailInput : usernameAuthEmail(username);
+    let { data, error } = await supabaseClient.auth.signUp({
+      email,
+      password,
+      options: {
+        data: {
           username: username,
-          role: 'player',
-          prediction_points: 0
-        });
-      } catch(e){}
-      await updateSession(data.session);
-      render();
+          display_name: username
+        }
+      }
+    });
+
+    if(error){
+      let msg = error.message || 'Registration failed.';
+      if(msg.toLowerCase().includes('already registered') || msg.toLowerCase().includes('user already exists')){
+        msg = `An account for "${username}" already exists. Please sign in instead.`;
+      }
+      authNotice('⚠️ ' + msg, 'err');
     } else {
-      authNotice('Account created! You can now sign in.');
+      if(data?.user?.id){
+        try {
+          await supabaseClient.from('user_profiles').upsert({
+            id: data.user.id,
+            username: username,
+            role: 'player',
+            prediction_points: 0
+          });
+        } catch(e){
+          console.warn('Profile creation note:', e);
+        }
+      }
+
+      if(data?.session){
+        authNotice('✓ Account created and signed in! Welcome to Draftdex.', 'success');
+        await updateSession(data.session);
+        if(document.querySelector('#modal .auth-form-card')){
+          closeModal();
+        }
+        render();
+      } else {
+        authNotice('✓ Account created successfully! Please sign in with your credentials.', 'success');
+        setTimeout(() => {
+          switchAuthTab('signin', username);
+        }, 1200);
+      }
+    }
+  } catch(err) {
+    console.error('Sign up exception:', err);
+    authNotice('⚠️ Registration error: ' + (err.message || err), 'err');
+  } finally {
+    if(btn){
+      btn.disabled = false;
+      if(btn.dataset.origHtml) btn.innerHTML = btn.dataset.origHtml;
     }
   }
+}
+
+function renderAuthComponent(isModal = false, prefillUsername = ''){
+  let isSignIn = currentAuthTab === 'signin';
+  let hasSupabase = supabaseReady();
+
+  let signinFormHtml = `
+    <form onsubmit="signIn(event); return false;" style="display:flex;flex-direction:column">
+      <div class="auth-field">
+        <label for="authUsername">Username or Email</label>
+        <div class="auth-input-box">
+          <span class="auth-input-icon">👤</span>
+          <input id="authUsername" type="text" autocomplete="username" placeholder="Enter your username or email" value="${esc(prefillUsername)}" onkeypress="handleAuthKeypress(event, 'signin')" required>
+        </div>
+      </div>
+
+      <div class="auth-field">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <label for="authPassword">Password</label>
+        </div>
+        <div class="auth-input-box">
+          <span class="auth-input-icon">🔒</span>
+          <input id="authPassword" type="password" autocomplete="current-password" placeholder="Enter your password" onkeypress="handleAuthKeypress(event, 'signin')" required>
+          <button type="button" class="auth-pw-toggle" onclick="toggleAuthPassword('authPassword', this)" title="Show / Hide password">👁️</button>
+        </div>
+      </div>
+
+      <button id="authSignInBtn" type="button" class="auth-submit-btn" onclick="signIn(event)">
+        🔑 Sign In to League
+      </button>
+    </form>
+  `;
+
+  let signupFormHtml = `
+    <form onsubmit="signUp(event); return false;" style="display:flex;flex-direction:column">
+      <div class="auth-field">
+        <label for="authNewUsername">Trainer Username</label>
+        <div class="auth-input-box">
+          <span class="auth-input-icon">🎮</span>
+          <input id="authNewUsername" type="text" autocomplete="username" placeholder="Choose a username (e.g. Red, Cynthia)" value="${esc(prefillUsername)}" onkeypress="handleAuthKeypress(event, 'signup')" required>
+        </div>
+        <div class="auth-hint">Your public coach name across leaderboards and match slips.</div>
+      </div>
+
+      <div class="auth-field">
+        <label for="authNewEmail">Email Address <span style="font-weight:400;color:#7e7c88">(Optional)</span></label>
+        <div class="auth-input-box">
+          <span class="auth-input-icon">✉️</span>
+          <input id="authNewEmail" type="email" autocomplete="email" placeholder="trainer@example.com" onkeypress="handleAuthKeypress(event, 'signup')">
+        </div>
+      </div>
+
+      <div class="auth-field">
+        <label for="authNewPassword">Password</label>
+        <div class="auth-input-box">
+          <span class="auth-input-icon">🔒</span>
+          <input id="authNewPassword" type="password" autocomplete="new-password" placeholder="Minimum 6 characters" onkeypress="handleAuthKeypress(event, 'signup')" required minlength="6">
+          <button type="button" class="auth-pw-toggle" onclick="toggleAuthPassword('authNewPassword', this)" title="Show / Hide password">👁️</button>
+        </div>
+      </div>
+
+      <div class="auth-field">
+        <label for="authConfirmPassword">Confirm Password</label>
+        <div class="auth-input-box">
+          <span class="auth-input-icon">🛡️</span>
+          <input id="authConfirmPassword" type="password" autocomplete="new-password" placeholder="Re-enter password" onkeypress="handleAuthKeypress(event, 'signup')" required minlength="6">
+          <button type="button" class="auth-pw-toggle" onclick="toggleAuthPassword('authConfirmPassword', this)" title="Show / Hide password">👁️</button>
+        </div>
+      </div>
+
+      <button id="authSignUpBtn" type="button" class="auth-submit-btn" onclick="signUp(event)">
+        ✨ Create Trainer Account
+      </button>
+    </form>
+  `;
+
+  return `
+    <div class="auth-wrapper" id="authContainerWrap">
+      <div class="auth-card">
+        
+        <!-- Header -->
+        <div class="auth-card-head">
+          <div class="auth-card-icon">⚡</div>
+          <div>
+            <div class="eyebrow" style="color:var(--amber);margin:0">Draftdex Official Portal</div>
+            <h2 style="font:900 24px 'Barlow Condensed';margin:2px 0 0;color:#f5f3f0">
+              ${isSignIn ? 'Sign In to Your Account' : 'Create Trainer Account'}
+            </h2>
+          </div>
+        </div>
+
+        <!-- Segmented Tab Toggle -->
+        <div class="auth-tabs">
+          <button type="button" class="auth-tab-btn ${isSignIn ? 'active' : ''}" onclick="switchAuthTab('signin')">
+            🔑 Sign In
+          </button>
+          <button type="button" class="auth-tab-btn ${!isSignIn ? 'active' : ''}" onclick="switchAuthTab('signup')">
+            ✨ Create Account
+          </button>
+        </div>
+
+        <!-- Active Form -->
+        ${isSignIn ? signinFormHtml : signupFormHtml}
+
+        <!-- Status & Notice Area -->
+        <div id="authNotice" class="auth-notice-card"></div>
+
+        ${!hasSupabase ? `
+          <div class="auth-notice-card err" style="margin-top:14px">
+            ⚠️ Supabase credentials not found in <code>supabase-config.js</code>. Offline / spectator mode is active.
+          </div>
+        ` : ''}
+
+        <!-- Quick Help & Switcher Footer -->
+        <div class="auth-footer-help">
+          <span>
+            ${isSignIn ? `Don't have an account? <button type="button" class="auth-link" onclick="switchAuthTab('signup')">Create one</button>` : `Already registered? <button type="button" class="auth-link" onclick="switchAuthTab('signin')">Sign in</button>`}
+          </span>
+          <button type="button" class="auth-link" style="color:#a09fa8" onclick="toggleModerator()">
+            ${moderator ? '👑 Moderator Active' : '🎮 Spectator Mode'}
+          </button>
+        </div>
+
+      </div>
+    </div>
+  `;
+}
+
+function openAuthModal(initialTab = 'signin'){
+  currentAuthTab = initialTab || 'signin';
+  document.querySelector('#modal').innerHTML = `
+    <div class="modal-wrap">
+      <div class="modal auth-form-card" style="max-width:480px;padding:0;background:transparent;border:0;box-shadow:none">
+        <div style="position:relative">
+          <button class="close" onclick="closeModal()" style="position:absolute;right:14px;top:14px;z-index:10;background:#181822;border:1px solid #333344;border-radius:50%;width:30px;height:30px;display:grid;place-items:center;font-size:18px;color:#aaa">×</button>
+          ${renderAuthComponent(true)}
+        </div>
+      </div>
+    </div>
+  `;
+  setTimeout(() => {
+    let inp = document.querySelector('#modal input');
+    if(inp) inp.focus();
+  }, 60);
 }
 
 document.addEventListener('dragstart',e=>{let x=e.target.closest('.group-placement-drag');if(x&&moderator)e.dataTransfer.setData('application/cherrymoon-group-player',x.dataset.player)});
@@ -6841,14 +7173,9 @@ function saveAccountLinks(){
 }
 
 function Account(){
-  if(!sessionUser)return head('Sign in',LEAGUE.short+' account')+`<div class="card account-panel" style="max-width:520px;padding:28px">
-    <div class="card-title" style="margin-bottom:6px">Account Access</div>
-    <p class="sub" style="margin:0 0 16px">Sign in or create a trainer account to track prediction points and access your profile.</p>
-    <div class="field"><label>Username</label><input id="authUsername" autocomplete="username" placeholder="Trainer username"></div>
-    <div class="field"><label>Password</label><input id="authPassword" autocomplete="current-password" type="password" placeholder="Password"></div>
-    <div class="creator-actions" style="justify-content:start;margin-top:22px"><button class="btn" onclick="signIn()">Sign in</button><button class="btn ghost" onclick="signUp()">Create account</button></div>
-    <p id="authNotice" class="sub" style="display:none;margin-top:14px"></p>
-    ${supabaseReady()?'':'<p class="sub" style="margin-top:16px;color:#ff9fa6">Supabase is not configured yet. Add your project credentials to <code>supabase-config.js</code>.</p>'}</div>`;
+  if(!sessionUser){
+    return head('Trainer Portal', 'Authentication & Account Access') + renderAuthComponent();
+  }
 
   let username=window.currentAccount?.username||'Trainer',mine=myPlayer();
   let faceArt=mine?(profilePictures[mine]?`url('${esc(profilePictures[mine])}')`:(teamCovers[mine]?`url('${esc(teamCovers[mine])}')`:fallbackArt(mine))):fallbackArt(username);
