@@ -9411,16 +9411,16 @@ function parseDraftBoardData(rawText){
     return { tiers: [], totalMons: 0, error: 'Empty text provided.' };
   }
 
-  let lines = rawText.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+  let rawLines = rawText.split(/\r?\n/);
+  let lines = rawLines.filter(l => l.trim().length > 0);
   if(!lines.length) return { tiers: [], totalMons: 0, error: 'No data lines found.' };
 
-  let isTab = lines.some(l => l.includes('\t'));
-  let delimiter = isTab ? '\t' : (lines.some(l => l.includes(',')) ? ',' : '\t');
+  let hasTabs = lines.some(l => l.includes('\t'));
+  let delimiter = hasTabs ? '\t' : (lines.some(l => l.includes(',')) ? ',' : '\t');
 
   let grid = lines.map(line => {
     if(delimiter === ','){
-      let row = [];
-      let inQ = false, cur = '';
+      let row = [], inQ = false, cur = '';
       for(let i = 0; i < line.length; i++){
         let c = line[i];
         if(c === '"'){ inQ = !inQ; }
@@ -9430,70 +9430,189 @@ function parseDraftBoardData(rawText){
       row.push(cur.trim());
       return row;
     }
-    return line.split(delimiter).map(c => c.trim());
+    return line.split('\t').map(c => c.trim());
   });
 
-  // Check row-pair structure (Pokemon, Cost)
-  let firstRow = grid[0] || [];
-  let isRowPair = (firstRow.length === 2 && (Number.isFinite(+firstRow[1]) || Number.isFinite(+firstRow[0])));
-  if(isRowPair){
+  function extractPointCost(s){
+    if(!s) return null;
+    let str = String(s).trim();
+    let m = str.match(/^(?:Tier\s*\d+[\s:\-–—]+)?(\d{1,2})\s*(?:pts?|points?|p)?$/i)
+         || str.match(/(\d{1,2})\s*(?:pts?|points?|p)\b/i)
+         || str.match(/Tier\s*\d+\s*\((\d{1,2})\s*(?:pts?|points?|p)?\)/i);
+    if(m) return parseInt(m[1], 10);
+    if(/^\d{1,2}$/.test(str)){
+      let num = parseInt(str, 10);
+      if(num >= 1 && num <= 40) return num;
+    }
+    return null;
+  }
+
+  // Format 1: 2-Column Row-pairs (Pokemon, Cost) or (Cost, Pokemon)
+  let isRowPairCandidate = grid.every(r => r.filter(c => c.length > 0).length <= 3) && grid.length >= 3;
+  if(isRowPairCandidate){
+    let validPairs = 0;
     let map = {};
     grid.forEach(row => {
-      let mon = '', cost = 0;
-      if(Number.isFinite(+row[1])){
-        mon = row[0]; cost = Math.max(0, +row[1]);
-      } else if(Number.isFinite(+row[0])){
-        cost = Math.max(0, +row[0]); mon = row[1];
-      }
-      if(mon && isNaN(+mon)){
-        let tierKey = 'cost_' + cost;
-        if(!map[tierKey]){
-          map[tierKey] = { id: 'tier-' + cost, name: `${cost} Points`, cost, pokemon: [] };
+      let cells = row.filter(c => c.length > 0);
+      if(cells.length >= 2){
+        let mon = '', cost = null;
+        let c0 = extractPointCost(cells[0]);
+        let c1 = extractPointCost(cells[1]);
+        if(c1 !== null && isNaN(+cells[0])){
+          mon = cells[0]; cost = c1;
+        } else if(c0 !== null && isNaN(+cells[1])){
+          mon = cells[1]; cost = c0;
         }
-        let clean = formatPokemonDisplayName(mon.replace(/\s*\(\d+.*?\)$/, '').trim());
-        if(clean && !map[tierKey].pokemon.includes(clean)){
-          map[tierKey].pokemon.push(clean);
+        if(mon && cost !== null && isNaN(+mon)){
+          validPairs++;
+          let tierKey = 'cost_' + cost;
+          if(!map[tierKey]){
+            map[tierKey] = { id: 'tier-' + cost, name: `${cost} Points`, cost: cost, pokemon: [] };
+          }
+          let clean = formatPokemonDisplayName(mon);
+          if(clean && !map[tierKey].pokemon.includes(clean)){
+            map[tierKey].pokemon.push(clean);
+          }
         }
       }
     });
-    let tiers = Object.values(map).sort((a,b) => b.cost - a.cost);
-    let totalMons = tiers.reduce((sum, t) => sum + t.pokemon.length, 0);
-    return { tiers, totalMons, type: 'row-pairs' };
+    if(validPairs >= 4){
+      let tiers = Object.values(map).sort((a,b) => b.cost - a.cost);
+      let totalMons = tiers.reduce((sum, t) => sum + t.pokemon.length, 0);
+      if(totalMons > 0) return { tiers, totalMons, type: 'row-pairs' };
+    }
   }
 
-  // Column-based tiers
-  let headers = grid[0] || [];
-  let colTiers = [];
+  // Format 2: Multi-Column Table (Google Sheets with sprite columns & merged headers)
+  let bestHeaderRowIdx = -1;
+  let maxCostsFound = 0;
+  for(let r = 0; r < Math.min(grid.length, 12); r++){
+    let row = grid[r];
+    let costsInRow = 0;
+    row.forEach(cell => {
+      if(extractPointCost(cell) !== null) costsInRow++;
+    });
+    if(costsInRow > maxCostsFound){
+      maxCostsFound = costsInRow;
+      bestHeaderRowIdx = r;
+    }
+  }
 
-  headers.forEach((h, colIdx) => {
-    if(!h) return;
-    let costMatch = h.match(/(?:Tier\s*\d+.*?(\d+)|(\d+)\s*(?:pts?|points?)|\b(\d{1,2})\b)/i);
-    let cost = costMatch ? +(costMatch[1] || costMatch[2] || costMatch[3]) : Math.max(1, 20 - colIdx * 2);
-    let name = h || `Tier ${colIdx + 1} (${cost} Pts)`;
+  if(bestHeaderRowIdx >= 0 && maxCostsFound >= 1){
+    let headerRow = grid[bestHeaderRowIdx];
+    let tierColumns = [];
+    headerRow.forEach((cell, colIdx) => {
+      let cost = extractPointCost(cell);
+      if(cost !== null){
+        let name = cell.match(/\b\d+\s*points?\b/i) ? cell : `${cost} Points`;
+        tierColumns.push({ colIdx, cost, name });
+      }
+    });
 
-    let mons = [];
-    for(let r = 1; r < grid.length; r++){
-      let val = grid[r]?.[colIdx];
-      if(val && isNaN(+val) && val.length >= 2){
-        let cleaned = formatPokemonDisplayName(val.replace(/\s*\(\d+.*?\)$/, '').trim());
-        if(cleaned && !mons.includes(cleaned)){
-          mons.push(cleaned);
+    if(tierColumns.length > 0){
+      let tierMap = {};
+
+      tierColumns.forEach((tCol, i) => {
+        let nextColIdx = (i + 1 < tierColumns.length) ? tierColumns[i+1].colIdx : (grid[0]?.length || 100);
+        let startCol = tCol.colIdx;
+        let endCol = nextColIdx - 1;
+
+        if(!tierMap[tCol.cost]){
+          tierMap[tCol.cost] = {
+            id: 'tier-' + tCol.cost,
+            name: tCol.name,
+            cost: tCol.cost,
+            pokemon: []
+          };
         }
+
+        for(let r = bestHeaderRowIdx + 1; r < grid.length; r++){
+          let row = grid[r];
+          if(!row) continue;
+          for(let c = startCol; c <= Math.min(endCol, row.length - 1); c++){
+            let val = row[c];
+            if(!val || val.length < 2) continue;
+            if(val.startsWith('=') || val.startsWith('http') || val.startsWith('data:')) continue;
+            if(/^\d+$/.test(val)) continue;
+            if(extractPointCost(val) !== null && val.toLowerCase().includes('point')) continue;
+
+            let clean = formatPokemonDisplayName(val);
+            if(clean && clean.length >= 2 && !tierMap[tCol.cost].pokemon.includes(clean)){
+              tierMap[tCol.cost].pokemon.push(clean);
+            }
+          }
+        }
+      });
+
+      let tiers = Object.values(tierMap)
+        .filter(t => t.pokemon.length > 0)
+        .sort((a,b) => b.cost - a.cost);
+      let totalMons = tiers.reduce((sum, t) => sum + t.pokemon.length, 0);
+
+      if(tiers.length > 0 && totalMons > 0){
+        return { tiers, totalMons, type: 'columns' };
       }
     }
+  }
+
+  // Format 3: Line Section Headers (e.g. === 16 Points === followed by Pokémon)
+  if(!hasTabs){
+    let sectionMap = {};
+    let curTier = null;
+    lines.forEach(line => {
+      let trimmed = line.trim();
+      let cost = extractPointCost(trimmed);
+      if(cost !== null && (trimmed.toLowerCase().includes('point') || trimmed.toLowerCase().includes('tier') || trimmed.startsWith('='))){
+        let name = trimmed.replace(/^[\s=*\-#]+|[\s=*\-#]+$/g, '').trim() || `${cost} Points`;
+        curTier = { id: 'tier-' + cost, name: name, cost: cost, pokemon: [] };
+        if(!sectionMap[cost]){
+          sectionMap[cost] = curTier;
+        } else {
+          curTier = sectionMap[cost];
+        }
+      } else if(curTier && trimmed.length >= 2 && !trimmed.startsWith('=')){
+        let clean = formatPokemonDisplayName(trimmed);
+        if(clean && !curTier.pokemon.includes(clean)){
+          curTier.pokemon.push(clean);
+        }
+      }
+    });
+
+    let sectionTiers = Object.values(sectionMap).filter(t => t.pokemon.length > 0).sort((a,b) => b.cost - a.cost);
+    let totalSectionMons = sectionTiers.reduce((sum, t) => sum + t.pokemon.length, 0);
+    if(sectionTiers.length > 0 && totalSectionMons >= 2){
+      return { tiers: sectionTiers, totalMons: totalSectionMons, type: 'sections' };
+    }
+  }
+
+  // Format 4: Fallback Column Scanning
+  let maxCols = Math.max(...grid.map(r => r.length));
+  let fallbackTiers = [];
+  for(let c = 0; c < maxCols; c++){
+    let colValues = grid.map(r => r[c]).filter(v => v && v.length > 0);
+    if(!colValues.length) continue;
+    let header = colValues[0];
+    let cost = extractPointCost(header) || Math.max(1, 20 - fallbackTiers.length * 2);
+    let mons = [];
+    for(let i = 1; i < colValues.length; i++){
+      let v = colValues[i];
+      if(!v || v.startsWith('=') || /^\d+$/.test(v)) continue;
+      let clean = formatPokemonDisplayName(v);
+      if(clean && !mons.includes(clean)) mons.push(clean);
+    }
     if(mons.length > 0){
-      colTiers.push({
-        id: 'tier-' + cost + '-' + colIdx,
-        name: name,
+      fallbackTiers.push({
+        id: 'tier-' + cost + '-' + c,
+        name: header.match(/\d+/) ? header : `${cost} Points`,
         cost: cost,
         pokemon: mons
       });
     }
-  });
+  }
 
-  colTiers.sort((a,b) => b.cost - a.cost || a.name.localeCompare(b.name));
-  let totalMons = colTiers.reduce((sum, t) => sum + t.pokemon.length, 0);
-  return { tiers: colTiers, totalMons, type: 'columns' };
+  fallbackTiers.sort((a,b) => b.cost - a.cost);
+  let totalMons = fallbackTiers.reduce((sum, t) => sum + t.pokemon.length, 0);
+  return { tiers: fallbackTiers, totalMons, type: 'fallback' };
 }
 
 function openDraftBoardImporter(tId){
