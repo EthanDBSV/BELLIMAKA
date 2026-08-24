@@ -10778,17 +10778,38 @@ function renderDraftBoardTierColumns(t){
     draftedByMap[p.pokemon.toLowerCase().trim()] = p;
   });
 
-  let filteredBoard = board.map(tier => {
+  let hasSearch = !!(draftBoardSearch && draftBoardSearch.trim());
+  let searchClean = (draftBoardSearch || '').toLowerCase().trim();
+
+  let filteredBoard = [];
+  board.forEach(tier => {
+    let matchesTier = (draftBoardTierFilter === 'all' || tier.id === draftBoardTierFilter || String(tier.cost) === draftBoardTierFilter);
+    if(!matchesTier) return; // Skip tier column entirely if filtered out by dropdown!
+
     let filteredMons = (tier.pokemon || []).filter(mon => {
       let clean = mon.toLowerCase().trim();
-      let matchesSearch = !draftBoardSearch || clean.includes(draftBoardSearch.toLowerCase().trim());
+      let matchesSearch = !hasSearch || clean.includes(searchClean);
       let isDrafted = draftedSet.has(clean);
       let matchesAvail = !draftBoardAvailOnly || !isDrafted;
-      let matchesTier = (draftBoardTierFilter === 'all' || tier.id === draftBoardTierFilter || String(tier.cost) === draftBoardTierFilter);
-      return matchesSearch && matchesAvail && matchesTier;
+      return matchesSearch && matchesAvail;
     });
-    return { ...tier, filteredMons };
+
+    // If text search is active and this tier has 0 matches, skip this column to bring matching tiers to the front!
+    if(hasSearch && filteredMons.length === 0) return;
+
+    filteredBoard.push({ ...tier, filteredMons });
   });
+
+  if(filteredBoard.length === 0){
+    return `
+      <div class="card empty" style="padding:36px 20px;text-align:center;width:100%;grid-column:1/-1">
+        <span style="font-size:36px">🔍</span>
+        <div class="card-title" style="margin-top:10px">No Matching Pokémon</div>
+        <p class="sub" style="max-width:420px;margin:6px auto 14px">No Pokémon match your current filter and search criteria.</p>
+        <button class="btn ghost btn-sm" onclick="draftBoardSearch='';draftBoardTierFilter='all';draftBoardAvailOnly=false;handleDraftBoardFilterChange()">Reset Filters</button>
+      </div>
+    `;
+  }
 
   return filteredBoard.map(tier => {
     let availCount = tier.pokemon.filter(m => !draftedSet.has(m.toLowerCase().trim())).length;
@@ -10814,14 +10835,14 @@ function renderDraftBoardTierColumns(t){
                     <div class="draft-mon-name" title="${esc(mon)}">${esc(mon)}</div>
                     ${isDrafted && draftInfo ? `
                       <div style="font-size:9px;color:#ff8e95;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
-                        Drafted by ${esc(draftInfo.player)} (#${draftInfo.pickNumber})
+                        Drafted by ${esc(draftInfo.player)}
                       </div>
                     ` : ''}
                   </div>
                 </div>
 
                 ${!isDrafted ? `
-                  <span class="draft-mon-cost">${tier.cost} pts</span>
+                  <span class="draft-mon-cost">${tier.cost} PTS</span>
                 ` : `
                   <span style="font-size:11px;color:#6b6a75;font-weight:700">Picked</span>
                 `}
