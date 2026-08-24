@@ -4318,14 +4318,22 @@ function draftStageHeroCard(t){
   let d = ensureTournamentDraft(t);
   let turn = getDraftCurrentTurn(t);
   let curPlayer = turn.player;
+  let coachCover = curPlayer ? (teamCovers[curPlayer] || '') : '';
+  if(!coachCover && curPlayer && profilePictures[curPlayer]){
+    coachCover = profilePictures[curPlayer];
+  }
+  if(!coachCover && t.backgroundImage){
+    coachCover = t.backgroundImage;
+  }
   let faceArt = curPlayer ? (profilePictures[curPlayer] ? `url('${esc(profilePictures[curPlayer])}')` : (teamCovers[curPlayer] ? `url('${esc(teamCovers[curPlayer])}')` : fallbackArt(curPlayer))) : '';
   let faceLetter = curPlayer ? ((profilePictures[curPlayer] || teamCovers[curPlayer]) ? '' : esc(curPlayer[0])) : '—';
   let curOvr = curPlayer ? calculatePlayerOVR(curPlayer) : null;
   let coachStats = curPlayer ? getDraftCoachStats(t, curPlayer) : null;
 
   return `
-    <aside class="card matchup-hero-card" style="background:linear-gradient(135deg,#1f1318 0%,#13131c 65%);border-color:#3d242c">
-      <div class="matchup-hero-banner">
+    <aside class="card matchup-hero-card" style="background:linear-gradient(135deg,#1f1318 0%,#13131c 65%);border-color:#3d242c;position:relative;overflow:hidden">
+      ${coachCover ? `<div class="tourney-showcase-backdrop" style="background-image:url('${esc(coachCover)}')"></div>` : ''}
+      <div class="matchup-hero-banner" style="position:relative;z-index:2">
         <div style="display:flex;align-items:center;gap:6px">
           <span style="font-size:13px">🎯</span>
           <span class="eyebrow" style="color:#ffd166;margin:0;letter-spacing:1px">LIVE DRAFT ROOM</span>
@@ -4335,7 +4343,7 @@ function draftStageHeroCard(t){
         </span>
       </div>
 
-      <div style="padding:16px 20px;display:flex;align-items:center;gap:16px">
+      <div style="padding:16px 20px;display:flex;align-items:center;gap:16px;position:relative;z-index:2">
         <div style="position:relative">
           <span class="avatar" style="background-image:${faceArt};background-size:cover;background-position:center;width:56px;height:56px;font-size:24px;border-radius:50%;border:2px solid ${curOvr?.color || '#fff'};box-shadow:0 4px 16px rgba(0,0,0,0.6);display:grid;place-items:center">${faceLetter}</span>
           ${curOvr ? `<span style="position:absolute;bottom:-4px;right:-4px">${curOvr.badgeHtml}</span>` : ''}
@@ -4346,14 +4354,14 @@ function draftStageHeroCard(t){
           <div style="font-size:11px;color:#a09fa8">${turn.isComplete ? 'Ready for Group Stage' : esc(teamName(t, curPlayer))}</div>
         </div>
         ${coachStats ? `
-          <div style="text-align:right;border-left:1px solid #2e242c;padding-left:12px">
+          <div style="text-align:right;border-left:1px solid #ffffff20;padding-left:12px">
             <div style="font:800 16px 'Barlow Condensed';color:#ffd166">${coachStats.budget > 0 ? `${coachStats.remainingBudget} pts` : 'Unlimited'}</div>
             <div style="font-size:10px;color:#8e8c95">${coachStats.count}/${coachStats.maxSlots} picks</div>
           </div>
         ` : ''}
       </div>
 
-      <div class="matchup-hero-foot" style="justify-content:space-between;padding:8px 14px">
+      <div class="matchup-hero-foot" style="justify-content:space-between;padding:8px 14px;position:relative;z-index:2">
         <span style="font-size:11px;color:#a09fa8">Pick <b>#${turn.currentPickNumber} of ${turn.totalPicks}</b> · Round <b>${turn.currentRound}</b></span>
         <button class="btn btn-sm" style="padding:4px 12px!important" onclick="go('Draft')">Draft Room →</button>
       </div>
@@ -4370,7 +4378,7 @@ function homeDraftPicksSection(t){
     <section class="section">
       <div class="section-head" style="align-items:center">
         <div>
-          <div class="eyebrow" style="color:var(--red);margin-bottom:2px">🎯 Live Draft Activity</div>
+          <div class="eyebrow" style="color:var(--red);margin-bottom:2px">⚡ Live Draft Activity</div>
           <h2>${picks.length > 0 ? 'RECENT DRAFT PICKS' : 'DRAFT BOARD SPOTLIGHT'}</h2>
         </div>
         <button class="link" onclick="go('Draft')">OPEN LIVE DRAFT ROOM →</button>
@@ -4379,29 +4387,25 @@ function homeDraftPicksSection(t){
       ${picks.length > 0 ? `
         <div class="draft-picks-grid">
           ${picks.slice(0, 8).map((p, idx) => {
-            let faceArt = profilePictures[p.player] ? `url('${esc(profilePictures[p.player])}')` : (teamCovers[p.player] ? `url('${esc(teamCovers[p.player])}')` : fallbackArt(p.player));
-            let faceLetter = (profilePictures[p.player] || teamCovers[p.player]) ? '' : esc((p.player || '?')[0]);
-            let ovrObj = calculatePlayerOVR(p.player);
             let spriteUrl = pokeSprite(p.pokemon);
+            let pArt = profilePictures[p.player] ? `url('${esc(profilePictures[p.player])}')` : (teamCovers[p.player] ? `url('${esc(teamCovers[p.player])}')` : fallbackArt(p.player));
+            let pLetter = (profilePictures[p.player] || teamCovers[p.player]) ? '' : esc(p.player[0]);
+            let theme = getPokemonTypeTheme(p.pokemon);
 
             return `
-              <div class="card" style="padding:14px 16px;background:linear-gradient(135deg,#181822 0%,#111116 100%);border-color:${idx === 0 ? '#ff8e95' : '#2b2b38'};box-shadow:${idx === 0 ? '0 4px 20px rgba(239,48,56,0.2)' : 'none'};display:flex;align-items:center;gap:14px;position:relative;overflow:hidden">
-                ${idx === 0 ? `<div style="position:absolute;top:0;right:0;background:var(--red);color:#fff;font-size:8px;font-weight:900;letter-spacing:1px;padding:2px 8px;border-bottom-left-radius:6px;text-transform:uppercase">LATEST PICK</div>` : ''}
-                
-                <div style="position:relative;flex:none;background:#0d0d12;border:1px solid #282836;border-radius:10px;padding:4px;width:58px;height:58px;display:grid;place-items:center">
-                  <img src="${esc(spriteUrl)}" style="width:48px;height:48px;object-fit:contain;filter:drop-shadow(0 4px 8px rgba(0,0,0,0.6))" onerror="handleSpriteError(this)">
+              <div class="card draft-pick-card" style="border-color:${idx === 0 ? '#ef3038' : '#2f2f3e'};${idx === 0 ? 'box-shadow:0 0 16px rgba(239,48,56,0.35);' : ''}">
+                <div class="draft-pick-head">
+                  <span class="draft-pick-round">Round ${p.round} · Pick #${p.pickNumber}</span>
+                  <span class="draft-pick-cost" style="background:${theme.badgeBg};color:${theme.badgeText};border:1px solid ${theme.border}">${p.cost} PTS</span>
                 </div>
-
-                <div style="min-width:0;flex:1">
-                  <div style="display:flex;align-items:center;gap:6px;margin-bottom:3px">
-                    <span class="tag" style="background:#2d2210;color:#ffd166;font-size:9px;font-weight:800;border:1px solid #5a4218;padding:1px 6px">Round ${p.round} · Pick #${p.pickNumber}</span>
-                    <span style="font-size:10px;font-weight:800;color:#ffd166">${p.cost} pts</span>
-                  </div>
-                  <div style="font:800 16px 'Barlow Condensed';letter-spacing:.3px;color:#f5f3f0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(p.pokemon)}</div>
-                  <div style="display:flex;align-items:center;gap:6px;margin-top:4px">
-                    <span class="avatar mini" style="background-image:${faceArt};background-size:cover;background-position:center;width:20px;height:20px;border-radius:50%;display:grid;place-items:center;border:1px solid ${ovrObj.color};font-size:9px">${faceLetter}</span>
-                    <span style="font-size:11px;font-weight:800;color:#c8c7d2">${playerLink(p.player)}</span>
-                    <span style="font-size:10px;color:#8e8c95">(${esc(teamName(t, p.player))})</span>
+                <div class="draft-pick-body">
+                  <img src="${esc(spriteUrl)}" class="draft-pick-sprite" alt="${esc(p.pokemon)}" loading="lazy" onerror="handleSpriteError(this)">
+                  <div class="draft-pick-details">
+                    <div class="draft-pick-mon">${esc(p.pokemon)}</div>
+                    <div class="draft-pick-coach" onclick="openProfile('${jsArg(p.player)}')">
+                      <span class="mrow-face" style="background-image:${pArt};background-size:cover;background-position:center;width:18px;height:18px;font-size:9px;border-radius:50%;display:grid;place-items:center">${pLetter}</span>
+                      <span>${esc(p.player)}</span>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -4410,10 +4414,10 @@ function homeDraftPicksSection(t){
         </div>
       ` : `
         <div class="card" style="padding:28px 20px;text-align:center;background:linear-gradient(135deg,#1a1318 0%,#121219 100%);border-color:#3d242c">
-          <div style="font-size:36px">⏳</div>
+          <div style="font-size:36px">🎯</div>
           <div class="card-title" style="margin-top:8px;font:800 20px 'Barlow Condensed';letter-spacing:.8px;color:#f5f3f0">DRAFT ROOM OPEN · ROUND 1 ON DECK</div>
           <p class="sub" style="max-width:500px;margin:8px auto 16px"><b>${esc(turn?.player || 'First Coach')}</b> is on the clock to make the opening pick. Snake draft order is set and ready.</p>
-          <button class="btn" style="padding:10px 24px;font-weight:800;font-size:13px" onclick="go('Draft')">🎯 Enter Live Draft Room & Make Pick #1 →</button>
+          <button class="btn" style="padding:10px 24px;font-weight:800;font-size:13px" onclick="go('Draft')">⚡ Enter Live Draft Room & Make Pick #1 →</button>
         </div>
       `}
     </section>
@@ -4508,7 +4512,7 @@ function Home(){
         <div class="pulse-stat-val">${isDraftPhase && turn ? `${turn.currentPickNumber - 1} <small style="font-size:13px;color:#8e8c95;font-weight:700">/ ${turn.totalPicks}</small>` : `${completedCount} <small style="font-size:13px;color:#8e8c95;font-weight:700">/ ${totalMatchesCount}</small>`}</div>
         <div class="progress" style="margin-top:5px;height:5px"><span style="width:${isDraftPhase ? draftPct : completionPct}%"></span></div>
       </div>
-      <div class="card pulse-stat-box" style="cursor:pointer;transition:border-color .15s ease" onclick="go('Standings')" title="Click to view full Playoff Odds chart">
+      <div class="card pulse-stat-box" style="cursor:pointer;transition:border-color .15s ease" onclick="go('Playoff Odds')" title="Click to view full Playoff Odds chart">
         <span class="pulse-stat-label" style="display:flex;justify-content:space-between;align-items:center"><span>Tournament Favorite</span><span style="color:#ffd166;font-size:10px">↗</span></span>
         <div class="pulse-stat-val" style="color:var(--amber)">${(() => {
           let oddsSnap = getOrComputeTournamentOdds(t);
