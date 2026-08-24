@@ -4389,23 +4389,27 @@ function homeDraftPicksSection(t){
           ${picks.slice(0, 8).map((p, idx) => {
             let spriteUrl = pokeSprite(p.pokemon);
             let pArt = profilePictures[p.player] ? `url('${esc(profilePictures[p.player])}')` : (teamCovers[p.player] ? `url('${esc(teamCovers[p.player])}')` : fallbackArt(p.player));
-            let pLetter = (profilePictures[p.player] || teamCovers[p.player]) ? '' : esc(p.player[0]);
-            let theme = getPokemonTypeTheme(p.pokemon);
+            let pLetter = (profilePictures[p.player] || teamCovers[p.player]) ? '' : esc((p.player || '?')[0]);
+            let ovrObj = calculatePlayerOVR(p.player);
 
             return `
-              <div class="card draft-pick-card" style="border-color:${idx === 0 ? '#ef3038' : '#2f2f3e'};${idx === 0 ? 'box-shadow:0 0 16px rgba(239,48,56,0.35);' : ''}">
-                <div class="draft-pick-head">
-                  <span class="draft-pick-round">Round ${p.round} · Pick #${p.pickNumber}</span>
-                  <span class="draft-pick-cost" style="background:${theme.badgeBg};color:${theme.badgeText};border:1px solid ${theme.border}">${p.cost} PTS</span>
+              <div class="card" style="padding:14px 16px;background:linear-gradient(135deg,#181822 0%,#111116 100%);border-color:${idx === 0 ? '#ef3038' : '#2b2b38'};box-shadow:${idx === 0 ? '0 4px 20px rgba(239,48,56,0.25)' : 'none'};display:flex;align-items:center;gap:14px;position:relative;overflow:hidden;border-radius:8px">
+                ${idx === 0 ? `<div style="position:absolute;top:0;right:0;background:var(--red);color:#fff;font-size:8px;font-weight:900;letter-spacing:1px;padding:2px 8px;border-bottom-left-radius:6px;text-transform:uppercase">LATEST PICK</div>` : ''}
+                
+                <div style="position:relative;flex:none;background:#0d0d12;border:1px solid #282836;border-radius:10px;padding:4px;width:58px;height:58px;display:grid;place-items:center">
+                  <img src="${esc(spriteUrl)}" style="width:48px;height:48px;object-fit:contain;filter:drop-shadow(0 4px 8px rgba(0,0,0,0.6))" onerror="handleSpriteError(this)">
                 </div>
-                <div class="draft-pick-body">
-                  <img src="${esc(spriteUrl)}" class="draft-pick-sprite" alt="${esc(p.pokemon)}" loading="lazy" onerror="handleSpriteError(this)">
-                  <div class="draft-pick-details">
-                    <div class="draft-pick-mon">${esc(p.pokemon)}</div>
-                    <div class="draft-pick-coach" onclick="openProfile('${jsArg(p.player)}')">
-                      <span class="mrow-face" style="background-image:${pArt};background-size:cover;background-position:center;width:18px;height:18px;font-size:9px;border-radius:50%;display:grid;place-items:center">${pLetter}</span>
-                      <span>${esc(p.player)}</span>
-                    </div>
+
+                <div style="min-width:0;flex:1">
+                  <div style="display:flex;align-items:center;gap:6px;margin-bottom:3px">
+                    <span class="tag" style="background:#2d2210;color:#ffd166;font-size:9px;font-weight:800;border:1px solid #5a4218;padding:1px 6px">Round ${p.round} · Pick #${p.pickNumber}</span>
+                    <span style="font-size:10px;font-weight:800;color:#ffd166">${p.cost} pts</span>
+                  </div>
+                  <div style="font:800 16px 'Barlow Condensed';letter-spacing:.3px;color:#f5f3f0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(p.pokemon)}</div>
+                  <div style="display:flex;align-items:center;gap:6px;margin-top:4px">
+                    <span class="avatar mini" style="background-image:${pArt};background-size:cover;background-position:center;width:20px;height:20px;border-radius:50%;display:grid;place-items:center;border:1px solid ${ovrObj.color};font-size:9px">${pLetter}</span>
+                    <span style="font-size:11px;font-weight:800;color:#c8c7d2;cursor:pointer" onclick="openProfile('${jsArg(p.player)}')">${playerLink(p.player)}</span>
+                    <span style="font-size:10px;color:#8e8c95;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">(${esc(teamName(t, p.player))})</span>
                   </div>
                 </div>
               </div>
