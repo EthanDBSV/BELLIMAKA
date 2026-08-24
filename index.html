@@ -861,13 +861,13 @@ window.onerror = function(msg, url, line, col, error) {
     app.innerHTML = `<div class="card empty" style="border-color:#ff4b54;margin:24px"><div class="card-title" style="color:#ff4b54">Website Error</div><p class="sub">Line ${line}: ${esc(msg)}</p></div>`;
   }
 };
-const tabs=['Home','Standings','Teams','Draft Tools','Matches','Top Cut','Playoff Odds','Predictions','Records','Tournaments'];
+const tabs=['Home','Standings','Teams','Draft','Matches','Top Cut','Playoff Odds','Predictions','Records','Tournaments'];
 let current=(()=>{
   try{
     let hash=decodeURIComponent(window.location.hash.replace(/^#/,'')||'');
-    if(hash)return hash==='Draft Board'?'Draft Tools':hash;
+    if(hash)return (hash==='Draft Board'||hash==='Draft Tools')?'Draft':hash;
     let saved=localStorage.getItem('draftdex-active-tab');
-    if(saved)return saved==='Draft Board'?'Draft Tools':saved;
+    if(saved)return (saved==='Draft Board'||saved==='Draft Tools')?'Draft':saved;
   }catch(e){}
   return 'Home';
 })(),viewTournament=localStorage.getItem('draftdex-view-tournament')||null,detailTab=localStorage.getItem('draftdex-detail-tab')||'Standings',matchFilterPlayers=[];
@@ -883,7 +883,7 @@ function save(){localStorage.setItem('draftdex-cut',cut);localStorage.setItem('d
 function head(title,over,action=''){return `<div class="page-head"><div><div class="eyebrow">${over}</div><h1>${title}</h1></div>${action}</div>`}
 function nav(){document.querySelector('#nav').innerHTML=tabs.map(t=>`<button class="${current===t?'active':''}" onclick="go('${t}')">${t}</button>`).join('')}
 function go(t,updateHash=true){
-  current=t==='Draft Board'?'Draft Tools':t;
+  current=(t==='Draft Board'||t==='Draft Tools')?'Draft':t;
   try{
     localStorage.setItem('draftdex-active-tab',current);
     if(updateHash&&window.location.hash!=='#'+encodeURIComponent(current)){
@@ -1522,7 +1522,7 @@ function createTournament(){
   tournamentData[id].matches=groupSchedule(tournamentData[id]);
   syncTournamentSeasons();
   viewTournament=id;
-  current= enableDraft ? 'Draft Tools' : 'Tournament Detail';
+  current= enableDraft ? 'Draft' : 'Tournament Detail';
   rebuildAllPlayerStats();
   persistLeague();
   closeModal();
@@ -3533,7 +3533,7 @@ function draftStageHeroCard(t){
 
       <div class="matchup-hero-foot" style="justify-content:space-between;padding:8px 14px">
         <span style="font-size:11px;color:#a09fa8">Pick <b>#${turn.currentPickNumber} of ${turn.totalPicks}</b> · Round <b>${turn.currentRound}</b></span>
-        <button class="btn btn-sm" style="padding:4px 12px!important" onclick="go('Draft Tools')">Draft Room →</button>
+        <button class="btn btn-sm" style="padding:4px 12px!important" onclick="go('Draft')">Draft Room →</button>
       </div>
     </aside>
   `;
@@ -3551,7 +3551,7 @@ function homeDraftPicksSection(t){
           <div class="eyebrow" style="color:var(--red);margin-bottom:2px">🎯 Live Draft Activity</div>
           <h2>${picks.length > 0 ? 'RECENT DRAFT PICKS' : 'DRAFT BOARD SPOTLIGHT'}</h2>
         </div>
-        <button class="link" onclick="go('Draft Tools')">OPEN LIVE DRAFT ROOM →</button>
+        <button class="link" onclick="go('Draft')">OPEN LIVE DRAFT ROOM →</button>
       </div>
 
       ${picks.length > 0 ? `
@@ -3591,7 +3591,7 @@ function homeDraftPicksSection(t){
           <div style="font-size:36px">⏳</div>
           <div class="card-title" style="margin-top:8px;font:800 20px 'Barlow Condensed';letter-spacing:.8px;color:#f5f3f0">DRAFT ROOM OPEN · ROUND 1 ON DECK</div>
           <p class="sub" style="max-width:500px;margin:8px auto 16px"><b>${esc(turn?.player || 'First Coach')}</b> is on the clock to make the opening pick. Snake draft order is set and ready.</p>
-          <button class="btn" style="padding:10px 24px;font-weight:800;font-size:13px" onclick="go('Draft Tools')">🎯 Enter Live Draft Room & Make Pick #1 →</button>
+          <button class="btn" style="padding:10px 24px;font-weight:800;font-size:13px" onclick="go('Draft')">🎯 Enter Live Draft Room & Make Pick #1 →</button>
         </div>
       `}
     </section>
@@ -3605,7 +3605,7 @@ function Home(){
   let results = allResults(t);
   let groups = Object.keys(groupsOf(t));
   let isDraftPhase = (t.phase === 'draft');
-  let target = isDraftPhase ? 'Draft Tools' : (t.phase === 'topcut' ? 'Top Cut' : 'Matches');
+  let target = isDraftPhase ? 'Draft' : (t.phase === 'topcut' ? 'Top Cut' : 'Matches');
 
   // Metrics
   let matches = t.matches || [];
@@ -3672,8 +3672,6 @@ function Home(){
 
       ${isDraftPhase ? draftStageHeroCard(t) : matchupOfTheWeekCard(t)}
     </section>
-
-    ${isDraftPhase ? draftRecentTickerHtml(t) : ''}
 
     <!-- Tournament Quick Stats Pulse Strip -->
     <div class="pulse-stats-strip">
@@ -5174,7 +5172,7 @@ function Board(){
       ${embed?`<iframe class="sheet-frame" src="${esc(embed)}" title="League draft sheet" loading="lazy"></iframe>`
              :`<div class="empty"><div class="card-title">Connect the cost sheet</div><p class="sub">Add the Google Sheets link in Board settings to show it here.</p></div>`}
     </div>`;
-  return head('Draft Tools','Costs, tiers & mock drafts',actions)
+  return head('Draft','Costs, tiers & mock drafts',actions)
     +`<div class="tabs">${['Draft Sheet','My Mock Draft'].map(x=>`<button class="${boardTab===x?'active':''}" onclick="setBoardTab('${x}')">${x}</button>`).join('')}</div>`
     +body
 }
@@ -5494,11 +5492,11 @@ async function flushSync(){
     if(!sheetIds(boardLink).id)boardLink=LEAGUE_SHEET;
   }
 })();
-/* ------------------------------------------------------------ 4. NAVIGATION: league order, and "Draft Board" is now "Draft Tools" ------------------------------------------------------------ */
+/* ------------------------------------------------------------ 4. NAVIGATION: league order, and "Draft" tab ------------------------------------------------------------ */
 tabs.length=0;
-tabs.push('Home','Standings','Teams','Draft Tools','Matches','Top Cut','Playoff Odds','Predictions','Records','Tournaments');
+tabs.push('Home','Standings','Teams','Draft','Matches','Top Cut','Playoff Odds','Predictions','Records','Tournaments');
 function go(tab, updateHash=true){
-  current=tab==='Draft Board'?'Draft Tools':tab;
+  current=(tab==='Draft Board'||tab==='Draft Tools')?'Draft':tab;
   try{
     localStorage.setItem('draftdex-active-tab', current);
     if(updateHash && window.location.hash !== '#'+encodeURIComponent(current)){
@@ -5520,7 +5518,7 @@ window.addEventListener('hashchange', ()=>{
 function render(){
   let active=document.activeElement;
   if(current==='Account'&&active&&/^auth(Username|Password)$/.test(active.id||''))return;
-  if(current==='Draft Board')current='Draft Tools';
+  if(current==='Draft Board'||current==='Draft Tools')current='Draft';
   nav();
   let pages={
     Home: typeof Home==='function'?Home:window.Home,
@@ -5532,6 +5530,7 @@ function render(){
     'Playoff Odds': typeof playoffOdds==='function'?playoffOdds:window.playoffOdds,
     Records: typeof Records==='function'?Records:window.Records,
     Tournaments: typeof Tournaments==='function'?Tournaments:window.Tournaments,
+    Draft: typeof Board==='function'?Board:window.Board,
     'Draft Tools': typeof Board==='function'?Board:window.Board,
     'Draft Board': typeof Board==='function'?Board:window.Board,
     Account: typeof Account==='function'?Account:window.Account,
@@ -9437,9 +9436,11 @@ function getDraftPickDetails(t, pickIdx){
   let n = Math.max(1, order.length);
   let round = Math.floor(pickIdx / n) + 1;
   let posInRound = pickIdx % n;
-  let player = (round % 2 === 1) ? order[posInRound] : order[n - 1 - posInRound];
+  let isReversed = (round % 2 === 0);
+  let player = !isReversed ? order[posInRound] : order[n - 1 - posInRound];
   let pickNumber = pickIdx + 1;
-  return { round, pickNumber, player, pickIdx };
+  let pickInRound = posInRound + 1;
+  return { round, pickNumber, player, pickIdx, posInRound, pickInRound, isReversed };
 }
 
 function getDraftCurrentTurn(t){
@@ -10389,7 +10390,7 @@ function DraftRoom(t){
                 ${roundStart ? `<span class="draft-round-divider">R${pickInfo.round} ${pickInfo.isReversed ? '↩' : '→'}</span>` : ''}
                 <div class="draft-snake-tile ${isCurrent ? 'current' : (isDone ? 'done' : '')}" title="Round ${pickInfo.round} · Pick #${pickInfo.pickNumber} · ${esc(pickInfo.player)}">
                   <span class="avatar mini" style="background-image:${pFace};background-size:cover;background-position:center;width:18px;height:18px;border-radius:50%;display:grid;place-items:center;border:1px solid ${pOvr.color};font-size:8px;flex:none">${pLetter}</span>
-                  <span style="font:800 11px 'Barlow Condensed'">${pickInfo.round}.${pickInfo.posInRound + 1}</span>
+                  <span style="font:800 11px 'Barlow Condensed'">${pickInfo.round}.${pickInfo.pickInRound}</span>
                   <b>${esc(pickInfo.player)}</b>
                   ${isDone && pickObj ? `
                     <div style="display:inline-flex;align-items:center;gap:3px;margin-left:2px">
@@ -10843,7 +10844,7 @@ function Board(){
   let s=sheetIds(boardLink),embed=sheetEmbedUrl();
   let actions=`<div style="display:flex;gap:8px;flex-wrap:wrap">${moderator?`<button class="btn ghost" onclick="openBoardSettings()">Board settings</button>`:''}<button class="btn" onclick="openBoardLink()">Open in Google Sheets ↗</button></div>`;
   setTimeout(pullRemoteTeams,0);
-  return head('Draft Tools','Cost sheet & team planner',actions)
+  return head('Draft','Cost sheet & team planner',actions)
     +`<div class="tools-layout">
       <div class="card">
         <div class="board-note"><span>${s.id?'Live view of the league cost sheet. Edits made in Google Sheets show up here on refresh.':'No sheet connected yet.'}</span></div>
