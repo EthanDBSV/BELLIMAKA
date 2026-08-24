@@ -2349,35 +2349,24 @@ function shouldApply(incoming){
   let incomingRev = typeof incoming.rev === 'number' ? incoming.rev : 0;
   let incomingTime = typeof incoming.updatedAt === 'number' ? incoming.updatedAt : (Date.parse(incoming.updated_at) || 0);
 
-  // If this device is NOT a moderator, cloud state from Supabase is always authoritative!
-  if(!moderator){
-    knownRev = incomingRev;
-    lastLocalUpdate = incomingTime || Date.now();
-    try {
-      localStorage.setItem('draftdex-rev', String(knownRev));
-      localStorage.setItem('draftdex-updated-at', String(lastLocalUpdate));
-    } catch(e){}
-    return true;
-  }
-
-  // If local has no saved rev and no saved update time, ALWAYS accept cloud state
-  let hasLocalData = localStorage.getItem('draftdex-updated-at') !== null || localStorage.getItem('draftdex-rev') !== null;
-  if(!hasLocalData || lastLocalUpdate === 0){
-    knownRev = incomingRev;
-    lastLocalUpdate = incomingTime || Date.now();
-    try {
-      localStorage.setItem('draftdex-rev', String(knownRev));
-      localStorage.setItem('draftdex-updated-at', String(lastLocalUpdate));
-    } catch(e){}
-    return true;
-  }
-
-  // For moderator: only reject if local edits are strictly newer than cloud state
+  // If local revision is strictly newer than incoming revision, reject stale snapshot
   if(knownRev > incomingRev) return false;
-  if(incomingTime && lastLocalUpdate && incomingTime < lastLocalUpdate && (knownRev === incomingRev)) return false;
+  if(knownRev === incomingRev && incomingTime && lastLocalUpdate && incomingTime < lastLocalUpdate) return false;
 
-  knownRev = incomingRev;
-  lastLocalUpdate = incomingTime || Date.now();
+  // Protect live active draft picks from being rolled back by a delayed cloud sync
+  let curT = ongoingT() || activeT();
+  if(curT && incoming.tournaments && incoming.tournaments[curT.id]){
+    let incDraft = incoming.tournaments[curT.id].draftData;
+    let locDraft = curT.draftData;
+    if(locDraft && incDraft && Array.isArray(locDraft.picks) && Array.isArray(incDraft.picks)){
+      if(locDraft.picks.length > incDraft.picks.length && incomingRev <= knownRev){
+        return false;
+      }
+    }
+  }
+
+  knownRev = Math.max(knownRev, incomingRev);
+  lastLocalUpdate = Math.max(lastLocalUpdate, incomingTime || Date.now());
   try {
     localStorage.setItem('draftdex-rev', String(knownRev));
     localStorage.setItem('draftdex-updated-at', String(lastLocalUpdate));
@@ -3229,6 +3218,34 @@ async function saveTopCutScore(matchId){
 
 function applySharedState(data){
   if(!data || !data.tournaments) return;
+
+  // Preserve and merge local draft picks if incoming data is missing recent picks
+  if(data.tournaments){
+    Object.keys(tournamentData).forEach(tId => {
+      let locT = tournamentData[tId];
+      let incT = data.tournaments[tId];
+      if(locT && incT && locT.draftData && incT.draftData){
+        let localPicks = locT.draftData.picks || [];
+        let incomingPicks = incT.draftData.picks || [];
+        if(localPicks.length > incomingPicks.length){
+          let merged = [...incomingPicks];
+          localPicks.forEach(lp => {
+            if(!merged.some(mp => mp.pickNumber === lp.pickNumber)){
+              merged.push(lp);
+            }
+          });
+          merged.sort((a,b) => a.pickNumber - b.pickNumber);
+          incT.draftData.picks = merged;
+          if(locT.rosters && incT.rosters){
+            Object.keys(locT.rosters).forEach(coach => {
+              incT.rosters[coach] = Array.from(new Set([...(incT.rosters[coach] || []), ...(locT.rosters[coach] || [])]));
+            });
+          }
+        }
+      }
+    });
+  }
+
   Object.keys(tournamentData).forEach(k=>delete tournamentData[k]);
   Object.assign(tournamentData, data.tournaments || {});
   Object.keys(profiles).forEach(k=>delete profiles[k]);
@@ -3341,24 +3358,31 @@ function applyRemoteDraftPick(payload){
   let d = ensureTournamentDraft(t);
   if(!d) return;
 
-  // Check if pick already recorded
-  let exists = (d.picks || []).some(x => x.pickNumber === payload.pickNumber || (x.player === payload.player && x.pokemon.toLowerCase().trim() === payload.pokemon.toLowerCase().trim()));
-  if(exists) return;
+  if(payload.picks && Array.isArray(payload.picks) && payload.picks.length >= (d.picks || []).length){
+    d.picks = payload.picks;
+  } else {
+    let exists = (d.picks || []).some(x => x.pickNumber === payload.pickNumber || (x.player === payload.player && x.pokemon.toLowerCase().trim() === payload.pokemon.toLowerCase().trim()));
+    if(!exists){
+      d.picks = d.picks || [];
+      d.picks.push({
+        round: payload.round,
+        pickNumber: payload.pickNumber,
+        player: payload.player,
+        pokemon: payload.pokemon,
+        cost: payload.cost,
+        timestamp: payload.timestamp || Date.now()
+      });
+    }
+  }
 
-  d.picks = d.picks || [];
-  d.picks.push({
-    round: payload.round,
-    pickNumber: payload.pickNumber,
-    player: payload.player,
-    pokemon: payload.pokemon,
-    cost: payload.cost,
-    timestamp: payload.timestamp || Date.now()
-  });
-
-  if(!t.rosters) t.rosters = {};
-  if(!t.rosters[payload.player]) t.rosters[payload.player] = [];
-  if(!t.rosters[payload.player].includes(payload.pokemon)){
-    t.rosters[payload.player].push(payload.pokemon);
+  if(payload.rosters && typeof payload.rosters === 'object'){
+    t.rosters = payload.rosters;
+  } else {
+    if(!t.rosters) t.rosters = {};
+    if(!t.rosters[payload.player]) t.rosters[payload.player] = [];
+    if(!t.rosters[payload.player].includes(payload.pokemon)){
+      t.rosters[payload.player].push(payload.pokemon);
+    }
   }
 
   if(!roster[payload.player]) roster[payload.player] = [];
@@ -3370,7 +3394,12 @@ function applyRemoteDraftPick(payload){
     d.status = 'completed';
   }
 
+  knownRev = Math.max(knownRev, payload.rev || 0);
+  lastLocalUpdate = Date.now();
+
   try {
+    localStorage.setItem('draftdex-rev', String(knownRev));
+    localStorage.setItem('draftdex-updated-at', String(lastLocalUpdate));
     localStorage.setItem('draftdex-tournaments', JSON.stringify(tournamentData));
     localStorage.setItem('draftdex-rosters', JSON.stringify(roster));
   } catch(e){}
@@ -11844,6 +11873,8 @@ function makeDraftPick(tId, pokemonName, forcedPlayer = null){
     d.status = 'completed';
   }
 
+  knownRev = (knownRev || 0) + 1;
+  lastLocalUpdate = Date.now();
   persistLeague();
   render();
 
@@ -11860,6 +11891,9 @@ function makeDraftPick(tId, pokemonName, forcedPlayer = null){
           cost: cost,
           round: pickObj.round,
           pickNumber: pickObj.pickNumber,
+          picks: d.picks,
+          rosters: t.rosters,
+          rev: knownRev,
           timestamp: pickObj.timestamp
         }
       });
