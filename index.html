@@ -2364,20 +2364,25 @@ function shouldApply(incoming){
   let incomingRev = typeof incoming.rev === 'number' ? incoming.rev : 0;
   let incomingTime = typeof incoming.updatedAt === 'number' ? incoming.updatedAt : (Date.parse(incoming.updated_at) || 0);
 
-  // If local revision is strictly newer than incoming revision, reject stale snapshot
-  if(knownRev > incomingRev) return false;
-  if(knownRev === incomingRev && incomingTime && lastLocalUpdate && incomingTime < lastLocalUpdate) return false;
+  // If local has no recorded update time or incoming cloud timestamp is newer, ALWAYS accept cloud state!
+  if(!lastLocalUpdate || (incomingTime && incomingTime > lastLocalUpdate)){
+    knownRev = Math.max(knownRev, incomingRev);
+    lastLocalUpdate = incomingTime || Date.now();
+    try {
+      localStorage.setItem('draftdex-rev', String(knownRev));
+      localStorage.setItem('draftdex-updated-at', String(lastLocalUpdate));
+    } catch(e){}
+    return true;
+  }
 
-  // Protect live active draft picks from being rolled back by a delayed cloud sync
-  let curT = ongoingT() || activeT();
-  if(curT && incoming.tournaments && incoming.tournaments[curT.id]){
-    let incDraft = incoming.tournaments[curT.id].draftData;
-    let locDraft = curT.draftData;
-    if(locDraft && incDraft && Array.isArray(locDraft.picks) && Array.isArray(incDraft.picks)){
-      if(locDraft.picks.length > incDraft.picks.length && incomingRev <= knownRev){
-        return false;
-      }
-    }
+  // If local made an edit after this cloud snapshot was saved, reject stale cloud packet
+  if(incomingTime && lastLocalUpdate && incomingTime < lastLocalUpdate){
+    return false;
+  }
+
+  // If timestamps are equal or missing, compare rev
+  if(knownRev > incomingRev){
+    return false;
   }
 
   knownRev = Math.max(knownRev, incomingRev);
@@ -12406,11 +12411,7 @@ function DraftBoardView(t){
 
             <select onchange="draftBoardTierFilter=this.value;handleDraftBoardFilterChange()" style="padding:6px 10px;background:#181822;border:1px solid #363648;border-radius:6px;color:#f5f3f0;font-size:11px">
               <option value="all">All Tiers (${board.length})</option>
-              ${Array.from(new Set(board.map(tier => tier.cost))).sort((a,b)=>b-a).map(cost => {
-                let matchingTier = board.find(tier => tier.cost === cost);
-                let label = matchingTier ? `${cost} pts & below (${esc(matchingTier.name)})` : `${cost} pts & below`;
-                return `<option value="${cost}" ${draftBoardTierFilter === String(cost) ? 'selected' : ''}>≤ ${label}</option>`;
-              }).join('')}
+              ${Array.from(new Set(board.map(tier => tier.cost))).sort((a,b)=>b-a).map(cost => `<option value="${cost}" ${draftBoardTierFilter === String(cost) ? 'selected' : ''}>≤ ${cost} pts</option>`).join('')}
             </select>
 
             <div style="display:inline-flex;border:1px solid #363648;border-radius:6px;overflow:hidden;background:#181822">
