@@ -740,6 +740,29 @@ function resolvePokemonData(rawInput) {
     'urshifu (s)': { slug: 'urshifu', name: 'Urshifu-Single-Strike' },
     'ss-urshifu': { slug: 'urshifu', name: 'Urshifu-Single-Strike' },
 
+    // Canon Megas with X/Y variants
+    'mega charizard x': { slug: 'charizard-megax', name: 'Mega Charizard X' },
+    'mega charizard y': { slug: 'charizard-megay', name: 'Mega Charizard Y' },
+    'charizard-megax': { slug: 'charizard-megax', name: 'Mega Charizard X' },
+    'charizard-megay': { slug: 'charizard-megay', name: 'Mega Charizard Y' },
+    'charizard mega x': { slug: 'charizard-megax', name: 'Mega Charizard X' },
+    'charizard mega y': { slug: 'charizard-megay', name: 'Mega Charizard Y' },
+    'charizard-mega-x': { slug: 'charizard-megax', name: 'Mega Charizard X' },
+    'charizard-mega-y': { slug: 'charizard-megay', name: 'Mega Charizard Y' },
+    'mega mewtwo x': { slug: 'mewtwo-megax', name: 'Mega Mewtwo X' },
+    'mega mewtwo y': { slug: 'mewtwo-megay', name: 'Mega Mewtwo Y' },
+    'mewtwo-megax': { slug: 'mewtwo-megax', name: 'Mega Mewtwo X' },
+    'mewtwo-megay': { slug: 'mewtwo-megay', name: 'Mega Mewtwo Y' },
+    'mewtwo mega x': { slug: 'mewtwo-megax', name: 'Mega Mewtwo X' },
+    'mewtwo mega y': { slug: 'mewtwo-megay', name: 'Mega Mewtwo Y' },
+    'mewtwo-mega-x': { slug: 'mewtwo-megax', name: 'Mega Mewtwo X' },
+    'mewtwo-mega-y': { slug: 'mewtwo-megay', name: 'Mega Mewtwo Y' },
+
+    // Steelix & Onix Megas
+    'mega steelix': { slug: 'steelix-mega', name: 'Mega Steelix' },
+    'steelix-mega': { slug: 'steelix-mega', name: 'Mega Steelix' },
+    'steelix mega': { slug: 'steelix-mega', name: 'Mega Steelix' },
+
     // Legends Z-A Megas (request real mega sprites first, fallback dynamically if missing)
     'mega meganium': { slug: 'meganium-mega', name: 'Mega Meganium' },
     'meganium-mega': { slug: 'meganium-mega', name: 'Mega Meganium' },
@@ -947,15 +970,15 @@ function resolvePokemonData(rawInput) {
     }
     // Mega
     if(formType === 'm' || formType === 'mega'){
-      if(baseClean === 'charizardx') return { name: 'Mega Charizard X', slug: 'charizard-megax', sprite: 'https://play.pokemonshowdown.com/sprites/gen5/charizard-megax.png' };
-      if(baseClean === 'charizardy') return { name: 'Mega Charizard Y', slug: 'charizard-megay', sprite: 'https://play.pokemonshowdown.com/sprites/gen5/charizard-megay.png' };
-      if(baseClean === 'mewtwox') return { name: 'Mega Mewtwo X', slug: 'mewtwo-megax', sprite: 'https://play.pokemonshowdown.com/sprites/gen5/mewtwo-megax.png' };
-      if(baseClean === 'mewtwoy') return { name: 'Mega Mewtwo Y', slug: 'mewtwo-megay', sprite: 'https://play.pokemonshowdown.com/sprites/gen5/mewtwo-megay.png' };
+      if(baseClean === 'charizardx' || baseClean === 'charizard-x') return { name: 'Mega Charizard X', slug: 'charizard-megax', sprite: 'https://play.pokemonshowdown.com/sprites/gen5/charizard-megax.png' };
+      if(baseClean === 'charizardy' || baseClean === 'charizard-y') return { name: 'Mega Charizard Y', slug: 'charizard-megay', sprite: 'https://play.pokemonshowdown.com/sprites/gen5/charizard-megay.png' };
+      if(baseClean === 'mewtwox' || baseClean === 'mewtwo-x') return { name: 'Mega Mewtwo X', slug: 'mewtwo-megax', sprite: 'https://play.pokemonshowdown.com/sprites/gen5/mewtwo-megax.png' };
+      if(baseClean === 'mewtwoy' || baseClean === 'mewtwo-y') return { name: 'Mega Mewtwo Y', slug: 'mewtwo-megay', sprite: 'https://play.pokemonshowdown.com/sprites/gen5/mewtwo-megay.png' };
 
-      // Handle custom Mega X / Y / Z
-      let xyzMatch = baseClean.match(/^(.+?)(x|y|z)$/);
-      if(xyzMatch && baseClean !== 'charizardx' && baseClean !== 'charizardy' && baseClean !== 'mewtwox' && baseClean !== 'mewtwoy'){
-        let rootMon = xyzMatch[1];
+      // Handle custom Mega X / Y / Z with space or hyphen, e.g. "Raichu X", "Absol Z", "Garchomp Z"
+      let xyzMatch = baseMon.match(/^(.+?)[- ]+(x|y|z)$/i);
+      if(xyzMatch){
+        let rootMon = xyzMatch[1].replace(/[\s-]/g, '').toLowerCase();
         let letter = xyzMatch[2].toUpperCase();
         let rootPretty = rootMon.charAt(0).toUpperCase() + rootMon.slice(1);
         let megaSlug = (letter === 'Z') ? `${rootMon}-mega` : `${rootMon}-mega${letter.toLowerCase()}`;
