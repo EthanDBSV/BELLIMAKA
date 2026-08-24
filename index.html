@@ -4861,7 +4861,28 @@ function Standings(){
   }
   viewTournament=t.id;
   let groups=Object.keys(groupsOf(t)),controls=moderator?`<div><button class="btn ghost" onclick="openRankingEditor()">Arrange rankings</button> <button class="btn ghost" onclick="openSettings()">Edit qualification</button></div>`:'';
-  return head('Standings',t.name+' · group stage',controls)+`<div style="display:grid;grid-template-columns:repeat(${groups.length>1?2:1},minmax(0,1fr));gap:15px">${groups.map(g=>`<div class="card table-wrap">${standingTable(t,g)}</div>`).join('')}</div><p class="sub">The default order is W-L, games won, game differential, then head-to-head. Moderators can use Arrange rankings to apply a manual standings override.</p>`;
+  let html = head('Standings',t.name+' · group stage',controls)+`<div style="display:grid;grid-template-columns:repeat(${groups.length>1?2:1},minmax(0,1fr));gap:15px">${groups.map(g=>`<div class="card table-wrap">${standingTable(t,g)}</div>`).join('')}</div><p class="sub">The default order is W-L, games won, game differential, then head-to-head. Moderators can use Arrange rankings to apply a manual standings override.</p>`;
+
+  if(t.hasDraft || t.draftData?.picks?.length || t.draftData?.board?.length){
+    html += `
+      <div class="card" style="margin-top:24px;padding:20px;background:#101015;border-color:#2a2a38">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:8px">
+          <div style="display:flex;align-items:center;gap:8px">
+            <span style="font-size:18px">👥</span>
+            <div>
+              <h3 style="margin:0;font:800 18px 'Barlow Condensed';letter-spacing:.8px;text-transform:uppercase;color:#f5f3f0">Draft Rosters & Budgets</h3>
+              <p class="sub" style="margin:0;font-size:11px">Official drafted Pokémon rosters and point expenditures</p>
+            </div>
+          </div>
+          <span class="tag" style="background:#ffd16620;color:#ffd166;border:1px solid #ffd16640;font-size:10px;font-weight:800;padding:3px 10px;border-radius:4px">
+            ${t.draftData?.pointBudget ? `${t.draftData.pointBudget} Pts Budget` : 'Draft League'}
+          </span>
+        </div>
+        ${DraftRostersView(t)}
+      </div>
+    `;
+  }
+  return html;
 }
 
 function matchPlayerName(p){return `<button class="player-link match-hover-name" onclick="openProfile('${jsArg(p)}')" onmouseenter="highlightMatches('${jsArg(p)}',true)" onmouseleave="highlightMatches('',false)">${esc(p)}</button>`}
@@ -8492,7 +8513,7 @@ function tournamentDetail(){
   let t=activeT();if(!t)return noTournament();
   window.editingTournamentId=t.id;
   let groups=Object.keys(groupsOf(t));
-  let hasDraft = Boolean(t.hasDraft || t.draftData);
+  let hasDraft = Boolean(t.hasDraft || t.draftData?.picks?.length || t.draftData?.board?.length);
   let availableTabs = hasDraft 
     ? ['Draft', 'Standings', 'Group Stage', 'Top Cut', 'Predictions'] 
     : ['Standings', 'Group Stage', 'Top Cut', 'Predictions'];
@@ -8501,8 +8522,29 @@ function tournamentDetail(){
     detailTab = (t.phase === 'draft') ? 'Draft' : 'Standings';
   }
 
+  let standingsHtml = `<div style="display:grid;grid-template-columns:repeat(${groups.length>1?2:1},minmax(0,1fr));gap:16px;align-items:start">${groups.map(g=>`<div class="card table-wrap" style="align-self:start">${standingTable(t,g)}</div>`).join('')}</div>`;
+  if(hasDraft){
+    standingsHtml += `
+      <div class="card" style="margin-top:24px;padding:20px;background:#101015;border-color:#2a2a38">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:8px">
+          <div style="display:flex;align-items:center;gap:8px">
+            <span style="font-size:18px">👥</span>
+            <div>
+              <h3 style="margin:0;font:800 18px 'Barlow Condensed';letter-spacing:.8px;text-transform:uppercase;color:#f5f3f0">Draft Rosters & Budgets</h3>
+              <p class="sub" style="margin:0;font-size:11px">Official drafted Pokémon rosters and point expenditures</p>
+            </div>
+          </div>
+          <span class="tag" style="background:#ffd16620;color:#ffd166;border:1px solid #ffd16640;font-size:10px;font-weight:800;padding:3px 10px;border-radius:4px">
+            ${t.draftData?.pointBudget ? `${t.draftData.pointBudget} Pts Budget` : 'Draft League'}
+          </span>
+        </div>
+        ${DraftRostersView(t)}
+      </div>
+    `;
+  }
+
   let content=detailTab==='Draft'?DraftRoom(t)
-    :detailTab==='Standings'?`<div style="display:grid;grid-template-columns:repeat(${groups.length>1?2:1},minmax(0,1fr));gap:16px;align-items:start">${groups.map(g=>`<div class="card table-wrap" style="align-self:start">${standingTable(t,g)}</div>`).join('')}</div>`
+    :detailTab==='Standings'?standingsHtml
     :detailTab==='Group Stage'?matchesView(t,false)
     :detailTab==='Top Cut'?topCutSection(t,!t.bracketManagerData)
     :predictions(t);
@@ -9265,9 +9307,18 @@ function getDraftCurrentTurn(t){
 function getDraftCoachStats(t, p){
   let d = ensureTournamentDraft(t);
   let picks = (d?.picks || []).filter(x => x.player === p);
+  if(!picks.length && t?.rosters?.[p]?.length){
+    picks = t.rosters[p].map((mon, idx) => ({
+      round: idx + 1,
+      pickNumber: idx + 1,
+      player: p,
+      pokemon: mon,
+      cost: findPokemonCostOnBoard(t, mon)
+    }));
+  }
   let pointsSpent = picks.reduce((sum, x) => sum + (x.cost || 0), 0);
   let budget = d?.pointBudget || 0;
-  let maxSlots = d?.maxRosterSize || 10;
+  let maxSlots = d?.maxRosterSize || Math.max(10, picks.length);
   let remainingBudget = budget > 0 ? (budget - pointsSpent) : null;
   return {
     player: p,
