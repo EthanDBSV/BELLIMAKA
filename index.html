@@ -2376,6 +2376,24 @@ var syncTimer = null, lastSentSnapshot = '';
 function shouldApply(incoming){
   if(!incoming || typeof incoming !== 'object') return false;
   if(!incoming.tournaments && !incoming.profiles && !incoming.accountLinks) return false;
+
+  let incomingRev = typeof incoming.rev === 'number' ? incoming.rev : 0;
+  let incomingTime = typeof incoming.updatedAt === 'number' ? incoming.updatedAt : (Date.parse(incoming.updated_at) || 0);
+
+  // If local made an edit that has a higher revision or timestamp, reject older cloud packets
+  if(knownRev > 0 && incomingRev < knownRev){
+    return false;
+  }
+  if(lastLocalUpdate > 0 && incomingTime > 0 && incomingTime < lastLocalUpdate){
+    return false;
+  }
+
+  knownRev = Math.max(knownRev, incomingRev);
+  lastLocalUpdate = Math.max(lastLocalUpdate, incomingTime || Date.now());
+  try {
+    localStorage.setItem('draftdex-rev', String(knownRev));
+    localStorage.setItem('draftdex-updated-at', String(lastLocalUpdate));
+  } catch(e){}
   return true;
 }
 function sortedTournamentsChronological(){
@@ -3448,10 +3466,6 @@ window.addEventListener('online', () => {
   triggerMobileWakeSync();
 });
 
-// 5. Continuous active sync poller (every 1.5 seconds)
-setInterval(() => {
-  syncFromCloud(false);
-}, 1500);
 
 function applyRemoteDraftPick(payload){
   let t = tournamentData[payload.tournamentId];
