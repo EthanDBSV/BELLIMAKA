@@ -2376,46 +2376,6 @@ var syncTimer = null, lastSentSnapshot = '';
 function shouldApply(incoming){
   if(!incoming || typeof incoming !== 'object') return false;
   if(!incoming.tournaments && !incoming.profiles && !incoming.accountLinks) return false;
-
-  let incomingRev = typeof incoming.rev === 'number' ? incoming.rev : 0;
-  let incomingTime = typeof incoming.updatedAt === 'number' ? incoming.updatedAt : (Date.parse(incoming.updated_at) || 0);
-
-  // 1. Always accept if incoming has more draft picks in ANY tournament
-  let incomingHasNewerDraftPicks = false;
-  if(incoming.tournaments){
-    Object.keys(incoming.tournaments).forEach(tId => {
-      let incT = incoming.tournaments[tId];
-      let locT = tournamentData[tId];
-      let incPicks = incT?.draftData?.picks?.length || 0;
-      let locPicks = locT?.draftData?.picks?.length || 0;
-      if(incPicks > locPicks){
-        incomingHasNewerDraftPicks = true;
-      }
-    });
-  }
-
-  // 2. If incoming has more draft picks, or newer timestamp, or higher revision, ALWAYS accept!
-  if(incomingHasNewerDraftPicks || !lastLocalUpdate || (incomingTime && incomingTime >= lastLocalUpdate) || incomingRev >= knownRev){
-    knownRev = Math.max(knownRev, incomingRev);
-    lastLocalUpdate = Math.max(lastLocalUpdate, incomingTime || Date.now());
-    try {
-      localStorage.setItem('draftdex-rev', String(knownRev));
-      localStorage.setItem('draftdex-updated-at', String(lastLocalUpdate));
-    } catch(e){}
-    return true;
-  }
-
-  // 3. If local made an edit strictly AFTER incoming was saved, reject stale cloud packet
-  if(incomingTime && lastLocalUpdate && incomingTime < lastLocalUpdate && incomingRev < knownRev){
-    return false;
-  }
-
-  knownRev = Math.max(knownRev, incomingRev);
-  lastLocalUpdate = Math.max(lastLocalUpdate, incomingTime || Date.now());
-  try {
-    localStorage.setItem('draftdex-rev', String(knownRev));
-    localStorage.setItem('draftdex-updated-at', String(lastLocalUpdate));
-  } catch(e){}
   return true;
 }
 function sortedTournamentsChronological(){
@@ -3487,13 +3447,10 @@ window.addEventListener('online', () => {
   triggerMobileWakeSync();
 });
 
-// 5. Continuous active draft sync poller (every 2.5 seconds)
+// 5. Continuous active sync poller (every 1.5 seconds)
 setInterval(() => {
-  let t = ongoingT();
-  if(t && (t.phase === 'draft' || current === 'Draft' || (t.draftData && t.draftData.status === 'active'))){
-    syncFromCloud(false);
-  }
-}, 2500);
+  syncFromCloud(false);
+}, 1500);
 
 function applyRemoteDraftPick(payload){
   let t = tournamentData[payload.tournamentId];
@@ -3547,12 +3504,10 @@ function applyRemoteDraftPick(payload){
     localStorage.setItem('draftdex-rosters', JSON.stringify(roster));
   } catch(e){}
 
-  // Moderator client automatically writes authoritative state to Supabase
-  if(moderator){
-    persistLeague();
-  }
-
   render();
+  if(typeof centerActiveDraftPickTile === 'function'){
+    centerActiveDraftPickTile();
+  }
   showDraftToast(`${payload.player} drafted ${payload.pokemon}!`);
 }
 
@@ -3645,39 +3600,58 @@ window.addEventListener('load', () => {
 syncFromCloud(true);
 
 async function pushStateToSupabase(payload, updateTime){
-  if(!supabaseClient) return { error: new Error('Supabase client not initialized') };
+  let cfg = window.DRAFTDEX_SUPABASE;
+  if(!cfg || !cfg.url || !cfg.anonKey) return { error: new Error('Supabase config not found') };
   let iso = new Date(updateTime || Date.now()).toISOString();
 
-  // 1. Try direct UPDATE on the existing 'main' row first to bypass INSERT RLS checks
+  // 1. Try direct REST PATCH with anonKey (works for all devices and connection types)
   try {
-    let { data, error } = await supabaseClient.from('league_state')
-      .update({ data: payload, updated_at: iso })
-      .eq('id', 'main')
-      .select();
-
-    if(!error && data && data.length > 0){
-      return { data, error: null };
-    }
-    if(error) console.warn('Draftdex: Direct update note:', error);
-  } catch(uErr){
-    console.warn('Draftdex: Direct update exception:', uErr);
-  }
-
-  // 2. If update had 0 rows or errored, try UPSERT
-  try {
-    let res = await supabaseClient.from('league_state').upsert({
-      id: 'main',
-      data: payload,
-      updated_at: iso
+    let res = await fetch(`${cfg.url}/rest/v1/league_state?id=eq.main`, {
+      method: 'PATCH',
+      headers: {
+        'apikey': cfg.anonKey,
+        'Authorization': `Bearer ${cfg.anonKey}`,
+        'Content-Type': 'application/json',
+        'Prefer': 'return=minimal'
+      },
+      body: JSON.stringify({
+        data: payload,
+        updated_at: iso
+      })
     });
-    return res;
-  } catch(upErr){
-    return { error: upErr };
+    if(res.ok){
+      return { error: null };
+    }
+  } catch(e){}
+
+  // 2. Fallback to Supabase JS Client
+  if(supabaseClient){
+    try {
+      let { data, error } = await supabaseClient.from('league_state')
+        .update({ data: payload, updated_at: iso })
+        .eq('id', 'main')
+        .select();
+
+      if(!error && data && data.length > 0){
+        return { data, error: null };
+      }
+    } catch(uErr){}
+
+    try {
+      let res = await supabaseClient.from('league_state').upsert({
+        id: 'main',
+        data: payload,
+        updated_at: iso
+      });
+      return res;
+    } catch(upErr){
+      return { error: upErr };
+    }
   }
+  return { error: new Error('Push failed') };
 }
 
 async function flushSync(){
-  if(!supabaseClient) return;
   let payload = {
     rev: knownRev,
     updatedAt: lastLocalUpdate,
@@ -3724,10 +3698,8 @@ function persistLeague(){
     localStorage.setItem('draftdex-pulsepanels', JSON.stringify(pulsePanelImages));
     if(typeof accountLinks!=='undefined') localStorage.setItem('draftdex-accountlinks', JSON.stringify(accountLinks));
   }catch(e){}
-  let isAuth = Boolean(moderator || window.currentAccount?.role === 'moderator' || sessionUser);
-  if(!supabaseClient || !isAuth) return;
   clearTimeout(syncTimer);
-  syncTimer = setTimeout(flushSync, 200);
+  syncTimer = setTimeout(flushSync, 100);
 }
 
 
