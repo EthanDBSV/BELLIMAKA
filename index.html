@@ -3391,7 +3391,8 @@ function setupDraftRealtime(){
 
 var isSyncingFromCloud = false;
 async function syncFromCloud(force = false){
-  if(!supabaseClient || isSyncingFromCloud) return;
+  if(!supabaseClient) return;
+  if(isSyncingFromCloud && !force) return;
   isSyncingFromCloud = true;
   try {
     let { data, error } = await supabaseClient.from('league_state').select('data').eq('id', 'main').maybeSingle();
@@ -3400,6 +3401,9 @@ async function syncFromCloud(force = false){
       if(force || shouldApply(incoming)){
         applySharedState(incoming);
         render();
+        if(typeof centerActiveDraftPickTile === 'function'){
+          centerActiveDraftPickTile();
+        }
       }
     }
   } catch(e){
@@ -3409,39 +3413,42 @@ async function syncFromCloud(force = false){
   }
 }
 
+function triggerMobileWakeSync(){
+  syncFromCloud(true);
+  if(supabaseClient && typeof setupDraftRealtime === 'function'){
+    setupDraftRealtime();
+  }
+  [400, 1200, 2500].forEach(delay => {
+    setTimeout(() => {
+      syncFromCloud(true);
+      if(supabaseClient && typeof setupDraftRealtime === 'function'){
+        setupDraftRealtime();
+      }
+    }, delay);
+  });
+}
+
 // 1. Immediate sync whenever user unlocks phone or switches back to tab
 document.addEventListener('visibilitychange', () => {
   if(document.visibilityState === 'visible'){
-    console.log('Draftdex: App visible - syncing cloud state');
-    syncFromCloud(true);
-    if(supabaseClient && typeof setupDraftRealtime === 'function'){
-      setupDraftRealtime();
-    }
+    console.log('Draftdex: App visible - triggering staged mobile wake sync');
+    triggerMobileWakeSync();
   }
 });
 
 // 2. Immediate sync when window focuses
 window.addEventListener('focus', () => {
-  syncFromCloud(true);
-  if(supabaseClient && typeof setupDraftRealtime === 'function'){
-    setupDraftRealtime();
-  }
+  triggerMobileWakeSync();
 });
 
 // 3. Immediate sync when restored from mobile app cache / suspension
 window.addEventListener('pageshow', () => {
-  syncFromCloud(true);
-  if(supabaseClient && typeof setupDraftRealtime === 'function'){
-    setupDraftRealtime();
-  }
+  triggerMobileWakeSync();
 });
 
 // 4. Immediate sync when reconnecting to network
 window.addEventListener('online', () => {
-  syncFromCloud(true);
-  if(supabaseClient && typeof setupDraftRealtime === 'function'){
-    setupDraftRealtime();
-  }
+  triggerMobileWakeSync();
 });
 
 // 5. Fallback live draft poller (guarantees mobile never falls behind even if WebSocket sleeps)
@@ -6754,6 +6761,9 @@ function render(){
   if(savedBuilderScroll !== null){
     let newBuilder = document.querySelector('#teamBuilder');
     if(newBuilder) newBuilder.scrollTop = savedBuilderScroll;
+  }
+  if(current === 'Draft' && typeof centerActiveDraftPickTile === 'function'){
+    centerActiveDraftPickTile();
   }
 }
 
@@ -12590,7 +12600,7 @@ function DraftRoom(t){
         </div>
 
         <!-- Snake Order Strip Timeline -->
-        <div class="draft-snake-strip-wrap">
+        <div class="draft-snake-strip-wrap" id="draftSnakeStripWrap">
           <div class="draft-snake-track">
             ${Array.from({length: turn.totalPicks}, (_, idx) => {
               let pickInfo = getDraftPickDetails(t, idx);
@@ -12636,6 +12646,20 @@ function DraftRoom(t){
           : DraftBoardView(t))}
     </div>
   `;
+}
+
+function centerActiveDraftPickTile(){
+  let curTile = document.querySelector('.draft-snake-tile.current');
+  let strip = document.getElementById('draftSnakeStripWrap') || document.querySelector('.draft-snake-strip-wrap');
+  if(curTile && strip){
+    let stripWidth = strip.clientWidth;
+    let tileLeft = curTile.offsetLeft;
+    let tileWidth = curTile.offsetWidth;
+    strip.scrollTo({
+      left: Math.max(0, tileLeft - (stripWidth / 2) + (tileWidth / 2)),
+      behavior: 'smooth'
+    });
+  }
 }
 
 function renderDraftBoardTierColumns(t){
