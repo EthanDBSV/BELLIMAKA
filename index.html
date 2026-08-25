@@ -4682,7 +4682,7 @@ function toggleModerator(){
   render();
 }
 
-var sessionReqId=0,sessionResolvedFor=null;
+var sessionReqId=0,sessionResolvedFor=null,prevSessionUserId=null,prevMod=false;
 async function updateSession(session){
   let myReq=++sessionReqId;
   let newUser=session?.user||null;
@@ -4704,11 +4704,16 @@ async function updateSession(session){
       }
     }catch(e){}
   }
+  let modChanged = (moderator !== isMod);
+  let userChanged = (prevSessionUserId !== (sessionUser ? sessionUser.id : null));
   moderator=isMod;
+  prevMod=isMod;
+  prevSessionUserId=sessionUser ? sessionUser.id : null;
   window.currentAccount=nextAccount;
   sessionResolvedFor=sessionUser?sessionUser.id:null;
   let label=document.querySelector('#accountText');
   if(label) label.textContent=sessionUser ? (moderator ? (nextAccount?.username ? `${nextAccount.username} 👑` : 'Moderator') : (nextAccount?.username || 'Player')) : 'Sign in';
+  let stateChanged = false;
   if(supabaseClient){
     try{
       let {data}=await supabaseClient.from('league_state').select('data').eq('id','main').maybeSingle();
@@ -4716,13 +4721,16 @@ async function updateSession(session){
         let incoming=data.data;
         if(shouldApply(incoming)){
           applySharedState(incoming);
+          stateChanged = true;
         } else if((moderator || window.currentAccount?.role === 'moderator') && incoming && ((incoming.rev || 0) < knownRev || (incoming.updatedAt || 0) < lastLocalUpdate)){
           flushSync();
         }
       }
     }catch(e){}
   }
-  render();
+  if(modChanged || userChanged || stateChanged){
+    render();
+  }
 }
 
 function tournamentTotalMatches(t){
@@ -6681,6 +6689,30 @@ function render(){
   let active=document.activeElement;
   if(current==='Account'&&active&&/^auth(Username|Password)$/.test(active.id||''))return;
   if(current==='Draft Board'||current==='Draft Tools')current='Draft';
+
+  // If already on the Draft page with an active board wrapper mounted, update contents in place
+  // This guarantees the .draft-board-wrap element is NEVER destroyed, so scrollLeft stays 100% frozen in place!
+  if(current==='Draft'){
+    let offseasonWrap = document.getElementById('offseasonDraftBoardGridWrap');
+    let inSeasonWrap = document.getElementById('draftBoardGridWrap');
+    let builderHost = document.getElementById('teamBuilder');
+    let t = ongoingT() || activeT();
+
+    if(offseasonWrap || (inSeasonWrap && t)){
+      nav();
+      if(offseasonWrap){
+        offseasonWrap.innerHTML = renderOffseasonTierColumns();
+      } else if(inSeasonWrap && t){
+        inSeasonWrap.innerHTML = renderDraftBoardTierColumns(t);
+      }
+      if(builderHost){
+        let prevBuilderScroll = builderHost.scrollTop;
+        builderHost.innerHTML = builderHTML();
+        builderHost.scrollTop = prevBuilderScroll;
+      }
+      return;
+    }
+  }
 
   // 1. Capture scroll positions of all scrollable containers & elements before rebuilding DOM
   let savedScrolls = {};
