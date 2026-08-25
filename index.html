@@ -3355,9 +3355,12 @@ function showDraftToast(msg){
 
 function setupDraftRealtime(){
   if(!supabaseClient) return;
-  if(draftRealtimeChannel){
-    try { supabaseClient.removeChannel(draftRealtimeChannel); } catch(e){}
-  }
+  try {
+    if(supabaseClient.realtime && typeof supabaseClient.realtime.disconnect === 'function'){
+      supabaseClient.realtime.disconnect();
+    }
+    supabaseClient.removeAllChannels();
+  } catch(e){}
 
   draftRealtimeChannel = supabaseClient.channel('draftdex-realtime-draft', {
     config: { broadcast: { self: false } }
@@ -3379,30 +3382,67 @@ function setupDraftRealtime(){
 
   draftRealtimeChannel.subscribe((status) => {
     console.log('Draftdex Realtime broadcast status:', status);
+    if(status === 'SUBSCRIBED'){
+      syncFromCloud(true);
+    }
   });
 
-  // Background sync heartbeat (every 3 seconds)
+  // Listen for database table updates
+  supabaseClient.channel('league-state').on('postgres_changes', {event:'UPDATE', schema:'public', table:'league_state', filter:'id=eq.main'}, p=>{
+    let incoming = p.new?.data;
+    if(incoming && shouldApply(incoming)){
+      applySharedState(incoming);
+      render();
+    }
+  }).subscribe();
+
+  // Background sync heartbeat (every 2.5 seconds)
   if(!draftPollTimer){
     draftPollTimer = setInterval(() => {
       syncFromCloud(false);
-    }, 3000);
+    }, 2500);
   }
 }
 
 var isSyncingFromCloud = false;
 async function syncFromCloud(force = false){
-  if(!supabaseClient) return;
+  if(!supabaseReady()) return;
   if(isSyncingFromCloud && !force) return;
   isSyncingFromCloud = true;
   try {
-    let { data, error } = await supabaseClient.from('league_state').select('data').eq('id', 'main').maybeSingle();
-    if(!error && data?.data){
-      let incoming = data.data;
-      if(force || shouldApply(incoming)){
-        applySharedState(incoming);
-        render();
-        if(typeof centerActiveDraftPickTile === 'function'){
-          centerActiveDraftPickTile();
+    let cfg = window.DRAFTDEX_SUPABASE;
+    let url = `${cfg.url}/rest/v1/league_state?id=eq.main&select=data&_cb=${Date.now()}`;
+    let res = await fetch(url, {
+      headers: {
+        'apikey': cfg.anonKey,
+        'Authorization': `Bearer ${cfg.anonKey}`,
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        'Pragma': 'no-cache'
+      },
+      cache: 'no-store'
+    });
+    if(res.ok){
+      let json = await res.json();
+      if(json && json.length > 0 && json[0]?.data){
+        let incoming = json[0].data;
+        if(force || shouldApply(incoming)){
+          applySharedState(incoming);
+          render();
+          if(typeof centerActiveDraftPickTile === 'function'){
+            centerActiveDraftPickTile();
+          }
+        }
+      }
+    } else if(supabaseClient){
+      let { data, error } = await supabaseClient.from('league_state').select('data').eq('id', 'main').maybeSingle();
+      if(!error && data?.data){
+        let incoming = data.data;
+        if(force || shouldApply(incoming)){
+          applySharedState(incoming);
+          render();
+          if(typeof centerActiveDraftPickTile === 'function'){
+            centerActiveDraftPickTile();
+          }
         }
       }
     }
@@ -3418,12 +3458,9 @@ function triggerMobileWakeSync(){
   if(supabaseClient && typeof setupDraftRealtime === 'function'){
     setupDraftRealtime();
   }
-  [400, 1200, 2500].forEach(delay => {
+  [250, 750, 1500, 3000].forEach(delay => {
     setTimeout(() => {
       syncFromCloud(true);
-      if(supabaseClient && typeof setupDraftRealtime === 'function'){
-        setupDraftRealtime();
-      }
     }, delay);
   });
 }
