@@ -9543,56 +9543,63 @@ function calculateLeagueRecords(forceRefresh = false){
   }
 
   let maxCareerWinsAll=0;
-  let maxCareerGDAll = -Infinity;
-  let maxCareerGDHolders = [];
-  let minCareerGDAll = Infinity;
-  let minCareerGDHolders = [];
+  let maxTourneyGDAll = -Infinity;
+  let maxTourneyGDHolders = [];
+  let minTourneyGDAll = Infinity;
+  let minTourneyGDHolders = [];
 
   allPlayers.forEach(p=>{
     let s=statsByPlayer[p];
     if(!s) return;
     if(s.wins>maxCareerWinsAll) maxCareerWinsAll=s.wins;
+  });
 
-    let totalGW = 0;
-    let totalGL = 0;
-    allMatches.filter(m => m.a === p || m.b === p).forEach(m => {
-      if(m.a === p){
-        totalGW += (Number(m.sa) || 0);
-        totalGL += (Number(m.sb) || 0);
-      } else if(m.b === p){
-        totalGW += (Number(m.sb) || 0);
-        totalGL += (Number(m.sa) || 0);
+  sortedTournaments.forEach(t => {
+    let rawSeason = (t.season || t.name || 'Season 1').replace(/[()]/g, '').trim();
+    let seasonMatch = rawSeason.match(/Season\s*\d+/i);
+    let tLabel = seasonMatch ? seasonMatch[0].replace(/Season\s*/i, 'Season ') : (t.name || 'Season 1');
+
+    (t.players || []).forEach(p => {
+      let gEntry = Object.entries(groupsOf(t)).find(([,ps]) => ps.includes(p));
+      let gStand = gEntry ? getStand(t, gEntry[0]).find(x => x.p === p) : null;
+      let gw = gStand ? (gStand.gw || 0) : 0;
+      let gl = gStand ? (gStand.gl || 0) : 0;
+
+      // Top cut playoff matches
+      let tMatches = allMatches.filter(m => m.tournamentId === t.id && (m.a === p || m.b === p) && m.stage === 'topcut');
+      let playoffGW = tMatches.reduce((sum, m) => sum + (m.a === p ? (m.sa || 0) : (m.sb || 0)), 0);
+      let playoffGL = tMatches.reduce((sum, m) => sum + (m.a === p ? (m.sb || 0) : (m.sa || 0)), 0);
+
+      let totGW = gw + playoffGW;
+      let totGL = gl + playoffGL;
+      if((totGW + totGL) === 0) return;
+
+      let tGD = totGW - totGL;
+
+      // Track Best Single Tournament GD
+      if(tGD > maxTourneyGDAll){
+        maxTourneyGDAll = tGD;
+        maxTourneyGDHolders = [{ player: p, tournament: tLabel, gd: tGD, gw: totGW, gl: totGL }];
+      } else if(tGD === maxTourneyGDAll && maxTourneyGDAll !== -Infinity){
+        if(!maxTourneyGDHolders.some(x => x.player === p && x.tournament === tLabel)){
+          maxTourneyGDHolders.push({ player: p, tournament: tLabel, gd: tGD, gw: totGW, gl: totGL });
+        }
+      }
+
+      // Track Worst Single Tournament GD
+      if(tGD < minTourneyGDAll){
+        minTourneyGDAll = tGD;
+        minTourneyGDHolders = [{ player: p, tournament: tLabel, gd: tGD, gw: totGW, gl: totGL }];
+      } else if(tGD === minTourneyGDAll && minTourneyGDAll !== Infinity){
+        if(!minTourneyGDHolders.some(x => x.player === p && x.tournament === tLabel)){
+          minTourneyGDHolders.push({ player: p, tournament: tLabel, gd: tGD, gw: totGW, gl: totGL });
+        }
       }
     });
-    let cGD = totalGW - totalGL;
-    s.careerGW = totalGW;
-    s.careerGL = totalGL;
-    s.careerGD = cGD;
   });
 
-  allPlayers.forEach(p=>{
-    let s=statsByPlayer[p];
-    if(!s) return;
-    if((s.careerGW + s.careerGL) === 0) return; // Skip inactive / 0-game players
-
-    let cGD = s.careerGD;
-    if(cGD > maxCareerGDAll){
-      maxCareerGDAll = cGD;
-      maxCareerGDHolders = [p];
-    } else if(cGD === maxCareerGDAll && maxCareerGDAll !== -Infinity){
-      if(!maxCareerGDHolders.includes(p)) maxCareerGDHolders.push(p);
-    }
-
-    if(cGD < minCareerGDAll){
-      minCareerGDAll = cGD;
-      minCareerGDHolders = [p];
-    } else if(cGD === minCareerGDAll && minCareerGDAll !== Infinity){
-      if(!minCareerGDHolders.includes(p)) minCareerGDHolders.push(p);
-    }
-  });
-
-  if(maxCareerGDAll === -Infinity) maxCareerGDAll = 0;
-  if(minCareerGDAll === Infinity) minCareerGDAll = 0;
+  if(maxTourneyGDAll === -Infinity) maxTourneyGDAll = 0;
+  if(minTourneyGDAll === Infinity) minTourneyGDAll = 0;
 
   // Apply Moderator Custom / Granted Badges & Filter Revoked Badges
   allPlayers.forEach(p=>{
@@ -9622,13 +9629,13 @@ function calculateLeagueRecords(forceRefresh = false){
       statsByPlayer,
       records:{
         maxOvr:{value:maxOvrAll,holders:maxOvrHolders,tournament:maxOvrTournament},
-        maxWinStreak:{value:maxWinAll,holders:allPlayers.filter(p=>statsByPlayer[p].maxWinStreak===maxWinAll&&maxWinAll>0)},
-        bestCareerGD:{value:maxCareerGDAll,holders:maxCareerGDHolders},
         maxTitles:{value:maxTitlesAll,holders:allPlayers.filter(p=>(profiles[p]?.cups||[]).length===maxTitlesAll&&maxTitlesAll>0)},
         maxTopCuts:{value:maxTopsAll,holders:allPlayers.filter(p=>Number(profiles[p]?.tops)===maxTopsAll&&maxTopsAll>0)},
         maxCareerWins:{value:maxCareerWinsAll,holders:allPlayers.filter(p=>statsByPlayer[p].wins===maxCareerWinsAll&&maxCareerWinsAll>0)},
+        maxWinStreak:{value:maxWinAll,holders:allPlayers.filter(p=>statsByPlayer[p].maxWinStreak===maxWinAll&&maxWinAll>0)},
         maxLossStreak:{value:maxLossAll,holders:allPlayers.filter(p=>statsByPlayer[p].maxLossStreak===maxLossAll&&maxLossAll>0)},
-        worstCareerGD:{value:minCareerGDAll,holders:minCareerGDHolders}
+        bestTourneyGD:{value:maxTourneyGDAll,entries:maxTourneyGDHolders},
+        worstTourneyGD:{value:minTourneyGDAll,entries:minTourneyGDHolders}
       }
     };
     _cachedLeagueRecords = result;
@@ -9645,6 +9652,7 @@ function Records(){
 
   return head('Hall of Fame','League Records, Player Overalls & Historic Milestones')
     +`<div class="hof-grid">
+      <!-- 1. Highest Overall Rating (OVR) -->
       <div class="hof-card hof-glow-ovr">
         <div>
           <div class="hof-card-icon">💎</div>
@@ -9657,30 +9665,7 @@ function Records(){
         </div>
       </div>
 
-      <div class="hof-card hof-glow-win-streak">
-        <div>
-          <div class="hof-card-icon">🔥</div>
-          <div class="hof-card-title">All-Time Win Streak</div>
-          <div class="hof-card-val">${records.maxWinStreak.value} <span style="font-size:18px;font-weight:600;color:#ffb74d">Matches</span></div>
-        </div>
-        <div class="hof-card-holder">
-          <span style="font-size:11px;color:#8e8c95">Record Holder:</span>
-          <b>${records.maxWinStreak.holders.length?records.maxWinStreak.holders.map(p=>playerLink(p)).join(', '):'—'}</b>
-        </div>
-      </div>
-
-      <div class="hof-card hof-glow-best-gd">
-        <div>
-          <div class="hof-card-icon">⚡</div>
-          <div class="hof-card-title">All-Time Game Differential</div>
-          <div class="hof-card-val">${records.bestCareerGD.value > 0 ? '+' : ''}${records.bestCareerGD.value} <span style="font-size:18px;font-weight:600;color:#ffd166">GD</span></div>
-        </div>
-        <div class="hof-card-holder">
-          <span style="font-size:11px;color:#8e8c95">Record Holder:</span>
-          <b>${records.bestCareerGD.holders.length?records.bestCareerGD.holders.map(p=>playerLink(p)).join(', '):'—'}</b>
-        </div>
-      </div>
-
+      <!-- 2. Championship Titles -->
       <div class="hof-card hof-glow-titles">
         <div>
           <div class="hof-card-icon">👑</div>
@@ -9693,6 +9678,7 @@ function Records(){
         </div>
       </div>
 
+      <!-- 3. Top Cut Appearances -->
       <div class="hof-card hof-glow-topcut">
         <div>
           <div class="hof-card-icon">🎖️</div>
@@ -9705,6 +9691,7 @@ function Records(){
         </div>
       </div>
 
+      <!-- 4. All-Time Match Wins -->
       <div class="hof-card hof-glow-wins">
         <div>
           <div class="hof-card-icon">🏆</div>
@@ -9717,10 +9704,24 @@ function Records(){
         </div>
       </div>
 
+      <!-- 5. All-Time Win Streak -->
+      <div class="hof-card hof-glow-win-streak">
+        <div>
+          <div class="hof-card-icon">🔥</div>
+          <div class="hof-card-title">All-Time Win Streak</div>
+          <div class="hof-card-val">${records.maxWinStreak.value} <span style="font-size:18px;font-weight:600;color:#ffb74d">Matches</span></div>
+        </div>
+        <div class="hof-card-holder">
+          <span style="font-size:11px;color:#8e8c95">Record Holder:</span>
+          <b>${records.maxWinStreak.holders.length?records.maxWinStreak.holders.map(p=>playerLink(p)).join(', '):'—'}</b>
+        </div>
+      </div>
+
+      <!-- 6. All-Time Loss Streak -->
       <div class="hof-card hof-glow-cold-streak">
         <div>
           <div class="hof-card-icon">❄️</div>
-          <div class="hof-card-title">All-Time Cold Streak</div>
+          <div class="hof-card-title">All-Time Loss Streak</div>
           <div class="hof-card-val">${records.maxLossStreak.value} <span style="font-size:18px;font-weight:600;color:#7dd3fc">Matches</span></div>
         </div>
         <div class="hof-card-holder">
@@ -9729,15 +9730,29 @@ function Records(){
         </div>
       </div>
 
+      <!-- 7. Best Game Differential (Tournament) -->
+      <div class="hof-card hof-glow-best-gd">
+        <div>
+          <div class="hof-card-icon">⚡</div>
+          <div class="hof-card-title">Best Game Differential (Tournament)</div>
+          <div class="hof-card-val">${records.bestTourneyGD.value > 0 ? '+' : ''}${records.bestTourneyGD.value} <span style="font-size:18px;font-weight:600;color:#ffd166">GD</span></div>
+        </div>
+        <div class="hof-card-holder">
+          <span style="font-size:11px;color:#8e8c95">Record Holder:</span>
+          <b>${records.bestTourneyGD.entries.length ? records.bestTourneyGD.entries.map(e => playerLink(e.player) + ` <span style="font-size:10px;color:#ffd166;font-weight:700">(${esc(e.tournament)})</span>`).join(', ') : '—'}</b>
+        </div>
+      </div>
+
+      <!-- 8. Worst Game Differential (Tournament) -->
       <div class="hof-card hof-glow-worst-gd">
         <div>
           <div class="hof-card-icon">💀</div>
-          <div class="hof-card-title">Worst Game Differential</div>
-          <div class="hof-card-val">${records.worstCareerGD.value > 0 ? '+' : ''}${records.worstCareerGD.value} <span style="font-size:18px;font-weight:600;color:#f472b6">GD</span></div>
+          <div class="hof-card-title">Worst Game Differential (Tournament)</div>
+          <div class="hof-card-val">${records.worstTourneyGD.value > 0 ? '+' : ''}${records.worstTourneyGD.value} <span style="font-size:18px;font-weight:600;color:#f472b6">GD</span></div>
         </div>
         <div class="hof-card-holder">
           <span style="font-size:11px;color:#8e8c95">Historic Low:</span>
-          <b>${records.worstCareerGD.holders.length?records.worstCareerGD.holders.map(p=>playerLink(p)).join(', '):'—'}</b>
+          <b>${records.worstTourneyGD.entries.length ? records.worstTourneyGD.entries.map(e => playerLink(e.player) + ` <span style="font-size:10px;color:#f472b6;font-weight:700">(${esc(e.tournament)})</span>`).join(', ') : '—'}</b>
         </div>
       </div>
     </div>
@@ -13151,18 +13166,19 @@ function Board(){
     }
   }
 
+  // Classic Offseason Draft Section:
   let s=sheetIds(boardLink),embed=sheetEmbedUrl();
   let actions=`<div style="display:flex;gap:8px;flex-wrap:wrap">${moderator?`<button class="btn ghost" onclick="openBoardSettings()">Board settings</button>`:''}<button class="btn" onclick="openBoardLink()">Open in Google Sheets ↗</button></div>`;
-  setTimeout(pullRemoteTeams,0);
-  return head('Draft','Cost sheet & team planner',actions)
-    +`<div class="tools-layout">
-      <div class="card">
-        <div class="board-note"><span>${s.id?'Live view of the league cost sheet. Edits made in Google Sheets show up here on refresh.':'No sheet connected yet.'}</span></div>
-        ${embed?`<iframe class="sheet-frame" src="${esc(embed)}" title="League draft sheet" loading="lazy"></iframe>`
-               :`<div class="empty"><div class="card-title">Connect the cost sheet</div><p class="sub">Add the Google Sheets link in Board settings to show it here.</p></div>`}
-      </div>
-      <aside class="card builder" id="teamBuilder">${builderHTML()}</aside>
+  let body=boardTab==='My Mock Draft'?mockView():`
+    <div class="card">
+      <div class="board-note"><span>${s.id?'Live view of the league cost sheet. Edits made in Google Sheets show up here on refresh.':'No sheet connected yet.'}</span>
+      <span>${draftPool.items.length?`${draftPool.items.length} Pokémon loaded for mock drafts`:'Draft pool not loaded'} ${moderator?`· <button class="link" onclick="syncDraftPool()">Sync draft pool</button>`:''}</span></div>
+      ${embed?`<iframe class="sheet-frame" src="${esc(embed)}" title="League draft sheet" loading="lazy"></iframe>`
+             :`<div class="empty"><div class="card-title">Connect the cost sheet</div><p class="sub">Add the Google Sheets link in Board settings to show it here.</p></div>`}
     </div>`;
+  return head('Draft','Costs, tiers & mock drafts',actions)
+    +`<div class="tabs">${['Draft Sheet','My Mock Draft'].map(x=>`<button class="${boardTab===x?'active':''}" onclick="setBoardTab('${x}')">${x}</button>`).join('')}</div>`
+    +body;
 }
 function openBoardSettings(){
   if(!moderator)return;
