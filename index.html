@@ -2380,8 +2380,22 @@ function shouldApply(incoming){
   let incomingRev = typeof incoming.rev === 'number' ? incoming.rev : 0;
   let incomingTime = typeof incoming.updatedAt === 'number' ? incoming.updatedAt : (Date.parse(incoming.updated_at) || 0);
 
-  // 1. If incoming timestamp is strictly newer or revision is higher, ALWAYS accept!
-  if(!lastLocalUpdate || (incomingTime && incomingTime > lastLocalUpdate) || incomingRev > knownRev){
+  // 1. Always accept if incoming has more draft picks in ANY tournament
+  let incomingHasNewerDraftPicks = false;
+  if(incoming.tournaments){
+    Object.keys(incoming.tournaments).forEach(tId => {
+      let incT = incoming.tournaments[tId];
+      let locT = tournamentData[tId];
+      let incPicks = incT?.draftData?.picks?.length || 0;
+      let locPicks = locT?.draftData?.picks?.length || 0;
+      if(incPicks > locPicks){
+        incomingHasNewerDraftPicks = true;
+      }
+    });
+  }
+
+  // 2. If incoming has more draft picks, or newer timestamp, or higher revision, ALWAYS accept!
+  if(incomingHasNewerDraftPicks || !lastLocalUpdate || (incomingTime && incomingTime >= lastLocalUpdate) || incomingRev >= knownRev){
     knownRev = Math.max(knownRev, incomingRev);
     lastLocalUpdate = Math.max(lastLocalUpdate, incomingTime || Date.now());
     try {
@@ -2391,31 +2405,8 @@ function shouldApply(incoming){
     return true;
   }
 
-  // 2. Protect and accept draft progress: if incoming cloud draft has more picks, ALWAYS accept!
-  let curT = ongoingT() || activeT();
-  if(curT && incoming.tournaments && incoming.tournaments[curT.id]){
-    let incDraft = incoming.tournaments[curT.id].draftData;
-    let locDraft = curT.draftData;
-    if(incDraft && Array.isArray(incDraft.picks)){
-      let locPicksLen = (locDraft && Array.isArray(locDraft.picks)) ? locDraft.picks.length : 0;
-      if(incDraft.picks.length > locPicksLen){
-        knownRev = Math.max(knownRev, incomingRev);
-        lastLocalUpdate = Math.max(lastLocalUpdate, incomingTime || Date.now());
-        try {
-          localStorage.setItem('draftdex-rev', String(knownRev));
-          localStorage.setItem('draftdex-updated-at', String(lastLocalUpdate));
-        } catch(e){}
-        return true;
-      }
-    }
-  }
-
   // 3. If local made an edit strictly AFTER incoming was saved, reject stale cloud packet
-  if(incomingTime && lastLocalUpdate && incomingTime < lastLocalUpdate && incomingRev <= knownRev){
-    return false;
-  }
-
-  if(knownRev > incomingRev){
+  if(incomingTime && lastLocalUpdate && incomingTime < lastLocalUpdate && incomingRev < knownRev){
     return false;
   }
 
@@ -3432,17 +3423,36 @@ document.addEventListener('visibilitychange', () => {
 // 2. Immediate sync when window focuses
 window.addEventListener('focus', () => {
   syncFromCloud(true);
+  if(supabaseClient && typeof setupDraftRealtime === 'function'){
+    setupDraftRealtime();
+  }
 });
 
 // 3. Immediate sync when restored from mobile app cache / suspension
 window.addEventListener('pageshow', () => {
   syncFromCloud(true);
+  if(supabaseClient && typeof setupDraftRealtime === 'function'){
+    setupDraftRealtime();
+  }
 });
 
 // 4. Immediate sync when reconnecting to network
 window.addEventListener('online', () => {
   syncFromCloud(true);
+  if(supabaseClient && typeof setupDraftRealtime === 'function'){
+    setupDraftRealtime();
+  }
 });
+
+// 5. Fallback live draft poller (guarantees mobile never falls behind even if WebSocket sleeps)
+if(!window._draftLivePollTimer){
+  window._draftLivePollTimer = setInterval(() => {
+    let t = ongoingT();
+    if(t && t.draftData && (t.draftData.status === 'active' || t.phase === 'draft')){
+      syncFromCloud(false);
+    }
+  }, 3500);
+}
 
 function applyRemoteDraftPick(payload){
   let t = tournamentData[payload.tournamentId];
@@ -3554,6 +3564,9 @@ async function initSupabase(){
 
   // 2. Setup low-latency Realtime WebSocket Broadcast channel
   setupDraftRealtime();
+
+  // 3. Immediately pull latest cloud state on startup!
+  await syncFromCloud(true);
 }
 
 async function pushStateToSupabase(payload, updateTime){
