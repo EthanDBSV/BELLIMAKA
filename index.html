@@ -3406,11 +3406,11 @@ function setupDraftRealtime(){
 
 var isSyncingFromCloud = false;
 async function syncFromCloud(force = false){
-  if(!supabaseReady()) return;
+  let cfg = window.DRAFTDEX_SUPABASE;
+  if(!cfg || !cfg.url || !cfg.anonKey) return;
   if(isSyncingFromCloud && !force) return;
   isSyncingFromCloud = true;
   try {
-    let cfg = window.DRAFTDEX_SUPABASE;
     let url = `${cfg.url}/rest/v1/league_state?id=eq.main&select=data&_cb=${Date.now()}`;
     let res = await fetch(url, {
       headers: {
@@ -3455,12 +3455,11 @@ async function syncFromCloud(force = false){
 
 function triggerMobileWakeSync(){
   syncFromCloud(true);
-  if(supabaseClient && typeof setupDraftRealtime === 'function'){
-    setupDraftRealtime();
-  }
-  [250, 750, 1500, 3000].forEach(delay => {
+  ensureSupabaseInit();
+  [150, 400, 900, 1800, 3500].forEach(delay => {
     setTimeout(() => {
       syncFromCloud(true);
+      ensureSupabaseInit();
     }, delay);
   });
 }
@@ -3488,15 +3487,13 @@ window.addEventListener('online', () => {
   triggerMobileWakeSync();
 });
 
-// 5. Fallback live draft poller (guarantees mobile never falls behind even if WebSocket sleeps)
-if(!window._draftLivePollTimer){
-  window._draftLivePollTimer = setInterval(() => {
-    let t = ongoingT();
-    if(t && t.draftData && (t.draftData.status === 'active' || t.phase === 'draft')){
-      syncFromCloud(false);
-    }
-  }, 3500);
-}
+// 5. Continuous active draft sync poller (every 2.5 seconds)
+setInterval(() => {
+  let t = ongoingT();
+  if(t && (t.phase === 'draft' || current === 'Draft' || (t.draftData && t.draftData.status === 'active'))){
+    syncFromCloud(false);
+  }
+}, 2500);
 
 function applyRemoteDraftPick(payload){
   let t = tournamentData[payload.tournamentId];
@@ -3590,28 +3587,62 @@ function applyRemoteDraftControl(payload){
 }
 
 async function initSupabase(){
-  if(!supabaseReady()||supabaseInited) return;
-  supabaseInited=true;
-  supabaseClient=window.supabase.createClient(window.DRAFTDEX_SUPABASE.url, window.DRAFTDEX_SUPABASE.anonKey);
-  let {data:{session}} = await supabaseClient.auth.getSession();
-  await updateSession(session);
-  supabaseClient.auth.onAuthStateChange(async(_,s)=>await updateSession(s));
-  
-  // 1. Listen for database table updates
-  supabaseClient.channel('league-state').on('postgres_changes', {event:'UPDATE', schema:'public', table:'league_state', filter:'id=eq.main'}, p=>{
-    let incoming = p.new.data;
-    if(shouldApply(incoming)){
-      applySharedState(incoming);
-      render();
-    }
-  }).subscribe();
+  if(!supabaseReady() || supabaseInited) return;
+  supabaseInited = true;
+  try {
+    supabaseClient = window.supabase.createClient(window.DRAFTDEX_SUPABASE.url, window.DRAFTDEX_SUPABASE.anonKey);
+    let { data: { session } } = await supabaseClient.auth.getSession();
+    await updateSession(session);
+    supabaseClient.auth.onAuthStateChange(async (_, s) => await updateSession(s));
+    
+    // 1. Listen for database table updates
+    supabaseClient.channel('league-state').on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'league_state', filter: 'id=eq.main' }, p => {
+      let incoming = p.new?.data;
+      if(incoming && shouldApply(incoming)){
+        applySharedState(incoming);
+        render();
+      }
+    }).subscribe();
 
-  // 2. Setup low-latency Realtime WebSocket Broadcast channel
-  setupDraftRealtime();
+    // 2. Setup low-latency Realtime WebSocket Broadcast channel
+    setupDraftRealtime();
 
-  // 3. Immediately pull latest cloud state on startup!
-  await syncFromCloud(true);
+    // 3. Immediately pull latest cloud state on startup!
+    await syncFromCloud(true);
+  } catch(e) {
+    console.warn('Draftdex: initSupabase error:', e);
+    supabaseInited = false;
+  }
 }
+
+function ensureSupabaseInit(){
+  if(supabaseInited) return;
+  if(supabaseReady()){
+    initSupabase();
+  }
+}
+
+// Continuous initialization checker (polls every 80ms until Supabase SDK is ready)
+var initSupabaseInterval = setInterval(() => {
+  if(supabaseInited){
+    clearInterval(initSupabaseInterval);
+  } else {
+    ensureSupabaseInit();
+  }
+}, 80);
+
+window.addEventListener('DOMContentLoaded', () => {
+  ensureSupabaseInit();
+  syncFromCloud(true);
+});
+
+window.addEventListener('load', () => {
+  ensureSupabaseInit();
+  syncFromCloud(true);
+});
+
+// Trigger initial cloud sync immediately at start of script execution!
+syncFromCloud(true);
 
 async function pushStateToSupabase(payload, updateTime){
   if(!supabaseClient) return { error: new Error('Supabase client not initialized') };
