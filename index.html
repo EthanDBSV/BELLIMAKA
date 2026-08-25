@@ -7343,7 +7343,7 @@ function openBadgeManager(p){
     { id: 'cinderella', icon: '✨', name: 'Cinderella Run', color: 'magenta', desc: 'Underdog miracle run into Grand Finals / Championship.', perTournament: true },
     { id: 'clutch-king', icon: '🎯', name: 'Clutch King', color: 'purple', desc: 'Won 4 or more intense Game-3 decider matches (2-1) in a tournament.', perTournament: true },
     { id: 'improved', icon: '🚀', name: 'Most Improved', color: 'green', desc: 'Largest tournament-to-tournament performance improvement.', perTournament: true },
-    { id: 'blowout-king', icon: '💥', name: 'Blowout King (+5 GD)', color: 'amber', desc: 'Dominant +5 or higher game differential in a single tournament.', perTournament: true },
+    { id: 'blowout-king', icon: '💥', name: 'Blowout King (+5 GD)', color: 'amber', desc: 'Dominant +5 or higher game differential in a completed group stage.', perTournament: true },
     { id: 'victim', icon: '💀', name: 'Victim', color: 'red', desc: 'Went winless (0 wins) in a completed group stage.', perTournament: true },
     { id: 'record-win-streak', icon: '🔥', name: 'All-Time Streak King', color: 'red', desc: 'All-time consecutive win streak record holder.', perTournament: false },
     { id: 'active-win-streak', icon: '⚡', name: 'On Fire (3W+)', color: 'orange', desc: 'Active 3+ match win streak.', perTournament: false },
@@ -9038,6 +9038,25 @@ function calculateLeagueRecords(forceRefresh = false){
           statsByPlayer[p].bestGDTournament=t.name;
         }
 
+        // Blowout King (+5 GD): Dominant +5 or higher game differential strictly in a group stage
+        if(gd >= 5 && gComplete){
+          let badgeId = 'blowout-king-' + t.id;
+          if(!statsByPlayer[p].badges.some(b => b.id === badgeId)){
+            let rawSeason = (t.season || t.name || 'Season 1').replace(/[()]/g, '').trim();
+            let seasonMatch = rawSeason.match(/Season\s*\d+/i);
+            let tLabel = seasonMatch ? seasonMatch[0].replace(/Season\s*/i, 'Season ') : (t.name || 'Season 1');
+
+            statsByPlayer[p].badges.push({
+              id: badgeId,
+              icon: '💥',
+              name: `+${gd} GD (${tLabel})`,
+              desc: `Dominant +${gd} game differential in ${tLabel} group stage`,
+              category: 'dominance',
+              color: 'amber'
+            });
+          }
+        }
+
         statsByPlayer[p].tournamentFinishes.push({
           tournament:t,
           finish,
@@ -9447,17 +9466,6 @@ function calculateLeagueRecords(forceRefresh = false){
         color:'green'
       });
     }
-
-    if(s.bestGD>=5){
-      s.badges.push({
-        id:'blowout-king',
-        icon:'💥',
-        name:`+${s.bestGD} GD (${s.bestGDTournament})`,
-        desc:`Dominant +${s.bestGD} game differential in ${s.bestGDTournament}`,
-        category:'dominance',
-        color:'amber'
-      });
-    }
   });
 
   let maxOvrAll=0,maxOvrHolders=[],maxOvrTournament='';
@@ -9565,34 +9573,27 @@ function calculateLeagueRecords(forceRefresh = false){
       let gw = gStand ? (gStand.gw || 0) : 0;
       let gl = gStand ? (gStand.gl || 0) : 0;
 
-      // Top cut playoff matches
-      let tMatches = allMatches.filter(m => m.tournamentId === t.id && (m.a === p || m.b === p) && m.stage === 'topcut');
-      let playoffGW = tMatches.reduce((sum, m) => sum + (m.a === p ? (m.sa || 0) : (m.sb || 0)), 0);
-      let playoffGL = tMatches.reduce((sum, m) => sum + (m.a === p ? (m.sb || 0) : (m.sa || 0)), 0);
+      if((gw + gl) === 0) return;
 
-      let totGW = gw + playoffGW;
-      let totGL = gl + playoffGL;
-      if((totGW + totGL) === 0) return;
+      let tGD = gw - gl;
 
-      let tGD = totGW - totGL;
-
-      // Track Best Single Tournament GD
+      // Track Best Single Tournament GD (Group Stage)
       if(tGD > maxTourneyGDAll){
         maxTourneyGDAll = tGD;
-        maxTourneyGDHolders = [{ player: p, tournament: tLabel, gd: tGD, gw: totGW, gl: totGL }];
+        maxTourneyGDHolders = [{ player: p, tournament: tLabel, gd: tGD, gw: gw, gl: gl }];
       } else if(tGD === maxTourneyGDAll && maxTourneyGDAll !== -Infinity){
         if(!maxTourneyGDHolders.some(x => x.player === p && x.tournament === tLabel)){
-          maxTourneyGDHolders.push({ player: p, tournament: tLabel, gd: tGD, gw: totGW, gl: totGL });
+          maxTourneyGDHolders.push({ player: p, tournament: tLabel, gd: tGD, gw: gw, gl: gl });
         }
       }
 
-      // Track Worst Single Tournament GD
+      // Track Worst Single Tournament GD (Group Stage)
       if(tGD < minTourneyGDAll){
         minTourneyGDAll = tGD;
-        minTourneyGDHolders = [{ player: p, tournament: tLabel, gd: tGD, gw: totGW, gl: totGL }];
+        minTourneyGDHolders = [{ player: p, tournament: tLabel, gd: tGD, gw: gw, gl: gl }];
       } else if(tGD === minTourneyGDAll && minTourneyGDAll !== Infinity){
         if(!minTourneyGDHolders.some(x => x.player === p && x.tournament === tLabel)){
-          minTourneyGDHolders.push({ player: p, tournament: tLabel, gd: tGD, gw: totGW, gl: totGL });
+          minTourneyGDHolders.push({ player: p, tournament: tLabel, gd: tGD, gw: gw, gl: gl });
         }
       }
     });
@@ -9856,7 +9857,7 @@ function openBadgeGuide(){
         { icon: '✨', name: 'Cinderella Run', color: 'magenta', desc: 'Rare miracle feat awarded to a low-seed underdog who defied the odds to reach the Grand Finals or win the Championship.' },
         { icon: '🎯', name: 'Clutch King', color: 'purple', desc: 'Won 4 or more intense Game-3 decider matches (2-1) in a single tournament.' },
         { icon: '🚀', name: 'Most Improved', color: 'green', desc: 'Largest tournament-to-tournament rank and win improvement.' },
-        { icon: '💥', name: 'Blowout King (+5 GD)', color: 'amber', desc: 'Dominant +5 or higher game differential in a single tournament.' },
+        { icon: '💥', name: 'Blowout King (+5 GD)', color: 'amber', desc: 'Dominant +5 or higher game differential in a completed group stage.' },
         { icon: '💀', name: 'Victim', color: 'red', desc: 'Went winless (0 wins) in a completed group stage.' }
       ]
     },
