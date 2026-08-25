@@ -9024,9 +9024,11 @@ function calculateLeagueRecords(forceRefresh = false){
 
       let gEntry=Object.entries(groupsOf(t)).find(([,ps])=>ps.includes(p));
       let gStand=gEntry?getStand(t,gEntry[0]).find(x=>x.p===p):null;
-      let gw=gStand?(gStand.w||0):0;
-      let gl=gStand?(gStand.l||0):0;
-      let gd=gStand?(gStand.gw-gStand.gl):0;
+      let mw=gStand?(gStand.w||0):0;
+      let ml=gStand?(gStand.l||0):0;
+      let gw=gStand?(gStand.gw||0):0;
+      let gl=gStand?(gStand.gl||0):0;
+      let gd=gw-gl;
       let finalArr=t.finalStandings?.[gEntry?.[0]]||t.manualStandings?.[gEntry?.[0]];
       let gSeed=Array.isArray(finalArr)&&finalArr.includes(p)?(finalArr.indexOf(p)+1):(gStand?getStand(t,gEntry[0]).indexOf(gStand)+1:0);
       let groupSize=gEntry?groupsOf(t)[gEntry[0]]?.length||4:4;
@@ -9038,6 +9040,8 @@ function calculateLeagueRecords(forceRefresh = false){
           finish,
           w:w||0,
           l:l||0,
+          mw,
+          ml,
           gw,
           gl,
           gComplete,
@@ -9102,14 +9106,14 @@ function calculateLeagueRecords(forceRefresh = false){
           }
         }
 
-        // Clean Sheet: Flawless in group stage
-        if(gComplete && gw >= 2 && gl === 0){
+        // Clean Sheet: Flawless in group stage (no match losses)
+        if(gComplete && mw >= 2 && ml === 0){
           if(!statsByPlayer[p].badges.some(b => b.id === 'cleansheet-' + t.id)){
             statsByPlayer[p].badges.push({
               id: 'cleansheet-' + t.id,
               icon: '🛡️',
               name: `Clean Sheet (${t.name})`,
-              desc: `Flawless group stage without a single match loss (${gw}-0) in ${t.name}`,
+              desc: `Flawless group stage without a single match loss (${mw}-0) in ${t.name}`,
               category: 'dominance',
               color: 'teal'
             });
@@ -9165,13 +9169,13 @@ function calculateLeagueRecords(forceRefresh = false){
         }
 
         // Victim: Went winless in group stage (0 wins in a completed group stage)
-        if(gComplete && gw === 0 && gl >= 1){
+        if(gComplete && mw === 0 && ml >= 1){
           if(!statsByPlayer[p].badges.some(b => b.id === 'victim-' + t.id)){
             statsByPlayer[p].badges.push({
               id: 'victim-' + t.id,
               icon: '💀',
               name: `Victim (${t.name})`,
-              desc: `Went winless in ${t.name} group stage (0-${gl})`,
+              desc: `Went winless in ${t.name} group stage (0-${ml})`,
               category: 'notoriety',
               color: 'red'
             });
