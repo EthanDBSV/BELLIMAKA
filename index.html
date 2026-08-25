@@ -6681,6 +6681,21 @@ function render(){
   let active=document.activeElement;
   if(current==='Account'&&active&&/^auth(Username|Password)$/.test(active.id||''))return;
   if(current==='Draft Board'||current==='Draft Tools')current='Draft';
+
+  // 1. Capture scroll positions of all scrollable containers & elements before rebuilding DOM
+  let savedScrolls = {};
+  document.querySelectorAll('[id]').forEach(el => {
+    if(el.scrollLeft > 0 || el.scrollTop > 0){
+      savedScrolls[el.id] = { left: el.scrollLeft, top: el.scrollTop };
+    }
+  });
+  let scroller = document.querySelector('.draft-board-wrap');
+  if(scroller && scroller.scrollLeft > 0){
+    window.draftBoardScrollPos = { left: scroller.scrollLeft, top: scroller.scrollTop };
+  }
+  let builderEl = document.querySelector('#teamBuilder');
+  let savedBuilderScroll = builderEl ? builderEl.scrollTop : null;
+
   nav();
   let pages={
     Home: typeof Home==='function'?Home:window.Home,
@@ -6701,6 +6716,30 @@ function render(){
   let handler = pages[current] || window[current] || (typeof window[current?.replace(/\s+/g,'')] === 'function' ? window[current.replace(/\s+/g,'')] : Home);
   document.querySelector('#app').innerHTML=(typeof handler==='function'?handler():Home());
   mountTopCutViewer();
+
+  // 2. Accurately restore all container scroll positions across all renders and polling cycles
+  function applyRestoredScrolls(){
+    Object.entries(savedScrolls).forEach(([id, pos]) => {
+      let target = document.getElementById(id);
+      if(target){
+        target.scrollLeft = pos.left;
+        target.scrollTop = pos.top;
+      }
+    });
+    if(typeof restoreDraftBoardScroll === 'function'){
+      restoreDraftBoardScroll();
+    }
+    if(savedBuilderScroll !== null){
+      let newBuilder = document.querySelector('#teamBuilder');
+      if(newBuilder) newBuilder.scrollTop = savedBuilderScroll;
+    }
+  }
+
+  applyRestoredScrolls();
+  requestAnimationFrame(applyRestoredScrolls);
+  setTimeout(applyRestoredScrolls, 10);
+  setTimeout(applyRestoredScrolls, 50);
+  setTimeout(applyRestoredScrolls, 150);
 }
 
 /* Point the board at the league sheet the first time only — a saved
@@ -11223,8 +11262,14 @@ async function pullRemoteTeams(){
 function fmtPts(n){return Number.isInteger(+n)?+n:+(+n).toFixed(1)}
 function teamSpent(team){return fmtPts((team?.picks||[]).reduce((n,x)=>n+(+x.cost||0),0))}
 
-/* --- actions (each refreshes only the builder, never the iframe) --- */
-function refreshBuilder(){let host=document.querySelector('#teamBuilder');if(host)host.innerHTML=builderHTML()}
+function refreshBuilder(){
+  let host=document.querySelector('#teamBuilder');
+  if(host){
+    let prevTop = host.scrollTop;
+    host.innerHTML=builderHTML();
+    host.scrollTop = prevTop;
+  }
+}
 function createTeam(){
   let box=document.querySelector('#newTeamName'),name=(box?.value||'').trim()||'Team '+(ensureTeams().teams.length+1);
   if(name.length>40)name=name.slice(0,40);
@@ -12672,21 +12717,47 @@ function renderDraftBoardTierColumns(t){
   }).join('');
 }
 
+function saveDraftBoardScroll(el){
+  if(el && typeof el.scrollLeft === 'number'){
+    window.draftBoardScrollPos = { left: el.scrollLeft, top: el.scrollTop };
+  }
+}
+
+function restoreDraftBoardScroll(){
+  let pos = window.draftBoardScrollPos;
+  if(!pos) return;
+  let targets = [
+    document.getElementById('offseasonDraftBoardGridWrap'),
+    document.getElementById('draftBoardGridWrap'),
+    document.querySelector('.draft-board-wrap')
+  ];
+  targets.forEach(el => {
+    if(el && pos.left > 0){
+      el.scrollLeft = pos.left;
+    }
+  });
+}
+
+function scrollDraftBoard(delta){
+  let el = document.getElementById('offseasonDraftBoardGridWrap') || document.getElementById('draftBoardGridWrap') || document.querySelector('.draft-board-wrap');
+  if(el){
+    el.scrollBy({ left: delta, behavior: 'smooth' });
+    setTimeout(() => {
+      if(el) saveDraftBoardScroll(el);
+    }, 350);
+  }
+}
+
 function handleDraftBoardSearchInput(val){
   draftBoardSearch = val;
   let t = ongoingT() || activeT();
   let wrap = document.getElementById('draftBoardGridWrap');
   if(wrap && t){
+    let prev = wrap.scrollLeft;
     wrap.innerHTML = renderDraftBoardTierColumns(t);
+    wrap.scrollLeft = prev;
   } else {
     render();
-  }
-}
-
-function scrollDraftBoard(delta){
-  let el = document.getElementById('draftBoardGridWrap');
-  if(el){
-    el.scrollBy({ left: delta, behavior: 'smooth' });
   }
 }
 
@@ -12694,7 +12765,9 @@ function handleDraftBoardFilterChange(){
   let t = ongoingT() || activeT();
   let wrap = document.getElementById('draftBoardGridWrap');
   if(wrap && t){
+    let prev = wrap.scrollLeft;
     wrap.innerHTML = renderDraftBoardTierColumns(t);
+    wrap.scrollLeft = prev;
   } else {
     render();
   }
@@ -12757,7 +12830,7 @@ function DraftBoardView(t){
         </div>
 
         <!-- Tier Columns Grid -->
-        <div class="draft-board-wrap" id="draftBoardGridWrap">
+        <div class="draft-board-wrap" id="draftBoardGridWrap" onscroll="saveDraftBoardScroll(this)">
           ${renderDraftBoardTierColumns(t)}
         </div>
       </div>
@@ -13173,12 +13246,20 @@ function getOffseasonDraftBoard(){
 function handleOffseasonSearch(val){
   draftBoardSearch = val;
   let wrap = document.getElementById('offseasonDraftBoardGridWrap');
-  if(wrap) wrap.innerHTML = renderOffseasonTierColumns();
+  if(wrap){
+    let prev = wrap.scrollLeft;
+    wrap.innerHTML = renderOffseasonTierColumns();
+    wrap.scrollLeft = prev;
+  }
 }
 
 function renderOffseasonBoardColumns(){
   let wrap = document.getElementById('offseasonDraftBoardGridWrap');
-  if(wrap) wrap.innerHTML = renderOffseasonTierColumns();
+  if(wrap){
+    let prev = wrap.scrollLeft;
+    wrap.innerHTML = renderOffseasonTierColumns();
+    wrap.scrollLeft = prev;
+  }
 }
 
 function renderOffseasonTierColumns(){
@@ -13247,10 +13328,15 @@ function renderOffseasonTierColumns(){
 }
 
 function addMonToPlannerFromBoard(mon, cost){
+  let scroller = document.querySelector('.draft-board-wrap');
+  if(scroller && scroller.scrollLeft > 0){
+    window.draftBoardScrollPos = { left: scroller.scrollLeft, top: scroller.scrollTop };
+  }
   addTeamMon(mon, cost);
   if(typeof showDraftToast === 'function'){
     showDraftToast(`Added ${mon} (${cost} pts) to your team plan`);
   }
+  if(typeof restoreDraftBoardScroll === 'function') restoreDraftBoardScroll();
 }
 
 function openOffseasonDraftBoardImporter(){
@@ -13387,7 +13473,7 @@ function OffseasonDraftView(){
         </div>
 
         <!-- Tier Columns Grid -->
-        <div class="draft-board-wrap" id="offseasonDraftBoardGridWrap">
+        <div class="draft-board-wrap" id="offseasonDraftBoardGridWrap" onscroll="saveDraftBoardScroll(this)">
           ${renderOffseasonTierColumns()}
         </div>
       </div>
