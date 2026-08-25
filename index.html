@@ -9555,7 +9555,7 @@ function calculateLeagueRecords(forceRefresh = false){
 
     let totalGW = 0;
     let totalGL = 0;
-    (s.matches || []).forEach(m => {
+    allMatches.filter(m => m.a === p || m.b === p).forEach(m => {
       if(m.a === p){
         totalGW += (Number(m.sa) || 0);
         totalGL += (Number(m.sb) || 0);
@@ -9568,7 +9568,14 @@ function calculateLeagueRecords(forceRefresh = false){
     s.careerGW = totalGW;
     s.careerGL = totalGL;
     s.careerGD = cGD;
+  });
 
+  allPlayers.forEach(p=>{
+    let s=statsByPlayer[p];
+    if(!s) return;
+    if((s.careerGW + s.careerGL) === 0) return; // Skip inactive / 0-game players
+
+    let cGD = s.careerGD;
     if(cGD > maxCareerGDAll){
       maxCareerGDAll = cGD;
       maxCareerGDHolders = [p];
@@ -11285,6 +11292,17 @@ function openDraftFromPlanner(monName, cost){
 
 /* --- markup --- */
 function builderHTML(){
+  let hasImportedBoard = !!(sheetIds(boardLink).id || (typeof draftPool !== 'undefined' && draftPool?.items?.length) || Object.values(tournamentData).some(t => t.draftData?.board?.length));
+  if(!hasImportedBoard){
+    return `<div class="eyebrow">Team planner</div>
+      <div class="card empty" style="padding:28px 16px;margin-top:14px;text-align:center;background:#14141a;border:1px solid #292934">
+        <div style="font-size:32px;margin-bottom:8px">📋</div>
+        <div class="card-title" style="font-size:15px;color:#f5f3f0">No Draft Board Connected</div>
+        <p class="sub" style="font-size:12px;margin:8px auto 14px;max-width:280px;line-height:1.4">The draft board and cost sheet have not been connected yet. Once a moderator imports or connects the Google Sheets link in Board settings, coaches can build and test draft teams against the budget cap.</p>
+        ${moderator ? `<button class="btn btn-sm" onclick="openBoardSettings()">Open Board Settings</button>` : ''}
+      </div>`;
+  }
+
   let s=ensureTeams(),team=activeTeam(),who=s.key==='guest'?'this browser':(window.currentAccount?.username||'your account');
   let chips=`<div class="team-chips">${s.teams.map(t=>`<button class="team-chip ${t.id===s.activeId?'on':''}" title="${esc(t.name)}" onclick="switchTeam('${jsArg(t.id)}')">${esc(t.name)}</button>`).join('')}<button class="team-chip new" onclick="window.renamingTeam=null;switchTeam('${jsArg(s.activeId||'')}');document.querySelector('#newTeamRow').style.display='grid';document.querySelector('#newTeamName').focus()">+ New team</button></div>
   <div id="newTeamRow" style="display:${s.teams.length?'none':'grid'};grid-template-columns:minmax(0,1fr) auto;gap:7px;margin-top:10px">
@@ -13119,9 +13137,10 @@ function reopenDraftPhase(tId){
 
 /* --- Navigation & Board Main Handler --- */
 function Board(){
-  let t = ongoingT() || activeT();
+  let t = ongoingT();
 
-  if(t){
+  // If an active in-season tournament is ONGOING:
+  if(t && t.status === 'ONGOING'){
     let d = ensureTournamentDraft(t);
     let isDraftOver = (t.phase === 'group' || t.phase === 'groups' || t.phase === 'topcut' || t.phase === 'complete' || d.status === 'completed');
 
