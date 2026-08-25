@@ -3477,6 +3477,41 @@ function applyRemoteDraftControl(payload){
   render();
 }
 
+var isSyncingFromCloud = false;
+async function syncFromCloud(){
+  if(!supabaseClient || isSyncingFromCloud) return;
+  isSyncingFromCloud = true;
+  try {
+    let { data, error } = await supabaseClient.from('league_state').select('data').eq('id', 'main').maybeSingle();
+    if(!error && data?.data){
+      let incoming = data.data;
+      if(shouldApply(incoming)){
+        applySharedState(incoming);
+        render();
+      }
+    }
+  } catch(e){
+    console.warn('Draftdex sync error:', e);
+  } finally {
+    isSyncingFromCloud = false;
+  }
+}
+
+// Re-sync and re-connect whenever phone wakes up or user returns to tab
+document.addEventListener('visibilitychange', () => {
+  if(document.visibilityState === 'visible'){
+    syncFromCloud();
+    setupDraftRealtime();
+  }
+});
+window.addEventListener('pageshow', () => {
+  syncFromCloud();
+  setupDraftRealtime();
+});
+window.addEventListener('focus', () => {
+  syncFromCloud();
+});
+
 async function initSupabase(){
   if(!supabaseReady() || supabaseInited) return;
   supabaseInited = true;
@@ -3497,6 +3532,9 @@ async function initSupabase(){
 
     // 2. Setup low-latency Realtime WebSocket Broadcast channel
     setupDraftRealtime();
+
+    // 3. Pull latest cloud data immediately on startup
+    await syncFromCloud();
   } catch(e) {
     console.warn('Draftdex: initSupabase error:', e);
     supabaseInited = false;
