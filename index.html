@@ -6688,18 +6688,8 @@ function render(){
   if(current==='Account'&&active&&/^auth(Username|Password)$/.test(active.id||''))return;
   if(current==='Draft Board'||current==='Draft Tools')current='Draft';
 
-  // 1. Capture scroll positions of all scrollable containers & elements before rebuilding DOM
-  let savedScrolls = {};
-  document.querySelectorAll('[id]').forEach(el => {
-    if(el.scrollLeft > 0 || el.scrollTop > 0){
-      savedScrolls[el.id] = { left: el.scrollLeft, top: el.scrollTop };
-    }
-  });
   let scroller = document.getElementById('draftBoardGridWrap') || document.getElementById('offseasonDraftBoardGridWrap') || document.querySelector('.draft-board-wrap');
   let draftScrollLeft = (scroller && scroller.scrollLeft > 0) ? scroller.scrollLeft : (window.draftBoardScrollPos?.left || 0);
-  if(draftScrollLeft > 0){
-    window.draftBoardScrollPos = { left: draftScrollLeft, top: 0 };
-  }
   let builderEl = document.querySelector('#teamBuilder');
   let savedBuilderScroll = builderEl ? builderEl.scrollTop : null;
 
@@ -6724,22 +6714,17 @@ function render(){
   document.querySelector('#app').innerHTML=(typeof handler==='function'?handler():Home());
   mountTopCutViewer();
 
-  // 2. Synchronously restore all container scroll positions immediately within the same JavaScript execution tick
-  Object.entries(savedScrolls).forEach(([id, pos]) => {
-    let target = document.getElementById(id);
-    if(target){
-      target.scrollLeft = pos.left;
-      target.scrollTop = pos.top;
-    }
-  });
+  // Restore draft board tier columns scroll
   let newScroller = document.getElementById('draftBoardGridWrap') || document.getElementById('offseasonDraftBoardGridWrap') || document.querySelector('.draft-board-wrap');
   if(newScroller && draftScrollLeft > 0){
     newScroller.scrollLeft = draftScrollLeft;
   }
+  // Restore team planner sidebar scroll
   if(savedBuilderScroll !== null){
     let newBuilder = document.querySelector('#teamBuilder');
     if(newBuilder) newBuilder.scrollTop = savedBuilderScroll;
   }
+  // Center snake strip on active pick
   if(current === 'Draft' && typeof centerActiveDraftPickTile === 'function'){
     centerActiveDraftPickTile();
   }
