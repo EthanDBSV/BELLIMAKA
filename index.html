@@ -1952,6 +1952,10 @@ function createTournament(){
   selected.forEach(p => {
     if(!tournamentData[id].rosters[p]) tournamentData[id].rosters[p] = [];
   });
+  if(window.pendingCreatorCover){
+    tournamentData[id].backgroundImage = window.pendingCreatorCover;
+    window.pendingCreatorCover = null;
+  }
   tournamentData[id].matches=groupSchedule(tournamentData[id]);
   syncTournamentSeasons();
   viewTournament=id;
@@ -3689,11 +3693,13 @@ async function flushSync(){
     let { error } = await pushStateToSupabase(payload, lastLocalUpdate);
     if(error){
       console.warn('Draftdex: Cloud sync error:', error);
+      lastSentSnapshot = '';
     } else {
       console.log('Draftdex: Cloud sync SUCCESSful! Rev:', knownRev, 'Tournaments:', Object.keys(tournamentData).length);
     }
   } catch(e) {
     console.warn('Draftdex: Cloud sync deferred or failed', e);
+    lastSentSnapshot = '';
   }
 }
 
@@ -3925,12 +3931,32 @@ function openCreator(){
     </div>
 
     <div class="field" style="margin-top:16px"><label>Add new player profiles (comma separated)</label><input id="newPlayers" placeholder="e.g. Cynthia, Steven, Leon"></div>
+
+    <div class="field" style="margin-top:16px">
+      <label>Tournament Cover Photo (Optional)</label>
+      <input id="creatorCoverFile" type="file" accept="image/png,image/jpeg,image/webp" onchange="previewCreatorCover(event)">
+      <div id="creatorCoverPreview" style="display:none;height:140px;border-radius:6px;margin-top:8px;background-size:cover;background-position:center"></div>
+    </div>
     
     <div class="creator-actions" style="margin-top:20px">
       <button class="btn ghost" onclick="closeModal()">Cancel</button>
       <button class="btn" onclick="createTournament()">+ Create Tournament</button>
     </div>
   </div></div>`;
+}
+
+async function previewCreatorCover(e){
+  let f = e.target.files?.[0];
+  if(!f) return;
+  try {
+    let data = await shrinkImage(f, 850, 0.70);
+    window.pendingCreatorCover = data;
+    let prev = document.querySelector('#creatorCoverPreview');
+    if(prev){
+      prev.style.display = 'block';
+      prev.style.backgroundImage = `url('${data}')`;
+    }
+  } catch(err){}
 }
 
 function updateCreatorSelectedCount(){
@@ -4839,28 +4865,61 @@ function Tournaments(){
 }
 
 
-function saveCover(id){
-  if(!tournamentData[id]){ closeModal(); return; }
+async function saveCover(id){
+  let t = tournamentData[id];
+  if(!t){ closeModal(); return; }
+  let file = document.querySelector('#coverFile')?.files?.[0];
+  if(!window.pendingCover && file){
+    try {
+      window.pendingCover = await shrinkImage(file, 850, 0.70);
+    } catch(e){}
+  }
   if(window.pendingCover){
-    tournamentData[id].backgroundImage = window.pendingCover;
+    t.backgroundImage = window.pendingCover;
     window.pendingCover = null;
     persistLeague();
-    closeModal();
-    render();
-  } else {
-    closeModal();
   }
+  closeModal();
+  render();
 }
+
 function removeCover(id){
-  if(!tournamentData[id]){ closeModal(); return; }
-  delete tournamentData[id].backgroundImage;
+  let t = tournamentData[id];
+  if(!t){ closeModal(); return; }
+  delete t.backgroundImage;
   window.pendingCover = null;
   persistLeague();
   closeModal();
   render();
 }
 
-function openCoverEditor(id){let t=tournamentData[id];document.querySelector('#modal').innerHTML=`<div class="modal-wrap"><div class="modal" style="max-width:510px"><div class="modal-head"><div><div class="eyebrow">Tournament cover</div><h2>${t.name}</h2></div><button class="close" onclick="closeModal()">×</button></div><p class="sub">Choose a Pokémon image up to 2 MB. This limit is for the current browser/JSON storage setup, not your website host.</p><div class="field"><label>Upload cover image</label><input id="coverFile" type="file" accept="image/png,image/jpeg,image/webp" onchange="previewCover(event)"></div><div id="coverPreview" style="height:190px;border-radius:6px;margin-top:14px;background:${t.backgroundImage?`url('${t.backgroundImage}') center/cover`:'#25252b'}"></div><div class="creator-actions"><button class="btn ghost" onclick="removeCover('${id}')">Remove cover</button><button class="btn" onclick="saveCover('${id}')">Save cover</button></div></div></div>`}
+function openCoverEditor(id){
+  let t = tournamentData[id];
+  if(!t) return;
+  document.querySelector('#modal').innerHTML = `
+    <div class="modal-wrap">
+      <div class="modal" style="max-width:510px">
+        <div class="modal-head">
+          <div>
+            <div class="eyebrow">Tournament cover</div>
+            <h2>${esc(t.name)}</h2>
+          </div>
+          <button class="close" onclick="closeModal()">×</button>
+        </div>
+        <p class="sub">Choose a background image for this tournament. Images are optimized automatically.</p>
+        <div class="field">
+          <label>Upload cover image</label>
+          <input id="coverFile" type="file" accept="image/png,image/jpeg,image/webp" onchange="previewCover(event)">
+        </div>
+        <div id="coverPreview" style="height:190px;border-radius:6px;margin-top:14px;background:${t.backgroundImage ? `url('${esc(t.backgroundImage)}') center/cover` : '#25252b'}"></div>
+        <div class="creator-actions">
+          <button class="btn ghost" onclick="removeCover('${jsArg(id)}')">Remove cover</button>
+          <button class="btn" onclick="saveCover('${jsArg(id)}')">Save cover</button>
+        </div>
+      </div>
+    </div>
+  `;
+}
 function openRecapPanelCoverEditor(id){let t=tournamentData[id];let currentCover=pulsePanelImages.recap||t?.recapPanelImage||t?.backgroundImage||'';document.querySelector('#modal').innerHTML=`<div class="modal-wrap"><div class="modal" style="max-width:510px"><div class="modal-head"><div><div class="eyebrow">Recap panel cover</div><h2>${t?.name||'Off-Season Recap'}</h2></div><button class="close" onclick="closeModal()">×</button></div><p class="sub">This image is used as the off-season Last Tournament panel cover and carries over across tournaments so your off-season looks consistent.</p><div class="field"><label>Upload panel image</label><input id="recapPanelFile" type="file" accept="image/png,image/jpeg,image/webp" onchange="previewRecapPanelCover(event)"></div><div id="recapPanelPreview" style="height:190px;border-radius:6px;margin-top:14px;background:${currentCover?`url('${currentCover}') center/cover`:'#25252b'}"></div><div class="creator-actions"><button class="btn ghost" onclick="removeRecapPanelCover('${id}')">Remove panel cover</button><button class="btn" onclick="saveRecapPanelCover('${id}')">Save panel cover</button></div></div></div>`}
 function openPulsePanelCoverEditor(id){let t=tournamentData[id];document.querySelector('#modal').innerHTML=`<div class="modal-wrap"><div class="modal" style="max-width:510px"><div class="modal-head"><div><div class="eyebrow">Tournament pulse cover</div><h2>${t.name}</h2></div><button class="close" onclick="closeModal()">×</button></div><p class="sub">This is a league-wide cover for the Tournament Pulse panel and carries over to every tournament until you change it again.</p><div class="field"><label>Upload pulse image</label><input id="pulsePanelFile" type="file" accept="image/png,image/jpeg,image/webp" onchange="previewPulsePanelCover(event)"></div><div id="pulsePanelPreview" style="height:190px;border-radius:6px;margin-top:14px;background:${pulsePanelImages.global||t.backgroundImage?`url('${pulsePanelImages.global||t.backgroundImage}') center/cover`:'#25252b'}"></div><div class="creator-actions"><button class="btn ghost" onclick="removePulsePanelCover('${id}')">Remove panel cover</button><button class="btn" onclick="savePulsePanelCover('${id}')">Save panel cover</button></div></div></div>`}
 
