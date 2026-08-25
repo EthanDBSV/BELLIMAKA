@@ -4357,6 +4357,7 @@ function draftStageHeroCard(t){
   let faceLetter = curPlayer ? ((profilePictures[curPlayer] || teamCovers[curPlayer]) ? '' : esc(curPlayer[0])) : '—';
   let curOvr = curPlayer ? calculatePlayerOVR(curPlayer) : null;
   let coachStats = curPlayer ? getDraftCoachStats(t, curPlayer) : null;
+  let curRoster = curPlayer ? (t.rosters?.[curPlayer] || roster[curPlayer] || []) : [];
 
   return `
     <aside class="card matchup-hero-card" style="background:linear-gradient(135deg,#1f1318 0%,#13131c 65%);border-color:#3d242c;position:relative;overflow:hidden">
@@ -4372,7 +4373,7 @@ function draftStageHeroCard(t){
       </div>
 
       <div style="padding:16px 20px;display:flex;align-items:center;gap:16px;position:relative;z-index:2">
-        <div style="position:relative">
+        <div style="position:relative;cursor:pointer" onclick="openProfile('${jsArg(curPlayer)}')">
           <span class="avatar" style="background-image:${faceArt};background-size:cover;background-position:center;width:56px;height:56px;font-size:24px;border-radius:50%;border:2px solid ${curOvr?.color || '#fff'};box-shadow:0 4px 16px rgba(0,0,0,0.6);display:grid;place-items:center">${faceLetter}</span>
           ${curOvr ? `<span style="position:absolute;bottom:-4px;right:-4px">${curOvr.badgeHtml}</span>` : ''}
         </div>
@@ -4389,11 +4390,288 @@ function draftStageHeroCard(t){
         ` : ''}
       </div>
 
+      ${curRoster.length ? `
+        <div style="padding:0 20px 12px;position:relative;z-index:2;display:flex;align-items:center;gap:6px;overflow-x:auto">
+          <span style="font-size:9px;font-weight:800;color:#7a7985;text-transform:uppercase;letter-spacing:.5px;flex:none">Drafted:</span>
+          ${curRoster.map(m => `
+            <div style="width:26px;height:26px;background:#0e0e14;border:1px solid #282834;border-radius:4px;display:grid;place-items:center;flex:none" title="${esc(m)}">
+              <img src="${esc(pokeSprite(m))}" style="width:20px;height:20px;object-fit:contain" onerror="handleSpriteError(this)">
+            </div>
+          `).join('')}
+        </div>
+      ` : ''}
+
       <div class="matchup-hero-foot" style="justify-content:space-between;padding:8px 14px;position:relative;z-index:2">
         <span style="font-size:11px;color:#a09fa8">Pick <b>#${turn.currentPickNumber} of ${turn.totalPicks}</b> · Round <b>${turn.currentRound}</b></span>
         <button class="btn btn-sm" style="padding:4px 12px!important" onclick="go('Draft')">Draft Room →</button>
       </div>
     </aside>
+  `;
+}
+
+function topCutHeroCard(t){
+  let topCutModel = (typeof getTournamentTopCutModel === 'function') ? getTournamentTopCutModel(t) : null;
+  let gf = topCutModel?.gfMatches || [];
+  let semi = topCutModel?.semiMatches || [];
+  let featuredMatch = gf[0] || semi[0] || null;
+
+  let p1 = featuredMatch?.p1 || t.players?.[0] || 'Trainer 1';
+  let p2 = featuredMatch?.p2 || t.players?.[1] || 'Trainer 2';
+  let s1 = featuredMatch?.s1 ?? '-';
+  let s2 = featuredMatch?.s2 ?? '-';
+
+  let p1Art = profilePictures[p1] ? `url('${esc(profilePictures[p1])}')` : (teamCovers[p1] ? `url('${esc(teamCovers[p1])}')` : fallbackArt(p1));
+  let p2Art = profilePictures[p2] ? `url('${esc(profilePictures[p2])}')` : (teamCovers[p2] ? `url('${esc(teamCovers[p2])}')` : fallbackArt(p2));
+  let p1Let = (profilePictures[p1] || teamCovers[p1]) ? '' : esc(p1[0]);
+  let p2Let = (profilePictures[p2] || teamCovers[p2]) ? '' : esc(p2[0]);
+  let p1Ovr = calculatePlayerOVR(p1);
+  let p2Ovr = calculatePlayerOVR(p2);
+
+  return `
+    <aside class="card matchup-hero-card" style="background:radial-gradient(circle at top right,#3d1f14 0%,#13131c 70%);border-color:#5c3a1e;position:relative;overflow:hidden">
+      <div class="matchup-hero-banner" style="position:relative;z-index:2;background:linear-gradient(90deg,rgba(255,209,102,0.15) 0%,rgba(0,0,0,0.5) 100%)">
+        <div style="display:flex;align-items:center;gap:6px">
+          <span style="font-size:14px">🏆</span>
+          <span class="eyebrow" style="color:#ffd166;margin:0;letter-spacing:1px">CHAMPIONSHIP PLAYOFFS</span>
+        </div>
+        <span class="tag" style="background:#ffd16622;border:1px solid #ffd16650;font-size:9px;font-weight:900;letter-spacing:1px;color:#ffd166;padding:3px 8px;border-radius:4px">
+          ${gf.length ? 'GRAND FINALS' : 'SEMIFINALS'}
+        </span>
+      </div>
+
+      <div style="padding:16px 20px;display:flex;align-items:center;justify-content:space-between;gap:12px;position:relative;z-index:2">
+        <div style="display:flex;align-items:center;gap:10px;min-width:0;flex:1">
+          <div style="position:relative;flex:none;cursor:pointer" onclick="openProfile('${jsArg(p1)}')">
+            <span class="avatar" style="background-image:${p1Art};background-size:cover;background-position:center;width:48px;height:48px;font-size:20px;border-radius:50%;border:2px solid ${p1Ovr.color};display:grid;place-items:center">${p1Let}</span>
+            <span style="position:absolute;bottom:-4px;right:-4px">${p1Ovr.badgeHtml}</span>
+          </div>
+          <div style="min-width:0">
+            <div style="font:800 16px 'Barlow Condensed';color:#f5f3f0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${playerLink(p1)}</div>
+            <div style="font-size:10px;color:#8e8c95;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(teamName(t, p1))}</div>
+          </div>
+        </div>
+
+        <div style="text-align:center;flex:none;padding:0 8px">
+          <div style="font:800 24px 'Barlow Condensed';color:#ffd166;letter-spacing:1px">${s1 !== '-' && s2 !== '-' ? `${s1} - ${s2}` : 'VS'}</div>
+          <div style="font-size:9px;font-weight:800;color:#a09fa8;letter-spacing:.5px;text-transform:uppercase">${featuredMatch?.completed ? 'FINAL' : 'BO3'}</div>
+        </div>
+
+        <div style="display:flex;align-items:center;gap:10px;min-width:0;flex:1;justify-content:flex-end;text-align:right">
+          <div style="min-width:0">
+            <div style="font:800 16px 'Barlow Condensed';color:#f5f3f0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${playerLink(p2)}</div>
+            <div style="font-size:10px;color:#8e8c95;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(teamName(t, p2))}</div>
+          </div>
+          <div style="position:relative;flex:none;cursor:pointer" onclick="openProfile('${jsArg(p2)}')">
+            <span class="avatar" style="background-image:${p2Art};background-size:cover;background-position:center;width:48px;height:48px;font-size:20px;border-radius:50%;border:2px solid ${p2Ovr.color};display:grid;place-items:center">${p2Let}</span>
+            <span style="position:absolute;bottom:-4px;right:-4px">${p2Ovr.badgeHtml}</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="matchup-hero-foot" style="justify-content:space-between;padding:8px 14px;position:relative;z-index:2">
+        <span style="font-size:11px;color:#ffd166">👑 Winner takes the League Championship Crown</span>
+        <button class="btn btn-sm" style="padding:4px 12px!important" onclick="go('Top Cut')">View Bracket →</button>
+      </div>
+    </aside>
+  `;
+}
+
+function homeDraftTargetsSection(t){
+  let d = ensureTournamentDraft(t);
+  if(!d || !Array.isArray(d.board) || !d.board.length) return '';
+  let draftedMons = new Set((d.picks || []).map(p => (p.pokemon || '').toLowerCase().trim()));
+
+  let available = [];
+  d.board.forEach(tier => {
+    (tier.pokemon || []).forEach(mon => {
+      if(!draftedMons.has(mon.toLowerCase().trim())){
+        available.push({ name: mon, cost: tier.cost || 0, tierName: tier.name || `${tier.cost} pts` });
+      }
+    });
+  });
+  available.sort((a, b) => b.cost - a.cost);
+  if(!available.length) return '';
+
+  return `
+    <section class="section">
+      <div class="section-head" style="align-items:center">
+        <div>
+          <div class="eyebrow" style="color:#ffd166;margin-bottom:2px">⭐ Draft Board Spotlight</div>
+          <h2>TOP AVAILABLE POKÉMON</h2>
+        </div>
+        <button class="link" onclick="go('Draft')">VIEW FULL DRAFT BOARD →</button>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px">
+        ${available.slice(0, 6).map(m => {
+          let sprite = pokeSprite(m.name);
+          return `
+            <div class="card" style="padding:12px 14px;background:#14141c;border:1px solid #2d2d3c;display:flex;align-items:center;gap:12px;border-radius:8px;transition:all .15s ease;cursor:pointer" onclick="go('Draft')">
+              <div style="width:44px;height:44px;background:#0d0d12;border-radius:8px;border:1px solid #282834;display:grid;place-items:center;flex:none">
+                <img src="${esc(sprite)}" style="width:36px;height:36px;object-fit:contain" onerror="handleSpriteError(this)">
+              </div>
+              <div style="min-width:0;flex:1">
+                <div style="font:800 15px 'Barlow Condensed';color:#f5f3f0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(m.name)}</div>
+                <div style="display:flex;align-items:center;gap:6px;margin-top:3px">
+                  <span class="tag" style="background:#261d10;color:#ffd166;border:1px solid #4a3818;font-size:9px;font-weight:800;padding:1px 6px">${m.cost} pts</span>
+                  <span style="font-size:10px;color:#8e8c95;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(m.tierName)}</span>
+                </div>
+              </div>
+            </div>
+          `;
+        }).join('')}
+      </div>
+    </section>
+  `;
+}
+
+function homeCoachWarRoomsSection(t){
+  let d = ensureTournamentDraft(t);
+  if(!d || !t.players || !t.players.length) return '';
+  let turn = getDraftCurrentTurn(t);
+
+  return `
+    <section class="section">
+      <div class="section-head" style="align-items:center">
+        <div>
+          <div class="eyebrow" style="color:var(--red);margin-bottom:2px">👥 Draft War Rooms</div>
+          <h2>COACH ROSTER TRACKER</h2>
+        </div>
+        <button class="link" onclick="go('Teams')">VIEW FULL ROSTERS →</button>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px">
+        ${t.players.map(p => {
+          let stats = getDraftCoachStats(t, p);
+          let faceArt = profilePictures[p] ? `url('${esc(profilePictures[p])}')` : (teamCovers[p] ? `url('${esc(teamCovers[p])}')` : fallbackArt(p));
+          let faceLetter = (profilePictures[p] || teamCovers[p]) ? '' : esc(p[0]);
+          let isCurrent = (turn && turn.player === p && !turn.isComplete);
+          let ovrObj = calculatePlayerOVR(p);
+          let draftedMons = t.rosters?.[p] || roster[p] || [];
+
+          return `
+            <div class="card" style="padding:14px;background:#14141c;border:1px solid ${isCurrent ? 'var(--red)' : '#282836'};box-shadow:${isCurrent ? '0 0 16px rgba(239,48,56,0.3)' : 'none'};border-radius:8px;position:relative">
+              ${isCurrent ? `<span style="position:absolute;top:8px;right:8px;background:var(--red);color:#fff;font-size:8px;font-weight:900;letter-spacing:1px;padding:2px 6px;border-radius:3px;text-transform:uppercase">ON THE CLOCK</span>` : ''}
+              <div style="display:flex;align-items:center;gap:10px">
+                <span class="avatar" style="background-image:${faceArt};background-size:cover;background-position:center;width:40px;height:40px;border-radius:50%;border:2px solid ${ovrObj.color};display:grid;place-items:center;font-size:16px;flex:none">${faceLetter}</span>
+                <div style="min-width:0;flex:1">
+                  <div style="font:800 16px 'Barlow Condensed';color:#f5f3f0;display:flex;align-items:center;gap:6px">
+                    <span onclick="openProfile('${jsArg(p)}')" style="cursor:pointer">${playerLink(p)}</span>
+                    ${ovrObj.badgeHtml}
+                  </div>
+                  <div style="font-size:11px;color:#8e8c95;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(teamName(t, p))}</div>
+                </div>
+                <div style="text-align:right">
+                  <div style="font:800 15px 'Barlow Condensed';color:#ffd166">${stats ? `${stats.remainingBudget} pts` : ''}</div>
+                  <div style="font-size:10px;color:#8e8c95">${stats ? `${stats.count}/${stats.maxSlots}` : '0/10'} picks</div>
+                </div>
+              </div>
+              <div style="display:flex;gap:4px;margin-top:10px;overflow-x:auto;padding-bottom:2px">
+                ${draftedMons.length ? draftedMons.map(m => `
+                  <div style="width:28px;height:28px;background:#0d0d12;border:1px solid #282834;border-radius:4px;display:grid;place-items:center;flex:none" title="${esc(m)}">
+                    <img src="${esc(pokeSprite(m))}" style="width:24px;height:24px;object-fit:contain" onerror="handleSpriteError(this)">
+                  </div>
+                `).join('') : '<div style="font-size:11px;color:#55535d;font-style:italic">No picks yet</div>'}
+              </div>
+            </div>
+          `;
+        }).join('')}
+      </div>
+    </section>
+  `;
+}
+
+function homeGroupStandingsSection(t){
+  let groups = Object.keys(groupsOf(t));
+  if(!groups.length) return '';
+  let cut = advancePerGroup(t);
+
+  return `
+    <section class="section">
+      <div class="section-head" style="align-items:center">
+        <div>
+          <div class="eyebrow" style="color:var(--red);margin-bottom:2px">🏆 Tournament Standings</div>
+          <h2>GROUP STAGE LEADERBOARD</h2>
+        </div>
+        <button class="link" onclick="go('Standings')">FULL STANDINGS TABLE →</button>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:16px">
+        ${groups.map(g => {
+          let stand = getStand(t, g);
+          return `
+            <div class="card" style="background:#13131a;border:1px solid #282836;border-radius:8px;overflow:hidden">
+              <div style="padding:10px 14px;background:#181822;border-bottom:1px solid #282836;display:flex;justify-content:space-between;align-items:center">
+                <span style="font:800 16px 'Barlow Condensed';color:#f5f3f0;letter-spacing:.6px">${esc(g.toUpperCase())}</span>
+                <span style="font-size:9px;font-weight:800;color:#ffd166;letter-spacing:.6px">TOP ${cut} ADVANCE</span>
+              </div>
+              <div style="padding:6px 0">
+                ${stand.map((x, i) => {
+                  let isSafe = (i < cut);
+                  let diff = x.gw - x.gl;
+                  let faceArt = profilePictures[x.p] ? `url('${esc(profilePictures[x.p])}')` : (teamCovers[x.p] ? `url('${esc(teamCovers[x.p])}')` : fallbackArt(x.p));
+                  let faceLetter = (profilePictures[x.p] || teamCovers[x.p]) ? '' : esc(x.p[0]);
+                  return `
+                    <div style="display:flex;align-items:center;gap:10px;padding:8px 14px;border-bottom:${i < stand.length - 1 ? '1px solid #1f1f2a' : 'none'};background:${isSafe ? 'rgba(255,209,102,0.03)' : 'transparent'}">
+                      <span style="font:800 13px 'Barlow Condensed';color:${isSafe ? '#ffd166' : '#706e78'};width:16px;text-align:center">${i + 1}</span>
+                      <span class="avatar mini" style="background-image:${faceArt};background-size:cover;background-position:center;width:24px;height:24px;border-radius:50%;display:grid;place-items:center;font-size:10px">${faceLetter}</span>
+                      <div style="min-width:0;flex:1">
+                        <div style="font:800 14px 'Barlow Condensed';color:#f5f3f0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${playerLink(x.p)}</div>
+                      </div>
+                      <div style="font:800 14px 'Barlow Condensed';color:#f5f3f0;margin-left:auto">${x.w}-${x.l}</div>
+                      <div style="font-size:11px;color:#8e8c95;width:34px;text-align:right">${diff > 0 ? '+' : ''}${diff}</div>
+                      <span class="tag ${isSafe ? 'safe' : 'hunt'}" style="font-size:8px;padding:2px 6px">${isSafe ? 'Cut Line' : 'Hunt'}</span>
+                    </div>
+                  `;
+                }).join('')}
+              </div>
+            </div>
+          `;
+        }).join('')}
+      </div>
+    </section>
+  `;
+}
+
+function homeUpcomingFixturesSection(t){
+  let unplayed = (t.matches || []).filter(m => (m.as === '' || m.as == null) && m.a && m.b);
+  if(!unplayed.length) return '';
+
+  return `
+    <section class="section">
+      <div class="section-head" style="align-items:center">
+        <div>
+          <div class="eyebrow" style="color:#ffd166;margin-bottom:2px">⚔️ Fixture Watch</div>
+          <h2>UPCOMING ON DECK</h2>
+        </div>
+        <button class="link" onclick="go('Matches')">VIEW ALL MATCHES →</button>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px">
+        ${unplayed.slice(0, 4).map(m => {
+          let aArt = profilePictures[m.a] ? `url('${esc(profilePictures[m.a])}')` : (teamCovers[m.a] ? `url('${esc(teamCovers[m.a])}')` : fallbackArt(m.a));
+          let bArt = profilePictures[m.b] ? `url('${esc(profilePictures[m.b])}')` : (teamCovers[m.b] ? `url('${esc(teamCovers[m.b])}')` : fallbackArt(m.b));
+          let aLet = (profilePictures[m.a] || teamCovers[m.a]) ? '' : esc(m.a[0]);
+          let bLet = (profilePictures[m.b] || teamCovers[m.b]) ? '' : esc(m.b[0]);
+
+          return `
+            <div class="card" style="padding:14px;background:#14141c;border:1px solid #282836;border-radius:8px;display:flex;align-items:center;justify-content:space-between;gap:12px;cursor:pointer" onclick="go('Matches')">
+              <div style="display:flex;align-items:center;gap:8px;min-width:0;flex:1">
+                <span class="avatar mini" style="background-image:${aArt};background-size:cover;background-position:center;width:28px;height:28px;border-radius:50%;display:grid;place-items:center;font-size:11px;flex:none">${aLet}</span>
+                <div style="min-width:0">
+                  <div style="font:800 14px 'Barlow Condensed';color:#f5f3f0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(m.a)}</div>
+                  <div style="font-size:9px;color:#8e8c95">${esc(teamName(t, m.a))}</div>
+                </div>
+              </div>
+              <div style="font:800 13px 'Barlow Condensed';color:var(--red);letter-spacing:1px;flex:none">VS</div>
+              <div style="display:flex;align-items:center;gap:8px;min-width:0;flex:1;justify-content:flex-end;text-align:right">
+                <div style="min-width:0">
+                  <div style="font:800 14px 'Barlow Condensed';color:#f5f3f0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(m.b)}</div>
+                  <div style="font-size:9px;color:#8e8c95">${esc(teamName(t, m.b))}</div>
+                </div>
+                <span class="avatar mini" style="background-image:${bArt};background-size:cover;background-position:center;width:28px;height:28px;border-radius:50%;display:grid;place-items:center;font-size:11px;flex:none">${bLet}</span>
+              </div>
+            </div>
+          `;
+        }).join('')}
+      </div>
+    </section>
   `;
 }
 
@@ -4479,14 +4757,14 @@ function Home(){
   allStandings.sort((a, b) => b.w - a.w || b.gw - a.gw || (b.gw - b.gl) - (a.gw - a.gl));
   let topPlayer = allStandings[0] || null;
 
-  return head(t.season + ': ' + t.name, 'Current Tournament', moderator ? `<button class="btn" onclick="current='${target}';render();window.scrollTo(0,0)">${isDraftPhase ? 'Open Draft Room' : 'Enter match scores'}</button>` : '') + `
+  return head(t.season + ': ' + t.name, 'Current Tournament', moderator ? `<button class="btn" onclick="current='${target}';render();window.scrollTo(0,0)">${isDraftPhase ? 'Open Draft Room' : (t.phase === 'topcut' ? 'Manage Bracket' : 'Enter match scores')}</button>` : '') + `
     <!-- Top In-Season Showcase & Primetime Hero -->
     <section class="in-season-hero">
       <div class="card tourney-showcase-card">
         ${t.backgroundImage ? `<div class="tourney-showcase-backdrop" style="background-image:url('${esc(t.backgroundImage)}')"></div>` : ''}
         <div class="tourney-showcase-info">
           <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-            <span class="status"><i></i>${isDraftPhase ? 'DRAFT ROOM LIVE' : (t.phase === 'topcut' ? 'TOP CUT LIVE' : 'GROUP STAGE LIVE')}</span>
+            <span class="status"><i></i>${isDraftPhase ? 'DRAFT ROOM LIVE' : (t.phase === 'topcut' ? 'TOP CUT PLAYOFFS LIVE' : 'GROUP STAGE LIVE')}</span>
             <span class="eyebrow" style="margin:0;color:#ffd166;letter-spacing:1px">${esc(t.season)}</span>
           </div>
           <div class="tourney-showcase-title">${esc(t.name.toUpperCase())}</div>
@@ -4529,14 +4807,14 @@ function Home(){
         </div>
       </div>
 
-      ${isDraftPhase ? draftStageHeroCard(t) : matchupOfTheWeekCard(t)}
+      ${isDraftPhase ? draftStageHeroCard(t) : (t.phase === 'topcut' ? topCutHeroCard(t) : matchupOfTheWeekCard(t))}
     </section>
 
     <!-- Tournament Quick Stats Pulse Strip -->
     <div class="pulse-stats-strip">
       <div class="card pulse-stat-box">
         <span class="pulse-stat-label">Tournament Phase</span>
-        <div class="pulse-stat-val">${isDraftPhase ? 'Live Draft' : (t.phase === 'topcut' ? 'Top Cut' : 'Group Stage')}</div>
+        <div class="pulse-stat-val">${isDraftPhase ? 'Live Draft' : (t.phase === 'topcut' ? 'Top Cut Playoffs' : 'Group Stage')}</div>
         <div class="pulse-stat-sub">${t.players.length} Competitors</div>
       </div>
       <div class="card pulse-stat-box">
@@ -4545,14 +4823,14 @@ function Home(){
         <div class="progress" style="margin-top:5px;height:5px"><span style="width:${isDraftPhase ? draftPct : completionPct}%"></span></div>
       </div>
       <div class="card pulse-stat-box" style="cursor:pointer;transition:border-color .15s ease" onclick="go('Playoff Odds')" title="Click to view full Playoff Odds chart">
-        <span class="pulse-stat-label" style="display:flex;justify-content:space-between;align-items:center"><span>Tournament Favorite</span><span style="color:#ffd166;font-size:10px">↗</span></span>
-        <div class="pulse-stat-val" style="color:var(--amber)">${(() => {
+        <span class="pulse-stat-label" style="display:flex;justify-content:space-between;align-items:center"><span>${isDraftPhase ? 'Draft Status' : 'Title Favorite'}</span><span style="color:#ffd166;font-size:10px">↗</span></span>
+        <div class="pulse-stat-val" style="color:var(--amber)">${isDraftPhase ? 'Locked in Draft' : (() => {
           let oddsSnap = getOrComputeTournamentOdds(t);
           let oddsList = Object.values(oddsSnap.sim || {}).sort((a, b) => b.champPct - a.champPct || b.topCutPct - a.topCutPct);
           let fav = oddsList[0];
           return fav ? `${playerLink(fav.player)}` : 'TBD';
         })()}</div>
-        <div class="pulse-stat-sub">${(() => {
+        <div class="pulse-stat-sub">${isDraftPhase ? 'Simulations open after draft' : (() => {
           let oddsSnap = getOrComputeTournamentOdds(t);
           let oddsList = Object.values(oddsSnap.sim || {}).sort((a, b) => b.champPct - a.champPct || b.topCutPct - a.topCutPct);
           let fav = oddsList[0];
@@ -4566,8 +4844,27 @@ function Home(){
       </div>
     </div>
 
-    <!-- Recent Activity Section -->
-    ${isDraftPhase ? homeDraftPicksSection(t) : `
+    <!-- Phase Specific Interactive Sections -->
+    ${isDraftPhase ? `
+      ${homeDraftTargetsSection(t)}
+      ${homeDraftPicksSection(t)}
+      ${homeCoachWarRoomsSection(t)}
+    ` : (t.phase === 'topcut' ? `
+      <section class="section">
+        <div class="section-head">
+          <div>
+            <div class="eyebrow" style="color:#ffd166;margin-bottom:2px">🏆 Playoff Results</div>
+            <h2>TOP CUT MATCHES</h2>
+          </div>
+          <button class="link" onclick="go('Top Cut')">VIEW PLAYOFF BRACKET →</button>
+        </div>
+        <div class="match-grid">
+          ${results.length ? results.slice(0, 4).map((m, i) => matchCard(m, i === 0)).join('') : '<div class="empty card" style="grid-column:1/-1">Top Cut matches in progress.</div>'}
+        </div>
+      </section>
+    ` : `
+      ${homeGroupStandingsSection(t)}
+      ${homeUpcomingFixturesSection(t)}
       <section class="section">
         <div class="section-head">
           <div>
@@ -4577,10 +4874,10 @@ function Home(){
           <button class="link" onclick="current='${target}';render()">VIEW ALL FIXTURES →</button>
         </div>
         <div class="match-grid">
-          ${results.length ? results.slice(0, 3).map((m, i) => matchCard(m, i === 0)).join('') : '<div class="empty card" style="grid-column:1/-1">No matches completed yet. Scores entered in Matches will appear here.</div>'}
+          ${results.length ? results.slice(0, 4).map((m, i) => matchCard(m, i === 0)).join('') : '<div class="empty card" style="grid-column:1/-1">No matches completed yet. Scores entered in Matches will appear here.</div>'}
         </div>
       </section>
-    `}
+    `)}
   `;
 }
 
@@ -10769,6 +11066,19 @@ function playoffOdds(){
   let t = ongoingT();
   if(!t) return noTournament();
 
+  let d = ensureTournamentDraft(t);
+  let isDraftPhase = (t.phase === 'draft' || (t.hasDraft && d && d.status !== 'completed' && t.phase !== 'group' && t.phase !== 'groups' && t.phase !== 'topcut' && t.phase !== 'complete'));
+  if(isDraftPhase){
+    return head('Playoff & Championship Odds', (t.season || '') + ': ' + t.name + ' · Locked During Draft') + `
+      <div class="card empty" style="padding:48px 20px;text-align:center;max-width:560px;margin:30px auto;background:#14141c;border:1px solid #2b2b3a;border-radius:12px;box-shadow:0 8px 30px rgba(0,0,0,0.5)">
+        <div style="font-size:44px;margin-bottom:12px">🔒</div>
+        <div class="card-title" style="font:800 22px 'Barlow Condensed';letter-spacing:.5px;color:#f5f3f0">Playoff Odds Locked During Draft</div>
+        <p class="sub" style="margin:10px auto 20px;line-height:1.55;font-size:13px;color:#9d9ba6;max-width:440px">Championship & Top Cut simulations are calibrated on final team rosters and Group Stage SOS. Odds will automatically calculate and unlock the moment the draft concludes and fixtures begin!</p>
+        <button class="btn" style="padding:10px 24px;font-weight:800" onclick="go('Draft')">Go to Live Draft Room →</button>
+      </div>
+    `;
+  }
+
   let cut = advancePerGroup(t);
   let groups = groupsOf(t);
   let groupNames = Object.keys(groups);
@@ -11436,15 +11746,8 @@ function builderHTML(){
         <p class="planner-empty-sub">Plan out rosters before and during the draft. Click any Pokémon on the board to test synergies and track costs against your <b>${TEAM_BUDGET} pt budget</b>.</p>
 
         <div class="planner-empty-input-group">
-          <input id="newTeamName" class="planner-team-input" placeholder="Name your plan (e.g. Main Draft, Rain...)" maxlength="40" onkeydown="if(event.key==='Enter'){event.preventDefault();createTeam()}">
+          <input id="newTeamName" class="planner-team-input" placeholder="Name your plan (e.g. Main Draft, Rain squad...)" maxlength="40" onkeydown="if(event.key==='Enter'){event.preventDefault();createTeam()}">
           <button class="btn" style="background:var(--red);color:#fff;font-weight:800;white-space:nowrap" onclick="createTeam()">+ Create Plan</button>
-        </div>
-
-        <div class="planner-presets">
-          <span style="font-size:10px;font-weight:700;color:#7a7985;text-transform:uppercase;letter-spacing:.5px">Quick Start:</span>
-          <button class="chip" style="font-size:10px;padding:3px 8px;background:#181822" onclick="quickCreateTeam('Main Draft Plan')">🎯 Main Plan</button>
-          <button class="chip" style="font-size:10px;padding:3px 8px;background:#181822" onclick="quickCreateTeam('Offense Plan')">⚡ Offense</button>
-          <button class="chip" style="font-size:10px;padding:3px 8px;background:#181822" onclick="quickCreateTeam('Balance / Bulk')">🛡️ Balance</button>
         </div>
 
         <div class="planner-badge-row">
