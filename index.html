@@ -4629,6 +4629,7 @@ function playerCareerStats(p){
   return {wins,losses,record:`${wins}-${losses}`,titles,topCuts,tournaments,winPct,championshipCups};
 }
 function rebuildAllPlayerStats(){
+  if(typeof invalidateLeagueCache === 'function') invalidateLeagueCache();
   Object.keys(profiles).forEach(ensureProfile);
   Object.values(tournamentData).forEach(t=>{
     (t.players||[]).forEach(ensureProfile);
@@ -4642,7 +4643,10 @@ function rebuildAllPlayerStats(){
     profiles[p].record=s.record;
     profiles[p].tops=s.topCuts;
     profiles[p].cups=[...s.championshipCups];
+    profiles[p].peakOvr=0;
+    profiles[p].peakOvrTourney='';
   });
+  if(typeof calculateLeagueRecords === 'function') calculateLeagueRecords();
 }
 
 function cleanAndSyncRostersPrompt(){
@@ -7140,12 +7144,12 @@ function calculatePlayerOVR(p, leagueData=null){
 
   let rawOvr = base + recentPlacementBonus + olderPlacementBonus + winRateDiff + activeStreakBonus - activeLossPenalty + maxStreakBonus;
 
-  // 4. Scarcity Curve at the Very Top (Extremely hard to hit 90+, near-impossible to hit 96-99 without absolute dominance)
+  // 4. Scarcity Curve at the Very Top (35% compression at 86, 50% compression at 92)
   if(rawOvr > 86){
-    rawOvr = 86 + (rawOvr - 86) * 0.48;
+    rawOvr = 86 + (rawOvr - 86) * 0.65;
   }
   if(rawOvr > 92){
-    rawOvr = 92 + (rawOvr - 92) * 0.32;
+    rawOvr = 92 + (rawOvr - 92) * 0.50;
   }
 
   // Regression / confidence weighting for low sample size (< 4 games)
@@ -9463,8 +9467,8 @@ function calculateLeagueRecords(forceRefresh = false){
     let career=playerCareerStats(p);
     let tf = s.tournamentFinishes || [];
     let prof = profiles[p] || {};
-    let playerPeak = prof.peakOvr || 0;
-    let playerPeakTourney = prof.peakOvrTourney || '';
+    let playerPeak = 0;
+    let playerPeakTourney = '';
 
     // 1. Evaluate historical OVR milestone after each completed tournament appearance
     tf.forEach((finishItem, fIdx) => {
@@ -9497,7 +9501,7 @@ function calculateLeagueRecords(forceRefresh = false){
 
     // 2. Check current live OVR
     let currentObj = calculatePlayerOVR(p, {statsByPlayer});
-    if(currentObj.ovr >= playerPeak){
+    if(currentObj.ovr >= playerPeak || playerPeak === 0){
       playerPeak = currentObj.ovr;
       let lastT = tf[tf.length - 1]?.tournament;
       let rawSeason = (lastT?.season || lastT?.name || 'Season 1').replace(/[()]/g, '').trim();
@@ -9505,10 +9509,8 @@ function calculateLeagueRecords(forceRefresh = false){
       playerPeakTourney = seasonMatch ? seasonMatch[0].replace(/Season\s*/i, 'Season ') : (rawSeason || 'Season 1');
     }
 
-    if(playerPeak > (prof.peakOvr || 0)){
-      prof.peakOvr = playerPeak;
-      prof.peakOvrTourney = playerPeakTourney;
-    }
+    prof.peakOvr = playerPeak;
+    prof.peakOvrTourney = playerPeakTourney;
 
     s.peakOvr = playerPeak;
     s.peakOvrTourney = playerPeakTourney;
@@ -9949,7 +9951,7 @@ function openOvrGuide(){
                   </tr>
                   <tr>
                     <td><b style="color:#ff4d58">Scarcity Compression at 90+</b><div style="font-size:10px;color:#8e8c95">Pinnacle Ceiling</div></td>
-                    <td>Progressive diminishing returns applied above <b>86</b> (50% compression) and <b>92</b> (68% compression).</td>
+                    <td>Progressive diminishing returns applied above <b>86</b> (35% compression) and <b>92</b> (50% compression).</td>
                     <td style="color:#d0d0dc"><b>Gold (80–89)</b> is achievable for regular contenders. <b>Elite (90–99)</b> requires a championship, top cut runs, and an active winning streak.</td>
                   </tr>
                 </tbody>
