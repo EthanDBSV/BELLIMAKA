@@ -13177,16 +13177,32 @@ function renderOffseasonTierColumns(){
   if(!board || !board.length) return '<div class="empty" style="padding:20px;text-align:center">No tiers found</div>';
 
   let q = (draftBoardSearch || '').toLowerCase().trim();
-  let filteredBoard = board.map(tier => {
+  let maxCostLimit = (draftBoardTierFilter !== 'all' && !isNaN(Number(draftBoardTierFilter))) ? Number(draftBoardTierFilter) : null;
+
+  let filteredBoard = [];
+  board.forEach(tier => {
+    let matchesTier = (draftBoardTierFilter === 'all') || (maxCostLimit !== null ? tier.cost <= maxCostLimit : (tier.id === draftBoardTierFilter || String(tier.cost) === draftBoardTierFilter));
+    if(!matchesTier) return;
+
     let filteredMons = (tier.pokemon || []).filter(m => {
       if(q && !m.toLowerCase().includes(q)) return false;
       return true;
     });
-    return { ...tier, filteredMons };
+
+    if(q && filteredMons.length === 0) return;
+
+    filteredBoard.push({ ...tier, filteredMons });
   });
 
-  if(draftBoardTierFilter !== 'all'){
-    filteredBoard = filteredBoard.filter(t => String(t.cost) === String(draftBoardTierFilter));
+  if(filteredBoard.length === 0){
+    return `
+      <div class="card empty" style="padding:36px 20px;text-align:center;width:100%;grid-column:1/-1">
+        <span style="font-size:36px">🔍</span>
+        <div class="card-title" style="margin-top:10px">No Matching Pokémon</div>
+        <p class="sub" style="max-width:420px;margin:6px auto 14px">No Pokémon match your current filter and search criteria.</p>
+        <button class="btn ghost btn-sm" onclick="draftBoardSearch='';draftBoardTierFilter='all';renderOffseasonBoardColumns()">Reset Filters</button>
+      </div>
+    `;
   }
 
   return filteredBoard.map(tier => {
@@ -13351,7 +13367,7 @@ function OffseasonDraftView(){
           <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
             <select onchange="draftBoardTierFilter=this.value;renderOffseasonBoardColumns()" style="padding:6px 10px;background:#181822;border:1px solid #363648;border-radius:6px;color:#f5f3f0;font-size:11px">
               <option value="all">All Tiers (${board.length})</option>
-              ${Array.from(new Set(board.map(tier => tier.cost))).sort((a,b)=>b-a).map(cost => `<option value="${cost}" ${draftBoardTierFilter === String(cost) ? 'selected' : ''}>${cost} pts</option>`).join('')}
+              ${Array.from(new Set(board.map(tier => tier.cost))).sort((a,b)=>b-a).map(cost => `<option value="${cost}" ${draftBoardTierFilter === String(cost) ? 'selected' : ''}>≤ ${cost} pts</option>`).join('')}
             </select>
 
             <div style="display:inline-flex;border:1px solid #363648;border-radius:6px;overflow:hidden;background:#181822">
