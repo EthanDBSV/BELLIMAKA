@@ -650,6 +650,15 @@ details[open] > .past-tourney-summary .past-chevron{transform:rotate(180deg);col
 .tm-slot-free:last-of-type{border:0}
 .tm-note{font-size:10px;color:#8e8c95;margin-top:12px;line-height:1.5}
 .tm-status{font-size:11px;color:#ffb0b5;margin-top:9px;min-height:14px}
+.planner-empty-box{background:#121218;border:1px solid #282834;border-radius:10px;padding:20px 16px;margin-top:12px;text-align:center;box-shadow:0 6px 20px rgba(0,0,0,0.35)}
+.planner-empty-icon{font-size:28px;display:inline-flex;align-items:center;justify-content:center;width:52px;height:52px;border-radius:12px;background:linear-gradient(135deg,#23161c,#14141e);border:1px solid #3d242e;box-shadow:0 0 16px rgba(239,48,56,0.18);margin-bottom:12px}
+.planner-empty-title{font:800 18px/1.2 'Barlow Condensed';color:#f5f3f0;letter-spacing:.3px;margin:0 0 6px}
+.planner-empty-sub{font-size:12px;color:#9d9ba6;line-height:1.45;margin:0 auto 16px;max-width:320px}
+.planner-empty-input-group{display:grid;grid-template-columns:1fr auto;gap:8px;margin-bottom:14px}
+.planner-team-input{background:#101015!important;border:1px solid #363646!important;border-radius:6px!important;padding:9px 12px!important;color:#f5f3f0!important;font-size:12px!important;width:100%;box-sizing:border-box;transition:border-color .15s ease,box-shadow .15s ease}
+.planner-team-input:focus{border-color:var(--red)!important;outline:none!important;box-shadow:0 0 10px rgba(239,48,56,0.3)!important}
+.planner-presets{display:flex;align-items:center;justify-content:center;gap:6px;margin-bottom:14px;flex-wrap:wrap}
+.planner-badge-row{display:flex;align-items:center;justify-content:center;gap:8px;margin-top:4px}
 /* ------------------------------------------------------------ Group Draw Ceremony & Draft-Locked Styles ------------------------------------------------------------ */
 .group-draw-ceremony-modal{max-width:840px;width:100%}
 .hat-stage{background:radial-gradient(circle at center, #261622 0%, #13131a 70%);border:1px solid #3d2432;border-radius:12px;padding:24px 20px;text-align:center;position:relative;overflow:hidden;box-shadow:0 8px 32px rgba(0,0,0,0.6)}
@@ -11296,6 +11305,17 @@ function refreshBuilder(){
     host.scrollTop = prevTop;
   }
 }
+function quickCreateTeam(name){
+  let cleanName = (name || 'My Draft Plan').trim().slice(0, 40);
+  let s = ensureTeams(), team = { id: teamId(), name: cleanName, picks: [] };
+  s.teams.push(team);
+  s.activeId = team.id;
+  builderStatus = '';
+  writeTeams();
+  refreshBuilder();
+  setTimeout(() => document.querySelector('#tmName')?.focus(), 0);
+}
+
 function createTeam(){
   let box=document.querySelector('#newTeamName'),name=(box?.value||'').trim()||'Team '+(ensureTeams().teams.length+1);
   if(name.length>40)name=name.slice(0,40);
@@ -11403,13 +11423,39 @@ function builderHTML(){
 
   let s=ensureTeams(),team=activeTeam(),who=s.key==='guest'?'this browser':(window.currentAccount?.username||'your account');
   let chips=`<div class="team-chips">${s.teams.map(t=>`<button class="team-chip ${t.id===s.activeId?'on':''}" title="${esc(t.name)}" onclick="switchTeam('${jsArg(t.id)}')">${esc(t.name)}</button>`).join('')}<button class="team-chip new" onclick="window.renamingTeam=null;switchTeam('${jsArg(s.activeId||'')}');document.querySelector('#newTeamRow').style.display='grid';document.querySelector('#newTeamName').focus()">+ New team</button></div>
-  <div id="newTeamRow" style="display:${s.teams.length?'none':'grid'};grid-template-columns:minmax(0,1fr) auto;gap:7px;margin-top:10px">
-    <input id="newTeamName" placeholder="Name this team (e.g. Rain squad)" maxlength="40" onkeydown="if(event.key==='Enter'){event.preventDefault();createTeam()}">
-    <button class="btn" onclick="createTeam()">Create</button></div>`;
-  if(!team)return `<div class="eyebrow">Team planner</div>
-    <p class="sub" style="margin-top:9px">Plan a draft before it happens: read a Pokémon's cost off the sheet, type it in, and watch the total. ${TEAM_SLOTS} Pokémon, ${TEAM_BUDGET} points.</p>
-    ${chips}
-    <p class="tm-note">Teams are private and saved to ${esc(who)}.</p>`;
+  <div id="newTeamRow" style="display:none;grid-template-columns:minmax(0,1fr) auto;gap:7px;margin-top:10px">
+    <input id="newTeamName" class="planner-team-input" placeholder="Name this team (e.g. Rain squad)" maxlength="40" onkeydown="if(event.key==='Enter'){event.preventDefault();createTeam()}">
+    <button class="btn btn-sm" onclick="createTeam()">Create</button></div>`;
+
+  if(!team || !s.teams.length){
+    return `
+      <div class="eyebrow" style="color:var(--red);letter-spacing:1px">TEAM PLANNER</div>
+      <div class="planner-empty-box">
+        <div class="planner-empty-icon">📋</div>
+        <h3 class="planner-empty-title">Draft Team Planner</h3>
+        <p class="planner-empty-sub">Plan out rosters before and during the draft. Click any Pokémon on the board to test synergies and track costs against your <b>${TEAM_BUDGET} pt budget</b>.</p>
+
+        <div class="planner-empty-input-group">
+          <input id="newTeamName" class="planner-team-input" placeholder="Name your plan (e.g. Main Draft, Rain...)" maxlength="40" onkeydown="if(event.key==='Enter'){event.preventDefault();createTeam()}">
+          <button class="btn" style="background:var(--red);color:#fff;font-weight:800;white-space:nowrap" onclick="createTeam()">+ Create Plan</button>
+        </div>
+
+        <div class="planner-presets">
+          <span style="font-size:10px;font-weight:700;color:#7a7985;text-transform:uppercase;letter-spacing:.5px">Quick Start:</span>
+          <button class="chip" style="font-size:10px;padding:3px 8px;background:#181822" onclick="quickCreateTeam('Main Draft Plan')">🎯 Main Plan</button>
+          <button class="chip" style="font-size:10px;padding:3px 8px;background:#181822" onclick="quickCreateTeam('Offense Plan')">⚡ Offense</button>
+          <button class="chip" style="font-size:10px;padding:3px 8px;background:#181822" onclick="quickCreateTeam('Balance / Bulk')">🛡️ Balance</button>
+        </div>
+
+        <div class="planner-badge-row">
+          <span class="tag" style="background:#191924;color:#a09fae;border:1px solid #2d2d3c">🎯 ${TEAM_SLOTS} Roster Slots</span>
+          <span class="tag" style="background:#261d10;color:#ffd166;border:1px solid #4a3818">💎 ${TEAM_BUDGET} Pts Budget</span>
+        </div>
+
+        <p class="tm-note" style="margin-top:14px;border-top:1px solid #242432;padding-top:10px">🔒 Plans are private and saved to <b>${esc(who)}</b>${s.key!=='guest'?' · Synced to your account':''}.</p>
+      </div>
+    `;
+  }
   let spent=teamSpent(team),left=fmtPts(TEAM_BUDGET-spent),over=left<0;
   let nameRow=window.renamingTeam===team.id
     ?`<div class="tm-name-row"><input id="renameTeam" value="${esc(team.name)}" maxlength="40" onkeydown="if(event.key==='Enter'){event.preventDefault();commitRenameTeam()}"><button class="save" onclick="commitRenameTeam()">Save</button></div>`
