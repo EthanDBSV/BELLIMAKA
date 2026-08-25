@@ -2384,11 +2384,42 @@ function shouldApply(incoming){
   let incomingRev = typeof incoming.rev === 'number' ? incoming.rev : 0;
   let incomingTime = typeof incoming.updatedAt === 'number' ? incoming.updatedAt : (Date.parse(incoming.updated_at) || 0);
 
-  // If local made an edit that has a higher revision or timestamp, reject older cloud packets
-  if(knownRev > 0 && incomingRev < knownRev){
+  // 1. If incoming timestamp is strictly newer or revision is higher, ALWAYS accept!
+  if(!lastLocalUpdate || (incomingTime && incomingTime > lastLocalUpdate) || incomingRev > knownRev){
+    knownRev = Math.max(knownRev, incomingRev);
+    lastLocalUpdate = Math.max(lastLocalUpdate, incomingTime || Date.now());
+    try {
+      localStorage.setItem('draftdex-rev', String(knownRev));
+      localStorage.setItem('draftdex-updated-at', String(lastLocalUpdate));
+    } catch(e){}
+    return true;
+  }
+
+  // 2. Protect and accept draft progress: if incoming cloud draft has more picks, ALWAYS accept!
+  let curT = ongoingT() || activeT();
+  if(curT && incoming.tournaments && incoming.tournaments[curT.id]){
+    let incDraft = incoming.tournaments[curT.id].draftData;
+    let locDraft = curT.draftData;
+    if(incDraft && Array.isArray(incDraft.picks)){
+      let locPicksLen = (locDraft && Array.isArray(locDraft.picks)) ? locDraft.picks.length : 0;
+      if(incDraft.picks.length > locPicksLen){
+        knownRev = Math.max(knownRev, incomingRev);
+        lastLocalUpdate = Math.max(lastLocalUpdate, incomingTime || Date.now());
+        try {
+          localStorage.setItem('draftdex-rev', String(knownRev));
+          localStorage.setItem('draftdex-updated-at', String(lastLocalUpdate));
+        } catch(e){}
+        return true;
+      }
+    }
+  }
+
+  // 3. If local made an edit strictly AFTER incoming was saved, reject stale cloud packet
+  if(incomingTime && lastLocalUpdate && incomingTime < lastLocalUpdate && incomingRev <= knownRev){
     return false;
   }
-  if(lastLocalUpdate > 0 && incomingTime > 0 && incomingTime < lastLocalUpdate){
+
+  if(knownRev > incomingRev){
     return false;
   }
 
@@ -3337,12 +3368,9 @@ function showDraftToast(msg){
 
 function setupDraftRealtime(){
   if(!supabaseClient) return;
-  try {
-    if(supabaseClient.realtime && typeof supabaseClient.realtime.disconnect === 'function'){
-      supabaseClient.realtime.disconnect();
-    }
-    supabaseClient.removeAllChannels();
-  } catch(e){}
+  if(draftRealtimeChannel){
+    try { supabaseClient.removeChannel(draftRealtimeChannel); } catch(e){}
+  }
 
   draftRealtimeChannel = supabaseClient.channel('draftdex-realtime-draft', {
     config: { broadcast: { self: false } }
@@ -3364,112 +3392,8 @@ function setupDraftRealtime(){
 
   draftRealtimeChannel.subscribe((status) => {
     console.log('Draftdex Realtime broadcast status:', status);
-    if(status === 'SUBSCRIBED'){
-      syncFromCloud(true);
-    }
-  });
-
-  // Listen for database table updates
-  supabaseClient.channel('league-state').on('postgres_changes', {event:'UPDATE', schema:'public', table:'league_state', filter:'id=eq.main'}, p=>{
-    let incoming = p.new?.data;
-    if(incoming && shouldApply(incoming)){
-      applySharedState(incoming);
-      render();
-    }
-  }).subscribe();
-
-  // Background sync heartbeat (every 2.5 seconds)
-  if(!draftPollTimer){
-    draftPollTimer = setInterval(() => {
-      syncFromCloud(false);
-    }, 2500);
-  }
-}
-
-var isSyncingFromCloud = false;
-async function syncFromCloud(force = false){
-  let cfg = window.DRAFTDEX_SUPABASE;
-  if(!cfg || !cfg.url || !cfg.anonKey) return;
-  if(isSyncingFromCloud && !force) return;
-  isSyncingFromCloud = true;
-  try {
-    let url = `${cfg.url}/rest/v1/league_state?id=eq.main&select=data`;
-    let res = await fetch(url, {
-      method: 'GET',
-      headers: {
-        'apikey': cfg.anonKey,
-        'Authorization': `Bearer ${cfg.anonKey}`,
-        'Cache-Control': 'no-cache, no-store, must-revalidate',
-        'Pragma': 'no-cache'
-      },
-      cache: 'no-store'
-    });
-    if(res.ok){
-      let json = await res.json();
-      if(json && json.length > 0 && json[0]?.data){
-        let incoming = json[0].data;
-        if(force || shouldApply(incoming)){
-          applySharedState(incoming);
-          render();
-          if(typeof centerActiveDraftPickTile === 'function'){
-            centerActiveDraftPickTile();
-          }
-        }
-      }
-    } else if(supabaseClient){
-      let { data, error } = await supabaseClient.from('league_state').select('data').eq('id', 'main').maybeSingle();
-      if(!error && data?.data){
-        let incoming = data.data;
-        if(force || shouldApply(incoming)){
-          applySharedState(incoming);
-          render();
-          if(typeof centerActiveDraftPickTile === 'function'){
-            centerActiveDraftPickTile();
-          }
-        }
-      }
-    }
-  } catch(e){
-    console.warn('Draftdex: syncFromCloud exception:', e);
-  } finally {
-    isSyncingFromCloud = false;
-  }
-}
-
-function triggerMobileWakeSync(){
-  syncFromCloud(true);
-  ensureSupabaseInit();
-  [150, 400, 900, 1800, 3500].forEach(delay => {
-    setTimeout(() => {
-      syncFromCloud(true);
-      ensureSupabaseInit();
-    }, delay);
   });
 }
-
-// 1. Immediate sync whenever user unlocks phone or switches back to tab
-document.addEventListener('visibilitychange', () => {
-  if(document.visibilityState === 'visible'){
-    console.log('Draftdex: App visible - triggering staged mobile wake sync');
-    triggerMobileWakeSync();
-  }
-});
-
-// 2. Immediate sync when window focuses
-window.addEventListener('focus', () => {
-  triggerMobileWakeSync();
-});
-
-// 3. Immediate sync when restored from mobile app cache / suspension
-window.addEventListener('pageshow', () => {
-  triggerMobileWakeSync();
-});
-
-// 4. Immediate sync when reconnecting to network
-window.addEventListener('online', () => {
-  triggerMobileWakeSync();
-});
-
 
 function applyRemoteDraftPick(payload){
   let t = tournamentData[payload.tournamentId];
@@ -3477,31 +3401,23 @@ function applyRemoteDraftPick(payload){
   let d = ensureTournamentDraft(t);
   if(!d) return;
 
-  if(payload.picks && Array.isArray(payload.picks) && payload.picks.length >= (d.picks || []).length){
-    d.picks = payload.picks;
-  } else {
-    let exists = (d.picks || []).some(x => x.pickNumber === payload.pickNumber || (x.player === payload.player && x.pokemon.toLowerCase().trim() === payload.pokemon.toLowerCase().trim()));
-    if(!exists){
-      d.picks = d.picks || [];
-      d.picks.push({
-        round: payload.round,
-        pickNumber: payload.pickNumber,
-        player: payload.player,
-        pokemon: payload.pokemon,
-        cost: payload.cost,
-        timestamp: payload.timestamp || Date.now()
-      });
-    }
+  let exists = (d.picks || []).some(x => x.pickNumber === payload.pickNumber || (x.player === payload.player && x.pokemon.toLowerCase().trim() === payload.pokemon.toLowerCase().trim()));
+  if(!exists){
+    d.picks = d.picks || [];
+    d.picks.push({
+      round: payload.round,
+      pickNumber: payload.pickNumber,
+      player: payload.player,
+      pokemon: payload.pokemon,
+      cost: payload.cost,
+      timestamp: payload.timestamp || Date.now()
+    });
   }
 
-  if(payload.rosters && typeof payload.rosters === 'object'){
-    t.rosters = payload.rosters;
-  } else {
-    if(!t.rosters) t.rosters = {};
-    if(!t.rosters[payload.player]) t.rosters[payload.player] = [];
-    if(!t.rosters[payload.player].includes(payload.pokemon)){
-      t.rosters[payload.player].push(payload.pokemon);
-    }
+  if(!t.rosters) t.rosters = {};
+  if(!t.rosters[payload.player]) t.rosters[payload.player] = [];
+  if(!t.rosters[payload.player].includes(payload.pokemon)){
+    t.rosters[payload.player].push(payload.pokemon);
   }
 
   if(!roster[payload.player]) roster[payload.player] = [];
@@ -3523,10 +3439,11 @@ function applyRemoteDraftPick(payload){
     localStorage.setItem('draftdex-rosters', JSON.stringify(roster));
   } catch(e){}
 
-  render();
-  if(typeof centerActiveDraftPickTile === 'function'){
-    centerActiveDraftPickTile();
+  if(moderator){
+    persistLeague();
   }
+
+  render();
   showDraftToast(`${payload.player} drafted ${payload.pokemon}!`);
 }
 
@@ -3580,97 +3497,44 @@ async function initSupabase(){
 
     // 2. Setup low-latency Realtime WebSocket Broadcast channel
     setupDraftRealtime();
-
-    // 3. Immediately pull latest cloud state on startup!
-    await syncFromCloud(true);
   } catch(e) {
     console.warn('Draftdex: initSupabase error:', e);
     supabaseInited = false;
   }
 }
-
-function ensureSupabaseInit(){
-  if(supabaseInited) return;
-  if(supabaseReady()){
-    initSupabase();
-  }
-}
-
-// Continuous initialization checker (polls every 80ms until Supabase SDK is ready)
-var initSupabaseInterval = setInterval(() => {
-  if(supabaseInited){
-    clearInterval(initSupabaseInterval);
-  } else {
-    ensureSupabaseInit();
-  }
-}, 80);
-
-window.addEventListener('DOMContentLoaded', () => {
-  ensureSupabaseInit();
-  syncFromCloud(true);
-});
-
-window.addEventListener('load', () => {
-  ensureSupabaseInit();
-  syncFromCloud(true);
-});
-
-// Trigger initial cloud sync immediately at start of script execution!
-syncFromCloud(true);
+setTimeout(initSupabase, 0);
 
 async function pushStateToSupabase(payload, updateTime){
-  let cfg = window.DRAFTDEX_SUPABASE;
-  if(!cfg || !cfg.url || !cfg.anonKey) return { error: new Error('Supabase config not found') };
+  if(!supabaseClient) return { error: new Error('Supabase client not initialized') };
   let iso = new Date(updateTime || Date.now()).toISOString();
 
-  // 1. Try direct REST PATCH with anonKey (works for all devices and connection types)
+  // 1. Direct update to main row
   try {
-    let res = await fetch(`${cfg.url}/rest/v1/league_state?id=eq.main`, {
-      method: 'PATCH',
-      headers: {
-        'apikey': cfg.anonKey,
-        'Authorization': `Bearer ${cfg.anonKey}`,
-        'Content-Type': 'application/json',
-        'Prefer': 'return=minimal'
-      },
-      body: JSON.stringify({
-        data: payload,
-        updated_at: iso
-      })
+    let { data, error } = await supabaseClient.from('league_state')
+      .update({ data: payload, updated_at: iso })
+      .eq('id', 'main')
+      .select();
+
+    if(!error && data && data.length > 0){
+      return { data, error: null };
+    }
+  } catch(uErr){}
+
+  // 2. Fallback upsert
+  try {
+    let res = await supabaseClient.from('league_state').upsert({
+      id: 'main',
+      data: payload,
+      updated_at: iso
     });
-    if(res.ok){
-      return { error: null };
-    }
-  } catch(e){}
-
-  // 2. Fallback to Supabase JS Client
-  if(supabaseClient){
-    try {
-      let { data, error } = await supabaseClient.from('league_state')
-        .update({ data: payload, updated_at: iso })
-        .eq('id', 'main')
-        .select();
-
-      if(!error && data && data.length > 0){
-        return { data, error: null };
-      }
-    } catch(uErr){}
-
-    try {
-      let res = await supabaseClient.from('league_state').upsert({
-        id: 'main',
-        data: payload,
-        updated_at: iso
-      });
-      return res;
-    } catch(upErr){
-      return { error: upErr };
-    }
+    return res;
+  } catch(upErr){
+    return { error: upErr };
   }
-  return { error: new Error('Push failed') };
 }
 
 async function flushSync(){
+  if(!supabaseClient) return;
   let payload = {
     rev: knownRev,
     updatedAt: lastLocalUpdate,
