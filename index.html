@@ -470,7 +470,7 @@ details[open] > .past-tourney-summary .past-chevron{transform:rotate(180deg);col
 .draft-board-with-planner{display:grid;grid-template-columns:1fr 310px;gap:16px;align-items:start}
 @media (max-width: 980px){.draft-board-with-planner{grid-template-columns:1fr}}
 
-.draft-board-wrap{display:flex;flex-direction:row;gap:12px;overflow-x:auto;overflow-y:hidden;padding-bottom:12px;scroll-behavior:smooth;-webkit-overflow-scrolling:touch}
+.draft-board-wrap{display:flex;flex-direction:row;gap:12px;overflow-x:auto;overflow-y:hidden;padding-bottom:12px;-webkit-overflow-scrolling:touch}
 .draft-board-wrap::-webkit-scrollbar{height:8px}
 .draft-board-wrap::-webkit-scrollbar-track{background:#0e0e13;border-radius:4px}
 .draft-board-wrap::-webkit-scrollbar-thumb{background:#343444;border-radius:4px}
@@ -510,7 +510,7 @@ details[open] > .past-tourney-summary .past-chevron{transform:rotate(180deg);col
   .draft-board-with-planner aside#teamBuilder{position:static;margin-top:14px;max-height:none;order:2}
 }
 
-.draft-matrix-scroll-wrap{width:100%;overflow-x:auto;padding-bottom:12px;scroll-behavior:smooth;-webkit-overflow-scrolling:touch}
+.draft-matrix-scroll-wrap{width:100%;overflow-x:auto;padding-bottom:12px;-webkit-overflow-scrolling:touch}
 .draft-matrix-scroll-wrap::-webkit-scrollbar{height:8px}
 .draft-matrix-scroll-wrap::-webkit-scrollbar-track{background:#0e0e13;border-radius:4px}
 .draft-matrix-scroll-wrap::-webkit-scrollbar-thumb{background:#343444;border-radius:4px}
@@ -12626,17 +12626,19 @@ function DraftRoom(t){
   `;
 }
 
-function centerActiveDraftPickTile(){
+function centerActiveDraftPickTile(smooth = false){
   let curTile = document.querySelector('.draft-snake-tile.current');
   let strip = document.getElementById('draftSnakeStripWrap') || document.querySelector('.draft-snake-strip-wrap');
   if(curTile && strip){
     let stripWidth = strip.clientWidth;
     let tileLeft = curTile.offsetLeft;
     let tileWidth = curTile.offsetWidth;
-    strip.scrollTo({
-      left: Math.max(0, tileLeft - (stripWidth / 2) + (tileWidth / 2)),
-      behavior: 'smooth'
-    });
+    let target = Math.max(0, tileLeft - (stripWidth / 2) + (tileWidth / 2));
+    if(smooth){
+      strip.scrollTo({ left: target, behavior: 'smooth' });
+    } else {
+      strip.scrollLeft = target;
+    }
   }
 }
 
@@ -13356,15 +13358,10 @@ function renderOffseasonTierColumns(){
 }
 
 function addMonToPlannerFromBoard(mon, cost){
-  let scroller = document.querySelector('.draft-board-wrap');
-  if(scroller && scroller.scrollLeft > 0){
-    window.draftBoardScrollPos = { left: scroller.scrollLeft, top: scroller.scrollTop };
-  }
   addTeamMon(mon, cost);
   if(typeof showDraftToast === 'function'){
     showDraftToast(`Added ${mon} (${cost} pts) to your team plan`);
   }
-  if(typeof restoreDraftBoardScroll === 'function') restoreDraftBoardScroll();
 }
 
 function openOffseasonDraftBoardImporter(){
