@@ -6690,30 +6690,6 @@ function render(){
   if(current==='Account'&&active&&/^auth(Username|Password)$/.test(active.id||''))return;
   if(current==='Draft Board'||current==='Draft Tools')current='Draft';
 
-  // If already on the Draft page with an active board wrapper mounted, update contents in place
-  // This guarantees the .draft-board-wrap element is NEVER destroyed, so scrollLeft stays 100% frozen in place!
-  if(current==='Draft'){
-    let offseasonWrap = document.getElementById('offseasonDraftBoardGridWrap');
-    let inSeasonWrap = document.getElementById('draftBoardGridWrap');
-    let builderHost = document.getElementById('teamBuilder');
-    let t = ongoingT() || activeT();
-
-    if(offseasonWrap || (inSeasonWrap && t)){
-      nav();
-      if(offseasonWrap){
-        offseasonWrap.innerHTML = renderOffseasonTierColumns();
-      } else if(inSeasonWrap && t){
-        inSeasonWrap.innerHTML = renderDraftBoardTierColumns(t);
-      }
-      if(builderHost){
-        let prevBuilderScroll = builderHost.scrollTop;
-        builderHost.innerHTML = builderHTML();
-        builderHost.scrollTop = prevBuilderScroll;
-      }
-      return;
-    }
-  }
-
   // 1. Capture scroll positions of all scrollable containers & elements before rebuilding DOM
   let savedScrolls = {};
   document.querySelectorAll('[id]').forEach(el => {
@@ -6721,9 +6697,10 @@ function render(){
       savedScrolls[el.id] = { left: el.scrollLeft, top: el.scrollTop };
     }
   });
-  let scroller = document.querySelector('.draft-board-wrap');
-  if(scroller && scroller.scrollLeft > 0){
-    window.draftBoardScrollPos = { left: scroller.scrollLeft, top: scroller.scrollTop };
+  let scroller = document.getElementById('draftBoardGridWrap') || document.getElementById('offseasonDraftBoardGridWrap') || document.querySelector('.draft-board-wrap');
+  let draftScrollLeft = (scroller && scroller.scrollLeft > 0) ? scroller.scrollLeft : (window.draftBoardScrollPos?.left || 0);
+  if(draftScrollLeft > 0){
+    window.draftBoardScrollPos = { left: draftScrollLeft, top: 0 };
   }
   let builderEl = document.querySelector('#teamBuilder');
   let savedBuilderScroll = builderEl ? builderEl.scrollTop : null;
@@ -6749,29 +6726,22 @@ function render(){
   document.querySelector('#app').innerHTML=(typeof handler==='function'?handler():Home());
   mountTopCutViewer();
 
-  // 2. Accurately restore all container scroll positions across all renders and polling cycles
-  function applyRestoredScrolls(){
-    Object.entries(savedScrolls).forEach(([id, pos]) => {
-      let target = document.getElementById(id);
-      if(target){
-        target.scrollLeft = pos.left;
-        target.scrollTop = pos.top;
-      }
-    });
-    if(typeof restoreDraftBoardScroll === 'function'){
-      restoreDraftBoardScroll();
+  // 2. Synchronously restore all container scroll positions immediately within the same JavaScript execution tick
+  Object.entries(savedScrolls).forEach(([id, pos]) => {
+    let target = document.getElementById(id);
+    if(target){
+      target.scrollLeft = pos.left;
+      target.scrollTop = pos.top;
     }
-    if(savedBuilderScroll !== null){
-      let newBuilder = document.querySelector('#teamBuilder');
-      if(newBuilder) newBuilder.scrollTop = savedBuilderScroll;
-    }
+  });
+  let newScroller = document.getElementById('draftBoardGridWrap') || document.getElementById('offseasonDraftBoardGridWrap') || document.querySelector('.draft-board-wrap');
+  if(newScroller && draftScrollLeft > 0){
+    newScroller.scrollLeft = draftScrollLeft;
   }
-
-  applyRestoredScrolls();
-  requestAnimationFrame(applyRestoredScrolls);
-  setTimeout(applyRestoredScrolls, 10);
-  setTimeout(applyRestoredScrolls, 50);
-  setTimeout(applyRestoredScrolls, 150);
+  if(savedBuilderScroll !== null){
+    let newBuilder = document.querySelector('#teamBuilder');
+    if(newBuilder) newBuilder.scrollTop = savedBuilderScroll;
+  }
 }
 
 /* Point the board at the league sheet the first time only — a saved
@@ -12767,29 +12737,18 @@ function restoreDraftBoardScroll(){
   if(!pos || !pos.left) return;
 
   isRestoringDraftScroll = true;
-  let apply = () => {
-    let targets = [
-      document.getElementById('offseasonDraftBoardGridWrap'),
-      document.getElementById('draftBoardGridWrap'),
-      document.querySelector('.draft-board-wrap')
-    ].filter(Boolean);
+  let targets = [
+    document.getElementById('offseasonDraftBoardGridWrap'),
+    document.getElementById('draftBoardGridWrap'),
+    document.querySelector('.draft-board-wrap')
+  ].filter(Boolean);
 
-    targets.forEach(el => {
-      if(el && el.scrollLeft !== pos.left){
-        el.scrollLeft = pos.left;
-      }
-    });
-  };
-
-  apply();
-  [10, 30, 80, 150, 300, 500].forEach((delay, idx, arr) => {
-    setTimeout(() => {
-      apply();
-      if(idx === arr.length - 1){
-        isRestoringDraftScroll = false;
-      }
-    }, delay);
+  targets.forEach(el => {
+    if(el){
+      el.scrollLeft = pos.left;
+    }
   });
+  isRestoringDraftScroll = false;
 }
 
 function scrollDraftBoard(delta){
