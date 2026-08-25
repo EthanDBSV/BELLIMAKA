@@ -3371,8 +3371,9 @@ async function syncFromCloud(force = false){
   if(isSyncingFromCloud && !force) return;
   isSyncingFromCloud = true;
   try {
-    let url = `${cfg.url}/rest/v1/league_state?id=eq.main&select=data&_cb=${Date.now()}`;
+    let url = `${cfg.url}/rest/v1/league_state?id=eq.main&select=data`;
     let res = await fetch(url, {
+      method: 'GET',
       headers: {
         'apikey': cfg.anonKey,
         'Authorization': `Bearer ${cfg.anonKey}`,
