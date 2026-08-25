@@ -11326,8 +11326,11 @@ function addTeamMon(directName, directCost){
   writeTeams();
   refreshBuilder();
   setTimeout(() => {
-    let b = document.querySelector('#tmName'); if(b){ b.value = ''; b.focus(); }
+    let b = document.querySelector('#tmName'); if(b){ b.value = ''; }
     let c = document.querySelector('#tmCost'); if(c) c.value = '';
+    if(directName === undefined && b){
+      try { b.focus({ preventScroll: true }); } catch(e){}
+    }
   }, 0);
 }
 function removeTeamMon(i){let team=activeTeam();if(!team)return;team.picks.splice(i,1);builderStatus='';writeTeams();refreshBuilder()}
@@ -12717,7 +12720,11 @@ function renderDraftBoardTierColumns(t){
   }).join('');
 }
 
+window.draftBoardScrollPos = window.draftBoardScrollPos || { left: 0, top: 0 };
+var isRestoringDraftScroll = false;
+
 function saveDraftBoardScroll(el){
+  if(isRestoringDraftScroll) return;
   if(el && typeof el.scrollLeft === 'number'){
     window.draftBoardScrollPos = { left: el.scrollLeft, top: el.scrollTop };
   }
@@ -12725,16 +12732,31 @@ function saveDraftBoardScroll(el){
 
 function restoreDraftBoardScroll(){
   let pos = window.draftBoardScrollPos;
-  if(!pos) return;
-  let targets = [
-    document.getElementById('offseasonDraftBoardGridWrap'),
-    document.getElementById('draftBoardGridWrap'),
-    document.querySelector('.draft-board-wrap')
-  ];
-  targets.forEach(el => {
-    if(el && pos.left > 0){
-      el.scrollLeft = pos.left;
-    }
+  if(!pos || !pos.left) return;
+
+  isRestoringDraftScroll = true;
+  let apply = () => {
+    let targets = [
+      document.getElementById('offseasonDraftBoardGridWrap'),
+      document.getElementById('draftBoardGridWrap'),
+      document.querySelector('.draft-board-wrap')
+    ].filter(Boolean);
+
+    targets.forEach(el => {
+      if(el && el.scrollLeft !== pos.left){
+        el.scrollLeft = pos.left;
+      }
+    });
+  };
+
+  apply();
+  [10, 30, 80, 150, 300, 500].forEach((delay, idx, arr) => {
+    setTimeout(() => {
+      apply();
+      if(idx === arr.length - 1){
+        isRestoringDraftScroll = false;
+      }
+    }, delay);
   });
 }
 
