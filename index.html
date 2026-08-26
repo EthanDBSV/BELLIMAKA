@@ -2028,24 +2028,32 @@ function matchCard(m,latest=false){
   let labelText = m.label || m.roundTitle || m.title || m.round || m.group || 'League Fixture';
   let isTopCut = (t?.phase === 'topcut' || m.isTopCut);
 
+  let cardBg = isTopCut
+    ? `background: radial-gradient(circle at 100% 0%, rgba(255,209,102,0.22) 0%, transparent 55%), radial-gradient(circle at 0% 100%, rgba(239,48,56,0.22) 0%, transparent 60%), linear-gradient(135deg, #2b120f 0%, #1a0b12 50%, #0c080d 100%); border: 1px solid ${latest ? 'var(--red)' : '#66401d'}; box-shadow: 0 8px 24px rgba(0,0,0,0.7), inset 0 1px 0 rgba(255,209,102,0.35);`
+    : `background: radial-gradient(circle at 0% 0%, rgba(239,48,56,0.25) 0%, transparent 55%), radial-gradient(circle at 100% 100%, rgba(185,28,28,0.20) 0%, transparent 60%), linear-gradient(135deg, #240b12 0%, #15080e 50%, #0a0709 100%); border: 1px solid ${latest ? 'var(--red)' : '#4d1924'}; box-shadow: 0 8px 24px rgba(0,0,0,0.7), inset 0 1px 0 rgba(239,48,56,0.35);`;
+
+  let headerBg = isTopCut
+    ? `background: linear-gradient(90deg, rgba(255,209,102,0.22) 0%, rgba(239,48,56,0.18) 55%, rgba(0,0,0,0.65) 100%); border-bottom: 1px solid rgba(255,209,102,0.25);`
+    : `background: linear-gradient(90deg, rgba(239,48,56,0.22) 0%, rgba(185,28,28,0.12) 55%, rgba(0,0,0,0.65) 100%); border-bottom: 1px solid rgba(239,48,56,0.22);`;
+
   return `
-    <article class="card modern-match-card ${latest ? 'latest-highlight' : ''}" style="padding:0;background:linear-gradient(135deg,${isTopCut ? '#241416' : '#1c0f14'} 0%,${isTopCut ? '#161218' : '#120f14'} 50%,#0d0d12 100%);border:1px solid ${latest ? 'var(--red)' : (isTopCut ? '#4d301b' : '#3d1c24')};box-shadow:${latest ? '0 4px 20px rgba(239,48,56,0.25)' : (isTopCut ? '0 4px 16px rgba(255,209,102,0.1)' : 'none')};border-radius:10px;overflow:hidden;position:relative">
-      <div style="padding:8px 14px;background:rgba(0,0,0,0.45);border-bottom:1px solid rgba(255,255,255,0.06);display:flex;justify-content:space-between;align-items:center;gap:8px">
+    <article class="card modern-match-card ${latest ? 'latest-highlight' : ''}" style="padding:0;${cardBg}border-radius:10px;overflow:hidden;position:relative">
+      <div style="padding:8px 14px;${headerBg}display:flex;justify-content:space-between;align-items:center;gap:8px">
         <div style="display:flex;align-items:center;gap:6px;min-width:0;overflow:hidden">
-          <span style="font-size:12px;color:${isTopCut ? '#ffd166' : 'var(--red)'};flex:none">${isTopCut ? '🏆' : '⚡'}</span>
-          <span style="font:800 13px 'Barlow Condensed';color:#ffd166;letter-spacing:.6px;text-transform:uppercase;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(labelText)}</span>
+          <span style="font-size:13px;color:${isTopCut ? '#ffd166' : 'var(--red)'};flex:none">${isTopCut ? '🏆' : '⚡'}</span>
+          <span style="font:800 13px 'Barlow Condensed';color:#ffd166;letter-spacing:.8px;text-transform:uppercase;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(labelText)}</span>
         </div>
         <div style="display:flex;align-items:center;gap:6px;flex:none">
           ${latest ? `<span style="background:var(--red);color:#fff;font-size:8px;font-weight:900;letter-spacing:1px;padding:2px 6px;border-radius:3px;text-transform:uppercase">LATEST</span>` : ''}
-          <span style="background:rgba(74,222,128,0.12);border:1px solid rgba(74,222,128,0.25);font-size:9px;font-weight:900;letter-spacing:.8px;color:#7df0aa;padding:2px 7px;border-radius:4px;text-transform:uppercase">${isPlayed ? 'FINAL SCORE' : 'UPCOMING'}</span>
+          <span style="background:rgba(74,222,128,0.15);border:1px solid rgba(74,222,128,0.3);font-size:9px;font-weight:900;letter-spacing:.8px;color:#7df0aa;padding:2px 7px;border-radius:4px;text-transform:uppercase">${isPlayed ? 'FINAL SCORE' : 'UPCOMING'}</span>
         </div>
       </div>
 
       <div style="padding:16px 14px;display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:10px">
         <!-- Team 1 -->
-        <div style="text-align:center;display:flex;flex-direction:column;align-items:center;min-width:0;${p1Won ? 'filter:drop-shadow(0 0 8px rgba(74,222,128,0.2))' : ''}">
+        <div style="text-align:center;display:flex;flex-direction:column;align-items:center;min-width:0;${p1Won ? 'filter:drop-shadow(0 0 10px rgba(74,222,128,0.25))' : ''}">
           <div style="position:relative;cursor:pointer" onclick="openProfile('${jsArg(p1)}')">
-            <span class="avatar" style="background-image:${face1};background-size:cover;background-position:center;width:48px;height:48px;font-size:18px;border-radius:50%;border:2px solid ${p1Won ? '#4ade80' : ovr1.color};display:grid;place-items:center">${letter1}</span>
+            <span class="avatar" style="background-image:${face1};background-size:cover;background-position:center;width:48px;height:48px;font-size:18px;border-radius:50%;border:2px solid ${p1Won ? '#4ade80' : ovr1.color};display:grid;place-items:center;box-shadow:0 4px 12px rgba(0,0,0,0.6)">${letter1}</span>
             <span style="position:absolute;bottom:-3px;right:-3px;transform:scale(0.8);transform-origin:bottom right">${ovr1.badgeHtml}</span>
           </div>
           <div style="font:800 18px 'Barlow Condensed';margin-top:4px;color:${p1Won ? '#4ade80' : '#ffd166'};line-height:1">${esc(rec1)}</div>
@@ -2069,9 +2077,9 @@ function matchCard(m,latest=false){
         </div>
 
         <!-- Team 2 -->
-        <div style="text-align:center;display:flex;flex-direction:column;align-items:center;min-width:0;${p2Won ? 'filter:drop-shadow(0 0 8px rgba(74,222,128,0.2))' : ''}">
+        <div style="text-align:center;display:flex;flex-direction:column;align-items:center;min-width:0;${p2Won ? 'filter:drop-shadow(0 0 10px rgba(74,222,128,0.25))' : ''}">
           <div style="position:relative;cursor:pointer" onclick="openProfile('${jsArg(p2)}')">
-            <span class="avatar" style="background-image:${face2};background-size:cover;background-position:center;width:48px;height:48px;font-size:18px;border-radius:50%;border:2px solid ${p2Won ? '#4ade80' : ovr2.color};display:grid;place-items:center">${letter2}</span>
+            <span class="avatar" style="background-image:${face2};background-size:cover;background-position:center;width:48px;height:48px;font-size:18px;border-radius:50%;border:2px solid ${p2Won ? '#4ade80' : ovr2.color};display:grid;place-items:center;box-shadow:0 4px 12px rgba(0,0,0,0.6)">${letter2}</span>
             <span style="position:absolute;bottom:-3px;right:-3px;transform:scale(0.8);transform-origin:bottom right">${ovr2.badgeHtml}</span>
           </div>
           <div style="font:800 18px 'Barlow Condensed';margin-top:4px;color:${p2Won ? '#4ade80' : '#ffd166'};line-height:1">${esc(rec2)}</div>
@@ -4229,7 +4237,7 @@ function startFeaturedMatchAutoplay(total){
     if(wrap){
       wrap.innerHTML = matchupOfTheWeekCard(t);
     }
-  }, 2500);
+  }, 5000);
 }
 
 function pauseFeaturedAutoplay(){
