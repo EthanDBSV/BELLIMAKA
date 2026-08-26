@@ -2026,25 +2026,27 @@ function matchCard(m,latest=false){
   let letter2 = (profilePictures[p2] || teamCovers[p2]) ? '' : esc((p2 || '?')[0]);
 
   let labelText = m.label || m.roundTitle || m.title || m.round || m.group || 'League Fixture';
+  let isTopCut = (t?.phase === 'topcut' || m.isTopCut);
 
   return `
-    <article class="card modern-match-card ${latest ? 'latest-highlight' : ''}" style="padding:0;background:linear-gradient(135deg,#18141d 0%,#12121a 100%);border:1px solid ${latest ? '#ef3038' : '#2a2636'};box-shadow:${latest ? '0 4px 20px rgba(239,48,56,0.2)' : 'none'};border-radius:10px;overflow:hidden;position:relative">
-      ${latest ? `<div style="position:absolute;top:0;right:0;background:var(--red);color:#fff;font-size:8px;font-weight:900;letter-spacing:1px;padding:2px 8px;border-bottom-left-radius:6px;text-transform:uppercase;z-index:3">LATEST</div>` : ''}
-
-      <div style="padding:8px 14px;background:rgba(0,0,0,0.35);border-bottom:1px solid rgba(255,255,255,0.06);display:flex;justify-content:space-between;align-items:center">
-        <div style="display:flex;align-items:center;gap:6px">
-          <span style="font-size:12px;color:var(--red)">⚡</span>
-          <span style="font:800 13px 'Barlow Condensed';color:#ffd166;letter-spacing:.6px;text-transform:uppercase">${esc(labelText)}</span>
+    <article class="card modern-match-card ${latest ? 'latest-highlight' : ''}" style="padding:0;background:linear-gradient(135deg,${isTopCut ? '#241416' : '#1c0f14'} 0%,${isTopCut ? '#161218' : '#120f14'} 50%,#0d0d12 100%);border:1px solid ${latest ? 'var(--red)' : (isTopCut ? '#4d301b' : '#3d1c24')};box-shadow:${latest ? '0 4px 20px rgba(239,48,56,0.25)' : (isTopCut ? '0 4px 16px rgba(255,209,102,0.1)' : 'none')};border-radius:10px;overflow:hidden;position:relative">
+      <div style="padding:8px 14px;background:rgba(0,0,0,0.45);border-bottom:1px solid rgba(255,255,255,0.06);display:flex;justify-content:space-between;align-items:center;gap:8px">
+        <div style="display:flex;align-items:center;gap:6px;min-width:0;overflow:hidden">
+          <span style="font-size:12px;color:${isTopCut ? '#ffd166' : 'var(--red)'};flex:none">${isTopCut ? '🏆' : '⚡'}</span>
+          <span style="font:800 13px 'Barlow Condensed';color:#ffd166;letter-spacing:.6px;text-transform:uppercase;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(labelText)}</span>
         </div>
-        <span style="background:rgba(74,222,128,0.12);border:1px solid rgba(74,222,128,0.25);font-size:9px;font-weight:900;letter-spacing:.8px;color:#7df0aa;padding:2px 7px;border-radius:4px;text-transform:uppercase">${isPlayed ? 'FINAL SCORE' : 'UPCOMING'}</span>
+        <div style="display:flex;align-items:center;gap:6px;flex:none">
+          ${latest ? `<span style="background:var(--red);color:#fff;font-size:8px;font-weight:900;letter-spacing:1px;padding:2px 6px;border-radius:3px;text-transform:uppercase">LATEST</span>` : ''}
+          <span style="background:rgba(74,222,128,0.12);border:1px solid rgba(74,222,128,0.25);font-size:9px;font-weight:900;letter-spacing:.8px;color:#7df0aa;padding:2px 7px;border-radius:4px;text-transform:uppercase">${isPlayed ? 'FINAL SCORE' : 'UPCOMING'}</span>
+        </div>
       </div>
 
       <div style="padding:16px 14px;display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:10px">
         <!-- Team 1 -->
         <div style="text-align:center;display:flex;flex-direction:column;align-items:center;min-width:0;${p1Won ? 'filter:drop-shadow(0 0 8px rgba(74,222,128,0.2))' : ''}">
           <div style="position:relative;cursor:pointer" onclick="openProfile('${jsArg(p1)}')">
-            <span class="avatar" style="background-image:${face1};background-size:cover;background-position:center;width:44px;height:44px;font-size:18px;border-radius:50%;border:2px solid ${p1Won ? '#4ade80' : ovr1.color};display:grid;place-items:center">${letter1}</span>
-            <span style="position:absolute;bottom:-4px;right:-4px">${ovr1.badgeHtml}</span>
+            <span class="avatar" style="background-image:${face1};background-size:cover;background-position:center;width:48px;height:48px;font-size:18px;border-radius:50%;border:2px solid ${p1Won ? '#4ade80' : ovr1.color};display:grid;place-items:center">${letter1}</span>
+            <span style="position:absolute;bottom:-3px;right:-3px;transform:scale(0.8);transform-origin:bottom right">${ovr1.badgeHtml}</span>
           </div>
           <div style="font:800 18px 'Barlow Condensed';margin-top:4px;color:${p1Won ? '#4ade80' : '#ffd166'};line-height:1">${esc(rec1)}</div>
           <div style="font-size:10px;color:#8e8c95;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:105px;margin-top:2px" title="${esc(t1Name)}">${esc(t1Name)}</div>
@@ -2069,8 +2071,8 @@ function matchCard(m,latest=false){
         <!-- Team 2 -->
         <div style="text-align:center;display:flex;flex-direction:column;align-items:center;min-width:0;${p2Won ? 'filter:drop-shadow(0 0 8px rgba(74,222,128,0.2))' : ''}">
           <div style="position:relative;cursor:pointer" onclick="openProfile('${jsArg(p2)}')">
-            <span class="avatar" style="background-image:${face2};background-size:cover;background-position:center;width:44px;height:44px;font-size:18px;border-radius:50%;border:2px solid ${p2Won ? '#4ade80' : ovr2.color};display:grid;place-items:center">${letter2}</span>
-            <span style="position:absolute;bottom:-4px;right:-4px">${ovr2.badgeHtml}</span>
+            <span class="avatar" style="background-image:${face2};background-size:cover;background-position:center;width:48px;height:48px;font-size:18px;border-radius:50%;border:2px solid ${p2Won ? '#4ade80' : ovr2.color};display:grid;place-items:center">${letter2}</span>
+            <span style="position:absolute;bottom:-3px;right:-3px;transform:scale(0.8);transform-origin:bottom right">${ovr2.badgeHtml}</span>
           </div>
           <div style="font:800 18px 'Barlow Condensed';margin-top:4px;color:${p2Won ? '#4ade80' : '#ffd166'};line-height:1">${esc(rec2)}</div>
           <div style="font-size:10px;color:#8e8c95;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:105px;margin-top:2px" title="${esc(t2Name)}">${esc(t2Name)}</div>
@@ -4201,6 +4203,43 @@ function groupOutcome(m){let a=m.a??m.p1,b=m.b??m.p2,sa=m.as??m.s1,sb=m.bs??m.s2
 function removeStarterData(){let starter=['Ethan','Maya','Noah','Jules','Theo','Ivy'];if(!confirm('Remove the starter profiles and sample tournaments? This cannot be undone.'))return;Object.keys(tournamentData).forEach(id=>{let t=tournamentData[id];if(t.players?.length&&t.players.every(p=>starter.includes(p)))delete tournamentData[id]});starter.forEach(p=>{delete profiles[p];delete roster[p];delete teamHistory[p]});persistLeague();viewTournament=ongoingT()?.id||null;closeModal();render()}
 
 window.featuredMatchIdx = 0;
+window.featuredAutoplayTimer = null;
+window.featuredMatchHovered = false;
+
+function startFeaturedMatchAutoplay(total){
+  if(window.featuredAutoplayTimer){
+    clearInterval(window.featuredAutoplayTimer);
+    window.featuredAutoplayTimer = null;
+  }
+  if(total <= 1) return;
+
+  window.featuredAutoplayTimer = setInterval(() => {
+    if(window.featuredMatchHovered) return;
+    if(current !== 'Home'){
+      clearInterval(window.featuredAutoplayTimer);
+      window.featuredAutoplayTimer = null;
+      return;
+    }
+    let t = ongoingT();
+    if(!t || t.phase === 'draft') return;
+    let list = getFeaturedMatchups(t);
+    if(list.length <= 1) return;
+    window.featuredMatchIdx = ((window.featuredMatchIdx || 0) + 1) % list.length;
+    let wrap = document.querySelector('#matchupHeroCardWrap');
+    if(wrap){
+      wrap.innerHTML = matchupOfTheWeekCard(t);
+    }
+  }, 2500);
+}
+
+function pauseFeaturedAutoplay(){
+  window.featuredMatchHovered = true;
+}
+
+function resumeFeaturedAutoplay(total){
+  window.featuredMatchHovered = false;
+  startFeaturedMatchAutoplay(total);
+}
 
 function isKnownCoach(name, t){
   if(!name || typeof name !== 'string') return false;
@@ -4251,7 +4290,12 @@ function getFeaturedMatchups(t){
     }
 
     if(availableTopCutMatches.length){
-      return availableTopCutMatches.map(m => ({
+      // Uncompleted matches first in chronological order, then completed matches in chronological order
+      let uncompleted = availableTopCutMatches.filter(m => !m.isDone && (m.s1 == null || m.s1 === '') && (m.as == null || m.as === ''));
+      let completed = availableTopCutMatches.filter(m => m.isDone || (m.s1 != null && m.s1 !== '') || (m.as != null && m.as !== ''));
+      let ordered = [...uncompleted, ...completed];
+
+      return ordered.map(m => ({
         a: m.p1 || m.a,
         b: m.p2 || m.b,
         label: m.title || m.roundTitle || 'Top Cut Playoff',
@@ -4264,38 +4308,73 @@ function getFeaturedMatchups(t){
     }
   }
 
-  let list = (t.matches || []).filter(m => m.a && m.b);
-  if(list.length){
-    return list.map(m => ({
-      a: m.a,
-      b: m.b,
-      label: m.round || m.group || 'League Fixture',
-      group: m.group ? (m.group.toUpperCase() + ' DIVISION') : 'PRIMETIME MATCHUP',
-      recA: tournamentRecord(t, m.a),
-      recB: tournamentRecord(t, m.b),
-      isTopCut: false,
-      matchRef: m
-    }));
-  }
+  // Group stage: Exactly 5 highlighted "good" matches (highest hype/competitiveness score)
+  let allGroupMatches = (t.matches || []).filter(m => m.a && m.b);
+  if(!allGroupMatches.length) return [];
 
-  return [];
+  let scored = allGroupMatches.map(m => {
+    let recA = tournamentRecord(t, m.a).split('-').map(Number);
+    let recB = tournamentRecord(t, m.b).split('-').map(Number);
+    let wa = recA[0] || 0, la = recA[1] || 0;
+    let wb = recB[0] || 0, lb = recB[1] || 0;
+    let totalWins = wa + wb;
+    let ovrA = calculatePlayerOVR(m.a)?.ovr || 50;
+    let ovrB = calculatePlayerOVR(m.b)?.ovr || 50;
+    let combinedOvr = ovrA + ovrB;
+    let isUnplayed = (m.as === '' || m.as == null);
+    let hype = (isUnplayed ? 50 : 0) + (totalWins * 15) + (combinedOvr * 0.5) - (Math.abs(wa - wb) * 5);
+    return {
+      match: m,
+      hype: hype,
+      recA: `${wa}-${la}`,
+      recB: `${wb}-${lb}`
+    };
+  });
+
+  scored.sort((a, b) => b.hype - a.hype);
+
+  return scored.slice(0, 5).map(s => ({
+    a: s.match.a,
+    b: s.match.b,
+    label: s.match.round || s.match.group || 'League Fixture',
+    group: s.match.group ? (s.match.group.toUpperCase() + ' DIVISION') : 'PRIMETIME MATCHUP',
+    recA: s.recA,
+    recB: s.recB,
+    isTopCut: false,
+    matchRef: s.match
+  }));
 }
 
 function cycleFeaturedMatch(delta, total){
   if(total <= 1) return;
   window.featuredMatchIdx = (window.featuredMatchIdx + delta + total) % total;
-  render();
+  let t = ongoingT();
+  let wrap = document.querySelector('#matchupHeroCardWrap');
+  if(wrap && t){
+    wrap.innerHTML = matchupOfTheWeekCard(t);
+  } else {
+    render();
+  }
+  startFeaturedMatchAutoplay(total);
 }
 
 function setFeaturedMatch(idx){
   window.featuredMatchIdx = idx;
-  render();
+  let t = ongoingT();
+  let wrap = document.querySelector('#matchupHeroCardWrap');
+  if(wrap && t){
+    wrap.innerHTML = matchupOfTheWeekCard(t);
+  } else {
+    render();
+  }
+  let list = t ? getFeaturedMatchups(t) : [];
+  startFeaturedMatchAutoplay(list.length);
 }
 
 function matchupOfTheWeekCard(t){
   let list = getFeaturedMatchups(t);
   if(!list.length){
-    return `<aside class="card matchup-hero-card" style="padding:24px;text-align:center;display:grid;place-items:center">
+    return `<aside class="card matchup-hero-card" style="padding:24px;text-align:center;display:grid;place-items:center;background:linear-gradient(135deg,#1c0f14 0%,#101017 100%);border-color:#3d1c24">
       <div>
         <div style="font-size:36px;margin-bottom:8px">🏆</div>
         <div style="font:800 22px 'Barlow Condensed';color:#f5f3f0">All Matches Complete</div>
@@ -4330,20 +4409,30 @@ function matchupOfTheWeekCard(t){
   let p1Won = isPlayed && (+sA > +sB);
   let p2Won = isPlayed && (+sB > +sA);
 
+  let isTopCut = (t.phase === 'topcut' || item.isTopCut);
+
   let primetimeCover = mRef.coverImage || pulsePanelImages.primetime || pulsePanelImages.global;
   if(!primetimeCover){
     try { primetimeCover = localStorage.getItem('draftdex-primetime-cover') || ''; } catch(e){}
   }
-  let cardBg = primetimeCover ? `style="background-image:linear-gradient(135deg,rgba(26,14,20,0.85) 0%,rgba(18,18,26,0.88) 50%,rgba(16,20,32,0.88) 100%),url('${esc(primetimeCover)}');background-size:cover;background-position:center"` : '';
 
-  return `<aside class="card matchup-hero-card" ${cardBg}>
-    <div class="matchup-hero-banner">
+  let cardStyle = '';
+  if(primetimeCover){
+    cardStyle = `style="background-image:linear-gradient(135deg,${isTopCut ? 'rgba(46,20,24,0.88)' : 'rgba(32,12,18,0.88)'} 0%,${isTopCut ? 'rgba(24,14,22,0.92)' : 'rgba(18,12,18,0.92)'} 50%,rgba(13,13,18,0.94) 100%),url('${esc(primetimeCover)}');background-size:cover;background-position:center;border-color:${isTopCut ? '#5c3a1e' : '#3d1c24'};box-shadow:0 8px 32px ${isTopCut ? 'rgba(255,209,102,0.18)' : 'rgba(239,48,56,0.15)'}"`;
+  } else if(isTopCut){
+    cardStyle = `style="background:radial-gradient(ellipse at top right,#3d1b1a 0%,#1a1016 50%,#0d0d12 100%);border-color:#5c3a1e;box-shadow:0 8px 32px rgba(255,209,102,0.18)"`;
+  } else {
+    cardStyle = `style="background:linear-gradient(135deg,#240e16 0%,#140e14 50%,#0d0d12 100%);border-color:#3d1c24;box-shadow:0 8px 32px rgba(239,48,56,0.15)"`;
+  }
+
+  return `<aside class="card matchup-hero-card" ${cardStyle} onmouseenter="pauseFeaturedAutoplay()" onmouseleave="resumeFeaturedAutoplay(${total})">
+    <div class="matchup-hero-banner" style="background:${isTopCut ? 'linear-gradient(90deg,rgba(255,209,102,0.15) 0%,rgba(0,0,0,0.5) 100%)' : 'rgba(0,0,0,0.45)'}">
       <div style="display:flex;align-items:center;gap:6px">
-        <span style="font-size:13px">${isPlayed ? '⚡' : '🔥'}</span>
+        <span style="font-size:13px">${isPlayed ? '⚡' : (isTopCut ? '🏆' : '🔥')}</span>
         <span class="eyebrow" style="color:#ffd166;margin:0;letter-spacing:1px">${esc(item.group || 'PRIMETIME MATCHUP')}</span>
       </div>
       <div style="display:flex;align-items:center;gap:6px">
-        <span class="tag" style="background:#00000070;border:1px solid #ffffff25;font-size:9px;font-weight:900;letter-spacing:1px;color:${isPlayed ? '#7df0aa' : '#ff9fa6'};padding:3px 8px;border-radius:4px">${isPlayed ? 'FINAL SCORE' : (item.isTopCut ? 'TOP CUT' : 'PRIMETIME')}</span>
+        <span class="tag" style="background:#00000070;border:1px solid #ffffff25;font-size:9px;font-weight:900;letter-spacing:1px;color:${isPlayed ? '#7df0aa' : (isTopCut ? '#ffd166' : '#ff9fa6')};padding:3px 8px;border-radius:4px">${isPlayed ? 'FINAL SCORE' : (item.isTopCut ? 'TOP CUT' : 'PRIMETIME')}</span>
         ${moderator ? `<button class="cover-edit" style="position:static;padding:3px 8px;font-size:10px" onclick="event.stopPropagation();openPrimetimeCoverEditor()">Edit cover</button>` : ''}
       </div>
     </div>
@@ -4356,8 +4445,8 @@ function matchupOfTheWeekCard(t){
       <!-- Team 1 -->
       <div class="matchup-team-col" style="${p1Won ? 'filter:drop-shadow(0 0 10px rgba(74,222,128,0.25))' : ''}">
         <div style="position:relative;cursor:pointer" onclick="openProfile('${jsArg(p1)}')">
-          <span class="avatar" style="background-image:${face1};background-size:cover;background-position:center;width:58px;height:58px;font-size:24px;border-radius:50%;border:2px solid ${p1Won ? '#4ade80' : ovr1.color};box-shadow:0 4px 16px rgba(0,0,0,0.6);display:grid;place-items:center">${letter1}</span>
-          <span style="position:absolute;bottom:-4px;right:-4px">${ovr1.badgeHtml}</span>
+          <span class="avatar" style="background-image:${face1};background-size:cover;background-position:center;width:56px;height:56px;font-size:22px;border-radius:50%;border:2px solid ${p1Won ? '#4ade80' : ovr1.color};box-shadow:0 4px 16px rgba(0,0,0,0.6);display:grid;place-items:center">${letter1}</span>
+          <span style="position:absolute;bottom:-3px;right:-3px;transform:scale(0.85);transform-origin:bottom right">${ovr1.badgeHtml}</span>
         </div>
         <div class="matchup-record-big" style="margin-top:4px;color:${p1Won ? '#4ade80' : '#ffd166'}">${esc(rec1)}</div>
         <div class="matchup-team-name" title="${esc(t1Name)}">${esc(t1Name)}</div>
@@ -4374,7 +4463,7 @@ function matchupOfTheWeekCard(t){
           </div>
           <span style="font:800 10px 'Barlow Condensed';color:#7df0aa;letter-spacing:.8px;text-transform:uppercase;margin-top:1px">FINAL</span>
         ` : `
-          <div class="matchup-vs-circle">VS</div>
+          <div class="matchup-vs-circle" style="${isTopCut ? 'border-color:var(--amber);background:linear-gradient(135deg,#ffd166 0%,#f08c35 100%)' : ''}">VS</div>
           <span style="font:800 11px 'Barlow Condensed';color:#a09fa8;letter-spacing:.6px;text-transform:uppercase;margin-top:2px">${esc(item.label || 'Fixture')}</span>
         `}
       </div>
@@ -4382,8 +4471,8 @@ function matchupOfTheWeekCard(t){
       <!-- Team 2 -->
       <div class="matchup-team-col" style="${p2Won ? 'filter:drop-shadow(0 0 10px rgba(74,222,128,0.25))' : ''}">
         <div style="position:relative;cursor:pointer" onclick="openProfile('${jsArg(p2)}')">
-          <span class="avatar" style="background-image:${face2};background-size:cover;background-position:center;width:58px;height:58px;font-size:24px;border-radius:50%;border:2px solid ${p2Won ? '#4ade80' : ovr2.color};box-shadow:0 4px 16px rgba(0,0,0,0.6);display:grid;place-items:center">${letter2}</span>
-          <span style="position:absolute;bottom:-4px;right:-4px">${ovr2.badgeHtml}</span>
+          <span class="avatar" style="background-image:${face2};background-size:cover;background-position:center;width:56px;height:56px;font-size:22px;border-radius:50%;border:2px solid ${p2Won ? '#4ade80' : ovr2.color};box-shadow:0 4px 16px rgba(0,0,0,0.6);display:grid;place-items:center">${letter2}</span>
+          <span style="position:absolute;bottom:-3px;right:-3px;transform:scale(0.85);transform-origin:bottom right">${ovr2.badgeHtml}</span>
         </div>
         <div class="matchup-record-big" style="margin-top:4px;color:${p2Won ? '#4ade80' : '#ffd166'}">${esc(rec2)}</div>
         <div class="matchup-team-name" title="${esc(t2Name)}">${esc(t2Name)}</div>
@@ -4399,10 +4488,10 @@ function matchupOfTheWeekCard(t){
       ${total > 1 ? `
         <div style="display:flex;gap:5px;align-items:center">
           ${Array.from({length: total}, (_, i) => `
-            <span onclick="setFeaturedMatch(${i})" style="width:${i === curIdx ? '16px' : '6px'};height:5px;border-radius:3px;background:${i === curIdx ? 'var(--amber)' : '#ffffff25'};cursor:pointer;transition:all .2s ease"></span>
+            <span onclick="setFeaturedMatch(${i})" style="width:${i === curIdx ? '16px' : '6px'};height:5px;border-radius:3px;background:${i === curIdx ? (isTopCut ? 'var(--amber)' : 'var(--red)') : '#ffffff25'};cursor:pointer;transition:all .2s ease"></span>
           `).join('')}
         </div>
-      ` : `<span style="font-size:10px;color:#8e8c95">Featured Matchup</span>`}
+      ` : `<span style="font-size:10px;color:#8e8c95">Spotlight Matchup</span>`}
     </div>
   </aside>`;
 }
@@ -4622,6 +4711,16 @@ function Home(){
   let turn = isDraftPhase ? getDraftCurrentTurn(t) : null;
   let draftPct = (turn && turn.totalPicks > 0) ? Math.min(100, Math.round(((turn.currentPickNumber - 1) / turn.totalPicks) * 100)) : 0;
 
+  let featuredList = (!isDraftPhase) ? getFeaturedMatchups(t) : [];
+  if(featuredList.length > 1){
+    setTimeout(() => {
+      startFeaturedMatchAutoplay(featuredList.length);
+    }, 0);
+  } else if(window.featuredAutoplayTimer){
+    clearInterval(window.featuredAutoplayTimer);
+    window.featuredAutoplayTimer = null;
+  }
+
   return head(t.season + ': ' + t.name, 'Current Tournament', moderator ? `<button class="btn" onclick="current='${target}';render();window.scrollTo(0,0)">${isDraftPhase ? 'Open Draft Room' : (isTopCutPhase ? 'Manage Bracket' : 'Enter match scores')}</button>` : '') + `
     <!-- Top In-Season Showcase & Primetime Hero -->
     <section class="in-season-hero">
@@ -4672,7 +4771,9 @@ function Home(){
         </div>
       </div>
 
-      ${isDraftPhase ? draftStageHeroCard(t) : matchupOfTheWeekCard(t)}
+      <div id="matchupHeroCardWrap" style="display:contents">
+        ${isDraftPhase ? draftStageHeroCard(t) : matchupOfTheWeekCard(t)}
+      </div>
     </section>
 
     <!-- Tournament Quick Stats Pulse Strip -->
