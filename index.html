@@ -1984,11 +1984,45 @@ function teamCoverBg(p){return teamCovers[p]?`style="background-image:linear-gra
 function Teams(){let t=ongoingT();if(!t)return noTournament();return head('Teams',t.name+' rosters',moderator?`<button class="btn ghost" onclick="openTournamentPlayers()">Edit tournament teams</button>`:'')+`<div class="teams">${t.players.map(p=>`<div style="position:relative"><button class="card team-card" ${teamCoverBg(p)} onclick="openProfile('${p}')"><div class="eyebrow">${p}</div><h3>${teamName(t,p)}</h3><div class="roster">${(roster[p]||[]).map(x=>`<span class="mon">${x}</span>`).join('')}</div><p class="sub">View profile & team history →</p></button>${moderator?`<button class="cover-edit" onclick="event.stopPropagation();openTeamCoverEditor('${p}')">Edit cover</button>`:''}</div>`).join('')}</div>`}
 
 function openTeamCoverEditor(p){document.querySelector('#modal').innerHTML=`<div class="modal-wrap"><div class="modal" style="max-width:510px"><div class="modal-head"><div><div class="eyebrow">Team cover</div><h2>${p}'s team</h2></div><button class="close" onclick="closeModal()">×</button></div><p class="sub">Choose a Pokémon image up to 2 MB. This limit is for the current browser/JSON storage setup, not your website host.</p><div class="field"><label>Upload cover image</label><input id="teamCoverFile" type="file" accept="image/png,image/jpeg,image/webp" onchange="previewTeamCover(event)"></div><div id="teamCoverPreview" style="height:190px;border-radius:6px;margin-top:14px;background:${teamCovers[p]?`url('${teamCovers[p]}') center/cover`:'#25252b'}"></div><div class="creator-actions"><button class="btn ghost" onclick="removeTeamCover('${p}')">Remove cover</button><button class="btn" onclick="saveTeamCover('${p}')">Save cover</button></div></div></div>`}
-function saveTeamCover(p){if(!window.pendingTeamCover){closeModal();return}teamCovers[p]=window.pendingTeamCover;window.pendingTeamCover=null;persistLeague();closeModal();render()}
-function removeTeamCover(p){delete teamCovers[p];window.pendingTeamCover=null;persistLeague();closeModal();render()}
+function saveTeamCover(p){
+  if(!window.pendingTeamCover){closeModal();return}
+  teamCovers[p]=window.pendingTeamCover;
+  try{ localStorage.setItem('draftdex-teamcovers', JSON.stringify(teamCovers)); }catch(e){}
+  window.pendingTeamCover=null;
+  if(moderator) pushMediaToSupabase();
+  persistLeague();
+  closeModal();
+  render();
+}
+function removeTeamCover(p){
+  delete teamCovers[p];
+  try{ localStorage.setItem('draftdex-teamcovers', JSON.stringify(teamCovers)); }catch(e){}
+  window.pendingTeamCover=null;
+  if(moderator) pushMediaToSupabase();
+  persistLeague();
+  closeModal();
+  render();
+}
 function openProfilePictureEditor(p){document.querySelector('#modal').innerHTML=`<div class="modal-wrap"><div class="modal" style="max-width:510px"><div class="modal-head"><div><div class="eyebrow">Profile picture</div><h2>${p}</h2></div><button class="close" onclick="closeModal()">×</button></div><p class="sub">This image shows on the player profile card and leaderboard-style avatar chips. It keeps the same upload limit as team covers.</p><div class="field"><label>Upload profile picture</label><input id="profilePicFile" type="file" accept="image/png,image/jpeg,image/webp" onchange="previewProfilePicture(event)"></div><div id="profilePicPreview" style="height:190px;border-radius:6px;margin-top:14px;background:${profilePictures[p]||teamCovers[p]?`url('${profilePictures[p]||teamCovers[p]}') center/cover`:'#25252b'}"></div><div class="creator-actions"><button class="btn ghost" onclick="removeProfilePicture('${p}')">Remove picture</button><button class="btn" onclick="saveProfilePicture('${p}')">Save picture</button></div></div></div>`}
-function saveProfilePicture(p){if(!window.pendingProfilePicture){closeModal();return}profilePictures[p]=window.pendingProfilePicture;window.pendingProfilePicture=null;persistLeague();closeModal();render()}
-function removeProfilePicture(p){delete profilePictures[p];window.pendingProfilePicture=null;persistLeague();closeModal();render()}
+function saveProfilePicture(p){
+  if(!window.pendingProfilePicture){closeModal();return}
+  profilePictures[p]=window.pendingProfilePicture;
+  try{ localStorage.setItem('draftdex-profilepics', JSON.stringify(profilePictures)); }catch(e){}
+  window.pendingProfilePicture=null;
+  if(moderator) pushMediaToSupabase();
+  persistLeague();
+  closeModal();
+  render();
+}
+function removeProfilePicture(p){
+  delete profilePictures[p];
+  try{ localStorage.setItem('draftdex-profilepics', JSON.stringify(profilePictures)); }catch(e){}
+  window.pendingProfilePicture=null;
+  if(moderator) pushMediaToSupabase();
+  persistLeague();
+  closeModal();
+  render();
+}
 
 function createProfile(){let p=document.querySelector('#profileNewName').value.trim(),team=document.querySelector('#profileNewTeam').value.trim();if(!p){alert('Enter a player name.');return}if(profiles[p]){alert('That profile already exists.');return}profiles[p]={team:team||'No default team',record:'0-0',tops:0,cups:[]};roster[p]=[];teamHistory[p]=[];persistLeague();openProfileManager()}
 
@@ -3324,6 +3358,82 @@ async function saveTopCutScore(matchId){
   render();
 }
 
+var localMediaRev = Number(localStorage.getItem('draftdex-media-rev')) || 0;
+var tournamentCovers = {};
+var recapPanelImages = {};
+try {
+  tournamentCovers = JSON.parse(localStorage.getItem('draftdex-tournament-covers') || '{}');
+  recapPanelImages = JSON.parse(localStorage.getItem('draftdex-recap-covers') || '{}');
+} catch(e){}
+
+async function fetchMediaFromCloud(){
+  if(!supabaseClient) return;
+  try {
+    let { data, error } = await supabaseClient.from('league_state').select('data').eq('id', 'media').maybeSingle();
+    if(!error && data?.data){
+      let m = data.data;
+      localMediaRev = m.mediaRev || Date.now();
+      try { localStorage.setItem('draftdex-media-rev', String(localMediaRev)); } catch(e){}
+
+      if(m.teamCovers){
+        Object.keys(teamCovers).forEach(k => delete teamCovers[k]);
+        Object.assign(teamCovers, m.teamCovers);
+        try { localStorage.setItem('draftdex-teamcovers', JSON.stringify(teamCovers)); } catch(e){}
+      }
+      if(m.profilePictures){
+        Object.keys(profilePictures).forEach(k => delete profilePictures[k]);
+        Object.assign(profilePictures, m.profilePictures);
+        try { localStorage.setItem('draftdex-profilepics', JSON.stringify(profilePictures)); } catch(e){}
+      }
+      if(m.pulsePanelImages){
+        Object.keys(pulsePanelImages).forEach(k => delete pulsePanelImages[k]);
+        Object.assign(pulsePanelImages, m.pulsePanelImages);
+        try { localStorage.setItem('draftdex-pulsepanels', JSON.stringify(pulsePanelImages)); } catch(e){}
+      }
+      if(m.tournamentCovers){
+        tournamentCovers = m.tournamentCovers;
+        try { localStorage.setItem('draftdex-tournament-covers', JSON.stringify(tournamentCovers)); } catch(e){}
+        Object.entries(tournamentCovers).forEach(([id, img]) => {
+          if(tournamentData[id] && img) tournamentData[id].backgroundImage = img;
+        });
+      }
+      if(m.recapPanelImages){
+        recapPanelImages = m.recapPanelImages;
+        try { localStorage.setItem('draftdex-recap-covers', JSON.stringify(recapPanelImages)); } catch(e){}
+        Object.entries(recapPanelImages).forEach(([id, img]) => {
+          if(tournamentData[id] && img) tournamentData[id].recapPanelImage = img;
+        });
+      }
+      render();
+    }
+  } catch(e){
+    console.warn('Draftdex: fetchMediaFromCloud note:', e);
+  }
+}
+
+async function pushMediaToSupabase(){
+  if(!supabaseClient) return;
+  localMediaRev = Date.now();
+  try { localStorage.setItem('draftdex-media-rev', String(localMediaRev)); } catch(e){}
+  let mediaPayload = {
+    mediaRev: localMediaRev,
+    teamCovers: teamCovers,
+    profilePictures: profilePictures,
+    pulsePanelImages: pulsePanelImages,
+    tournamentCovers: tournamentCovers,
+    recapPanelImages: recapPanelImages
+  };
+  try {
+    await supabaseClient.from('league_state').upsert({
+      id: 'media',
+      data: mediaPayload,
+      updated_at: new Date().toISOString()
+    });
+  } catch(e){
+    console.warn('Draftdex: pushMediaToSupabase note:', e);
+  }
+}
+
 function applySharedState(data){
   if(!data || !data.tournaments) return;
 
@@ -3356,18 +3466,27 @@ function applySharedState(data){
 
   Object.keys(tournamentData).forEach(k=>delete tournamentData[k]);
   Object.assign(tournamentData, data.tournaments || {});
+
+  // Restore tournament background and recap covers from cache
+  Object.keys(tournamentData).forEach(tId => {
+    let t = tournamentData[tId];
+    if(t){
+      if(!t.backgroundImage && tournamentCovers[tId]) t.backgroundImage = tournamentCovers[tId];
+      if(!t.recapPanelImage && recapPanelImages[tId]) t.recapPanelImage = recapPanelImages[tId];
+    }
+  });
+
   Object.keys(profiles).forEach(k=>delete profiles[k]);
   Object.assign(profiles, data.profiles || {});
   Object.keys(roster).forEach(k=>delete roster[k]);
   Object.assign(roster, data.roster || {});
   Object.keys(teamHistory).forEach(k=>delete teamHistory[k]);
   Object.assign(teamHistory, data.teamHistory || {});
-  Object.keys(teamCovers).forEach(k=>delete teamCovers[k]);
-  Object.assign(teamCovers, data.teamCovers || {});
-  Object.keys(profilePictures).forEach(k=>delete profilePictures[k]);
-  Object.assign(profilePictures, data.profilePictures || {});
-  Object.keys(pulsePanelImages).forEach(k=>delete pulsePanelImages[k]);
-  Object.assign(pulsePanelImages, data.pulsePanelImages || {});
+
+  if(data.teamCovers) { Object.keys(teamCovers).forEach(k=>delete teamCovers[k]); Object.assign(teamCovers, data.teamCovers); }
+  if(data.profilePictures) { Object.keys(profilePictures).forEach(k=>delete profilePictures[k]); Object.assign(profilePictures, data.profilePictures); }
+  if(data.pulsePanelImages) { Object.keys(pulsePanelImages).forEach(k=>delete pulsePanelImages[k]); Object.assign(pulsePanelImages, data.pulsePanelImages); }
+
   if(data.accountLinks && typeof data.accountLinks === 'object'){
     Object.keys(accountLinks).forEach(k=>delete accountLinks[k]);
     Object.assign(accountLinks, data.accountLinks);
@@ -3394,6 +3513,11 @@ function applySharedState(data){
   syncTournamentSeasons();
   migrateAllBrackets();
   rebuildAllPlayerStats();
+
+  // If incoming payload reports newer media revision, fetch media in background
+  if(data.mediaRev && data.mediaRev > (localMediaRev || 0)){
+    fetchMediaFromCloud();
+  }
 }
 window.applySharedState = applySharedState;
 var supabaseInited=false;
@@ -3426,7 +3550,7 @@ function setupDraftRealtime(){
     config: { broadcast: { self: false } }
   });
 
-  // Listen for instant live draft picks from online players
+  // Listen for instant live draft picks from online players (tiny payload, zero DB IO)
   draftRealtimeChannel.on('broadcast', { event: 'draft-pick' }, ({ payload }) => {
     if(payload && payload.tournamentId && payload.pokemon){
       applyRemoteDraftPick(payload);
@@ -3490,7 +3614,8 @@ function applyRemoteDraftPick(payload){
   } catch(e){}
 
   if(moderator){
-    persistLeague();
+    clearTimeout(syncTimer);
+    syncTimer = setTimeout(flushSync, 3000);
   }
 
   render();
@@ -3540,6 +3665,10 @@ async function syncFromCloud(){
         render();
       }
     }
+    // If media cache is empty, fetch media once on startup
+    if(!localMediaRev || !Object.keys(teamCovers).length){
+      fetchMediaFromCloud();
+    }
   } catch(e){
     console.warn('Draftdex sync error:', e);
   } finally {
@@ -3547,19 +3676,25 @@ async function syncFromCloud(){
   }
 }
 
-// Re-sync and re-connect whenever phone wakes up or user returns to tab
+// Throttled re-sync on mobile / tab wake (minimum 15s interval)
+var lastCloudSyncTime = 0;
 document.addEventListener('visibilitychange', () => {
   if(document.visibilityState === 'visible'){
-    syncFromCloud();
-    setupDraftRealtime();
+    let now = Date.now();
+    if(now - lastCloudSyncTime > 15000){
+      lastCloudSyncTime = now;
+      syncFromCloud();
+      setupDraftRealtime();
+    }
   }
 });
 window.addEventListener('pageshow', () => {
-  syncFromCloud();
-  setupDraftRealtime();
-});
-window.addEventListener('focus', () => {
-  syncFromCloud();
+  let now = Date.now();
+  if(now - lastCloudSyncTime > 15000){
+    lastCloudSyncTime = now;
+    syncFromCloud();
+    setupDraftRealtime();
+  }
 });
 
 async function initSupabase(){
@@ -3571,7 +3706,7 @@ async function initSupabase(){
     await updateSession(session);
     supabaseClient.auth.onAuthStateChange(async (_, s) => await updateSession(s));
     
-    // 1. Listen for database table updates
+    // 1. Listen for lightweight database table updates (main state only, ~20KB)
     supabaseClient.channel('league-state').on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'league_state', filter: 'id=eq.main' }, p => {
       let incoming = p.new?.data;
       if(incoming && shouldApply(incoming)){
@@ -3596,19 +3731,6 @@ async function pushStateToSupabase(payload, updateTime){
   if(!supabaseClient) return { error: new Error('Supabase client not initialized') };
   let iso = new Date(updateTime || Date.now()).toISOString();
 
-  // 1. Direct update to main row
-  try {
-    let { data, error } = await supabaseClient.from('league_state')
-      .update({ data: payload, updated_at: iso })
-      .eq('id', 'main')
-      .select();
-
-    if(!error && data && data.length > 0){
-      return { data, error: null };
-    }
-  } catch(uErr){}
-
-  // 2. Fallback upsert
   try {
     let res = await supabaseClient.from('league_state').upsert({
       id: 'main',
@@ -3623,21 +3745,30 @@ async function pushStateToSupabase(payload, updateTime){
 
 async function flushSync(){
   if(!supabaseClient) return;
+
+  // Clean tournaments to remove heavy base64 strings from frequent main sync payload
+  let cleanTournaments = {};
+  Object.entries(tournamentData).forEach(([tId, t]) => {
+    let clone = { ...t };
+    delete clone.backgroundImage;
+    delete clone.recapPanelImage;
+    cleanTournaments[tId] = clone;
+  });
+
   let payload = {
     rev: knownRev,
     updatedAt: lastLocalUpdate,
-    tournaments: tournamentData,
+    mediaRev: localMediaRev,
+    tournaments: cleanTournaments,
     profiles: profiles,
     roster: roster,
     teamHistory: teamHistory,
-    teamCovers: teamCovers,
-    profilePictures: profilePictures,
-    pulsePanelImages: pulsePanelImages,
     cut: cut,
     boardLink: boardLink,
     draftPool: (typeof draftPool !== 'undefined' ? draftPool : null),
     accountLinks: accountLinks
   };
+
   let serialized = JSON.stringify(payload);
   if(serialized === lastSentSnapshot) return;
   lastSentSnapshot = serialized;
@@ -3672,11 +3803,8 @@ function persistLeague(){
     if(typeof accountLinks!=='undefined') localStorage.setItem('draftdex-accountlinks', JSON.stringify(accountLinks));
   }catch(e){}
   clearTimeout(syncTimer);
-  syncTimer = setTimeout(flushSync, 100);
+  syncTimer = setTimeout(flushSync, 150);
 }
-
-
-
 
 async function signOut(btnEl){
   let btn = btnEl || document.querySelector('#signOutBtn');
@@ -4980,22 +5108,7 @@ async function updateSession(session){
   sessionResolvedFor=sessionUser?sessionUser.id:null;
   let label=document.querySelector('#accountText');
   if(label) label.textContent=sessionUser ? (moderator ? (nextAccount?.username ? `${nextAccount.username} 👑` : 'Moderator') : (nextAccount?.username || 'Player')) : 'Sign in';
-  let stateChanged = false;
-  if(supabaseClient){
-    try{
-      let {data}=await supabaseClient.from('league_state').select('data').eq('id','main').maybeSingle();
-      if(myReq===sessionReqId && data?.data){
-        let incoming=data.data;
-        if(shouldApply(incoming)){
-          applySharedState(incoming);
-          stateChanged = true;
-        } else if((moderator || window.currentAccount?.role === 'moderator') && incoming && ((incoming.rev || 0) < knownRev || (incoming.updatedAt || 0) < lastLocalUpdate)){
-          flushSync();
-        }
-      }
-    }catch(e){}
-  }
-  if(modChanged || userChanged || stateChanged){
+  if(modChanged || userChanged){
     render();
   }
 }
@@ -5037,12 +5150,15 @@ async function saveCover(id){
   let file = document.querySelector('#coverFile')?.files?.[0];
   if(!window.pendingCover && file){
     try {
-      window.pendingCover = await shrinkImage(file, 850, 0.70);
+      window.pendingCover = await shrinkImage(file, 650, 0.72);
     } catch(e){}
   }
   if(window.pendingCover){
     t.backgroundImage = window.pendingCover;
+    tournamentCovers[id] = window.pendingCover;
+    try { localStorage.setItem('draftdex-tournament-covers', JSON.stringify(tournamentCovers)); } catch(e){}
     window.pendingCover = null;
+    if(moderator) pushMediaToSupabase();
     persistLeague();
   }
   closeModal();
@@ -5053,7 +5169,10 @@ function removeCover(id){
   let t = tournamentData[id];
   if(!t){ closeModal(); return; }
   delete t.backgroundImage;
+  delete tournamentCovers[id];
+  try { localStorage.setItem('draftdex-tournament-covers', JSON.stringify(tournamentCovers)); } catch(e){}
   window.pendingCover = null;
+  if(moderator) pushMediaToSupabase();
   persistLeague();
   closeModal();
   render();
@@ -5089,7 +5208,7 @@ function openCoverEditor(id){
 function openRecapPanelCoverEditor(id){let t=tournamentData[id];let currentCover=pulsePanelImages.recap||t?.recapPanelImage||t?.backgroundImage||'';document.querySelector('#modal').innerHTML=`<div class="modal-wrap"><div class="modal" style="max-width:510px"><div class="modal-head"><div><div class="eyebrow">Recap panel cover</div><h2>${t?.name||'Off-Season Recap'}</h2></div><button class="close" onclick="closeModal()">×</button></div><p class="sub">This image is used as the off-season Last Tournament panel cover and carries over across tournaments so your off-season looks consistent.</p><div class="field"><label>Upload panel image</label><input id="recapPanelFile" type="file" accept="image/png,image/jpeg,image/webp" onchange="previewRecapPanelCover(event)"></div><div id="recapPanelPreview" style="height:190px;border-radius:6px;margin-top:14px;background:${currentCover?`url('${currentCover}') center/cover`:'#25252b'}"></div><div class="creator-actions"><button class="btn ghost" onclick="removeRecapPanelCover('${id}')">Remove panel cover</button><button class="btn" onclick="saveRecapPanelCover('${id}')">Save panel cover</button></div></div></div>`}
 function openPulsePanelCoverEditor(id){let t=tournamentData[id];document.querySelector('#modal').innerHTML=`<div class="modal-wrap"><div class="modal" style="max-width:510px"><div class="modal-head"><div><div class="eyebrow">Tournament pulse cover</div><h2>${t.name}</h2></div><button class="close" onclick="closeModal()">×</button></div><p class="sub">This is a league-wide cover for the Tournament Pulse panel and carries over to every tournament until you change it again.</p><div class="field"><label>Upload pulse image</label><input id="pulsePanelFile" type="file" accept="image/png,image/jpeg,image/webp" onchange="previewPulsePanelCover(event)"></div><div id="pulsePanelPreview" style="height:190px;border-radius:6px;margin-top:14px;background:${pulsePanelImages.global||t.backgroundImage?`url('${pulsePanelImages.global||t.backgroundImage}') center/cover`:'#25252b'}"></div><div class="creator-actions"><button class="btn ghost" onclick="removePulsePanelCover('${id}')">Remove panel cover</button><button class="btn" onclick="savePulsePanelCover('${id}')">Save panel cover</button></div></div></div>`}
 
-function compressImage(file, maxWidth=1200, maxHeight=800, quality=0.82){
+function compressImage(file, maxWidth=800, maxHeight=500, quality=0.75){
   return new Promise((resolve, reject) => {
     let reader = new FileReader();
     reader.onload = function(e){
@@ -5125,7 +5244,7 @@ async function previewPrimetimeCover(event){
   let file=event.target.files[0];
   if(!file)return;
   try {
-    let compressedData = await compressImage(file, 1200, 700, 0.82);
+    let compressedData = await compressImage(file, 800, 500, 0.75);
     window.pendingPrimetimeCover = compressedData;
     let preview = document.querySelector('#primetimePreview');
     if(preview){
@@ -5157,8 +5276,10 @@ function savePrimetimeCover(){
     window.pendingPrimetimeCover = null;
     try {
       localStorage.setItem('draftdex-primetime-cover', toSave);
+      localStorage.setItem('draftdex-pulsepanels', JSON.stringify(pulsePanelImages));
       for(let i=0; i<10; i++) localStorage.removeItem(`draftdex-primetime-slot-${i}`);
     } catch(e){}
+    if(moderator) pushMediaToSupabase();
     persistLeague();
     closeModal();
     render();
@@ -5174,8 +5295,10 @@ function removePrimetimeCover(){
   window.pendingPrimetimeCover = null;
   try {
     localStorage.removeItem('draftdex-primetime-cover');
+    localStorage.setItem('draftdex-pulsepanels', JSON.stringify(pulsePanelImages));
     for(let i=0; i<10; i++) localStorage.removeItem(`draftdex-primetime-slot-${i}`);
   } catch(e){}
+  if(moderator) pushMediaToSupabase();
   persistLeague();
   closeModal();
   render();
@@ -6613,22 +6736,51 @@ async function previewPulsePanelCover(e){
 function saveRecapPanelCover(id){
   if(!window.pendingRecapPanelCover){closeModal();return}
   pulsePanelImages.recap=window.pendingRecapPanelCover;
-  if(id&&tournamentData[id])tournamentData[id].recapPanelImage=window.pendingRecapPanelCover;
+  if(id){
+    if(tournamentData[id]) tournamentData[id].recapPanelImage=window.pendingRecapPanelCover;
+    recapPanelImages[id] = window.pendingRecapPanelCover;
+    try{ localStorage.setItem('draftdex-recap-covers', JSON.stringify(recapPanelImages)); }catch(e){}
+  }
+  try{ localStorage.setItem('draftdex-pulsepanels', JSON.stringify(pulsePanelImages)); }catch(e){}
   window.pendingRecapPanelCover=null;
+  if(moderator) pushMediaToSupabase();
   persistLeague();
   closeModal();
   render();
 }
 function removeRecapPanelCover(id){
   delete pulsePanelImages.recap;
-  if(id&&tournamentData[id])delete tournamentData[id].recapPanelImage;
+  if(id){
+    if(tournamentData[id]) delete tournamentData[id].recapPanelImage;
+    delete recapPanelImages[id];
+    try{ localStorage.setItem('draftdex-recap-covers', JSON.stringify(recapPanelImages)); }catch(e){}
+  }
+  try{ localStorage.setItem('draftdex-pulsepanels', JSON.stringify(pulsePanelImages)); }catch(e){}
   window.pendingRecapPanelCover=null;
+  if(moderator) pushMediaToSupabase();
   persistLeague();
   closeModal();
   render();
 }
-function savePulsePanelCover(id){if(!window.pendingPulsePanelCover){closeModal();return}pulsePanelImages.global=window.pendingPulsePanelCover;window.pendingPulsePanelCover=null;persistLeague();closeModal();render()}
-function removePulsePanelCover(id){delete pulsePanelImages.global;window.pendingPulsePanelCover=null;persistLeague();closeModal();render()}
+function savePulsePanelCover(id){
+  if(!window.pendingPulsePanelCover){closeModal();return}
+  pulsePanelImages.global=window.pendingPulsePanelCover;
+  try{ localStorage.setItem('draftdex-pulsepanels', JSON.stringify(pulsePanelImages)); }catch(e){}
+  window.pendingPulsePanelCover=null;
+  if(moderator) pushMediaToSupabase();
+  persistLeague();
+  closeModal();
+  render();
+}
+function removePulsePanelCover(id){
+  delete pulsePanelImages.global;
+  try{ localStorage.setItem('draftdex-pulsepanels', JSON.stringify(pulsePanelImages)); }catch(e){}
+  window.pendingPulsePanelCover=null;
+  if(moderator) pushMediaToSupabase();
+  persistLeague();
+  closeModal();
+  render();
+}
 function teamArt(p,t){let img=teamCovers[p];return img?`url('${esc(img)}')`:fallbackArt(teamName(t||ongoingT(),p)+p)}
 function profileArt(p,t){let img=profilePictures[p];return img?`url('${esc(img)}')`:teamArt(p,t)}
 /* ------------------------------------------------------------ 2. DRAFT BOARD ------------------------------------------------------------ */
