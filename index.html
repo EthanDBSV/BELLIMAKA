@@ -2004,50 +2004,81 @@ function topScore(i){let t=ongoingT(),m=t.topCutMatches[i],a=document.querySelec
 function playerLink(p){return `<button class="player-link" onclick="openProfile('${jsArg(p)}')" onmouseenter="highlightMatches('${jsArg(p)}', true)" onmouseleave="highlightMatches('', false)">${esc(p)}</button>`}
 
 function matchCard(m,latest=false){
-  let p1 = m.a, p2 = m.b;
-  let s1 = m.as, s2 = m.bs;
+  let p1 = m.a || m.p1;
+  let p2 = m.b || m.p2;
+  let s1 = m.as ?? m.s1 ?? '-';
+  let s2 = m.bs ?? m.s2 ?? '-';
   let t = activeT() || ongoingT();
   let t1Name = teamName(t, p1) || 'Team 1';
   let t2Name = teamName(t, p2) || 'Team 2';
   let ovr1 = calculatePlayerOVR(p1);
   let ovr2 = calculatePlayerOVR(p2);
-  let p1Won = (s1 !== '' && s2 !== '' && s1 != null && s2 != null && +s1 > +s2);
-  let p2Won = (s1 !== '' && s2 !== '' && s1 != null && s2 != null && +s2 > +s1);
+  let rec1 = tournamentRecord(t, p1);
+  let rec2 = tournamentRecord(t, p2);
+
+  let isPlayed = (s1 !== '-' && s2 !== '-' && s1 !== '' && s2 !== '' && s1 != null && s2 != null);
+  let p1Won = isPlayed && (+s1 > +s2);
+  let p2Won = isPlayed && (+s2 > +s1);
 
   let face1 = profilePictures[p1] ? `url('${esc(profilePictures[p1])}')` : (teamCovers[p1] ? `url('${esc(teamCovers[p1])}')` : fallbackArt(p1));
   let letter1 = (profilePictures[p1] || teamCovers[p1]) ? '' : esc((p1 || '?')[0]);
   let face2 = profilePictures[p2] ? `url('${esc(profilePictures[p2])}')` : (teamCovers[p2] ? `url('${esc(teamCovers[p2])}')` : fallbackArt(p2));
   let letter2 = (profilePictures[p2] || teamCovers[p2]) ? '' : esc((p2 || '?')[0]);
 
-  return `<article class="card modern-match-card ${latest ? 'latest-highlight' : ''}">
-    <div class="match-meta">
-      <span style="font-weight:800;color:${latest ? '#ff858b' : '#a09fa8'}">${latest ? '🔥 LATEST RESULT' : esc(m.label || m.group || m.round || 'Fixture')}</span>
-      <span>${esc(m.date || 'Final')}</span>
-    </div>
-    <div class="modern-match-body">
-      <div class="modern-match-player ${p1Won ? 'is-winner' : (p2Won ? 'is-loser' : '')}">
-        <div style="display:flex;align-items:center;gap:8px;min-width:0">
-          <span class="avatar mini" style="background-image:${face1};background-size:cover;background-position:center;width:28px;height:28px;border-radius:50%;font-size:12px;border:1px solid ${ovr1.color};display:grid;place-items:center;flex:none">${letter1}</span>
-          <div style="min-width:0">
-            <div style="font-size:13px;font-weight:800;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${playerLink(p1)}</div>
-            <div style="font-size:10px;color:#8e8c95;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(t1Name)}</div>
-          </div>
+  let labelText = m.label || m.roundTitle || m.title || m.round || m.group || 'League Fixture';
+
+  return `
+    <article class="card modern-match-card ${latest ? 'latest-highlight' : ''}" style="padding:0;background:linear-gradient(135deg,#18141d 0%,#12121a 100%);border:1px solid ${latest ? '#ef3038' : '#2a2636'};box-shadow:${latest ? '0 4px 20px rgba(239,48,56,0.2)' : 'none'};border-radius:10px;overflow:hidden;position:relative">
+      ${latest ? `<div style="position:absolute;top:0;right:0;background:var(--red);color:#fff;font-size:8px;font-weight:900;letter-spacing:1px;padding:2px 8px;border-bottom-left-radius:6px;text-transform:uppercase;z-index:3">LATEST</div>` : ''}
+
+      <div style="padding:8px 14px;background:rgba(0,0,0,0.35);border-bottom:1px solid rgba(255,255,255,0.06);display:flex;justify-content:space-between;align-items:center">
+        <div style="display:flex;align-items:center;gap:6px">
+          <span style="font-size:12px;color:var(--red)">⚡</span>
+          <span style="font:800 13px 'Barlow Condensed';color:#ffd166;letter-spacing:.6px;text-transform:uppercase">${esc(labelText)}</span>
         </div>
-        <span class="match-score-pill ${p1Won ? 'winner-pill' : ''}">${s1 !== '' && s1 != null ? s1 : '-'}</span>
+        <span style="background:rgba(74,222,128,0.12);border:1px solid rgba(74,222,128,0.25);font-size:9px;font-weight:900;letter-spacing:.8px;color:#7df0aa;padding:2px 7px;border-radius:4px;text-transform:uppercase">${isPlayed ? 'FINAL SCORE' : 'UPCOMING'}</span>
       </div>
 
-      <div class="modern-match-player ${p2Won ? 'is-winner' : (p1Won ? 'is-loser' : '')}">
-        <div style="display:flex;align-items:center;gap:8px;min-width:0">
-          <span class="avatar mini" style="background-image:${face2};background-size:cover;background-position:center;width:28px;height:28px;border-radius:50%;font-size:12px;border:1px solid ${ovr2.color};display:grid;place-items:center;flex:none">${letter2}</span>
-          <div style="min-width:0">
-            <div style="font-size:13px;font-weight:800;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${playerLink(p2)}</div>
-            <div style="font-size:10px;color:#8e8c95;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(t2Name)}</div>
+      <div style="padding:16px 14px;display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:10px">
+        <!-- Team 1 -->
+        <div style="text-align:center;display:flex;flex-direction:column;align-items:center;min-width:0;${p1Won ? 'filter:drop-shadow(0 0 8px rgba(74,222,128,0.2))' : ''}">
+          <div style="position:relative;cursor:pointer" onclick="openProfile('${jsArg(p1)}')">
+            <span class="avatar" style="background-image:${face1};background-size:cover;background-position:center;width:44px;height:44px;font-size:18px;border-radius:50%;border:2px solid ${p1Won ? '#4ade80' : ovr1.color};display:grid;place-items:center">${letter1}</span>
+            <span style="position:absolute;bottom:-4px;right:-4px">${ovr1.badgeHtml}</span>
           </div>
+          <div style="font:800 18px 'Barlow Condensed';margin-top:4px;color:${p1Won ? '#4ade80' : '#ffd166'};line-height:1">${esc(rec1)}</div>
+          <div style="font-size:10px;color:#8e8c95;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:105px;margin-top:2px" title="${esc(t1Name)}">${esc(t1Name)}</div>
+          <div style="font-size:11px;font-weight:800;margin-top:1px">${playerLink(p1)}</div>
         </div>
-        <span class="match-score-pill ${p2Won ? 'winner-pill' : ''}">${s2 !== '' && s2 != null ? s2 : '-'}</span>
+
+        <!-- Center Score -->
+        <div style="text-align:center;flex:none;padding:0 6px">
+          ${isPlayed ? `
+            <div style="font:800 24px 'Barlow Condensed';letter-spacing:1px;display:flex;align-items:center;justify-content:center;gap:6px">
+              <span style="color:${p1Won ? '#4ade80' : '#a09fa8'}">${s1}</span>
+              <span style="color:#555460;font-size:15px">-</span>
+              <span style="color:${p2Won ? '#4ade80' : '#a09fa8'}">${s2}</span>
+            </div>
+            <span style="font:800 9px 'Barlow Condensed';color:#7df0aa;letter-spacing:.8px;text-transform:uppercase;margin-top:2px;display:inline-block">FINAL</span>
+          ` : `
+            <div style="width:28px;height:28px;background:rgba(239,48,56,0.15);border:1px solid rgba(239,48,56,0.3);border-radius:50%;display:grid;place-items:center;font:800 11px 'Barlow Condensed';color:var(--red);margin:0 auto">VS</div>
+            <span style="font:800 9px 'Barlow Condensed';color:#8e8c95;letter-spacing:.6px;text-transform:uppercase;margin-top:2px;display:inline-block">ON DECK</span>
+          `}
+        </div>
+
+        <!-- Team 2 -->
+        <div style="text-align:center;display:flex;flex-direction:column;align-items:center;min-width:0;${p2Won ? 'filter:drop-shadow(0 0 8px rgba(74,222,128,0.2))' : ''}">
+          <div style="position:relative;cursor:pointer" onclick="openProfile('${jsArg(p2)}')">
+            <span class="avatar" style="background-image:${face2};background-size:cover;background-position:center;width:44px;height:44px;font-size:18px;border-radius:50%;border:2px solid ${p2Won ? '#4ade80' : ovr2.color};display:grid;place-items:center">${letter2}</span>
+            <span style="position:absolute;bottom:-4px;right:-4px">${ovr2.badgeHtml}</span>
+          </div>
+          <div style="font:800 18px 'Barlow Condensed';margin-top:4px;color:${p2Won ? '#4ade80' : '#ffd166'};line-height:1">${esc(rec2)}</div>
+          <div style="font-size:10px;color:#8e8c95;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:105px;margin-top:2px" title="${esc(t2Name)}">${esc(t2Name)}</div>
+          <div style="font-size:11px;font-weight:800;margin-top:1px">${playerLink(p2)}</div>
+        </div>
       </div>
-    </div>
-  </article>`;
+    </article>
+  `;
 }
 
 
@@ -4187,9 +4218,24 @@ function getFeaturedMatchups(t){
       let mod = getTournamentTopCutModel(t);
       if(mod){
         let allMatches = [];
-        (mod.wbRounds || []).forEach(r => (r.matches || []).forEach(m => allMatches.push({ ...m, roundTitle: r.title || m.title })));
-        (mod.lbRounds || []).forEach(r => (r.matches || []).forEach(m => allMatches.push({ ...m, roundTitle: r.title || m.title })));
-        (mod.gfMatches || []).forEach(m => allMatches.push({ ...m, roundTitle: 'Grand Finals' }));
+        // 1. WB Quarterfinals
+        if(mod.wbRounds?.[0]?.matches) mod.wbRounds[0].matches.forEach(m => allMatches.push({ ...m, roundTitle: m.title || 'Quarterfinals' }));
+        // 2. LB Round 1
+        if(mod.lbRounds?.[0]?.matches) mod.lbRounds[0].matches.forEach(m => allMatches.push({ ...m, roundTitle: m.title || 'LB Round 1' }));
+        // 3. WB Semifinals
+        if(mod.wbRounds?.[1]?.matches) mod.wbRounds[1].matches.forEach(m => allMatches.push({ ...m, roundTitle: m.title || 'Semifinals' }));
+        // 4. LB Round 2 / LB Semis
+        if(mod.lbRounds?.[1]?.matches) mod.lbRounds[1].matches.forEach(m => allMatches.push({ ...m, roundTitle: m.title || 'LB Semifinals' }));
+        // 5. Winners Final
+        if(mod.wbRounds?.[2]?.matches) mod.wbRounds[2].matches.forEach(m => allMatches.push({ ...m, roundTitle: m.title || 'Winners Final' }));
+        // 6. Losers Final
+        if(mod.lbRounds?.[2]?.matches) mod.lbRounds[2].matches.forEach(m => allMatches.push({ ...m, roundTitle: m.title || 'Losers Final' }));
+        // 7. Grand Finals
+        (mod.gfMatches || []).forEach(m => allMatches.push({ ...m, roundTitle: m.title || 'Grand Finals' }));
+
+        // Any remaining rounds
+        (mod.wbRounds || []).slice(3).forEach(r => (r.matches || []).forEach(m => allMatches.push({ ...m, roundTitle: m.title || r.title })));
+        (mod.lbRounds || []).slice(3).forEach(r => (r.matches || []).forEach(m => allMatches.push({ ...m, roundTitle: m.title || r.title })));
 
         availableTopCutMatches = allMatches.filter(m => {
           let p1 = m.p1 || m.a, p2 = m.p2 || m.b;
@@ -4205,12 +4251,7 @@ function getFeaturedMatchups(t){
     }
 
     if(availableTopCutMatches.length){
-      // Uncompleted matches first, then completed matches
-      let uncompleted = availableTopCutMatches.filter(m => !m.isDone && (m.s1 == null || m.s1 === '') && (m.as == null || m.as === ''));
-      let completed = availableTopCutMatches.filter(m => m.isDone || (m.s1 != null && m.s1 !== '') || (m.as != null && m.as !== ''));
-      let ordered = uncompleted.length ? [...uncompleted, ...completed] : completed;
-
-      return ordered.slice(0, 5).map(m => ({
+      return availableTopCutMatches.map(m => ({
         a: m.p1 || m.a,
         b: m.p2 || m.b,
         label: m.title || m.roundTitle || 'Top Cut Playoff',
@@ -4223,52 +4264,21 @@ function getFeaturedMatchups(t){
     }
   }
 
-  let unplayed = (t.matches || []).filter(m => (m.as === '' || m.as == null) && m.a && m.b);
-  let played = (t.matches || []).filter(m => m.as !== '' && m.as != null && m.bs !== '' && m.bs != null && m.a && m.b);
+  let list = (t.matches || []).filter(m => m.a && m.b);
+  if(list.length){
+    return list.map(m => ({
+      a: m.a,
+      b: m.b,
+      label: m.round || m.group || 'League Fixture',
+      group: m.group ? (m.group.toUpperCase() + ' DIVISION') : 'PRIMETIME MATCHUP',
+      recA: tournamentRecord(t, m.a),
+      recB: tournamentRecord(t, m.b),
+      isTopCut: false,
+      matchRef: m
+    }));
+  }
 
-  if(!unplayed.length && !played.length) return [];
-
-  let scoredUnplayed = unplayed.map(m => {
-    let recA = tournamentRecord(t, m.a).split('-').map(Number);
-    let recB = tournamentRecord(t, m.b).split('-').map(Number);
-    let wa = recA[0] || 0, la = recA[1] || 0;
-    let wb = recB[0] || 0, lb = recB[1] || 0;
-    let totalWins = wa + wb;
-    let ovrA = calculatePlayerOVR(m.a)?.ovr || 50;
-    let ovrB = calculatePlayerOVR(m.b)?.ovr || 50;
-    let combinedOvr = ovrA + ovrB;
-    let hype = (totalWins * 20) + (combinedOvr * 0.5) - (Math.abs(wa - wb) * 6);
-    return {
-      match: m,
-      hype: hype,
-      recA: `${wa}-${la}`,
-      recB: `${wb}-${lb}`,
-      isDone: false
-    };
-  });
-  scoredUnplayed.sort((a, b) => b.hype - a.hype);
-
-  let scoredPlayed = played.map(m => ({
-    match: m,
-    hype: 0,
-    recA: tournamentRecord(t, m.a),
-    recB: tournamentRecord(t, m.b),
-    isDone: true
-  }));
-  scoredPlayed.reverse(); // most recent finished first
-
-  let combined = [...scoredUnplayed, ...scoredPlayed];
-
-  return combined.slice(0, 5).map(s => ({
-    a: s.match.a,
-    b: s.match.b,
-    label: s.match.round || s.match.group || 'League Fixture',
-    group: s.match.group ? (s.match.group.toUpperCase() + ' DIVISION') : 'PRIMETIME MATCHUP',
-    recA: s.recA,
-    recB: s.recB,
-    isTopCut: false,
-    matchRef: s.match
-  }));
+  return [];
 }
 
 function cycleFeaturedMatch(delta, total){
