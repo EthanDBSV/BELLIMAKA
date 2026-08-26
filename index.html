@@ -4171,16 +4171,52 @@ function removeStarterData(){let starter=['Ethan','Maya','Noah','Jules','Theo','
 
 window.featuredMatchIdx = 0;
 
+function isKnownCoach(name, t){
+  if(!name || typeof name !== 'string') return false;
+  let s = name.trim();
+  if(!s || s === 'TBD' || s === 'BYE') return false;
+  if(/^Winner|^Loser|^Seed #/i.test(s)) return false;
+  return (t?.players || []).includes(s) || (profiles && profiles[s]) || (s.length > 0 && !s.includes('QF') && !s.includes('SF') && !s.includes('WB') && !s.includes('LB'));
+}
+
 function getFeaturedMatchups(t){
   if(!t) return [];
   if(t.phase === 'topcut'){
-    let play = (t.topCutCache?.playable || []).filter(m => m.p1 && m.p2);
-    if(play.length) {
-      return play.map(m => ({
-        a: m.p1,
-        b: m.p2,
-        label: m.title || 'Top Cut Playoff',
-        group: 'TOP CUT PLAYOFFS',
+    let availableTopCutMatches = [];
+    if(typeof getTournamentTopCutModel === 'function'){
+      let mod = getTournamentTopCutModel(t);
+      if(mod){
+        let allMatches = [];
+        (mod.wbRounds || []).forEach(r => (r.matches || []).forEach(m => allMatches.push({ ...m, roundTitle: r.title || m.title })));
+        (mod.lbRounds || []).forEach(r => (r.matches || []).forEach(m => allMatches.push({ ...m, roundTitle: r.title || m.title })));
+        (mod.gfMatches || []).forEach(m => allMatches.push({ ...m, roundTitle: 'Grand Finals' }));
+
+        availableTopCutMatches = allMatches.filter(m => {
+          let p1 = m.p1 || m.a, p2 = m.p2 || m.b;
+          return isKnownCoach(p1, t) && isKnownCoach(p2, t);
+        });
+      }
+    }
+    if(!availableTopCutMatches.length && t.topCutCache?.playable){
+      availableTopCutMatches = (t.topCutCache.playable || []).filter(m => {
+        let p1 = m.p1 || m.a, p2 = m.p2 || m.b;
+        return isKnownCoach(p1, t) && isKnownCoach(p2, t);
+      });
+    }
+
+    if(availableTopCutMatches.length){
+      // Uncompleted matches first, then completed matches
+      let uncompleted = availableTopCutMatches.filter(m => !m.isDone && (m.s1 == null || m.s1 === '') && (m.as == null || m.as === ''));
+      let completed = availableTopCutMatches.filter(m => m.isDone || (m.s1 != null && m.s1 !== '') || (m.as != null && m.as !== ''));
+      let ordered = uncompleted.length ? [...uncompleted, ...completed] : completed;
+
+      return ordered.slice(0, 5).map(m => ({
+        a: m.p1 || m.a,
+        b: m.p2 || m.b,
+        label: m.title || m.roundTitle || 'Top Cut Playoff',
+        group: (m.title || m.roundTitle || 'TOP CUT PLAYOFFS').toUpperCase(),
+        recA: tournamentRecord(t, m.p1 || m.a),
+        recB: tournamentRecord(t, m.p2 || m.b),
         isTopCut: true,
         matchRef: m
       }));
@@ -4188,19 +4224,11 @@ function getFeaturedMatchups(t){
   }
 
   let unplayed = (t.matches || []).filter(m => (m.as === '' || m.as == null) && m.a && m.b);
-  if(!unplayed.length){
-    let all = (t.matches || []).filter(m => m.a && m.b).slice(0, 5);
-    return all.map(m => ({
-      a: m.a,
-      b: m.b,
-      label: m.round || m.group || 'Completed Clash',
-      group: m.group ? (m.group.toUpperCase() + ' SPOTLIGHT') : 'LEAGUE SPOTLIGHT',
-      isTopCut: false,
-      matchRef: m
-    }));
-  }
+  let played = (t.matches || []).filter(m => m.as !== '' && m.as != null && m.bs !== '' && m.bs != null && m.a && m.b);
 
-  let scored = unplayed.map(m => {
+  if(!unplayed.length && !played.length) return [];
+
+  let scoredUnplayed = unplayed.map(m => {
     let recA = tournamentRecord(t, m.a).split('-').map(Number);
     let recB = tournamentRecord(t, m.b).split('-').map(Number);
     let wa = recA[0] || 0, la = recA[1] || 0;
@@ -4214,17 +4242,28 @@ function getFeaturedMatchups(t){
       match: m,
       hype: hype,
       recA: `${wa}-${la}`,
-      recB: `${wb}-${lb}`
+      recB: `${wb}-${lb}`,
+      isDone: false
     };
   });
+  scoredUnplayed.sort((a, b) => b.hype - a.hype);
 
-  scored.sort((a, b) => b.hype - a.hype);
+  let scoredPlayed = played.map(m => ({
+    match: m,
+    hype: 0,
+    recA: tournamentRecord(t, m.a),
+    recB: tournamentRecord(t, m.b),
+    isDone: true
+  }));
+  scoredPlayed.reverse(); // most recent finished first
 
-  return scored.slice(0, 5).map(s => ({
+  let combined = [...scoredUnplayed, ...scoredPlayed];
+
+  return combined.slice(0, 5).map(s => ({
     a: s.match.a,
     b: s.match.b,
     label: s.match.round || s.match.group || 'League Fixture',
-    group: s.match.group ? (s.match.group.toUpperCase() + ' DIVISION') : 'MATCHUP OF THE WEEK',
+    group: s.match.group ? (s.match.group.toUpperCase() + ' DIVISION') : 'PRIMETIME MATCHUP',
     recA: s.recA,
     recB: s.recB,
     isTopCut: false,
@@ -4274,7 +4313,14 @@ function matchupOfTheWeekCard(t){
   let face2 = profilePictures[p2] ? `url('${esc(profilePictures[p2])}')` : (teamCovers[p2] ? `url('${esc(teamCovers[p2])}')` : fallbackArt(p2));
   let letter2 = (profilePictures[p2] || teamCovers[p2]) ? '' : esc((p2 || '?')[0]);
 
-  let primetimeCover = pulsePanelImages.primetime || pulsePanelImages.global;
+  let mRef = item.matchRef || {};
+  let isPlayed = (mRef.as !== '' && mRef.as != null && mRef.bs !== '' && mRef.bs != null) || (mRef.s1 != null && mRef.s2 != null && mRef.s1 !== '' && mRef.s2 !== '');
+  let sA = mRef.as ?? mRef.s1;
+  let sB = mRef.bs ?? mRef.s2;
+  let p1Won = isPlayed && (+sA > +sB);
+  let p2Won = isPlayed && (+sB > +sA);
+
+  let primetimeCover = mRef.coverImage || pulsePanelImages.primetime || pulsePanelImages.global;
   if(!primetimeCover){
     try { primetimeCover = localStorage.getItem('draftdex-primetime-cover') || ''; } catch(e){}
   }
@@ -4283,11 +4329,11 @@ function matchupOfTheWeekCard(t){
   return `<aside class="card matchup-hero-card" ${cardBg}>
     <div class="matchup-hero-banner">
       <div style="display:flex;align-items:center;gap:6px">
-        <span style="font-size:13px">🔥</span>
+        <span style="font-size:13px">${isPlayed ? '⚡' : '🔥'}</span>
         <span class="eyebrow" style="color:#ffd166;margin:0;letter-spacing:1px">${esc(item.group || 'PRIMETIME MATCHUP')}</span>
       </div>
       <div style="display:flex;align-items:center;gap:6px">
-        <span class="tag" style="background:#00000070;border:1px solid #ffffff25;font-size:9px;font-weight:900;letter-spacing:1px;color:#ff9fa6;padding:3px 8px;border-radius:4px">${item.isTopCut ? 'TOP CUT PLAYOFFS' : 'PRIMETIME'}</span>
+        <span class="tag" style="background:#00000070;border:1px solid #ffffff25;font-size:9px;font-weight:900;letter-spacing:1px;color:${isPlayed ? '#7df0aa' : '#ff9fa6'};padding:3px 8px;border-radius:4px">${isPlayed ? 'FINAL SCORE' : (item.isTopCut ? 'TOP CUT' : 'PRIMETIME')}</span>
         ${moderator ? `<button class="cover-edit" style="position:static;padding:3px 8px;font-size:10px" onclick="event.stopPropagation();openPrimetimeCoverEditor()">Edit cover</button>` : ''}
       </div>
     </div>
@@ -4298,29 +4344,38 @@ function matchupOfTheWeekCard(t){
       ` : ''}
 
       <!-- Team 1 -->
-      <div class="matchup-team-col">
+      <div class="matchup-team-col" style="${p1Won ? 'filter:drop-shadow(0 0 10px rgba(74,222,128,0.25))' : ''}">
         <div style="position:relative;cursor:pointer" onclick="openProfile('${jsArg(p1)}')">
-          <span class="avatar" style="background-image:${face1};background-size:cover;background-position:center;width:58px;height:58px;font-size:24px;border-radius:50%;border:2px solid ${ovr1.color};box-shadow:0 4px 16px rgba(0,0,0,0.6);display:grid;place-items:center">${letter1}</span>
+          <span class="avatar" style="background-image:${face1};background-size:cover;background-position:center;width:58px;height:58px;font-size:24px;border-radius:50%;border:2px solid ${p1Won ? '#4ade80' : ovr1.color};box-shadow:0 4px 16px rgba(0,0,0,0.6);display:grid;place-items:center">${letter1}</span>
           <span style="position:absolute;bottom:-4px;right:-4px">${ovr1.badgeHtml}</span>
         </div>
-        <div class="matchup-record-big" style="margin-top:4px">${esc(rec1)}</div>
+        <div class="matchup-record-big" style="margin-top:4px;color:${p1Won ? '#4ade80' : '#ffd166'}">${esc(rec1)}</div>
         <div class="matchup-team-name" title="${esc(t1Name)}">${esc(t1Name)}</div>
         <div style="font-size:12px;font-weight:800">${playerLink(p1)}</div>
       </div>
 
-      <!-- Center VS Emblem -->
+      <!-- Center Score / VS Emblem -->
       <div class="matchup-vs-badge">
-        <div class="matchup-vs-circle">VS</div>
-        <span style="font:800 11px 'Barlow Condensed';color:#a09fa8;letter-spacing:.6px;text-transform:uppercase;margin-top:2px">${esc(item.label || 'Fixture')}</span>
+        ${isPlayed ? `
+          <div style="display:flex;align-items:center;gap:8px">
+            <span style="font:800 28px 'Barlow Condensed';color:${p1Won ? '#4ade80' : '#a09fa8'}">${sA}</span>
+            <span style="font:800 16px 'Barlow Condensed';color:#6b6a78">-</span>
+            <span style="font:800 28px 'Barlow Condensed';color:${p2Won ? '#4ade80' : '#a09fa8'}">${sB}</span>
+          </div>
+          <span style="font:800 10px 'Barlow Condensed';color:#7df0aa;letter-spacing:.8px;text-transform:uppercase;margin-top:1px">FINAL</span>
+        ` : `
+          <div class="matchup-vs-circle">VS</div>
+          <span style="font:800 11px 'Barlow Condensed';color:#a09fa8;letter-spacing:.6px;text-transform:uppercase;margin-top:2px">${esc(item.label || 'Fixture')}</span>
+        `}
       </div>
 
       <!-- Team 2 -->
-      <div class="matchup-team-col">
+      <div class="matchup-team-col" style="${p2Won ? 'filter:drop-shadow(0 0 10px rgba(74,222,128,0.25))' : ''}">
         <div style="position:relative;cursor:pointer" onclick="openProfile('${jsArg(p2)}')">
-          <span class="avatar" style="background-image:${face2};background-size:cover;background-position:center;width:58px;height:58px;font-size:24px;border-radius:50%;border:2px solid ${ovr2.color};box-shadow:0 4px 16px rgba(0,0,0,0.6);display:grid;place-items:center">${letter2}</span>
+          <span class="avatar" style="background-image:${face2};background-size:cover;background-position:center;width:58px;height:58px;font-size:24px;border-radius:50%;border:2px solid ${p2Won ? '#4ade80' : ovr2.color};box-shadow:0 4px 16px rgba(0,0,0,0.6);display:grid;place-items:center">${letter2}</span>
           <span style="position:absolute;bottom:-4px;right:-4px">${ovr2.badgeHtml}</span>
         </div>
-        <div class="matchup-record-big" style="margin-top:4px">${esc(rec2)}</div>
+        <div class="matchup-record-big" style="margin-top:4px;color:${p2Won ? '#4ade80' : '#ffd166'}">${esc(rec2)}</div>
         <div class="matchup-team-name" title="${esc(t2Name)}">${esc(t2Name)}</div>
         <div style="font-size:12px;font-weight:800">${playerLink(p2)}</div>
       </div>
@@ -4337,7 +4392,7 @@ function matchupOfTheWeekCard(t){
             <span onclick="setFeaturedMatch(${i})" style="width:${i === curIdx ? '16px' : '6px'};height:5px;border-radius:3px;background:${i === curIdx ? 'var(--amber)' : '#ffffff25'};cursor:pointer;transition:all .2s ease"></span>
           `).join('')}
         </div>
-      ` : `<span style="font-size:10px;color:#8e8c95">Spotlight Matchup</span>`}
+      ` : `<span style="font-size:10px;color:#8e8c95">Featured Matchup</span>`}
     </div>
   </aside>`;
 }
@@ -4409,272 +4464,6 @@ function draftStageHeroCard(t){
   `;
 }
 
-function topCutHeroCard(t){
-  let topCutModel = (typeof getTournamentTopCutModel === 'function') ? getTournamentTopCutModel(t) : null;
-  let gf = topCutModel?.gfMatches || [];
-  let semi = topCutModel?.semiMatches || [];
-  let featuredMatch = gf[0] || semi[0] || null;
-
-  let p1 = featuredMatch?.p1 || t.players?.[0] || 'Trainer 1';
-  let p2 = featuredMatch?.p2 || t.players?.[1] || 'Trainer 2';
-  let s1 = featuredMatch?.s1 ?? '-';
-  let s2 = featuredMatch?.s2 ?? '-';
-
-  let p1Art = profilePictures[p1] ? `url('${esc(profilePictures[p1])}')` : (teamCovers[p1] ? `url('${esc(teamCovers[p1])}')` : fallbackArt(p1));
-  let p2Art = profilePictures[p2] ? `url('${esc(profilePictures[p2])}')` : (teamCovers[p2] ? `url('${esc(teamCovers[p2])}')` : fallbackArt(p2));
-  let p1Let = (profilePictures[p1] || teamCovers[p1]) ? '' : esc(p1[0]);
-  let p2Let = (profilePictures[p2] || teamCovers[p2]) ? '' : esc(p2[0]);
-  let p1Ovr = calculatePlayerOVR(p1);
-  let p2Ovr = calculatePlayerOVR(p2);
-
-  return `
-    <aside class="card matchup-hero-card" style="background:radial-gradient(circle at top right,#3d1f14 0%,#13131c 70%);border-color:#5c3a1e;position:relative;overflow:hidden">
-      <div class="matchup-hero-banner" style="position:relative;z-index:2;background:linear-gradient(90deg,rgba(255,209,102,0.15) 0%,rgba(0,0,0,0.5) 100%)">
-        <div style="display:flex;align-items:center;gap:6px">
-          <span style="font-size:14px">🏆</span>
-          <span class="eyebrow" style="color:#ffd166;margin:0;letter-spacing:1px">CHAMPIONSHIP PLAYOFFS</span>
-        </div>
-        <span class="tag" style="background:#ffd16622;border:1px solid #ffd16650;font-size:9px;font-weight:900;letter-spacing:1px;color:#ffd166;padding:3px 8px;border-radius:4px">
-          ${gf.length ? 'GRAND FINALS' : 'SEMIFINALS'}
-        </span>
-      </div>
-
-      <div style="padding:16px 20px;display:flex;align-items:center;justify-content:space-between;gap:12px;position:relative;z-index:2">
-        <div style="display:flex;align-items:center;gap:10px;min-width:0;flex:1">
-          <div style="position:relative;flex:none;cursor:pointer" onclick="openProfile('${jsArg(p1)}')">
-            <span class="avatar" style="background-image:${p1Art};background-size:cover;background-position:center;width:48px;height:48px;font-size:20px;border-radius:50%;border:2px solid ${p1Ovr.color};display:grid;place-items:center">${p1Let}</span>
-            <span style="position:absolute;bottom:-4px;right:-4px">${p1Ovr.badgeHtml}</span>
-          </div>
-          <div style="min-width:0">
-            <div style="font:800 16px 'Barlow Condensed';color:#f5f3f0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${playerLink(p1)}</div>
-            <div style="font-size:10px;color:#8e8c95;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(teamName(t, p1))}</div>
-          </div>
-        </div>
-
-        <div style="text-align:center;flex:none;padding:0 8px">
-          <div style="font:800 24px 'Barlow Condensed';color:#ffd166;letter-spacing:1px">${s1 !== '-' && s2 !== '-' ? `${s1} - ${s2}` : 'VS'}</div>
-          <div style="font-size:9px;font-weight:800;color:#a09fa8;letter-spacing:.5px;text-transform:uppercase">${featuredMatch?.completed ? 'FINAL' : 'BO3'}</div>
-        </div>
-
-        <div style="display:flex;align-items:center;gap:10px;min-width:0;flex:1;justify-content:flex-end;text-align:right">
-          <div style="min-width:0">
-            <div style="font:800 16px 'Barlow Condensed';color:#f5f3f0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${playerLink(p2)}</div>
-            <div style="font-size:10px;color:#8e8c95;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(teamName(t, p2))}</div>
-          </div>
-          <div style="position:relative;flex:none;cursor:pointer" onclick="openProfile('${jsArg(p2)}')">
-            <span class="avatar" style="background-image:${p2Art};background-size:cover;background-position:center;width:48px;height:48px;font-size:20px;border-radius:50%;border:2px solid ${p2Ovr.color};display:grid;place-items:center">${p2Let}</span>
-            <span style="position:absolute;bottom:-4px;right:-4px">${p2Ovr.badgeHtml}</span>
-          </div>
-        </div>
-      </div>
-
-      <div class="matchup-hero-foot" style="justify-content:space-between;padding:8px 14px;position:relative;z-index:2">
-        <span style="font-size:11px;color:#ffd166">👑 Winner takes the League Championship Crown</span>
-        <button class="btn btn-sm" style="padding:4px 12px!important" onclick="go('Top Cut')">View Bracket →</button>
-      </div>
-    </aside>
-  `;
-}
-
-function homeDraftTargetsSection(t){
-  let d = ensureTournamentDraft(t);
-  if(!d || !Array.isArray(d.board) || !d.board.length) return '';
-  let draftedMons = new Set((d.picks || []).map(p => (p.pokemon || '').toLowerCase().trim()));
-
-  let available = [];
-  d.board.forEach(tier => {
-    (tier.pokemon || []).forEach(mon => {
-      if(!draftedMons.has(mon.toLowerCase().trim())){
-        available.push({ name: mon, cost: tier.cost || 0, tierName: tier.name || `${tier.cost} pts` });
-      }
-    });
-  });
-  available.sort((a, b) => b.cost - a.cost);
-  if(!available.length) return '';
-
-  return `
-    <section class="section">
-      <div class="section-head" style="align-items:center">
-        <div>
-          <div class="eyebrow" style="color:#ffd166;margin-bottom:2px">⭐ Draft Board Spotlight</div>
-          <h2>TOP AVAILABLE POKÉMON</h2>
-        </div>
-        <button class="link" onclick="go('Draft')">VIEW FULL DRAFT BOARD →</button>
-      </div>
-      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px">
-        ${available.slice(0, 6).map(m => {
-          let sprite = pokeSprite(m.name);
-          return `
-            <div class="card" style="padding:12px 14px;background:#14141c;border:1px solid #2d2d3c;display:flex;align-items:center;gap:12px;border-radius:8px;transition:all .15s ease;cursor:pointer" onclick="go('Draft')">
-              <div style="width:44px;height:44px;background:#0d0d12;border-radius:8px;border:1px solid #282834;display:grid;place-items:center;flex:none">
-                <img src="${esc(sprite)}" style="width:36px;height:36px;object-fit:contain" onerror="handleSpriteError(this)">
-              </div>
-              <div style="min-width:0;flex:1">
-                <div style="font:800 15px 'Barlow Condensed';color:#f5f3f0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(m.name)}</div>
-                <div style="display:flex;align-items:center;gap:6px;margin-top:3px">
-                  <span class="tag" style="background:#261d10;color:#ffd166;border:1px solid #4a3818;font-size:9px;font-weight:800;padding:1px 6px">${m.cost} pts</span>
-                  <span style="font-size:10px;color:#8e8c95;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(m.tierName)}</span>
-                </div>
-              </div>
-            </div>
-          `;
-        }).join('')}
-      </div>
-    </section>
-  `;
-}
-
-function homeCoachWarRoomsSection(t){
-  let d = ensureTournamentDraft(t);
-  if(!d || !t.players || !t.players.length) return '';
-  let turn = getDraftCurrentTurn(t);
-
-  return `
-    <section class="section">
-      <div class="section-head" style="align-items:center">
-        <div>
-          <div class="eyebrow" style="color:var(--red);margin-bottom:2px">👥 Draft War Rooms</div>
-          <h2>COACH ROSTER TRACKER</h2>
-        </div>
-        <button class="link" onclick="go('Teams')">VIEW FULL ROSTERS →</button>
-      </div>
-      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px">
-        ${t.players.map(p => {
-          let stats = getDraftCoachStats(t, p);
-          let faceArt = profilePictures[p] ? `url('${esc(profilePictures[p])}')` : (teamCovers[p] ? `url('${esc(teamCovers[p])}')` : fallbackArt(p));
-          let faceLetter = (profilePictures[p] || teamCovers[p]) ? '' : esc(p[0]);
-          let isCurrent = (turn && turn.player === p && !turn.isComplete);
-          let ovrObj = calculatePlayerOVR(p);
-          let draftedMons = t.rosters?.[p] || roster[p] || [];
-
-          return `
-            <div class="card" style="padding:14px;background:#14141c;border:1px solid ${isCurrent ? 'var(--red)' : '#282836'};box-shadow:${isCurrent ? '0 0 16px rgba(239,48,56,0.3)' : 'none'};border-radius:8px;position:relative">
-              ${isCurrent ? `<span style="position:absolute;top:8px;right:8px;background:var(--red);color:#fff;font-size:8px;font-weight:900;letter-spacing:1px;padding:2px 6px;border-radius:3px;text-transform:uppercase">ON THE CLOCK</span>` : ''}
-              <div style="display:flex;align-items:center;gap:10px">
-                <span class="avatar" style="background-image:${faceArt};background-size:cover;background-position:center;width:40px;height:40px;border-radius:50%;border:2px solid ${ovrObj.color};display:grid;place-items:center;font-size:16px;flex:none">${faceLetter}</span>
-                <div style="min-width:0;flex:1">
-                  <div style="font:800 16px 'Barlow Condensed';color:#f5f3f0;display:flex;align-items:center;gap:6px">
-                    <span onclick="openProfile('${jsArg(p)}')" style="cursor:pointer">${playerLink(p)}</span>
-                    ${ovrObj.badgeHtml}
-                  </div>
-                  <div style="font-size:11px;color:#8e8c95;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(teamName(t, p))}</div>
-                </div>
-                <div style="text-align:right">
-                  <div style="font:800 15px 'Barlow Condensed';color:#ffd166">${stats ? `${stats.remainingBudget} pts` : ''}</div>
-                  <div style="font-size:10px;color:#8e8c95">${stats ? `${stats.count}/${stats.maxSlots}` : '0/10'} picks</div>
-                </div>
-              </div>
-              <div style="display:flex;gap:4px;margin-top:10px;overflow-x:auto;padding-bottom:2px">
-                ${draftedMons.length ? draftedMons.map(m => `
-                  <div style="width:28px;height:28px;background:#0d0d12;border:1px solid #282834;border-radius:4px;display:grid;place-items:center;flex:none" title="${esc(m)}">
-                    <img src="${esc(pokeSprite(m))}" style="width:24px;height:24px;object-fit:contain" onerror="handleSpriteError(this)">
-                  </div>
-                `).join('') : '<div style="font-size:11px;color:#55535d;font-style:italic">No picks yet</div>'}
-              </div>
-            </div>
-          `;
-        }).join('')}
-      </div>
-    </section>
-  `;
-}
-
-function homeGroupStandingsSection(t){
-  let groups = Object.keys(groupsOf(t));
-  if(!groups.length) return '';
-  let cut = advancePerGroup(t);
-
-  return `
-    <section class="section">
-      <div class="section-head" style="align-items:center">
-        <div>
-          <div class="eyebrow" style="color:var(--red);margin-bottom:2px">🏆 Tournament Standings</div>
-          <h2>GROUP STAGE LEADERBOARD</h2>
-        </div>
-        <button class="link" onclick="go('Standings')">FULL STANDINGS TABLE →</button>
-      </div>
-      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:16px">
-        ${groups.map(g => {
-          let stand = getStand(t, g);
-          return `
-            <div class="card" style="background:#13131a;border:1px solid #282836;border-radius:8px;overflow:hidden">
-              <div style="padding:10px 14px;background:#181822;border-bottom:1px solid #282836;display:flex;justify-content:space-between;align-items:center">
-                <span style="font:800 16px 'Barlow Condensed';color:#f5f3f0;letter-spacing:.6px">${esc(g.toUpperCase())}</span>
-                <span style="font-size:9px;font-weight:800;color:#ffd166;letter-spacing:.6px">TOP ${cut} ADVANCE</span>
-              </div>
-              <div style="padding:6px 0">
-                ${stand.map((x, i) => {
-                  let isSafe = (i < cut);
-                  let diff = x.gw - x.gl;
-                  let faceArt = profilePictures[x.p] ? `url('${esc(profilePictures[x.p])}')` : (teamCovers[x.p] ? `url('${esc(teamCovers[x.p])}')` : fallbackArt(x.p));
-                  let faceLetter = (profilePictures[x.p] || teamCovers[x.p]) ? '' : esc(x.p[0]);
-                  return `
-                    <div style="display:flex;align-items:center;gap:10px;padding:8px 14px;border-bottom:${i < stand.length - 1 ? '1px solid #1f1f2a' : 'none'};background:${isSafe ? 'rgba(255,209,102,0.03)' : 'transparent'}">
-                      <span style="font:800 13px 'Barlow Condensed';color:${isSafe ? '#ffd166' : '#706e78'};width:16px;text-align:center">${i + 1}</span>
-                      <span class="avatar mini" style="background-image:${faceArt};background-size:cover;background-position:center;width:24px;height:24px;border-radius:50%;display:grid;place-items:center;font-size:10px">${faceLetter}</span>
-                      <div style="min-width:0;flex:1">
-                        <div style="font:800 14px 'Barlow Condensed';color:#f5f3f0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${playerLink(x.p)}</div>
-                      </div>
-                      <div style="font:800 14px 'Barlow Condensed';color:#f5f3f0;margin-left:auto">${x.w}-${x.l}</div>
-                      <div style="font-size:11px;color:#8e8c95;width:34px;text-align:right">${diff > 0 ? '+' : ''}${diff}</div>
-                      <span class="tag ${isSafe ? 'safe' : 'hunt'}" style="font-size:8px;padding:2px 6px">${isSafe ? 'Cut Line' : 'Hunt'}</span>
-                    </div>
-                  `;
-                }).join('')}
-              </div>
-            </div>
-          `;
-        }).join('')}
-      </div>
-    </section>
-  `;
-}
-
-function homeUpcomingFixturesSection(t){
-  let unplayed = (t.matches || []).filter(m => (m.as === '' || m.as == null) && m.a && m.b);
-  if(!unplayed.length) return '';
-
-  return `
-    <section class="section">
-      <div class="section-head" style="align-items:center">
-        <div>
-          <div class="eyebrow" style="color:#ffd166;margin-bottom:2px">⚔️ Fixture Watch</div>
-          <h2>UPCOMING ON DECK</h2>
-        </div>
-        <button class="link" onclick="go('Matches')">VIEW ALL MATCHES →</button>
-      </div>
-      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px">
-        ${unplayed.slice(0, 4).map(m => {
-          let aArt = profilePictures[m.a] ? `url('${esc(profilePictures[m.a])}')` : (teamCovers[m.a] ? `url('${esc(teamCovers[m.a])}')` : fallbackArt(m.a));
-          let bArt = profilePictures[m.b] ? `url('${esc(profilePictures[m.b])}')` : (teamCovers[m.b] ? `url('${esc(teamCovers[m.b])}')` : fallbackArt(m.b));
-          let aLet = (profilePictures[m.a] || teamCovers[m.a]) ? '' : esc(m.a[0]);
-          let bLet = (profilePictures[m.b] || teamCovers[m.b]) ? '' : esc(m.b[0]);
-
-          return `
-            <div class="card" style="padding:14px;background:#14141c;border:1px solid #282836;border-radius:8px;display:flex;align-items:center;justify-content:space-between;gap:12px;cursor:pointer" onclick="go('Matches')">
-              <div style="display:flex;align-items:center;gap:8px;min-width:0;flex:1">
-                <span class="avatar mini" style="background-image:${aArt};background-size:cover;background-position:center;width:28px;height:28px;border-radius:50%;display:grid;place-items:center;font-size:11px;flex:none">${aLet}</span>
-                <div style="min-width:0">
-                  <div style="font:800 14px 'Barlow Condensed';color:#f5f3f0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(m.a)}</div>
-                  <div style="font-size:9px;color:#8e8c95">${esc(teamName(t, m.a))}</div>
-                </div>
-              </div>
-              <div style="font:800 13px 'Barlow Condensed';color:var(--red);letter-spacing:1px;flex:none">VS</div>
-              <div style="display:flex;align-items:center;gap:8px;min-width:0;flex:1;justify-content:flex-end;text-align:right">
-                <div style="min-width:0">
-                  <div style="font:800 14px 'Barlow Condensed';color:#f5f3f0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(m.b)}</div>
-                  <div style="font-size:9px;color:#8e8c95">${esc(teamName(t, m.b))}</div>
-                </div>
-                <span class="avatar mini" style="background-image:${bArt};background-size:cover;background-position:center;width:28px;height:28px;border-radius:50%;display:grid;place-items:center;font-size:11px;flex:none">${bLet}</span>
-              </div>
-            </div>
-          `;
-        }).join('')}
-      </div>
-    </section>
-  `;
-}
-
 function homeDraftPicksSection(t){
   let d = ensureTournamentDraft(t);
   let picks = [...(d?.picks || [])].reverse();
@@ -4734,6 +4523,76 @@ function homeDraftPicksSection(t){
   `;
 }
 
+function homeCoachWarRoomsSection(t){
+  let d = ensureTournamentDraft(t);
+  if(!d || !t.players || !t.players.length) return '';
+  let turn = getDraftCurrentTurn(t);
+  let maxSlots = d.maxRosterSize || 10;
+
+  return `
+    <section class="section">
+      <div class="section-head" style="align-items:center">
+        <div>
+          <div class="eyebrow" style="color:var(--red);margin-bottom:2px">👥 Draft War Rooms</div>
+          <h2>COACH ROSTER TRACKER</h2>
+        </div>
+        <button class="link" onclick="go('Teams')">VIEW FULL ROSTERS →</button>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(290px,1fr));gap:14px">
+        ${t.players.map(p => {
+          let stats = getDraftCoachStats(t, p);
+          let faceArt = profilePictures[p] ? `url('${esc(profilePictures[p])}')` : (teamCovers[p] ? `url('${esc(teamCovers[p])}')` : fallbackArt(p));
+          let faceLetter = (profilePictures[p] || teamCovers[p]) ? '' : esc(p[0]);
+          let isCurrent = (turn && turn.player === p && !turn.isComplete);
+          let ovrObj = calculatePlayerOVR(p);
+          let draftedMons = t.rosters?.[p] || roster[p] || [];
+          let totalSlots = Math.max(10, maxSlots);
+
+          return `
+            <div class="card" style="padding:16px;background:#14141c;border:1px solid ${isCurrent ? 'var(--red)' : '#282836'};box-shadow:${isCurrent ? '0 0 20px rgba(239,48,56,0.35)' : 'none'};border-radius:10px;position:relative">
+              ${isCurrent ? `<span style="position:absolute;top:10px;right:10px;background:var(--red);color:#fff;font-size:8px;font-weight:900;letter-spacing:1px;padding:2px 7px;border-radius:4px;text-transform:uppercase">ON THE CLOCK</span>` : ''}
+              <div style="display:flex;align-items:center;gap:12px">
+                <span class="avatar" style="background-image:${faceArt};background-size:cover;background-position:center;width:44px;height:44px;border-radius:50%;border:2px solid ${ovrObj.color};display:grid;place-items:center;font-size:18px;flex:none">${faceLetter}</span>
+                <div style="min-width:0;flex:1">
+                  <div style="font:800 17px 'Barlow Condensed';color:#f5f3f0;display:flex;align-items:center;gap:6px">
+                    <span onclick="openProfile('${jsArg(p)}')" style="cursor:pointer">${playerLink(p)}</span>
+                    ${ovrObj.badgeHtml}
+                  </div>
+                  <div style="font-size:11px;color:#8e8c95;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(teamName(t, p))}</div>
+                </div>
+                <div style="text-align:right">
+                  <div style="font:800 16px 'Barlow Condensed';color:#ffd166">${stats ? `${stats.remainingBudget} pts` : ''}</div>
+                  <div style="font-size:10px;color:#8e8c95">${stats ? `${stats.count}/${stats.maxSlots}` : '0/10'} picks</div>
+                </div>
+              </div>
+
+              <!-- 2 Rows of 5 Larger Pokémon Slots -->
+              <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin-top:14px">
+                ${Array.from({ length: totalSlots }, (_, i) => {
+                  let mon = draftedMons[i];
+                  if(mon){
+                    return `
+                      <div style="height:50px;background:#0d0d12;border:1px solid #2d2d3c;border-radius:6px;display:grid;place-items:center;transition:all .15s ease" title="${esc(mon)}">
+                        <img src="${esc(pokeSprite(mon))}" style="width:38px;height:38px;object-fit:contain;filter:drop-shadow(0 2px 4px rgba(0,0,0,0.5))" onerror="handleSpriteError(this)">
+                      </div>
+                    `;
+                  } else {
+                    return `
+                      <div style="height:50px;background:#111116;border:1px dashed #242430;border-radius:6px;display:grid;place-items:center;color:#454452;font:800 10px 'Barlow Condensed'">
+                        ${i + 1}
+                      </div>
+                    `;
+                  }
+                }).join('')}
+              </div>
+            </div>
+          `;
+        }).join('')}
+      </div>
+    </section>
+  `;
+}
+
 function Home(){
   let t = ongoingT();
   if(!t) return OffseasonHome();
@@ -4741,7 +4600,8 @@ function Home(){
   let results = allResults(t);
   let groups = Object.keys(groupsOf(t));
   let isDraftPhase = (t.phase === 'draft');
-  let target = isDraftPhase ? 'Draft' : (t.phase === 'topcut' ? 'Top Cut' : 'Matches');
+  let isTopCutPhase = (t.phase === 'topcut');
+  let target = isDraftPhase ? 'Draft' : (isTopCutPhase ? 'Top Cut' : 'Matches');
 
   // Metrics
   let matches = t.matches || [];
@@ -4752,19 +4612,14 @@ function Home(){
   let turn = isDraftPhase ? getDraftCurrentTurn(t) : null;
   let draftPct = (turn && turn.totalPicks > 0) ? Math.min(100, Math.round(((turn.currentPickNumber - 1) / turn.totalPicks) * 100)) : 0;
 
-  // Standings leader
-  let allStandings = groups.flatMap(g => getStand(t, g));
-  allStandings.sort((a, b) => b.w - a.w || b.gw - a.gw || (b.gw - b.gl) - (a.gw - a.gl));
-  let topPlayer = allStandings[0] || null;
-
-  return head(t.season + ': ' + t.name, 'Current Tournament', moderator ? `<button class="btn" onclick="current='${target}';render();window.scrollTo(0,0)">${isDraftPhase ? 'Open Draft Room' : (t.phase === 'topcut' ? 'Manage Bracket' : 'Enter match scores')}</button>` : '') + `
+  return head(t.season + ': ' + t.name, 'Current Tournament', moderator ? `<button class="btn" onclick="current='${target}';render();window.scrollTo(0,0)">${isDraftPhase ? 'Open Draft Room' : (isTopCutPhase ? 'Manage Bracket' : 'Enter match scores')}</button>` : '') + `
     <!-- Top In-Season Showcase & Primetime Hero -->
     <section class="in-season-hero">
       <div class="card tourney-showcase-card">
         ${t.backgroundImage ? `<div class="tourney-showcase-backdrop" style="background-image:url('${esc(t.backgroundImage)}')"></div>` : ''}
         <div class="tourney-showcase-info">
           <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-            <span class="status"><i></i>${isDraftPhase ? 'DRAFT ROOM LIVE' : (t.phase === 'topcut' ? 'TOP CUT PLAYOFFS LIVE' : 'GROUP STAGE LIVE')}</span>
+            <span class="status"><i></i>${isDraftPhase ? 'DRAFT ROOM LIVE' : (isTopCutPhase ? 'TOP CUT PLAYOFFS LIVE' : 'GROUP STAGE LIVE')}</span>
             <span class="eyebrow" style="margin:0;color:#ffd166;letter-spacing:1px">${esc(t.season)}</span>
           </div>
           <div class="tourney-showcase-title">${esc(t.name.toUpperCase())}</div>
@@ -4782,7 +4637,7 @@ function Home(){
           </div>
 
           <div style="margin-top:auto;padding-top:14px;display:flex;gap:8px;flex-wrap:wrap;align-items:center">
-            <button class="btn btn-sm" style="padding:8px 12px!important" onclick="current='${target}';render()">${isDraftPhase ? 'Enter Live Draft Room →' : (t.phase === 'topcut' ? 'View Championship Bracket →' : 'View Group Matches →')}</button>
+            <button class="btn btn-sm" style="padding:8px 12px!important" onclick="current='${target}';render()">${isDraftPhase ? 'Enter Live Draft Room →' : (isTopCutPhase ? 'View Championship Bracket →' : 'View Group Matches →')}</button>
             ${isDraftPhase ? `
               ${moderator ? `<button class="btn ghost btn-sm" style="padding:8px 12px!important" onclick="openDraftBoardImporter('${jsArg(t.id)}')">📥 Import Board</button>` : ''}
               <button class="btn ghost btn-sm" style="padding:8px 12px!important" onclick="go('Teams')">View Rosters</button>
@@ -4807,14 +4662,14 @@ function Home(){
         </div>
       </div>
 
-      ${isDraftPhase ? draftStageHeroCard(t) : (t.phase === 'topcut' ? topCutHeroCard(t) : matchupOfTheWeekCard(t))}
+      ${isDraftPhase ? draftStageHeroCard(t) : matchupOfTheWeekCard(t)}
     </section>
 
     <!-- Tournament Quick Stats Pulse Strip -->
     <div class="pulse-stats-strip">
       <div class="card pulse-stat-box">
         <span class="pulse-stat-label">Tournament Phase</span>
-        <div class="pulse-stat-val">${isDraftPhase ? 'Live Draft' : (t.phase === 'topcut' ? 'Top Cut Playoffs' : 'Group Stage')}</div>
+        <div class="pulse-stat-val">${isDraftPhase ? 'Live Draft' : (isTopCutPhase ? 'Top Cut Playoffs' : 'Group Stage')}</div>
         <div class="pulse-stat-sub">${t.players.length} Competitors</div>
       </div>
       <div class="card pulse-stat-box">
@@ -4846,25 +4701,9 @@ function Home(){
 
     <!-- Phase Specific Interactive Sections -->
     ${isDraftPhase ? `
-      ${homeDraftTargetsSection(t)}
       ${homeDraftPicksSection(t)}
       ${homeCoachWarRoomsSection(t)}
-    ` : (t.phase === 'topcut' ? `
-      <section class="section">
-        <div class="section-head">
-          <div>
-            <div class="eyebrow" style="color:#ffd166;margin-bottom:2px">🏆 Playoff Results</div>
-            <h2>TOP CUT MATCHES</h2>
-          </div>
-          <button class="link" onclick="go('Top Cut')">VIEW PLAYOFF BRACKET →</button>
-        </div>
-        <div class="match-grid">
-          ${results.length ? results.slice(0, 4).map((m, i) => matchCard(m, i === 0)).join('') : '<div class="empty card" style="grid-column:1/-1">Top Cut matches in progress.</div>'}
-        </div>
-      </section>
     ` : `
-      ${homeGroupStandingsSection(t)}
-      ${homeUpcomingFixturesSection(t)}
       <section class="section">
         <div class="section-head">
           <div>
@@ -4874,10 +4713,10 @@ function Home(){
           <button class="link" onclick="current='${target}';render()">VIEW ALL FIXTURES →</button>
         </div>
         <div class="match-grid">
-          ${results.length ? results.slice(0, 4).map((m, i) => matchCard(m, i === 0)).join('') : '<div class="empty card" style="grid-column:1/-1">No matches completed yet. Scores entered in Matches will appear here.</div>'}
+          ${results.length ? results.slice(0, 3).map((m, i) => matchCard(m, i === 0)).join('') : '<div class="empty card" style="grid-column:1/-1">No matches completed yet. Scores entered in Matches will appear here.</div>'}
         </div>
       </section>
-    `)}
+    `}
   `;
 }
 
