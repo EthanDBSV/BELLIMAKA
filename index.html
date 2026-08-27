@@ -1861,7 +1861,45 @@ function saveBracket(){let t=activeT();t.bracket=[['bm1a','bm1b'],['bm2a','bm2b'
 
 
 
-try{let savedLeague=JSON.parse(localStorage.getItem('draftdex-tournaments')||'null');if(savedLeague){Object.keys(tournamentData).forEach(k=>delete tournamentData[k]);Object.assign(tournamentData,savedLeague)}let savedProfiles=JSON.parse(localStorage.getItem('draftdex-profiles')||'null');if(savedProfiles)Object.assign(profiles,savedProfiles);let savedRosters=JSON.parse(localStorage.getItem('draftdex-rosters')||'null');if(savedRosters)Object.assign(roster,savedRosters);let savedHistory=JSON.parse(localStorage.getItem('draftdex-history')||'null');if(savedHistory)Object.assign(teamHistory,savedHistory);let savedCovers=JSON.parse(localStorage.getItem('draftdex-teamcovers')||'null');if(savedCovers)Object.assign(teamCovers,savedCovers);let savedPics=JSON.parse(localStorage.getItem('draftdex-profilepics')||'null');if(savedPics)Object.assign(profilePictures,savedPics);let savedPulse=JSON.parse(localStorage.getItem('draftdex-pulsepanels')||'null');if(savedPulse)Object.assign(pulsePanelImages,savedPulse);if(pulsePanelImages.primetimeSlots)delete pulsePanelImages.primetimeSlots;for(let i=0;i<10;i++)try{localStorage.removeItem('draftdex-primetime-slot-'+i)}catch(e){}let savedAccountLinks=JSON.parse(localStorage.getItem('draftdex-accountlinks')||'null');if(savedAccountLinks&&typeof accountLinks!=='undefined')Object.assign(accountLinks,savedAccountLinks);migrateAllBrackets();rebuildAllPlayerStats()}catch(e){}
+try{
+  let savedLeague=JSON.parse(localStorage.getItem('draftdex-tournaments')||'null');
+  if(savedLeague){
+    Object.keys(tournamentData).forEach(k=>delete tournamentData[k]);
+    Object.assign(tournamentData,savedLeague);
+  }
+  let savedProfiles=JSON.parse(localStorage.getItem('draftdex-profiles')||'null');
+  if(savedProfiles)Object.assign(profiles,savedProfiles);
+  let savedRosters=JSON.parse(localStorage.getItem('draftdex-rosters')||'null');
+  if(savedRosters)Object.assign(roster,savedRosters);
+  let savedHistory=JSON.parse(localStorage.getItem('draftdex-history')||'null');
+  if(savedHistory)Object.assign(teamHistory,savedHistory);
+  let savedCovers=JSON.parse(localStorage.getItem('draftdex-teamcovers')||'null');
+  if(savedCovers)Object.assign(teamCovers,savedCovers);
+  let savedPics=JSON.parse(localStorage.getItem('draftdex-profilepics')||'null');
+  if(savedPics)Object.assign(profilePictures,savedPics);
+  let savedPulse=JSON.parse(localStorage.getItem('draftdex-pulsepanels')||'null');
+  if(savedPulse)Object.assign(pulsePanelImages,savedPulse);
+  let savedTCover=JSON.parse(localStorage.getItem('draftdex-tournament-covers')||'null');
+  if(savedTCover){
+    if(typeof tournamentCovers!=='undefined') Object.assign(tournamentCovers,savedTCover);
+    Object.entries(savedTCover).forEach(([id,img])=>{
+      if(tournamentData[id]&&img) tournamentData[id].backgroundImage=img;
+    });
+  }
+  let savedRecap=JSON.parse(localStorage.getItem('draftdex-recap-covers')||'null');
+  if(savedRecap){
+    if(typeof recapPanelImages!=='undefined') Object.assign(recapPanelImages,savedRecap);
+    Object.entries(savedRecap).forEach(([id,img])=>{
+      if(tournamentData[id]&&img) tournamentData[id].recapPanelImage=img;
+    });
+  }
+  if(pulsePanelImages.primetimeSlots)delete pulsePanelImages.primetimeSlots;
+  for(let i=0;i<10;i++)try{localStorage.removeItem('draftdex-primetime-slot-'+i)}catch(e){}
+  let savedAccountLinks=JSON.parse(localStorage.getItem('draftdex-accountlinks')||'null');
+  if(savedAccountLinks&&typeof accountLinks!=='undefined')Object.assign(accountLinks,savedAccountLinks);
+  migrateAllBrackets();
+  rebuildAllPlayerStats();
+}catch(e){}
 addEventListener('beforeunload',()=>{clearTimeout(syncTimer);flushSync()});
 /* Group-stage and flexible-cut upgrades */
 
@@ -2538,7 +2576,14 @@ function syncTournamentSeasons(){
   });
 }
 
-function migrateAllBrackets(){Object.values(tournamentData).forEach(migrateLegacyBracket)}
+function migrateLegacyBracket(t){}
+function migrateAllBrackets(){
+  if(typeof tournamentData === 'object' && tournamentData){
+    Object.values(tournamentData).forEach(t => {
+      if(typeof migrateLegacyBracket === 'function') migrateLegacyBracket(t);
+    });
+  }
+}
 /* ------------------------------------------------------------ NATIVE TOP CUT ENGINE — Pokémon Draft League Championship Bracket ------------------------------------------------------------ */
 function nextPow2(n){let p=1;while(p<n)p*=2;return Math.max(2,p)}
 function hydrateTopCutManager(t){if(!t.bracketManagerData||!window.BracketsManagerLib)return null;try{let storage=new window.BracketsManagerLib.InMemoryDatabase();storage.setData(JSON.parse(JSON.stringify(t.bracketManagerData)));let manager=new window.BracketsManagerLib.BracketsManager(storage);return {manager,storage}}catch(e){return null}}
@@ -8166,33 +8211,6 @@ async function saveAccountLinks(){
   persistLeague();
   closeModal();
   render();
-
-  if(supabaseClient){
-    try {
-      let payload = {
-        rev: knownRev,
-        updatedAt: lastLocalUpdate,
-        tournaments: tournamentData,
-        profiles: profiles,
-        roster: roster,
-        teamHistory: teamHistory,
-        teamCovers: teamCovers,
-        profilePictures: profilePictures,
-        pulsePanelImages: pulsePanelImages,
-        cut: cut,
-        boardLink: boardLink,
-        draftPool: (typeof draftPool !== 'undefined' ? draftPool : null),
-        accountLinks: accountLinks
-      };
-      await supabaseClient.from('league_state').upsert({
-        id: 'main',
-        data: payload,
-        updated_at: new Date().toISOString()
-      });
-    } catch(err){
-      console.warn('Draftdex: Cloud upsert note:', err);
-    }
-  }
 }
 
 async function forceCloudSync(){
@@ -8206,29 +8224,11 @@ async function forceCloudSync(){
   knownRev = (knownRev || 0) + 1;
   lastSentSnapshot = '';
   try {
-    let payload = {
-      rev: knownRev,
-      updatedAt: lastLocalUpdate,
-      tournaments: tournamentData,
-      profiles: profiles,
-      roster: roster,
-      teamHistory: teamHistory,
-      teamCovers: teamCovers,
-      profilePictures: profilePictures,
-      pulsePanelImages: pulsePanelImages,
-      cut: cut,
-      boardLink: boardLink,
-      draftPool: (typeof draftPool !== 'undefined' ? draftPool : null),
-      accountLinks: accountLinks
-    };
-    let { error } = await pushStateToSupabase(payload, lastLocalUpdate);
-    if(error){
-      alert('Cloud Sync error: ' + (error.message || JSON.stringify(error)));
-    } else {
-      if(typeof showDraftToast === 'function') showDraftToast('☁️ Synced all tournaments to Supabase!');
-      alert(`✓ Cloud Sync Successful!\n\nAll tournaments (${Object.keys(tournamentData).length} total) and rosters are now live in Supabase.\nAny phone or computer refreshing the site will now see this exact state.`);
-      render();
-    }
+    if(moderator) await pushMediaToSupabase();
+    await flushSync();
+    if(typeof showDraftToast === 'function') showDraftToast('☁️ Synced all tournaments to Supabase!');
+    alert(`✓ Cloud Sync Successful!\n\nAll tournaments (${Object.keys(tournamentData).length} total) and rosters are now live in Supabase.\nAny phone or computer refreshing the site will now see this exact state.`);
+    render();
   } catch(e){
     alert('Cloud Sync Exception: ' + e.message);
   } finally {
