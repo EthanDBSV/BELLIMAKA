@@ -5706,7 +5706,7 @@ function usernameAuthEmail(identifier){
   if(clean.includes('@')) return clean;
   let local = clean.replace(/[^a-z0-9_.-]/g, '');
   if(!local) local = 'trainer_' + Math.random().toString(36).slice(2, 8);
-  return `${local}@draftdex.league`;
+  return `${local}@killawott.com`;
 }
 
 function authNotice(msg, type = 'info'){
@@ -5778,7 +5778,7 @@ async function signIn(event){
   let password = passwordEl ? passwordEl.value : '';
 
   if(!username){
-    authNotice('⚠️ Please enter your username or email address.', 'err');
+    authNotice('⚠️ Please enter your trainer username or email.', 'err');
     if(usernameEl) usernameEl.focus();
     return;
   }
@@ -5805,9 +5805,17 @@ async function signIn(event){
     let result = await supabaseClient.auth.signInWithPassword({ email, password });
     
     if(result.error && !username.includes('@')){
-      let fallback = username.toLowerCase().replace(/[^a-z0-9_.-]/g, '') + '@cherrymoon.local';
-      let fbRes = await supabaseClient.auth.signInWithPassword({ email: fallback, password });
-      if(!fbRes.error) result = fbRes;
+      let cleanUser = username.toLowerCase().replace(/[^a-z0-9_.-]/g, '');
+      for(let domain of ['@killawott.com', '@draftdex.league', '@cherrymoon.local']){
+        let fallback = cleanUser + domain;
+        if(fallback !== email){
+          let fbRes = await supabaseClient.auth.signInWithPassword({ email: fallback, password });
+          if(!fbRes.error){
+            result = fbRes;
+            break;
+          }
+        }
+      }
     }
 
     if(result.error){
