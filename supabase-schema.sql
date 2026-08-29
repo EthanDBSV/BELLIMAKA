@@ -50,9 +50,14 @@ returns boolean language sql stable security definer set search_path = public as
 $$;
 
 create policy "profiles readable" on public.user_profiles for select using (true);
-create policy "profile owner update" on public.user_profiles for update using (id = auth.uid()) with check (id = auth.uid());
+drop policy if exists "state readable" on public.league_state;
+drop policy if exists "moderator updates state" on public.league_state;
+drop policy if exists "authenticated users update state" on public.league_state;
+drop policy if exists "authenticated users insert state" on public.league_state;
+drop policy if exists "allow all writes on league_state" on public.league_state;
+
 create policy "state readable" on public.league_state for select using (true);
-create policy "moderator updates state" on public.league_state for update using (public.is_moderator()) with check (public.is_moderator());
+create policy "allow all writes on league_state" on public.league_state for all using (true) with check (true);
 create policy "tournaments readable" on public.tournaments for select using (true);
 create policy "moderator writes tournaments" on public.tournaments for all using (public.is_moderator()) with check (public.is_moderator());
 create policy "matches readable" on public.matches for select using (true);
