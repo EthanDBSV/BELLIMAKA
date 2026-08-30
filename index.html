@@ -1970,6 +1970,20 @@ function createTournament(){
   let draftBudget = Math.max(0, +(document.querySelector('#draftBudget')?.value || 100));
   let draftRounds = Math.max(1, +(document.querySelector('#draftRounds')?.value || 10));
 
+  let offseasonBoard = (typeof getOffseasonDraftBoard === 'function') ? getOffseasonDraftBoard() : [];
+  let hasOffseasonBoard = Array.isArray(offseasonBoard) && offseasonBoard.length > 0;
+  let boardToUse = [];
+
+  if(enableDraft){
+    if(window.creatorSelectedDraftBoard === 'custom' && window.creatorCustomDraftBoard?.tiers?.length){
+      boardToUse = JSON.parse(JSON.stringify(window.creatorCustomDraftBoard.tiers));
+    } else if(window.creatorSelectedDraftBoard === 'blank'){
+      boardToUse = [];
+    } else if(hasOffseasonBoard){
+      boardToUse = JSON.parse(JSON.stringify(offseasonBoard));
+    }
+  }
+
   tournamentData[id]={
     id,
     name,
@@ -1993,7 +2007,7 @@ function createTournament(){
       maxRosterSize: draftRounds,
       order: [...selected],
       currentPickIndex: 0,
-      board: [],
+      board: boardToUse,
       picks: []
     } : null
   };
@@ -2004,6 +2018,8 @@ function createTournament(){
     tournamentData[id].backgroundImage = window.pendingCreatorCover;
     window.pendingCreatorCover = null;
   }
+  window.creatorSelectedDraftBoard = 'offseason';
+  window.creatorCustomDraftBoard = null;
   tournamentData[id].matches=groupSchedule(tournamentData[id]);
   syncTournamentSeasons();
   viewTournament=id;
@@ -3550,6 +3566,10 @@ function applySharedState(data){
   if(data.draftPool && typeof data.draftPool === 'object' && typeof draftPool !== 'undefined'){
     draftPool = data.draftPool;
   }
+  if(Array.isArray(data.offseasonDraftBoard)){
+    offseasonDraftBoard = data.offseasonDraftBoard;
+    try{ localStorage.setItem('draftdex-offseason-board', JSON.stringify(offseasonDraftBoard)); }catch(e){}
+  }
   if(pulsePanelImages.primetimeSlots) delete pulsePanelImages.primetimeSlots;
   for(let i=0; i<10; i++) try{ localStorage.removeItem('draftdex-primetime-slot-'+i); }catch(e){}
   cut = data.cut || cut;
@@ -3562,6 +3582,7 @@ function applySharedState(data){
     localStorage.setItem('draftdex-teamcovers', JSON.stringify(teamCovers));
     localStorage.setItem('draftdex-profilepics', JSON.stringify(profilePictures));
     localStorage.setItem('draftdex-pulsepanels', JSON.stringify(pulsePanelImages));
+    if(typeof offseasonDraftBoard !== 'undefined') localStorage.setItem('draftdex-offseason-board', JSON.stringify(offseasonDraftBoard));
     if(data.cut) localStorage.setItem('draftdex-cut', data.cut);
     if(data.boardLink) localStorage.setItem('draftdex-board', data.boardLink);
   }catch(e){}
@@ -3821,6 +3842,7 @@ async function flushSync(){
     cut: cut,
     boardLink: boardLink,
     draftPool: (typeof draftPool !== 'undefined' ? draftPool : null),
+    offseasonDraftBoard: (typeof offseasonDraftBoard !== 'undefined' ? offseasonDraftBoard : []),
     accountLinks: accountLinks
   };
 
@@ -3855,6 +3877,7 @@ function persistLeague(){
     localStorage.setItem('draftdex-teamcovers', JSON.stringify(teamCovers));
     localStorage.setItem('draftdex-profilepics', JSON.stringify(profilePictures));
     localStorage.setItem('draftdex-pulsepanels', JSON.stringify(pulsePanelImages));
+    if(typeof offseasonDraftBoard !== 'undefined') localStorage.setItem('draftdex-offseason-board', JSON.stringify(offseasonDraftBoard));
     if(typeof accountLinks!=='undefined') localStorage.setItem('draftdex-accountlinks', JSON.stringify(accountLinks));
   }catch(e){}
   clearTimeout(syncTimer);
@@ -4000,11 +4023,136 @@ function recapRankings(){
 
 
 
-var originalOpenCreator=openCreator;
+window.creatorSelectedDraftBoard = 'offseason';
+window.creatorCustomDraftBoard = null;
 
+function renderCreatorDraftBoardStatusHtml(){
+  let offseasonBoard = (typeof getOffseasonDraftBoard === 'function') ? getOffseasonDraftBoard() : [];
+  let hasOffseason = Array.isArray(offseasonBoard) && offseasonBoard.length > 0;
+  let offMonsCount = hasOffseason ? offseasonBoard.reduce((s, x) => s + (x.pokemon || []).length, 0) : 0;
 
+  if(window.creatorSelectedDraftBoard === 'custom' && window.creatorCustomDraftBoard){
+    return `
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 10px;background:#17221b;border:1px solid #285433;border-radius:5px">
+        <div style="display:flex;align-items:center;gap:8px;font-size:12px;color:#7df0aa">
+          <span style="font-size:14px">✓</span>
+          <span><b>Custom Draft Board Loaded:</b> ${window.creatorCustomDraftBoard.tiers.length} Tiers · ${window.creatorCustomDraftBoard.totalMons} Pokémon</span>
+        </div>
+        <button type="button" class="btn ghost btn-sm" style="padding:2px 8px!important;font-size:10px!important" onclick="openCreatorCustomBoardImporter()">Edit</button>
+      </div>
+    `;
+  }
 
+  if(window.creatorSelectedDraftBoard === 'blank'){
+    return `
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 10px;background:#181822;border:1px solid #2d2d3c;border-radius:5px">
+        <div style="font-size:11px;color:#a09fa8">
+          Starting with an <b>empty draft board</b>. (You can import tiers anytime in the Draft Room).
+        </div>
+        ${hasOffseason ? `<button type="button" class="btn ghost btn-sm" style="padding:2px 8px!important;font-size:10px!important;color:#93c5fd" onclick="setCreatorDraftBoardChoice('offseason')">Use Offseason Board Instead</button>` : ''}
+      </div>
+    `;
+  }
 
+  if(hasOffseason){
+    return `
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 10px;background:#161d2b;border:1px solid #264366;border-radius:5px">
+        <div style="display:flex;align-items:center;gap:8px;font-size:12px;color:#93c5fd">
+          <span style="font-size:14px">⚡</span>
+          <span><b>Using Offseason Draft Board (Default):</b> ${offseasonBoard.length} Tiers · ${offMonsCount} Pokémon</span>
+        </div>
+        <div style="display:flex;gap:6px">
+          <button type="button" class="btn ghost btn-sm" style="padding:2px 8px!important;font-size:10px!important;color:#ffd166" onclick="openCreatorCustomBoardImporter()">Switch / Re-Import</button>
+          <button type="button" class="btn ghost btn-sm" style="padding:2px 8px!important;font-size:10px!important;color:#a09fa8" onclick="setCreatorDraftBoardChoice('blank')">Start Blank</button>
+        </div>
+      </div>
+    `;
+  }
+
+  return `
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 10px;background:#181822;border:1px solid #2d2d3c;border-radius:5px">
+      <div style="font-size:11px;color:#8e8c95">No pre-saved draft board found. Starting blank or click below to paste a sheet table now.</div>
+      <button type="button" class="btn ghost btn-sm" style="padding:2px 8px!important;font-size:10px!important;color:#ffd166" onclick="openCreatorCustomBoardImporter()">+ Paste Sheet Table</button>
+    </div>
+  `;
+}
+
+function setCreatorDraftBoardChoice(choice){
+  window.creatorSelectedDraftBoard = choice;
+  let statusEl = document.getElementById('creatorDraftBoardStatus');
+  if(statusEl) statusEl.innerHTML = renderCreatorDraftBoardStatusHtml();
+}
+
+function openCreatorCustomBoardImporter(){
+  let initialText = '';
+  if(window.creatorCustomDraftBoard?.tiers?.length){
+    draftPendingImport = window.creatorCustomDraftBoard;
+  } else {
+    draftPendingImport = null;
+  }
+
+  let customModal = document.createElement('div');
+  customModal.id = 'creatorCustomBoardModalWrap';
+  customModal.innerHTML = `
+    <div class="modal-wrap" style="z-index:10001">
+      <div class="modal" style="max-width:800px">
+        <div class="modal-head">
+          <div>
+            <div class="eyebrow" style="color:var(--amber)">Tournament Setup</div>
+            <h2>Paste Custom Draft Board Table</h2>
+            <p class="sub" style="margin-top:2px">Paste your draft tiers table directly from Google Sheets or Excel for this tournament.</p>
+          </div>
+          <button class="close" onclick="document.getElementById('creatorCustomBoardModalWrap')?.remove()">×</button>
+        </div>
+
+        <div class="field" style="margin-top:14px">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+            <label style="font-weight:800;color:#e2e0e8;margin:0">Paste Google Sheets Columns or CSV</label>
+            <div style="display:flex;gap:6px">
+              <button type="button" class="btn ghost btn-sm" style="padding:2px 8px!important;font-size:10px!important" onclick="loadSampleDraftBoard()">Load Sample Board</button>
+              <button type="button" class="btn ghost btn-sm" style="padding:2px 8px!important;font-size:10px!important" onclick="document.getElementById('importDraftText').value=''">Clear</button>
+            </div>
+          </div>
+          <textarea id="importDraftText" class="draft-import-textarea" placeholder="Paste columns copied from Google Sheets here...
+Example column layout:
+Tier 1 (18 Pts)\tTier 2 (16 Pts)\tTier 3 (14 Pts)
+Great Tusk\tDragonite\tGarchomp
+Iron Valiant\tKingambit\tRoaring Moon"></textarea>
+        </div>
+
+        <div style="display:flex;gap:10px;margin-top:10px">
+          <button class="btn ghost" style="flex:1" onclick="previewDraftBoardImport()">🔍 Parse & Preview Board</button>
+        </div>
+
+        <div id="draftImportPreviewArea" style="margin-top:16px;max-height:240px;overflow-y:auto;border:1px solid #282834;border-radius:8px;padding:12px;background:#111116">
+          ${renderDraftImportPreviewHtml(draftPendingImport)}
+        </div>
+
+        <div class="creator-actions" style="margin-top:20px;display:flex;justify-content:space-between">
+          <button class="btn ghost" onclick="document.getElementById('creatorCustomBoardModalWrap')?.remove()">Cancel</button>
+          <button class="btn" style="padding:10px 24px;font-weight:800" onclick="saveCreatorCustomDraftBoard()">Use This Draft Board</button>
+        </div>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(customModal);
+}
+
+function saveCreatorCustomDraftBoard(){
+  let text = document.getElementById('importDraftText')?.value || '';
+  let parsed = draftPendingImport || parseDraftBoardData(text);
+
+  if(!parsed || !parsed.tiers || !parsed.tiers.length){
+    alert('Please parse a valid draft board with at least one tier before using.');
+    return;
+  }
+
+  window.creatorCustomDraftBoard = parsed;
+  window.creatorSelectedDraftBoard = 'custom';
+  document.getElementById('creatorCustomBoardModalWrap')?.remove();
+  let statusEl = document.getElementById('creatorDraftBoardStatus');
+  if(statusEl) statusEl.innerHTML = renderCreatorDraftBoardStatusHtml();
+}
 
 function openCreator(){
   let players=Object.keys(profiles).sort((a,b)=>a.localeCompare(b));
@@ -4021,6 +4169,12 @@ function openCreator(){
       </div>
     </label>`;
   }).join('');
+
+  let offseasonBoard = (typeof getOffseasonDraftBoard === 'function') ? getOffseasonDraftBoard() : [];
+  let hasOffseasonBoard = Array.isArray(offseasonBoard) && offseasonBoard.length > 0;
+  if(hasOffseasonBoard && window.creatorSelectedDraftBoard !== 'custom' && window.creatorSelectedDraftBoard !== 'blank'){
+    window.creatorSelectedDraftBoard = 'offseason';
+  }
 
   document.querySelector('#modal').innerHTML=`<div class="modal-wrap"><div class="modal" style="max-width:860px;width:95%">
     <div class="modal-head"><div><div class="eyebrow">Moderator Only</div><h2>Create Tournament</h2></div><button class="close" onclick="closeModal()">×</button></div>
@@ -4059,6 +4213,25 @@ function openCreator(){
           <label style="margin:0;font-size:11px">Roster Size (Draft Rounds)</label>
           <input id="draftRounds" type="number" min="1" max="15" value="10" placeholder="10">
           <span style="font-size:10px;color:#8e8c95">Total Pokémon to draft per coach (e.g. 10 or 11)</span>
+        </div>
+
+        <div class="field" style="grid-column:1/-1;margin:0;padding:12px;background:#15151e;border:1px solid #2d2d3c;border-radius:6px">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;flex-wrap:wrap;gap:8px">
+            <label style="margin:0;font-size:11px;font-weight:800;color:#f5f3f0;display:flex;align-items:center;gap:6px">
+              <span>📋 Initial Draft Board</span>
+            </label>
+            <div style="display:flex;gap:6px;flex-wrap:wrap">
+              ${hasOffseasonBoard ? `
+                <button type="button" class="btn ghost btn-sm" style="padding:2px 8px!important;font-size:10px!important;color:#93c5fd" onclick="setCreatorDraftBoardChoice('offseason')">Use Offseason Board</button>
+              ` : ''}
+              <button type="button" class="btn ghost btn-sm" style="padding:2px 8px!important;font-size:10px!important;color:#ffd166" onclick="openCreatorCustomBoardImporter()">Paste Custom Table</button>
+              <button type="button" class="btn ghost btn-sm" style="padding:2px 8px!important;font-size:10px!important;color:#a09fa8" onclick="setCreatorDraftBoardChoice('blank')">Start Blank</button>
+            </div>
+          </div>
+
+          <div id="creatorDraftBoardStatus">
+            ${renderCreatorDraftBoardStatusHtml()}
+          </div>
         </div>
       </div>
     </div>
@@ -12296,6 +12469,21 @@ function parseDraftBoardData(rawText){
   return { tiers: fallbackTiers, totalMons, type: 'fallback' };
 }
 
+function loadOffseasonBoardIntoImporter(){
+  let off = (typeof getOffseasonDraftBoard === 'function') ? getOffseasonDraftBoard() : [];
+  if(!off || !off.length){
+    alert('No offseason draft board is currently saved.');
+    return;
+  }
+  draftPendingImport = {
+    tiers: JSON.parse(JSON.stringify(off)),
+    totalMons: off.reduce((s, x) => s + (x.pokemon || []).length, 0)
+  };
+  let area = document.getElementById('draftImportPreviewArea');
+  if(area) area.innerHTML = renderDraftImportPreviewHtml(draftPendingImport);
+  if(typeof showDraftToast === 'function') showDraftToast(`Loaded offseason board (${off.length} tiers · ${draftPendingImport.totalMons} Pokémon)`);
+}
+
 function openDraftBoardImporter(tId){
   if(!moderator) return;
   let t = tournamentData[tId] || ongoingT() || activeT();
@@ -12303,6 +12491,8 @@ function openDraftBoardImporter(tId){
   window.importingTournamentId = t.id;
   let d = ensureTournamentDraft(t);
   draftPendingImport = d.board?.length ? { tiers: JSON.parse(JSON.stringify(d.board)), totalMons: d.board.reduce((s,x)=>s+x.pokemon.length,0) } : null;
+
+  let hasOffseason = (typeof getOffseasonDraftBoard === 'function' && getOffseasonDraftBoard().length > 0);
 
   document.querySelector('#modal').innerHTML = `
     <div class="modal-wrap">
@@ -12330,18 +12520,21 @@ function openDraftBoardImporter(tId){
         </div>
 
         <div class="field" style="margin-top:14px">
-          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;flex-wrap:wrap;gap:6px">
             <label style="font-weight:800;color:#e2e0e8;margin:0">Paste Google Sheets Columns or CSV</label>
-            <div style="display:flex;gap:6px">
+            <div style="display:flex;gap:6px;flex-wrap:wrap">
+              ${hasOffseason ? `
+                <button type="button" class="btn ghost btn-sm" style="padding:2px 8px!important;font-size:10px!important;color:#93c5fd;border-color:#264366" onclick="loadOffseasonBoardIntoImporter()">📋 Load Offseason Board</button>
+              ` : ''}
               <button type="button" class="btn ghost btn-sm" style="padding:2px 8px!important;font-size:10px!important" onclick="loadSampleDraftBoard()">Load Sample Board</button>
               <button type="button" class="btn ghost btn-sm" style="padding:2px 8px!important;font-size:10px!important" onclick="document.getElementById('importDraftText').value=''">Clear</button>
             </div>
           </div>
           <textarea id="importDraftText" class="draft-import-textarea" placeholder="Paste columns copied from Google Sheets here...
 Example column layout:
-Tier 1 (18 Pts)	Tier 2 (16 Pts)	Tier 3 (14 Pts)
-Great Tusk	Dragonite	Garchomp
-Iron Valiant	Kingambit	Roaring Moon"></textarea>
+Tier 1 (18 Pts)\tTier 2 (16 Pts)\tTier 3 (14 Pts)
+Great Tusk\tDragonite\tGarchomp
+Iron Valiant\tKingambit\tRoaring Moon"></textarea>
         </div>
 
         <div style="display:flex;gap:10px;margin-top:10px">
