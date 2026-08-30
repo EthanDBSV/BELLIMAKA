@@ -3616,11 +3616,48 @@ function showDraftToast(msg){
   }, 3500);
 }
 
+var leagueStateChannel = null;
+
+function teardownLeagueStateRealtime(){
+  if(leagueStateChannel && supabaseClient){
+    try { supabaseClient.removeChannel(leagueStateChannel); } catch(e){}
+    leagueStateChannel = null;
+  }
+}
+
+function setupLeagueStateRealtime(){
+  if(!supabaseClient || document.hidden || leagueStateChannel) return;
+  try {
+    leagueStateChannel = supabaseClient.channel('league-state').on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'league_state', filter: 'id=eq.main' }, p => {
+      let incoming = p.new?.data;
+      if(incoming && shouldApply(incoming)){
+        applySharedState(incoming);
+        render();
+      }
+    }).subscribe();
+  } catch(e){}
+}
+
+function teardownDraftRealtime(){
+  if(draftRealtimeChannel && supabaseClient){
+    try { supabaseClient.removeChannel(draftRealtimeChannel); } catch(e){}
+    draftRealtimeChannel = null;
+  }
+}
+
 function setupDraftRealtime(){
   if(!supabaseClient) return;
-  if(draftRealtimeChannel){
-    try { supabaseClient.removeChannel(draftRealtimeChannel); } catch(e){}
+  let t = ongoingT() || activeT();
+  let isDraftActive = (t && t.phase === 'draft');
+  let isViewingDraft = (current === 'Draft');
+
+  // ONLY connect WebSocket if tournament is in active draft phase AND user is looking at Draft Room in a visible tab!
+  if(!isDraftActive || !isViewingDraft || document.hidden){
+    teardownDraftRealtime();
+    return;
   }
+
+  if(draftRealtimeChannel) return; // already active
 
   draftRealtimeChannel = supabaseClient.channel('draftdex-realtime-draft', {
     config: { broadcast: { self: false } }
@@ -3760,8 +3797,13 @@ document.addEventListener('visibilitychange', () => {
     if(now - lastCloudSyncTime > 15000){
       lastCloudSyncTime = now;
       syncFromCloud();
-      setupDraftRealtime();
     }
+    setupLeagueStateRealtime();
+    setupDraftRealtime();
+  } else {
+    // When tab is hidden / backgrounded, immediately disconnect all WebSockets to consume ZERO heartbeats
+    teardownDraftRealtime();
+    teardownLeagueStateRealtime();
   }
 });
 window.addEventListener('pageshow', () => {
@@ -3769,8 +3811,9 @@ window.addEventListener('pageshow', () => {
   if(now - lastCloudSyncTime > 15000){
     lastCloudSyncTime = now;
     syncFromCloud();
-    setupDraftRealtime();
   }
+  setupLeagueStateRealtime();
+  setupDraftRealtime();
 });
 
 async function initSupabase(){
@@ -3782,19 +3825,11 @@ async function initSupabase(){
     await updateSession(session);
     supabaseClient.auth.onAuthStateChange(async (_, s) => await updateSession(s));
     
-    // 1. Listen for lightweight database table updates (main state only, ~20KB)
-    supabaseClient.channel('league-state').on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'league_state', filter: 'id=eq.main' }, p => {
-      let incoming = p.new?.data;
-      if(incoming && shouldApply(incoming)){
-        applySharedState(incoming);
-        render();
-      }
-    }).subscribe();
-
-    // 2. Setup low-latency Realtime WebSocket Broadcast channel
+    // Setup Realtime listeners only if tab is in foreground
+    setupLeagueStateRealtime();
     setupDraftRealtime();
 
-    // 3. Pull latest cloud data immediately on startup
+    // Pull latest cloud data immediately on startup
     await syncFromCloud();
   } catch(e) {
     console.warn('Draftdex: initSupabase error:', e);
@@ -7454,6 +7489,9 @@ function render(){
   // Center snake strip on active pick
   if(current === 'Draft' && typeof centerActiveDraftPickTile === 'function'){
     centerActiveDraftPickTile();
+  }
+  if(typeof setupDraftRealtime === 'function'){
+    setupDraftRealtime();
   }
 }
 
