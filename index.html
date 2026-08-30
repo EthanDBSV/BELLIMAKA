@@ -2099,61 +2099,74 @@ function matchCard(m,latest=false){
   let letter2 = (profilePictures[p2] || teamCovers[p2]) ? '' : esc((p2 || '?')[0]);
 
   let labelText = m.label || m.roundTitle || m.title || m.round || m.group || 'League Fixture';
-  let isTopCut = (t?.phase === 'topcut' || m.isTopCut || (m.label && m.label.toLowerCase().includes('bracket')) || (m.label && m.label.toLowerCase().includes('round')) || (m.label && m.label.toLowerCase().includes('final')) || (m.title && m.title.toLowerCase().includes('final')));
+  let labelLower = String(labelText).toLowerCase();
+  
+  // A match is only Top Cut if it is explicitly a playoff match, NOT a group stage match
+  let isGroup = Boolean(m.group || labelLower.includes('group') || m.isTopCut === false);
+  let isTopCut = !isGroup && Boolean(
+    m.isTopCut === true ||
+    labelLower.includes('quarter') ||
+    labelLower.includes('semi') ||
+    labelLower.includes('final') ||
+    labelLower.includes('bracket') ||
+    labelLower.includes('playoff') ||
+    labelLower.includes('top cut') ||
+    labelLower.includes('round of')
+  );
 
-  let cardStyle = isTopCut
-    ? `background: radial-gradient(circle at top right, rgba(255,209,102,0.14) 0%, transparent 60%), linear-gradient(145deg, #181308 0%, #110e07 50%, #0b0b10 100%); border: 1px solid ${latest ? '#ffd166' : '#463314'}; box-shadow: 0 8px 24px rgba(0,0,0,0.65)${latest ? ', 0 0 16px rgba(255,209,102,0.25)' : ''};`
-    : `background: radial-gradient(circle at top left, rgba(239,48,56,0.16) 0%, transparent 60%), linear-gradient(145deg, #1c0a0e 0%, #12070a 50%, #0b0a0e 100%); border: 1px solid ${latest ? 'var(--red)' : '#461720'}; box-shadow: 0 8px 24px rgba(0,0,0,0.65)${latest ? ', 0 0 16px rgba(239,48,56,0.25)' : ''};`;
+  let cardBg = isTopCut
+    ? `background: #09090c; border: 1px solid ${latest ? '#ffd166' : '#221e16'}; box-shadow: 0 4px 16px rgba(0,0,0,0.75)${latest ? ', 0 0 16px rgba(255,209,102,0.25)' : ''};`
+    : `background: #09090c; border: 1px solid ${latest ? '#ef3038' : '#202026'}; box-shadow: 0 4px 16px rgba(0,0,0,0.75)${latest ? ', 0 0 16px rgba(239,48,56,0.25)' : ''};`;
 
   let headerBg = isTopCut
-    ? `background: linear-gradient(90deg, rgba(255,209,102,0.18) 0%, rgba(20,15,6,0.8) 100%); border-bottom: 1px solid rgba(255,209,102,0.22);`
-    : `background: linear-gradient(90deg, rgba(239,48,56,0.18) 0%, rgba(18,7,10,0.8) 100%); border-bottom: 1px solid rgba(239,48,56,0.22);`;
+    ? `background: #0d0b07; border-bottom: 1px solid #1c170d;`
+    : `background: #0d0d12; border-bottom: 1px solid #1a1a22;`;
 
   return `
-    <article class="card modern-match-card ${latest ? 'latest-highlight' : ''}" style="padding:0;${cardStyle}border-radius:10px;overflow:hidden;position:relative">
+    <article class="card modern-match-card ${latest ? 'latest-highlight' : ''}" style="padding:0;${cardBg}border-radius:10px;overflow:hidden;position:relative">
       <div style="padding:8px 14px;${headerBg}display:flex;justify-content:space-between;align-items:center;gap:8px">
         <div style="display:flex;align-items:center;gap:6px;min-width:0;overflow:hidden">
-          <span style="font-size:13px;color:${isTopCut ? '#ffd166' : 'var(--red)'};flex:none">${isTopCut ? '🏆' : '⚡'}</span>
-          <span style="font:800 12px 'Barlow Condensed';color:${isTopCut ? '#ffd166' : '#ff9fa6'};letter-spacing:.8px;text-transform:uppercase;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(labelText)}</span>
+          <span style="font-size:12px;color:${isTopCut ? '#ffd166' : '#ef3038'};flex:none">${isTopCut ? '🏆' : '⚡'}</span>
+          <span style="font:800 12px 'Barlow Condensed';color:${isTopCut ? '#ffd166' : '#ff7a82'};letter-spacing:.8px;text-transform:uppercase;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(labelText)}</span>
         </div>
         <div style="display:flex;align-items:center;gap:6px;flex:none">
-          ${latest ? `<span style="background:${isTopCut ? '#ffd166' : 'var(--red)'};color:${isTopCut ? '#111' : '#fff'};font-size:8px;font-weight:900;letter-spacing:1px;padding:2px 6px;border-radius:3px;text-transform:uppercase">LATEST</span>` : ''}
-          <span style="background:${isPlayed ? 'rgba(74,222,128,0.15)' : 'rgba(255,255,255,0.08)'};border:1px solid ${isPlayed ? 'rgba(74,222,128,0.3)' : 'rgba(255,255,255,0.15)'};font-size:8px;font-weight:900;letter-spacing:.8px;color:${isPlayed ? '#7df0aa' : '#a09fa8'};padding:2px 6px;border-radius:3px;text-transform:uppercase">${isPlayed ? 'FINAL' : 'UPCOMING'}</span>
+          ${latest ? `<span style="background:${isTopCut ? '#ffd166' : '#ef3038'};color:${isTopCut ? '#111' : '#fff'};font-size:8px;font-weight:900;letter-spacing:1px;padding:2px 6px;border-radius:3px;text-transform:uppercase">LATEST</span>` : ''}
+          <span style="background:${isPlayed ? '#122619' : '#1a1a22'};border:1px solid ${isPlayed ? '#22522e' : '#2d2d38'};font-size:8px;font-weight:900;letter-spacing:.8px;color:${isPlayed ? '#4ade80' : '#8e8c95'};padding:2px 6px;border-radius:3px;text-transform:uppercase">${isPlayed ? 'FINAL' : 'UPCOMING'}</span>
         </div>
       </div>
 
-      <div style="padding:12px 14px;display:flex;flex-direction:column;gap:8px">
+      <div style="padding:10px 12px;background:#09090c;display:flex;flex-direction:column;gap:6px">
         <!-- Team 1 Row -->
-        <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:6px 8px;border-radius:6px;background:${p1Won ? (isTopCut ? 'linear-gradient(90deg,rgba(255,209,102,0.12),transparent)' : 'linear-gradient(90deg,rgba(239,48,56,0.12),transparent)') : 'transparent'};transition:all .15s ease">
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:6px 10px;border-radius:6px;background:${p1Won ? (isTopCut ? '#14120a' : '#141113') : 'transparent'};border:1px solid ${p1Won ? (isTopCut ? '#2f240f' : '#2b1418') : 'transparent'};transition:all .15s ease">
           <div style="display:flex;align-items:center;gap:10px;min-width:0">
-            <span class="avatar mini" style="background-image:${face1};background-size:cover;background-position:center;width:32px;height:32px;font-size:13px;border-radius:50%;border:2px solid ${p1Won ? (isTopCut ? '#ffd166' : '#4ade80') : '#ffffff1f'};display:grid;place-items:center;flex:none">${letter1}</span>
+            <span class="avatar mini" style="background-image:${face1};background-size:cover;background-position:center;width:30px;height:30px;font-size:12px;border-radius:50%;border:2px solid ${p1Won ? (isTopCut ? '#ffd166' : '#ef3038') : '#23232c'};display:grid;place-items:center;flex:none">${letter1}</span>
             <div style="min-width:0">
               <div style="display:flex;align-items:center;gap:6px">
-                <span style="font:800 15px 'Barlow Condensed';letter-spacing:.3px;color:${p1Won ? '#fff' : '#c8c6ce'}">${playerLink(p1)}</span>
-                <span style="font-size:10px;font-weight:800;color:${isTopCut ? '#ffd166' : 'var(--red)'}">(${esc(rec1)})</span>
+                <span style="font:800 15px 'Barlow Condensed';letter-spacing:.3px;color:${p1Won ? '#ffffff' : '#9d9ba6'}">${playerLink(p1)}</span>
+                <span style="font-size:10px;font-weight:800;color:${isTopCut ? '#ffd166' : '#ef3038'}">(${esc(rec1)})</span>
               </div>
-              <div style="font-size:10px;color:#8e8c95;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:140px">${esc(t1Name)}</div>
+              <div style="font-size:10px;color:#7e7c88;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:140px">${esc(t1Name)}</div>
             </div>
           </div>
-          <div style="font:800 22px 'Barlow Condensed';color:${p1Won ? (isTopCut ? '#ffd166' : '#4ade80') : '#7a7885'};flex:none;min-width:24px;text-align:right">${s1}</div>
+          <div style="font:800 22px 'Barlow Condensed';color:${p1Won ? (isTopCut ? '#ffd166' : '#ffffff') : '#474652'};flex:none;min-width:24px;text-align:right">${s1}</div>
         </div>
 
         <!-- Divider -->
-        <div style="height:1px;background:${isTopCut ? 'linear-gradient(90deg,transparent,rgba(255,209,102,0.2),transparent)' : 'linear-gradient(90deg,transparent,rgba(239,48,56,0.2),transparent)'};margin:0 4px"></div>
+        <div style="height:1px;background:${isTopCut ? '#16130c' : '#16161f'};margin:0 4px"></div>
 
         <!-- Team 2 Row -->
-        <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:6px 8px;border-radius:6px;background:${p2Won ? (isTopCut ? 'linear-gradient(90deg,rgba(255,209,102,0.12),transparent)' : 'linear-gradient(90deg,rgba(239,48,56,0.12),transparent)') : 'transparent'};transition:all .15s ease">
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:6px 10px;border-radius:6px;background:${p2Won ? (isTopCut ? '#14120a' : '#141113') : 'transparent'};border:1px solid ${p2Won ? (isTopCut ? '#2f240f' : '#2b1418') : 'transparent'};transition:all .15s ease">
           <div style="display:flex;align-items:center;gap:10px;min-width:0">
-            <span class="avatar mini" style="background-image:${face2};background-size:cover;background-position:center;width:32px;height:32px;font-size:13px;border-radius:50%;border:2px solid ${p2Won ? (isTopCut ? '#ffd166' : '#4ade80') : '#ffffff1f'};display:grid;place-items:center;flex:none">${letter2}</span>
+            <span class="avatar mini" style="background-image:${face2};background-size:cover;background-position:center;width:30px;height:30px;font-size:12px;border-radius:50%;border:2px solid ${p2Won ? (isTopCut ? '#ffd166' : '#ef3038') : '#23232c'};display:grid;place-items:center;flex:none">${letter2}</span>
             <div style="min-width:0">
               <div style="display:flex;align-items:center;gap:6px">
-                <span style="font:800 15px 'Barlow Condensed';letter-spacing:.3px;color:${p2Won ? '#fff' : '#c8c6ce'}">${playerLink(p2)}</span>
-                <span style="font-size:10px;font-weight:800;color:${isTopCut ? '#ffd166' : 'var(--red)'}">(${esc(rec2)})</span>
+                <span style="font:800 15px 'Barlow Condensed';letter-spacing:.3px;color:${p2Won ? '#ffffff' : '#9d9ba6'}">${playerLink(p2)}</span>
+                <span style="font-size:10px;font-weight:800;color:${isTopCut ? '#ffd166' : '#ef3038'}">(${esc(rec2)})</span>
               </div>
-              <div style="font-size:10px;color:#8e8c95;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:140px">${esc(t2Name)}</div>
+              <div style="font-size:10px;color:#7e7c88;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:140px">${esc(t2Name)}</div>
             </div>
           </div>
-          <div style="font:800 22px 'Barlow Condensed';color:${p2Won ? (isTopCut ? '#ffd166' : '#4ade80') : '#7a7885'};flex:none;min-width:24px;text-align:right">${s2}</div>
+          <div style="font:800 22px 'Barlow Condensed';color:${p2Won ? (isTopCut ? '#ffd166' : '#ffffff') : '#474652'};flex:none;min-width:24px;text-align:right">${s2}</div>
         </div>
       </div>
     </article>
@@ -3894,7 +3907,24 @@ document.addEventListener('click',e=>{let box=e.target.closest?.('[data-match-fi
 
 
 
-function allResults(t){let group=t.matches.filter(m=>m.as!==''&&m.bs!=='').map(m=>({...m,label:m.group||'Group A'})),top=(t.topCutCache?.results||[]).map(m=>({a:m.p1,b:m.p2,as:m.s1,bs:m.s2,label:m.title,completedAt:m.completedAt,date:new Date(m.completedAt).toLocaleString()}));return [...group,...top].sort((a,b)=>(b.completedAt||Date.parse(b.date)||0)-(a.completedAt||Date.parse(a.date)||0))}
+function allResults(t){
+  let group = (t.matches || []).filter(m => m.as !== '' && m.bs !== '' && m.as != null && m.bs != null).map(m => ({
+    ...m,
+    isTopCut: false,
+    label: m.group || (m.round ? `Round ${m.round}` : 'Group Stage')
+  }));
+  let top = (t.topCutCache?.results || []).map(m => ({
+    a: m.p1,
+    b: m.p2,
+    as: m.s1,
+    bs: m.s2,
+    isTopCut: true,
+    label: m.title || 'Playoffs',
+    completedAt: m.completedAt,
+    date: new Date(m.completedAt).toLocaleString()
+  }));
+  return [...group, ...top].sort((a,b) => (b.completedAt || Date.parse(b.date) || 0) - (a.completedAt || Date.parse(a.date) || 0));
+}
 
 async function pick(el){
   if(el.disabled)return;
