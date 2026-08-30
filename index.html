@@ -3799,7 +3799,7 @@ async function pushStateToSupabase(payload, updateTime){
 }
 
 async function flushSync(){
-  if(!supabaseClient) return;
+  if(!supabaseClient || !moderator) return;
 
   // Clean tournaments to remove heavy base64 strings from frequent main sync payload
   let cleanTournaments = {};
@@ -3858,7 +3858,7 @@ function persistLeague(){
     if(typeof accountLinks!=='undefined') localStorage.setItem('draftdex-accountlinks', JSON.stringify(accountLinks));
   }catch(e){}
   clearTimeout(syncTimer);
-  syncTimer = setTimeout(flushSync, 150);
+  syncTimer = setTimeout(flushSync, 600);
 }
 
 async function signOut(btnEl){
