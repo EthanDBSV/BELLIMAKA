@@ -2115,58 +2115,58 @@ function matchCard(m,latest=false){
   );
 
   let cardBg = isTopCut
-    ? `background: #09090c; border: 1px solid ${latest ? '#ffd166' : '#221e16'}; box-shadow: 0 4px 16px rgba(0,0,0,0.75)${latest ? ', 0 0 16px rgba(255,209,102,0.25)' : ''};`
-    : `background: #09090c; border: 1px solid ${latest ? '#ef3038' : '#202026'}; box-shadow: 0 4px 16px rgba(0,0,0,0.75)${latest ? ', 0 0 16px rgba(239,48,56,0.25)' : ''};`;
+    ? `background: #0a0907; border: 1px solid ${latest ? '#ffd166' : 'rgba(255,209,102,0.32)'}; box-shadow: 0 4px 18px rgba(0,0,0,0.8)${latest ? ', 0 0 16px rgba(255,209,102,0.3)' : ''};`
+    : `background: #0c0809; border: 1px solid ${latest ? '#ef3038' : 'rgba(239,48,56,0.38)'}; box-shadow: 0 4px 18px rgba(0,0,0,0.8)${latest ? ', 0 0 16px rgba(239,48,56,0.35)' : ''};`;
 
   let headerBg = isTopCut
-    ? `background: #0d0b07; border-bottom: 1px solid #1c170d;`
-    : `background: #0d0d12; border-bottom: 1px solid #1a1a22;`;
+    ? `background: linear-gradient(90deg, rgba(255,209,102,0.14) 0%, #110e08 100%); border-bottom: 1px solid rgba(255,209,102,0.24);`
+    : `background: linear-gradient(90deg, rgba(239,48,56,0.16) 0%, #140a0c 100%); border-bottom: 1px solid rgba(239,48,56,0.28);`;
 
   return `
     <article class="card modern-match-card ${latest ? 'latest-highlight' : ''}" style="padding:0;${cardBg}border-radius:10px;overflow:hidden;position:relative">
-      <div style="padding:8px 14px;${headerBg}display:flex;justify-content:space-between;align-items:center;gap:8px">
-        <div style="display:flex;align-items:center;gap:6px;min-width:0;overflow:hidden">
-          <span style="font-size:12px;color:${isTopCut ? '#ffd166' : '#ef3038'};flex:none">${isTopCut ? '🏆' : '⚡'}</span>
-          <span style="font:800 12px 'Barlow Condensed';color:${isTopCut ? '#ffd166' : '#ff7a82'};letter-spacing:.8px;text-transform:uppercase;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(labelText)}</span>
+      <div style="padding:9px 14px;${headerBg}display:flex;justify-content:space-between;align-items:center;gap:8px">
+        <div style="display:flex;align-items:center;gap:7px;min-width:0;overflow:hidden">
+          <span style="font-size:13px;color:${isTopCut ? '#ffd166' : '#ef3038'};filter:drop-shadow(0 0 5px ${isTopCut ? 'rgba(255,209,102,0.5)' : 'rgba(239,48,56,0.5)'});flex:none">${isTopCut ? '🏆' : '⚡'}</span>
+          <span style="font:800 13px 'Barlow Condensed';color:${isTopCut ? '#ffd166' : '#ff4d56'};letter-spacing:.8px;text-transform:uppercase;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(labelText)}</span>
         </div>
         <div style="display:flex;align-items:center;gap:6px;flex:none">
-          ${latest ? `<span style="background:${isTopCut ? '#ffd166' : '#ef3038'};color:${isTopCut ? '#111' : '#fff'};font-size:8px;font-weight:900;letter-spacing:1px;padding:2px 6px;border-radius:3px;text-transform:uppercase">LATEST</span>` : ''}
+          ${latest ? `<span style="background:${isTopCut ? '#ffd166' : '#ef3038'};color:${isTopCut ? '#111' : '#fff'};font-size:8px;font-weight:900;letter-spacing:1px;padding:2px 6px;border-radius:3px;text-transform:uppercase;box-shadow:0 0 8px ${isTopCut ? 'rgba(255,209,102,0.4)' : 'rgba(239,48,56,0.4)'}">LATEST</span>` : ''}
           <span style="background:${isPlayed ? '#122619' : '#1a1a22'};border:1px solid ${isPlayed ? '#22522e' : '#2d2d38'};font-size:8px;font-weight:900;letter-spacing:.8px;color:${isPlayed ? '#4ade80' : '#8e8c95'};padding:2px 6px;border-radius:3px;text-transform:uppercase">${isPlayed ? 'FINAL' : 'UPCOMING'}</span>
         </div>
       </div>
 
-      <div style="padding:10px 12px;background:#09090c;display:flex;flex-direction:column;gap:6px">
+      <div style="padding:10px 12px;background:${isTopCut ? '#090807' : '#0a0708'};display:flex;flex-direction:column;gap:6px">
         <!-- Team 1 Row -->
-        <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:6px 10px;border-radius:6px;background:${p1Won ? (isTopCut ? '#14120a' : '#141113') : 'transparent'};border:1px solid ${p1Won ? (isTopCut ? '#2f240f' : '#2b1418') : 'transparent'};transition:all .15s ease">
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:7px 10px;border-radius:6px;background:${p1Won ? (isTopCut ? 'linear-gradient(90deg, rgba(255,209,102,0.12), #141108)' : 'linear-gradient(90deg, rgba(239,48,56,0.14), #170a0d)') : 'transparent'};border:1px solid ${p1Won ? (isTopCut ? 'rgba(255,209,102,0.32)' : 'rgba(239,48,56,0.38)') : 'transparent'};transition:all .15s ease">
           <div style="display:flex;align-items:center;gap:10px;min-width:0">
-            <span class="avatar mini" style="background-image:${face1};background-size:cover;background-position:center;width:30px;height:30px;font-size:12px;border-radius:50%;border:2px solid ${p1Won ? (isTopCut ? '#ffd166' : '#ef3038') : '#23232c'};display:grid;place-items:center;flex:none">${letter1}</span>
+            <span class="avatar mini" style="background-image:${face1};background-size:cover;background-position:center;width:32px;height:32px;font-size:12px;border-radius:50%;border:2px solid ${p1Won ? (isTopCut ? '#ffd166' : '#ef3038') : '#23232c'};display:grid;place-items:center;flex:none;box-shadow:${p1Won ? (isTopCut ? '0 0 8px rgba(255,209,102,0.35)' : '0 0 8px rgba(239,48,56,0.35)') : 'none'}">${letter1}</span>
             <div style="min-width:0">
               <div style="display:flex;align-items:center;gap:6px">
                 <span style="font:800 15px 'Barlow Condensed';letter-spacing:.3px;color:${p1Won ? '#ffffff' : '#9d9ba6'}">${playerLink(p1)}</span>
-                <span style="font-size:10px;font-weight:800;color:${isTopCut ? '#ffd166' : '#ef3038'}">(${esc(rec1)})</span>
+                <span style="font-size:10px;font-weight:800;color:${isTopCut ? '#ffd166' : '#ff4d56'}">(${esc(rec1)})</span>
               </div>
               <div style="font-size:10px;color:#7e7c88;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:140px">${esc(t1Name)}</div>
             </div>
           </div>
-          <div style="font:800 22px 'Barlow Condensed';color:${p1Won ? (isTopCut ? '#ffd166' : '#ffffff') : '#474652'};flex:none;min-width:24px;text-align:right">${s1}</div>
+          <div style="font:800 22px 'Barlow Condensed';color:${p1Won ? (isTopCut ? '#ffd166' : '#ff4d56') : '#474652'};flex:none;min-width:24px;text-align:right;text-shadow:${p1Won ? (isTopCut ? '0 0 8px rgba(255,209,102,0.4)' : '0 0 8px rgba(239,48,56,0.4)') : 'none'}">${s1}</div>
         </div>
 
         <!-- Divider -->
-        <div style="height:1px;background:${isTopCut ? '#16130c' : '#16161f'};margin:0 4px"></div>
+        <div style="height:1px;background:${isTopCut ? 'rgba(255,209,102,0.12)' : 'rgba(239,48,56,0.15)'};margin:0 4px"></div>
 
         <!-- Team 2 Row -->
-        <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:6px 10px;border-radius:6px;background:${p2Won ? (isTopCut ? '#14120a' : '#141113') : 'transparent'};border:1px solid ${p2Won ? (isTopCut ? '#2f240f' : '#2b1418') : 'transparent'};transition:all .15s ease">
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:7px 10px;border-radius:6px;background:${p2Won ? (isTopCut ? 'linear-gradient(90deg, rgba(255,209,102,0.12), #141108)' : 'linear-gradient(90deg, rgba(239,48,56,0.14), #170a0d)') : 'transparent'};border:1px solid ${p2Won ? (isTopCut ? 'rgba(255,209,102,0.32)' : 'rgba(239,48,56,0.38)') : 'transparent'};transition:all .15s ease">
           <div style="display:flex;align-items:center;gap:10px;min-width:0">
-            <span class="avatar mini" style="background-image:${face2};background-size:cover;background-position:center;width:30px;height:30px;font-size:12px;border-radius:50%;border:2px solid ${p2Won ? (isTopCut ? '#ffd166' : '#ef3038') : '#23232c'};display:grid;place-items:center;flex:none">${letter2}</span>
+            <span class="avatar mini" style="background-image:${face2};background-size:cover;background-position:center;width:32px;height:32px;font-size:12px;border-radius:50%;border:2px solid ${p2Won ? (isTopCut ? '#ffd166' : '#ef3038') : '#23232c'};display:grid;place-items:center;flex:none;box-shadow:${p2Won ? (isTopCut ? '0 0 8px rgba(255,209,102,0.35)' : '0 0 8px rgba(239,48,56,0.35)') : 'none'}">${letter2}</span>
             <div style="min-width:0">
               <div style="display:flex;align-items:center;gap:6px">
                 <span style="font:800 15px 'Barlow Condensed';letter-spacing:.3px;color:${p2Won ? '#ffffff' : '#9d9ba6'}">${playerLink(p2)}</span>
-                <span style="font-size:10px;font-weight:800;color:${isTopCut ? '#ffd166' : '#ef3038'}">(${esc(rec2)})</span>
+                <span style="font-size:10px;font-weight:800;color:${isTopCut ? '#ffd166' : '#ff4d56'}">(${esc(rec2)})</span>
               </div>
               <div style="font-size:10px;color:#7e7c88;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:140px">${esc(t2Name)}</div>
             </div>
           </div>
-          <div style="font:800 22px 'Barlow Condensed';color:${p2Won ? (isTopCut ? '#ffd166' : '#ffffff') : '#474652'};flex:none;min-width:24px;text-align:right">${s2}</div>
+          <div style="font:800 22px 'Barlow Condensed';color:${p2Won ? (isTopCut ? '#ffd166' : '#ff4d56') : '#474652'};flex:none;min-width:24px;text-align:right;text-shadow:${p2Won ? (isTopCut ? '0 0 8px rgba(255,209,102,0.4)' : '0 0 8px rgba(239,48,56,0.4)') : 'none'}">${s2}</div>
         </div>
       </div>
     </article>
@@ -4910,11 +4910,31 @@ function Home(){
   let isTopCutPhase = (t.phase === 'topcut');
   let target = isDraftPhase ? 'Draft' : (isTopCutPhase ? 'Top Cut' : 'Matches');
 
-  // Metrics
-  let matches = t.matches || [];
-  let totalMatchesCount = tournamentTotalMatches(t);
-  let completedCount = results.length;
-  let completionPct = totalMatchesCount > 0 ? Math.min(100, Math.round((completedCount / totalMatchesCount) * 100)) : 0;
+  // Metrics: Separate active phase progress
+  let groupMatchesList = t.matches || [];
+  let totalGroupMatches = groupMatchesList.length;
+  let completedGroupMatches = groupMatchesList.filter(m => m.as !== '' && m.bs !== '' && m.as != null && m.bs != null).length;
+
+  let totalTopCutMatches = 0;
+  let completedTopCutMatches = 0;
+  if(typeof getTournamentTopCutModel === 'function'){
+    let mod = getTournamentTopCutModel(t);
+    if(mod){
+      totalTopCutMatches = (mod.allBracketMatches || []).length;
+      completedTopCutMatches = (mod.completedList || []).length;
+    }
+  }
+  if(!totalTopCutMatches){
+    if(t.topCutCache?.results?.length){
+      completedTopCutMatches = t.topCutCache.results.length;
+    }
+    let qualifiersCount = (t.players.length >= 8 ? (advancePerGroup(t) * Object.keys(groupsOf(t)).length) : 4);
+    totalTopCutMatches = qualifiersCount > 4 ? 10 : 6;
+  }
+
+  let activePhaseCompleted = isTopCutPhase ? completedTopCutMatches : completedGroupMatches;
+  let activePhaseTotal = isTopCutPhase ? totalTopCutMatches : totalGroupMatches;
+  let completionPct = activePhaseTotal > 0 ? Math.min(100, Math.round((activePhaseCompleted / activePhaseTotal) * 100)) : 0;
 
   let turn = isDraftPhase ? getDraftCurrentTurn(t) : null;
   let draftPct = (turn && turn.totalPicks > 0) ? Math.min(100, Math.round(((turn.currentPickNumber - 1) / turn.totalPicks) * 100)) : 0;
@@ -4948,7 +4968,7 @@ function Home(){
               <span class="tourney-chip">📋 Pick <b>${turn.currentPickNumber}/${turn.totalPicks}</b> (Round ${turn.currentRound})</span>
               <span class="tourney-chip">💰 <b>${t.draftData?.pointBudget ? `${t.draftData.pointBudget} Pts` : 'Tier Draft'}</b></span>
             ` : `
-              <span class="tourney-chip">⚔️ <b>${completedCount}/${totalMatchesCount}</b> Matches (${completionPct}%)</span>
+              <span class="tourney-chip">⚔️ <b>${activePhaseCompleted}/${activePhaseTotal}</b> ${isTopCutPhase ? 'Playoff' : 'Group'} Matches (${completionPct}%)</span>
               <span class="tourney-chip">🎖️ Top <b>${advancePerGroup(t)}</b> Advance</span>
             `}
           </div>
@@ -4992,9 +5012,9 @@ function Home(){
         <div class="pulse-stat-sub">${t.players.length} Competitors</div>
       </div>
       <div class="card pulse-stat-box">
-        <span class="pulse-stat-label">${isDraftPhase ? 'Draft Picks Made' : 'Fixtures Recorded'}</span>
-        <div class="pulse-stat-val">${isDraftPhase && turn ? `${turn.currentPickNumber - 1} <small style="font-size:13px;color:#8e8c95;font-weight:700">/ ${turn.totalPicks}</small>` : `${completedCount} <small style="font-size:13px;color:#8e8c95;font-weight:700">/ ${totalMatchesCount}</small>`}</div>
-        <div class="progress" style="margin-top:5px;height:5px"><span style="width:${isDraftPhase ? draftPct : completionPct}%"></span></div>
+        <span class="pulse-stat-label">${isDraftPhase ? 'Draft Picks Made' : (isTopCutPhase ? 'Playoff Fixtures' : 'Group Fixtures')}</span>
+        <div class="pulse-stat-val">${isDraftPhase && turn ? `${turn.currentPickNumber - 1} <small style="font-size:13px;color:#8e8c95;font-weight:700">/ ${turn.totalPicks}</small>` : `${activePhaseCompleted} <small style="font-size:13px;color:#8e8c95;font-weight:700">/ ${activePhaseTotal}</small>`}</div>
+        <div class="progress" style="margin-top:5px;height:5px"><span style="width:${isDraftPhase ? draftPct : completionPct}%;${isTopCutPhase ? 'background:#ffd166;' : ''}"></span></div>
       </div>
       <div class="card pulse-stat-box" style="cursor:pointer;transition:border-color .15s ease" onclick="go('Playoff Odds')" title="Click to view full Playoff Odds chart">
         <span class="pulse-stat-label" style="display:flex;justify-content:space-between;align-items:center"><span>${isDraftPhase ? 'Draft Status' : 'Title Favorite'}</span><span style="color:#ffd166;font-size:10px">↗</span></span>
