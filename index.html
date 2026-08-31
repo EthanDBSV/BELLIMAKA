@@ -8851,6 +8851,58 @@ function renderAccountMatchHistory(mine, matchHistory){
   `;
 }
 
+function formatPredictionQuestionLabel(t, key){
+  if(!key) return 'Match Prediction';
+
+  // 1. Bracket Slot Match (draftdex-bpick-wb2, killawott-bpick-wb2, Top Cut Bracket Match · wb2)
+  let bSlot = key.match(/^(?:draftdex-bpick-|killawott-bpick-|Top Cut Bracket Match · )(.+)$/i);
+  if(bSlot){
+    let slotId = bSlot[1];
+    let model = (typeof getTournamentTopCutModel === 'function') ? getTournamentTopCutModel(t) : null;
+    let allMatches = [...(model?.wbRounds || []).flatMap(r => r.matches), ...(model?.lbRounds || []).flatMap(r => r.matches), ...(model?.gfMatches || [])];
+    let bm = allMatches.find(m => m.id === slotId);
+
+    if(bm){
+      let title = bm.title || bm.roundTitle || 'Top Cut Playoff';
+      let p1 = bm.p1 && bm.p1 !== 'TBD' && bm.p1 !== 'BYE' ? bm.p1 : '';
+      let p2 = bm.p2 && bm.p2 !== 'TBD' && bm.p2 !== 'BYE' ? bm.p2 : '';
+      let matchInfo = (p1 && p2) ? `: ${p1} vs ${p2}` : '';
+      return `🏆 Top Cut · ${title}${matchInfo}`;
+    }
+    let cleanSlotName = slotId.toUpperCase();
+    if(cleanSlotName.startsWith('WB')) cleanSlotName = 'Winners Bracket (WB' + cleanSlotName.slice(2) + ')';
+    else if(cleanSlotName.startsWith('LB')) cleanSlotName = 'Losers Bracket (LB' + cleanSlotName.slice(2) + ')';
+    else if(cleanSlotName.startsWith('GF')) cleanSlotName = 'Grand Finals';
+    return `🏆 Top Cut · ${cleanSlotName}`;
+  }
+
+  // 2. Explicit Top Cut Question: Top Cut · Who wins: A vs B
+  let cut = key.match(/^Top Cut · Who wins: (.+) vs (.+)$/i);
+  if(cut){
+    return `🏆 Top Cut · ${cut[1]} vs ${cut[2]}`;
+  }
+
+  // 3. Regular Group Stage Match: Who wins: A vs B
+  let vs = key.match(/^Who wins: (.+) vs (.+)$/i);
+  if(vs){
+    return `⚡ Match Pick · ${vs[1]} vs ${vs[2]}`;
+  }
+
+  // 4. Champion Pick'em: Who will be the ... Champion?
+  if(/^Who will be the .* Champion\?$/i.test(key)){
+    return `👑 Season Champion Pick'em`;
+  }
+
+  // 5. Group Winner: Who will top Group A?
+  let top = key.match(/^Who will top (.+)\?$/i);
+  if(top){
+    return `⚡ Group Winner Pick'em · ${top[1]}`;
+  }
+
+  // Fallback cleanup
+  return key.replace(/^(?:draftdex-|killawott-)/i, '').replace(/bpick-/i, 'Bracket Match: ').replace(/-/g, ' ');
+}
+
 function renderAccountPredictionHistory(userId, username){
   let history = getPlayerPredictionHistory(userId, username);
   let allItems = history.flatMap(h => h.items);
@@ -8892,34 +8944,55 @@ function renderAccountPredictionHistory(userId, username){
     </div>
 
     <!-- Tournament Prediction History Cards -->
-    <div style="display:flex;flex-direction:column;gap:14px">
+    <div style="display:flex;flex-direction:column;gap:16px">
       ${history.map(tHist => {
+        let t = tournamentData[tHist.tournamentId];
         return `
-          <div class="card" style="padding:14px;background:#111116;border-color:#2a2a36">
-            <div style="display:flex;justify-content:space-between;align-items:center;padding-bottom:10px;border-bottom:1px solid #242430;margin-bottom:10px;flex-wrap:wrap;gap:8px">
+          <div class="card" style="padding:14px;background:#111116;border-color:#282836;border-radius:10px">
+            <div style="display:flex;justify-content:space-between;align-items:center;padding-bottom:10px;border-bottom:1px solid #242430;margin-bottom:12px;flex-wrap:wrap;gap:8px">
               <div>
-                <span class="eyebrow" style="color:#ffd166;margin:0">${esc(tHist.tournamentSeason || '')}</span>
-                <h3 style="font:800 18px 'Barlow Condensed';margin:2px 0 0;color:#f5f3f0">${esc(tHist.tournamentName)}</h3>
+                <span class="eyebrow" style="color:#ffd166;margin:0">${esc(tHist.tournamentSeason ? `${tHist.tournamentSeason} · ` : '')}${esc(tHist.tournamentName)}</span>
+                <h3 style="font:800 18px 'Barlow Condensed';margin:2px 0 0;color:#f5f3f0">Tournament Predictions</h3>
               </div>
               <div style="display:flex;gap:6px;align-items:center">
-                <span class="tag" style="background:#1f281a;color:#7df0aa;border:1px solid #2d4a2a;font-size:10px"><b>${tHist.totalPts}</b> Points Earned</span>
-                <span class="tag" style="background:#22222a;color:#a09fa8;border:1px solid #363648;font-size:10px">${tHist.correctCount}/${tHist.settledCount} Correct (${tHist.accuracy}%)</span>
+                <span class="tag" style="background:#13281c;color:#7df0aa;border:1px solid #245c36;font-size:10px"><b>${tHist.totalPts}</b> Points Earned</span>
+                <span class="tag" style="background:#1c1c24;color:#a09fa8;border:1px solid #2e2e3e;font-size:10px">${tHist.correctCount}/${tHist.settledCount} Correct (${tHist.accuracy}%)</span>
               </div>
             </div>
 
-            <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:8px">
+            <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:10px">
               ${tHist.items.map(item => {
-                let statusBg = item.isSettled ? (item.isCorrect ? '#122619' : '#2b1418') : '#1e1c14';
-                let statusBorder = item.isSettled ? (item.isCorrect ? '#22522e' : '#4a1e24') : '#423719';
-                let statusColor = item.isSettled ? (item.isCorrect ? '#4ade80' : '#ff7a82') : '#ffd166';
-                let statusLabel = item.isSettled ? (item.isCorrect ? `✓ Hit (+${item.ptsEarned} pts)` : `✗ Missed (0 pts)`) : `⏳ Pending Match`;
+                let qLabel = formatPredictionQuestionLabel(t, item.key);
+                let pickUser = item.selection;
+                let pickFace = profilePictures[pickUser] ? `url('${esc(profilePictures[pickUser])}')` : (teamCovers[pickUser] ? `url('${esc(teamCovers[pickUser])}')` : fallbackArt(pickUser));
+                let pickLetter = (profilePictures[pickUser] || teamCovers[pickUser]) ? '' : esc((pickUser || '?')[0]);
+
+                let statusBg = item.isSettled ? (item.isCorrect ? '#13281c' : '#2c1417') : '#262010';
+                let statusBorder = item.isSettled ? (item.isCorrect ? '#245c36' : '#5a2228') : '#544318';
+                let statusColor = item.isSettled ? (item.isCorrect ? '#4ade80' : '#ff8e95') : '#ffd166';
+                let statusLabel = item.isSettled ? (item.isCorrect ? `✓ HIT (+${item.ptsEarned} pts)` : `✗ MISSED`) : `⏳ IN PROGRESS (${item.value} PTS)`;
 
                 return `
-                  <div style="background:#171720;border:1px solid #2b2b3a;border-radius:6px;padding:9px 12px;display:flex;flex-direction:column;justify-content:space-between;gap:6px">
-                    <div style="font-size:11px;color:#a09fa8;font-weight:700;line-height:1.3">${esc(item.key)}</div>
-                    <div style="display:flex;justify-content:space-between;align-items:center;gap:6px;margin-top:2px">
-                      <div style="font:800 13px 'Barlow Condensed';color:#f5f3f0">Pick: <span style="color:#ffd166">${esc(item.selection)}</span></div>
-                      <span style="font-size:9px;font-weight:900;color:${statusColor};background:${statusBg};border:1px solid ${statusBorder};padding:2px 6px;border-radius:3px">${statusLabel}</span>
+                  <div style="background:#16161e;border:1px solid #282838;border-radius:8px;padding:12px 14px;display:flex;flex-direction:column;justify-content:space-between;gap:10px">
+                    <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">
+                      <div style="font:800 13px 'Barlow Condensed';color:#f5f3f0;letter-spacing:.3px;line-height:1.3">${esc(qLabel)}</div>
+                      <span style="font-size:9px;font-weight:900;letter-spacing:.6px;color:${statusColor};background:${statusBg};border:1px solid ${statusBorder};padding:2px 7px;border-radius:4px;flex:none">${statusLabel}</span>
+                    </div>
+
+                    <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;background:#0c0c10;border:1px solid #1c1c24;border-radius:6px;padding:8px 10px">
+                      <div style="display:flex;align-items:center;gap:8px;min-width:0">
+                        <span class="avatar mini" style="background-image:${pickFace};background-size:cover;background-position:center;width:24px;height:24px;font-size:10px;border-radius:50%;border:1px solid #2f2f3e;display:grid;place-items:center;flex:none">${pickLetter}</span>
+                        <div style="min-width:0">
+                          <div style="font-size:10px;color:#8e8c95;font-weight:700">Your Pick</div>
+                          <div style="font:800 14px 'Barlow Condensed';color:#ffd166;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(pickUser)}</div>
+                        </div>
+                      </div>
+                      ${item.isSettled && !item.isCorrect && item.answer ? `
+                        <div style="text-align:right">
+                          <div style="font-size:9px;color:#8e8c95;font-weight:700">Actual Winner</div>
+                          <div style="font:800 13px 'Barlow Condensed';color:#4ade80">${esc(item.answer)}</div>
+                        </div>
+                      ` : ''}
                     </div>
                   </div>
                 `;
