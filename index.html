@@ -3785,6 +3785,20 @@ async function syncFromCloud(){
   if(!supabaseClient || isSyncingFromCloud) return;
   isSyncingFromCloud = true;
   try {
+    let localUpdatedAt = Number(localStorage.getItem('draftdex-updated-at') || 0);
+    let hasLocalTourneys = Object.keys(tournamentData).length > 0;
+
+    // Ultra-lightweight revision check (transfers only ~30 bytes instead of 69 KB)
+    if(hasLocalTourneys && localUpdatedAt > 0){
+      let { data: meta, error: metaErr } = await supabaseClient.from('league_state').select('updated_at').eq('id', 'main').maybeSingle();
+      if(!metaErr && meta?.updated_at){
+        let cloudTime = new Date(meta.updated_at).getTime();
+        if(localUpdatedAt >= cloudTime){
+          return; // Local state is already fresh; skip downloading 69 KB!
+        }
+      }
+    }
+
     let { data, error } = await supabaseClient.from('league_state').select('data').eq('id', 'main').maybeSingle();
     if(!error && data?.data){
       let incoming = data.data;
@@ -3793,12 +3807,8 @@ async function syncFromCloud(){
         render();
       }
     }
-    // If media cache is empty, fetch media once on startup
-    if(!localMediaRev || !Object.keys(teamCovers).length){
-      fetchMediaFromCloud();
-    }
   } catch(e){
-    console.warn('Draftdex sync error:', e);
+    console.warn('Bellimaka sync error:', e);
   } finally {
     isSyncingFromCloud = false;
   }
@@ -3975,7 +3985,6 @@ async function signOut(btnEl){
   }
 }
 
-setTimeout(initSupabase,0);
 document.addEventListener('click',e=>{let box=e.target.closest?.('[data-match-filter]');if(!box)return;toggleMatchFilter(box.dataset.matchFilter)});
 
 
@@ -6799,6 +6808,55 @@ document.addEventListener('dragstart',e=>{let x=e.target.closest('.rank-placemen
 document.addEventListener('dragover',e=>{let target=e.target.closest('.rank-placement-drag');if(target&&moderator)e.preventDefault()});
 document.addEventListener('drop',e=>{let target=e.target.closest('.rank-placement-drag'),raw=e.dataTransfer.getData('application/cherrymoon-rank-player');if(!target||!raw||!moderator)return;let source;try{source=JSON.parse(raw)}catch{return}if(source.group!==target.dataset.rankGroup)return;e.preventDefault();swapStandingRanks(source.player,target.dataset.player,source.group)});
 
+function getPlayerRivals(p, allMatches){
+  let oppMap = {};
+  (allMatches || []).forEach(m => {
+    if(!m.a || !m.b || m.a === m.b) return;
+    if(m.a !== p && m.b !== p) return;
+    let opp = (m.a === p) ? m.b : m.a;
+    if(!oppMap[opp]) oppMap[opp] = { opp, wins: 0, losses: 0, total: 0 };
+    oppMap[opp].total++;
+    if(m.winner === p) oppMap[opp].wins++;
+    else if(m.winner === opp) oppMap[opp].losses++;
+  });
+
+  let eligible = Object.values(oppMap).filter(o => o.total >= 3);
+  if(!eligible.length) return { best: null, worst: null };
+
+  // Best rival: highest net win differential (wins - losses), then highest win%, then most matches
+  let bestList = [...eligible].sort((a, b) => {
+    let diffA = a.wins - a.losses;
+    let diffB = b.wins - b.losses;
+    let pctA = a.wins / a.total;
+    let pctB = b.wins / b.total;
+    return diffB - diffA || pctB - pctA || b.total - a.total;
+  });
+
+  // Worst rival: lowest net win differential (losses - wins), then lowest win%, then most matches
+  let worstList = [...eligible].sort((a, b) => {
+    let diffA = a.losses - a.wins;
+    let diffB = b.losses - b.wins;
+    let pctA = a.losses / a.total;
+    let pctB = b.losses / b.total;
+    return diffB - diffA || pctB - pctA || b.total - a.total;
+  });
+
+  let topBest = bestList[0];
+  let topWorst = worstList[0];
+
+  let best = (topBest && (topBest.wins >= topBest.losses)) ? topBest : null;
+  let worst = (topWorst && (topWorst.losses >= topWorst.wins) && topWorst.opp !== best?.opp) ? topWorst : null;
+
+  if(eligible.length === 1){
+    let only = eligible[0];
+    if(only.wins > only.losses){ best = only; worst = null; }
+    else if(only.losses > only.wins){ worst = only; best = null; }
+    else { best = only; worst = null; }
+  }
+
+  return { best, worst };
+}
+
 function calculateLeagueRivalries(allMatches){
   let pairs = {};
   (allMatches||[]).forEach(m => {
@@ -6959,22 +7017,6 @@ function Standings(){
     ` : '';
 
     return head('Standings', 'All-Time League Rankings · Offseason Legacy Standings', actions) + `
-      <!-- Offseason All-Time Standings Clarity Banner -->
-      <div class="card" style="padding:16px 20px;background:linear-gradient(135deg,#1b1b22,#131318);border:1px solid #3c3036;margin-bottom:20px;display:flex;align-items:center;justify-content:space-between;gap:18px;flex-wrap:wrap">
-        <div style="display:flex;align-items:center;gap:14px;min-width:280px;flex:1">
-          <span style="font-size:32px">👑</span>
-          <div>
-            <div style="font:800 17px 'Barlow Condensed';letter-spacing:.8px;color:#ffd166;text-transform:uppercase">Offseason All-Time Rankings</div>
-            <div style="font-size:12px;color:#c6c4cd;line-height:1.45;margin-top:2px">
-              During the offseason, standings represent the official <b>All-Time Legacy Rankings</b>. Coaches are ranked by <b>All-Time Elo</b> — a permanent legacy score combining tournament titles (scaled by player count with zero decay), career win percentage, match differentials, and all-time league records held. <b>OVR</b> reflects active skill rating.
-            </div>
-          </div>
-        </div>
-        <button class="btn ghost btn-sm" style="border-color:#ffd166;color:#ffd166;font-size:11px;padding:6px 12px;border-radius:20px;white-space:nowrap;cursor:pointer" onclick="openLegacyEloGuide()">
-          📊 View Elo Formula
-        </button>
-      </div>
-
       ${rivalryStrip}
 
       <div class="card table-wrap">
@@ -6991,7 +7033,8 @@ function Standings(){
               <th style="text-align:center;white-space:nowrap">Win %</th>
               <th style="text-align:center;white-space:nowrap">Top Cuts</th>
               <th style="text-align:center;white-space:nowrap">Best Streak</th>
-              <th>Accolades & Badges</th>
+              <th style="text-align:center;white-space:nowrap">Best Rival (3+ GP)</th>
+              <th style="text-align:center;white-space:nowrap">Worst Rival (3+ GP)</th>
             </tr>
           </thead>
           <tbody>
@@ -6999,8 +7042,8 @@ function Standings(){
               let p=x.p;
               let s=statsByPlayer[p]||{};
               let career=playerCareerStats(p);
-              let badges=s.badges||[];
               let ovrObj=x.ovrObj||calculatePlayerOVR(p, {statsByPlayer});
+              let { best: bestRival, worst: worstRival } = getPlayerRivals(p, allMatches);
               let faceArt=profilePictures[p]?`url('${esc(profilePictures[p])}')`:(teamCovers[p]?`url('${esc(teamCovers[p])}')`:fallbackArt(p));
               let faceLetter=(profilePictures[p]||teamCovers[p])?'':esc((p||'?')[0]);
 
@@ -7026,10 +7069,11 @@ function Standings(){
                 <td style="text-align:center;white-space:nowrap;font-weight:700;color:${career.winPct>=60?'#7df0aa':(career.winPct<=40?'#ff8e95':'inherit')}">${career.winPct}%</td>
                 <td style="text-align:center;white-space:nowrap">${career.topCuts>0?`<b style="color:#c084fc">⚔️ ${career.topCuts}</b>`:'<span style="color:#6d6b75">0</span>'}</td>
                 <td style="text-align:center;white-space:nowrap;color:${s.maxWinStreak>=3?'#ffd166':'inherit'};font-weight:${s.maxWinStreak>=3?'800':'inherit'}">${s.maxWinStreak>0?`${s.maxWinStreak}W`:'—'}</td>
-                <td>
-                  <div style="display:flex;flex-wrap:wrap;gap:4px">
-                    ${badges.length?badges.map(b=>`<span class="badge-pill ${b.color}" title="${esc(b.desc)}">${b.icon} ${esc(b.name)}</span>`).join(''):'<span style="color:#6d6b75;font-size:11px">—</span>'}
-                  </div>
+                <td style="text-align:center;white-space:nowrap">
+                  ${bestRival ? `<div style="display:inline-flex;align-items:center;gap:4px;white-space:nowrap">${playerLink(bestRival.opp)} <b style="color:#7df0aa;font-size:11px">(${bestRival.wins}–${bestRival.losses})</b></div>` : '<span style="color:#6d6b75;font-size:11px">—</span>'}
+                </td>
+                <td style="text-align:center;white-space:nowrap">
+                  ${worstRival ? `<div style="display:inline-flex;align-items:center;gap:4px;white-space:nowrap">${playerLink(worstRival.opp)} <b style="color:#ff8e95;font-size:11px">(${worstRival.wins}–${worstRival.losses})</b></div>` : '<span style="color:#6d6b75;font-size:11px">—</span>'}
                 </td>
               </tr>`;
             }).join('')}
