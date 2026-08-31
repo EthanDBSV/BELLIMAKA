@@ -3440,10 +3440,25 @@ try {
 async function fetchMediaFromCloud(){
   if(!supabaseClient) return;
   try {
-    let { data, error } = await supabaseClient.from('league_state').select('data').eq('id', 'media').maybeSingle();
+    let cachedRev = Number(localStorage.getItem('draftdex-media-rev') || 0);
+    let hasLocalPics = (Object.keys(profilePictures).length > 0 || Object.keys(teamCovers).length > 0);
+
+    // Lightweight metadata check (only transfers ~30 bytes instead of 1.07 MB)
+    if(hasLocalPics && cachedRev > 0){
+      let { data: meta, error: metaErr } = await supabaseClient.from('league_state').select('updated_at').eq('id', 'media').maybeSingle();
+      if(!metaErr && meta?.updated_at){
+        let cloudTime = new Date(meta.updated_at).getTime();
+        if(cachedRev >= cloudTime){
+          return; // Local media cache is fresh; skip downloading 1.07 MB payload!
+        }
+      }
+    }
+
+    let { data, error } = await supabaseClient.from('league_state').select('data,updated_at').eq('id', 'media').maybeSingle();
     if(!error && data?.data){
       let m = data.data;
-      localMediaRev = m.mediaRev || Date.now();
+      let cloudTime = data.updated_at ? new Date(data.updated_at).getTime() : Date.now();
+      localMediaRev = m.mediaRev || cloudTime;
       try { localStorage.setItem('draftdex-media-rev', String(localMediaRev)); } catch(e){}
 
       if(m.teamCovers){
@@ -3478,7 +3493,7 @@ async function fetchMediaFromCloud(){
       render();
     }
   } catch(e){
-    console.warn('Draftdex: fetchMediaFromCloud note:', e);
+    console.warn('Bellimaka: fetchMediaFromCloud note:', e);
   }
 }
 
