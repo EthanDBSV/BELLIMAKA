@@ -8526,12 +8526,14 @@ function getPlayerMatchHistory(p){
       let won = isPlayed && (myScore > oppScore);
       let lost = isPlayed && (oppScore > myScore);
 
+      let stageName = m.group ? (String(m.group).toLowerCase().startsWith('group') ? m.group : `Group ${m.group}`) : (m.label || 'Group Stage');
+
       matches.push({
         id: m.id || `${t.id}-g-${idx}`,
         tournamentId: t.id,
         tournamentName: t.name,
         tournamentSeason: t.season,
-        stage: m.group ? `Group ${m.group}` : (m.label || 'Group Stage'),
+        stage: stageName,
         isTopCut: false,
         date: m.date || t.start || 'League Fixture',
         isPlayed,
@@ -8686,6 +8688,34 @@ function renderAccountMatchHistory(mine, matchHistory){
   else if(currentFilter === 'losses') filtered = losses;
   else if(currentFilter === 'topcut') filtered = topCutMatches;
 
+  // Group matches by tournament
+  let tourneyGroups = [];
+  let tourneyMap = new Map();
+
+  filtered.forEach(m => {
+    if(!tourneyMap.has(m.tournamentId)){
+      let t = tournamentData[m.tournamentId] || {};
+      let tRec = (typeof tournamentRecord === 'function') ? tournamentRecord(t, mine) : '';
+      let isChamp = (t.champion === mine);
+      let tTeam = (typeof teamName === 'function' ? teamName(t, mine) : null) || profiles[mine]?.team || 'Team';
+
+      let entry = {
+        tournamentId: m.tournamentId,
+        tournamentName: m.tournamentName,
+        tournamentSeason: m.tournamentSeason,
+        status: t.status,
+        phase: t.phase,
+        record: tRec,
+        isChampion: isChamp,
+        team: tTeam,
+        matches: []
+      };
+      tourneyMap.set(m.tournamentId, entry);
+      tourneyGroups.push(entry);
+    }
+    tourneyMap.get(m.tournamentId).matches.push(m);
+  });
+
   return `
     <!-- Top Stats Banner -->
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:10px;margin-bottom:16px">
@@ -8708,69 +8738,117 @@ function renderAccountMatchHistory(mine, matchHistory){
     </div>
 
     <!-- Filter & Count Header -->
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:8px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:8px">
       <div style="display:flex;align-items:center;gap:6px">
         <span class="eyebrow" style="margin:0">Match History (${filtered.length})</span>
       </div>
       <div style="display:flex;gap:6px;flex-wrap:wrap">
-        <button class="btn ${currentFilter === 'all' ? '' : 'ghost'} btn-sm" style="padding:2px 8px!important;font-size:10px!important" onclick="window.accountMatchFilter='all';render()">All (${matchHistory.length})</button>
-        <button class="btn ${currentFilter === 'wins' ? '' : 'ghost'} btn-sm" style="padding:2px 8px!important;font-size:10px!important;color:#4ade80;border-color:#22522e" onclick="window.accountMatchFilter='wins';render()">Wins (${wins.length})</button>
-        <button class="btn ${currentFilter === 'losses' ? '' : 'ghost'} btn-sm" style="padding:2px 8px!important;font-size:10px!important;color:#ff7a82;border-color:#4a242a" onclick="window.accountMatchFilter='losses';render()">Losses (${losses.length})</button>
-        <button class="btn ${currentFilter === 'topcut' ? '' : 'ghost'} btn-sm" style="padding:2px 8px!important;font-size:10px!important;color:#ffd166;border-color:#5a4318" onclick="window.accountMatchFilter='topcut';render()">Top Cut (${topCutMatches.length})</button>
+        <button class="btn ${currentFilter === 'all' ? '' : 'ghost'} btn-sm" style="padding:3px 10px!important;font-size:11px!important" onclick="window.accountMatchFilter='all';render()">All (${matchHistory.length})</button>
+        <button class="btn ${currentFilter === 'wins' ? '' : 'ghost'} btn-sm" style="padding:3px 10px!important;font-size:11px!important;color:#4ade80;border-color:#22522e" onclick="window.accountMatchFilter='wins';render()">Wins (${wins.length})</button>
+        <button class="btn ${currentFilter === 'losses' ? '' : 'ghost'} btn-sm" style="padding:3px 10px!important;font-size:11px!important;color:#ff7a82;border-color:#4a242a" onclick="window.accountMatchFilter='losses';render()">Losses (${losses.length})</button>
+        <button class="btn ${currentFilter === 'topcut' ? '' : 'ghost'} btn-sm" style="padding:3px 10px!important;font-size:11px!important;color:#ffd166;border-color:#5a4318" onclick="window.accountMatchFilter='topcut';render()">Top Cut (${topCutMatches.length})</button>
       </div>
     </div>
 
-    <!-- Match Rows List -->
-    <div style="display:flex;flex-direction:column;gap:8px">
-      ${filtered.length === 0 ? `
+    <!-- Tournament Grouped Sections -->
+    <div style="display:flex;flex-direction:column;gap:18px">
+      ${tourneyGroups.length === 0 ? `
         <div class="card empty" style="padding:32px 14px;text-align:center">
           <p class="sub">No matches matching this filter.</p>
         </div>
-      ` : filtered.map(m => {
-        let opp = m.opponent;
-        let oppFace = profilePictures[opp] ? `url('${esc(profilePictures[opp])}')` : (teamCovers[opp] ? `url('${esc(teamCovers[opp])}')` : fallbackArt(opp));
-        let oppLetter = (profilePictures[opp] || teamCovers[opp]) ? '' : esc((opp || '?')[0]);
-        let isGold = m.isTopCut;
-        let outcomeBg = m.won ? '#122619' : (m.lost ? '#2b1418' : '#1a1a22');
-        let outcomeBorder = m.won ? '#22522e' : (m.lost ? '#4a1e24' : '#2d2d38');
-        let outcomeColor = m.won ? '#4ade80' : (m.lost ? '#ff7a82' : '#8e8c95');
-        let outcomeText = m.won ? 'VICTORY' : (m.lost ? 'DEFEAT' : 'SCHEDULED');
-
+      ` : tourneyGroups.map(grp => {
         return `
-          <div style="background:#0c090a;border:1px solid ${m.won ? (isGold ? 'rgba(255,209,102,0.32)' : 'rgba(239,48,56,0.32)') : '#202028'};border-radius:8px;overflow:hidden;transition:all .15s ease">
-            <div style="padding:6px 12px;background:${isGold ? 'linear-gradient(90deg, rgba(255,209,102,0.12), #110e08)' : 'linear-gradient(90deg, rgba(239,48,56,0.14), #140a0c)'};border-bottom:1px solid ${isGold ? 'rgba(255,209,102,0.2)' : 'rgba(239,48,56,0.2)'};display:flex;justify-content:space-between;align-items:center;gap:8px">
-              <div style="display:flex;align-items:center;gap:6px;min-width:0">
-                <span style="font-size:12px;color:${isGold ? '#ffd166' : '#ef3038'}">${isGold ? '🏆' : '⚡'}</span>
-                <span style="font:800 11px 'Barlow Condensed';color:${isGold ? '#ffd166' : '#ff7a82'};letter-spacing:.8px;text-transform:uppercase">${esc(m.tournamentSeason || '')} · ${esc(m.tournamentName || '')}</span>
-                <span class="tag" style="background:#00000066;border:1px solid #ffffff15;font-size:9px;padding:1px 5px;color:#c0bec8">${esc(m.stage)}</span>
+          <div style="background:#0f0f14;border:1px solid #282836;border-radius:10px;overflow:hidden;box-shadow:0 6px 20px rgba(0,0,0,0.35)">
+            <!-- Tournament Section Header -->
+            <div style="padding:10px 16px;background:linear-gradient(90deg, #181822, #121218);border-bottom:1px solid #282836;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px">
+              <div style="display:flex;align-items:center;gap:10px;min-width:0">
+                <span style="font-size:18px">${grp.isChampion ? '🏆' : '⚔️'}</span>
+                <div>
+                  <div style="display:flex;align-items:center;gap:7px;flex-wrap:wrap">
+                    <span style="font:800 16px 'Barlow Condensed';color:#f5f3f0;letter-spacing:.4px">${esc(grp.tournamentSeason ? `${grp.tournamentSeason} · ` : '')}${esc(grp.tournamentName)}</span>
+                    ${grp.isChampion ? `<span class="tag" style="background:#3b2d11;color:#ffd166;border:1px solid #73551a;font-size:9px;font-weight:900;padding:2px 6px">🏆 Champion</span>` : ''}
+                  </div>
+                  <div style="font-size:11px;color:#9d9ba6;margin-top:1px">Team: <b style="color:#c8c6d2">${esc(grp.team)}</b></div>
+                </div>
               </div>
-              <span style="font-size:9px;font-weight:900;letter-spacing:.8px;color:${outcomeColor};background:${outcomeBg};border:1px solid ${outcomeBorder};padding:2px 7px;border-radius:3px">${outcomeText}</span>
+
+              <div style="display:flex;align-items:center;gap:8px">
+                ${grp.record ? `<span class="tag" style="background:#161620;color:#c0beca;border:1px solid #323244;font-size:10px;padding:3px 8px">Season Record: <b>${esc(grp.record)}</b></span>` : ''}
+                <span class="tag" style="background:#0c0c10;color:#85838d;border:1px solid #242430;font-size:10px;padding:3px 7px">${grp.matches.length} ${grp.matches.length === 1 ? 'match' : 'matches'}</span>
+              </div>
             </div>
 
-            <div style="padding:10px 14px;display:flex;justify-content:space-between;align-items:center;gap:12px">
-              <!-- You -->
-              <div style="display:flex;align-items:center;gap:10px;min-width:0;flex:1">
-                <div style="min-width:0">
-                  <div style="font:800 15px 'Barlow Condensed';color:#f5f3f0">${esc(mine)} (You)</div>
-                  <div style="font-size:10px;color:#8e8c95;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(m.myTeam)}</div>
-                </div>
-              </div>
+            <!-- Match Rows for this Tournament -->
+            <div style="padding:10px 12px;display:flex;flex-direction:column;gap:8px;background:#0a0a0e">
+              ${grp.matches.map(m => {
+                let opp = m.opponent;
+                let oppFace = profilePictures[opp] ? `url('${esc(profilePictures[opp])}')` : (teamCovers[opp] ? `url('${esc(teamCovers[opp])}')` : fallbackArt(opp));
+                let oppLetter = (profilePictures[opp] || teamCovers[opp]) ? '' : esc((opp || '?')[0]);
+                let isGold = m.isTopCut;
+                let isVictory = m.won;
+                let isDefeat = m.lost;
 
-              <!-- Score Center -->
-              <div style="display:flex;align-items:center;gap:10px;flex:none;text-align:center">
-                <span style="font:800 24px 'Barlow Condensed';color:${m.won ? (isGold ? '#ffd166' : '#ff4d56') : '#f5f3f0'}">${m.myScore}</span>
-                <span style="font-size:11px;font-weight:800;color:#555462">-</span>
-                <span style="font:800 24px 'Barlow Condensed';color:${m.lost ? (isGold ? '#ffd166' : '#ff4d56') : '#9d9ba6'}">${m.oppScore}</span>
-              </div>
+                // High-contrast distinct styling for WIN vs LOSS
+                let cardBorderLeft = isVictory ? '5px solid #22c55e' : (isDefeat ? '5px solid #ef4444' : '5px solid #525260');
+                let cardBorder = isVictory ? 'rgba(34, 197, 94, 0.3)' : (isDefeat ? 'rgba(239, 68, 68, 0.22)' : '#262632');
+                let cardBg = isVictory ? 'linear-gradient(90deg, rgba(34,197,94,0.06), #0c100e)' : (isDefeat ? 'linear-gradient(90deg, rgba(239,68,68,0.05), #110b0d)' : '#0f0f14');
 
-              <!-- Opponent -->
-              <div style="display:flex;align-items:center;justify-content:flex-end;gap:10px;min-width:0;flex:1;text-align:right">
-                <div style="min-width:0">
-                  <div style="font:800 15px 'Barlow Condensed'">${playerLink(opp)}</div>
-                  <div style="font-size:10px;color:#8e8c95;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(m.opponentTeam)}</div>
-                </div>
-                <span class="avatar mini" style="background-image:${oppFace};background-size:cover;background-position:center;width:30px;height:30px;font-size:11px;border-radius:50%;border:2px solid #2c2c38;display:grid;place-items:center;flex:none">${oppLetter}</span>
-              </div>
+                let outcomeBg = isVictory ? 'linear-gradient(135deg, #153e24, #0e2918)' : (isDefeat ? 'linear-gradient(135deg, #3d1418, #220b0e)' : '#1a1a22');
+                let outcomeBorder = isVictory ? '#22c55e' : (isDefeat ? '#991b1b' : '#333342');
+                let outcomeColor = isVictory ? '#4ade80' : (isDefeat ? '#f87171' : '#8e8c95');
+                let outcomeText = isVictory ? '✓ VICTORY' : (isDefeat ? '✗ DEFEAT' : 'SCHEDULED');
+                let outcomeShadow = isVictory ? 'box-shadow:0 0 8px rgba(74,222,128,0.25);' : (isDefeat ? 'box-shadow:0 0 8px rgba(239,68,68,0.18);' : '');
+
+                let headerBg = isGold 
+                  ? 'linear-gradient(90deg, rgba(255,209,102,0.14), rgba(20,16,10,0.8))' 
+                  : 'linear-gradient(90deg, rgba(239,48,56,0.14), rgba(20,10,12,0.8))';
+                let headerBorder = isGold ? 'rgba(255,209,102,0.22)' : 'rgba(239,48,56,0.22)';
+                let headerTagColor = isGold ? '#ffd166' : '#ff7a82';
+                let headerTagBg = isGold ? '#32250e' : '#331216';
+
+                let cleanStage = m.stage.replace(/^group\s+group\s*/i, 'Group ');
+
+                return `
+                  <div style="background:${cardBg};border:1px solid ${cardBorder};border-left:${cardBorderLeft};border-radius:8px;overflow:hidden;transition:all .15s ease">
+                    <!-- Phase Bar -->
+                    <div style="padding:5px 12px;background:${headerBg};border-bottom:1px solid ${headerBorder};display:flex;justify-content:space-between;align-items:center;gap:8px">
+                      <div style="display:flex;align-items:center;gap:6px;min-width:0">
+                        <span style="font-size:12px;color:${isGold ? '#ffd166' : '#ef3038'}">${isGold ? '🏆' : '⚡'}</span>
+                        <span class="tag" style="background:${headerTagBg};border:1px solid ${headerBorder};font-size:10px;font-weight:800;padding:2px 7px;color:${headerTagColor};letter-spacing:.6px;text-transform:uppercase">${esc(cleanStage)}</span>
+                        ${m.date ? `<span style="font-size:10px;color:#7e7c88">${esc(m.date)}</span>` : ''}
+                      </div>
+                      <span style="font-size:9px;font-weight:900;letter-spacing:.8px;color:${outcomeColor};background:${outcomeBg};border:1px solid ${outcomeBorder};padding:2px 8px;border-radius:4px;${outcomeShadow}">${outcomeText}</span>
+                    </div>
+
+                    <!-- Match Details Row -->
+                    <div style="padding:10px 14px;display:flex;justify-content:space-between;align-items:center;gap:12px">
+                      <!-- You -->
+                      <div style="display:flex;align-items:center;gap:10px;min-width:0;flex:1">
+                        <div style="min-width:0">
+                          <div style="font:800 15px 'Barlow Condensed';color:${isVictory ? '#ffffff' : '#d5d3dc'}">${esc(mine)} <span style="font-size:10px;color:#8e8c95;font-weight:700">(You)</span></div>
+                          <div style="font-size:10px;color:#8e8c95;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(m.myTeam)}</div>
+                        </div>
+                      </div>
+
+                      <!-- Scoreboard Center -->
+                      <div style="display:flex;align-items:center;gap:10px;flex:none;text-align:center;background:#00000066;border:1px solid #ffffff12;padding:4px 14px;border-radius:6px">
+                        <span style="font:900 24px 'Barlow Condensed';color:${isVictory ? '#4ade80' : '#d5d3dc'}">${m.myScore}</span>
+                        <span style="font-size:11px;font-weight:900;color:#555462">-</span>
+                        <span style="font:900 24px 'Barlow Condensed';color:${isDefeat ? '#f87171' : '#8e8c95'}">${m.oppScore}</span>
+                      </div>
+
+                      <!-- Opponent -->
+                      <div style="display:flex;align-items:center;justify-content:flex-end;gap:10px;min-width:0;flex:1;text-align:right">
+                        <div style="min-width:0">
+                          <div style="font:800 15px 'Barlow Condensed';color:${isDefeat ? '#ffffff' : '#d5d3dc'}">${playerLink(opp)}</div>
+                          <div style="font-size:10px;color:#8e8c95;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(m.opponentTeam)}</div>
+                        </div>
+                        <span class="avatar mini" style="background-image:${oppFace};background-size:cover;background-position:center;width:30px;height:30px;font-size:11px;border-radius:50%;border:2px solid #2c2c38;display:grid;place-items:center;flex:none">${oppLetter}</span>
+                      </div>
+                    </div>
+                  </div>
+                `;
+              }).join('')}
             </div>
           </div>
         `;
