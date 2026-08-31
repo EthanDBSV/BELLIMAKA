@@ -4014,6 +4014,8 @@ async function pick(el){
 function recapRankings(){
   let leagueRecs=(typeof calculateLeagueRecords==='function'?calculateLeagueRecords():null);
   let stats=leagueRecs?.statsByPlayer||{};
+  let records=leagueRecs?.records||{};
+
   return Object.entries(profiles).map(([p,q])=>{
     let career=playerCareerStats(p);
     let s=stats[p]||{wins:career.wins,losses:career.losses,maxWinStreak:0,tournamentFinishes:[],badges:[]};
@@ -4021,46 +4023,86 @@ function recapRankings(){
     let cups=career.championshipCups||[];
     let tops=career.topCuts||0;
     let [w,l]=[career.wins,career.losses];
+    let totalMatches = w + l;
 
-    // Detailed Placement Points from Tournament Finishes (Scaled by field size & round advancement)
+    // 1. All-Time League Records Held (+50 Legacy Points per record held)
+    let recordsHeldList = [];
+    if(records.maxTitles?.holders?.includes(p) && (records.maxTitles.value > 0)){
+      recordsHeldList.push(`Most Championships (${records.maxTitles.value})`);
+    }
+    if(records.maxTopCuts?.holders?.includes(p) && (records.maxTopCuts.value > 0)){
+      recordsHeldList.push(`Most Top Cuts (${records.maxTopCuts.value})`);
+    }
+    if(records.maxCareerWins?.holders?.includes(p) && (records.maxCareerWins.value > 0)){
+      recordsHeldList.push(`Most Career Wins (${records.maxCareerWins.value}W)`);
+    }
+    if(records.maxWinStreak?.holders?.includes(p) && (records.maxWinStreak.value > 0)){
+      recordsHeldList.push(`All-Time Win Streak (${records.maxWinStreak.value}W)`);
+    }
+    if(records.maxOvr?.holders?.includes(p) && (records.maxOvr.value > 0)){
+      recordsHeldList.push(`Peak OVR Record (${records.maxOvr.value})`);
+    }
+    if(records.bestTourneyGD?.entries?.some(e => e.player === p) && (records.bestTourneyGD.value > 0)){
+      recordsHeldList.push(`Best Tournament GD (+${records.bestTourneyGD.value})`);
+    }
+    let recordsBonus = recordsHeldList.length * 50;
+
+    // 2. Permanent Tournament Hardware & Placement Points (Zero Decay + Field-Size Scaled)
     let finishPoints = 0;
     let tfList = s.tournamentFinishes || [];
     if(tfList.length > 0){
       tfList.forEach(tf => {
         let place = tf.finish?.place || 999;
         let fSize = Math.max(4, tf.tournament?.players?.length || 8);
-        let fMult = Math.min(1.2, Math.max(0.85, Math.sqrt(fSize / 10)));
+        // Field Multiplier: 4 players = 1.0x, 8 players = 1.2x, 12 players = 1.4x, 16 players = 1.6x
+        let fMult = 1.0 + (fSize - 4) * 0.05;
 
-        // Early exits / bottom half of tournament receive 0 finish points
+        // Early exits receive 0 finish points
         if(place >= fSize * 0.65 || (place >= 7 && fSize <= 8) || place >= 100) return;
 
         let basePts = 0;
-        if(place === 1) basePts = 180;        // Champion
-        else if(place === 2) basePts = 110;   // 2nd Place / Runner-up
-        else if(place === 3) basePts = 75;    // 3rd Place / Losers Finalist
-        else if(place === 4) basePts = 50;    // 4th Place / Losers Semifinalist
-        else if(place <= 6 && fSize >= 10) basePts = 30; // 5th-6th Place (Top 6 in 10+ field)
-        else if(place <= 8 && fSize >= 14) basePts = 15; // 7th-8th Place (Top 8 in 14+ field)
+        if(place === 1) basePts = 250;        // Champion
+        else if(place === 2) basePts = 140;   // 2nd Place / Runner-up (Finals)
+        else if(place === 3) basePts = 90;    // 3rd Place / Losers Finalist
+        else if(place === 4) basePts = 60;    // 4th Place / Losers Semifinalist
+        else if(place <= 6 && fSize >= 10) basePts = 35; // 5th-6th Place (Top Cut)
+        else if(place <= 8 && fSize >= 14) basePts = 20; // 7th-8th Place (Deep Top Cut)
         finishPoints += Math.round(basePts * fMult);
       });
     } else {
-      finishPoints = cups.length * 180 + Math.max(0, tops - cups.length) * 45;
+      finishPoints = cups.length * 300 + Math.max(0, tops - cups.length) * 70;
     }
 
-    // Modernized ELO Formula: Base 1000 + Finish Points + Net Match Impact (16W / -8L) + Streaks + OVR Form
-    let streakBonus = (s.maxWinStreak||0) * 5;
+    // 3. Career Match Performance: Net Win Points (+18W / -9L)
+    let netMatchImpact = (w * 18 - l * 9);
+
+    // 4. Win Percentage Efficiency Multiplier (Confidence scaled across match sample size)
+    let conf = totalMatches > 0 ? Math.min(1.0, totalMatches / 10) : 0;
+    let winPctBonus = Math.round(conf * (career.winPct - 50) * 4);
+
+    // 5. Historic Streaks Legacy
+    let streakBonus = (s.maxWinStreak || 0) * 6;
+
+    // 6. Current Form (OVR) Boost
     let ovrImpact = Math.max(0, (ovrObj.ovr - 70) * 4);
-    let score = Math.max(0, Math.round(1000 + finishPoints + (w * 16 - l * 8) + streakBonus + ovrImpact));
+
+    // Composite All-Time ELO / Legacy Score
+    let score = Math.max(0, Math.round(1000 + finishPoints + netMatchImpact + winPctBonus + recordsBonus + streakBonus + ovrImpact));
 
     return {
       p,
-      score,
+      score, // All-Time Elo / Legacy Score
       ovr:ovrObj.ovr,
       ovrObj,
       champ:cups.length,
       tops,
       record:career.record,
       winPct:career.winPct,
+      wins:w,
+      losses:l,
+      recordsHeld:recordsHeldList,
+      recordsHeldCount:recordsHeldList.length,
+      finishPoints,
       badges:s.badges||[]
     };
   }).sort((a,b)=>b.score-a.score || b.ovr-a.ovr);
@@ -4481,11 +4523,14 @@ function OffseasonHome(){
       </aside>
     </section>
 
-    <!-- Player ELO Leaderboard Section -->
+    <!-- Player All-Time ELO & Legacy Leaderboard Section -->
     <section class="section">
       <div class="section-head">
-        <h2>PLAYER ELO LEADERBOARD</h2>
-        <button class="link" onclick="go('Standings')">FULL STANDINGS →</button>
+        <div>
+          <h2>ALL-TIME ELO & LEGACY LEADERBOARD</h2>
+          <p class="sub" style="margin:2px 0 0;font-size:12px;color:#a09fa8">Career power rankings combining tournament titles, win efficiency, records held, and active form.</p>
+        </div>
+        <button class="link" onclick="go('Standings')">FULL ALL-TIME STANDINGS →</button>
       </div>
       <div class="card table-wrap">
         <table class="standings">
@@ -4493,11 +4538,13 @@ function OffseasonHome(){
             <tr>
               <th style="width:36px;text-align:center">#</th>
               <th>Trainer / Team</th>
+              <th style="text-align:center;white-space:nowrap">All-Time Elo</th>
               <th style="text-align:center;white-space:nowrap">OVR</th>
-              <th style="text-align:center;white-space:nowrap">ELO</th>
               <th style="text-align:center;white-space:nowrap">Titles</th>
-              <th style="text-align:center;white-space:nowrap">Top Cuts</th>
+              <th style="text-align:center;white-space:nowrap">Records Held</th>
               <th style="text-align:center;white-space:nowrap">All-Time W-L</th>
+              <th style="text-align:center;white-space:nowrap">Win %</th>
+              <th style="text-align:center;white-space:nowrap">Top Cuts</th>
             </tr>
           </thead>
           <tbody>
@@ -4517,11 +4564,16 @@ function OffseasonHome(){
                     </div>
                   </div>
                 </td>
+                <td style="text-align:center;white-space:nowrap">
+                  <b style="font:800 16px 'Barlow Condensed';color:#ffd166">${x.score}</b>
+                  <span style="display:block;font-size:9px;color:#8e8c95;font-weight:700;letter-spacing:.5px">LEGACY</span>
+                </td>
                 <td style="text-align:center">${ovrObj.badgeHtml}</td>
-                <td style="text-align:center"><b style="font:800 16px 'Barlow Condensed';letter-spacing:.3px;color:#f5f3f0">${x.score}</b></td>
-                <td style="text-align:center">${x.champ > 0 ? `<span style="color:#ffd166;font-weight:800">👑 ${x.champ}</span>` : '0'}</td>
-                <td style="text-align:center">${x.tops > 0 ? `<span style="color:#d8d9e2;font-weight:800">⚔️ ${x.tops}</span>` : '0'}</td>
-                <td style="text-align:center;white-space:nowrap">${esc(x.record)}</td>
+                <td style="text-align:center">${x.champ > 0 ? `<b style="color:#ffd166;font:800 15px 'Barlow Condensed'">👑 ${x.champ}</b>` : '<span style="color:#6d6b75">0</span>'}</td>
+                <td style="text-align:center;white-space:nowrap">${(x.recordsHeldCount > 0) ? `<span class="badge-pill gold" style="font-weight:800" title="${esc(x.recordsHeld.join(' · '))}">🌟 ${x.recordsHeldCount} ${x.recordsHeldCount === 1 ? 'Record' : 'Records'}</span>` : '<span style="color:#6d6b75;font-size:11px">—</span>'}</td>
+                <td style="text-align:center;white-space:nowrap"><b>${esc(x.record)}</b></td>
+                <td style="text-align:center;white-space:nowrap;font-weight:700;color:${x.winPct >= 60 ? '#7df0aa' : (x.winPct <= 40 ? '#ff8e95' : 'inherit')}">${x.winPct}%</td>
+                <td style="text-align:center;white-space:nowrap">${x.tops > 0 ? `<b style="color:#c084fc">⚔️ ${x.tops}</b>` : '<span style="color:#6d6b75">0</span>'}</td>
               </tr>`;
             }).join('')}
           </tbody>
@@ -6815,11 +6867,14 @@ function Standings(){
 
     let actions = `
       <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-        <button class="btn ghost btn-sm" style="display:inline-flex;align-items:center;gap:6px;padding:4px 10px;font-size:11px;border-radius:20px;border-color:#40404c;cursor:pointer" onclick="openBadgeGuide()" title="View all earnable badges and unlock requirements">
-          <span style="font-size:13px">📖</span> Badge Guide
+        <button class="btn ghost btn-sm" style="display:inline-flex;align-items:center;gap:6px;padding:4px 10px;font-size:11px;border-radius:20px;border-color:#40404c;cursor:pointer" onclick="openLegacyEloGuide()" title="View All-Time Elo and Legacy Score formula, field size multipliers, and records bonuses">
+          <span style="font-size:13px">📊</span> All-Time Elo Guide
         </button>
         <button class="btn ghost btn-sm" style="display:inline-flex;align-items:center;gap:6px;padding:4px 10px;font-size:11px;border-radius:20px;border-color:#40404c;cursor:pointer" onclick="openOvrGuide()" title="View how Trainer Overalls (OVR) are calculated, tier brackets, and volatility rules">
           <span style="font-size:13px">⭐</span> OVR Rating Guide
+        </button>
+        <button class="btn ghost btn-sm" style="display:inline-flex;align-items:center;gap:6px;padding:4px 10px;font-size:11px;border-radius:20px;border-color:#40404c;cursor:pointer" onclick="openBadgeGuide()" title="View all earnable badges and unlock requirements">
+          <span style="font-size:13px">📖</span> Badge Guide
         </button>
         ${moderator ? `<button class="btn btn-sm" onclick="openCreator()">+ Create next tournament</button>` : ''}
       </div>
@@ -6903,7 +6958,23 @@ function Standings(){
       </div>
     ` : '';
 
-    return head('Standings', 'All-Time League Power Rankings & Overall Standings', actions) + `
+    return head('Standings', 'All-Time League Rankings · Offseason Legacy Standings', actions) + `
+      <!-- Offseason All-Time Standings Clarity Banner -->
+      <div class="card" style="padding:16px 20px;background:linear-gradient(135deg,#1b1b22,#131318);border:1px solid #3c3036;margin-bottom:20px;display:flex;align-items:center;justify-content:space-between;gap:18px;flex-wrap:wrap">
+        <div style="display:flex;align-items:center;gap:14px;min-width:280px;flex:1">
+          <span style="font-size:32px">👑</span>
+          <div>
+            <div style="font:800 17px 'Barlow Condensed';letter-spacing:.8px;color:#ffd166;text-transform:uppercase">Offseason All-Time Rankings</div>
+            <div style="font-size:12px;color:#c6c4cd;line-height:1.45;margin-top:2px">
+              During the offseason, standings represent the official <b>All-Time Legacy Rankings</b>. Coaches are ranked by <b>All-Time Elo</b> — a permanent legacy score combining tournament titles (scaled by player count with zero decay), career win percentage, match differentials, and all-time league records held. <b>OVR</b> reflects active skill rating.
+            </div>
+          </div>
+        </div>
+        <button class="btn ghost btn-sm" style="border-color:#ffd166;color:#ffd166;font-size:11px;padding:6px 12px;border-radius:20px;white-space:nowrap;cursor:pointer" onclick="openLegacyEloGuide()">
+          📊 View Elo Formula
+        </button>
+      </div>
+
       ${rivalryStrip}
 
       <div class="card table-wrap">
@@ -6912,15 +6983,15 @@ function Standings(){
             <tr>
               <th style="width:32px;text-align:center">#</th>
               <th>Trainer / Team</th>
+              <th style="text-align:center;white-space:nowrap">All-Time Elo</th>
               <th style="text-align:center;white-space:nowrap">OVR</th>
-              <th style="text-align:center;white-space:nowrap">ELO</th>
-              <th>Accolades & Badges</th>
+              <th style="text-align:center;white-space:nowrap">Titles</th>
+              <th style="text-align:center;white-space:nowrap">Records Held</th>
               <th style="text-align:center;white-space:nowrap">All-Time W-L</th>
               <th style="text-align:center;white-space:nowrap">Win %</th>
-              <th style="text-align:center;white-space:nowrap">Titles</th>
               <th style="text-align:center;white-space:nowrap">Top Cuts</th>
               <th style="text-align:center;white-space:nowrap">Best Streak</th>
-              <th style="text-align:center;white-space:nowrap">Active</th>
+              <th>Accolades & Badges</th>
             </tr>
           </thead>
           <tbody>
@@ -6944,19 +7015,22 @@ function Standings(){
                     </div>
                   </div>
                 </td>
+                <td style="text-align:center;white-space:nowrap">
+                  <b style="font:800 16px 'Barlow Condensed';color:#ffd166">${x.score}</b>
+                  <span style="display:block;font-size:9px;color:#8e8c95;font-weight:700;letter-spacing:.5px">LEGACY</span>
+                </td>
                 <td style="text-align:center;white-space:nowrap">${ovrObj.badgeHtml}</td>
-                <td style="text-align:center;white-space:nowrap"><b>${x.score}</b></td>
+                <td style="text-align:center;white-space:nowrap">${career.titles>0?`<b style="color:#ffd166;font:800 15px 'Barlow Condensed'">👑 ${career.titles}</b>`:'<span style="color:#6d6b75">0</span>'}</td>
+                <td style="text-align:center;white-space:nowrap">${(x.recordsHeldCount>0)?`<span class="badge-pill gold" style="font-weight:800" title="${esc(x.recordsHeld.join(' · '))}">🌟 ${x.recordsHeldCount} ${x.recordsHeldCount===1?'Record':'Records'}</span>`:'<span style="color:#6d6b75;font-size:11px">—</span>'}</td>
+                <td style="text-align:center;white-space:nowrap"><b>${esc(career.record)}</b></td>
+                <td style="text-align:center;white-space:nowrap;font-weight:700;color:${career.winPct>=60?'#7df0aa':(career.winPct<=40?'#ff8e95':'inherit')}">${career.winPct}%</td>
+                <td style="text-align:center;white-space:nowrap">${career.topCuts>0?`<b style="color:#c084fc">⚔️ ${career.topCuts}</b>`:'<span style="color:#6d6b75">0</span>'}</td>
+                <td style="text-align:center;white-space:nowrap;color:${s.maxWinStreak>=3?'#ffd166':'inherit'};font-weight:${s.maxWinStreak>=3?'800':'inherit'}">${s.maxWinStreak>0?`${s.maxWinStreak}W`:'—'}</td>
                 <td>
                   <div style="display:flex;flex-wrap:wrap;gap:4px">
                     ${badges.length?badges.map(b=>`<span class="badge-pill ${b.color}" title="${esc(b.desc)}">${b.icon} ${esc(b.name)}</span>`).join(''):'<span style="color:#6d6b75;font-size:11px">—</span>'}
                   </div>
                 </td>
-                <td style="text-align:center;white-space:nowrap"><b>${esc(career.record)}</b></td>
-                <td style="text-align:center;white-space:nowrap">${career.winPct}%</td>
-                <td style="text-align:center;white-space:nowrap">${career.titles>0?`<b style="color:#ffd166">👑 ${career.titles}</b>`:'0'}</td>
-                <td style="text-align:center;white-space:nowrap">${career.topCuts>0?`<b style="color:#c084fc">⚔️ ${career.topCuts}</b>`:'0'}</td>
-                <td style="text-align:center;white-space:nowrap;color:${s.maxWinStreak>=3?'#ffd166':'inherit'};font-weight:${s.maxWinStreak>=3?'800':'inherit'}">${s.maxWinStreak>0?`${s.maxWinStreak}W`:'—'}</td>
-                <td style="text-align:center;white-space:nowrap">${s.currentWinStreak>0?`<span style="color:#7df0aa;font-weight:800">${s.currentWinStreak}W</span>`:(s.currentLossStreak>0?`<span style="color:#ff8e95">${s.currentLossStreak}L</span>`:'—')}</td>
               </tr>`;
             }).join('')}
           </tbody>
@@ -11343,6 +11417,94 @@ function openOvrGuide(){
             <p style="font-size:11px;color:#d8d6e0;margin:0;line-height:1.4">
               <b>Every Match and Placement Matters:</b> Finishing 4th awards significantly more OVR and ELO than bowing out in 8th place, rewarding consistently deep tournament bracket runs while maintaining high competitive volatility.
             </p>
+          </div>
+
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function openLegacyEloGuide(){
+  document.querySelector('#modal').innerHTML = `
+    <div class="modal-wrap">
+      <div class="modal" style="max-width:820px">
+        <div class="modal-head">
+          <div>
+            <div class="eyebrow" style="color:var(--amber)">All-Time Legacy & Rankings</div>
+            <h2>All-Time Elo (Legacy Score) Guide</h2>
+          </div>
+          <button class="close" onclick="closeModal()">×</button>
+        </div>
+        <p class="sub" style="margin-top:6px">The All-Time Elo (Legacy Score) is the league's definitive career ranking system. Unlike seasonal ratings, your Legacy Score evaluates your complete historical body of work with zero decay, rewarding championships, high win rates, tournament field depth, and official league records.</p>
+        
+        <div style="margin-top:16px;display:flex;flex-direction:column;gap:16px;max-height:68vh;overflow-y:auto;padding-right:4px">
+          
+          <!-- Key Pillar Cards -->
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px">
+            
+            <div class="card" style="padding:14px;background:#141419;border-color:#383220">
+              <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+                <span style="font-size:20px">👑</span>
+                <span style="font:800 14px 'Barlow Condensed';color:#ffd166;text-transform:uppercase;letter-spacing:.6px">Permanent Titles (Zero Decay)</span>
+              </div>
+              <p style="font-size:11px;color:#d0cebe;line-height:1.45;margin:0">
+                Championship gold never fades. Titles in Season 1 hold the exact same permanent value as recent titles. Larger tournament fields (12–16 players) grant higher multiplier bonuses.
+              </p>
+            </div>
+
+            <div class="card" style="padding:14px;background:#141419;border-color:#2e3820">
+              <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+                <span style="font-size:20px">📈</span>
+                <span style="font:800 14px 'Barlow Condensed';color:#7df0aa;text-transform:uppercase;letter-spacing:.6px">Win % & Match Differential</span>
+              </div>
+              <p style="font-size:11px;color:#bed0c4;line-height:1.45;margin:0">
+                Net match wins award +18 per win and -9 per loss. Career win percentages above 50% provide scaled efficiency multipliers across all matches played.
+              </p>
+            </div>
+
+            <div class="card" style="padding:14px;background:#141419;border-color:#38202c">
+              <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+                <span style="font-size:20px">🌟</span>
+                <span style="font:800 14px 'Barlow Condensed';color:#ff8e95;text-transform:uppercase;letter-spacing:.6px">League Records Held</span>
+              </div>
+              <p style="font-size:11px;color:#d0bec6;line-height:1.45;margin:0">
+                Holding all-time league records (Win Streaks, Career Wins, Peak OVR, Tournament GD, Most Titles) awards a permanent +50 Elo prestige bonus per record held.
+              </p>
+            </div>
+
+          </div>
+
+          <!-- Formula Breakdown -->
+          <div class="card" style="padding:16px;background:#141419;border-color:#2e2e38">
+            <div class="eyebrow" style="margin-bottom:10px;color:var(--amber)">Legacy Score Formula Breakdown</div>
+            <div style="font-size:12px;color:#d0ced6;line-height:1.6">
+              <div style="font:800 14px 'Barlow Condensed';color:#ffd166;margin-bottom:6px">ELO = 1000 + Tournament Hardware + Match Net + Win% Efficiency + Records Held + Streaks + OVR Form</div>
+              <ul style="margin:10px 0 0 16px;padding:0;display:flex;flex-direction:column;gap:6px">
+                <li><b>Base Floor:</b> 1,000 Starting Elo points.</li>
+                <li><b>Tournament Hardware:</b> 250 pts (1st), 140 pts (2nd), 90 pts (3rd), 60 pts (4th), 35 pts (Top 8), multiplied by Field Factor (1.0 + (Players - 4) * 0.05).</li>
+                <li><b>Match Net:</b> +18 pts per win, -9 pts per loss.</li>
+                <li><b>Win% Efficiency:</b> Confidence * (Win% - 50) * 4 (ramps up over 10+ games).</li>
+                <li><b>League Records:</b> +50 pts for each official all-time record currently held.</li>
+                <li><b>Streaks:</b> +6 pts per game of peak all-time win streak.</li>
+                <li><b>OVR Form:</b> +4 pts per OVR point above 70.</li>
+              </ul>
+            </div>
+          </div>
+
+          <!-- OVR vs Elo Comparison -->
+          <div class="card" style="padding:16px;background:#141419;border-color:#2e2e38">
+            <div class="eyebrow" style="margin-bottom:8px;color:#c084fc">OVR Rating vs. All-Time Elo</div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+              <div style="padding:10px;background:#181820;border-radius:6px;border:1px solid #30303c">
+                <div style="font:800 13px 'Barlow Condensed';color:#ff8e95">⭐ TRAINER OVERALL (OVR)</div>
+                <div style="font-size:11px;color:#aaa;margin-top:4px">Dynamic & volatile. Reflects active form, recent win streaks, and current tournament strength. Decays if form drops.</div>
+              </div>
+              <div style="padding:10px;background:#181820;border-radius:6px;border:1px solid #30303c">
+                <div style="font:800 13px 'Barlow Condensed';color:#ffd166">👑 ALL-TIME ELO (LEGACY)</div>
+                <div style="font-size:11px;color:#aaa;margin-top:4px">Cumulative & permanent. Reflects historical greatness, total championships, record book dominance, and career win rate without decay.</div>
+              </div>
+            </div>
           </div>
 
         </div>
