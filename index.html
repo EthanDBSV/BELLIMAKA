@@ -8820,18 +8820,18 @@ function renderAccountMatchHistory(mine, matchHistory){
 
                 let cleanStage = m.stage.replace(/^group\s+group\s*/i, 'Group ');
 
-                // Winner vs Loser highlighting: Winner is bright (opacity 1.0), Loser is de-highlighted / dimmed (opacity 0.45)
-                let youOpacity = isDefeat ? '0.45' : '1.0';
-                let oppOpacity = isVictory ? '0.45' : '1.0';
+                // Winner vs Loser highlighting: Winner avatar has green ring (#22c55e), Loser avatar has red ring (#ef4444)
+                let youOpacity = isDefeat ? '0.65' : '1.0';
+                let oppOpacity = isVictory ? '0.65' : '1.0';
 
-                let youColor = isVictory ? '#ffffff' : (isDefeat ? '#888694' : '#f5f3f0');
-                let oppColor = isDefeat ? '#ffffff' : (isVictory ? '#888694' : '#f5f3f0');
+                let youColor = isVictory ? '#ffffff' : (isDefeat ? '#8e8c9a' : '#f5f3f0');
+                let oppColor = isDefeat ? '#ffffff' : (isVictory ? '#8e8c9a' : '#f5f3f0');
 
                 let youScoreColor = isVictory ? '#ffffff' : '#615f6c';
                 let oppScoreColor = isDefeat ? '#ffffff' : '#615f6c';
 
-                let youAvatarBorder = isVictory ? '2px solid #4ade80' : '2px solid #2c2c38';
-                let oppAvatarBorder = isDefeat ? '2px solid #ffffff' : '2px solid #2c2c38';
+                let youAvatarBorder = isVictory ? '2px solid #22c55e' : (isDefeat ? '2px solid #ef4444' : '2px solid #2c2c38');
+                let oppAvatarBorder = isDefeat ? '2px solid #22c55e' : (isVictory ? '2px solid #ef4444' : '2px solid #2c2c38');
 
                 return `
                   <div style="background:#121217;border:1px solid #22222c;border-radius:8px;overflow:hidden;transition:all .15s ease">
