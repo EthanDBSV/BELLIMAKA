@@ -5454,26 +5454,38 @@ function toggleModerator(){
 }
 
 var sessionReqId=0,sessionResolvedFor=null,prevSessionUserId=null,prevMod=false;
+var userProfileCache = {};
 async function updateSession(session){
   let myReq=++sessionReqId;
   let newUser=session?.user||null;
   sessionUser=newUser;
   let isMod=false,nextAccount=null;
   if(sessionUser&&supabaseClient){
-    try{
-      let {data}=await supabaseClient.from('user_profiles').select('role,username,prediction_points').eq('id',sessionUser.id).maybeSingle();
-      if(myReq===sessionReqId && data){
-        if(data.role==='moderator'){
-          let pref = localStorage.getItem('draftdex-mod-mode');
-          // If user explicitly toggled spectator mode ('off'), honor their choice across browsing/refreshes
-          isMod = (pref !== 'off');
-        } else {
-          try { localStorage.removeItem('draftdex-mod-mode'); } catch(e){}
-          isMod = false;
-        }
-        nextAccount=data;
+    let cached = userProfileCache[sessionUser.id];
+    if(cached && (Date.now() - cached.time < 180000)){
+      nextAccount = cached.data;
+      if(nextAccount?.role === 'moderator'){
+        let pref = localStorage.getItem('draftdex-mod-mode');
+        isMod = (pref !== 'off');
+      } else {
+        isMod = false;
       }
-    }catch(e){}
+    } else {
+      try{
+        let {data}=await supabaseClient.from('user_profiles').select('role,username,prediction_points').eq('id',sessionUser.id).maybeSingle();
+        if(myReq===sessionReqId && data){
+          userProfileCache[sessionUser.id] = { data, time: Date.now() };
+          if(data.role==='moderator'){
+            let pref = localStorage.getItem('draftdex-mod-mode');
+            isMod = (pref !== 'off');
+          } else {
+            try { localStorage.removeItem('draftdex-mod-mode'); } catch(e){}
+            isMod = false;
+          }
+          nextAccount=data;
+        }
+      }catch(e){}
+    }
   }
   let modChanged = (moderator !== isMod);
   let userChanged = (prevSessionUserId !== (sessionUser ? sessionUser.id : null));
@@ -8551,11 +8563,15 @@ function knownAccounts(){
   return [...names].filter(Boolean).sort((a,b)=>a.localeCompare(b))
 }
 
-async function loadAccounts(){
+async function loadAccounts(forceFresh = false){
   if(!supabaseClient)return window.leagueAccounts||[];
+  if(!forceFresh && window.leagueAccounts && window.leagueAccounts.length && (Date.now() - (window._leagueAccountsTime || 0) < 300000)){
+    return window.leagueAccounts;
+  }
   try{
     let {data}=await supabaseClient.from('user_profiles').select('id,username,role');
     window.leagueAccounts=data||[];
+    window._leagueAccountsTime = Date.now();
   }catch(e){}
   return window.leagueAccounts||[]
 }
@@ -9566,6 +9582,13 @@ function updateLocalPredictionInCache(tournamentId, question, choice, isRemoving
 async function renderPredictionLeaders(t, forceFresh = false){
   let host = document.querySelector('#predLeaders');
   if(!host || !t) return;
+
+  if(!forceFresh && predictionScoresCache[t.id] && (Date.now() - (predictionScoresCache[t.id].timestamp || 0) < 60000)){
+    if(predictionScoresCache[t.id].html){
+      host.innerHTML = predictionScoresCache[t.id].html;
+      return;
+    }
+  }
 
   let rows = [], accounts = [];
   let effectiveUsername = window.currentAccount?.username || (sessionUser?.user_metadata?.username) || 'You';
