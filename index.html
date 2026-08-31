@@ -8609,20 +8609,35 @@ function getPlayerPredictionHistory(userId, username){
       rows = predictionScoresCache[t.id].rows.filter(r => userKeys.includes(r.user_id));
     }
     let localRows = (typeof getLocalPredictionRows === 'function') ? getLocalPredictionRows(t.id) : [];
-    localRows.forEach(lr => {
-      if(!rows.some(r => r.prediction_key === lr.prediction_key)){
-        rows.push(lr);
+
+    // Deduplicate candidate rows by normalized question key
+    let candidateRows = [...rows, ...localRows];
+    let seenKeys = new Set();
+    let uniqueRows = [];
+
+    // Sort so authenticated user_id picks take precedence over username or local_user
+    candidateRows.sort((a, b) => {
+      let aScore = (a.user_id === userId) ? 2 : ((a.user_id === username) ? 1 : 0);
+      let bScore = (b.user_id === userId) ? 2 : ((b.user_id === username) ? 1 : 0);
+      return bScore - aScore;
+    });
+
+    candidateRows.forEach(r => {
+      let normKey = (r.prediction_key || '').replace(/^(?:draftdex-bpick-|killawott-bpick-|Top Cut Bracket Match · )/i, 'bpick-').trim();
+      if(!seenKeys.has(normKey)){
+        seenKeys.add(normKey);
+        uniqueRows.push(r);
       }
     });
 
-    if(!rows.length) return;
+    if(!uniqueRows.length) return;
 
     let totalPts = 0;
     let correctCount = 0;
     let settledCount = 0;
     let pendingCount = 0;
 
-    let items = rows.map(r => {
+    let items = uniqueRows.map(r => {
       let outcome = (typeof predictionOutcome === 'function') ? predictionOutcome(t, r.prediction_key) : { answer: null, value: 0 };
       let isSettled = (outcome.answer != null);
       let isCorrect = isSettled && (outcome.answer === r.selection);
@@ -8784,6 +8799,9 @@ function renderAccountMatchHistory(mine, matchHistory){
                 let opp = m.opponent;
                 let oppFace = profilePictures[opp] ? `url('${esc(profilePictures[opp])}')` : (teamCovers[opp] ? `url('${esc(teamCovers[opp])}')` : fallbackArt(opp));
                 let oppLetter = (profilePictures[opp] || teamCovers[opp]) ? '' : esc((opp || '?')[0]);
+                let myFace = profilePictures[mine] ? `url('${esc(profilePictures[mine])}')` : (teamCovers[mine] ? `url('${esc(teamCovers[mine])}')` : fallbackArt(mine));
+                let myLetter = (profilePictures[mine] || teamCovers[mine]) ? '' : esc((mine || '?')[0]);
+
                 let isGold = m.isTopCut;
                 let isVictory = m.won;
                 let isDefeat = m.lost;
@@ -8802,6 +8820,19 @@ function renderAccountMatchHistory(mine, matchHistory){
 
                 let cleanStage = m.stage.replace(/^group\s+group\s*/i, 'Group ');
 
+                // Winner vs Loser highlighting: Winner is bright (opacity 1.0), Loser is de-highlighted / dimmed (opacity 0.45)
+                let youOpacity = isDefeat ? '0.45' : '1.0';
+                let oppOpacity = isVictory ? '0.45' : '1.0';
+
+                let youColor = isVictory ? '#ffffff' : (isDefeat ? '#888694' : '#f5f3f0');
+                let oppColor = isDefeat ? '#ffffff' : (isVictory ? '#888694' : '#f5f3f0');
+
+                let youScoreColor = isVictory ? '#ffffff' : '#615f6c';
+                let oppScoreColor = isDefeat ? '#ffffff' : '#615f6c';
+
+                let youAvatarBorder = isVictory ? '2px solid #4ade80' : '2px solid #2c2c38';
+                let oppAvatarBorder = isDefeat ? '2px solid #ffffff' : '2px solid #2c2c38';
+
                 return `
                   <div style="background:#121217;border:1px solid #22222c;border-radius:8px;overflow:hidden;transition:all .15s ease">
                     <!-- Phase Bar -->
@@ -8816,28 +8847,29 @@ function renderAccountMatchHistory(mine, matchHistory){
 
                     <!-- Match Details Row -->
                     <div style="padding:11px 14px;display:flex;justify-content:space-between;align-items:center;gap:12px">
-                      <!-- You -->
-                      <div style="display:flex;align-items:center;gap:10px;min-width:0;flex:1">
+                      <!-- You (Left with avatar & 'You') -->
+                      <div style="display:flex;align-items:center;gap:10px;min-width:0;flex:1;opacity:${youOpacity};transition:opacity .15s ease">
+                        <span class="avatar mini" style="background-image:${myFace};background-size:cover;background-position:center;width:30px;height:30px;font-size:11px;border-radius:50%;border:${youAvatarBorder};display:grid;place-items:center;flex:none">${myLetter}</span>
                         <div style="min-width:0">
-                          <div style="font:800 15px 'Barlow Condensed';color:#f5f3f0">${esc(mine)} <span style="font-size:10px;color:#8e8c95;font-weight:700">(You)</span></div>
+                          <div style="font:800 15px 'Barlow Condensed';color:${youColor}">You</div>
                           <div style="font-size:10px;color:#8e8c95;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(m.myTeam)}</div>
                         </div>
                       </div>
 
                       <!-- Scoreboard Center -->
                       <div style="display:flex;align-items:center;gap:10px;flex:none;text-align:center;background:#0b0b0f;border:1px solid #282834;padding:4px 14px;border-radius:6px">
-                        <span style="font:900 22px 'Barlow Condensed';color:${isVictory ? '#ffffff' : '#85838d'}">${m.myScore}</span>
-                        <span style="font-size:11px;font-weight:900;color:#4a4a58">-</span>
-                        <span style="font:900 22px 'Barlow Condensed';color:${isDefeat ? '#ffffff' : '#85838d'}">${m.oppScore}</span>
+                        <span style="font:900 22px 'Barlow Condensed';color:${youScoreColor}">${m.myScore}</span>
+                        <span style="font-size:11px;font-weight:900;color:#3f3e4c">-</span>
+                        <span style="font:900 22px 'Barlow Condensed';color:${oppScoreColor}">${m.oppScore}</span>
                       </div>
 
-                      <!-- Opponent -->
-                      <div style="display:flex;align-items:center;justify-content:flex-end;gap:10px;min-width:0;flex:1;text-align:right">
+                      <!-- Opponent (Right with avatar & name) -->
+                      <div style="display:flex;align-items:center;justify-content:flex-end;gap:10px;min-width:0;flex:1;text-align:right;opacity:${oppOpacity};transition:opacity .15s ease">
                         <div style="min-width:0">
-                          <div style="font:800 15px 'Barlow Condensed';color:#f5f3f0">${playerLink(opp)}</div>
+                          <div style="font:800 15px 'Barlow Condensed';color:${oppColor}">${playerLink(opp)}</div>
                           <div style="font-size:10px;color:#8e8c95;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(m.opponentTeam)}</div>
                         </div>
-                        <span class="avatar mini" style="background-image:${oppFace};background-size:cover;background-position:center;width:30px;height:30px;font-size:11px;border-radius:50%;border:2px solid #2c2c38;display:grid;place-items:center;flex:none">${oppLetter}</span>
+                        <span class="avatar mini" style="background-image:${oppFace};background-size:cover;background-position:center;width:30px;height:30px;font-size:11px;border-radius:50%;border:${oppAvatarBorder};display:grid;place-items:center;flex:none">${oppLetter}</span>
                       </div>
                     </div>
                   </div>
@@ -9090,7 +9122,7 @@ function Account(){
           ${isActualMod ? `
             <div style="margin: 4px 0 16px; width: 100%; display: flex; flex-direction: column; align-items: center; gap: 5px;">
               <button class="btn ${moderator ? '' : 'ghost'}" style="width:100%; font-size: 11px; padding: 7px 10px; border-radius: 4px;" onclick="toggleModerator()">${moderator ? '👑 Moderator Tools: ON' : '👁️ Spectator Preview: ON'}</button>
-              <span class="sub" style="font-size:10px; text-align:center">${moderator ? 'Admin & score editing active' : 'Previewing site as standard trainer'}</span>
+              <span class="sub" style="font-size:10px; text-align:center">${moderator ? 'Admin & Score Editing Active' : 'Previewing site as standard trainer'}</span>
             </div>
           ` : `
             <div style="margin: 4px 0 16px; font-size:11px; color:#8e8c95; text-align:center">
