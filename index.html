@@ -13218,18 +13218,22 @@ function openDraftFromPlanner(monName, cost){
     return;
   }
 
-  let tierName = `${cost} Points`;
+  let actualCost = findPokemonCostOnBoard(t, monName) || cost;
+  let tierName = `${actualCost} Points`;
   if(d.board && Array.isArray(d.board)){
     let foundTier = d.board.find(tier => (tier.pokemon || []).some(m => m.toLowerCase().trim() === (monName||'').toLowerCase().trim()));
-    if(foundTier) tierName = foundTier.name || `${foundTier.cost} Points`;
+    if(foundTier){
+      tierName = foundTier.name || `${foundTier.cost} Points`;
+      actualCost = foundTier.cost || actualCost;
+    }
   }
 
-  openDraftConfirmationModal(t.id, monName, cost, tierName);
+  openDraftConfirmationModal(t.id, monName, actualCost, tierName);
 }
 
 /* --- markup --- */
 function builderHTML(){
-  let hasImportedBoard = !!(sheetIds(boardLink).id || (typeof draftPool !== 'undefined' && draftPool?.items?.length) || Object.values(tournamentData).some(t => t.draftData?.board?.length));
+  let hasImportedBoard = !!(sheetIds(boardLink).id || (typeof draftPool !== 'undefined' && draftPool?.items?.length) || Object.values(tournamentData).some(t => t.draftData?.board?.length) || (typeof getOffseasonDraftBoard === 'function' && getOffseasonDraftBoard().length));
   if(!hasImportedBoard){
     return `<div class="eyebrow">Team planner</div>
       <div class="card empty" style="padding:28px 16px;margin-top:14px;text-align:center;background:#14141a;border:1px solid #292934">
@@ -13268,6 +13272,16 @@ function builderHTML(){
       </div>
     `;
   }
+
+  let curT = ongoingT() || activeT();
+  let draftPicks = curT?.draftData?.picks || [];
+  let draftedMap = {};
+  draftPicks.forEach(p => {
+    if(p.pokemon) draftedMap[p.pokemon.toLowerCase().trim()] = p.player;
+  });
+  let curUser = window.currentAccount?.username || sessionUser?.user_metadata?.username || sessionUser?.email?.split('@')[0] || '';
+  let myCoach = (typeof myPlayer === 'function' ? myPlayer() : null) || (typeof playerForAccount === 'function' ? playerForAccount(curUser) : null) || curUser;
+
   let spent=teamSpent(team),left=fmtPts(TEAM_BUDGET-spent),over=left<0;
   let nameRow=window.renamingTeam===team.id
     ?`<div class="tm-name-row"><input id="renameTeam" value="${esc(team.name)}" maxlength="40" onkeydown="if(event.key==='Enter'){event.preventDefault();commitRenameTeam()}"><button class="save" onclick="commitRenameTeam()">Save</button></div>`
@@ -13287,7 +13301,24 @@ function builderHTML(){
     <div class="budget-bar ${over?'over':''}"><span style="width:${Math.min(100,spent/TEAM_BUDGET*100)}%"></span></div>
     <div class="budget-sub">${over?fmtPts(Math.abs(left))+' points over budget':left+' points left'}</div>
     <div class="tm-list">
-      ${team.picks.map((x,i)=>`<div class="tm-item" style="cursor:pointer;transition:all .15s ease" title="Click to draft ${esc(x.name)}" onclick="openDraftFromPlanner('${jsArg(x.name)}', ${x.cost})"><img src="${esc(monSprite(x.name))}" alt="" loading="lazy" onerror="handleSpriteError(this)"><span style="font-weight:700;flex:1;text-align:left;color:#f5f3f0">${esc(x.name)}</span><b style="color:#ffd166;font-size:12px;background:#282014;padding:2px 6px;border-radius:4px;border:1px solid #4a3818">${fmtPts(x.cost)}</b><button title="Remove ${esc(x.name)}" onclick="event.stopPropagation();removeTeamMon(${i})">×</button></div>`).join('')}
+      ${team.picks.map((x,i)=>{
+        let cleanName = (x.name || '').toLowerCase().trim();
+        let drafter = draftedMap[cleanName];
+        let isDrafted = !!drafter;
+        let isMine = isDrafted && myCoach && drafter.toLowerCase() === myCoach.toLowerCase();
+        let statusBadge = isDrafted ? (isMine ? `<span style="font-size:9.5px;color:#4bdd91;background:#0e281b;border:1px solid #1c5236;padding:1px 5px;border-radius:4px;font-weight:800">✓ Drafted</span>` : `<span style="font-size:9.5px;color:#ff8e95;background:#281216;border:1px solid #54222a;padding:1px 5px;border-radius:4px;font-weight:700">Taken (${esc(drafter)})</span>`) : '';
+        let rowTitle = isDrafted ? (isMine ? `Drafted by you in this tournament` : `Drafted by ${drafter}`) : `Click to draft ${esc(x.name)}`;
+
+        return `<div class="tm-item" style="cursor:pointer;transition:all .15s ease;${isDrafted && !isMine ? 'opacity:0.6;' : ''}" title="${esc(rowTitle)}" onclick="openDraftFromPlanner('${jsArg(x.name)}', ${x.cost})">
+          <img src="${esc(monSprite(x.name))}" alt="" loading="lazy" onerror="handleSpriteError(this)">
+          <div style="flex:1;min-width:0;text-align:left;display:flex;flex-direction:column;gap:1px">
+            <span style="font-weight:700;color:#f5f3f0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;${isDrafted && !isMine ? 'text-decoration:line-through;color:#a09fa8' : ''}">${esc(x.name)}</span>
+            ${statusBadge}
+          </div>
+          <b style="color:#ffd166;font-size:12px;background:#282014;padding:2px 6px;border-radius:4px;border:1px solid #4a3818;flex:none">${fmtPts(x.cost)}</b>
+          <button title="Remove ${esc(x.name)}" onclick="event.stopPropagation();removeTeamMon(${i})">×</button>
+        </div>`;
+      }).join('')}
       ${Array.from({length:free},(_,i)=>`<div class="tm-slot-free">Slot ${team.picks.length+i+1} open</div>`).join('')}
     </div>
     <div class="mock-actions"><button class="chip" onclick="copyTeam()">Copy list</button><button class="chip" onclick="deleteTeam()" style="color:#ff9ba1">Delete team</button></div>
