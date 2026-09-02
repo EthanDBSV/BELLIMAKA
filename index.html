@@ -8063,8 +8063,13 @@ function calculatePlayerOVR(p, leagueData=null){
   // Baseline: 72 (Forgiving in lower overalls; average players sit safely in Silver ~72-76)
   let base=72;
 
-  // 1. Dynamic Recent Tournament Form (Balanced recency with sample size anchoring)
-  // Live Tournament Rule: Ratings only update after group stage completes (top cut starts) or tournament completes
+  // 1. Inactivity & Missed Tournaments Detection
+  let sortedT = typeof sortedTournamentsChronological === 'function' ? sortedTournamentsChronological() : Object.values(tournamentData);
+  let completedTList = sortedT.filter(t => t.status === 'COMPLETE' || t.phase === 'topcut');
+  let latestCompletedT = completedTList[completedTList.length - 1] || null;
+  let isReigningChamp = (latestCompletedT && latestCompletedT.champion === p);
+
+  // Filter player's tournament finishes that have completed or reached top cut
   let allTfs = s.tournamentFinishes || [];
   let tf = allTfs.filter(item => {
     let t = item.tournament;
@@ -8073,15 +8078,36 @@ function calculatePlayerOVR(p, leagueData=null){
     let isCompleteOrTopCut = (t.phase === 'topcut' || !!t.bracketManagerData || item.gComplete);
     return isCompleteOrTopCut;
   });
+
+  // Calculate missed tournaments since last participation
+  let lastPlayedTournament = tf.length > 0 ? tf[tf.length - 1].tournament : null;
+  let missedRecentCount = 0;
+  if(completedTList.length > 0 && lastPlayedTournament){
+    let lastPlayedIdx = completedTList.findIndex(t => t.id === lastPlayedTournament.id || t.name === lastPlayedTournament.name);
+    if(lastPlayedIdx >= 0){
+      missedRecentCount = (completedTList.length - 1) - lastPlayedIdx;
+    }
+  } else if(completedTList.length > 0 && tf.length === 0){
+    missedRecentCount = completedTList.length;
+  }
+
+  // 2. Dynamic Recent Tournament Form (With Progressive Inactivity Decay)
   let lastTFinish = tf[tf.length - 1] || null;
   let recentWins = lastTFinish ? (lastTFinish.w || 0) : 0;
   let recentLosses = lastTFinish ? (lastTFinish.l || 0) : 0;
   let recentTotal = recentWins + recentLosses;
   let recentWinPct = recentTotal > 0 ? (recentWins / recentTotal) * 100 : overallWinPct;
 
-  // Balanced Volatility: Scale recent weight by sample size (up to max 38%) so a 3-game losing stint doesn't tank career
-  let recentWeight = (recentTotal > 0) ? Math.min(0.38, Math.max(0.12, recentTotal * 0.06)) : 0;
-  let effectiveWinPct = (recentTotal > 0)
+  // Active players get full recent weight (up to 38%). If a player sat out, recent weight decays progressively.
+  let baseRecentWeight = (recentTotal > 0) ? Math.min(0.38, Math.max(0.12, recentTotal * 0.06)) : 0;
+  let recentWeight = baseRecentWeight;
+  if(missedRecentCount === 1){
+    recentWeight = Math.min(0.12, baseRecentWeight * 0.35); // 65% decay for sitting out 1 tournament
+  } else if(missedRecentCount >= 2){
+    recentWeight = 0; // Inactive for 2+ tournaments: purely career baseline win rate
+  }
+
+  let effectiveWinPct = (recentTotal > 0 && recentWeight > 0)
     ? (recentWinPct * recentWeight + overallWinPct * (1 - recentWeight))
     : overallWinPct;
 
@@ -8093,74 +8119,80 @@ function calculatePlayerOVR(p, leagueData=null){
     winRateDiff = (effectiveWinPct - 50) * 0.20;
   }
 
-  // 2. Playoff Placements & Championship Hardware (Scaled by tournament field size & progression depth)
-  let sortedT = typeof sortedTournamentsChronological === 'function' ? sortedTournamentsChronological() : Object.values(tournamentData);
-  let latestCompletedT = sortedT.filter(t => t.status === 'COMPLETE').pop() || sortedT[sortedT.length - 1] || null;
-  let isReigningChamp = (latestCompletedT && latestCompletedT.champion === p);
-
-  let lastPlace = lastTFinish?.finish?.place || (isReigningChamp ? 1 : 999);
-  let lastT = lastTFinish?.tournament || latestCompletedT;
+  // 3. Playoff Placements & Championship Hardware (Scaled by tournament field size & progression depth)
+  let lastPlace = (missedRecentCount === 0 && lastTFinish) ? (lastTFinish.finish?.place || (isReigningChamp ? 1 : 999)) : 999;
+  let lastT = (missedRecentCount === 0 && lastTFinish) ? lastTFinish.tournament : latestCompletedT;
   let lastFieldSize = Math.max(4, lastT?.players?.length || Object.keys(profiles).length || 8);
   let lastFieldMult = Math.min(1.2, Math.max(0.85, Math.sqrt(lastFieldSize / 10)));
 
   let recentPlacementBonus = 0;
-  // Early exits / bottom half of tournament receive 0 placement bonus
-  let isEarlyExit = (lastPlace >= lastFieldSize * 0.65 || (lastPlace >= 7 && lastFieldSize <= 8) || lastPlace >= 100);
-  if(!isEarlyExit || isReigningChamp){
-    let basePlacementPts = 0;
-    if(lastPlace === 1 || isReigningChamp){
-      basePlacementPts = 7.5; // Reigning Champion
-    } else if(lastPlace === 2){
-      basePlacementPts = 5.8; // Runner-up / Grand Finalist
-    } else if(lastPlace === 3){
-      basePlacementPts = 4.8; // 3rd Place / Losers Finalist
-    } else if(lastPlace === 4){
-      basePlacementPts = 3.8; // 4th Place / Losers Semifinalist
-    } else if(lastPlace <= 6 && lastFieldSize >= 10){
-      basePlacementPts = 2.4; // 5th-6th Place / Top 6 in 10+ field
-    } else if(lastPlace <= 8 && lastFieldSize >= 14){
-      basePlacementPts = 1.2; // 7th-8th Place / Top 8 in 14+ field
+  if(missedRecentCount === 0){
+    let isEarlyExit = (lastPlace >= lastFieldSize * 0.65 || (lastPlace >= 7 && lastFieldSize <= 8) || lastPlace >= 100);
+    if(!isEarlyExit || isReigningChamp){
+      let basePlacementPts = 0;
+      if(lastPlace === 1 || isReigningChamp){
+        basePlacementPts = 7.5; // Reigning Champion
+      } else if(lastPlace === 2){
+        basePlacementPts = 5.8; // Runner-up / Grand Finalist
+      } else if(lastPlace === 3){
+        basePlacementPts = 4.8; // 3rd Place / Losers Finalist
+      } else if(lastPlace === 4){
+        basePlacementPts = 3.8; // 4th Place / Losers Semifinalist
+      } else if(lastPlace <= 6 && lastFieldSize >= 10){
+        basePlacementPts = 2.4; // 5th-6th Place / Top 6 in 10+ field
+      } else if(lastPlace <= 8 && lastFieldSize >= 14){
+        basePlacementPts = 1.2; // 7th-8th Place / Top 8 in 14+ field
+      }
+      recentPlacementBonus = basePlacementPts * lastFieldMult;
     }
-    recentPlacementBonus = basePlacementPts * lastFieldMult;
   }
 
-  // Older / Career Playoff Pedigree with Recency Decay
+  // Older / Career Playoff Pedigree with Permanent Championship Value
   let olderPlacementBonus = 0;
-  let olderFinishes = tf.slice(0, -1);
-  olderFinishes.forEach(f => {
+  let pastFinishes = (missedRecentCount === 0) ? tf.slice(0, -1) : tf;
+  pastFinishes.forEach(f => {
     let pRank = f.finish?.place || 999;
     let fSize = Math.max(4, f.tournament?.players?.length || 8);
     let fMult = Math.min(1.2, Math.max(0.85, Math.sqrt(fSize / 10)));
     if(pRank >= fSize * 0.65 || (pRank >= 7 && fSize <= 8) || pRank >= 100) return;
 
     let olderBase = 0;
-    if(pRank === 1) olderBase = 3.0;      // Past Championship
-    else if(pRank === 2) olderBase = 1.8; // Past Runner-up
+    if(pRank === 1) olderBase = 4.2;      // Past Championship Trophy (Strong lasting prestige)
+    else if(pRank === 2) olderBase = 2.0; // Past Runner-up
     else if(pRank === 3) olderBase = 1.2; // Past 3rd Place
     else if(pRank === 4) olderBase = 0.8; // Past 4th Place
     else if(pRank <= 6 && fSize >= 10) olderBase = 0.4; // Past Top 6
     else if(pRank <= 8 && fSize >= 14) olderBase = 0.2; // Past Top 8
     olderPlacementBonus += olderBase * fMult;
   });
-  // Cap historical playoff pedigree at +6.0 so multi-time contenders maintain high baseline
-  olderPlacementBonus = Math.min(6.0, olderPlacementBonus);
+  // Cap historical playoff pedigree at +6.5 so multi-time contenders maintain high baseline
+  olderPlacementBonus = Math.min(6.5, olderPlacementBonus);
 
-  // 3. Active Momentum & Streak Volatility (Balanced: drops rating on slumps, but does not plummet)
-  let isTopFourFinish = (lastPlace <= 4);
-  let activeStreakBonus = Math.min(4.5, (s.currentWinStreak || 0) * 1.0);
-  let activeLossPenalty = isTopFourFinish ? 0 : Math.min(3.0, (s.currentLossStreak || 0) * 0.75);
+  // Multi-Season Consistency Pedigree: reward 3+ Top Cuts
+  let consistencyBonus = (career.topCuts >= 3) ? 1.0 : (career.topCuts === 2 ? 0.4 : 0);
 
-  // All-time historic streak legacy: modest +0.35 per game (cap +2.5)
-  let maxStreakBonus = Math.min(2.5, (s.maxWinStreak || 0) * 0.35);
-
-  let rawOvr = base + recentPlacementBonus + olderPlacementBonus + winRateDiff + activeStreakBonus - activeLossPenalty + maxStreakBonus;
-
-  // 4. Scarcity Curve at the Very Top (35% compression at 86, 50% compression at 92)
-  if(rawOvr > 86){
-    rawOvr = 86 + (rawOvr - 86) * 0.65;
+  // 4. Inactivity Penalty per Missed Tournament
+  let inactivityPenalty = 0;
+  if(missedRecentCount > 0){
+    inactivityPenalty = Math.min(5.0, missedRecentCount * 1.5);
   }
-  if(rawOvr > 92){
-    rawOvr = 92 + (rawOvr - 92) * 0.50;
+
+  // 5. Active Momentum & Streak Volatility
+  let isTopFourFinish = (missedRecentCount === 0 && lastPlace <= 4);
+  let activeStreakBonus = (missedRecentCount === 0) ? Math.min(4.5, (s.currentWinStreak || 0) * 1.0) : 0;
+  let activeLossPenalty = (missedRecentCount === 0 && !isTopFourFinish) ? Math.min(3.0, (s.currentLossStreak || 0) * 0.75) : 0;
+
+  // All-time historic streak legacy: modest +0.30 per game (cap +2.2)
+  let maxStreakBonus = Math.min(2.2, (s.maxWinStreak || 0) * 0.30);
+
+  let rawOvr = base + recentPlacementBonus + olderPlacementBonus + consistencyBonus + winRateDiff + activeStreakBonus - activeLossPenalty + maxStreakBonus - inactivityPenalty;
+
+  // 6. Anti-Inflation Scarcity Compression Curve (controlled top ceiling)
+  if(rawOvr > 85){
+    rawOvr = 85 + (rawOvr - 85) * 0.60;
+  }
+  if(rawOvr > 90){
+    rawOvr = 90 + (rawOvr - 90) * 0.45;
   }
 
   // Regression / confidence weighting for low sample size (< 4 games)
