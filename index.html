@@ -1478,7 +1478,43 @@ const pulsePanelImages={};
 function ongoingT(){return Object.values(tournamentData).find(t=>t.status==='ONGOING')||null}
 function activeT(){return tournamentData[viewTournament]||ongoingT()||Object.values(tournamentData)[0]||null}
 
+function canManageTournament(t){
+  if(moderator) return true; // Global commissioner always has full access
+  if(!t) return false;
+  if(typeof t === 'string') t = tournamentData[t] || null;
+  if(!t) return false;
 
+  let myProfile = (typeof myPlayer === 'function' ? myPlayer() : null);
+  let curUser = window.currentAccount?.username || sessionUser?.user_metadata?.username || sessionUser?.email?.split('@')[0] || '';
+
+  let managers = [];
+  if(t.manager) managers.push(t.manager);
+  if(t.host && !managers.includes(t.host)) managers.push(t.host);
+  if(Array.isArray(t.managers)){
+    t.managers.forEach(m => { if(m && !managers.includes(m)) managers.push(m); });
+  }
+  if(Array.isArray(t.tournamentModerators)){
+    t.tournamentModerators.forEach(m => { if(m && !managers.includes(m)) managers.push(m); });
+  }
+
+  if(!managers.length) return false;
+
+  return managers.some(m => {
+    if(!m) return false;
+    let clean = String(m).toLowerCase().trim();
+    if(myProfile && myProfile.toLowerCase().trim() === clean) return true;
+    if(curUser && curUser.toLowerCase().trim() === clean) return true;
+    if(typeof playerForAccount === 'function' && curUser){
+      let mapped = playerForAccount(curUser);
+      if(mapped && mapped.toLowerCase().trim() === clean) return true;
+    }
+    if(typeof accountForPlayer === 'function' && curUser){
+      let acc = accountForPlayer(m);
+      if(acc && (acc.toLowerCase().trim() === curUser.toLowerCase().trim() || (acc.includes('@') && acc.split('@')[0].toLowerCase() === curUser.toLowerCase().trim()))) return true;
+    }
+    return false;
+  });
+}
 
 function noTournament(){return head('No active tournament','League management')+`<div class="card empty"><div class="card-title">The league is between tournaments</div><p class="sub">Browse the archive or create the next season when you are ready.</p><button class="btn" onclick="go('Tournaments')">View tournament archive</button></div>`}
 
@@ -1665,7 +1701,7 @@ function renderTournamentRosterGrid(p, tId){
   let t = tournamentData[tId];
   if(!t) return '';
   let tMons = getTournamentRoster(p, t);
-  let canEdit = moderator || (sessionUser && sessionUser === accountForPlayer(p));
+  let canEdit = canManageTournament(t) || (sessionUser && sessionUser === accountForPlayer(p));
   if(!tMons.length){
     return `<div class="pf-empty" style="padding:14px;border:1px dashed #2a2a38;background:#0d0d12;border-radius:6px;margin-bottom:8px">
       <span style="font-size:11px;color:#8a8894">No Pokémon recorded for this tournament roster yet.</span>
@@ -2091,6 +2127,8 @@ function createTournament(){
     }
   }
 
+  let manager = document.querySelector('#tournamentManager')?.value || null;
+
   tournamentData[id]={
     id,
     name,
@@ -2100,6 +2138,8 @@ function createTournament(){
     start:document.querySelector('#sd').value||'TBD',
     end:document.querySelector('#ed').value||'TBD',
     regulation:document.querySelector('#tr').value||'Custom regulation',
+    manager: manager || null,
+    managers: manager ? [manager] : [],
     players:selected,
     groups:groupCount,
     groupCount,
@@ -2313,20 +2353,22 @@ function TopCut(){
   let isPreview = (!t.bracketManagerData && t.phase!=='topcut');
   let ready=t.topCutCache?.complete || (t.champion && t.champion!=='TBD');
   let champName=t.topCutCache?.champion || t.champion;
+  let canManage = canManageTournament(t);
+  let directorBadge = t.manager ? ` <span class="tag" style="background:#22172b;color:#d8b4fe;border:1px solid #5c2f88;font-size:10px;font-weight:800;margin-left:6px">🛡️ Director: ${esc(t.manager)}</span>` : '';
   let subtitle = isPreview ? (t.name+' · pending group stage') : (t.status==='COMPLETE' ? (t.name+' · championship results') : (t.name+' · live double elimination'));
-  return head('Top Cut', subtitle)+topCutSection(t, isPreview)+`${moderator && t.status==='ONGOING' && !isPreview ? `<div class="creator-actions" style="margin-top:20px">${ready?`<button class="btn" onclick="endTournament()">End tournament · ${esc(champName)} wins! 👑</button>`:`<p class="sub">Complete every bracket match to enable ending the tournament (${t.topCutCache?.done||0}/${t.topCutCache?.total||0} played).</p>`}</div>`:''}`;
+  return head('Top Cut' + directorBadge, subtitle)+topCutSection(t, isPreview)+`${canManage && t.status==='ONGOING' && !isPreview ? `<div class="creator-actions" style="margin-top:20px">${ready?`<button class="btn" onclick="endTournament()">End tournament · ${esc(champName)} wins! 👑</button>`:`<p class="sub">Complete every bracket match to enable ending the tournament (${t.topCutCache?.done||0}/${t.topCutCache?.total||0} played).</p>`}</div>`:''}`;
 }
 
 function openTournamentRecordEditor(id){
   let t = tournamentData[id];
-  if(!t) return;
+  if(!t || !canManageTournament(t)) return;
   
   let todayStr = new Date().toISOString().split('T')[0];
 
   document.querySelector('#modal').innerHTML = `<div class="modal-wrap"><div class="modal" style="max-width:560px">
     <div class="modal-head">
       <div>
-        <div class="eyebrow" style="color:var(--red)">Moderator Only</div>
+        <div class="eyebrow" style="color:var(--red)">${moderator ? 'Moderator Only' : 'Tournament Director'}</div>
         <h2>Edit Tournament Details</h2>
         <p class="sub" style="margin-top:2px">${esc(t.season || '')} · ${esc(t.status)} · ${(t.players||[]).length} Players</p>
       </div>
@@ -2389,6 +2431,18 @@ function openTournamentRecordEditor(id){
           <label style="font-weight:800;color:#e2e0e8;margin-bottom:6px">Coach Point Budget</label>
           <input id="recordBudget" type="number" min="0" value="${t.draftData?.pointBudget ?? 100}" placeholder="100 (0 for no limit)" style="background:#181822;border:1px solid #363646;border-radius:6px;padding:10px 12px;color:#f5f3f0">
         </div>
+
+        <div class="field" style="grid-column:1/-1;margin-top:0">
+          <label style="font-weight:800;color:#e2e0e8;margin-bottom:6px;display:flex;justify-content:space-between;align-items:center">
+            <span>Tournament Director / Manager (Optional)</span>
+            <span class="tag" style="font-size:9px;background:#221d28;color:#d8b4fe;border:1px solid #582a85">Tournament Admin Perms</span>
+          </label>
+          <select id="recordManager" style="background:#181822;border:1px solid #363646;border-radius:6px;padding:10px 12px;color:#f5f3f0">
+            <option value="">None (Commissioner Only)</option>
+            ${Object.keys(profiles).sort((a,b)=>a.localeCompare(b)).map(p => `<option value="${esc(p)}" ${t.manager === p ? 'selected' : ''}>${esc(p)} ${profiles[p]?.team ? `(${esc(profiles[p].team)})` : ''}</option>`).join('')}
+          </select>
+          <span style="font-size:10px;color:#8e8c95;margin-top:4px;display:block">Grants this player tournament-specific moderator permissions (entering match scores, running live draft, group draw, and managing this tournament).</span>
+        </div>
       </div>
     </div>
 
@@ -2408,7 +2462,7 @@ function openTournamentRecordEditor(id){
 
 function saveTournamentRecord(id){
   let t = tournamentData[id];
-  if(!t) return;
+  if(!t || !canManageTournament(t)) return;
   t.name = document.querySelector('#recordName').value.trim() || t.name;
   t.start = document.querySelector('#recordStart').value.trim() || t.start;
   t.end = document.querySelector('#recordEnd').value.trim() || t.end;
@@ -2416,6 +2470,10 @@ function saveTournamentRecord(id){
   let newPhase = document.querySelector('#recordPhase')?.value || t.phase;
   t.phase = newPhase;
   if(newPhase === 'draft') t.hasDraft = true;
+
+  let newManager = document.querySelector('#recordManager')?.value || null;
+  t.manager = newManager || null;
+  t.managers = newManager ? [newManager] : [];
 
   if(!t.draftData && t.hasDraft){
     ensureTournamentDraft(t);
@@ -2536,7 +2594,7 @@ function rebuildSchedulePreserving(t){
 
 function addCustom(){
   let t = activeT();
-  if(!t) return;
+  if(!t || !canManageTournament(t)) return;
   let groups = Object.keys(groupsOf(t));
   let players = t.players || [];
   
@@ -2552,7 +2610,7 @@ function addCustom(){
     <div class="modal" style="max-width:540px;background:#121218;border:1px solid #2d2d3c;border-radius:12px;box-shadow:0 24px 60px rgba(0,0,0,0.85);padding:24px">
       <div class="modal-head" style="border-bottom:1px solid #242432;padding-bottom:14px;margin-bottom:16px">
         <div>
-          <div class="eyebrow" style="color:var(--amber)">Moderator Tool · Custom Fixture</div>
+          <div class="eyebrow" style="color:var(--amber)">${moderator ? 'Moderator Tool' : 'Tournament Director'} · Custom Fixture</div>
           <h2 style="font:900 24px 'Barlow Condensed';letter-spacing:.3px;margin-top:2px">Create Custom Match</h2>
         </div>
         <button class="close" onclick="closeModal()">×</button>
@@ -2594,7 +2652,7 @@ function addCustom(){
 }
 function saveCustomMatch(){
   let t = activeT();
-  if(!t) return;
+  if(!t || !canManageTournament(t)) return;
   let a = document.querySelector('#customA')?.value;
   let b = document.querySelector('#customB')?.value;
   let g = document.querySelector('#customGroup')?.value || 'Group A';
@@ -2610,7 +2668,7 @@ function saveCustomMatch(){
 }
 function removeCustom(i){
   let t = activeT();
-  if(!t || !t.matches || !t.matches[i]) return;
+  if(!t || !canManageTournament(t) || !t.matches || !t.matches[i]) return;
   let m = t.matches[i];
   if(!m.custom || !confirm('Remove this custom match?')) return;
   t.matches.splice(i, 1);
@@ -3525,7 +3583,7 @@ function getTournamentTopCutModel(t){
 
 async function resetTopCutBracket(){
   let t = (current === 'Tournament Detail' ? activeT() : ongoingT()) || activeT();
-  if(!t || !moderator) return;
+  if(!t || !canManageTournament(t)) return;
   if(!confirm("Reset all playoff match scores? This will clear current match results and restart the bracket from the opening round.")) return;
   delete t.bracketManagerData;
   delete t.topCutCache;
@@ -3537,7 +3595,7 @@ async function resetTopCutBracket(){
 
 function openReseedBracketModal(){
   let t = (current === 'Tournament Detail' ? activeT() : ongoingT()) || activeT();
-  if(!t || !moderator) return;
+  if(!t || !canManageTournament(t)) return;
 
   let autoSeeds = seedTopCut(t).filter(Boolean);
   let currentSeeds = (t.customTopCutSeeding && t.customTopCutSeeding.length) 
@@ -3552,39 +3610,39 @@ function openReseedBracketModal(){
   };
 
   let getPairingPreview = () => {
-    if(count > 4){
-      return `<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px;font-size:12px">
-        <div style="background:#15151c;border:1px solid #2d2d38;border-radius:4px;padding:8px"><b>Match 1:</b> Seed #1 ${count<8?'(BYE to Semis)':'vs Seed #8'}</div>
-        <div style="background:#15151c;border:1px solid #2d2d38;border-radius:4px;padding:8px"><b>Match 2:</b> Seed #4 vs Seed #5</div>
-        <div style="background:#15151c;border:1px solid #2d2d38;border-radius:4px;padding:8px"><b>Match 3:</b> Seed #2 ${count<7?'(BYE to Semis)':'vs Seed #7'}</div>
-        <div style="background:#15151c;border:1px solid #2d2d38;border-radius:4px;padding:8px"><b>Match 4:</b> Seed #3 vs Seed #6</div>
-      </div>`;
+    let rows = [];
+    for(let i = 0; i < Math.floor(count / 2); i++){
+      let p1 = currentSeeds[i] || `Seed #${i+1}`;
+      let p2 = currentSeeds[count - 1 - i] || `Seed #${count-i}`;
+      rows.push(`<div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid #202028;font-size:11px">
+        <span><b>#${i+1}</b> ${esc(p1)}</span>
+        <span style="color:#8e8c95">vs</span>
+        <span><b>#${count-i}</b> ${esc(p2)}</span>
+      </div>`);
     }
-    return `<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px;font-size:12px">
-      <div style="background:#15151c;border:1px solid #2d2d38;border-radius:4px;padding:8px"><b>Semifinal 1:</b> Seed #1 vs Seed #4</div>
-      <div style="background:#15151c;border:1px solid #2d2d38;border-radius:4px;padding:8px"><b>Semifinal 2:</b> Seed #2 vs Seed #3</div>
-    </div>`;
+    return rows.join('');
   };
 
-  let rows = Array.from({length: count}, (_, i) => `
-    <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:8px 12px;background:#14141a;border:1px solid #2d2d38;border-radius:6px;margin-bottom:8px">
-      <div style="font-weight:800;font-size:13px;color:#ffd166;width:70px">Seed #${i+1}</div>
-      <select class="reseed-select" data-seed-idx="${i}" style="flex:1;background:#1b1b22;color:#f5f3f0;border:1px solid #404050;border-radius:4px;padding:6px 10px;font-weight:700">
-        ${playerOptions(currentSeeds[i])}
+  let rows = Array.from({length: count}, (_, i) => {
+    let cur = currentSeeds[i] || (t.players && t.players[i]) || '';
+    return `<div class="field" style="margin-top:8px;display:grid;grid-template-columns:80px 1fr;align-items:center;gap:10px">
+      <label style="margin:0;font-weight:800;color:var(--amber)">Seed #${i+1}</label>
+      <select class="reseed-select" data-seed="${i+1}" style="background:#181822;border:1px solid #363646;border-radius:6px;padding:8px 10px;color:#f5f3f0;font-weight:700">
+        ${playerOptions(cur)}
       </select>
-    </div>
-  `).join('');
+    </div>`;
+  }).join('');
 
   document.querySelector('#modal').innerHTML = `<div class="modal-wrap">
-    <div class="modal" style="max-width:540px">
+    <div class="modal" style="max-width:480px">
       <div class="modal-head">
         <div>
-          <div class="eyebrow">Moderator Tool</div>
-          <h2>Re-seed Playoff Bracket</h2>
+          <div class="eyebrow">${canManageTournament(t) ? 'Moderator Tool' : 'Tournament Director'} · Seeding</div>
+          <h2>Re-seed Top Cut Bracket</h2>
         </div>
         <button class="close" onclick="closeModal()">×</button>
       </div>
-      <p class="sub" style="margin:4px 0 16px">Assign seed rankings to each qualified trainer. Matchups will automatically update based on standard bracket seed pairings.</p>
+      <p class="sub" style="margin-top:2px">Manually adjust bracket seeds for ${esc(t.name)}. Overrides automatic group-stage placement order.</p>
       
       <div style="max-height:280px;overflow-y:auto;padding-right:4px;margin-bottom:14px">
         ${rows}
@@ -3608,7 +3666,7 @@ function openReseedBracketModal(){
 
 async function applyCustomTopCutSeeding(){
   let t = (current === 'Tournament Detail' ? activeT() : ongoingT()) || activeT();
-  if(!t || !moderator) return;
+  if(!t || !canManageTournament(t)) return;
 
   let selects = [...document.querySelectorAll('.reseed-select')];
   let chosen = selects.map(s => s.value.trim());
@@ -3631,7 +3689,7 @@ async function applyCustomTopCutSeeding(){
 
 async function resetToAutoSeeding(){
   let t = (current === 'Tournament Detail' ? activeT() : ongoingT()) || activeT();
-  if(!t || !moderator) return;
+  if(!t || !canManageTournament(t)) return;
   delete t.customTopCutSeeding;
   delete t.bracketManagerData;
   delete t.topCutCache;
@@ -3647,7 +3705,7 @@ function topCutSection(t, preview){
   let model = getTournamentTopCutModel(t);
   if(!model) return '<div class="card empty"><div class="card-title">Top Cut bracket data unavailable</div></div>';
 
-  let isModEditable = moderator && (t.status === 'ONGOING' || t.phase === 'topcut' || !!t.bracketManagerData);
+  let isModEditable = canManageTournament(t) && (t.status === 'ONGOING' || t.phase === 'topcut' || !!t.bracketManagerData);
   let statusBadge = preview ? `<span class="tag hunt">PROJECTED SEEDS</span>` : (t.status === 'COMPLETE' ? `<span class="tag safe">TOURNAMENT ARCHIVE · COMPLETE</span>` : `<span class="tag hunt">PLAYOFFS LIVE</span>`);
 
   function renderMatchSlot(pName, seed, score, isWinner, isLoser, originLabel){
@@ -3858,7 +3916,7 @@ function mountTopCutViewer(){}
 async function openTopCutScoreModal(matchId){
   matchId = typeof matchId === 'string' && !isNaN(+matchId) ? +matchId : matchId;
   let t = (current === 'Tournament Detail' ? activeT() : ongoingT()) || activeT();
-  if(!t || !moderator) return;
+  if(!t || !canManageTournament(t)) return;
   let data = await getTopCutStageData(t);
   if(!data || !data.match) return;
   let m = data.match.find(x => x.id === matchId);
@@ -3875,7 +3933,7 @@ async function openTopCutScoreModal(matchId){
     <div class="modal" style="max-width:440px">
       <div class="modal-head">
         <div>
-          <div class="eyebrow">Top Cut Match</div>
+          <div class="eyebrow">${moderator ? 'Moderator Tool' : 'Tournament Director'} · Top Cut</div>
           <h2>Enter Score</h2>
         </div>
         <button class="close" onclick="closeModal()">×</button>
@@ -3900,7 +3958,7 @@ async function openTopCutScoreModal(matchId){
 async function saveTopCutScore(matchId){
   matchId = typeof matchId === 'string' && !isNaN(+matchId) ? +matchId : matchId;
   let t = (current === 'Tournament Detail' ? activeT() : ongoingT()) || activeT();
-  if(!t) return;
+  if(!t || !canManageTournament(t)) return;
   let h = hydrateTopCutManager(t);
   if(!h) return;
   let a = document.querySelector('#topcutScoreA')?.value;
@@ -4805,6 +4863,17 @@ function openCreator(){
         <div class="field"><label>Advance per group to Top Cut</label><input id="ap" type="number" min="1" max="10" value="2"></div>
         <div class="field"><label>Start date</label><input id="sd" type="date"></div>
         <div class="field"><label>End date</label><input id="ed" type="date"></div>
+        <div class="field" style="grid-column:1/-1;margin-top:4px">
+          <label style="display:flex;justify-content:space-between;align-items:center">
+            <span>Tournament Director / Manager (Optional)</span>
+            <span class="tag" style="font-size:9px;background:#221d28;color:#d8b4fe;border:1px solid #582a85">Tournament Admin Perms</span>
+          </label>
+          <select id="tournamentManager">
+            <option value="">None (Commissioner Only)</option>
+            ${players.map(p => `<option value="${esc(p)}">${esc(p)} ${profiles[p]?.team ? `(${esc(profiles[p].team)})` : ''}</option>`).join('')}
+          </select>
+          <span style="font-size:10px;color:#8e8c95;margin-top:2px;display:block">Grants this player tournament-specific moderator permissions (entering match scores, running live draft, group draw, and managing this tournament).</span>
+        </div>
       </div>
     </div>
 
@@ -5112,7 +5181,7 @@ var scoreDrafts={},oddsCache={key:'',data:null};
 document.addEventListener('input',e=>{if(/^([ab]\d+|bs.+[ab])$/.test(e.target.id||''))scoreDrafts[e.target.id]=e.target.value});
 function score(i){
   let t=(current==='Tournament Detail'?activeT():ongoingT())||activeT();
-  if(!t)return;
+  if(!t||!canManageTournament(t))return;
   if(t.phase==='topcut'){alert('Group-stage scores are locked after Top Cut seeding.');return}
   let m=t.matches?.[i];
   if(!m)return;
@@ -5134,7 +5203,7 @@ function score(i){
 }
 function clearSingleScore(i){
   let t=(current==='Tournament Detail'?activeT():ongoingT())||activeT();
-  if(!t||!moderator)return;
+  if(!t||!canManageTournament(t))return;
   let m=t.matches?.[i];
   if(!m)return;
   if(!confirm(`Reset score for ${m.a} vs ${m.b}?`))return;
@@ -5174,10 +5243,10 @@ function safeRecord(p){let raw=String(profiles[p]?.record||'0-0'),parts=raw.spli
 
 
 
-async function endGroupStage(){let t=ongoingT();if(!t)return;if(t.matches.some(m=>m.as===''||m.bs==='')){alert('Enter a score for every group-stage match before ending the group stage.');return}t.finalStandings=Object.fromEntries(Object.keys(groupsOf(t)).map(g=>[g,getStand(t,g).map(x=>x.p)]));t.phase='topcut';await createTopCutStage(t);persistLeague();current='Top Cut';render()}
+async function endGroupStage(){let t=ongoingT();if(!t||!canManageTournament(t))return;if(t.matches.some(m=>m.as===''||m.bs==='')){alert('Enter a score for every group-stage match before ending the group stage.');return}t.finalStandings=Object.fromEntries(Object.keys(groupsOf(t)).map(g=>[g,getStand(t,g).map(x=>x.p)]));t.phase='topcut';await createTopCutStage(t);persistLeague();current='Top Cut';render()}
 function endTournament(){
   let t=ongoingT();
-  if(!t||!t.topCutCache?.complete){alert('Complete every Top Cut match before ending the tournament.');return}
+  if(!t||!canManageTournament(t)||!t.topCutCache?.complete){alert('Complete every Top Cut match before ending the tournament.');return}
   if(!confirm(`End ${t.name} and record ${t.topCutCache.champion} as champion?`))return;
   t.champion=t.topCutCache.champion;
   t.status='COMPLETE';
@@ -6050,7 +6119,7 @@ function Tournaments(){
 
 async function saveCover(id){
   let t = tournamentData[id];
-  if(!t){ closeModal(); return; }
+  if(!t || !canManageTournament(t)){ closeModal(); return; }
   let file = document.querySelector('#coverFile')?.files?.[0];
   if(!window.pendingCover && file){
     try {
@@ -6071,7 +6140,7 @@ async function saveCover(id){
 
 function removeCover(id){
   let t = tournamentData[id];
-  if(!t){ closeModal(); return; }
+  if(!t || !canManageTournament(t)){ closeModal(); return; }
   delete t.backgroundImage;
   delete tournamentCovers[id];
   try { localStorage.setItem('draftdex-tournament-covers', JSON.stringify(tournamentCovers)); } catch(e){}
@@ -6084,7 +6153,7 @@ function removeCover(id){
 
 function openCoverEditor(id){
   let t = tournamentData[id];
-  if(!t) return;
+  if(!t || !canManageTournament(t)) return;
   document.querySelector('#modal').innerHTML = `
     <div class="modal-wrap">
       <div class="modal" style="max-width:510px">
@@ -6971,7 +7040,7 @@ var matchSearchTerm = '';
 
 function resetGroupStageScores(){
   let t = (current === 'Tournament Detail' ? activeT() : ongoingT()) || activeT();
-  if(!t || !moderator) return;
+  if(!t || !canManageTournament(t)) return;
   let hasScores = (t.matches || []).some(m => m.as !== '' && m.as != null);
   if(!hasScores){
     alert('No group stage match scores have been reported yet.');
@@ -6992,7 +7061,7 @@ function resetGroupStageScores(){
 }
 
 function renderMatchRow(m, i, t){
-  let editable = moderator && t.status === 'ONGOING' && t.phase !== 'topcut';
+  let editable = canManageTournament(t) && t.status === 'ONGOING' && t.phase !== 'topcut';
   let a = m.a || 'TBD', b = m.b || 'TBD';
   let av = scoreDrafts['a'+i] ?? m.as ?? '';
   let bv = scoreDrafts['b'+i] ?? m.bs ?? '';
@@ -7077,6 +7146,7 @@ function onMatchSearchInput(val){
   }
 }
 
+var matchFilterPlayers = [];
 function toggleMatchPlayerFilter(p){
   let idx = matchFilterPlayers.indexOf(p);
   if(idx > -1){
@@ -7103,7 +7173,7 @@ function Matches(){
 
   let visibleGroups = matchGroupTab === 'all' ? groups : groups.filter(g => g === matchGroupTab);
 
-  let modActions = (moderator && t.status === 'ONGOING' && t.phase !== 'topcut') ? `
+  let modActions = (canManageTournament(t) && t.status === 'ONGOING' && t.phase !== 'topcut') ? `
     <div style="display:flex;align-items:center;flex-wrap:wrap;gap:8px">
       <button class="btn ghost" style="padding:6px 11px;font-size:11px" onclick="openGroupDrawCeremony('${jsArg(t.id)}')">🎩 Draw ceremony</button>
       <button class="btn ghost" style="padding:6px 11px;font-size:11px" onclick="openGroupPlacementEditor()">👥 Arrange groups</button>
@@ -7200,7 +7270,7 @@ function Matches(){
   `;
 }
 
-function matchesView(t=activeT(), editable=moderator){
+function matchesView(t=activeT(), editable=canManageTournament(t)){
   if(!t) return '';
   let groups = Object.keys(groupsOf(t));
   return `<div style="display:grid;gap:20px">
@@ -12608,18 +12678,18 @@ function openLegacyEloGuide(){
 }
 /* qualification + group placement now act on the tournament being viewed */
 function openSettings(){
-  let t=activeT();if(!t||!moderator)return;
+  let t=activeT();if(!t||!canManageTournament(t))return;
   let groupSize=Math.max(...Object.values(groupsOf(t)).map(x=>x.length));
   window.editingTournamentId=t.id;
   document.querySelector('#modal').innerHTML=`<div class="modal-wrap"><div class="modal" style="max-width:430px">
-    <div class="modal-head"><div><div class="eyebrow">Moderator setting · ${esc(t.name)}</div><h2>Group qualification</h2></div><button class="close" onclick="closeModal()">×</button></div>
+    <div class="modal-head"><div><div class="eyebrow">${moderator ? 'Moderator Setting' : 'Tournament Director'} · ${esc(t.name)}</div><h2>Group qualification</h2></div><button class="close" onclick="closeModal()">×</button></div>
     <div class="field"><label>Players advancing from each group</label><input id="cutSelect" type="number" min="1" max="${groupSize}" value="${advancePerGroup(t)}"></div>
     <p class="sub">This is per group. It immediately updates standings, the cutoff line, and Top Cut seeding.</p>
     <div class="creator-actions"><button class="btn" onclick="saveQualification()">Save qualification</button></div></div></div>`
 }
 function saveQualification(){
   let t=tournamentData[window.editingTournamentId]||activeT();
-  if(!t||!moderator)return;
+  if(!t||!canManageTournament(t))return;
   let value=Math.max(1,+document.querySelector('#cutSelect').value||1);
   t.advancePerGroup=value;
   if(t.id==='scarlet')cut=value*Object.keys(groupsOf(t)).length;
@@ -12631,7 +12701,7 @@ function saveQualification(){
 
 function randomizeTournamentGroups(tId, promptConfirm = false){
   let t = tournamentData[tId] || ongoingT() || activeT();
-  if(!t || !moderator) return;
+  if(!t || !canManageTournament(t)) return;
   if(promptConfirm && !confirm(`Randomly shuffle all ${t.players.length} coaches into groups for "${t.name}"?`)) return;
 
   let groupNames = Object.keys(groupsOf(t));
@@ -12664,8 +12734,8 @@ window.groupDrawCeremonyState = null;
 function openGroupDrawCeremony(tId){
   let t = tournamentData[tId] || ongoingT() || activeT();
   if(!t) return;
-  if(!moderator){
-    alert('Group draw ceremony is only available to moderators.');
+  if(!canManageTournament(t)){
+    alert('Group draw ceremony is only available to tournament managers and moderators.');
     return;
   }
 
@@ -12951,7 +13021,7 @@ function commitGroupDrawCeremony(){
   let state = window.groupDrawCeremonyState;
   if(!state) return;
   let t = tournamentData[state.tournamentId] || activeT();
-  if(!t) return;
+  if(!t || !canManageTournament(t)) return;
 
   pauseAutoGroupDraw();
 
@@ -13152,13 +13222,13 @@ function renderDraftLockedPredictions(t, isDetailTab = false){
 
 function openGroupPlacementEditor(){
   let t=activeT();
-  if(!moderator||!t||t.phase==='topcut')return;
+  if(!t||!canManageTournament(t)||t.phase==='topcut')return;
   window.editingTournamentId=t.id;
   let groups=groupsOf(t);
   document.querySelector('#modal').innerHTML=`<div class="modal-wrap"><div class="modal" style="max-width:780px">
     <div class="modal-head">
       <div>
-        <div class="eyebrow">Moderator only · ${esc(t.name)}</div>
+        <div class="eyebrow">${moderator ? 'Moderator Only' : 'Tournament Director'} · ${esc(t.name)}</div>
         <h2>Arrange Group Placements</h2>
       </div>
       <button class="close" onclick="closeModal()">×</button>
@@ -13177,7 +13247,7 @@ function openGroupPlacementEditor(){
 }
 function swapGroupPlacements(first,second,targetGroup){
   let t=tournamentData[window.editingTournamentId]||activeT();
-  if(!t||!first||!moderator||t.phase==='topcut')return;
+  if(!t||!first||!canManageTournament(t)||t.phase==='topcut')return;
   let buckets=groupsOf(t),assign={};
   Object.entries(buckets).forEach(([g,players])=>players.forEach(p=>assign[p]=g));
   let source=assign[first];
@@ -13207,8 +13277,10 @@ function tournamentDetail(){
     :detailTab==='Top Cut'?(isDraftOngoing ? renderDraftLockedTopCut(t, true) : topCutSection(t,!t.bracketManagerData))
     :detailTab==='Predictions'?(isDraftOngoing ? renderDraftLockedPredictions(t, true) : predictions(t))
     :predictions(t);
-  let edit=moderator?` <button class="btn ghost" onclick="openTournamentEdit('${jsArg(t.id)}')">Edit</button>`:'';
-  let headerHtml = head(t.name,t.season + ' · ' + t.status,`<div><button class="btn ghost" onclick="go('Tournaments')">← Archive</button>${edit}${moderator?` <button class="btn ghost" style="color:#ff9ba1" onclick="deleteTournament('${jsArg(t.id)}')">Delete</button>`:''}</div>`)
+  let canManage = canManageTournament(t);
+  let edit = canManage ? ` <button class="btn ghost" onclick="openTournamentEdit('${jsArg(t.id)}')">Edit</button>` : '';
+  let directorBadge = t.manager ? ` <span class="tag" style="background:#22172b;color:#d8b4fe;border:1px solid #5c2f88;font-size:10px;font-weight:800;margin-left:6px">🛡️ Director: ${esc(t.manager)}</span>` : '';
+  let headerHtml = head(t.name + directorBadge, t.season + ' · ' + t.status, `<div><button class="btn ghost" onclick="go('Tournaments')">← Archive</button>${edit}${moderator ? ` <button class="btn ghost" style="color:#ff9ba1" onclick="deleteTournament('${jsArg(t.id)}')">Delete</button>` : ''}</div>`)
     +`<div class="tabs">${availableTabs.map(x=>`<button class="${detailTab===x?'active':''}" onclick="detailTab='${x}';try{localStorage.setItem('draftdex-detail-tab','${x}')}catch(e){};render()">${x}</button>`).join('')}</div>`;
 
   if(detailTab === 'Predictions' || detailTab === 'Draft'){
@@ -13223,14 +13295,14 @@ function tournamentDetail(){
       <div class="side-line">${esc(t.start||'')} → ${esc(t.end||'')}</div></aside></div>`;
 }
 function openTournamentEdit(id){
-  if(!moderator)return;
   let t=tournamentData[id]||activeT();if(!t)return;
+  if(!canManageTournament(t))return;
   window.editingTournamentId=t.id;
   let locked=t.phase==='topcut';
   let canEditDraft = (t.status === 'ONGOING' && (t.hasDraft || t.phase === 'draft'));
   document.querySelector('#modal').innerHTML=`<div class="modal-wrap"><div class="modal" style="max-width:520px">
-    <div class="modal-head"><div><div class="eyebrow">Moderator only</div><h2>Edit ${esc(t.name)}</h2></div><button class="close" onclick="closeModal()">×</button></div>
-    <p class="sub">${esc(t.season||'')} · ${esc(t.status)}</p>
+    <div class="modal-head"><div><div class="eyebrow">${moderator ? 'Moderator Only' : 'Tournament Director'}</div><h2>Edit ${esc(t.name)}</h2></div><button class="close" onclick="closeModal()">×</button></div>
+    <p class="sub">${esc(t.season||'')} · ${esc(t.status)}${t.manager ? ` · Director: ${esc(t.manager)}` : ''}</p>
     <div class="section" style="display:grid;gap:9px">
       ${canEditDraft ? `
         <button class="btn ghost" onclick="openDraftBoardImporter('${jsArg(t.id)}')">📥 Import / Edit Draft Board</button>
@@ -13586,7 +13658,6 @@ function Teams(){
                     <h3 style="font:800 22px 'Barlow Condensed';color:#f5f3f0;margin:1px 0 0;line-height:1.1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;letter-spacing:.3px">${esc(teamName(t,p))}</h3>
                   </div>
                 </div>
-
                 <div style="display:flex;align-items:center;gap:6px;flex:none">
                   ${ovrObj.badgeHtml}
                 </div>
@@ -13630,7 +13701,7 @@ function Teams(){
 }
 function openTournamentPlayers(){
   let t = activeT();
-  if(!t) return;
+  if(!t || !canManageTournament(t)) return;
   window.editingTournamentId = t.id;
   let groups = Object.keys(groupsOf(t)), buckets = groupsOf(t);
   let allProfiles = Object.keys(profiles).sort((a,b) => a.localeCompare(b));
@@ -13673,7 +13744,7 @@ function openTournamentPlayers(){
     <div class="modal" style="max-width:820px;background:#111117;border:1px solid #2e2e3c;border-radius:12px;box-shadow:0 24px 60px rgba(0,0,0,0.85);max-height:90vh;display:flex;flex-direction:column">
       <div class="modal-head" style="border-bottom:1px solid #242432;padding-bottom:14px;margin-bottom:12px;flex:none">
         <div>
-          <div class="eyebrow" style="color:var(--amber)">Moderator · ${esc(t.name)}</div>
+          <div class="eyebrow" style="color:var(--amber)">${moderator ? 'Moderator' : 'Tournament Director'} · ${esc(t.name)}</div>
           <h2 style="font:900 24px 'Barlow Condensed';letter-spacing:.3px;margin-top:2px">Edit Tournament Rosters & Teams</h2>
         </div>
         <button class="close" onclick="closeModal()">×</button>
@@ -13727,7 +13798,7 @@ function filterRosterRows(q){
 }
 function saveTournamentPlayers(){
   let t=tournamentData[window.editingTournamentId]||activeT();
-  if(!t)return;
+  if(!t || !canManageTournament(t))return;
   if(t.phase==='topcut'){alert('Participants are locked after Top Cut begins.');return}
   let selected=[...document.querySelectorAll('.tPlayerChoice:checked')].map(x=>x.value);
   let newP=document.querySelector('#editNewPlayer').value.trim();
@@ -14431,9 +14502,8 @@ function loadOffseasonBoardIntoImporter(){
 }
 
 function openDraftBoardImporter(tId){
-  if(!moderator) return;
   let t = tournamentData[tId] || ongoingT() || activeT();
-  if(!t) return;
+  if(!t || !canManageTournament(t)) return;
   window.importingTournamentId = t.id;
   let d = ensureTournamentDraft(t);
   draftPendingImport = d.board?.length ? { tiers: JSON.parse(JSON.stringify(d.board)), totalMons: d.board.reduce((s,x)=>s+x.pokemon.length,0) } : null;
@@ -14445,7 +14515,7 @@ function openDraftBoardImporter(tId){
       <div class="modal" style="max-width:820px">
         <div class="modal-head">
           <div>
-            <div class="eyebrow" style="color:var(--red)">Moderator Only</div>
+            <div class="eyebrow" style="color:var(--red)">${moderator ? 'Moderator Only' : 'Tournament Director'}</div>
             <h2>Import Draft Board · Google Sheets</h2>
             <p class="sub" style="margin-top:2px">Copy and paste your draft board directly from Google Sheets or Excel.</p>
           </div>
@@ -14558,9 +14628,8 @@ Baxcalibur\tLandorus-Therian\tIron Hands\tSlowking-Galar\tClodsire`;
 }
 
 function saveImportedDraftBoard(tId){
-  if(!moderator) return;
   let t = tournamentData[tId] || activeT();
-  if(!t) return;
+  if(!t || !canManageTournament(t)) return;
   let d = ensureTournamentDraft(t);
 
   let budget = Math.max(0, +(document.getElementById('importBudget')?.value || 100));
@@ -14585,9 +14654,8 @@ function saveImportedDraftBoard(tId){
 }
 
 function openDraftOrderEditor(tId){
-  if(!moderator) return;
   let t = tournamentData[tId] || activeT();
-  if(!t) return;
+  if(!t || !canManageTournament(t)) return;
   let d = ensureTournamentDraft(t);
   let order = [...d.order];
 
@@ -14596,7 +14664,7 @@ function openDraftOrderEditor(tId){
       <div class="modal" style="max-width:540px">
         <div class="modal-head">
           <div>
-            <div class="eyebrow" style="color:var(--red)">Moderator Only</div>
+            <div class="eyebrow" style="color:var(--red)">${moderator ? 'Moderator Only' : 'Tournament Director'}</div>
             <h2>Draft Snake Order</h2>
             <p class="sub" style="margin-top:2px">Set the Round 1 picking order. Snake draft reverses each subsequent round.</p>
           </div>
@@ -14678,16 +14746,15 @@ function randomizeDraftOrder(tId){
 
 function saveDraftOrder(tId){
   let t = tournamentData[tId] || activeT();
-  if(!t) return;
+  if(!t || !canManageTournament(t)) return;
   persistLeague();
   closeModal();
   render();
 }
 
 function openRenameBoardPokemonModal(tId, oldMonName, cost, tierName){
-  if(!moderator) return;
   let t = tournamentData[tId] || ongoingT() || activeT();
-  if(!t) return;
+  if(!t || !canManageTournament(t)) return;
 
   document.querySelector('#modal').innerHTML = `
     <div class="modal-wrap">
@@ -14926,11 +14993,11 @@ function makeDraftPick(tId, pokemonName, forcedPlayer = null){
   }
 
   // Account authentication check
-  if(!moderator && !forcedPlayer){
+  if(!canManageTournament(t) && !forcedPlayer){
     let currentUsername = window.currentAccount?.username || sessionUser?.user_metadata?.username || sessionUser?.email?.split('@')[0] || '';
     let linked = (typeof myPlayer === 'function' ? myPlayer() : null) || (typeof playerForAccount === 'function' ? playerForAccount(currentUsername) : null) || currentUsername;
     if(!linked || linked.toLowerCase() !== (targetPlayer || '').toLowerCase()){
-      alert(`It is currently ${targetPlayer}'s turn to pick. Only ${targetPlayer} (or a moderator) can draft this Pokémon.`);
+      alert(`It is currently ${targetPlayer}'s turn to pick. Only ${targetPlayer} (or a tournament manager) can draft this Pokémon.`);
       return;
     }
   }
@@ -15012,8 +15079,8 @@ function makeDraftPick(tId, pokemonName, forcedPlayer = null){
 }
 
 function undoDraftPick(tId){
-  if(!moderator) return;
   let t = tournamentData[tId] || activeT();
+  if(!t || !canManageTournament(t)) return;
   if(!t || !t.draftData || !t.draftData.picks?.length) return;
   if(!confirm('Undo the last draft pick?')) return;
 
@@ -15047,9 +15114,8 @@ function undoDraftPick(tId){
 }
 
 function startDraft(tId){
-  if(!moderator) return;
   let t = tournamentData[tId] || activeT();
-  if(!t) return;
+  if(!t || !canManageTournament(t)) return;
   let d = ensureTournamentDraft(t);
   d.status = 'active';
   persistLeague();
@@ -15067,9 +15133,8 @@ function startDraft(tId){
 }
 
 function pauseDraft(tId){
-  if(!moderator) return;
   let t = tournamentData[tId] || activeT();
-  if(!t) return;
+  if(!t || !canManageTournament(t)) return;
   let d = ensureTournamentDraft(t);
   d.status = 'paused';
   persistLeague();
@@ -15087,9 +15152,8 @@ function pauseDraft(tId){
 }
 
 function resumeDraft(tId){
-  if(!moderator) return;
   let t = tournamentData[tId] || activeT();
-  if(!t) return;
+  if(!t || !canManageTournament(t)) return;
   let d = ensureTournamentDraft(t);
   d.status = 'active';
   persistLeague();
@@ -15107,9 +15171,8 @@ function resumeDraft(tId){
 }
 
 function completeDraftAndAdvance(tId){
-  if(!moderator) return;
   let t = tournamentData[tId] || activeT();
-  if(!t) return;
+  if(!t || !canManageTournament(t)) return;
   if(!confirm(`Finish draft for ${t.name} and advance to Group Stage? All drafted rosters will be locked in.`)) return;
 
   let d = ensureTournamentDraft(t);
@@ -15166,7 +15229,9 @@ function DraftRoom(t){
         ? '<span class="status" style="background:#0d2d1f;border-color:#10b981;color:#10b981"><i style="background:#10b981"></i>DRAFT COMPLETE</span>' 
         : '<span class="status" style="background:#22222c;border-color:#4a4a58;color:#a09fa8"><i style="background:#a09fa8"></i>PENDING START</span>'));
 
-  let modActions = moderator ? `
+  let canManageDraft = canManageTournament(t);
+  let directorBadge = t.manager ? `<span class="tag" style="background:#22172b;color:#d8b4fe;border:1px solid #5c2f88;font-size:10px;font-weight:800">🛡️ Director: ${esc(t.manager)}</span>` : '';
+  let modActions = canManageDraft ? `
     <div style="display:flex;gap:6px;flex-wrap:wrap">
       ${d.status === 'pending' ? `<button class="btn btn-sm" style="padding:6px 14px!important;font-weight:800" onclick="startDraft('${jsArg(t.id)}')">▶️ Start Draft</button>` : ''}
       ${d.status === 'active' ? `<button class="btn ghost btn-sm" onclick="pauseDraft('${jsArg(t.id)}')">⏸️ Pause</button>` : ''}
@@ -15187,6 +15252,7 @@ function DraftRoom(t){
           <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
             ${statusBadge}
             <span class="eyebrow" style="margin:0;color:#ffd166;letter-spacing:1px">${esc(t.name)}</span>
+            ${directorBadge}
             <span class="tag" style="background:#1e1e28;color:#c0bfca">Round <b>${turn.currentRound}</b> · Pick <b>${turn.currentPickNumber} of ${turn.totalPicks}</b></span>
           </div>
           ${modActions}
@@ -15489,12 +15555,12 @@ function DraftBoardView(t){
         <span style="font-size:42px">📋</span>
         <div class="card-title" style="margin-top:10px">No Draft Board Imported Yet</div>
         <p class="sub" style="max-width:480px;margin:8px auto 16px">Copy your draft tiers from Google Sheets or Excel and import them to enable live interactive drafting.</p>
-        ${moderator ? `
+        ${canManageTournament(t) ? `
           <div style="display:flex;gap:10px;justify-content:center">
             <button class="btn" onclick="openDraftBoardImporter('${jsArg(t.id)}')">📥 Import Google Sheet Board</button>
             <button class="btn ghost" onclick="loadSampleDraftBoard();saveImportedDraftBoard('${jsArg(t.id)}')">Load Sample Tiers</button>
           </div>
-        ` : `<p class="sub">A moderator will import the draft board before drafting starts.</p>`}
+        ` : `<p class="sub">A tournament manager or moderator will import the draft board before drafting starts.</p>`}
       </div>
     `;
   }
@@ -15528,7 +15594,7 @@ function DraftBoardView(t){
               <button class="btn ghost btn-sm" onclick="scrollDraftBoard(280)" title="Scroll Right (Lower Tiers)" style="border-radius:0;padding:6px 10px!important;border:0;font-size:11px">▶</button>
             </div>
 
-            ${moderator ? `
+            ${canManageTournament(t) ? `
               <button class="btn ghost btn-sm" onclick="openDraftBoardImporter('${jsArg(t.id)}')">⚙️ Edit</button>
             ` : ''}
           </div>
@@ -15549,9 +15615,8 @@ function DraftBoardView(t){
 }
 
 function openModeratorSwapModal(tId, coach, currentMon, round, pickNumber, currentCost){
-  if(!moderator) return;
   let t = tournamentData[tId] || ongoingT() || activeT();
-  if(!t) return;
+  if(!t || !canManageTournament(t)) return;
   let d = ensureTournamentDraft(t);
   if(!d) return;
 
@@ -15584,7 +15649,7 @@ function openModeratorSwapModal(tId, coach, currentMon, round, pickNumber, curre
       <div class="modal" style="max-width:520px">
         <div class="modal-head">
           <div>
-            <div class="eyebrow" style="color:var(--amber)">Moderator Action</div>
+            <div class="eyebrow" style="color:var(--amber)">${moderator ? 'Moderator Action' : 'Tournament Director'}</div>
             <h2>Swap Drafted Pokémon</h2>
           </div>
           <button class="close" onclick="closeModal()">×</button>
@@ -15693,9 +15758,8 @@ function updateModSwapPreview(tId, coach, oldCost, curRemaining, openSlots, tota
 }
 
 function executeModeratorSwap(tId, coach, oldMon, pickNumber){
-  if(!moderator) return;
   let t = tournamentData[tId] || ongoingT() || activeT();
-  if(!t) return;
+  if(!t || !canManageTournament(t)) return;
   let d = ensureTournamentDraft(t);
   if(!d) return;
 
@@ -15753,11 +15817,10 @@ function executeModeratorSwap(tId, coach, oldMon, pickNumber){
 }
 
 function executeModeratorRemovePick(tId, coach, monName, pickNumber){
-  if(!moderator) return;
+  let t = tournamentData[tId] || ongoingT() || activeT();
+  if(!t || !canManageTournament(t)) return;
   if(!confirm(`Are you sure you want to remove ${monName} from ${coach}'s roster? This pick slot will become open again.`)) return;
 
-  let t = tournamentData[tId] || ongoingT() || activeT();
-  if(!t) return;
   let d = ensureTournamentDraft(t);
   if(!d) return;
 
@@ -15786,11 +15849,12 @@ function DraftRostersView(t){
   });
 
   let totalRounds = d.rounds || d.maxRosterSize || t?.draftData?.maxRosterSize || Math.max(10, ...order.map(p => coachStatsMap[p]?.picks?.length || 0));
+  let canManage = canManageTournament(t);
 
   return `
-    ${moderator ? `
+    ${canManage ? `
       <div style="margin-bottom:14px;padding:9px 14px;background:#181524;border:1px solid #3d3554;border-radius:8px;font-size:11px;color:#ffd166;display:flex;align-items:center;gap:8px">
-        <span>👑 <b>Moderator Mode:</b> Click on any drafted Pokémon cell below to swap it for an undrafted Pokémon on the board or adjust a coach's roster.</span>
+        <span>👑 <b>${moderator ? 'Moderator Mode' : 'Tournament Director'}:</b> Click on any drafted Pokémon cell below to swap it for an undrafted Pokémon on the board or adjust a coach's roster.</span>
       </div>
     ` : ''}
 
@@ -15849,10 +15913,10 @@ function DraftRostersView(t){
                 let spriteUrl = pokeSprite(pickObj.pokemon);
                 let theme = getPokemonTypeTheme(pickObj.pokemon);
                 return `
-                  <div class="draft-matrix-cell drafted ${moderator ? 'mod-clickable' : ''}"
+                  <div class="draft-matrix-cell drafted ${canManage ? 'mod-clickable' : ''}"
                        style="background:linear-gradient(135deg, ${theme.bg} 0%, ${theme.bgEnd} 100%);border:1px solid ${theme.border};box-shadow:0 2px 8px rgba(0,0,0,0.3);"
-                       title="${esc(pickObj.pokemon)} (${theme.name} · ${pickObj.cost} pts) · Round ${roundNum}, Pick #${pickNumber}${moderator ? ' · Click to swap out' : ''}"
-                       ${moderator ? `onclick="openModeratorSwapModal('${jsArg(t.id)}', '${jsArg(coach)}', '${jsArg(pickObj.pokemon)}', ${pickObj.round || roundNum}, ${pickObj.pickNumber || pickNumber}, ${pickObj.cost || 0})"` : ''}>
+                       title="${esc(pickObj.pokemon)} (${theme.name} · ${pickObj.cost} pts) · Round ${roundNum}, Pick #${pickNumber}${canManage ? ' · Click to swap out' : ''}"
+                       ${canManage ? `onclick="openModeratorSwapModal('${jsArg(t.id)}', '${jsArg(coach)}', '${jsArg(pickObj.pokemon)}', ${pickObj.round || roundNum}, ${pickObj.pickNumber || pickNumber}, ${pickObj.cost || 0})"` : ''}>
                     <div class="draft-matrix-cell-head">
                       <span class="draft-matrix-pick-num" style="color:${theme.accent};font-weight:800">${roundNum}.${posInRound + 1}</span>
                       <span class="draft-matrix-cost" style="background:${theme.badgeBg};border:1px solid ${theme.border};color:${theme.badgeText};font-weight:700">${pickObj.cost} PTS</span>
@@ -15890,6 +15954,7 @@ function DraftCompletedView(t){
   let d = ensureTournamentDraft(t);
   let totalPicks = (d.picks || []).length;
   let order = getDraftOrderList(t);
+  let canManage = canManageTournament(t);
 
   return `
     <div style="display:flex;flex-direction:column;gap:16px">
@@ -15900,7 +15965,7 @@ function DraftCompletedView(t){
           <span style="font-size:12px;color:#a09fa8">${order.length} Coaches · ${totalPicks} Total Drafted Pokémon · Budget Cap: ${d.pointBudget ? d.pointBudget + ' pts' : 'Unlimited'}</span>
         </div>
         <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-          ${moderator ? `
+          ${canManage ? `
             <button class="btn ghost btn-sm" onclick="openDraftOrderEditor('${jsArg(t.id)}')">🔀 Draft Order</button>
             <button class="btn ghost btn-sm" onclick="openGroupDrawCeremony('${jsArg(t.id)}')">🎩 Group Draw</button>
             <button class="btn ghost btn-sm" style="color:#ffd166;border-color:#5a441c" onclick="reopenDraftPhase('${jsArg(t.id)}')">↩️ Reopen Live Draft</button>
@@ -15923,9 +15988,8 @@ function DraftCompletedView(t){
 }
 
 function reopenDraftPhase(tId){
-  if(!moderator) return;
   let t = tournamentData[tId] || activeT();
-  if(!t) return;
+  if(!t || !canManageTournament(t)) return;
   if(!confirm(`Reopen the live draft room for ${t.name}?`)) return;
   let d = ensureTournamentDraft(t);
   d.status = 'active';
