@@ -289,25 +289,26 @@
 .matchup-nav-arrow.right{right:6px}
 .matchup-hero-foot{background:#0e0e14c0;border-top:1px solid #20202c;padding:6px 14px;display:flex;justify-content:center;align-items:center;position:relative;z-index:2}
 /* ------------------------------------------------------------ Modern In-Season Hero & Showcase ------------------------------------------------------------ */
-.in-season-hero{display:grid;grid-template-columns:1.18fr .82fr;gap:18px;align-items:stretch}
-.tourney-showcase-card{position:relative;overflow:hidden;display:grid;grid-template-columns:minmax(0,1fr) 230px;gap:18px;padding:22px;background:linear-gradient(135deg,#1b1216 0%,#15151c 60%,#11141c 100%);border:1px solid #4a2832;border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,0.55),0 0 16px rgba(239,48,56,0.12);min-height:220px}
-.tourney-showcase-backdrop{position:absolute;inset:-24px;background-size:cover;background-position:center;filter:blur(32px) saturate(1.75) brightness(0.32);opacity:.9;pointer-events:none;z-index:0;transform:scale(1.1)}
-.tourney-showcase-info{display:flex;flex-direction:column;min-width:0;position:relative;z-index:1}
-.tourney-showcase-title{font:900 36px/1.05 'Barlow Condensed';color:#f5f3f0;letter-spacing:.5px;margin:10px 0 12px}
+.in-season-hero{display:grid;grid-template-columns:1.15fr 0.85fr;gap:18px;align-items:stretch}
+.tourney-hero-card{position:relative;overflow:hidden;display:flex;flex-direction:column;justify-content:space-between;padding:26px 24px;background:linear-gradient(135deg,#1b1216 0%,#15151c 60%,#11141c 100%);border:1px solid #4a2832;border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,0.55),0 0 16px rgba(239,48,56,0.12);min-height:430px;height:100%}
+.tourney-hero-card.has-bg{background-size:cover;background-position:center}
+.tourney-hero-backdrop{position:absolute;inset:0;background:linear-gradient(90deg,rgba(14,14,20,0.94) 0%,rgba(14,14,20,0.78) 45%,rgba(14,14,20,0.18) 100%);pointer-events:none;z-index:0}
+.tourney-hero-content{position:relative;z-index:1;display:flex;flex-direction:column;justify-content:space-between;height:100%}
+.tourney-hero-title{font:900 44px/1.02 'Barlow Condensed';color:#f5f3f0;letter-spacing:.5px;margin:12px 0 14px;text-shadow:0 2px 10px rgba(0,0,0,0.85)}
 .tourney-chips-row{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px}
-.tourney-chip{display:inline-flex;align-items:center;gap:5px;background:#00000060;border:1px solid #ffffff18;border-radius:5px;padding:4px 9px;font-size:11px;color:#c8c6ce}
+.tourney-chip{display:inline-flex;align-items:center;gap:5px;background:#00000075;border:1px solid #ffffff1f;border-radius:5px;padding:4px 9px;font-size:11px;color:#c8c6ce;backdrop-filter:blur(4px)}
 .tourney-chip b{color:#f5f3f0}
-.tourney-poster-frame{position:relative;width:100%;height:100%;min-height:185px;border-radius:8px;overflow:hidden;border:1px solid rgba(255,255,255,0.14);box-shadow:0 6px 18px rgba(0,0,0,0.65);background:#111116}
-.tourney-poster-img{width:100%;height:100%;background-size:cover;background-position:center;transition:transform .25s ease}
-.tourney-poster-frame:hover .tourney-poster-img{transform:scale(1.03)}
-.tourney-poster-placeholder{width:100%;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;background:linear-gradient(135deg,#24141a,#15151c);padding:14px;text-align:center}
 
-/* Modern Pulse Stat Strip */
+.in-season-sidebar{display:flex;flex-direction:column;gap:14px;min-width:0;justify-content:space-between}
+.in-season-metrics-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+
+/* Modern Pulse Stat Box */
 .pulse-stats-strip{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin-top:18px}
-.pulse-stat-box{padding:14px 16px;background:#15151d;border-color:#2b2b36;display:flex;flex-direction:column;justify-content:space-between}
+.pulse-stat-box{padding:12px 14px;background:#15151d;border:1px solid #2b2b36;border-radius:8px;display:flex;flex-direction:column;justify-content:space-between;min-height:76px;transition:border-color .15s ease}
+.pulse-stat-box:hover{border-color:#4a2c36}
 .pulse-stat-label{font-size:9px;font-weight:800;letter-spacing:.8px;color:#8e8c95;text-transform:uppercase}
-.pulse-stat-val{font:800 20px 'Barlow Condensed';color:#f5f3f0;margin:4px 0 2px}
-.pulse-stat-sub{font-size:11px;color:#a09fa8}
+.pulse-stat-val{font:800 18px/1.1 'Barlow Condensed';color:#f5f3f0;margin:3px 0 2px}
+.pulse-stat-sub{font-size:10px;color:#a09fa8}
 
 /* Modern Match Cards */
 .modern-match-card{padding:14px;background:#16161d;border:1px solid #2b2b36;border-radius:8px;transition:border-color .15s ease,transform .15s ease}
@@ -319,7 +320,8 @@
 .match-score-pill{font:900 16px 'Barlow Condensed';color:#8e8c95;padding:2px 8px;border-radius:4px;min-width:24px;text-align:center;background:#0b0b0f}
 .match-score-pill.winner-pill{color:#fff;background:var(--red);box-shadow:0 0 8px rgba(239,48,56,0.4)}
 
-@media(max-width:960px){.in-season-hero{grid-template-columns:1fr}.tourney-showcase-card{grid-template-columns:1fr}.tourney-poster-frame{height:200px}}
+@media(max-width:1024px){.in-season-hero{grid-template-columns:1fr}.tourney-hero-card{min-height:340px}}
+@media(max-width:560px){.in-season-metrics-grid{grid-template-columns:1fr}.tourney-hero-title{font-size:34px}}
 
 .draft-picks-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
 @media(max-width:1100px){.draft-picks-grid{grid-template-columns:repeat(2,1fr)}}
@@ -5857,94 +5859,107 @@ function Home(){
     window.featuredAutoplayTimer = null;
   }
 
-  return head(t.season + ': ' + t.name, 'Current Tournament', moderator ? `<button class="btn" onclick="current='${target}';render();window.scrollTo(0,0)">${isDraftPhase ? 'Open Draft Room' : (isTopCutPhase ? 'Manage Bracket' : 'Enter match scores')}</button>` : '') + `
-    <!-- Top In-Season Showcase & Primetime Hero -->
+  let favPlayerHtml = 'TBD';
+  let favSubHtml = 'View Playoff Odds →';
+  if(!isDraftPhase){
+    let oddsSnap = getOrComputeTournamentOdds(t);
+    let oddsList = Object.values(oddsSnap.sim || {}).sort((a, b) => b.champPct - a.champPct || b.topCutPct - a.topCutPct);
+    let fav = oddsList[0];
+    if(fav){
+      favPlayerHtml = playerLink(fav.player);
+      favSubHtml = `<b>${fav.champPct}%</b> Title Chance · <span style="color:#ffd166">View Odds Chart →</span>`;
+    }
+  }
+
+  let actions = (canManageTournament(t) ? `<button class="btn" onclick="current='${target}';render();window.scrollTo(0,0)">${isDraftPhase ? 'Open Draft Room' : (isTopCutPhase ? 'Manage Bracket' : 'Enter match scores')}</button>` : '');
+
+  let heroBgStyle = t.backgroundImage 
+    ? `style="background-image:linear-gradient(90deg,rgba(14,14,20,0.94) 0%,rgba(14,14,20,0.76) 42%,rgba(14,14,20,0.18) 100%),url('${esc(t.backgroundImage)}');background-size:cover;background-position:center"`
+    : '';
+
+  return head(t.season + ': ' + t.name, 'Current Tournament', actions) + `
+    <!-- Top In-Season Showcase & Primetime Hero with Right-Aligned Metrics -->
     <section class="in-season-hero">
-      <div class="card tourney-showcase-card">
-        ${t.backgroundImage ? `<div class="tourney-showcase-backdrop" style="background-image:url('${esc(t.backgroundImage)}')"></div>` : ''}
-        <div class="tourney-showcase-info">
-          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-            <span class="status"><i></i>${isDraftPhase ? 'DRAFT ROOM LIVE' : (isTopCutPhase ? 'TOP CUT PLAYOFFS LIVE' : 'GROUP STAGE LIVE')}</span>
-            <span class="eyebrow" style="margin:0;color:#ffd166;letter-spacing:1px">${esc(t.season)}</span>
-          </div>
-          <div class="tourney-showcase-title">${esc(t.name.toUpperCase())}</div>
-
-          <div class="tourney-chips-row">
-            <span class="tourney-chip">🎮 <b>${esc(t.regulation || 'Standard')}</b></span>
-            <span class="tourney-chip">👥 <b>${t.players.length}</b> Trainers</span>
-            ${isDraftPhase && turn ? `
-              <span class="tourney-chip">📋 Pick <b>${turn.currentPickNumber}/${turn.totalPicks}</b> (Round ${turn.currentRound})</span>
-              <span class="tourney-chip">💰 <b>${t.draftData?.pointBudget ? `${t.draftData.pointBudget} Pts` : 'Tier Draft'}</b></span>
-            ` : `
-              <span class="tourney-chip">⚔️ <b>${activePhaseCompleted}/${activePhaseTotal}</b> ${isTopCutPhase ? 'Playoff' : 'Group'} Matches (${completionPct}%)</span>
-              <span class="tourney-chip">🎖️ Top <b>${advancePerGroup(t)}</b> Advance</span>
-            `}
-          </div>
-
-          <div style="margin-top:auto;padding-top:14px;display:flex;gap:8px;flex-wrap:wrap;align-items:center">
-            <button class="btn btn-sm" style="padding:8px 12px!important" onclick="current='${target}';render()">${isDraftPhase ? 'Enter Live Draft Room →' : (isTopCutPhase ? 'View Championship Bracket →' : 'View Group Matches →')}</button>
-            ${isDraftPhase ? `
-              ${moderator ? `<button class="btn ghost btn-sm" style="padding:8px 12px!important" onclick="openDraftBoardImporter('${jsArg(t.id)}')">📥 Import Board</button>` : ''}
-              <button class="btn ghost btn-sm" style="padding:8px 12px!important" onclick="go('Teams')">View Rosters</button>
-            ` : `
-              <button class="btn ghost btn-sm" style="padding:8px 12px!important" onclick="go('Standings')">Live Leaderboard</button>
-            `}
-            ${moderator ? `<button class="btn ghost btn-sm" style="padding:8px 10px!important" onclick="openTournamentEdit('${jsArg(t.id)}')">⚙️ Edit</button>` : ''}
-          </div>
-        </div>
-
-        <div class="tourney-poster-frame">
-          ${t.backgroundImage ? `
-            <div class="tourney-poster-img" style="background-image:url('${esc(t.backgroundImage)}')"></div>
-            ${moderator ? `<button class="cover-edit" style="position:absolute;bottom:8px;right:8px;padding:3px 8px;font-size:10px" onclick="event.stopPropagation();openCoverEditor('${jsArg(t.id)}')">Edit cover</button>` : ''}
-          ` : `
-            <div class="tourney-poster-placeholder">
-              <span style="font-size:38px">🏆</span>
-              <span style="font:800 12px 'Barlow Condensed';color:#8e8c95;letter-spacing:1px;margin-top:6px;text-transform:uppercase">${esc(t.name)}</span>
-              ${moderator ? `<button class="btn ghost btn-sm" style="margin-top:8px" onclick="event.stopPropagation();openCoverEditor('${jsArg(t.id)}')">+ Add cover</button>` : ''}
+      <!-- Left Column: Expanded Tournament Photo & Details Hero (Like Offseason) -->
+      <div class="card tourney-hero-card ${t.backgroundImage ? 'has-bg' : ''}" ${heroBgStyle}>
+        ${t.backgroundImage ? `<div class="tourney-hero-backdrop"></div>` : ''}
+        <div class="tourney-hero-content">
+          <div>
+            <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+              <span class="status"><i></i>${isDraftPhase ? 'DRAFT ROOM LIVE' : (isTopCutPhase ? 'TOP CUT PLAYOFFS LIVE' : 'GROUP STAGE LIVE')}</span>
+              <span class="eyebrow" style="margin:0;color:#ffd166;letter-spacing:1px">${esc(t.season)}</span>
+              ${tournamentDirectorsBadge(t)}
             </div>
-          `}
+
+            <div class="tourney-hero-title">${esc(t.name.toUpperCase())}</div>
+
+            <div class="tourney-chips-row" style="margin-bottom:16px">
+              <span class="tourney-chip">🎮 <b>${esc(t.regulation || 'Standard')}</b></span>
+              <span class="tourney-chip">👥 <b>${t.players.length}</b> Trainers</span>
+              ${isDraftPhase && turn ? `
+                <span class="tourney-chip">📋 Pick <b>${turn.currentPickNumber}/${turn.totalPicks}</b> (Round ${turn.currentRound})</span>
+                <span class="tourney-chip">💰 <b>${t.draftData?.pointBudget ? `${t.draftData.pointBudget} Pts` : 'Tier Draft'}</b></span>
+              ` : `
+                <span class="tourney-chip">⚔️ <b>${activePhaseCompleted}/${activePhaseTotal}</b> ${isTopCutPhase ? 'Playoff' : 'Group'} Matches (${completionPct}%)</span>
+                <span class="tourney-chip">🎖️ Top <b>${advancePerGroup(t)}</b> Advance</span>
+              `}
+            </div>
+          </div>
+
+          <div style="display:flex;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;gap:10px;margin-top:20px;padding-top:16px;border-top:1px solid rgba(255,255,255,0.1)">
+            <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+              <button class="btn btn-sm" style="padding:9px 16px!important;font-weight:800" onclick="current='${target}';render()">${isDraftPhase ? 'Enter Live Draft Room →' : (isTopCutPhase ? 'View Championship Bracket →' : 'View Group Matches →')}</button>
+              ${isDraftPhase ? `
+                ${canManageTournament(t) ? `<button class="btn ghost btn-sm" style="padding:8px 12px!important" onclick="openDraftBoardImporter('${jsArg(t.id)}')">📥 Import Board</button>` : ''}
+                <button class="btn ghost btn-sm" style="padding:8px 12px!important" onclick="go('Teams')">View Rosters</button>
+              ` : `
+                <button class="btn ghost btn-sm" style="padding:8px 12px!important" onclick="go('Standings')">Live Leaderboard</button>
+              `}
+              ${canManageTournament(t) ? `<button class="btn ghost btn-sm" style="padding:8px 10px!important" onclick="openTournamentEdit('${jsArg(t.id)}')">⚙️ Edit</button>` : ''}
+            </div>
+
+            ${canManageTournament(t) ? `
+              <button class="cover-edit" style="position:static;padding:5px 12px;font-size:11px;background:rgba(18,18,24,0.85);border:1px solid rgba(255,255,255,0.22);border-radius:6px;box-shadow:0 4px 12px rgba(0,0,0,0.5)" onclick="event.stopPropagation();openCoverEditor('${jsArg(t.id)}')">
+                ${t.backgroundImage ? '📷 Edit cover' : '+ Add cover'}
+              </button>
+            ` : ''}
+          </div>
         </div>
       </div>
 
-      <div id="matchupHeroCardWrap" style="display:contents">
-        ${isDraftPhase ? draftStageHeroCard(t) : matchupOfTheWeekCard(t)}
+      <!-- Right Column: Primetime Matchups + 4 Metric Boxes Below It -->
+      <div class="in-season-sidebar">
+        <div id="matchupHeroCardWrap">
+          ${isDraftPhase ? draftStageHeroCard(t) : matchupOfTheWeekCard(t)}
+        </div>
+
+        <div class="in-season-metrics-grid">
+          <div class="card pulse-stat-box">
+            <span class="pulse-stat-label">Tournament Phase</span>
+            <div class="pulse-stat-val">${isDraftPhase ? 'Live Draft' : (isTopCutPhase ? 'Top Cut Playoffs' : 'Group Stage')}</div>
+            <div class="pulse-stat-sub">${t.players.length} Competitors</div>
+          </div>
+
+          <div class="card pulse-stat-box">
+            <span class="pulse-stat-label">${isDraftPhase ? 'Draft Picks Made' : (isTopCutPhase ? 'Playoff Fixtures' : 'Group Fixtures')}</span>
+            <div class="pulse-stat-val">${isDraftPhase && turn ? `${turn.currentPickNumber - 1} <small style="font-size:12px;color:#8e8c95;font-weight:700">/ ${turn.totalPicks}</small>` : `${activePhaseCompleted} <small style="font-size:12px;color:#8e8c95;font-weight:700">/ ${activePhaseTotal}</small>`}</div>
+            <div class="progress" style="margin-top:4px;height:4px"><span style="width:${isDraftPhase ? draftPct : completionPct}%;${isTopCutPhase ? 'background:#ffd166;' : ''}"></span></div>
+          </div>
+
+          <div class="card pulse-stat-box" style="cursor:pointer;transition:border-color .15s ease" onclick="go('Playoff Odds')" title="Click to view full Playoff Odds chart">
+            <span class="pulse-stat-label" style="display:flex;justify-content:space-between;align-items:center"><span>${isDraftPhase ? 'Playoff Odds' : 'Title Favorite'}</span><span style="color:#ffd166;font-size:10px">↗</span></span>
+            <div class="pulse-stat-val" style="color:var(--amber)">${isDraftPhase ? 'Locked in Draft' : favPlayerHtml}</div>
+            <div class="pulse-stat-sub">${isDraftPhase ? 'Opens after draft' : favSubHtml}</div>
+          </div>
+
+          <div class="card pulse-stat-box" style="cursor:pointer" onclick="go('Standings')" title="Click to view Standings & Cutoff Lines">
+            <span class="pulse-stat-label" style="display:flex;justify-content:space-between;align-items:center"><span>Top Cut Cutoff</span><span style="color:#ffd166;font-size:10px">↗</span></span>
+            <div class="pulse-stat-val">Top ${advancePerGroup(t)} Per Group</div>
+            <div class="pulse-stat-sub" style="color:#ffd166;font-weight:700">Open Full Standings Tab →</div>
+          </div>
+        </div>
       </div>
     </section>
-
-    <!-- Tournament Quick Stats Pulse Strip -->
-    <div class="pulse-stats-strip">
-      <div class="card pulse-stat-box">
-        <span class="pulse-stat-label">Tournament Phase</span>
-        <div class="pulse-stat-val">${isDraftPhase ? 'Live Draft' : (isTopCutPhase ? 'Top Cut Playoffs' : 'Group Stage')}</div>
-        <div class="pulse-stat-sub">${t.players.length} Competitors</div>
-      </div>
-      <div class="card pulse-stat-box">
-        <span class="pulse-stat-label">${isDraftPhase ? 'Draft Picks Made' : (isTopCutPhase ? 'Playoff Fixtures' : 'Group Fixtures')}</span>
-        <div class="pulse-stat-val">${isDraftPhase && turn ? `${turn.currentPickNumber - 1} <small style="font-size:13px;color:#8e8c95;font-weight:700">/ ${turn.totalPicks}</small>` : `${activePhaseCompleted} <small style="font-size:13px;color:#8e8c95;font-weight:700">/ ${activePhaseTotal}</small>`}</div>
-        <div class="progress" style="margin-top:5px;height:5px"><span style="width:${isDraftPhase ? draftPct : completionPct}%;${isTopCutPhase ? 'background:#ffd166;' : ''}"></span></div>
-      </div>
-      <div class="card pulse-stat-box" style="cursor:pointer;transition:border-color .15s ease" onclick="go('Playoff Odds')" title="Click to view full Playoff Odds chart">
-        <span class="pulse-stat-label" style="display:flex;justify-content:space-between;align-items:center"><span>${isDraftPhase ? 'Playoff Odds' : 'Title Favorite'}</span><span style="color:#ffd166;font-size:10px">↗</span></span>
-        <div class="pulse-stat-val" style="color:var(--amber)">${isDraftPhase ? 'Locked in Draft' : (() => {
-          let oddsSnap = getOrComputeTournamentOdds(t);
-          let oddsList = Object.values(oddsSnap.sim || {}).sort((a, b) => b.champPct - a.champPct || b.topCutPct - a.topCutPct);
-          let fav = oddsList[0];
-          return fav ? `${playerLink(fav.player)}` : 'TBD';
-        })()}</div>
-        <div class="pulse-stat-sub">${isDraftPhase ? 'Simulations open after draft' : (() => {
-          let oddsSnap = getOrComputeTournamentOdds(t);
-          let oddsList = Object.values(oddsSnap.sim || {}).sort((a, b) => b.champPct - a.champPct || b.topCutPct - a.topCutPct);
-          let fav = oddsList[0];
-          return fav ? `<b>${fav.champPct}%</b> Title Chance · <span style="color:#ffd166">View Odds Chart →</span>` : 'View Playoff Odds →';
-        })()}</div>
-      </div>
-      <div class="card pulse-stat-box" style="cursor:pointer" onclick="go('Standings')" title="Click to view Standings & Cutoff Lines">
-        <span class="pulse-stat-label" style="display:flex;justify-content:space-between;align-items:center"><span>Top Cut Cutoff</span><span style="color:#ffd166;font-size:10px">↗</span></span>
-        <div class="pulse-stat-val">Top ${advancePerGroup(t)} Per Group</div>
-        <div class="pulse-stat-sub" style="color:#ffd166;font-weight:700">Open Full Standings Tab →</div>
-      </div>
-    </div>
 
     <!-- Phase Specific Interactive Sections -->
     ${isDraftPhase ? `
