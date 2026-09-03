@@ -571,6 +571,30 @@ details[open] > .past-tourney-summary .past-chevron{transform:rotate(180deg);col
 .draft-import-dropzone:hover{border-color:var(--red);background:#1a1418}
 .draft-import-textarea{width:100%;height:180px;background:#0f0f14;border:1px solid #2d2d3c;border-radius:6px;padding:12px;color:#f5f3f0;font-family:monospace;font-size:12px;resize:vertical}
 
+/* ------------------------------------------------------------ Modern Teams Roster UI ------------------------------------------------------------ */
+.teams{display:grid;grid-template-columns:repeat(auto-fill,minmax(350px,1fr));gap:16px;margin-top:14px}
+@media (max-width: 650px){.teams{grid-template-columns:1fr}}
+
+.team-modern-card{background:#14141c;border:1px solid #282836;border-radius:10px;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 6px 20px rgba(0,0,0,0.45);transition:all .16s ease;cursor:pointer;position:relative}
+.team-modern-card:hover{border-color:#5c242c;transform:translateY(-2px);box-shadow:0 10px 28px rgba(0,0,0,0.65)}
+
+.team-card-banner{height:100px;background-size:cover;background-position:center;position:relative;padding:14px 16px;display:flex;align-items:flex-end;background-color:#1e1e28}
+.team-card-banner-overlay{position:absolute;inset:0;background:linear-gradient(180deg,rgba(14,14,20,0.3) 0%,rgba(14,14,20,0.92) 100%);pointer-events:none}
+.team-card-topbar{position:relative;z-index:2;width:100%;display:flex;justify-content:space-between;align-items:center;gap:12px}
+
+.team-card-body{padding:14px 16px 12px;background:#14141c;flex:1;display:flex;flex-direction:column}
+.team-roster-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(95px,1fr));gap:6px;margin-top:4px}
+.team-mon-chip{display:flex;align-items:center;gap:6px;padding:4px 7px;background:#191924;border:1px solid #29293a;border-radius:6px;transition:all .12s ease;min-width:0}
+.team-mon-chip:hover{background:#222230;border-color:#3f3f56}
+.team-mon-sprite{width:24px;height:24px;object-fit:contain;flex:none;filter:drop-shadow(0 2px 4px rgba(0,0,0,0.5))}
+.team-mon-name{font:800 11.5px 'Barlow Condensed';color:#f5f3f0;letter-spacing:.3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1}
+
+.team-card-foot{padding:10px 16px;background:#101016;border-top:1px solid #20202c;display:flex;justify-content:space-between;align-items:center;gap:10px}
+.team-profile-link{font:800 11.5px 'Barlow Condensed';color:#a09fa8;letter-spacing:.4px;transition:color .12s ease}
+.team-modern-card:hover .team-profile-link{color:#ff777d}
+.cover-edit-btn{border:1px solid #3d3d4e;background:#1c1c26;color:#d0d0dc;border-radius:5px;padding:4px 9px;font-size:10px;font-weight:800;cursor:pointer;transition:all .12s ease}
+.cover-edit-btn:hover{background:#401b21;border-color:#ff5964;color:#fff}
+
 /* ------------------------------------------------------------ Modern Matches UI ------------------------------------------------------------ */
 .match-layout-modern{display:flex;flex-direction:column;gap:18px;width:100%}
 .match-controls-bar{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px;background:#14141a;border:1px solid #2b2b36;border-radius:8px;padding:12px 16px}
@@ -2118,8 +2142,7 @@ function teamName(t,p){return t&&Object.prototype.hasOwnProperty.call(t,'teamNam
 
 
 
-function teamCoverBg(p){return teamCovers[p]?`style="background-image:linear-gradient(90deg,rgba(20,20,25,.92),rgba(20,20,25,.68)),url('${teamCovers[p]}');background-size:cover;background-position:center"`:''}
-function Teams(){let t=ongoingT();if(!t)return noTournament();return head('Teams',t.name+' rosters',moderator?`<button class="btn ghost" onclick="openTournamentPlayers()">Edit tournament teams</button>`:'')+`<div class="teams">${t.players.map(p=>`<div style="position:relative"><button class="card team-card" ${teamCoverBg(p)} onclick="openProfile('${p}')"><div class="eyebrow">${p}</div><h3>${teamName(t,p)}</h3><div class="roster">${(roster[p]||[]).map(x=>`<span class="mon">${x}</span>`).join('')}</div><p class="sub">View profile & team history →</p></button>${moderator?`<button class="cover-edit" onclick="event.stopPropagation();openTeamCoverEditor('${p}')">Edit cover</button>`:''}</div>`).join('')}</div>`}
+function teamCoverBg(p){return teamCovers[p]?`style="background-image:url('${esc(teamCovers[p])}');background-size:cover;background-position:center"`:''}
 
 function openTeamCoverEditor(p){document.querySelector('#modal').innerHTML=`<div class="modal-wrap"><div class="modal" style="max-width:510px"><div class="modal-head"><div><div class="eyebrow">Team cover</div><h2>${p}'s team</h2></div><button class="close" onclick="closeModal()">×</button></div><p class="sub">Choose a Pokémon image up to 2 MB. This limit is for the current browser/JSON storage setup, not your website host.</p><div class="field"><label>Upload cover image</label><input id="teamCoverFile" type="file" accept="image/png,image/jpeg,image/webp" onchange="previewTeamCover(event)"></div><div id="teamCoverPreview" style="height:190px;border-radius:6px;margin-top:14px;background:${teamCovers[p]?`url('${teamCovers[p]}') center/cover`:'#25252b'}"></div><div class="creator-actions"><button class="btn ghost" onclick="removeTeamCover('${p}')">Remove cover</button><button class="btn" onclick="saveTeamCover('${p}')">Save cover</button></div></div></div>`}
 function saveTeamCover(p){
@@ -5785,7 +5808,7 @@ function Home(){
         <div class="progress" style="margin-top:5px;height:5px"><span style="width:${isDraftPhase ? draftPct : completionPct}%;${isTopCutPhase ? 'background:#ffd166;' : ''}"></span></div>
       </div>
       <div class="card pulse-stat-box" style="cursor:pointer;transition:border-color .15s ease" onclick="go('Playoff Odds')" title="Click to view full Playoff Odds chart">
-        <span class="pulse-stat-label" style="display:flex;justify-content:space-between;align-items:center"><span>${isDraftPhase ? 'Draft Status' : 'Title Favorite'}</span><span style="color:#ffd166;font-size:10px">↗</span></span>
+        <span class="pulse-stat-label" style="display:flex;justify-content:space-between;align-items:center"><span>${isDraftPhase ? 'Playoff Odds' : 'Title Favorite'}</span><span style="color:#ffd166;font-size:10px">↗</span></span>
         <div class="pulse-stat-val" style="color:var(--amber)">${isDraftPhase ? 'Locked in Draft' : (() => {
           let oddsSnap = getOrComputeTournamentOdds(t);
           let oddsList = Object.values(oddsSnap.sim || {}).sort((a, b) => b.champPct - a.champPct || b.topCutPct - a.topCutPct);
@@ -13522,18 +13545,80 @@ function teamName(t,p){
   return 'Unassigned team'
 }
 function Teams(){
-  let t=ongoingT();if(!t)return noTournament();
-  viewTournament=t.id;                    /* (a) keep the editor on this tournament */
-  return head('Teams',t.name+' rosters',moderator?`<button class="btn ghost" onclick="openTournamentPlayers()">Edit tournament teams</button>`:'')
-    +`<div class="teams">${t.players.map(p=>{
-      let ovrObj=calculatePlayerOVR(p);
-      return `<div style="position:relative">
-      <button class="card team-card" ${teamCoverBg(p)} onclick="openProfile('${jsArg(p)}')">
-        <div class="eyebrow" style="display:flex;justify-content:space-between;align-items:center"><span>${esc(p)}</span>${ovrObj.badgeHtml}</div><h3>${esc(teamName(t,p))}</h3>
-        <div class="roster">${(roster[p]||[]).map(x=>`<span class="mon">${esc(x)}</span>`).join('')}</div>
-        <p class="sub">View profile & team history →</p></button>
-      ${moderator?`<button class="cover-edit" onclick="event.stopPropagation();openTeamCoverEditor('${jsArg(p)}')">Edit cover</button>`:''}
-    </div>`}).join('')}</div>`
+  let t = ongoingT();
+  if(!t) return noTournament();
+  viewTournament = t.id; /* keep the editor on this tournament */
+
+  let actions = moderator ? `<button class="btn ghost" onclick="openTournamentPlayers()">Edit tournament teams</button>` : '';
+
+  return head('Teams', t.name + ' rosters & franchises', actions) + `
+    <div class="teams">
+      ${t.players.map(p => {
+        let ovrObj = calculatePlayerOVR(p);
+        let faceArt = profilePictures[p] ? `url('${esc(profilePictures[p])}')` : (teamCovers[p] ? `url('${esc(teamCovers[p])}')` : fallbackArt(p));
+        let faceLetter = (profilePictures[p] || teamCovers[p]) ? '' : esc((p || '?')[0]);
+        let teamMons = (t.rosters && t.rosters[p]) ? t.rosters[p] : (roster[p] || []);
+        let coverImg = teamCovers[p];
+        let bannerBg = coverImg 
+          ? `style="background-image:url('${esc(coverImg)}');background-size:cover;background-position:center"`
+          : `style="background:linear-gradient(135deg, hsl(${hueOf(p)} 42% 22%), #171722 80%)"`;
+        let rec = tournamentRecord(t, p);
+
+        return `
+          <div class="team-modern-card" onclick="openProfile('${jsArg(p)}')">
+            <!-- Header Banner with Cover Art & Coach Info -->
+            <div class="team-card-banner" ${bannerBg}>
+              <div class="team-card-banner-overlay"></div>
+              <div class="team-card-topbar">
+                <div style="display:flex;align-items:center;gap:11px;min-width:0">
+                  <span class="avatar mini" style="background-image:${faceArt};background-size:cover;background-position:center;width:42px;height:42px;border-radius:50%;display:grid;place-items:center;border:2px solid ${ovrObj.color};font:800 16px 'Barlow Condensed';flex:none;box-shadow:0 3px 12px rgba(0,0,0,0.65)">${faceLetter}</span>
+                  <div style="min-width:0">
+                    <div style="font-size:10px;font-weight:800;letter-spacing:1px;color:#ff858b;text-transform:uppercase">${esc(p)}</div>
+                    <h3 style="font:800 22px 'Barlow Condensed';color:#f5f3f0;margin:1px 0 0;line-height:1.1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;letter-spacing:.3px">${esc(teamName(t,p))}</h3>
+                  </div>
+                </div>
+
+                <div style="display:flex;align-items:center;gap:6px;flex:none">
+                  ${ovrObj.badgeHtml}
+                </div>
+              </div>
+            </div>
+
+            <!-- Body: Drafted Pokémon Roster Grid with Sprites -->
+            <div class="team-card-body">
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+                <span style="font-size:10px;font-weight:800;color:#a09fa8;letter-spacing:.6px;text-transform:uppercase">Drafted Roster (${teamMons.length} Pokémon)</span>
+                <span style="font-size:10.5px;color:#ffd166;font-weight:800">${rec.record || '0-0'} Record</span>
+              </div>
+
+              <div class="team-roster-grid">
+                ${teamMons.length ? teamMons.map(mon => `
+                  <div class="team-mon-chip" title="${esc(mon)}">
+                    <img src="${esc(pokeSprite(mon))}" class="team-mon-sprite" alt="${esc(mon)}" loading="lazy" onerror="handleSpriteError(this)">
+                    <span class="team-mon-name">${esc(mon)}</span>
+                  </div>
+                `).join('') : `
+                  <div style="grid-column:1/-1;padding:16px 10px;text-align:center;font-size:11px;color:#747280;background:#111116;border:1px dashed #242430;border-radius:6px">
+                    No Pokémon drafted yet
+                  </div>
+                `}
+              </div>
+            </div>
+
+            <!-- Footer: Actions -->
+            <div class="team-card-foot">
+              <span class="team-profile-link">View Coach Profile & Career History →</span>
+              ${moderator ? `
+                <button class="cover-edit-btn" onclick="event.stopPropagation();openTeamCoverEditor('${jsArg(p)}')">
+                  📷 Edit Cover
+                </button>
+              ` : ''}
+            </div>
+          </div>
+        `;
+      }).join('')}
+    </div>
+  `;
 }
 function openTournamentPlayers(){
   let t = activeT();
@@ -15282,7 +15367,7 @@ function renderDraftBoardTierColumns(t){
       <div class="draft-tier-col">
         <div class="draft-tier-head">
           <span style="color:#ffd166">${esc(tier.name)}</span>
-          <span class="tag" style="background:#2d2210;color:#ffd166;font-size:10px;border:1px solid #5a4218">${tier.cost} pts · ${availCount}/${tier.pokemon.length}</span>
+          <span class="tag" style="background:#2d2210;color:#ffd166;font-size:10px;border:1px solid #5a4218">${availCount}/${tier.pokemon.length} Available</span>
         </div>
 
         <div class="draft-tier-items">
@@ -15909,7 +15994,7 @@ function renderOffseasonTierColumns(){
       <div class="draft-tier-col">
         <div class="draft-tier-head">
           <span style="color:#ffd166">${esc(tier.name)}</span>
-          <span class="tag" style="background:#2d2210;color:#ffd166;font-size:10px;border:1px solid #5a4218">${tier.cost} pts · ${tier.pokemon.length} Pokémon</span>
+          <span class="tag" style="background:#2d2210;color:#ffd166;font-size:10px;border:1px solid #5a4218">${tier.pokemon.length} Pokémon</span>
         </div>
 
         <div class="draft-tier-items">
