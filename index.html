@@ -2625,11 +2625,20 @@ function removeCustom(i){
 
 
 
-/* ============================================================
-   LOCAL TEST LAB & ZERO-EGRESS SANDBOX ENGINE
-   ============================================================ */
+/* ===============    ============================================================ */
 var sandboxMode = (localStorage.getItem('draftdex-sandbox-mode') === 'true');
 function isSandboxMode(){ return Boolean(sandboxMode); }
+
+function getAccountDisplayText(){
+  let username = window.currentAccount?.username || sessionUser?.user_metadata?.username || '';
+  if(sessionUser){
+    if(moderator){
+      return username ? `${username} 👑` : 'Moderator 👑';
+    }
+    return username || 'Player';
+  }
+  return moderator ? 'Moderator 👑' : 'Sign in';
+}
 
 function renderTopNavExtras(){
   let wrap = document.querySelector('#topbarActions');
@@ -2646,7 +2655,7 @@ function renderTopNavExtras(){
         </button>`;
   }
 
-  let userLabel = sessionUser?.user_metadata?.username || (moderator ? 'Moderator' : 'Sign in');
+  let userLabel = getAccountDisplayText();
   wrap.innerHTML = `
     ${sandboxBtn}
     <button class="account" onclick="go('Account')">
@@ -5956,7 +5965,7 @@ function toggleModerator(){
     localStorage.setItem('draftdex-mod-mode', moderator ? 'on' : 'off');
   } catch(e){}
   let label = document.querySelector('#accountText');
-  if(label) label.textContent = window.currentAccount?.username ? (moderator ? `${window.currentAccount.username} 👑` : window.currentAccount.username) : (moderator ? 'Moderator' : 'Player');
+  if(label) label.textContent = getAccountDisplayText();
   render();
 }
 
@@ -6002,7 +6011,7 @@ async function updateSession(session){
   window.currentAccount=nextAccount;
   sessionResolvedFor=sessionUser?sessionUser.id:null;
   let label=document.querySelector('#accountText');
-  if(label) label.textContent=sessionUser ? (moderator ? (nextAccount?.username ? `${nextAccount.username} 👑` : 'Moderator') : (nextAccount?.username || 'Player')) : 'Sign in';
+  if(label) label.textContent = getAccountDisplayText();
   if(modChanged || userChanged){
     render();
   }
