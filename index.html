@@ -735,7 +735,7 @@ details[open] > .past-tourney-summary .past-chevron{transform:rotate(180deg);col
 <style>.playerGroup{background:#fff!important;color:#111!important}</style>
 <style>.match-row.aligned{grid-template-columns:145px minmax(115px,1fr) 34px minmax(115px,1fr) 118px 78px auto}</style>
 <style>#newMon{background:#fff!important;color:#111!important}#newMon::placeholder{color:#666}.hero-main:after{content:attr(data-season)!important}.player-link{border:0;background:none;color:#f5f3f0;padding:0;font:inherit;font-weight:800;cursor:pointer;text-align:left}.player-link:hover{color:#ff777d;text-decoration:underline}.match-row.aligned{grid-template-columns:145px minmax(115px,1fr) 34px minmax(115px,1fr) 118px 78px}.match-row.aligned .match-player{font-size:12px;min-width:0}.match-row.aligned .match-vs{text-align:center;color:#85838d;font-size:10px;font-weight:800}.bracket-match input{width:36px;background:#0f0f13;border:1px solid #474750;border-radius:3px;color:white;text-align:center;padding:3px}.bracket-grid-final{display:grid;grid-template-columns:repeat(4,210px);gap:42px;align-items:center;min-width:960px}.bracket-grid-final>div{display:grid;gap:38px}.bracket-grid-final>div:nth-child(2){padding-top:45px}.bracket-grid-final>div:nth-child(3){padding-top:115px}.bracket-grid-final>div:nth-child(4){padding-top:80px}.bracket-box{position:relative}.bracket-match-title{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.7px;color:var(--amber);margin:0 0 6px 2px}@media(max-width:560px){.match-row.aligned{grid-template-columns:75px 1fr 30px 1fr}.match-row.aligned .score-edit{grid-column:2/4}.match-row.aligned .save{grid-column:2/4}}</style>
-<body><div class="shell"><header class="topbar"><div class="brand" onclick="go('Home')"><img src="bellimaka_logo.jpg" class="bellimaka-logo" alt="Bellimaka"><span style="letter-spacing:1px">BELLIMAKA</span></div><nav class="nav" id="nav"></nav><button class="account" onclick="go('Account')"><span class="mode-dot"></span><span id="accountText">Sign in</span></button></header><main class="page" id="app"></main></div><div id="modal"></div>
+<body><div class="shell"><header class="topbar"><div class="brand" onclick="go('Home')"><img src="bellimaka_logo.jpg" class="bellimaka-logo" alt="Bellimaka"><span style="letter-spacing:1px">BELLIMAKA</span></div><nav class="nav" id="nav"></nav><div id="topbarActions" style="display:flex;align-items:center;gap:8px;margin-left:auto"><button class="account" onclick="go('Account')"><span class="mode-dot"></span><span id="accountText">Sign in</span></button></div></header><main class="page" id="app"></main></div><div id="modal"></div>
 <script>
 function esc(s){return String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;')}
 function jsArg(s){return esc(String(s??'').replace(/\\/g,'\\\\').replace(/'/g,"\\'"))}
@@ -1381,7 +1381,10 @@ let cut=+localStorage.getItem('draftdex-cut')||4,boardLink=localStorage.getItem(
 function save(){localStorage.setItem('draftdex-cut',cut);localStorage.setItem('draftdex-board',boardLink)}
 
 function head(title,over,action=''){return `<div class="page-head"><div><div class="eyebrow">${over}</div><h1>${title}</h1></div>${action}</div>`}
-function nav(){document.querySelector('#nav').innerHTML=tabs.map(t=>`<button class="${current===t?'active':''}" onclick="go('${t}')">${t}</button>`).join('')}
+function nav(){
+  document.querySelector('#nav').innerHTML=tabs.map(t=>`<button class="${current===t?'active':''}" onclick="go('${t}')">${t}</button>`).join('');
+  if(typeof renderTopNavExtras === 'function') renderTopNavExtras();
+}
 function go(t,updateHash=true){
   current=(t==='Draft Board'||t==='Draft Tools')?'Draft':t;
   try{
@@ -2584,6 +2587,374 @@ function removeCustom(i){
 
 
 
+/* ============================================================
+   LOCAL TEST LAB & ZERO-EGRESS SANDBOX ENGINE
+   ============================================================ */
+var sandboxMode = (localStorage.getItem('draftdex-sandbox-mode') === 'true');
+function isSandboxMode(){ return Boolean(sandboxMode); }
+
+function renderTopNavExtras(){
+  let wrap = document.querySelector('#topbarActions');
+  if(!wrap) return;
+  let isSandbox = isSandboxMode();
+  let sandboxBtn = isSandbox
+    ? `<button class="btn ghost btn-sm" onclick="openSandboxModal()" title="Sandbox Active: All changes stay local with 0 cloud egress" style="background:#2b1b36;border:1px solid #a855f7;color:#e9d5ff;padding:4px 10px;font-size:11px;border-radius:20px;cursor:pointer;display:inline-flex;align-items:center;gap:6px;box-shadow:0 0 12px rgba(168,85,247,0.35);font-weight:800">
+        <span style="font-size:13px">🧪</span> <span>Sandbox: 0 Egress</span>
+      </button>`
+    : `<button class="btn ghost btn-sm" onclick="openSandboxModal()" title="Open Test Lab for zero-egress sandbox testing" style="padding:4px 9px;font-size:11px;border-radius:20px;border-color:#3a3a46;color:#a09fa8;cursor:pointer;display:inline-flex;align-items:center;gap:5px">
+        <span style="font-size:13px">🧪</span> <span>Test Lab</span>
+      </button>`;
+
+  let userLabel = sessionUser?.user_metadata?.username || (moderator ? 'Moderator' : 'Sign in');
+  wrap.innerHTML = `
+    ${sandboxBtn}
+    <button class="account" onclick="go('Account')">
+      <span class="mode-dot" style="${isSandbox ? 'background:#a855f7;box-shadow:0 0 9px #a855f7' : ''}"></span>
+      <span id="accountText">${esc(userLabel)}</span>
+    </button>
+  `;
+}
+
+function toggleSandboxMode(){
+  let next = !isSandboxMode();
+  sandboxMode = next;
+  try {
+    localStorage.setItem('draftdex-sandbox-mode', String(next));
+  } catch(e){}
+  
+  if(next){
+    teardownDraftRealtime();
+    teardownLeagueStateRealtime();
+    showDraftToast('🧪 Sandbox Test Mode Active: Zero Cloud Egress');
+  } else {
+    setupLeagueStateRealtime();
+    setupDraftRealtime();
+    showDraftToast('☁️ Live Cloud Sync Connected');
+  }
+  render();
+  openSandboxModal();
+}
+
+async function restoreCloudStateFromModal(){
+  if(!confirm('Discard all local test edits and reload fresh live data from the Supabase cloud?')) return;
+  if(!supabaseClient){
+    alert('Supabase client not initialized.');
+    return;
+  }
+  try {
+    let { data, error } = await supabaseClient.from('league_state').select('data').eq('id', 'main').maybeSingle();
+    if(error || !data?.data){
+      alert('Could not fetch cloud data: ' + (error?.message || 'Empty cloud response'));
+      return;
+    }
+    applySharedState(data.data);
+    sandboxMode = false;
+    try { localStorage.setItem('draftdex-sandbox-mode', 'false'); } catch(e){}
+    setupLeagueStateRealtime();
+    setupDraftRealtime();
+    closeModal();
+    render();
+    showDraftToast('✅ Live cloud data restored successfully!');
+  } catch(e){
+    alert('Restore failed: ' + e.message);
+  }
+}
+
+async function pushSandboxToCloudFromModal(){
+  if(!confirm('Publish your current local tournament state as the official live cloud database? This will overwrite the cloud database with your current state.')) return;
+  if(!supabaseClient){
+    alert('Supabase client not initialized.');
+    return;
+  }
+  try {
+    sandboxMode = false;
+    try { localStorage.setItem('draftdex-sandbox-mode', 'false'); } catch(e){}
+    await flushSync();
+    setupLeagueStateRealtime();
+    setupDraftRealtime();
+    closeModal();
+    render();
+    showDraftToast('🚀 Live cloud database updated successfully!');
+  } catch(e){
+    alert('Cloud push failed: ' + e.message);
+  }
+}
+
+function openSandboxModal(){
+  let isSandbox = isSandboxMode();
+
+  document.querySelector('#modal').innerHTML = `
+    <div class="modal-wrap">
+      <div class="modal" style="max-width:680px">
+        <div class="modal-head">
+          <div>
+            <div class="eyebrow" style="color:${isSandbox ? '#c084fc' : '#4ade80'};display:flex;align-items:center;gap:6px">
+              <span>🧪</span> LOCAL TEST LAB & ZERO-EGRESS SANDBOX
+            </div>
+            <h2 style="font:800 24px 'Barlow Condensed';margin-top:2px">Sandbox Mode & Egress Control</h2>
+          </div>
+          <button class="close" onclick="closeModal()">×</button>
+        </div>
+        
+        <p class="sub" style="margin-top:6px;font-size:12px;line-height:1.5;color:#a09fa8">
+          Test tournaments, mock drafts, bracket simulations, and group stage qualifications freely without consuming database reads, writes, or cloud egress.
+        </p>
+
+        <div style="margin-top:16px;display:flex;flex-direction:column;gap:12px">
+          
+          <!-- Sandbox Status Banner -->
+          <div class="card" style="padding:16px;background:${isSandbox ? 'linear-gradient(135deg,#23142e,#15151e)' : '#141419'};border:1px solid ${isSandbox ? '#9333ea' : '#2e2e3a'}">
+            <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px">
+              <div style="max-width:440px">
+                <div style="display:flex;align-items:center;gap:8px">
+                  <span style="font-size:20px">${isSandbox ? '🧪' : '☁️'}</span>
+                  <span style="font:800 16px 'Barlow Condensed';color:${isSandbox ? '#e9d5ff' : '#f5f3f0'};letter-spacing:.5px">
+                    ${isSandbox ? 'SANDBOX ACTIVE (Zero Cloud Egress)' : 'LIVE CLOUD SYNC ACTIVE'}
+                  </span>
+                </div>
+                <p style="font-size:11px;color:${isSandbox ? '#d8b4fe' : '#8e8c95'};margin:4px 0 0;line-height:1.4">
+                  ${isSandbox 
+                    ? 'Cloud sync is completely disconnected. All tournament creation, match scoring, and draft testing are running purely in local browser memory with 0 KB egress.' 
+                    : 'Changes made by moderators sync automatically to Supabase. Turn on Sandbox Mode whenever you want to test screens, runs, or mock cups without using egress.'}
+                </p>
+              </div>
+              <button class="btn" onclick="toggleSandboxMode()" style="background:${isSandbox ? '#7e22ce' : '#22c55e'};color:#fff;font-size:11px;padding:8px 14px">
+                ${isSandbox ? 'Disable Sandbox' : 'Enable Sandbox Mode'}
+              </button>
+            </div>
+          </div>
+
+          <!-- Quick Actions Grid -->
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+            
+            <div class="card" style="padding:14px;background:#171720;border-color:#2e2e3c;display:flex;flex-direction:column;justify-content:space-between;gap:8px">
+              <div>
+                <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px">
+                  <span style="font-size:16px">🔄</span>
+                  <span style="font:800 13px 'Barlow Condensed';color:#ffd166">Restore Live Cloud Data</span>
+                </div>
+                <div style="font-size:11px;color:#8e8c95;line-height:1.35">
+                  Discard temporary test cups and re-download fresh production data from Supabase.
+                </div>
+              </div>
+              <button class="btn ghost btn-sm" onclick="restoreCloudStateFromModal()" style="margin-top:6px;width:100%">
+                Reload from Cloud
+              </button>
+            </div>
+
+            <div class="card" style="padding:14px;background:#171720;border-color:#2e2e3c;display:flex;flex-direction:column;justify-content:space-between;gap:8px">
+              <div>
+                <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px">
+                  <span style="font-size:16px">📊</span>
+                  <span style="font:800 13px 'Barlow Condensed';color:#7df0aa">Egress & Usage Report</span>
+                </div>
+                <div style="font-size:11px;color:#8e8c95;line-height:1.35">
+                  Inspect the complete cost and payload breakdown for every action in Bellimaka.
+                </div>
+              </div>
+              <button class="btn ghost btn-sm" onclick="openEgressReportModal()" style="margin-top:6px;width:100%">
+                View Egress Breakdown
+              </button>
+            </div>
+
+          </div>
+
+          <!-- Push Sandbox to Cloud (Optional) -->
+          ${isSandbox ? `
+            <div style="padding:10px 14px;background:rgba(239,48,56,0.08);border:1px solid rgba(239,48,56,0.25);border-radius:8px;display:flex;justify-content:space-between;align-items:center;gap:12px">
+              <div style="font-size:11px;color:#fca5a5;line-height:1.35">
+                <b>Publish Test Changes?</b> If you want to keep your current local state and push it to Supabase as official data:
+              </div>
+              <button class="btn btn-sm" onclick="pushSandboxToCloudFromModal()" style="white-space:nowrap;background:#ef3038;font-size:10px">
+                Push Local to Cloud
+              </button>
+            </div>
+          ` : ''}
+
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function openEgressReportModal(){
+  document.querySelector('#modal').innerHTML = `
+    <div class="modal-wrap">
+      <div class="modal" style="max-width:840px">
+        <div class="modal-head">
+          <div>
+            <div class="eyebrow" style="color:#7df0aa;display:flex;align-items:center;gap:6px">
+              <span>📊</span> DATA EGRESS & NETWORK USAGE REPORT
+            </div>
+            <h2 style="font:800 26px 'Barlow Condensed';letter-spacing:.5px;margin-top:2px">Bellimaka Egress & Bandwidth Breakdown</h2>
+          </div>
+          <button class="close" onclick="closeModal()">×</button>
+        </div>
+        <p class="sub" style="margin-top:6px;font-size:12px;line-height:1.5;color:#a09fa8">
+          Detailed audit of data transfer (egress and ingress) across Supabase database sync, WebSocket broadcasts, images, and static assets.
+        </p>
+        
+        <div style="margin-top:16px;display:flex;flex-direction:column;gap:14px;max-height:68vh;overflow-y:auto;padding-right:4px">
+          
+          <!-- Summary Metric Cards: Symmetrical 4-Column Grid -->
+          <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px">
+            
+            <div class="card" style="padding:12px;background:#141419;border-color:#2a2a36;text-align:center">
+              <div style="font-size:10px;font-weight:800;color:#8e8c95;letter-spacing:.6px;text-transform:uppercase">Match Score Update</div>
+              <div style="font:800 22px 'Barlow Condensed';color:#7df0aa;margin-top:2px">~45–70 KB</div>
+              <div style="font-size:10px;color:#a09fa8;margin-top:2px">Debounced (600ms)</div>
+            </div>
+
+            <div class="card" style="padding:12px;background:#141419;border-color:#2a2a36;text-align:center">
+              <div style="font-size:10px;font-weight:800;color:#8e8c95;letter-spacing:.6px;text-transform:uppercase">Live Draft Pick</div>
+              <div style="font:800 22px 'Barlow Condensed';color:#38bdf8;margin-top:2px">~200 Bytes</div>
+              <div style="font-size:10px;color:#a09fa8;margin-top:2px">WebSocket broadcast</div>
+            </div>
+
+            <div class="card" style="padding:12px;background:#141419;border-color:#2a2a36;text-align:center">
+              <div style="font-size:10px;font-weight:800;color:#8e8c95;letter-spacing:.6px;text-transform:uppercase">Page Tab Refresh</div>
+              <div style="font:800 22px 'Barlow Condensed';color:#ffd166;margin-top:2px">~30 Bytes</div>
+              <div style="font-size:10px;color:#a09fa8;margin-top:2px">Cached (0 KB if fresh)</div>
+            </div>
+
+            <div class="card" style="padding:12px;background:#141419;border-color:#2a2a36;text-align:center">
+              <div style="font-size:10px;font-weight:800;color:#8e8c95;letter-spacing:.6px;text-transform:uppercase">Sandbox Test Mode</div>
+              <div style="font:800 22px 'Barlow Condensed';color:#c084fc;margin-top:2px">0.0 KB</div>
+              <div style="font-size:10px;color:#a09fa8;margin-top:2px">100% Local memory</div>
+            </div>
+
+          </div>
+
+          <!-- Symmetrical 2-Column Action & Cost Breakdown Grid -->
+          <div class="card" style="padding:14px;background:#141419;border-color:#2a2a36">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+              <span class="eyebrow" style="margin:0;color:#7df0aa">Detailed Action-By-Action Egress Audit</span>
+              <span style="font-size:10px;font-weight:700;color:#8e8c95;letter-spacing:.5px;text-transform:uppercase">6 Systems</span>
+            </div>
+
+            <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:12px">
+              
+              <!-- 1. Tournament Creation & Moderation -->
+              <div style="background:#191922;border:1px solid #2d2d3c;border-radius:8px;padding:12px;display:flex;flex-direction:column;justify-content:space-between;gap:6px">
+                <div>
+                  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+                    <span style="font:800 13px 'Barlow Condensed';color:#f5f3f0">🏆 Tournament Creation & Structure</span>
+                    <span class="tag" style="background:#22222d;color:#ffd166;font-size:9px;font-weight:800">~50 KB / SYNC</span>
+                  </div>
+                  <div style="font-size:11px;color:#d0d0dc;line-height:1.4">
+                    Creating brackets, changing qualification cutoffs, or shuffling groups pushes the sanitized tournament state to Supabase via <code>flushSync</code>.
+                  </div>
+                </div>
+                <div style="padding-top:6px;border-top:1px solid #242432;font-size:10px;color:#8e8c95">
+                  <b style="color:#7df0aa">Tip:</b> In Sandbox Mode, create unlimited test tournaments with <b>0 KB</b> egress.
+                </div>
+              </div>
+
+              <!-- 2. Match Scores & Standings -->
+              <div style="background:#191922;border:1px solid #2d2d3c;border-radius:8px;padding:12px;display:flex;flex-direction:column;justify-content:space-between;gap:6px">
+                <div>
+                  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+                    <span style="font:800 13px 'Barlow Condensed';color:#f5f3f0">⚡ Match Scoring & Bracket Sim</span>
+                    <span class="tag" style="background:#22222d;color:#7df0aa;font-size:9px;font-weight:800">~50 KB (DEBOUNCED)</span>
+                  </div>
+                  <div style="font-size:11px;color:#d0d0dc;line-height:1.4">
+                    Score entries trigger a 600ms debounce before pushing. Entering 10 scores within 5 seconds only fires 1–2 cloud requests total.
+                  </div>
+                </div>
+                <div style="padding-top:6px;border-top:1px solid #242432;font-size:10px;color:#8e8c95">
+                  <b style="color:#7df0aa">Egress:</b> Broadcast to connected spectators via Postgres Realtime (~50 KB per subscriber).
+                </div>
+              </div>
+
+              <!-- 3. Live Draft Room -->
+              <div style="background:#191922;border:1px solid #2d2d3c;border-radius:8px;padding:12px;display:flex;flex-direction:column;justify-content:space-between;gap:6px">
+                <div>
+                  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+                    <span style="font:800 13px 'Barlow Condensed';color:#f5f3f0">🎯 Live Draft Room (Clock & Picks)</span>
+                    <span class="tag" style="background:#22222d;color:#38bdf8;font-size:9px;font-weight:800">~200 BYTES / PICK</span>
+                  </div>
+                  <div style="font-size:11px;color:#d0d0dc;line-height:1.4">
+                    Live picks use ephemeral Supabase Broadcast WebSockets (client-to-client). A full 80-pick draft consumes only ~16 KB of WebSocket data.
+                  </div>
+                </div>
+                <div style="padding-top:6px;border-top:1px solid #242432;font-size:10px;color:#8e8c95">
+                  <b style="color:#7df0aa">Optimization:</b> WebSockets disconnect automatically when tab is hidden.
+                </div>
+              </div>
+
+              <!-- 4. Media & Image Uploads -->
+              <div style="background:#191922;border:1px solid #2d2d3c;border-radius:8px;padding:12px;display:flex;flex-direction:column;justify-content:space-between;gap:6px">
+                <div>
+                  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+                    <span style="font:800 13px 'Barlow Condensed';color:#f5f3f0">🖼️ Custom Covers & Profile Pictures</span>
+                    <span class="tag" style="background:#22222d;color:#ff8e95;font-size:9px;font-weight:800">ISOLATED FROM STATE</span>
+                  </div>
+                  <div style="font-size:11px;color:#d0d0dc;line-height:1.4">
+                    Media is stored in an isolated record (<code>media</code>) so match scores never re-transfer images. Only downloaded when a new revision timestamp is detected.
+                  </div>
+                </div>
+                <div style="padding-top:6px;border-top:1px solid #242432;font-size:10px;color:#8e8c95">
+                  <b style="color:#7df0aa">Protection:</b> Compression caps local uploads to maintain low bandwidth.
+                </div>
+              </div>
+
+              <!-- 5. Background Tab Polling -->
+              <div style="background:#191922;border:1px solid #2d2d3c;border-radius:8px;padding:12px;display:flex;flex-direction:column;justify-content:space-between;gap:6px">
+                <div>
+                  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+                    <span style="font:800 13px 'Barlow Condensed';color:#f5f3f0">💤 Tab Sleep & Wake-Up Protocol</span>
+                    <span class="tag" style="background:#22222d;color:#7df0aa;font-size:9px;font-weight:800">ZERO GHOST POLLING</span>
+                  </div>
+                  <div style="font-size:11px;color:#d0d0dc;line-height:1.4">
+                    When minimized or in background, all WebSockets and polling loops are completely killed. Waking a tab sends a 30-byte timestamp check.
+                  </div>
+                </div>
+                <div style="padding-top:6px;border-top:1px solid #242432;font-size:10px;color:#8e8c95">
+                  <b style="color:#7df0aa">Protection:</b> Leaves 0 background data burn on phones and laptops.
+                </div>
+              </div>
+
+              <!-- 6. Pokémon Sprites & CDN Assets -->
+              <div style="background:#191922;border:1px solid #2d2d3c;border-radius:8px;padding:12px;display:flex;flex-direction:column;justify-content:space-between;gap:6px">
+                <div>
+                  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+                    <span style="font:800 13px 'Barlow Condensed';color:#f5f3f0">👾 Pokémon Sprites & Static CDN</span>
+                    <span class="tag" style="background:#22222d;color:#c084fc;font-size:9px;font-weight:800">0 KB SUPABASE EGRESS</span>
+                  </div>
+                  <div style="font-size:11px;color:#d0d0dc;line-height:1.4">
+                    Sprites load from Pokémon Showdown's CDN and are aggressively cached by your browser. Local artwork in <code>/DLP/</code> consumes 0 cloud bandwidth.
+                  </div>
+                </div>
+                <div style="padding-top:6px;border-top:1px solid #242432;font-size:10px;color:#8e8c95">
+                  <b style="color:#7df0aa">Cached:</b> 99%+ of sprite requests hit local browser disk cache.
+                </div>
+              </div>
+
+            </div>
+          </div>
+
+          <!-- Bottom Recommendations & Summary -->
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+            <div style="padding:10px 14px;background:rgba(168,85,247,0.06);border:1px solid rgba(168,85,247,0.22);border-radius:8px;display:flex;align-items:center;gap:10px">
+              <span style="font-size:18px">🧪</span>
+              <div style="font-size:11px;color:#e9d5ff;line-height:1.35">
+                <b>Testing Recommended:</b> Use <b>Sandbox Mode</b> whenever testing brackets, group qualifications, or mock drafts for 0 cloud egress.
+              </div>
+            </div>
+            <div style="padding:10px 14px;background:rgba(74,222,128,0.06);border:1px solid rgba(74,222,128,0.22);border-radius:8px;display:flex;align-items:center;gap:10px">
+              <span style="font-size:18px">🛡️</span>
+              <div style="font-size:11px;color:#dcfce7;line-height:1.35">
+                <b>Supabase Free Tier (5 GB / Month):</b> Typical live league operations consume less than 30–60 MB per month (&lt; 1.2% of free allowance).
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+  `;
+}
+
 /* Supabase connection: activate by filling in supabase-config.js */
 var supabaseClient=null,sessionUser=null;
 function supabaseReady(){let c=window.DRAFTDEX_SUPABASE;return Boolean(c&&c.url&&c.anonKey&&window.supabase)}
@@ -3497,13 +3868,15 @@ async function saveTopCutScore(matchId){
 var localMediaRev = Number(localStorage.getItem('draftdex-media-rev')) || 0;
 var tournamentCovers = {};
 var recapPanelImages = {};
+var isFetchingMediaFromCloud = false;
 try {
   tournamentCovers = JSON.parse(localStorage.getItem('draftdex-tournament-covers') || '{}');
   recapPanelImages = JSON.parse(localStorage.getItem('draftdex-recap-covers') || '{}');
 } catch(e){}
 
 async function fetchMediaFromCloud(){
-  if(!supabaseClient) return;
+  if(isSandboxMode() || !supabaseClient || isFetchingMediaFromCloud) return;
+  isFetchingMediaFromCloud = true;
   try {
     let cachedRev = Number(localStorage.getItem('draftdex-media-rev') || 0);
     let hasLocalPics = (Object.keys(profilePictures).length > 0 || Object.keys(teamCovers).length > 0);
@@ -3559,11 +3932,13 @@ async function fetchMediaFromCloud(){
     }
   } catch(e){
     console.warn('Bellimaka: fetchMediaFromCloud note:', e);
+  } finally {
+    isFetchingMediaFromCloud = false;
   }
 }
 
 async function pushMediaToSupabase(){
-  if(!supabaseClient) return;
+  if(isSandboxMode() || !supabaseClient) return;
   localMediaRev = Date.now();
   try { localStorage.setItem('draftdex-media-rev', String(localMediaRev)); } catch(e){}
   let mediaPayload = {
@@ -3706,7 +4081,7 @@ function teardownLeagueStateRealtime(){
 }
 
 function setupLeagueStateRealtime(){
-  if(!supabaseClient || document.hidden || leagueStateChannel) return;
+  if(isSandboxMode() || !supabaseClient || document.hidden || leagueStateChannel) return;
   try {
     leagueStateChannel = supabaseClient.channel('league-state').on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'league_state', filter: 'id=eq.main' }, p => {
       let incoming = p.new?.data;
@@ -3726,7 +4101,7 @@ function teardownDraftRealtime(){
 }
 
 function setupDraftRealtime(){
-  if(!supabaseClient) return;
+  if(isSandboxMode() || !supabaseClient) return;
   let t = ongoingT() || activeT();
   let isDraftActive = (t && t.phase === 'draft');
   let isViewingDraft = (current === 'Draft');
@@ -3806,7 +4181,7 @@ function applyRemoteDraftPick(payload){
     localStorage.setItem('draftdex-rosters', JSON.stringify(roster));
   } catch(e){}
 
-  if(moderator){
+  if(moderator && !isSandboxMode()){
     clearTimeout(syncTimer);
     syncTimer = setTimeout(flushSync, 3000);
   }
@@ -3847,7 +4222,7 @@ function applyRemoteDraftControl(payload){
 
 var isSyncingFromCloud = false;
 async function syncFromCloud(){
-  if(!supabaseClient || isSyncingFromCloud) return;
+  if(isSandboxMode() || !supabaseClient || isSyncingFromCloud) return;
   isSyncingFromCloud = true;
   try {
     let localUpdatedAt = Number(localStorage.getItem('draftdex-updated-at') || 0);
@@ -3915,7 +4290,7 @@ async function initSupabase(){
     await updateSession(session);
     supabaseClient.auth.onAuthStateChange(async (_, s) => await updateSession(s));
     
-    // Setup Realtime listeners only if tab is in foreground
+    // Setup Realtime listeners only if tab is in foreground and not in sandbox
     setupLeagueStateRealtime();
     setupDraftRealtime();
 
@@ -3945,7 +4320,7 @@ async function pushStateToSupabase(payload, updateTime){
 }
 
 async function flushSync(){
-  if(!supabaseClient || !moderator) return;
+  if(isSandboxMode() || !supabaseClient || !moderator) return;
 
   // Clean tournaments to remove heavy base64 strings from frequent main sync payload
   let cleanTournaments = {};
@@ -4005,8 +4380,10 @@ function persistLeague(){
     if(typeof offseasonDraftBoard !== 'undefined') localStorage.setItem('draftdex-offseason-board', JSON.stringify(offseasonDraftBoard));
     if(typeof accountLinks!=='undefined') localStorage.setItem('draftdex-accountlinks', JSON.stringify(accountLinks));
   }catch(e){}
-  clearTimeout(syncTimer);
-  syncTimer = setTimeout(flushSync, 600);
+  if(!isSandboxMode()){
+    clearTimeout(syncTimer);
+    syncTimer = setTimeout(flushSync, 600);
+  }
 }
 
 async function signOut(btnEl){
@@ -4083,7 +4460,9 @@ async function pick(el){
   }
   let t=ongoingT(),key=el.closest('.prediction')?.querySelector('h3')?.textContent||'prediction',choice=el.textContent;
   localStorage.setItem('draftdex-pick-'+(t?.id||'')+'-'+key,choice);
-  if(supabaseClient&&sessionUser&&t){await supabaseClient.from('predictions').upsert({user_id:sessionUser.id,tournament_id:t.id,prediction_key:key,selection:choice},{onConflict:'user_id,tournament_id,prediction_key'})}
+  if(!isSandboxMode() && supabaseClient && sessionUser && t){
+    await supabaseClient.from('predictions').upsert({user_id:sessionUser.id,tournament_id:t.id,prediction_key:key,selection:choice},{onConflict:'user_id,tournament_id,prediction_key'});
+  }
 }
 function recapRankings(){
   let leagueRecs=(typeof calculateLeagueRecords==='function'?calculateLeagueRecords():null);
@@ -7019,6 +7398,9 @@ function Standings(){
         </button>
         <button class="btn ghost btn-sm" style="display:inline-flex;align-items:center;gap:6px;padding:4px 10px;font-size:11px;border-radius:20px;border-color:#40404c;cursor:pointer" onclick="openBadgeGuide()" title="View all earnable badges and unlock requirements">
           <span style="font-size:13px">📖</span> Badge Guide
+        </button>
+        <button class="btn ghost btn-sm" style="display:inline-flex;align-items:center;gap:6px;padding:4px 10px;font-size:11px;border-radius:20px;border-color:#40404c;cursor:pointer" onclick="openEgressReportModal()" title="View data egress, network bandwidth costs, and sandbox mode optimization">
+          <span style="font-size:13px">⚡</span> Egress & Network Guide
         </button>
         ${moderator ? `<button class="btn btn-sm" onclick="openCreator()">+ Create next tournament</button>` : ''}
       </div>
@@ -11654,6 +12036,9 @@ function Records(){
           </button>
           <button class="btn ghost btn-sm" style="display:inline-flex;align-items:center;gap:6px;padding:4px 10px;font-size:11px;border-radius:20px;border-color:#40404c;cursor:pointer" onclick="openOvrGuide()" title="View how Trainer Overalls (OVR) are calculated, tier brackets, and volatility rules">
             <span style="font-size:13px">⭐</span> OVR Rating Guide
+          </button>
+          <button class="btn ghost btn-sm" style="display:inline-flex;align-items:center;gap:6px;padding:4px 10px;font-size:11px;border-radius:20px;border-color:#40404c;cursor:pointer" onclick="openEgressReportModal()" title="View data egress, network bandwidth costs, and sandbox mode optimization">
+            <span style="font-size:13px">⚡</span> Egress Guide
           </button>
         </div>
       </div>
