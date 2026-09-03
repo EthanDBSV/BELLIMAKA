@@ -450,28 +450,43 @@ details[open] > .past-tourney-summary .past-chevron{transform:rotate(180deg);col
 .leader-note{font-size:10px;color:#8e8c95;padding-top:11px;line-height:1.5}
 /* ------------------------------------------------------------ Live Draft Room & Interactive Draft Board ------------------------------------------------------------ */
 /* ------------------------------------------------------------ Live Draft Room & Interactive Draft Board ------------------------------------------------------------ */
-.draft-room-layout{display:flex;flex-direction:column;gap:18px;width:100%}
-.draft-hud{background:linear-gradient(135deg,#1c1618,#121217 60%);border:1px solid #3d242a;border-radius:10px;padding:18px 20px;position:relative;overflow:hidden;box-shadow:0 8px 28px rgba(0,0,0,0.5)}
-.draft-hud-head{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;margin-bottom:16px}
-.draft-hud-hero{display:grid;grid-template-columns:1.2fr 1fr;gap:14px;align-items:stretch}
-@media (max-width: 820px){.draft-hud-hero{grid-template-columns:1fr}}
+.draft-room-layout{display:flex;flex-direction:column;gap:16px;width:100%}
+.draft-hud{background:linear-gradient(135deg,#1b1518,#121217 65%);border:1px solid #382228;border-radius:10px;padding:16px 18px;position:relative;overflow:hidden;box-shadow:0 8px 24px rgba(0,0,0,0.55)}
+.draft-hud-head{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:14px}
+.draft-hud-hero{display:grid;grid-template-columns:1.15fr 1fr;gap:12px;align-items:stretch}
+@media (max-width: 860px){.draft-hud-hero{grid-template-columns:1fr}}
 
-.draft-clock-card{background:linear-gradient(135deg,#2e1217,#17171e 75%);border:2px solid #ef3038;border-radius:8px;padding:16px 18px;display:flex;align-items:center;gap:16px;box-shadow:0 0 24px rgba(239,48,56,0.25),inset 0 0 12px rgba(239,48,56,0.06);position:relative;overflow:hidden}
-.draft-clock-card.paused{border-color:#f59e0b;background:linear-gradient(135deg,#2e2208,#17171e 75%);box-shadow:0 0 20px rgba(245,158,11,0.2)}
-.draft-clock-card.completed{border-color:#10b981;background:linear-gradient(135deg,#0d2d1f,#17171e 75%);box-shadow:0 0 20px rgba(16,185,129,0.2)}
-.draft-clock-avatar{width:60px;height:60px;border-radius:50%;flex:none;background-size:cover;background-position:center;border:2px solid #fff;display:grid;place-items:center;font:800 22px 'Barlow Condensed';color:#fff;box-shadow:0 4px 16px rgba(0,0,0,0.7)}
+.draft-clock-card{background:linear-gradient(135deg,#281216,#15151c 75%);border:1.5px solid #ef3038;border-radius:8px;padding:14px 16px;display:flex;align-items:center;gap:14px;box-shadow:0 0 20px rgba(239,48,56,0.22);position:relative;overflow:hidden}
+.draft-clock-card.paused{border-color:#f59e0b;background:linear-gradient(135deg,#2e2208,#15151c 75%);box-shadow:0 0 18px rgba(245,158,11,0.2)}
+.draft-clock-card.completed{border-color:#10b981;background:linear-gradient(135deg,#0c281c,#15151c 75%);box-shadow:0 0 18px rgba(16,185,129,0.2)}
+.draft-clock-avatar{width:54px;height:54px;border-radius:50%;flex:none;background-size:cover;background-position:center;border:2px solid #fff;display:grid;place-items:center;font:800 20px 'Barlow Condensed';color:#fff;box-shadow:0 4px 14px rgba(0,0,0,0.6)}
 
-.draft-info-card{background:#15151d;border:1px solid #2d2d3c;border-radius:8px;padding:14px 16px;display:flex;flex-direction:column;justify-content:space-between;gap:10px}
-.draft-upcoming-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:8px}
-.draft-upcoming-chip{display:flex;align-items:center;gap:8px;padding:6px 10px;background:#1b1b24;border:1px solid #323242;border-radius:6px}
+.draft-info-card{background:#14141c;border:1px solid #292938;border-radius:8px;padding:14px 16px;display:flex;flex-direction:column;justify-content:space-between;gap:10px}
+.draft-upcoming-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(115px,1fr));gap:8px}
+.draft-upcoming-chip{display:flex;align-items:center;gap:8px;padding:7px 10px;background:#1a1a24;border:1px solid #2e2e3e;border-radius:6px;transition:all .15s ease}
+.draft-upcoming-chip.on-deck{border-color:#ef3038;background:linear-gradient(135deg,#2a1317,#1a1a24);box-shadow:0 0 10px rgba(239,48,56,0.2)}
 
-/* Enhanced Snake Timeline Track */
-.draft-snake-strip-wrap{margin-top:14px;background:#101015;border:1px solid #282834;border-radius:8px;padding:10px 12px;overflow-x:auto}
-.draft-snake-track{display:flex;align-items:center;gap:6px;min-width:max-content;padding-bottom:2px}
-.draft-snake-tile{display:flex;align-items:center;gap:7px;padding:5px 10px;border-radius:6px;background:#181822;border:1px solid #2f2f3e;font-size:11px;font-weight:700;color:#c8c7d2;white-space:nowrap;transition:all .15s ease}
-.draft-snake-tile.current{background:linear-gradient(135deg,#ef3038,#b51821);border-color:#ff8087;color:#fff;box-shadow:0 0 16px rgba(239,48,56,0.65);transform:scale(1.04);z-index:3}
-.draft-snake-tile.done{background:#121218;border-color:#22222c;color:#8e8c95}
-.draft-round-divider{padding:4px 8px;border-radius:4px;background:#242432;border:1px solid #3a3a4c;font:800 10px 'Barlow Condensed';letter-spacing:1px;color:#ffd166;text-transform:uppercase}
+/* Spacious & Legible Draft Ticker Track */
+.draft-snake-strip-wrap{margin-top:14px;background:#0d0d12;border:1px solid #23232f;border-radius:8px;padding:10px 12px;overflow-x:auto;-webkit-overflow-scrolling:touch}
+.draft-snake-strip-wrap::-webkit-scrollbar{height:6px}
+.draft-snake-strip-wrap::-webkit-scrollbar-track{background:#0a0a0e;border-radius:3px}
+.draft-snake-strip-wrap::-webkit-scrollbar-thumb{background:#2d2d3c;border-radius:3px}
+.draft-snake-strip-wrap::-webkit-scrollbar-thumb:hover{background:var(--red)}
+
+.draft-snake-track{display:flex;align-items:center;gap:8px;min-width:max-content;padding:2px 0}
+.draft-snake-tile{display:flex;align-items:center;gap:9px;padding:6px 12px;border-radius:7px;background:#15151e;border:1px solid #282838;font-size:11px;font-weight:700;color:#c8c7d2;white-space:nowrap;transition:all .15s ease;min-height:44px}
+.draft-snake-tile.current{background:linear-gradient(135deg,#2b1216 0%,#1a1014 100%);border:1.5px solid #ef3038;color:#fff;box-shadow:0 0 16px rgba(239,48,56,0.5);transform:scale(1.02);z-index:2}
+.draft-snake-tile.done{background:#111116;border-color:#22222d;color:#8e8c95}
+.draft-snake-tile.done:hover{border-color:#38384b;background:#161620}
+.draft-snake-tile.upcoming{opacity:0.55;border-style:dashed}
+
+.draft-tile-num{font:800 11px 'Barlow Condensed';color:#ffd166;background:#252014;border:1px solid #483918;padding:0 4px;border-radius:3px;letter-spacing:.3px}
+.draft-tile-player{font:800 12px 'Barlow Condensed';color:#f5f3f0;letter-spacing:.3px;max-width:90px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.draft-tile-sprite{width:20px;height:20px;object-fit:contain;filter:drop-shadow(0 1px 3px rgba(0,0,0,0.5))}
+.draft-tile-mon{font:800 11px 'Barlow Condensed';color:#7df0aa;letter-spacing:.3px;max-width:105px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.draft-tile-live{font:800 10px 'Barlow Condensed';color:#ff858b;letter-spacing:.5px}
+.draft-tile-wait{font-size:9.5px;color:#747280;font-weight:700}
+.draft-round-divider{padding:5px 10px;border-radius:5px;background:#1c1c28;border:1px solid #36364a;font:800 11px 'Barlow Condensed';letter-spacing:1px;color:#ffd166;text-transform:uppercase;white-space:nowrap;flex:none}
 
 /* Docked Board Layout with Side Planner */
 .draft-board-with-planner{display:grid;grid-template-columns:1fr 310px;gap:16px;align-items:start}
@@ -7724,18 +7739,9 @@ function sheetEmbedUrl(){
 function setBoardTab(x){boardTab=x;render();scrollTo(0,0)}
 
 function Board(){
-  let s=sheetIds(boardLink),embed=sheetEmbedUrl();
   let actions=`<div style="display:flex;gap:8px;flex-wrap:wrap">${moderator?`<button class="btn ghost" onclick="openBoardSettings()">Board settings</button>`:''}<button class="btn" onclick="openBoardLink()">Open in Google Sheets ↗</button></div>`;
-  let body=boardTab==='My Mock Draft'?mockView():`
-    <div class="card">
-      <div class="board-note"><span>${s.id?'Live view of the league cost sheet. Edits made in Google Sheets show up here on refresh.':'No sheet connected yet.'}</span>
-      <span>${draftPool.items.length?`${draftPool.items.length} Pokémon loaded for mock drafts`:'Draft pool not loaded'} ${moderator?`· <button class="link" onclick="syncDraftPool()">Sync draft pool</button>`:''}</span></div>
-      ${embed?`<iframe class="sheet-frame" src="${esc(embed)}" title="League draft sheet" loading="lazy"></iframe>`
-             :`<div class="empty"><div class="card-title">Connect the cost sheet</div><p class="sub">Add the Google Sheets link in Board settings to show it here.</p></div>`}
-    </div>`;
-  return head('Draft','Costs, tiers & mock drafts',actions)
-    +`<div class="tabs">${['Draft Sheet','My Mock Draft'].map(x=>`<button class="${boardTab===x?'active':''}" onclick="setBoardTab('${x}')">${x}</button>`).join('')}</div>`
-    +body
+  return head('Draft','Interactive Tiered Board & Mock Planner',actions)
+    + mockView();
 }
 
 function openBoardSettings(){
@@ -13951,8 +13957,8 @@ function builderHTML(){
         let drafter = draftedMap[cleanName];
         let isDrafted = !!drafter;
         let isMine = isDrafted && myCoach && drafter.toLowerCase() === myCoach.toLowerCase();
-        let statusBadge = isDrafted ? (isMine ? `<span style="font-size:9.5px;color:#4bdd91;background:#0e281b;border:1px solid #1c5236;padding:1px 5px;border-radius:4px;font-weight:800">✓ Drafted</span>` : `<span style="font-size:9.5px;color:#ff8e95;background:#281216;border:1px solid #54222a;padding:1px 5px;border-radius:4px;font-weight:700">Taken (${esc(drafter)})</span>`) : '';
-        let rowTitle = isDrafted ? (isMine ? `Drafted by you in this tournament` : `Drafted by ${drafter}`) : `Click to draft ${esc(x.name)}`;
+        let statusBadge = isDrafted ? (isMine ? `<span style="font-size:9.5px;color:#4bdd91;background:#0e281b;border:1px solid #1c5236;padding:1px 5px;border-radius:4px;font-weight:800">✓ Drafted</span>` : `<span style="font-size:9.5px;color:#ff8e95;background:#281216;border:1px solid #54222a;padding:1px 5px;border-radius:4px;font-weight:800">❌ Taken</span>`) : '';
+        let rowTitle = isDrafted ? (isMine ? `Drafted by you in this tournament` : `Already taken by another coach`) : `Click to draft ${esc(x.name)}`;
 
         return `<div class="tm-item" style="cursor:pointer;transition:all .15s ease;${isDrafted && !isMine ? 'opacity:0.6;' : ''}" title="${esc(rowTitle)}" onclick="openDraftFromPlanner('${jsArg(x.name)}', ${x.cost})">
           <img src="${esc(monSprite(x.name))}" alt="" loading="lazy" onerror="handleSpriteError(this)">
@@ -15120,41 +15126,39 @@ function DraftRoom(t){
             ` : ''}
           </div>
 
-          <!-- Upcoming Picks on Deck -->
+          <!-- Upcoming Turn Queue -->
           <div class="draft-info-card">
-            <div>
-              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
-                <span style="font-size:10px;font-weight:800;color:#a09fa8;text-transform:uppercase;letter-spacing:.6px">Next On The Clock · On Deck</span>
-                <span class="tag" style="background:#242432;color:#ffd166;font-size:9px;border:1px solid #3a3a4c;padding:1px 6px">Snake Rotation</span>
-              </div>
-
-              <div class="draft-upcoming-grid">
-                ${turn.upcoming.slice(0, 4).map((u, i) => {
-                  let uFace = profilePictures[u.player] ? `url('${esc(profilePictures[u.player])}')` : (teamCovers[u.player] ? `url('${esc(teamCovers[u.player])}')` : fallbackArt(u.player));
-                  let uLetter = (profilePictures[u.player] || teamCovers[u.player]) ? '' : esc((u.player || '?')[0]);
-                  let uOvr = calculatePlayerOVR(u.player);
-
-                  return `
-                    <div class="draft-upcoming-chip">
-                      <span class="avatar mini" style="background-image:${uFace};background-size:cover;background-position:center;width:24px;height:24px;border-radius:50%;display:grid;place-items:center;border:1px solid ${uOvr.color};font-size:10px;flex:none">${uLetter}</span>
-                      <div style="min-width:0;flex:1">
-                        <div style="font-size:9px;font-weight:800;color:${i === 0 ? '#ff8e95' : '#ffd166'}">#${u.pickNumber} ${i === 0 ? '· On Deck' : ''}</div>
-                        <div style="font:800 12px 'Barlow Condensed';color:#f5f3f0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(u.player)}</div>
-                      </div>
-                    </div>
-                  `;
-                }).join('') || '<div style="font-size:11px;color:#8e8c95;padding:6px">No upcoming picks remaining</div>'}
-              </div>
+            <div style="display:flex;align-items:center;justify-content:space-between">
+              <span class="eyebrow" style="margin:0;color:#a09fa8;display:flex;align-items:center;gap:6px">
+                <span>⏭️</span> UPCOMING TURN QUEUE
+              </span>
+              <span style="font-size:11px;color:#8e8c95;font-weight:700">Cap: <b style="color:#ffd166">${d.pointBudget ? d.pointBudget + ' pts' : 'Unlimited'}</b></span>
             </div>
 
-            <div style="font-size:10px;color:#8e8c95;display:flex;justify-content:space-between;align-items:center;border-top:1px solid #232330;padding-top:8px">
-              <span>Order: <b>${d.order.join(' → ')}</b></span>
-              <span>Cap: <b>${d.pointBudget ? d.pointBudget + ' pts' : 'Unlimited'}</b></span>
+            <div class="draft-upcoming-grid">
+              ${turn.upcoming.slice(0, 4).map((u, i) => {
+                let uFace = profilePictures[u.player] ? `url('${esc(profilePictures[u.player])}')` : (teamCovers[u.player] ? `url('${esc(teamCovers[u.player])}')` : fallbackArt(u.player));
+                let uLetter = (profilePictures[u.player] || teamCovers[u.player]) ? '' : esc((u.player || '?')[0]);
+                let uOvr = calculatePlayerOVR(u.player);
+                let isDeck = (i === 0);
+
+                return `
+                  <div class="draft-upcoming-chip ${isDeck ? 'on-deck' : ''}">
+                    <span class="avatar mini" style="background-image:${uFace};background-size:cover;background-position:center;width:24px;height:24px;border-radius:50%;display:grid;place-items:center;border:1.5px solid ${uOvr.color};font-size:10px;flex:none">${uLetter}</span>
+                    <div style="min-width:0;flex:1">
+                      <div style="font-size:9px;font-weight:800;color:${isDeck ? '#ff8e95' : '#ffd166'};letter-spacing:.3px">
+                        ${isDeck ? '🔥 ON DECK' : (i === 1 ? 'IN THE HOLE' : `PICK #${u.pickNumber}`)}
+                      </div>
+                      <div style="font:800 13px 'Barlow Condensed';color:#f5f3f0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(u.player)}</div>
+                    </div>
+                  </div>
+                `;
+              }).join('') || '<div style="font-size:11px;color:#8e8c95;padding:6px">No upcoming picks remaining</div>'}
             </div>
           </div>
         </div>
 
-        <!-- Snake Order Strip Timeline -->
+        <!-- Spacious & Legible Draft Ticker Timeline -->
         <div class="draft-snake-strip-wrap" id="draftSnakeStripWrap">
           <div class="draft-snake-track">
             ${Array.from({length: turn.totalPicks}, (_, idx) => {
@@ -15168,17 +15172,21 @@ function DraftRoom(t){
               let roundStart = (pickInfo.posInRound === 0);
 
               return `
-                ${roundStart ? `<span class="draft-round-divider">R${pickInfo.round} ${pickInfo.isReversed ? '↩' : '→'}</span>` : ''}
-                <div class="draft-snake-tile ${isCurrent ? 'current' : (isDone ? 'done' : '')}" title="Round ${pickInfo.round} · Pick #${pickInfo.pickNumber} · ${esc(pickInfo.player)}">
-                  <span class="avatar mini" style="background-image:${pFace};background-size:cover;background-position:center;width:18px;height:18px;border-radius:50%;display:grid;place-items:center;border:1px solid ${pOvr.color};font-size:8px;flex:none">${pLetter}</span>
-                  <span style="font:800 11px 'Barlow Condensed'">${pickInfo.round}.${pickInfo.pickInRound}</span>
-                  <b>${esc(pickInfo.player)}</b>
-                  ${isDone && pickObj ? `
-                    <div style="display:inline-flex;align-items:center;gap:3px;margin-left:2px">
-                      <img src="${esc(pokeSprite(pickObj.pokemon))}" style="width:18px;height:18px;object-fit:contain" onerror="handleSpriteError(this)">
-                      <span style="color:#ffd166;font-size:10px;font-weight:800">${esc(pickObj.pokemon)}</span>
+                ${roundStart ? `<span class="draft-round-divider">Round ${pickInfo.round} ${pickInfo.isReversed ? '↵' : '→'}</span>` : ''}
+                <div class="draft-snake-tile ${isCurrent ? 'current' : (isDone ? 'done' : 'upcoming')}" title="Round ${pickInfo.round} · Pick #${pickInfo.pickNumber} · ${esc(pickInfo.player)}">
+                  <span class="avatar mini" style="background-image:${pFace};background-size:cover;background-position:center;width:22px;height:22px;border-radius:50%;display:grid;place-items:center;border:1px solid ${pOvr.color};font-size:9px;flex:none">${pLetter}</span>
+                  <div style="display:flex;flex-direction:column;gap:1px;min-width:0">
+                    <div style="display:flex;align-items:center;gap:5px">
+                      <span class="draft-tile-num">${pickInfo.round}.${pickInfo.pickInRound}</span>
+                      <span class="draft-tile-player">${esc(pickInfo.player)}</span>
                     </div>
-                  ` : (isCurrent ? `<span style="font-size:9px;color:#fff;background:rgba(0,0,0,0.3);padding:1px 4px;border-radius:3px">ON CLOCK</span>` : '')}
+                    ${isDone && pickObj ? `
+                      <div style="display:inline-flex;align-items:center;gap:4px">
+                        <img src="${esc(pokeSprite(pickObj.pokemon))}" class="draft-tile-sprite" onerror="handleSpriteError(this)">
+                        <span class="draft-tile-mon">${esc(pickObj.pokemon)}</span>
+                      </div>
+                    ` : (isCurrent ? `<span class="draft-tile-live">⏱️ LIVE PICK</span>` : `<span class="draft-tile-wait">Pick #${pickInfo.pickNumber}</span>`)}
+                  </div>
                 </div>
               `;
             }).join('')}
@@ -15190,15 +15198,12 @@ function DraftRoom(t){
       <div class="tabs" style="margin-top:4px">
         <button class="${draftRoomSubTab === 'room' ? 'active' : ''}" onclick="draftRoomSubTab='room';render()">📋 Tiered Board & Planner</button>
         <button class="${draftRoomSubTab === 'rosters' ? 'active' : ''}" onclick="draftRoomSubTab='rosters';render()">👥 Coach Rosters & Budgets</button>
-        <button class="${draftRoomSubTab === 'sheet' ? 'active' : ''}" onclick="draftRoomSubTab='sheet';render()">📊 Google Sheets Embed</button>
       </div>
 
       <!-- Tab Content Area -->
       ${draftRoomSubTab === 'rosters' 
         ? DraftRostersView(t) 
-        : (draftRoomSubTab === 'sheet' 
-          ? `<div class="card">${sheetIds(boardLink).id ? `<iframe class="sheet-frame" src="${esc(sheetEmbedUrl())}" title="League draft sheet" loading="lazy"></iframe>` : `<div class="empty"><div class="card-title">Connect the cost sheet</div><p class="sub">Add the Google Sheets link in Board settings to show it here.</p></div>`}</div>`
-          : DraftBoardView(t))}
+        : DraftBoardView(t)}
     </div>
   `;
 }
@@ -15814,15 +15819,12 @@ function DraftCompletedView(t){
       <div class="tabs" style="margin:0">
         <button class="${completedDraftSubTab === 'rosters' ? 'active' : ''}" onclick="completedDraftSubTab='rosters';render()">👥 Coach Rosters & Budgets (Draft Board)</button>
         <button class="${completedDraftSubTab === 'board' ? 'active' : ''}" onclick="completedDraftSubTab='board';render()">📋 Tiered Draft Board</button>
-        <button class="${completedDraftSubTab === 'sheet' ? 'active' : ''}" onclick="completedDraftSubTab='sheet';render()">📊 Google Sheets Embed</button>
       </div>
 
       <!-- Tab Content Area -->
-      ${completedDraftSubTab === 'rosters' 
-        ? DraftRostersView(t) 
-        : (completedDraftSubTab === 'board' 
-          ? DraftBoardView(t) 
-          : `<div class="card">${sheetIds(boardLink).id ? `<iframe class="sheet-frame" src="${esc(sheetEmbedUrl())}" title="League draft sheet" loading="lazy"></iframe>` : `<div class="empty"><div class="card-title">Connect the cost sheet</div><p class="sub">Add the Google Sheets link in Board settings to show it here.</p></div>`}</div>`)}
+      ${completedDraftSubTab === 'board' 
+        ? DraftBoardView(t) 
+        : DraftRostersView(t)}
     </div>
   `;
 }
