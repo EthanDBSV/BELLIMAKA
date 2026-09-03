@@ -8102,9 +8102,11 @@ function calculatePlayerOVR(p, leagueData=null){
   let baseRecentWeight = (recentTotal > 0) ? Math.min(0.38, Math.max(0.12, recentTotal * 0.06)) : 0;
   let recentWeight = baseRecentWeight;
   if(missedRecentCount === 1){
-    recentWeight = Math.min(0.12, baseRecentWeight * 0.35); // 65% decay for sitting out 1 tournament
-  } else if(missedRecentCount >= 2){
-    recentWeight = 0; // Inactive for 2+ tournaments: purely career baseline win rate
+    recentWeight = baseRecentWeight * 0.65; // 35% decay for missing 1 tournament
+  } else if(missedRecentCount === 2){
+    recentWeight = baseRecentWeight * 0.50; // 50% decay for missing 2 tournaments
+  } else if(missedRecentCount >= 3){
+    recentWeight = 0; // Inactive for 3+ tournaments: shifts to pure career baseline
   }
 
   let effectiveWinPct = (recentTotal > 0 && recentWeight > 0)
@@ -11984,7 +11986,7 @@ function openOvrGuide(){
                     </div>
                     <span class="tag" style="background:#22222d;color:#ff9f1c;font-size:9px;font-weight:800;border-color:#5c3e1c">-1.5 PTS / MISSED</span>
                   </div>
-                  <div style="font-size:11px;color:#d0d0dc;line-height:1.4">Missing 1 season decays recent weight by 65%; missing 2+ shifts to career baseline (-1.5/season, cap -5.0).</div>
+                  <div style="font-size:11px;color:#d0d0dc;line-height:1.4">Missing 1 tournament decays recent weight by <b>35%</b>; missing 2 decays by <b>50%</b>; missing 3+ shifts to career baseline (-1.5 pts/season, cap -5.0).</div>
                 </div>
                 <div style="padding-top:6px;border-top:1px solid #242432;font-size:10px;color:#8e8c95;line-height:1.35">
                   <b style="color:#7df0aa">Impact:</b> Prevents sitting out from freezing peak ratings. Inactive coaches gradually regress to baseline.
