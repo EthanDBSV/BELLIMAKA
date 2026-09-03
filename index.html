@@ -11716,6 +11716,8 @@ function openBadgeGuide(){
   let categories = [
     {
       cat: 'Championships & Prestige',
+      icon: '🏆',
+      color: '#ffd166',
       badges: [
         { icon: '🐐', name: 'GOAT', color: 'gold', desc: 'Rated #1 Greatest of All Time based on composite ELO, titles, top cuts, and win rate.' },
         { icon: '🚀', name: 'Top Gun', color: 'gold', desc: 'All-time Peak OVR record holder: Reached the highest peak rating in Bellimaka history.' },
@@ -11731,6 +11733,8 @@ function openBadgeGuide(){
     },
     {
       cat: 'Predictions & Strategy',
+      icon: '🔮',
+      color: '#c084fc',
       badges: [
         { icon: '🔮', name: 'Prophet', color: 'indigo', desc: 'All-time career prediction points leader across Bellimaka history.' },
         { icon: '👁️', name: 'Oracle', color: 'indigo', desc: "Achieved 100% perfect prediction accuracy across ALL of a tournament's predictions without missing a single pick." },
@@ -11741,6 +11745,8 @@ function openBadgeGuide(){
     },
     {
       cat: 'Tournament Feats & Miracles',
+      icon: '✨',
+      color: '#7df0aa',
       badges: [
         { icon: '🛡️', name: 'Clean Sheet', color: 'teal', desc: 'Flawless group stage without dropping a single match in a tournament.' },
         { icon: '✨', name: 'Cinderella Run', color: 'magenta', desc: 'Miracle feat: Lost Match 1 in Top Cut, fought through the entire Losers Bracket, and won the Tournament Championship.' },
@@ -11752,6 +11758,8 @@ function openBadgeGuide(){
     },
     {
       cat: 'Streaks & Performance',
+      icon: '🔥',
+      color: '#ff8e95',
       badges: [
         { icon: '🧹', name: 'Sweep Artist', color: 'teal', desc: 'Held the all-time league record for most 2-0 clean sweeps.' },
         { icon: '🧊', name: 'Ice in Veins', color: 'cyan', desc: 'Held the all-time league record for most deciding Game-3 (2-1) decider wins.' },
@@ -11765,29 +11773,41 @@ function openBadgeGuide(){
 
   document.querySelector('#modal').innerHTML = `
     <div class="modal-wrap">
-      <div class="modal" style="max-width:720px">
+      <div class="modal" style="max-width:840px">
         <div class="modal-head">
           <div>
-            <div class="eyebrow">Hall of Fame Guide</div>
-            <h2>Earnable Badges & Accolades</h2>
+            <div class="eyebrow" style="color:var(--amber);display:flex;align-items:center;gap:6px">
+              <span>🏅</span> HALL OF FAME & TROPHY CASE
+            </div>
+            <h2 style="font:800 26px 'Barlow Condensed';letter-spacing:.5px;margin-top:2px">Earnable Badges & Accolades</h2>
           </div>
           <button class="close" onclick="closeModal()">×</button>
         </div>
-        <p class="sub" style="margin-top:6px">Complete league matches and tournaments to unlock badges on your trainer profile and Hall of Fame leaderboard.</p>
+        <p class="sub" style="margin-top:6px;font-size:12px;line-height:1.5;color:#a09fa8">
+          Complete league matches, win championships, set all-time records, and pull off tournament miracles to unlock badges on your trainer profile and the Hall of Fame leaderboard.
+        </p>
         
-        <div style="margin-top:16px;display:flex;flex-direction:column;gap:14px;max-height:65vh;overflow-y:auto;padding-right:4px">
+        <div style="margin-top:16px;display:flex;flex-direction:column;gap:14px;max-height:68vh;overflow-y:auto;padding-right:4px">
           ${categories.map(c => `
-            <div class="card" style="padding:14px;background:#141419;border-color:#2e2e38">
-              <div class="eyebrow" style="margin-bottom:10px;color:#ff9ba1">${esc(c.cat)}</div>
-              <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:10px">
+            <div class="card" style="padding:14px;background:#141419;border-color:#2a2a36">
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+                <span class="eyebrow" style="margin:0;color:${c.color};display:flex;align-items:center;gap:6px">
+                  <span>${c.icon}</span> ${esc(c.cat)}
+                </span>
+                <span style="font-size:10px;font-weight:700;color:#8e8c95;letter-spacing:.5px;text-transform:uppercase">${c.badges.length} Badges</span>
+              </div>
+              
+              <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:10px">
                 ${c.badges.map(b => `
-                  <div style="display:flex;align-items:flex-start;gap:10px;padding:10px;background:#1b1b22;border:1px solid #333340;border-radius:6px">
-                    <span style="font-size:22px;flex:none">${b.icon}</span>
-                    <div style="min-width:0">
+                  <div style="display:flex;align-items:flex-start;gap:10px;padding:10px 12px;background:#191922;border:1px solid #2d2d3c;border-radius:8px;min-height:72px">
+                    <div style="width:32px;height:32px;border-radius:8px;background:#22222e;border:1px solid #363648;display:grid;place-items:center;font-size:16px;flex:none">
+                      ${b.icon}
+                    </div>
+                    <div style="min-width:0;flex:1">
                       <div style="display:flex;align-items:center;gap:6px">
                         <span class="badge-pill ${b.color}">${b.icon} ${esc(b.name)}</span>
                       </div>
-                      <p style="font-size:11px;color:#9d9ba4;margin:4px 0 0;line-height:1.4">${esc(b.desc)}</p>
+                      <p style="font-size:11px;color:#a09fa8;margin:4px 0 0;line-height:1.35">${esc(b.desc)}</p>
                     </div>
                   </div>
                 `).join('')}
@@ -11803,122 +11823,208 @@ function openBadgeGuide(){
 function openOvrGuide(){
   document.querySelector('#modal').innerHTML = `
     <div class="modal-wrap">
-      <div class="modal" style="max-width:820px">
+      <div class="modal" style="max-width:840px">
         <div class="modal-head">
           <div>
-            <div class="eyebrow">Rating & Volatility System</div>
-            <h2>Trainer Overall (OVR) Guide</h2>
+            <div class="eyebrow" style="color:#7df0aa;display:flex;align-items:center;gap:6px">
+              <span>⭐</span> RATING & VOLATILITY ENGINE
+            </div>
+            <h2 style="font:800 26px 'Barlow Condensed';letter-spacing:.5px;margin-top:2px">Trainer Overall (OVR) Guide</h2>
           </div>
           <button class="close" onclick="closeModal()">×</button>
         </div>
-        <p class="sub" style="margin-top:6px">The OVR system evaluates a trainer's live performance, recent form, tournament placement depth, championship hardware, and active streaks. It is highly dynamic and volatile — your rating reflects your current competitive form, so past glory alone won't last forever.</p>
+        <p class="sub" style="margin-top:6px;font-size:12px;line-height:1.5;color:#a09fa8">
+          The OVR rating system evaluates active performance, recent tournament form, playoff bracket progression, championship hardware, and active streaks. It is dynamic and volatile — your rating reflects your current competitive form, so sitting out or entering a slump will naturally regress your overall.
+        </p>
         
-        <div style="margin-top:16px;display:flex;flex-direction:column;gap:16px;max-height:68vh;overflow-y:auto;padding-right:4px">
+        <div style="margin-top:16px;display:flex;flex-direction:column;gap:14px;max-height:68vh;overflow-y:auto;padding-right:4px">
           
-          <!-- Rating Tier Overview Cards -->
-          <div class="card" style="padding:14px;background:#141419;border-color:#2e2e38">
-            <div class="eyebrow" style="margin-bottom:10px;color:#ffd166">Rating Tiers & Brackets</div>
-            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(165px,1fr));gap:10px">
+          <!-- Rating Tier Overview: Symmetrical 4-Column Grid -->
+          <div class="card" style="padding:14px;background:#141419;border-color:#2a2a36">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+              <span class="eyebrow" style="margin:0;color:#ffd166">Rating Tiers & Brackets</span>
+              <span style="font-size:10px;font-weight:700;color:#8e8c95;letter-spacing:.5px;text-transform:uppercase">4 Tier Brackets</span>
+            </div>
+            
+            <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px">
+              <!-- Elite -->
+              <div class="card ovr-card-elite" style="padding:12px;display:flex;flex-direction:column;justify-content:space-between;border-radius:8px;min-height:115px">
+                <div>
+                  <div style="display:flex;justify-content:space-between;align-items:center">
+                    <span style="font:800 13px 'Barlow Condensed';letter-spacing:.8px;color:#ff8e95">ELITE</span>
+                    <span class="ovr-badge-pill ovr-elite">90–99</span>
+                  </div>
+                  <div style="font-size:10px;font-weight:700;color:#ffb0b4;margin-top:4px">Reigning Champ / 80%+ Form</div>
+                </div>
+                <p style="font-size:10px;color:#d0b0b4;line-height:1.35;margin:6px 0 0">Pinnacle excellence. Requires championship gold, deep top cut runs, and active win streaks.</p>
+              </div>
+
+              <!-- Gold -->
+              <div class="card ovr-card-gold" style="padding:12px;display:flex;flex-direction:column;justify-content:space-between;border-radius:8px;min-height:115px">
+                <div>
+                  <div style="display:flex;justify-content:space-between;align-items:center">
+                    <span style="font:800 13px 'Barlow Condensed';letter-spacing:.8px;color:#ffd166">GOLD</span>
+                    <span class="ovr-badge-pill ovr-gold">80–89</span>
+                  </div>
+                  <div style="font-size:10px;font-weight:700;color:#ffe199;margin-top:4px">Top Cut Finalists / 60%+ Form</div>
+                </div>
+                <p style="font-size:10px;color:#dcd0a0;line-height:1.35;margin:6px 0 0">Regular contenders & finalists. Earned via deep playoff runs (1st–4th) and consistent winning form.</p>
+              </div>
+
+              <!-- Silver -->
+              <div class="card ovr-card-silver" style="padding:12px;display:flex;flex-direction:column;justify-content:space-between;border-radius:8px;min-height:115px">
+                <div>
+                  <div style="display:flex;justify-content:space-between;align-items:center">
+                    <span style="font:800 13px 'Barlow Condensed';letter-spacing:.8px;color:#d0d0dc">SILVER</span>
+                    <span class="ovr-badge-pill ovr-silver">70–79</span>
+                  </div>
+                  <div style="font-size:10px;font-weight:700;color:#e2e0e8;margin-top:4px">Active League Core / 40–55%</div>
+                </div>
+                <p style="font-size:10px;color:#b0b0bc;line-height:1.35;margin:6px 0 0">Standard competitive core. Baseline floor (72 pts) for active coaches to develop without harsh drops.</p>
+              </div>
+
+              <!-- Bronze -->
+              <div class="card ovr-card-bronze" style="padding:12px;display:flex;flex-direction:column;justify-content:space-between;border-radius:8px;min-height:115px">
+                <div>
+                  <div style="display:flex;justify-content:space-between;align-items:center">
+                    <span style="font:800 13px 'Barlow Condensed';letter-spacing:.8px;color:#cd7f32">BRONZE</span>
+                    <span class="ovr-badge-pill ovr-bronze">50–69</span>
+                  </div>
+                  <div style="font-size:10px;font-weight:700;color:#dcb090;margin-top:4px">Cold Slump / Under 35%</div>
+                </div>
+                <p style="font-size:10px;color:#bca090;line-height:1.35;margin:6px 0 0">Rebuilding tier. Applied to trainers enduring tough losing skids or win rates below 35%.</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Symmetrical 2-Column Core Mechanics Grid -->
+          <div class="card" style="padding:14px;background:#141419;border-color:#2a2a36">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+              <span class="eyebrow" style="margin:0;color:#7df0aa">OVR Mechanics & Engine Pillars</span>
+              <span style="font-size:10px;font-weight:700;color:#8e8c95;letter-spacing:.5px;text-transform:uppercase">6 Core Factors</span>
+            </div>
+
+            <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:12px">
               
-              <div class="card ovr-card-elite" style="padding:12px;display:flex;flex-direction:column;gap:6px">
-                <div style="display:flex;justify-content:space-between;align-items:center">
-                  <span style="font:800 13px 'Barlow Condensed';letter-spacing:.8px;color:#ff8e95">ELITE</span>
-                  <span class="ovr-badge-pill ovr-elite">90–99</span>
+              <!-- 1. Baseline Floor -->
+              <div style="background:#191922;border:1px solid #2d2d3c;border-radius:8px;padding:12px;display:flex;flex-direction:column;justify-content:space-between;gap:8px">
+                <div>
+                  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+                    <div style="display:flex;align-items:center;gap:6px">
+                      <span style="font-size:16px">🛡️</span>
+                      <span style="font:800 13px 'Barlow Condensed';color:#f5f3f0;letter-spacing:.4px">Silver Baseline Floor</span>
+                    </div>
+                    <span class="tag" style="background:#22222d;color:#ffd166;font-size:9px;font-weight:800;border-color:#4a3f28">72 PTS BASE</span>
+                  </div>
+                  <div style="font-size:11px;color:#d0d0dc;line-height:1.4">Starting baseline score sits safely at <b>72 pts</b>. Low sample sizes (&lt; 4 games) regress towards 70.</div>
                 </div>
-                <p style="font-size:10px;color:#d0b0b4;line-height:1.35;margin:0">The pinnacle of excellence. Requires reigning championship gold, high active win streaks, and 80%+ current win rates. Extremely scarce.</p>
+                <div style="padding-top:6px;border-top:1px solid #242432;font-size:10px;color:#8e8c95;line-height:1.35">
+                  <b style="color:#7df0aa">Impact:</b> Provides a stable foundation so developing trainers sit comfortably in Silver.
+                </div>
               </div>
 
-              <div class="card ovr-card-gold" style="padding:12px;display:flex;flex-direction:column;gap:6px">
-                <div style="display:flex;justify-content:space-between;align-items:center">
-                  <span style="font:800 13px 'Barlow Condensed';letter-spacing:.8px;color:#ffd166">GOLD</span>
-                  <span class="ovr-badge-pill ovr-gold">80–89</span>
+              <!-- 2. Dynamic Recent Form -->
+              <div style="background:#191922;border:1px solid #2d2d3c;border-radius:8px;padding:12px;display:flex;flex-direction:column;justify-content:space-between;gap:8px">
+                <div>
+                  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+                    <div style="display:flex;align-items:center;gap:6px">
+                      <span style="font-size:16px">⚡</span>
+                      <span style="font:800 13px 'Barlow Condensed';color:#f5f3f0;letter-spacing:.4px">Dynamic Recent Form</span>
+                    </div>
+                    <span class="tag" style="background:#22222d;color:#ff8e95;font-size:9px;font-weight:800;border-color:#5c242c">UP TO 38% RECENCY</span>
+                  </div>
+                  <div style="font-size:11px;color:#d0d0dc;line-height:1.4">Recent tournament win rate scales dynamically by games played (up to 38%), blended with career record.</div>
                 </div>
-                <p style="font-size:10px;color:#dcd0a0;line-height:1.35;margin:0">Top playoff contenders & finalists. Achieved with deep top cut runs (1st–4th), 60%+ win rates, and solid winning form.</p>
+                <div style="padding-top:6px;border-top:1px solid #242432;font-size:10px;color:#8e8c95;line-height:1.35">
+                  <b style="color:#7df0aa">Impact:</b> Rewards active heaters while anchoring against short 3-game losing stints.
+                </div>
               </div>
 
-              <div class="card ovr-card-silver" style="padding:12px;display:flex;flex-direction:column;gap:6px">
-                <div style="display:flex;justify-content:space-between;align-items:center">
-                  <span style="font:800 13px 'Barlow Condensed';letter-spacing:.8px;color:#d0d0dc">SILVER</span>
-                  <span class="ovr-badge-pill ovr-silver">70–79</span>
+              <!-- 3. Stage Progression & Field Scaling -->
+              <div style="background:#191922;border:1px solid #2d2d3c;border-radius:8px;padding:12px;display:flex;flex-direction:column;justify-content:space-between;gap:8px">
+                <div>
+                  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+                    <div style="display:flex;align-items:center;gap:6px">
+                      <span style="font-size:16px">🏆</span>
+                      <span style="font:800 13px 'Barlow Condensed';color:#f5f3f0;letter-spacing:.4px">Playoff Bracket Progression</span>
+                    </div>
+                    <span class="tag" style="background:#22222d;color:#7df0aa;font-size:9px;font-weight:800;border-color:#2a4a35">+7.5 TO +3.8 PTS</span>
+                  </div>
+                  <div style="font-size:11px;color:#d0d0dc;line-height:1.4">1st (+7.5), 2nd (+5.8), 3rd (+4.8), 4th (+3.8) scaled by field size factor. Early exits receive <b>0.0 pts</b>.</div>
                 </div>
-                <p style="font-size:10px;color:#b0b0bc;line-height:1.35;margin:0">Standard competitive core. Baseline for active and developing trainers (40%–55% win rates) to sit comfortably without harsh penalties.</p>
+                <div style="padding-top:6px;border-top:1px solid #242432;font-size:10px;color:#8e8c95;line-height:1.35">
+                  <b style="color:#7df0aa">Impact:</b> Deep bracket runs in larger fields yield substantial multipliers over early round exits.
+                </div>
               </div>
 
-              <div class="card ovr-card-bronze" style="padding:12px;display:flex;flex-direction:column;gap:6px">
-                <div style="display:flex;justify-content:space-between;align-items:center">
-                  <span style="font:800 13px 'Barlow Condensed';letter-spacing:.8px;color:#cd7f32">BRONZE</span>
-                  <span class="ovr-badge-pill ovr-bronze">50–69</span>
+              <!-- 4. Championship Legacy & Hardware -->
+              <div style="background:#191922;border:1px solid #2d2d3c;border-radius:8px;padding:12px;display:flex;flex-direction:column;justify-content:space-between;gap:8px">
+                <div>
+                  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+                    <div style="display:flex;align-items:center;gap:6px">
+                      <span style="font-size:16px">👑</span>
+                      <span style="font:800 13px 'Barlow Condensed';color:#f5f3f0;letter-spacing:.4px">Championship Legacy Hardware</span>
+                    </div>
+                    <span class="tag" style="background:#22222d;color:#ffd166;font-size:9px;font-weight:800;border-color:#4a3f28">+4.2 PTS / TITLE</span>
+                  </div>
+                  <div style="font-size:11px;color:#d0d0dc;line-height:1.4">Past championship titles grant a permanent +4.2 pts baseline boost (+1.0 bonus for 3+ Top Cuts; cap +6.5).</div>
                 </div>
-                <p style="font-size:10px;color:#bca090;line-height:1.35;margin:0">Cold slump / rebuilding tier. Reserved for coaches on losing skids or battling through tough slumps under 35% win rates.</p>
+                <div style="padding-top:6px;border-top:1px solid #242432;font-size:10px;color:#8e8c95;line-height:1.35">
+                  <b style="color:#7df0aa">Impact:</b> Trophy winners maintain permanent prestige over title-less peers across all seasons.
+                </div>
+              </div>
+
+              <!-- 5. Progressive Inactivity Decay -->
+              <div style="background:#191922;border:1px solid #2d2d3c;border-radius:8px;padding:12px;display:flex;flex-direction:column;justify-content:space-between;gap:8px">
+                <div>
+                  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+                    <div style="display:flex;align-items:center;gap:6px">
+                      <span style="font-size:16px">⏳</span>
+                      <span style="font:800 13px 'Barlow Condensed';color:#f5f3f0;letter-spacing:.4px">Progressive Inactivity Decay</span>
+                    </div>
+                    <span class="tag" style="background:#22222d;color:#ff9f1c;font-size:9px;font-weight:800;border-color:#5c3e1c">-1.5 PTS / MISSED</span>
+                  </div>
+                  <div style="font-size:11px;color:#d0d0dc;line-height:1.4">Missing 1 season decays recent weight by 65%; missing 2+ shifts to career baseline (-1.5/season, cap -5.0).</div>
+                </div>
+                <div style="padding-top:6px;border-top:1px solid #242432;font-size:10px;color:#8e8c95;line-height:1.35">
+                  <b style="color:#7df0aa">Impact:</b> Prevents sitting out from freezing peak ratings. Inactive coaches gradually regress to baseline.
+                </div>
+              </div>
+
+              <!-- 6. Streaks & Anti-Inflation Scarcity -->
+              <div style="background:#191922;border:1px solid #2d2d3c;border-radius:8px;padding:12px;display:flex;flex-direction:column;justify-content:space-between;gap:8px">
+                <div>
+                  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+                    <div style="display:flex;align-items:center;gap:6px">
+                      <span style="font-size:16px">🔥</span>
+                      <span style="font:800 13px 'Barlow Condensed';color:#f5f3f0;letter-spacing:.4px">Streaks & Scarcity Compression</span>
+                    </div>
+                    <span class="tag" style="background:#22222d;color:#c084fc;font-size:9px;font-weight:800;border-color:#4a2b66">85+ / 90+ CEILING</span>
+                  </div>
+                  <div style="font-size:11px;color:#d0d0dc;line-height:1.4">Active streaks add up to +4.5 pts. Progressive compression applies at 85+ (40%) and 90+ (55%).</div>
+                </div>
+                <div style="padding-top:6px;border-top:1px solid #242432;font-size:10px;color:#8e8c95;line-height:1.35">
+                  <b style="color:#7df0aa">Impact:</b> Elite (90–99) stays genuinely rare, requiring a championship, top cut run, and active win streak.
+                </div>
               </div>
 
             </div>
           </div>
 
-          <!-- Formula & Volatility Breakdown Table -->
-          <div class="card" style="padding:14px;background:#141419;border-color:#2e2e38">
-            <div class="eyebrow" style="margin-bottom:10px;color:#7df0aa">OVR Mechanics & Placement Engine</div>
-            <div class="table-wrap" style="border:1px solid #282834;border-radius:6px;overflow:hidden">
-              <table class="standings" style="margin:0;font-size:11px">
-                <thead>
-                  <tr style="background:#1a1a24">
-                    <th style="width:160px">Metric / Mechanic</th>
-                    <th style="width:240px">How It Works</th>
-                    <th>Impact on Rating & Placement Differentiation</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr>
-                    <td><b style="color:#f5f3f0">Silver Baseline</b><div style="font-size:10px;color:#8e8c95">Starting Rating Floor</div></td>
-                    <td>Starting baseline score is <b>72 pts</b>. Silver bracket spans <b>70–79</b>. Bronze is <b>50–69</b>.</td>
-                    <td style="color:#d0d0dc">Average trainers (40%–55% win rates) sit in Silver, while Bronze is reserved for deeper slumps.</td>
-                  </tr>
-                  <tr>
-                    <td><b style="color:#ffd166">Heavy Recency Weighting</b><div style="font-size:10px;color:#8e8c95">Recent Tournament Form</div></td>
-                    <td><b>55%</b> of win-rate calculation comes from the <b>most recent tournament</b>, and 45% from career.</td>
-                    <td style="color:#d0d0dc">High volatility: going 4–1 in the current tournament surges your rating; going 1–4 causes a sharp drop.</td>
-                  </tr>
-                  <tr>
-                    <td><b style="color:#ff8e95">Stage Progression & Field Size</b><div style="font-size:10px;color:#8e8c95">Round Advancement Scaling</div></td>
-                    <td>
-                      Points scale with how far you advance and total field size:
-                      <div style="font-size:10px;color:#b0b0bc;margin-top:3px;line-height:1.4">
-                        • <b>1st (Champion)</b>: Won Grand Finals (+7.5 pts scaled)<br>
-                        • <b>2nd (Runner-up)</b>: Reached Grand Finals (+5.8 pts scaled)<br>
-                        • <b>3rd (Losers Final)</b>: Advanced to Final 3 (+4.8 pts scaled)<br>
-                        • <b>4th (Losers Semi)</b>: Advanced to Final 4 (+3.8 pts scaled)<br>
-                        • <b>Top 6 / Top 8</b>: Only awarded in deep fields (10+ or 14+ players)<br>
-                        • <b>Early Exits / Bottom Half</b>: <b>0.0 pts</b> (e.g. 7th–8th in 8-man field)
-                      </div>
-                    </td>
-                    <td style="color:#d0d0dc"><b>Rewards actual round survival and bracket progression.</b> Advancing deep in larger fields grants a difficulty multiplier, while early exits never receive free placement points.</td>
-                  </tr>
-                  <tr>
-                    <td><b style="color:#c084fc">Career Pedigree & Decay</b><div style="font-size:10px;color:#8e8c95">Past Hardware Fades</div></td>
-                    <td>Older tournament finishes decay (1st: +3.0, 2nd: +1.8, 3rd: +1.2, 4th: +0.8; cap +6.0).</td>
-                    <td style="color:#d0d0dc">Past trophies provide foundation, but decaying points ensure nobody stays 90+ without active performance.</td>
-                  </tr>
-                  <tr>
-                    <td><b style="color:#ffb74d">Active Streak Momentum</b><div style="font-size:10px;color:#8e8c95">Hot Runs vs Cold Slumps</div></td>
-                    <td>Active win streaks add up to <b>+5.0 pts</b> (+1.2/game); active losing skids penalize up to <b>-5.5 pts</b> (-1.4/game).</td>
-                    <td style="color:#d0d0dc">Riding a heater gives an immediate rating surge; hitting a cold slump immediately drags your tier down.</td>
-                  </tr>
-                  <tr>
-                    <td><b style="color:#ff4d58">Scarcity Compression at 90+</b><div style="font-size:10px;color:#8e8c95">Pinnacle Ceiling</div></td>
-                    <td>Progressive diminishing returns applied above <b>86</b> (35% compression) and <b>92</b> (50% compression).</td>
-                    <td style="color:#d0d0dc"><b>Gold (80–89)</b> is achievable for regular contenders. <b>Elite (90–99)</b> requires a championship, top cut runs, and an active winning streak.</td>
-                  </tr>
-                </tbody>
-              </table>
+          <!-- Bottom Symmetrical Callouts -->
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+            <div style="padding:10px 14px;background:rgba(255,209,102,0.06);border:1px solid rgba(255,209,102,0.22);border-radius:8px;display:flex;align-items:center;gap:10px">
+              <span style="font-size:18px">🎯</span>
+              <div style="font-size:11px;color:#e8e6df;line-height:1.35">
+                <b>Every Round & Placement Matters:</b> Advancing to Top 4 awards substantially more OVR than bowing out in round 1.
+              </div>
             </div>
-          </div>
-
-          <!-- Highlight Box -->
-          <div style="padding:12px 14px;background:linear-gradient(135deg,#231418,#161622);border:1px solid #4a222c;border-radius:8px;display:flex;align-items:center;gap:12px">
-            <span style="font-size:24px;flex:none">⚡</span>
-            <p style="font-size:11px;color:#d8d6e0;margin:0;line-height:1.4">
-              <b>Every Match and Placement Matters:</b> Finishing 4th awards significantly more OVR and ELO than bowing out in 8th place, rewarding consistently deep tournament bracket runs while maintaining high competitive volatility.
-            </p>
+            <div style="padding:10px 14px;background:rgba(125,240,170,0.06);border:1px solid rgba(125,240,170,0.22);border-radius:8px;display:flex;align-items:center;gap:10px">
+              <span style="font-size:18px">🔄</span>
+              <div style="font-size:11px;color:#dfe8e2;line-height:1.35">
+                <b>Dynamic Calculation:</b> Ratings update in real-time and lock in upon group stage and tournament completion.
+              </div>
+            </div>
           </div>
 
         </div>
@@ -11930,82 +12036,133 @@ function openOvrGuide(){
 function openLegacyEloGuide(){
   document.querySelector('#modal').innerHTML = `
     <div class="modal-wrap">
-      <div class="modal" style="max-width:820px">
+      <div class="modal" style="max-width:840px">
         <div class="modal-head">
           <div>
-            <div class="eyebrow" style="color:var(--amber)">All-Time Legacy & Rankings</div>
-            <h2>All-Time Elo (Legacy Score) Guide</h2>
+            <div class="eyebrow" style="color:var(--amber);display:flex;align-items:center;gap:6px">
+              <span>👑</span> ALL-TIME LEGACY & HALL OF FAME RANKINGS
+            </div>
+            <h2 style="font:800 26px 'Barlow Condensed';letter-spacing:.5px;margin-top:2px">All-Time Elo (Legacy Score) Guide</h2>
           </div>
           <button class="close" onclick="closeModal()">×</button>
         </div>
-        <p class="sub" style="margin-top:6px">The All-Time Elo (Legacy Score) is the league's definitive career ranking system. Unlike seasonal ratings, your Legacy Score evaluates your complete historical body of work with zero decay, rewarding championships, high win rates, tournament field depth, and official league records.</p>
+        <p class="sub" style="margin-top:6px;font-size:12px;line-height:1.5;color:#a09fa8">
+          All-Time Elo (Legacy Score) is the league's definitive all-time career ranking. Unlike seasonal ratings, your Legacy Score evaluates your complete historical body of work with zero decay, rewarding championships, net wins, tournament field depth, and official league records.
+        </p>
         
-        <div style="margin-top:16px;display:flex;flex-direction:column;gap:16px;max-height:68vh;overflow-y:auto;padding-right:4px">
+        <div style="margin-top:16px;display:flex;flex-direction:column;gap:14px;max-height:68vh;overflow-y:auto;padding-right:4px">
           
-          <!-- Key Pillar Cards -->
-          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px">
+          <!-- 3 Symmetrical Pillar Cards -->
+          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px">
             
-            <div class="card" style="padding:14px;background:#141419;border-color:#383220">
-              <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
-                <span style="font-size:20px">👑</span>
-                <span style="font:800 14px 'Barlow Condensed';color:#ffd166;text-transform:uppercase;letter-spacing:.6px">Permanent Titles (Zero Decay)</span>
+            <div class="card" style="padding:14px;background:#141419;border-color:#383220;display:flex;flex-direction:column;justify-content:space-between;border-radius:8px">
+              <div>
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+                  <span style="font-size:20px">👑</span>
+                  <span class="tag" style="background:#2a2312;color:#ffd166;font-size:9px;font-weight:800;border-color:#5a4218">ZERO DECAY</span>
+                </div>
+                <div style="font:800 14px 'Barlow Condensed';color:#ffd166;letter-spacing:.5px;text-transform:uppercase">Permanent Titles</div>
+                <p style="font-size:11px;color:#d0cebe;line-height:1.4;margin:6px 0 0">
+                  Championship gold never fades. Titles in Season 1 hold the exact same permanent value as recent titles, multiplied by tournament field size.
+                </p>
               </div>
-              <p style="font-size:11px;color:#d0cebe;line-height:1.45;margin:0">
-                Championship gold never fades. Titles in Season 1 hold the exact same permanent value as recent titles. Larger tournament fields (12–16 players) grant higher multiplier bonuses.
-              </p>
             </div>
 
-            <div class="card" style="padding:14px;background:#141419;border-color:#2e3820">
-              <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
-                <span style="font-size:20px">📈</span>
-                <span style="font:800 14px 'Barlow Condensed';color:#7df0aa;text-transform:uppercase;letter-spacing:.6px">Win % & Match Differential</span>
+            <div class="card" style="padding:14px;background:#141419;border-color:#203828;display:flex;flex-direction:column;justify-content:space-between;border-radius:8px">
+              <div>
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+                  <span style="font-size:20px">📈</span>
+                  <span class="tag" style="background:#13261a;color:#7df0aa;font-size:9px;font-weight:800;border-color:#2a5035">+18W / -9L</span>
+                </div>
+                <div style="font:800 14px 'Barlow Condensed';color:#7df0aa;letter-spacing:.5px;text-transform:uppercase">Match Differential</div>
+                <p style="font-size:11px;color:#bed0c4;line-height:1.4;margin:6px 0 0">
+                  Net match wins award +18 per win and -9 per loss. Career win percentages above 50% provide scaled efficiency multipliers across all matches.
+                </p>
               </div>
-              <p style="font-size:11px;color:#bed0c4;line-height:1.45;margin:0">
-                Net match wins award +18 per win and -9 per loss. Career win percentages above 50% provide scaled efficiency multipliers across all matches played.
-              </p>
             </div>
 
-            <div class="card" style="padding:14px;background:#141419;border-color:#38202c">
-              <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
-                <span style="font-size:20px">🌟</span>
-                <span style="font:800 14px 'Barlow Condensed';color:#ff8e95;text-transform:uppercase;letter-spacing:.6px">League Records Held</span>
+            <div class="card" style="padding:14px;background:#141419;border-color:#38202c;display:flex;flex-direction:column;justify-content:space-between;border-radius:8px">
+              <div>
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+                  <span style="font-size:20px">🌟</span>
+                  <span class="tag" style="background:#281420;color:#ff8e95;font-size:9px;font-weight:800;border-color:#5c2438">+50 PTS / RECORD</span>
+                </div>
+                <div style="font:800 14px 'Barlow Condensed';color:#ff8e95;letter-spacing:.5px;text-transform:uppercase">League Record Books</div>
+                <p style="font-size:11px;color:#d0bec6;line-height:1.4;margin:6px 0 0">
+                  Holding all-time league records (Titles, Top Cuts, Wins, Clean Sweeps, Game 3s, GD, Prediction Points) awards +50 Elo prestige per record held.
+                </p>
               </div>
-              <p style="font-size:11px;color:#d0bec6;line-height:1.45;margin:0">
-                Holding all-time league records (Championship Titles, Top Cuts, Career Wins, 2-0 Clean Sweeps, Game 3 Deciders, Win Streaks, Peak OVR, Tournament GD, Prediction Points) awards a permanent +50 Elo prestige bonus per record held.
-              </p>
             </div>
 
           </div>
 
-          <!-- Formula Breakdown -->
-          <div class="card" style="padding:16px;background:#141419;border-color:#2e2e38">
-            <div class="eyebrow" style="margin-bottom:10px;color:var(--amber)">Legacy Score Formula Breakdown</div>
-            <div style="font-size:12px;color:#d0ced6;line-height:1.6">
-              <div style="font:800 14px 'Barlow Condensed';color:#ffd166;margin-bottom:6px">ELO = 1000 + Tournament Hardware + Match Net + Win% Efficiency + Records Held + Streaks + OVR Form</div>
-              <ul style="margin:10px 0 0 16px;padding:0;display:flex;flex-direction:column;gap:6px">
-                <li><b>Base Floor:</b> 1,000 Starting Elo points.</li>
-                <li><b>Tournament Hardware:</b> 250 pts (1st), 140 pts (2nd), 90 pts (3rd), 60 pts (4th), 35 pts (Top 8), multiplied by Field Factor (1.0 + (Players - 4) * 0.05).</li>
-                <li><b>Match Net:</b> +18 pts per win, -9 pts per loss.</li>
-                <li><b>Win% Efficiency:</b> Confidence * (Win% - 50) * 4 (ramps up over 10+ games).</li>
-                <li><b>League Records:</b> +50 pts for each official all-time record currently held.</li>
-                <li><b>Streaks:</b> +6 pts per game of peak all-time win streak.</li>
-                <li><b>OVR Form:</b> +4 pts per OVR point above 70.</li>
-              </ul>
+          <!-- Formula Breakdown: Symmetrical 2-Column Split -->
+          <div class="card" style="padding:14px;background:#141419;border-color:#2a2a36">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+              <span class="eyebrow" style="margin:0;color:var(--amber)">Legacy Score Formula Breakdown</span>
+              <span class="tag" style="background:#1d1810;color:#ffd166;font-size:9px;font-weight:800;border-color:#4a3f28">BASE 1,000 ELO</span>
             </div>
-          </div>
 
-          <!-- OVR vs Elo Comparison -->
-          <div class="card" style="padding:16px;background:#141419;border-color:#2e2e38">
-            <div class="eyebrow" style="margin-bottom:8px;color:#c084fc">OVR Rating vs. All-Time Elo</div>
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
-              <div style="padding:10px;background:#181820;border-radius:6px;border:1px solid #30303c">
-                <div style="font:800 13px 'Barlow Condensed';color:#ff8e95">⭐ TRAINER OVERALL (OVR)</div>
-                <div style="font-size:11px;color:#aaa;margin-top:4px">Dynamic & volatile. Reflects active form, recent win streaks, and current tournament strength. Decays if form drops.</div>
+              
+              <div style="background:#191922;border:1px solid #2d2d3c;border-radius:8px;padding:12px">
+                <div style="font:800 13px 'Barlow Condensed';color:#ffd166;letter-spacing:.5px;margin-bottom:8px">🔢 TOURNAMENT & MATCH SCORING</div>
+                <ul style="margin:0 0 0 16px;padding:0;font-size:11px;color:#d0d0dc;line-height:1.6;display:flex;flex-direction:column;gap:4px">
+                  <li><b>Base Rating:</b> 1,000 Starting Elo points for all coaches.</li>
+                  <li><b>Tournament Hardware:</b> 250 (1st) · 140 (2nd) · 90 (3rd) · 60 (4th) · 35 (Top 8).</li>
+                  <li><b>Field Multiplier:</b> <code>1.0 + (Field - 4) × 0.05</code> for deep tournaments.</li>
+                  <li><b>Match Net:</b> +18 pts per match win, -9 pts per match loss.</li>
+                  <li><b>Win% Efficiency:</b> <code>Confidence × (Win% - 50) × 4</code> over 10+ games.</li>
+                </ul>
               </div>
-              <div style="padding:10px;background:#181820;border-radius:6px;border:1px solid #30303c">
-                <div style="font:800 13px 'Barlow Condensed';color:#ffd166">👑 ALL-TIME ELO (LEGACY)</div>
-                <div style="font-size:11px;color:#aaa;margin-top:4px">Cumulative & permanent. Reflects historical greatness, total championships, record book dominance, and career win rate without decay.</div>
+
+              <div style="background:#191922;border:1px solid #2d2d3c;border-radius:8px;padding:12px">
+                <div style="font:800 13px 'Barlow Condensed';color:#7df0aa;letter-spacing:.5px;margin-bottom:8px">🎖️ ACCOLADES & PRESTIGE MULTIPLIERS</div>
+                <ul style="margin:0 0 0 16px;padding:0;font-size:11px;color:#d0d0dc;line-height:1.6;display:flex;flex-direction:column;gap:4px">
+                  <li><b>All-Time Records:</b> +50 pts for each official league record held.</li>
+                  <li><b>Peak Win Streak:</b> +6 pts per game of peak all-time win streak.</li>
+                  <li><b>Current OVR Translation:</b> +4 pts per OVR point above 70 baseline.</li>
+                  <li><b>Zero Decay Guarantee:</b> Points earned in Season 1 are permanent forever.</li>
+                  <li><b>GOAT Criterion:</b> Determines the #1 All-Time Greatest of All Time badge.</li>
+                </ul>
               </div>
+
+            </div>
+          </div>
+
+          <!-- OVR vs Elo Comparison: Symmetrical 2-Column Split -->
+          <div class="card" style="padding:14px;background:#141419;border-color:#2a2a36">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+              <span class="eyebrow" style="margin:0;color:#c084fc">Seasonal OVR vs. All-Time Elo</span>
+              <span style="font-size:10px;font-weight:700;color:#8e8c95;letter-spacing:.5px;text-transform:uppercase">System Comparison</span>
+            </div>
+
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+              
+              <div style="padding:12px;background:#191922;border-radius:8px;border:1px solid #362832;display:flex;flex-direction:column;justify-content:space-between;gap:6px">
+                <div>
+                  <div style="display:flex;justify-content:space-between;align-items:center">
+                    <span style="font:800 13px 'Barlow Condensed';color:#ff8e95;letter-spacing:.5px">⭐ TRAINER OVERALL (OVR)</span>
+                    <span class="tag" style="background:#2a1820;color:#ff8e95;font-size:9px;font-weight:800;border-color:#5c2438">VOLATILE / LIVE</span>
+                  </div>
+                  <p style="font-size:11px;color:#d0ced6;margin:6px 0 0;line-height:1.4">
+                    Reflects active competitive form, recent match streaks, and current tournament strength. Decays if inactive or during losing slumps. Used for live power rankings & draft seeding.
+                  </p>
+                </div>
+              </div>
+
+              <div style="padding:12px;background:#191922;border-radius:8px;border:1px solid #363220;display:flex;flex-direction:column;justify-content:space-between;gap:6px">
+                <div>
+                  <div style="display:flex;justify-content:space-between;align-items:center">
+                    <span style="font:800 13px 'Barlow Condensed';color:#ffd166;letter-spacing:.5px">👑 ALL-TIME ELO (LEGACY)</span>
+                    <span class="tag" style="background:#2a2414;color:#ffd166;font-size:9px;font-weight:800;border-color:#5a4218">PERMANENT / ZERO DECAY</span>
+                  </div>
+                  <p style="font-size:11px;color:#d0ced6;margin:6px 0 0;line-height:1.4">
+                    Reflects lifetime historical greatness, total championships, record book dominance, and career win rates without decay. Used for Hall of Fame legacy rankings.
+                  </p>
+                </div>
+              </div>
+
             </div>
           </div>
 
