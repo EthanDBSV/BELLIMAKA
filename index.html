@@ -2597,25 +2597,32 @@ function renderTopNavExtras(){
   let wrap = document.querySelector('#topbarActions');
   if(!wrap) return;
   let isSandbox = isSandboxMode();
-  let sandboxBtn = isSandbox
-    ? `<button class="btn ghost btn-sm" onclick="openSandboxModal()" title="Sandbox Active: All changes stay local with 0 cloud egress" style="background:#2b1b36;border:1px solid #a855f7;color:#e9d5ff;padding:4px 10px;font-size:11px;border-radius:20px;cursor:pointer;display:inline-flex;align-items:center;gap:6px;box-shadow:0 0 12px rgba(168,85,247,0.35);font-weight:800">
-        <span style="font-size:13px">🧪</span> <span>Sandbox: 0 Egress</span>
-      </button>`
-    : `<button class="btn ghost btn-sm" onclick="openSandboxModal()" title="Open Test Lab for zero-egress sandbox testing" style="padding:4px 9px;font-size:11px;border-radius:20px;border-color:#3a3a46;color:#a09fa8;cursor:pointer;display:inline-flex;align-items:center;gap:5px">
-        <span style="font-size:13px">🧪</span> <span>Test Lab</span>
-      </button>`;
+  let sandboxBtn = '';
+  if(moderator){
+    sandboxBtn = isSandbox
+      ? `<button class="btn ghost btn-sm" onclick="openSandboxModal()" title="Sandbox Active: All changes stay local with 0 cloud egress" style="background:#2b1b36;border:1px solid #a855f7;color:#e9d5ff;padding:4px 10px;font-size:11px;border-radius:20px;cursor:pointer;display:inline-flex;align-items:center;gap:6px;box-shadow:0 0 12px rgba(168,85,247,0.35);font-weight:800">
+          <span style="font-size:13px">🧪</span> <span>Sandbox: 0 Egress</span>
+        </button>`
+      : `<button class="btn ghost btn-sm" onclick="openSandboxModal()" title="Open Test Lab for zero-egress sandbox testing" style="padding:4px 9px;font-size:11px;border-radius:20px;border-color:#3a3a46;color:#a09fa8;cursor:pointer;display:inline-flex;align-items:center;gap:5px">
+          <span style="font-size:13px">🧪</span> <span>Test Lab</span>
+        </button>`;
+  }
 
   let userLabel = sessionUser?.user_metadata?.username || (moderator ? 'Moderator' : 'Sign in');
   wrap.innerHTML = `
     ${sandboxBtn}
     <button class="account" onclick="go('Account')">
-      <span class="mode-dot" style="${isSandbox ? 'background:#a855f7;box-shadow:0 0 9px #a855f7' : ''}"></span>
+      <span class="mode-dot" style="${isSandbox && moderator ? 'background:#a855f7;box-shadow:0 0 9px #a855f7' : ''}"></span>
       <span id="accountText">${esc(userLabel)}</span>
     </button>
   `;
 }
 
 function toggleSandboxMode(){
+  if(!moderator){
+    alert('Sandbox Test Mode is restricted to league moderators.');
+    return;
+  }
   let next = !isSandboxMode();
   sandboxMode = next;
   try {
@@ -2636,6 +2643,7 @@ function toggleSandboxMode(){
 }
 
 async function restoreCloudStateFromModal(){
+  if(!moderator) return;
   if(!confirm('Discard all local test edits and reload fresh live data from the Supabase cloud?')) return;
   if(!supabaseClient){
     alert('Supabase client not initialized.');
@@ -2681,6 +2689,10 @@ async function pushSandboxToCloudFromModal(){
 }
 
 function openSandboxModal(){
+  if(!moderator){
+    alert('Sandbox Test Mode is restricted to league moderators.');
+    return;
+  }
   let isSandbox = isSandboxMode();
 
   document.querySelector('#modal').innerHTML = `
@@ -2778,6 +2790,10 @@ function openSandboxModal(){
 }
 
 function openEgressReportModal(){
+  if(!moderator){
+    alert('Egress & Network Report is restricted to league moderators.');
+    return;
+  }
   document.querySelector('#modal').innerHTML = `
     <div class="modal-wrap">
       <div class="modal" style="max-width:840px">
@@ -7398,9 +7414,6 @@ function Standings(){
         </button>
         <button class="btn ghost btn-sm" style="display:inline-flex;align-items:center;gap:6px;padding:4px 10px;font-size:11px;border-radius:20px;border-color:#40404c;cursor:pointer" onclick="openBadgeGuide()" title="View all earnable badges and unlock requirements">
           <span style="font-size:13px">📖</span> Badge Guide
-        </button>
-        <button class="btn ghost btn-sm" style="display:inline-flex;align-items:center;gap:6px;padding:4px 10px;font-size:11px;border-radius:20px;border-color:#40404c;cursor:pointer" onclick="openEgressReportModal()" title="View data egress, network bandwidth costs, and sandbox mode optimization">
-          <span style="font-size:13px">⚡</span> Egress & Network Guide
         </button>
         ${moderator ? `<button class="btn btn-sm" onclick="openCreator()">+ Create next tournament</button>` : ''}
       </div>
@@ -12036,9 +12049,6 @@ function Records(){
           </button>
           <button class="btn ghost btn-sm" style="display:inline-flex;align-items:center;gap:6px;padding:4px 10px;font-size:11px;border-radius:20px;border-color:#40404c;cursor:pointer" onclick="openOvrGuide()" title="View how Trainer Overalls (OVR) are calculated, tier brackets, and volatility rules">
             <span style="font-size:13px">⭐</span> OVR Rating Guide
-          </button>
-          <button class="btn ghost btn-sm" style="display:inline-flex;align-items:center;gap:6px;padding:4px 10px;font-size:11px;border-radius:20px;border-color:#40404c;cursor:pointer" onclick="openEgressReportModal()" title="View data egress, network bandwidth costs, and sandbox mode optimization">
-            <span style="font-size:13px">⚡</span> Egress Guide
           </button>
         </div>
       </div>
