@@ -334,9 +334,11 @@
 .past-tourney-card.bronze{border-left-color:#cd7f32;background:linear-gradient(90deg,rgba(205,127,50,0.12),#15151e 40%)}
 .past-tourney-card.cut{border-left-color:#a855f7;background:linear-gradient(90deg,rgba(168,85,247,0.10),#15151e 40%)}
 
-.past-tourney-summary{display:grid;grid-template-columns:58px minmax(0,1fr) auto 24px;gap:12px;align-items:center;padding:10px 14px;cursor:pointer;user-select:none;list-style:none}
+.past-tourney-summary{display:grid;grid-template-columns:58px minmax(0,1fr) auto auto 24px;gap:12px;align-items:center;padding:10px 14px;cursor:pointer;user-select:none;list-style:none}
 .past-tourney-summary::-webkit-details-marker{display:none}
 .past-tourney-summary:hover{background:rgba(255,255,255,0.03)}
+.past-ovr-wrap{display:flex;flex-direction:column;align-items:center;justify-content:center;min-width:40px}
+.past-ovr-wrap small{font-size:8px;font-weight:800;letter-spacing:.5px;color:#8e8c95;margin-top:2px;text-transform:uppercase}
 .past-chevron{font-size:11px;color:#8e8c95;transition:transform .2s ease;display:grid;place-items:center;user-select:none}
 details[open] > .past-tourney-summary .past-chevron{transform:rotate(180deg);color:var(--amber)}
 .past-tourney-body{padding:12px 14px 14px;background:#101016;border-top:1px solid #232330}
@@ -5993,7 +5995,15 @@ function openProfileManager(){let rows=Object.entries(profiles).map(([p,q])=>`<d
 
 
 function finalQualifiers(t){if(t.finalStandings)return Object.entries(t.finalStandings).flatMap(([,players])=>players.slice(0,advancePerGroup(t)));return qualified(t).map(x=>x.p)}
-function ensureProfile(p){if(!profiles[p])profiles[p]={team:'No default team',record:'0-0',tops:0,cups:[]};if(!Array.isArray(profiles[p].cups))profiles[p].cups=[];if(typeof profiles[p].tops!=='number')profiles[p].tops=0;if(!profiles[p].record)profiles[p].record='0-0';return profiles[p]}
+function ensureProfile(p){
+  if(!profiles[p]) profiles[p]={team:'No default team',record:'0-0',tops:0,cups:[],peakOvr:0,peakOvrTourney:''};
+  if(!Array.isArray(profiles[p].cups)) profiles[p].cups=[];
+  if(typeof profiles[p].tops!=='number') profiles[p].tops=0;
+  if(!profiles[p].record) profiles[p].record='0-0';
+  if(typeof profiles[p].peakOvr !== 'number') profiles[p].peakOvr = 0;
+  if(typeof profiles[p].peakOvrTourney !== 'string') profiles[p].peakOvrTourney = '';
+  return profiles[p];
+}
 function isTournamentGroupStageOfficial(t){
   if(!t) return false;
   if(t.status === 'COMPLETE') return true;
@@ -6072,8 +6082,6 @@ function rebuildAllPlayerStats(){
     profiles[p].record=s.record;
     profiles[p].tops=s.topCuts;
     profiles[p].cups=[...s.championshipCups];
-    profiles[p].peakOvr=0;
-    profiles[p].peakOvrTourney='';
   });
   if(typeof calculateLeagueRecords === 'function') calculateLeagueRecords();
 }
@@ -8526,41 +8534,268 @@ function tournamentFinish(t,p){
   return {place:999,label:'—',note:t.status==='COMPLETE'?'Group Stage':'Participating',cls:''};
 }
 function ordinal(n){let s=['th','st','nd','rd'],v=n%100;return n+(s[(v-20)%10]||s[v]||s[0])}
-function pastTournaments(p){
-  let played=Object.values(tournamentData)
-    .filter(t=>(t.players||[]).includes(p)||(t.matches||[]).some(m=>m.a===p||m.b===p))
-    .sort((a,b)=>{
-      let da=Date.parse(a.start)||0, db=Date.parse(b.start)||0;
-      if(da && db && da !== db) return db - da;
-      if(da && !db) return -1;
-      if(!da && db) return 1;
-      let sa=Number(String(a.season||'').replace(/\D/g,''))||0;
-      let sb=Number(String(b.season||'').replace(/\D/g,''))||0;
-      if(sa && sb && sa !== sb) return sb - sa;
-      return String(b.id||'').localeCompare(String(a.id||''));
+var _historicalOVRCache = {};
+
+function getHistoricalPlayerOVR(p, targetTIdx, stage = 'complete', sortedT = null){
+  if(!sortedT) sortedT = typeof sortedTournamentsChronological === 'function' ? sortedTournamentsChronological() : Object.values(tournamentData);
+  if(!p || targetTIdx < 0 || targetTIdx >= sortedT.length) {
+    return { ovr: 70, tier: 'silver', tierName: 'Silver', tierUpper: 'SILVER', color: '#d0d0dc', badgeCls: 'ovr-silver', badgeHtml: '<span class="ovr-badge-pill ovr-silver">70</span>' };
+  }
+
+  let cacheKey = p + '_' + targetTIdx + '_' + stage + '_' + (sortedT[targetTIdx]?.id || '');
+  if(_historicalOVRCache[cacheKey]){
+    return _historicalOVRCache[cacheKey];
+  }
+
+  let histTourneys = sortedT.slice(0, targetTIdx + 1);
+  let targetT = sortedT[targetTIdx];
+
+  let wins = 0, losses = 0;
+  let officialMatches = [];
+
+  histTourneys.forEach((t, idx) => {
+    let isPast = (idx < targetTIdx);
+    let tBaseTime = (Date.parse(t.start) || (idx * 100000000));
+
+    // Group stage matches
+    (t.matches || []).forEach((m, mIdx) => {
+      let a = m.a, b = m.b, sa = m.as, sb = m.bs;
+      if(!a || !b || sa === '' || sb === '' || sa == null || sb == null || +sa === +sb) return;
+      if(a === p || b === p){
+        let won = (a === p && +sa > +sb) || (b === p && +sb > +sa);
+        if(won) wins++; else losses++;
+        officialMatches.push({ won, time: m.completedAt || (tBaseTime + mIdx * 1000), stageOrder: 1 });
+      }
     });
-  if(!played.length)return `<div class="pf-empty" style="border:1px dashed #343444;border-radius:8px;padding:20px;text-align:center;color:#8e8c95;font-size:12px;background:#121218">No tournament appearances recorded yet.</div>`;
+
+    // Top cut matches
+    let includeTopCut = isPast ? (t.status === 'COMPLETE') : (stage === 'complete' && t.status === 'COMPLETE');
+    if(includeTopCut){
+      let topResults = t.topCutCache?.results;
+      if((!topResults || !topResults.length) && (t.bracketManagerData || t.phase === 'topcut' || t.status === 'COMPLETE') && typeof getTournamentTopCutModel === 'function'){
+        let mod = getTournamentTopCutModel(t);
+        if(mod && mod.completedList) topResults = mod.completedList.map(m => ({ p1: m.p1, p2: m.p2, s1: m.s1, s2: m.s2 }));
+      }
+      (topResults || []).forEach((m, mIdx) => {
+        let a = m.p1, b = m.p2, sa = m.s1, sb = m.s2;
+        if(!a || !b || sa == null || sb == null || +sa === +sb) return;
+        if(a === p || b === p){
+          let won = (a === p && +sa > +sb) || (b === p && +sb > +sa);
+          if(won) wins++; else losses++;
+          officialMatches.push({ won, time: m.completedAt || (tBaseTime + 50000000 + mIdx * 1000), stageOrder: 2 });
+        }
+      });
+    }
+  });
+
+  officialMatches.sort((a, b) => (a.time - b.time) || (a.stageOrder - b.stageOrder));
+  let curW = 0, maxW = 0, curL = 0, maxL = 0;
+  officialMatches.forEach(item => {
+    if(item.won){
+      curW++; curL = 0;
+      if(curW > maxW) maxW = curW;
+    } else {
+      curL++; curW = 0;
+      if(curL > maxL) maxL = curL;
+    }
+  });
+
+  let total = wins + losses;
+  let overallWinPct = total > 0 ? (wins / total) * 100 : 50;
+
+  if(total === 0){
+    let res = {
+      ovr: 70,
+      tier: 'silver',
+      tierName: 'Silver',
+      tierUpper: 'SILVER',
+      color: '#d0d0dc',
+      badgeCls: 'ovr-silver',
+      badgeHtml: '<span class="ovr-badge-pill ovr-silver">70</span>',
+      subStats: { win: 50, tit: 0, cut: 0, strk: 0 }
+    };
+    _historicalOVRCache[cacheKey] = res;
+    return res;
+  }
+
+  let base = 73;
+
+  let completedTList = histTourneys.filter((t, idx) => {
+    if(idx < targetTIdx) return (t.status === 'COMPLETE' || isTournamentGroupStageOfficial(t));
+    return (stage === 'complete' ? t.status === 'COMPLETE' : isTournamentGroupStageOfficial(t));
+  });
+  let latestCompletedT = completedTList[completedTList.length - 1] || null;
+  let isReigningChamp = (stage === 'complete' && targetT.champion === p);
+
+  let playerPlayedT = completedTList.filter(t => (t.players || []).includes(p) || (t.matches || []).some(m => m.a === p || m.b === p));
+  let missedRecentCount = 0;
+  if(completedTList.length > 0 && playerPlayedT.length > 0){
+    let lastPlayed = playerPlayedT[playerPlayedT.length - 1];
+    let lastPlayedIdx = completedTList.findIndex(t => t.id === lastPlayed.id || t.name === lastPlayed.name);
+    if(lastPlayedIdx >= 0){
+      missedRecentCount = (completedTList.length - 1) - lastPlayedIdx;
+    }
+  } else if(completedTList.length > 0 && playerPlayedT.length === 0){
+    missedRecentCount = completedTList.length;
+  }
+
+  let targetRec = tournamentRecord(targetT, p);
+  let [tw, tl] = targetRec.split('-').map(Number);
+  let gEntry = Object.entries(groupsOf(targetT)).find(([, ps]) => ps.includes(p));
+  let gStand = gEntry ? getStand(targetT, gEntry[0]).find(x => x.p === p) : null;
+  let mw = gStand ? (gStand.w || 0) : 0;
+  let ml = gStand ? (gStand.l || 0) : 0;
+  let finalArr = targetT.finalStandings?.[gEntry?.[0]] || targetT.manualStandings?.[gEntry?.[0]];
+  let gSeed = Array.isArray(finalArr) && finalArr.includes(p) ? (finalArr.indexOf(p) + 1) : (gStand ? getStand(targetT, gEntry[0]).indexOf(gStand) + 1 : 0);
+
+  let isTargetTopCut = (stage === 'complete');
+  let recentWins = isTargetTopCut ? (tw || 0) : mw;
+  let recentLosses = isTargetTopCut ? (tl || 0) : ml;
+  let recentTotal = recentWins + recentLosses;
+  let recentWinPct = recentTotal > 0 ? (recentWins / recentTotal) * 100 : overallWinPct;
+
+  let winRateDiff = (overallWinPct >= 50)
+    ? (overallWinPct - 50) * 0.28
+    : (overallWinPct - 50) * 0.22;
+
+  let recentFormDelta = (recentTotal >= 2 && missedRecentCount === 0)
+    ? ((recentWinPct - overallWinPct) / 100) * Math.min(2.2, recentTotal * 0.45)
+    : 0;
+
+  let pastCompleted = histTourneys.filter((t, idx) => idx < targetTIdx && t.status === 'COMPLETE');
+  let histTitles = pastCompleted.filter(t => t.champion === p).length + (stage === 'complete' && targetT.champion === p ? 1 : 0);
+  let histTopCuts = pastCompleted.filter(t => {
+    let f = tournamentFinish(t, p);
+    return f && f.place > 0 && f.place <= (t.advancePerGroup ? Object.keys(groupsOf(t)).length * t.advancePerGroup : 4);
+  }).length + (stage === 'complete' && targetT.status === 'COMPLETE' && tournamentFinish(targetT, p).place <= 4 ? 1 : 0);
+
+  let careerTitleBonus = Math.min(6.0, histTitles * 3.0);
+  let careerTopCutBonus = Math.min(4.5, histTopCuts * 1.5);
+  let consistencyBonus = (histTopCuts >= 3) ? 1.5 : (histTopCuts === 2 ? 0.8 : 0);
+  let careerVolumeBonus = Math.min(2.0, total * 0.1);
+
+  let lastPlace = 999;
+  if(missedRecentCount === 0){
+    if(isTargetTopCut){
+      let f = tournamentFinish(targetT, p);
+      lastPlace = f?.place || (isReigningChamp ? 1 : 999);
+    } else {
+      lastPlace = gSeed ? (100 + gSeed) : 100;
+    }
+  }
+
+  let recentPlacementBonus = 0;
+  if(missedRecentCount === 0){
+    if(isTargetTopCut){
+      if(lastPlace === 1 || isReigningChamp) recentPlacementBonus = 2.5;
+      else if(lastPlace === 2) recentPlacementBonus = 1.5;
+      else if(lastPlace <= 4) recentPlacementBonus = 1.0;
+      else if(lastPlace <= 100) recentPlacementBonus = 0.5;
+    } else {
+      recentPlacementBonus = 0.5;
+    }
+  }
+
+  let inactivityPenalty = (missedRecentCount > 0) ? Math.min(4.0, missedRecentCount * 1.2) : 0;
+  let isTopFourFinish = (missedRecentCount === 0 && lastPlace <= 4);
+  let activeStreakBonus = (missedRecentCount === 0) ? Math.min(1.2, curW * 0.30) : 0;
+  let activeLossPenalty = (missedRecentCount === 0 && !isTopFourFinish) ? Math.min(0.8, curL * 0.20) : 0;
+  let maxStreakBonus = Math.min(1.0, maxW * 0.10);
+
+  let rawOvr = base + winRateDiff + recentFormDelta + careerTitleBonus + careerTopCutBonus + consistencyBonus + careerVolumeBonus + recentPlacementBonus + activeStreakBonus - activeLossPenalty + maxStreakBonus - inactivityPenalty;
+
+  if(rawOvr > 85) rawOvr = 85 + (rawOvr - 85) * 0.65;
+  if(rawOvr > 90) rawOvr = 90 + (rawOvr - 90) * 0.50;
+
+  let sampleWeight = Math.min(1.0, total / 4);
+  let finalOvr = Math.round(70 * (1 - sampleWeight) + rawOvr * sampleWeight);
+  finalOvr = Math.max(50, Math.min(99, finalOvr));
+
+  let tier = 'bronze', tierName = 'Bronze', tierUpper = 'BRONZE', color = '#cd7f32', badgeCls = 'ovr-bronze';
+  if(finalOvr >= 90){
+    tier = 'elite'; tierName = 'Elite'; tierUpper = 'ELITE'; color = '#ff4d58'; badgeCls = 'ovr-elite';
+  } else if(finalOvr >= 80){
+    tier = 'gold'; tierName = 'Gold'; tierUpper = 'GOLD'; color = '#ffd166'; badgeCls = 'ovr-gold';
+  } else if(finalOvr >= 70){
+    tier = 'silver'; tierName = 'Silver'; tierUpper = 'SILVER'; color = '#d0d0dc'; badgeCls = 'ovr-silver';
+  }
+
+  let res = {
+    ovr: finalOvr,
+    tier,
+    tierName,
+    tierUpper,
+    color,
+    badgeCls,
+    badgeHtml: `<span class="ovr-badge-pill ${badgeCls}">${finalOvr}</span>`,
+    subStats: {
+      win: Math.round(overallWinPct),
+      tit: histTitles,
+      cut: histTopCuts,
+      strk: maxW
+    }
+  };
+  _historicalOVRCache[cacheKey] = res;
+  return res;
+}
+
+function pastTournaments(p){
+  let sortedAll = typeof sortedTournamentsChronological === 'function' ? sortedTournamentsChronological() : Object.values(tournamentData);
+  let played = sortedAll
+    .filter(t => (t.players || []).includes(p) || (t.matches || []).some(m => m.a === p || m.b === p))
+    .slice()
+    .reverse();
+
+  if(!played.length) return `<div class="pf-empty" style="border:1px dashed #343444;border-radius:8px;padding:20px;text-align:center;color:#8e8c95;font-size:12px;background:#121218">No tournament appearances recorded yet.</div>`;
 
   let canEdit = moderator || (sessionUser && sessionUser === accountForPlayer(p));
 
-  return played.map(t=>{
-    let rec=tournamentRecord(t,p);
-    let f=tournamentFinish(t,p);
-    let tTeam=teamName(t,p);
-    let tMons=getTournamentRoster(p,t);
+  return played.map(t => {
+    let rec = tournamentRecord(t, p);
+    let f = tournamentFinish(t, p);
+    let tTeam = teamName(t, p);
+    let tMons = getTournamentRoster(p, t);
+
+    let tIdx = sortedAll.findIndex(x => x.id === t.id || x.name === t.name);
+    let isGroupDone = isTournamentGroupStageOfficial(t);
+    let isTopCutDone = isTournamentTopCutOfficial(t);
+
+    let gOvr = (tIdx >= 0 && isGroupDone) ? getHistoricalPlayerOVR(p, tIdx, 'group', sortedAll) : null;
+    let fOvr = (tIdx >= 0 && isTopCutDone) ? getHistoricalPlayerOVR(p, tIdx, 'complete', sortedAll) : null;
+    let activeBadgeOvr = fOvr || gOvr;
 
     return `<details class="past-tourney-card ${f.cls}">
       <summary class="past-tourney-summary">
         <div class="past-place">${esc(f.label)}<small>${t.status==='ONGOING'?'so far':'finish'}</small></div>
         <div style="min-width:0">
           <div class="past-name">${esc(t.name)}</div>
-          <div class="past-meta">${esc([t.season,f.note,(tTeam&&tTeam!=='Unassigned team')?tTeam:null].filter(Boolean).join(' · '))}</div>
+          <div class="past-meta">${esc([t.season, f.note, (tTeam && tTeam !== 'Unassigned team') ? tTeam : null].filter(Boolean).join(' · '))}</div>
         </div>
         <div class="past-rec">${esc(rec)}<small>W-L</small></div>
+        ${activeBadgeOvr ? `
+          <div class="past-ovr-wrap">
+            <span class="ovr-badge-pill ${activeBadgeOvr.badgeCls}">${activeBadgeOvr.ovr}</span>
+            <small>OVR</small>
+          </div>
+        ` : '<div></div>'}
         <div class="past-chevron">▼</div>
       </summary>
 
       <div class="past-tourney-body">
+        ${(gOvr || fOvr) ? `
+          <div class="past-stage-banner" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:12px;padding:8px 12px;background:#14141d;border:1px solid #282836;border-radius:6px">
+            <div style="display:flex;align-items:center;gap:6px">
+              <span style="font-size:12px">⚡</span>
+              <span style="font:800 11px 'Barlow Condensed';color:#ffd166;text-transform:uppercase;letter-spacing:.6px">Tournament Rating Progression</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:10px;font-size:11px">
+              ${gOvr ? `<span style="color:#a09fa8">Group Stage: <b style="color:#f5f3f0">${gOvr.ovr} OVR</b></span>` : ''}
+              ${(gOvr && fOvr) ? `<span style="color:#555">➔</span>` : ''}
+              ${fOvr ? `<span style="color:#a09fa8">Final: <b style="color:#f5f3f0">${fOvr.ovr} OVR</b> ${fOvr.ovr !== gOvr?.ovr ? `<span style="color:${fOvr.ovr > (gOvr?.ovr||0) ? '#53e89c' : '#ff8e95'};font-weight:800">(${fOvr.ovr > (gOvr?.ovr||0) ? '+' : ''}${fOvr.ovr - (gOvr?.ovr||0)})</span>` : ''}</span>` : (t.status === 'ONGOING' ? `<span style="color:#ffd166;font-weight:700">Playoffs in progress</span>` : '')}
+            </div>
+          </div>
+        ` : ''}
+
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;padding-bottom:6px;border-bottom:1px solid #1f1f2a">
           <div style="display:flex;align-items:center;gap:8px">
             <span class="eyebrow" style="color:var(--amber);margin:0">Tournament Roster</span>
@@ -8594,6 +8829,7 @@ function invalidateLeagueCache(){
   _cachedLeagueRecords = null;
   _cachedLeagueRecordsTime = 0;
   _cachedPlayerOVR = {};
+  _historicalOVRCache = {};
 }
 
 function getPlayerOfficialMilestoneStats(p, recs = null){
@@ -8964,11 +9200,20 @@ function openProfile(p){
       <aside class="card profile-card ovr-card-${ovrCard.tier}" style="padding:18px">
         
         <!-- FIFA / Madden Top Rating Header -->
-        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;width:100%">
           <div style="display:flex;flex-direction:column;align-items:center;text-align:center;width:52px">
             <div style="font:900 46px/0.85 'Barlow Condensed';color:${ovrCard.color};font-variant-numeric:tabular-nums;letter-spacing:0;text-align:center;width:100%">${ovrCard.ovr}</div>
             <div style="font:800 11px/1 'DM Sans';letter-spacing:1.5px;text-transform:uppercase;color:${ovrCard.color};opacity:0.95;margin-top:3px;text-align:center;width:100%">OVR</div>
           </div>
+          ${(profiles[p]?.peakOvr || ovrCard.ovr) ? `
+            <div style="text-align:right">
+              <div style="font-size:9px;font-weight:800;color:#8e8c95;letter-spacing:.8px;text-transform:uppercase">All-Time Peak</div>
+              <div style="font:900 20px/1.1 'Barlow Condensed';color:#ffd166;display:flex;align-items:center;justify-content:flex-end;gap:4px;margin-top:2px">
+                <span>🚀 ${profiles[p]?.peakOvr || ovrCard.ovr}</span> <span style="font-size:11px;font-weight:700;color:#a09fa8">OVR</span>
+              </div>
+              ${profiles[p]?.peakOvrTourney ? `<div style="font-size:10px;font-weight:700;color:#c0bec8;margin-top:1px">${esc(profiles[p].peakOvrTourney)}</div>` : ''}
+            </div>
+          ` : ''}
         </div>
 
         <div style="display:flex;flex-direction:column;align-items:center;text-align:center">
@@ -11771,38 +12016,39 @@ function calculateLeagueRecords(forceRefresh = false){
     let playerPeak = 0;
     let playerPeakTourney = '';
 
-    // 1. Evaluate historical OVR milestone after each completed tournament appearance
-    tf.forEach((finishItem, fIdx) => {
-      let subTfs = tf.slice(0, fIdx + 1);
-      let tObj = finishItem.tournament;
-      let isChampAtTime = (tObj.champion === p);
-      let totalWAtTime = subTfs.reduce((sum, x) => sum + (x.w || 0), 0);
-      let totalLAtTime = subTfs.reduce((sum, x) => sum + (x.l || 0), 0);
+    // 1. Evaluate historical OVR milestone at each tournament milestone checkpoint
+    sortedTournaments.forEach((t, tIdx) => {
+      let hasPlayed = (t.players || []).includes(p) || (t.matches || []).some(m => m.a === p || m.b === p);
+      if(!hasPlayed) return;
 
-      let simulatedStats = {
-        statsByPlayer: {
-          [p]: {
-            wins: totalWAtTime,
-            losses: totalLAtTime,
-            maxWinStreak: s.maxWinStreak,
-            currentWinStreak: isChampAtTime ? 3 : 0,
-            currentLossStreak: 0,
-            tournamentFinishes: subTfs
-          }
+      let isGroupDone = isTournamentGroupStageOfficial(t);
+      let isTopCutDone = isTournamentTopCutOfficial(t);
+
+      let rawSeason = (t.season || t.name || `Season ${tIdx + 1}`).replace(/[()]/g, '').trim();
+      let seasonMatch = rawSeason.match(/Season\s*\d+/i);
+      let seasonLabel = seasonMatch ? seasonMatch[0].replace(/Season\s*/i, 'Season ') : (rawSeason || `Season ${tIdx + 1}`);
+
+      if(isGroupDone){
+        let gOvr = getHistoricalPlayerOVR(p, tIdx, 'group', sortedTournaments);
+        if(gOvr.ovr > playerPeak){
+          playerPeak = gOvr.ovr;
+          playerPeakTourney = `${seasonLabel} (Group Stage)`;
         }
-      };
-      let histObj = calculatePlayerOVR(p, simulatedStats);
-      if(histObj.ovr > playerPeak){
-        playerPeak = histObj.ovr;
-        let rawSeason = (tObj.season || tObj.name || 'Season 1').replace(/[()]/g, '').trim();
-        let seasonMatch = rawSeason.match(/Season\s*\d+/i);
-        playerPeakTourney = seasonMatch ? seasonMatch[0].replace(/Season\s*/i, 'Season ') : (rawSeason || 'Season 1');
+      }
+
+      if(isTopCutDone){
+        let fOvr = getHistoricalPlayerOVR(p, tIdx, 'complete', sortedTournaments);
+        if(fOvr.ovr > playerPeak){
+          playerPeak = fOvr.ovr;
+          let isChamp = (t.champion === p);
+          playerPeakTourney = `${seasonLabel}${isChamp ? ' (Champion)' : ''}`;
+        }
       }
     });
 
     // 2. Check current live OVR
     let currentObj = calculatePlayerOVR(p, {statsByPlayer});
-    if(currentObj.ovr >= playerPeak || playerPeak === 0){
+    if(currentObj.ovr > playerPeak || playerPeak === 0){
       playerPeak = currentObj.ovr;
       let lastT = tf[tf.length - 1]?.tournament;
       let rawSeason = (lastT?.season || lastT?.name || 'Season 1').replace(/[()]/g, '').trim();
