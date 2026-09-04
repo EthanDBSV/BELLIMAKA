@@ -160,6 +160,14 @@
 .tc-playoff-table tr.gold td{background:rgba(255,209,102,0.06)}
 .tc-playoff-table tr.silver td{background:rgba(200,200,216,0.04)}
 .tc-playoff-table tr.bronze td{background:rgba(205,127,50,0.04)}
+
+.tc-dashboard-layout{display:grid;grid-template-columns:minmax(0,1fr) 420px;gap:20px;align-items:start;margin-top:4px}
+.tc-dashboard-main{min-width:0}
+.tc-dashboard-side{display:flex;flex-direction:column;gap:18px;min-width:0}
+.tc-dashboard-side .section{margin-top:0!important}
+@media(max-width:1250px){
+  .tc-dashboard-layout{grid-template-columns:1fr}
+}
 /* PATCH: fix Teams cards shrinking after cover-edit wrapper was added */
 .teams>div{width:100%}
 .teams .team-card{width:100%;display:block;box-sizing:border-box}
@@ -3810,7 +3818,7 @@ function topCutSection(t, preview){
   let tIdx = t ? sortedT.findIndex(x => x.id === t.id || x.name === t.name) : -1;
   let isPastT = (t.status === 'COMPLETE' && tIdx >= 0);
 
-  let isModEditable = canManageTournament(t) && (t.status === 'ONGOING' || t.phase === 'topcut' || !!t.bracketManagerData);
+  let isModEditable = canManageTournament(t) && t.status !== 'COMPLETE' && (t.status === 'ONGOING' || t.phase === 'topcut');
   let statusBadge = preview ? `<span class="tag hunt">PROJECTED SEEDS</span>` : (t.status === 'COMPLETE' ? `<span class="tag safe">TOURNAMENT ARCHIVE · COMPLETE</span>` : `<span class="tag hunt">PLAYOFFS LIVE</span>`);
 
   function renderMatchSlot(pName, seed, score, isWinner, isLoser, originLabel){
@@ -4018,7 +4026,7 @@ function topCutSection(t, preview){
       return a.place - b.place || b.fOvr.ovr - a.fOvr.ovr || a.p.localeCompare(b.p);
     });
 
-    playoffStandingsHtml = `<section class="section" style="margin-top:28px">
+    playoffStandingsHtml = `<section class="section" style="margin-top:0">
       <div class="tc-section-header">
         <h3><span style="color:#ffd166">📊</span> Playoff Standings &amp; Rating Progression</h3>
         <span style="font-size:11px;color:#8e8c95;font-weight:700">${qualifierStats.length} QUALIFIERS</span>
@@ -4076,7 +4084,7 @@ function topCutSection(t, preview){
 
   let ledgerHtml = '';
   if(model.completedList.length){
-    ledgerHtml = `<section class="section" style="margin-top:28px">
+    ledgerHtml = `<section class="section" style="margin-top:0">
       <div class="tc-section-header">
         <h3><span style="color:#ffd166">📜</span> Playoff Series Results</h3>
         <span style="font-size:11px;color:#8e8c95;font-weight:700">${model.completedList.length} SERIES DECIDED</span>
@@ -4131,64 +4139,71 @@ function topCutSection(t, preview){
   }
 
   return `<div class="tc-container">
-    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:4px">
+    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:14px">
       <div style="display:flex;align-items:center;gap:10px">
         <div style="font:900 24px 'Barlow Condensed';letter-spacing:.6px;color:#f5f3f0;text-transform:uppercase">${esc(t.name)} Playoffs</div>
         ${statusBadge}
       </div>
-      <div style="display:flex;align-items:center;flex-wrap:wrap;gap:8px">
-        ${isModEditable ? `
+      ${isModEditable ? `
+        <div style="display:flex;align-items:center;flex-wrap:wrap;gap:8px">
           <button class="btn ghost" style="padding:6px 11px;font-size:11px" onclick="openReseedBracketModal()">🎲 Re-seed bracket</button>
           <button class="btn ghost" style="padding:6px 11px;font-size:11px;color:#ff9ba1;border-color:#4a242a" onclick="resetTopCutBracket()">➔ Reset scores</button>
-        ` : ''}
-        ${isModEditable ? `<span style="font-size:11px;color:var(--amber);font-weight:700;margin-left:4px">✨ Click any ready match to report scores</span>` : ''}
-      </div>
+          <span style="font-size:11px;color:var(--amber);font-weight:700;margin-left:4px">✨ Click any ready match to report scores</span>
+        </div>
+      ` : ''}
     </div>
 
     ${podiumHtml}
 
-    <div class="card" style="padding:22px;background:#101015;border-color:#2e2e38">
-      <div style="margin-bottom:28px">
-        <div class="tc-section-header">
-          <h3><span style="color:#ffd166">🏆</span> Winners Bracket</h3>
-          <span style="font-size:10px;font-weight:800;letter-spacing:.8px;color:#8e8c95;text-transform:uppercase">Upper Bracket Path</span>
-        </div>
-        <div class="tc-bracket-grid">
-          ${model.wbRounds.map(r=>`
-            <div class="tc-round-col">
-              <div class="tc-round-head"><span>${esc(r.title)}</span></div>
-              <div class="tc-round-matches">
-                ${r.matches.map(m=>renderBracketCard(m)).join('')}
+    <div class="tc-dashboard-layout">
+      <div class="tc-dashboard-main">
+        <div class="card" style="padding:22px;background:#101015;border-color:#2e2e38">
+          <div style="margin-bottom:28px">
+            <div class="tc-section-header">
+              <h3><span style="color:#ffd166">🏆</span> Winners Bracket</h3>
+              <span style="font-size:10px;font-weight:800;letter-spacing:.8px;color:#8e8c95;text-transform:uppercase">Upper Bracket Path</span>
+            </div>
+            <div class="tc-bracket-grid">
+              ${model.wbRounds.map(r=>`
+                <div class="tc-round-col">
+                  <div class="tc-round-head"><span>${esc(r.title)}</span></div>
+                  <div class="tc-round-matches">
+                    ${r.matches.map(m=>renderBracketCard(m)).join('')}
+                  </div>
+                </div>
+              `).join('')}
+              <div class="tc-round-col" style="border-left:1px dashed #3a3a46;padding-left:24px;width:280px">
+                <div class="tc-round-head"><span style="color:#ffd166">👑 Grand Finals</span></div>
+                <div class="tc-round-matches">
+                  ${model.gfMatches.map(m=>renderBracketCard(m)).join('')}
+                </div>
               </div>
             </div>
-          `).join('')}
-          <div class="tc-round-col" style="border-left:1px dashed #3a3a46;padding-left:24px;width:280px">
-            <div class="tc-round-head"><span style="color:#ffd166">👑 Grand Finals</span></div>
-            <div class="tc-round-matches">
-              ${model.gfMatches.map(m=>renderBracketCard(m)).join('')}
+          </div>
+          <div>
+            <div class="tc-section-header">
+              <h3><span style="color:#7ad1ff">🛡️</span> Losers Bracket</h3>
+              <span style="font-size:10px;font-weight:800;letter-spacing:.8px;color:#8e8c95;text-transform:uppercase">Lower Elimination Path</span>
+            </div>
+            <div class="tc-bracket-grid">
+              ${model.lbRounds.map(r=>`
+                <div class="tc-round-col">
+                  <div class="tc-round-head"><span>${esc(r.title)}</span></div>
+                  <div class="tc-round-matches">
+                    ${r.matches.map(m=>renderBracketCard(m)).join('')}
+                  </div>
+                </div>
+              `).join('')}
             </div>
           </div>
         </div>
       </div>
-      <div>
-        <div class="tc-section-header">
-          <h3><span style="color:#7ad1ff">🛡️</span> Losers Bracket</h3>
-          <span style="font-size:10px;font-weight:800;letter-spacing:.8px;color:#8e8c95;text-transform:uppercase">Lower Elimination Path</span>
-        </div>
-        <div class="tc-bracket-grid">
-          ${model.lbRounds.map(r=>`
-            <div class="tc-round-col">
-              <div class="tc-round-head"><span>${esc(r.title)}</span></div>
-              <div class="tc-round-matches">
-                ${r.matches.map(m=>renderBracketCard(m)).join('')}
-              </div>
-            </div>
-          `).join('')}
-        </div>
+
+      <div class="tc-dashboard-side">
+        ${playoffStandingsHtml}
+        ${ledgerHtml}
       </div>
     </div>
-    ${playoffStandingsHtml}
-    ${ledgerHtml}
   </div>`;
 }
 
@@ -13917,19 +13932,33 @@ function tournamentDetail(){
   let canManage = canManageTournament(t);
   let edit = canManage ? ` <button class="btn ghost" onclick="openTournamentEdit('${jsArg(t.id)}')">Edit</button>` : '';
   let directorBadge = tournamentDirectorsBadge(t, 'margin-left:6px');
-  let headerHtml = head(t.name + directorBadge, t.season + ' · ' + t.status, `<div><button class="btn ghost" onclick="go('Tournaments')">← Archive</button>${edit}${moderator ? ` <button class="btn ghost" style="color:#ff9ba1" onclick="deleteTournament('${jsArg(t.id)}')">Delete</button>` : ''}</div>`)
-    +`<div class="tabs">${availableTabs.map(x=>`<button class="${detailTab===x?'active':''}" onclick="detailTab='${x}';try{localStorage.setItem('draftdex-detail-tab','${x}')}catch(e){};render()">${x}</button>`).join('')}</div>`;
 
-  if(detailTab === 'Predictions' || detailTab === 'Draft'){
-    return headerHtml + `<div>${content}</div>`;
-  }
+  let headerHtml = `<div class="page-head" style="align-items:flex-start">
+    <div>
+      <div class="eyebrow">${esc(t.season || '')} · ${esc(t.status)}</div>
+      <h1>${t.name + directorBadge}</h1>
+      <div style="display:flex;align-items:center;flex-wrap:wrap;gap:8px 12px;margin-top:6px;font-size:12px;color:#a09fa8">
+        ${t.regulation ? `<span style="font-weight:800;color:#f5f3f0"><span style="color:var(--red)">⚔️</span> ${esc(t.regulation)}</span><span style="color:#555460">·</span>` : ''}
+        <span><b>${t.players.length}</b> Trainers</span>
+        <span style="color:#555460">·</span>
+        <span><b>${groups.length}</b> Group${groups.length===1?'':'s'}</span>
+        <span style="color:#555460">·</span>
+        <span>Top <b>${advancePerGroup(t)}</b> Per Group</span>
+        ${(t.start || t.end) ? `
+          <span style="color:#555460">·</span>
+          <span>📅 ${esc(t.start || '')} → ${esc(t.end || '')}</span>
+        ` : ''}
+      </div>
+    </div>
+    <div>
+      <button class="btn ghost" onclick="go('Tournaments')">← Archive</button>
+      ${edit}
+      ${moderator ? ` <button class="btn ghost" style="color:#ff9ba1" onclick="deleteTournament('${jsArg(t.id)}')">Delete</button>` : ''}
+    </div>
+  </div>
+  <div class="tabs">${availableTabs.map(x=>`<button class="${detailTab===x?'active':''}" onclick="detailTab='${x}';try{localStorage.setItem('draftdex-detail-tab','${x}')}catch(e){};render()">${x}</button>`).join('')}</div>`;
 
-  return headerHtml + `<div class="detail-layout"><div>${content}</div><aside class="card side">
-      <div class="card-title">Tournament Record</div>
-      <div class="side-line">${esc(t.regulation||'')}</div>
-      <div class="side-line"><b>${t.players.length}</b> Trainers · ${groups.length} Group${groups.length===1?'':'s'}</div>
-      <div class="side-line">Top ${advancePerGroup(t)} Per Group</div>
-      <div class="side-line">${esc(t.start||'')} → ${esc(t.end||'')}</div></aside></div>`;
+  return headerHtml + `<div>${content}</div>`;
 }
 function openTournamentEdit(id){
   let t=tournamentData[id]||activeT();if(!t)return;
