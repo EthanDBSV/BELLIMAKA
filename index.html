@@ -81,13 +81,34 @@
 .topcut-viewer.brackets-viewer .bracket{width:100%}
 .topcut-viewer.brackets-viewer .round{min-width:185px}
 /* ---- Pokémon Draft League Native Top Cut Bracket Styles ---- */
-.tc-container{display:flex;flex-direction:column;gap:22px;width:100%}
-.tc-podium{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:14px;margin-bottom:8px}
-.tc-podium-card{background:#17171d;border:1px solid #2d2d38;border-radius:8px;padding:16px;display:flex;align-items:center;gap:14px;position:relative;cursor:pointer;transition:transform .14s,border-color .14s}
-.tc-podium-card:hover{transform:translateY(-2px)}
-.tc-podium-card.champ{border-color:#e0ad2b;background:linear-gradient(135deg,#332408,#16161c 68%);box-shadow:0 8px 24px rgba(224,173,43,0.2)}
-.tc-podium-card.runner{border-color:#72768a;background:linear-gradient(135deg,#21232d,#16161c 68%)}
-.tc-podium-card.third{border-color:#8c592e;background:linear-gradient(135deg,#26180e,#16161c 68%)}
+.tc-podium{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px;margin-bottom:18px}
+.tc-podium-card{background:#14141c;border:1px solid #2d2d38;border-radius:10px;padding:16px 18px;position:relative;cursor:pointer;transition:transform .16s ease,box-shadow .16s ease,border-color .16s ease;overflow:hidden}
+.tc-podium-card:hover{transform:translateY(-3px);box-shadow:0 8px 26px rgba(0,0,0,0.6)}
+.tc-podium-card.champ{border-color:#f3c245;background:linear-gradient(135deg,#35220c 0%,#1a1518 55%,#121218 100%);box-shadow:0 6px 24px rgba(243,194,69,0.22),inset 0 1px 0 rgba(255,230,140,0.2)}
+.tc-podium-card.champ:hover{box-shadow:0 10px 32px rgba(243,194,69,0.35),inset 0 1px 0 rgba(255,230,140,0.35)}
+.tc-podium-card.runner{border-color:#8e92a8;background:linear-gradient(135deg,#232632 0%,#171822 55%,#121218 100%);box-shadow:0 6px 20px rgba(160,165,190,0.14),inset 0 1px 0 rgba(220,225,245,0.18)}
+.tc-podium-card.runner:hover{box-shadow:0 10px 28px rgba(160,165,190,0.25),inset 0 1px 0 rgba(220,225,245,0.3)}
+.tc-podium-card.third{border-color:#ad6f3b;background:linear-gradient(135deg,#2d1c14 0%,#1c1414 55%,#121218 100%);box-shadow:0 6px 20px rgba(180,110,60,0.14),inset 0 1px 0 rgba(240,160,100,0.18)}
+.tc-podium-card.third:hover{box-shadow:0 10px 28px rgba(180,110,60,0.25),inset 0 1px 0 rgba(240,160,100,0.3)}
+
+.tc-podium-badge{display:inline-flex;align-items:center;gap:5px;font:800 10px 'Barlow Condensed';letter-spacing:.8px;text-transform:uppercase;padding:3px 8px;border-radius:4px;margin-bottom:12px;width:fit-content}
+.tc-podium-badge.champ-badge{background:#3d2b0c;color:#ffd166;border:1px solid #7a5818;box-shadow:0 2px 6px rgba(255,209,102,0.2)}
+.tc-podium-badge.runner-badge{background:#252836;color:#d8daea;border:1px solid #4d526e}
+.tc-podium-badge.third-badge{background:#331d14;color:#f0a875;border:1px solid #6b3f28}
+
+.tc-podium-content{display:flex;align-items:center;gap:12px}
+.tc-podium-avatar-wrap{position:relative;flex:none}
+.tc-podium-avatar{width:48px;height:48px;border-radius:50%;font-size:20px;font-weight:800;display:grid;place-items:center;box-shadow:0 4px 14px rgba(0,0,0,0.6);background-size:cover;background-position:center}
+.tc-podium-avatar.champ-ring{border:2px solid #ffd166;box-shadow:0 0 14px rgba(255,209,102,0.35)}
+.tc-podium-avatar.runner-ring{border:2px solid #c8c8d8;box-shadow:0 0 10px rgba(200,200,216,0.25)}
+.tc-podium-avatar.third-ring{border:2px solid #cd7f32;box-shadow:0 0 10px rgba(205,127,50,0.25)}
+.tc-podium-medal-icon{position:absolute;bottom:-3px;right:-3px;font-size:13px;background:#14141c;border-radius:50%;padding:1px;line-height:1;border:1px solid rgba(255,255,255,0.2);box-shadow:0 2px 5px rgba(0,0,0,0.5)}
+
+.tc-podium-name{font:800 21px/1.1 'Barlow Condensed';letter-spacing:.4px;color:#f5f3f0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tc-podium-subtitle{font-size:11px;font-weight:700;margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tc-podium-team{font-size:10px;color:#9e9ca8;margin-top:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tc-podium-ovr-wrap{display:flex;flex-direction:column;align-items:center;gap:2px;flex:none;text-align:center;margin-left:auto;padding-left:6px}
+.tc-podium-ovr-label{font:800 8px 'DM Sans';letter-spacing:.6px;color:#8e8c95;text-transform:uppercase}
 
 .tc-section-header{display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #2b2b35;padding-bottom:8px;margin-bottom:16px}
 .tc-section-header h3{font:800 18px 'Barlow Condensed';letter-spacing:.5px;margin:0;color:#f5f3f0;text-transform:uppercase;display:flex;align-items:center;gap:8px}
@@ -3613,13 +3634,35 @@ function getTournamentTopCutModel(t){
     runnerUp = gfMatches[0].loser;
   }
 
-  if(!champion && t.topCutCache?.champion && (t.status === 'COMPLETE' || !gfMatches.some(m=>!m.isDone))){
-    champion = t.topCutCache.champion;
+  if(!champion && (t.bracketManagerData?.champion || t.topCutCache?.champion) && (t.status === 'COMPLETE' || !gfMatches.some(m=>!m.isDone))){
+    champion = t.bracketManagerData?.champion || t.topCutCache?.champion;
+  }
+  if(!runnerUp && t.bracketManagerData?.runnerUp){
+    runnerUp = t.bracketManagerData.runnerUp;
+  }
+  if(!runnerUp && t.topCutCache?.runnerUp){
+    runnerUp = t.topCutCache.runnerUp;
   }
   if(!runnerUp && champion && gfMatches[0]?.isDone){
     runnerUp = (champion === gfMatches[0].p1) ? gfMatches[0].p2 : gfMatches[0].p1;
   }
-  let thirdPlace = (lbRounds[lbRounds.length-1]?.matches[0]?.isDone ? lbRounds[lbRounds.length-1]?.matches[0].loser : null);
+  if(!runnerUp && completedList.length && champion){
+    let gf = completedList.find(m => (m.title || '').toLowerCase().includes('grand final') || (m.title || '').toLowerCase().includes('finals'));
+    if(gf) runnerUp = (gf.p1 === champion) ? gf.p2 : gf.p1;
+  }
+
+  let lbFinal = lbRounds.slice().reverse().find(r => (r.title || '').toLowerCase().includes('loser') || (r.title || '').toLowerCase().includes('final') || (r.matches && r.matches.length === 1));
+  let thirdPlace = (lbFinal?.matches?.[0]?.isDone ? lbFinal.matches[0].loser : null);
+  if(!thirdPlace && t.bracketManagerData?.thirdPlace){
+    thirdPlace = t.bracketManagerData.thirdPlace;
+  }
+  if(!thirdPlace && t.topCutCache?.thirdPlace){
+    thirdPlace = t.topCutCache.thirdPlace;
+  }
+  if(!thirdPlace && completedList.length){
+    let lf = completedList.find(m => (m.title || '').toLowerCase().includes('loser') && (m.title || '').toLowerCase().includes('final'));
+    if(lf) thirdPlace = lf.loser || (lf.s1 > lf.s2 ? lf.p2 : (lf.s2 > lf.s1 ? lf.p1 : null));
+  }
 
   return {
     isPreview,
@@ -3829,34 +3872,99 @@ function topCutSection(t, preview){
     let champName = model.champion || t.champion;
     let runnerName = model.runnerUp;
     let thirdName = model.thirdPlace;
+
     let champOvr = (isPastT && typeof getHistoricalPlayerOVR === 'function')
       ? getHistoricalPlayerOVR(champName, tIdx, 'complete', sortedT)
       : calculatePlayerOVR(champName);
+    let runnerOvr = runnerName ? ((isPastT && typeof getHistoricalPlayerOVR === 'function')
+      ? getHistoricalPlayerOVR(runnerName, tIdx, 'complete', sortedT)
+      : calculatePlayerOVR(runnerName)) : null;
+    let thirdOvr = thirdName ? ((isPastT && typeof getHistoricalPlayerOVR === 'function')
+      ? getHistoricalPlayerOVR(thirdName, tIdx, 'complete', sortedT)
+      : calculatePlayerOVR(thirdName)) : null;
 
-    podiumHtml = `<div class="tc-podium">
-      <div class="tc-podium-card champ" onclick="openProfile('${esc(champName)}')">
-        <span class="podium-rank-badge" style="color:#ffd166">👑 TOURNAMENT CHAMPION</span>
-        <div style="min-width:0;flex:1">
-          <div style="font:900 22px 'Barlow Condensed';color:#f5f3f0">${esc(champName)}</div>
-          <div style="font-size:11px;color:#ffd166;font-weight:700;margin-top:2px">🏆 ${esc(t.name)} Champion</div>
-          <div style="display:flex;align-items:center;gap:6px;margin-top:6px">${champOvr.badgeHtml}</div>
+    let champFace = profilePictures[champName] ? `url('${esc(profilePictures[champName])}')` : (teamCovers[champName] ? `url('${esc(teamCovers[champName])}')` : fallbackArt(champName));
+    let champLetter = (profilePictures[champName] || teamCovers[champName]) ? '' : esc((champName || '?')[0]);
+    let champTeam = teamName(t, champName);
+    let champRec = tournamentRecord(t, champName);
+
+    let runnerFace = runnerName ? (profilePictures[runnerName] ? `url('${esc(profilePictures[runnerName])}')` : (teamCovers[runnerName] ? `url('${esc(teamCovers[runnerName])}')` : fallbackArt(runnerName))) : '';
+    let runnerLetter = runnerName ? ((profilePictures[runnerName] || teamCovers[runnerName]) ? '' : esc((runnerName || '?')[0])) : '';
+    let runnerTeam = runnerName ? teamName(t, runnerName) : '';
+    let runnerRec = runnerName ? tournamentRecord(t, runnerName) : '';
+
+    let thirdFace = thirdName ? (profilePictures[thirdName] ? `url('${esc(profilePictures[thirdName])}')` : (teamCovers[thirdName] ? `url('${esc(teamCovers[thirdName])}')` : fallbackArt(thirdName))) : '';
+    let thirdLetter = thirdName ? ((profilePictures[thirdName] || teamCovers[thirdName]) ? '' : esc((thirdName || '?')[0])) : '';
+    let thirdTeam = thirdName ? teamName(t, thirdName) : '';
+    let thirdRec = thirdName ? tournamentRecord(t, thirdName) : '';
+
+    podiumHtml = `
+      <div class="tc-podium">
+        <!-- 1. Champion Card -->
+        <div class="tc-podium-card champ" onclick="openProfile('${jsArg(champName)}')">
+          <div class="tc-podium-badge champ-badge">👑 1ST PLACE · CHAMPION</div>
+          <div class="tc-podium-content">
+            <div class="tc-podium-avatar-wrap">
+              <span class="avatar mini tc-podium-avatar champ-ring" style="background-image:${champFace}">${champLetter}</span>
+              <span class="tc-podium-medal-icon">👑</span>
+            </div>
+            <div style="min-width:0;flex:1">
+              <div class="tc-podium-name">${playerLink(champName)}</div>
+              <div class="tc-podium-subtitle" style="color:#ffd166">🏆 ${esc(t.name)} Champion</div>
+              <div class="tc-podium-team">${esc(champTeam)}${champRec ? ` · <b>${esc(champRec)}</b>` : ''}</div>
+            </div>
+            <div class="tc-podium-ovr-wrap">
+              ${champOvr.badgeHtml}
+              <span class="tc-podium-ovr-label">OVR</span>
+            </div>
+          </div>
         </div>
+
+        <!-- 2. Runner-Up Card -->
+        ${runnerName ? `
+          <div class="tc-podium-card runner" onclick="openProfile('${jsArg(runnerName)}')">
+            <div class="tc-podium-badge runner-badge">🥈 2ND PLACE · RUNNER-UP</div>
+            <div class="tc-podium-content">
+              <div class="tc-podium-avatar-wrap">
+                <span class="avatar mini tc-podium-avatar runner-ring" style="background-image:${runnerFace}">${runnerLetter}</span>
+                <span class="tc-podium-medal-icon">🥈</span>
+              </div>
+              <div style="min-width:0;flex:1">
+                <div class="tc-podium-name">${playerLink(runnerName)}</div>
+                <div class="tc-podium-subtitle" style="color:#c8c8d8">Grand Finalist</div>
+                <div class="tc-podium-team">${esc(runnerTeam)}${runnerRec ? ` · <b>${esc(runnerRec)}</b>` : ''}</div>
+              </div>
+              <div class="tc-podium-ovr-wrap">
+                ${runnerOvr.badgeHtml}
+                <span class="tc-podium-ovr-label">OVR</span>
+              </div>
+            </div>
+          </div>
+        ` : ''}
+
+        <!-- 3. Third Place Card -->
+        ${thirdName ? `
+          <div class="tc-podium-card third" onclick="openProfile('${jsArg(thirdName)}')">
+            <div class="tc-podium-badge third-badge">🥉 3RD PLACE · BRONZE</div>
+            <div class="tc-podium-content">
+              <div class="tc-podium-avatar-wrap">
+                <span class="avatar mini tc-podium-avatar third-ring" style="background-image:${thirdFace}">${thirdLetter}</span>
+                <span class="tc-podium-medal-icon">🥉</span>
+              </div>
+              <div style="min-width:0;flex:1">
+                <div class="tc-podium-name">${playerLink(thirdName)}</div>
+                <div class="tc-podium-subtitle" style="color:#d4986a">Losers Finalist</div>
+                <div class="tc-podium-team">${esc(thirdTeam)}${thirdRec ? ` · <b>${esc(thirdRec)}</b>` : ''}</div>
+              </div>
+              <div class="tc-podium-ovr-wrap">
+                ${thirdOvr.badgeHtml}
+                <span class="tc-podium-ovr-label">OVR</span>
+              </div>
+            </div>
+          </div>
+        ` : ''}
       </div>
-      ${runnerName ? `<div class="tc-podium-card runner" onclick="openProfile('${esc(runnerName)}')">
-        <span class="podium-rank-badge" style="color:#d0d0dc">🥇 RUNNER-UP</span>
-        <div style="min-width:0;flex:1">
-          <div style="font:800 18px 'Barlow Condensed';color:#f5f3f0">${esc(runnerName)}</div>
-          <div style="font-size:11px;color:#a0a0b0;margin-top:2px">Grand Finalist</div>
-        </div>
-      </div>` : ''}
-      ${thirdName ? `<div class="tc-podium-card third" onclick="openProfile('${esc(thirdName)}')">
-        <span class="podium-rank-badge" style="color:#cd7f32">🥈 3RD PLACE</span>
-        <div style="min-width:0;flex:1">
-          <div style="font:800 18px 'Barlow Condensed';color:#f5f3f0">${esc(thirdName)}</div>
-          <div style="font-size:11px;color:#8e8c95;margin-top:2px">Losers Finalist</div>
-        </div>
-      </div>` : ''}
-    </div>`;
+    `;
   }
 
   let ledgerHtml = '';
@@ -7428,17 +7536,25 @@ function standingTable(t, g){
   let sortedT = typeof sortedTournamentsChronological === 'function' ? sortedTournamentsChronological() : Object.values(tournamentData);
   let tIdx = t ? sortedT.findIndex(x => x.id === t.id || x.name === t.name) : -1;
   let isPastT = (t && t.status === 'COMPLETE' && tIdx >= 0);
+  let isTopCutDone = (typeof isTournamentTopCutOfficial === 'function') ? isTournamentTopCutOfficial(t) : (t.status === 'COMPLETE');
+  let showDualOvr = (isTopCutDone || t.status === 'COMPLETE');
+
   return `
     <div style="display:flex;justify-content:space-between;align-items:center;padding:14px 16px 10px;border-bottom:1px solid #282834">
       <span style="font:900 20px 'Barlow Condensed';letter-spacing:.5px;color:#f5f3f0;text-transform:uppercase">${esc(g)}</span>
-      <span style="font-size:10px;font-weight:800;color:var(--amber);letter-spacing:.6px">TOP ${cut} ADVANCE</span>
+      <span style="font-size:10px;font-weight:800;color:${showDualOvr ? '#9d9ba4' : 'var(--amber)'};letter-spacing:.6px">${showDualOvr ? 'GROUP STAGE &amp; PLAYOFF RATINGS' : `TOP ${cut} ADVANCE`}</span>
     </div>
     <table class="standings">
       <thead>
         <tr>
           <th style="width:36px;text-align:center">#</th>
           <th>Trainer / Team</th>
-          <th style="text-align:center;white-space:nowrap">OVR</th>
+          ${showDualOvr ? `
+            <th style="text-align:center;white-space:nowrap" title="Coach rating at conclusion of Group Stage">Group OVR</th>
+            <th style="text-align:center;white-space:nowrap" title="Final coach rating after Top Cut playoffs">Final OVR</th>
+          ` : `
+            <th style="text-align:center;white-space:nowrap" title="Current Coach Rating">OVR</th>
+          `}
           <th style="text-align:center;white-space:nowrap">W-L</th>
           <th style="text-align:center;white-space:nowrap">GW</th>
           <th style="text-align:center;white-space:nowrap">GD</th>
@@ -7449,9 +7565,32 @@ function standingTable(t, g){
       <tbody>
         ${list.map((x, i) => {
           let p = x.p;
-          let ovrObj = (isPastT && typeof getHistoricalPlayerOVR === 'function')
+
+          let gOvr = (isPastT && typeof getHistoricalPlayerOVR === 'function')
+            ? getHistoricalPlayerOVR(p, tIdx, 'group', sortedT)
+            : calculatePlayerOVR(p);
+          let fOvr = (isPastT && typeof getHistoricalPlayerOVR === 'function')
             ? getHistoricalPlayerOVR(p, tIdx, 'complete', sortedT)
             : calculatePlayerOVR(p);
+
+          let madeTopCut = (t.topCutCache?.results || []).some(m => m.p1 === p || m.p2 === p || m.a === p || m.b === p) || ((tournamentFinish(t, p)?.place || 999) <= (t.advancePerGroup ? Object.keys(groupsOf(t)).length * t.advancePerGroup : 4));
+
+          let ovrCells = '';
+          if(showDualOvr){
+            let diff = fOvr.ovr - gOvr.ovr;
+            let diffHtml = diff !== 0
+              ? `<span style="font-size:9px;font-weight:800;color:${diff > 0 ? '#53e89c' : '#ff8e95'};margin-left:3px">(${diff > 0 ? '+' : ''}${diff})</span>`
+              : '';
+            ovrCells = `
+              <td style="text-align:center">${gOvr.badgeHtml}</td>
+              <td style="text-align:center">
+                ${madeTopCut ? `<div style="display:inline-flex;align-items:center;justify-content:center">${fOvr.badgeHtml}${diffHtml}</div>` : `<span style="font-size:11px;font-weight:700;color:#6b6976" title="Did not qualify for Top Cut">—</span>`}
+              </td>
+            `;
+          } else {
+            ovrCells = `<td style="text-align:center">${gOvr.badgeHtml}</td>`;
+          }
+
           let isCutoff = (i === cut);
           let statusTag = '';
           if(isMathematicallyClinched(t, p)){
@@ -7470,7 +7609,7 @@ function standingTable(t, g){
                 ${playerLink(p)}
                 <span class="team">${esc(teamName(t, p))}</span>
               </td>
-              <td style="text-align:center">${ovrObj.badgeHtml}</td>
+              ${ovrCells}
               <td style="text-align:center;white-space:nowrap;font-weight:800">${x.w}-${x.l}</td>
               <td style="text-align:center;white-space:nowrap">${x.gw}</td>
               <td style="text-align:center;white-space:nowrap">${gdStr}</td>
