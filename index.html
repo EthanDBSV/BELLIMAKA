@@ -5030,7 +5030,6 @@ function openBoardLink(){if(!boardLink||!/^https?:\/\//i.test(boardLink)){alert(
 function historyList(p){let h=teamHistory[p]||[];return h.length?h.map((x,i)=>`<div class="card" style="padding:14px;margin-top:10px"><div class="eyebrow">${x.tournament}</div><b>${x.team}</b>${moderator?`<button class="save" style="float:right;color:#ff9ba1" onclick="removeHistoryTeam('${p}',${i})">Remove team</button>`:''}<div class="roster">${x.pokemon.map((m,j)=>`<span class="mon">${m}${moderator?` <button style="border:0;background:none;color:#ff8c91;cursor:pointer" onclick="removeHistoryMon('${p}',${i},${j})">×</button>`:''}</span>`).join('')}</div>${moderator?`<div class="poke-search"><input id="historyMon${i}" placeholder="Add Pokémon to this historical team"><button class="save" onclick="addHistoryMon('${p}',${i})">Add</button></div>`:''}</div>`).join(''):'<p class="sub">No previous team has been recorded.</p>'}
 function removeHistoryTeam(p,i){if(!confirm('Remove this historical team?'))return;teamHistory[p].splice(i,1);persistLeague();openProfile(p)}
 
-function tournamentRecord(t,p){let w=0,l=0;[...t.matches,...(t.topCutCache?.results||[]).map(m=>({a:m.p1,b:m.p2,as:m.s1,bs:m.s2}))].forEach(m=>{let a=m.a,b=m.b,sa=m.as,sb=m.bs;if(a!==p&&b!==p)return;if(sa===''||sb===''||sa==null||sb==null||+sa===+sb)return;if((a===p&&+sa>+sb)||(b===p&&+sb>+sa))w++;else l++});return `${w}-${l}`}
 function OffseasonHome(){
   let completedTournaments = Object.values(tournamentData).filter(t => t.status === 'COMPLETE').sort((a,b) => (Date.parse(b.start)||0) - (Date.parse(a.start)||0));
   let last = completedTournaments[0] || null;
@@ -5284,7 +5283,7 @@ function safeRecord(p){let raw=String(profiles[p]?.record||'0-0'),parts=raw.spli
 
 
 
-async function endGroupStage(){let t=ongoingT();if(!t||!canManageTournament(t))return;if(t.matches.some(m=>m.as===''||m.bs==='')){alert('Enter a score for every group-stage match before ending the group stage.');return}t.finalStandings=Object.fromEntries(Object.keys(groupsOf(t)).map(g=>[g,getStand(t,g).map(x=>x.p)]));t.phase='topcut';await createTopCutStage(t);persistLeague();current='Top Cut';render()}
+async function endGroupStage(){let t=ongoingT();if(!t||!canManageTournament(t))return;if(t.matches.some(m=>m.as===''||m.bs==='')){alert('Enter a score for every group-stage match before ending the group stage.');return}t.finalStandings=Object.fromEntries(Object.keys(groupsOf(t)).map(g=>[g,getStand(t,g).map(x=>x.p)]));t.phase='topcut';await createTopCutStage(t);rebuildAllPlayerStats();persistLeague();current='Top Cut';render()}
 function endTournament(){
   let t=ongoingT();
   if(!t||!canManageTournament(t)||!t.topCutCache?.complete){alert('Complete every Top Cut match before ending the tournament.');return}
@@ -5994,26 +5993,45 @@ function openProfileManager(){let rows=Object.entries(profiles).map(([p,q])=>`<d
 
 
 function finalQualifiers(t){if(t.finalStandings)return Object.entries(t.finalStandings).flatMap(([,players])=>players.slice(0,advancePerGroup(t)));return qualified(t).map(x=>x.p)}
-function ensureProfile(p){if(!profiles[p])profiles[p]={team:'No default team',record:'0-0',tops:0,cups:[]};if(!Array.isArray(profiles[p].cups))profiles[p].cups=[];if(typeof profiles[p].tops!=='number')profiles[p].tops=0;if(!profiles[p].record)profiles[p].record='0-0';return profiles[p]}
-function tournamentRecord(t,p){
-  let w=0,l=0;
-  (t.matches||[]).forEach(m=>{
-    let a=m.a,b=m.b,sa=m.as,sb=m.bs;
-    if(!a||!b||sa===''||sb===''||sa==null||sb==null||+sa===+sb)return;
-    if(a===p){if(+sa>+sb)w++;else l++}else if(b===p){if(+sb>+sa)w++;else l++}
-  });
-  let topResults = t.topCutCache?.results;
-  if((!topResults || !topResults.length) && (t.bracketManagerData || t.phase==='topcut' || t.status==='COMPLETE') && typeof getTournamentTopCutModel==='function'){
-    let mod = getTournamentTopCutModel(t);
-    if(mod && mod.completedList) topResults = mod.completedList.map(m=>({p1:m.p1,p2:m.p2,s1:m.s1,s2:m.s2}));
-  }
-  (topResults||[]).forEach(m=>{
-    let a=m.p1,b=m.p2,sa=m.s1,sb=m.s2;
-    if(!a||!b||sa==null||sb==null||+sa===+sb)return;
-    if(a===p){if(+sa>+sb)w++;else l++}else if(b===p){if(+sb>+sa)w++;else l++}
-  });
-  return `${w}-${l}`
+function isTournamentGroupStageOfficial(t){
+  if(!t) return false;
+  if(t.status === 'COMPLETE') return true;
+  if(t.phase === 'topcut' || t.phase === 'complete') return true;
+  if(t.finalStandings && Object.keys(t.finalStandings).length > 0) return true;
+  if(t.bracketManagerData && t.phase !== 'groups' && t.phase !== 'draft') return true;
+  return false;
 }
+
+function isTournamentTopCutOfficial(t){
+  if(!t) return false;
+  return t.status === 'COMPLETE' || t.phase === 'complete';
+}
+
+function tournamentRecord(t, p){
+  if(!t || !p) return '0-0';
+  let w = 0, l = 0;
+  (t.matches || []).forEach(m => {
+    let a = m.a, b = m.b, sa = m.as, sb = m.bs;
+    if(!a || !b || sa === '' || sb === '' || sa == null || sb == null || +sa === +sb) return;
+    if(a === p){ if(+sa > +sb) w++; else l++; }
+    else if(b === p){ if(+sb > +sa) w++; else l++; }
+  });
+
+  let topResults = t.topCutCache?.results;
+  if((!topResults || !topResults.length) && (t.bracketManagerData || t.phase === 'topcut' || t.status === 'COMPLETE') && typeof getTournamentTopCutModel === 'function'){
+    let mod = getTournamentTopCutModel(t);
+    if(mod && mod.completedList) topResults = mod.completedList.map(m => ({ p1: m.p1, p2: m.p2, s1: m.s1, s2: m.s2 }));
+  }
+  (topResults || []).forEach(m => {
+    let a = m.p1, b = m.p2, sa = m.s1, sb = m.s2;
+    if(!a || !b || sa == null || sb == null || +sa === +sb) return;
+    if(a === p){ if(+sa > +sb) w++; else l++; }
+    else if(b === p){ if(+sb > +sa) w++; else l++; }
+  });
+
+  return `${w}-${l}`;
+}
+
 function playerCareerStats(p){
   let wins=0,losses=0,titles=0,topCuts=0,tournaments=0,championshipCups=[];
   Object.values(tournamentData).forEach(t=>{
@@ -7110,6 +7128,7 @@ function resetGroupStageScores(){
   });
   delete t.finalStandings;
   scoreDrafts = {};
+  rebuildAllPlayerStats();
   persistLeague();
   render();
 }
@@ -8576,6 +8595,70 @@ function invalidateLeagueCache(){
   _cachedPlayerOVR = {};
 }
 
+function getPlayerOfficialMilestoneStats(p, recs = null){
+  let wins = 0, losses = 0;
+  let officialMatches = [];
+  let sortedT = typeof sortedTournamentsChronological === 'function' ? sortedTournamentsChronological() : Object.values(tournamentData);
+
+  sortedT.forEach((t, tIdx) => {
+    let tBaseTime = (Date.parse(t.start) || (tIdx * 100000000));
+    let isGroupOfficial = (typeof isTournamentGroupStageOfficial === 'function') ? isTournamentGroupStageOfficial(t) : (t.status === 'COMPLETE' || t.phase === 'topcut');
+    let isTopCutOfficial = (typeof isTournamentTopCutOfficial === 'function') ? isTournamentTopCutOfficial(t) : (t.status === 'COMPLETE');
+
+    if(isGroupOfficial){
+      (t.matches || []).forEach((m, idx) => {
+        let a = m.a, b = m.b, sa = m.as, sb = m.bs;
+        if(!a || !b || sa === '' || sb === '' || sa == null || sb == null || +sa === +sb) return;
+        if(a === p || b === p){
+          let won = (a === p && +sa > +sb) || (b === p && +sb > +sa);
+          if(won) wins++; else losses++;
+          officialMatches.push({ won, time: m.completedAt || (tBaseTime + idx * 1000), stageOrder: 1 });
+        }
+      });
+    }
+
+    if(isTopCutOfficial){
+      let topResults = t.topCutCache?.results;
+      if((!topResults || !topResults.length) && (t.bracketManagerData || t.phase === 'topcut' || t.status === 'COMPLETE') && typeof getTournamentTopCutModel === 'function'){
+        let mod = getTournamentTopCutModel(t);
+        if(mod && mod.completedList) topResults = mod.completedList.map(m => ({ p1: m.p1, p2: m.p2, s1: m.s1, s2: m.s2 }));
+      }
+      (topResults || []).forEach((m, idx) => {
+        let a = m.p1, b = m.p2, sa = m.s1, sb = m.s2;
+        if(!a || !b || sa == null || sb == null || +sa === +sb) return;
+        if(a === p || b === p){
+          let won = (a === p && +sa > +sb) || (b === p && +sb > +sa);
+          if(won) wins++; else losses++;
+          officialMatches.push({ won, time: m.completedAt || (tBaseTime + 50000000 + idx * 1000), stageOrder: 2 });
+        }
+      });
+    }
+  });
+
+  officialMatches.sort((a, b) => (a.time - b.time) || (a.stageOrder - b.stageOrder));
+  let curW = 0, maxW = 0, curL = 0, maxL = 0;
+  officialMatches.forEach(item => {
+    if(item.won){
+      curW++; curL = 0;
+      if(curW > maxW) maxW = curW;
+    } else {
+      curL++; curW = 0;
+      if(curL > maxL) maxL = curL;
+    }
+  });
+
+  return {
+    wins,
+    losses,
+    total: wins + losses,
+    winPct: (wins + losses > 0) ? (wins / (wins + losses)) * 100 : 50,
+    currentWinStreak: curW,
+    maxWinStreak: maxW,
+    currentLossStreak: curL,
+    maxLossStreak: maxL
+  };
+}
+
 var _calculatingRecords = false;
 function calculatePlayerOVR(p, leagueData=null){
   if(!p) return { ovr:70, tier:'silver', tierName:'Silver', tierUpper:'SILVER', color:'#d0d0dc', badgeCls:'ovr-silver', badgeHtml:'<span class="ovr-badge-pill ovr-silver">70</span>', subStats:{win:50,tit:0,cut:0,strk:0} };
@@ -8596,10 +8679,13 @@ function calculatePlayerOVR(p, leagueData=null){
     }
   }
   let s=recs?.statsByPlayer?.[p]||{wins:career.wins,losses:career.losses,maxWinStreak:0,currentWinStreak:0,currentLossStreak:0,bestGD:0,tournamentFinishes:[]};
-  let wins = (s.wins !== undefined) ? s.wins : career.wins;
-  let losses = (s.losses !== undefined) ? s.losses : career.losses;
-  let total = wins + losses;
-  let overallWinPct = total > 0 ? (wins / total) * 100 : (career.winPct || 50);
+
+  // Milestone checkpoint stats for OVR (frozen during active stages, updated at Milestone 1 and Milestone 2)
+  let ms = getPlayerOfficialMilestoneStats(p, recs);
+  let wins = ms.wins;
+  let losses = ms.losses;
+  let total = ms.total;
+  let overallWinPct = ms.winPct;
 
   if(total===0){
     let res = {
@@ -8621,18 +8707,16 @@ function calculatePlayerOVR(p, leagueData=null){
 
   // 1. Inactivity & Missed Tournaments Detection
   let sortedT = typeof sortedTournamentsChronological === 'function' ? sortedTournamentsChronological() : Object.values(tournamentData);
-  let completedTList = sortedT.filter(t => t.status === 'COMPLETE' || t.phase === 'topcut');
+  let completedTList = sortedT.filter(t => isTournamentGroupStageOfficial(t) || isTournamentTopCutOfficial(t));
   let latestCompletedT = completedTList[completedTList.length - 1] || null;
-  let isReigningChamp = (latestCompletedT && latestCompletedT.champion === p);
+  let isReigningChamp = (latestCompletedT && latestCompletedT.champion === p && latestCompletedT.status === 'COMPLETE');
 
-  // Filter player's tournament finishes that have completed or reached top cut
+  // Filter player's tournament finishes that have reached official group stage or complete milestones
   let allTfs = s.tournamentFinishes || [];
   let tf = allTfs.filter(item => {
     let t = item.tournament;
     if(!t) return false;
-    if(t.status === 'COMPLETE') return true;
-    let isCompleteOrTopCut = (t.phase === 'topcut' || !!t.bracketManagerData || item.gComplete);
-    return isCompleteOrTopCut;
+    return isTournamentGroupStageOfficial(t) || isTournamentTopCutOfficial(t);
   });
 
   // Calculate missed tournaments since last participation
@@ -8735,13 +8819,13 @@ function calculatePlayerOVR(p, leagueData=null){
     inactivityPenalty = Math.min(5.0, missedRecentCount * 1.5);
   }
 
-  // 5. Active Momentum & Streak Volatility
+  // 5. Active Momentum & Streak Volatility (From milestone official streak stats)
   let isTopFourFinish = (missedRecentCount === 0 && lastPlace <= 4);
-  let activeStreakBonus = (missedRecentCount === 0) ? Math.min(4.5, (s.currentWinStreak || 0) * 1.0) : 0;
-  let activeLossPenalty = (missedRecentCount === 0 && !isTopFourFinish) ? Math.min(3.0, (s.currentLossStreak || 0) * 0.75) : 0;
+  let activeStreakBonus = (missedRecentCount === 0) ? Math.min(4.5, (ms.currentWinStreak || 0) * 1.0) : 0;
+  let activeLossPenalty = (missedRecentCount === 0 && !isTopFourFinish) ? Math.min(3.0, (ms.currentLossStreak || 0) * 0.75) : 0;
 
   // All-time historic streak legacy: modest +0.30 per game (cap +2.2)
-  let maxStreakBonus = Math.min(2.2, (s.maxWinStreak || 0) * 0.30);
+  let maxStreakBonus = Math.min(2.2, (ms.maxWinStreak || 0) * 0.30);
 
   let rawOvr = base + recentPlacementBonus + olderPlacementBonus + consistencyBonus + winRateDiff + activeStreakBonus - activeLossPenalty + maxStreakBonus - inactivityPenalty;
 
@@ -8793,7 +8877,7 @@ function calculatePlayerOVR(p, leagueData=null){
       win: Math.round(effectiveWinPct),
       tit: career.titles,
       cut: career.topCuts,
-      strk: s.maxWinStreak || 0
+      strk: s.maxWinStreak || ms.maxWinStreak || 0
     }
   };
   if(!leagueData) _cachedPlayerOVR[p] = result;
