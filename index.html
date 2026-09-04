@@ -4008,102 +4008,6 @@ function topCutSection(t, preview){
     `;
   }
 
-  let playoffStandingsHtml = '';
-  let showPlayoffStandings = (t.status === 'COMPLETE' || isPastT || model.completedList.length > 0 || (typeof isTournamentTopCutOfficial === 'function' && isTournamentTopCutOfficial(t)));
-  let qualifiersList = (model.qualifiers && model.qualifiers.length)
-    ? model.qualifiers.map(q => typeof q === 'string' ? q : (q?.name || q?.p))
-    : qualified(t).map(x => x.p);
-  if(t.bracketManagerData?.participant?.length){
-    qualifiersList = t.bracketManagerData.participant.map(pt => typeof pt === 'string' ? pt : (pt?.name || pt?.p));
-  } else if(t.topCutCache?.participants?.length){
-    qualifiersList = t.topCutCache.participants.map(pt => typeof pt === 'string' ? pt : (pt?.name || pt?.p));
-  }
-  qualifiersList = Array.from(new Set(qualifiersList)).filter(isKnownPlayer);
-
-  if(showPlayoffStandings && qualifiersList.length){
-    let qualifierStats = qualifiersList.map(p => {
-      let fin = tournamentFinish(t, p);
-      let gOvr = (isPastT && typeof getHistoricalPlayerOVR === 'function')
-        ? getHistoricalPlayerOVR(p, tIdx, 'group', sortedT)
-        : calculatePlayerOVR(p);
-      let fOvr = (isPastT && typeof getHistoricalPlayerOVR === 'function')
-        ? getHistoricalPlayerOVR(p, tIdx, 'complete', sortedT)
-        : calculatePlayerOVR(p);
-      let pWins = model.completedList.filter(m => m.winner === p).length;
-      let pLosses = model.completedList.filter(m => m.loser === p).length;
-      let pFace = profilePictures[p] ? `url('${esc(profilePictures[p])}')` : (teamCovers[p] ? `url('${esc(teamCovers[p])}')` : fallbackArt(p));
-      let pLetter = (profilePictures[p] || teamCovers[p]) ? '' : esc((p || '?')[0]);
-
-      return {
-        p,
-        place: fin?.place || 999,
-        label: fin?.label || '—',
-        note: fin?.note || (fin?.place === 1 ? 'Champion' : `${fin?.place}th Place`),
-        cls: fin?.cls || '',
-        gOvr,
-        fOvr,
-        diff: fOvr.ovr - gOvr.ovr,
-        record: `${pWins}-${pLosses}`,
-        team: teamName(t, p),
-        face: pFace,
-        letter: pLetter
-      };
-    });
-
-    qualifierStats.sort((a, b) => {
-      return a.place - b.place || b.fOvr.ovr - a.fOvr.ovr || a.p.localeCompare(b.p);
-    });
-
-    playoffStandingsHtml = `<section class="section" style="margin-top:0">
-      <div class="tc-section-header">
-        <h3><span style="color:#ffd166">📊</span> Playoff Standings &amp; Rating Progression</h3>
-      </div>
-      <div class="card table-wrap" style="overflow-x:auto">
-        <table class="standings tc-playoff-table">
-          <thead>
-            <tr>
-              <th style="width:40px;text-align:center">#</th>
-              <th>Trainer / Team</th>
-              <th style="text-align:center;white-space:nowrap" title="Coach rating at conclusion of Group Stage">Group OVR</th>
-              <th style="text-align:center;white-space:nowrap" title="Final coach rating after Top Cut playoffs">Playoff OVR</th>
-              <th style="text-align:center;white-space:nowrap">Playoff Series</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${qualifierStats.map((qs, qIdx) => {
-              let diffHtml = qs.diff !== 0
-                ? `<span style="font-size:10px;font-weight:900;color:${qs.diff > 0 ? '#53e89c' : '#ff8e95'};margin-left:4px">(${qs.diff > 0 ? '+' : ''}${qs.diff})</span>`
-                : `<span style="font-size:10px;font-weight:700;color:#8e8c95;margin-left:4px">(0)</span>`;
-              
-              let medalIcon = qs.place === 1 ? '👑 ' : (qs.place === 2 ? '🥈 ' : (qs.place === 3 ? '🥉 ' : ''));
-              let rowCls = qs.place === 1 ? 'gold' : (qs.place === 2 ? 'silver' : (qs.place === 3 ? 'bronze' : ''));
-
-              return `<tr class="${rowCls}">
-                <td class="rank" style="text-align:center;font-weight:900;color:${qs.place===1?'#ffd166':(qs.place===2?'#d5d5e2':(qs.place===3?'#d4986a':'#8e8c95'))}">
-                  ${medalIcon}${qs.label || (qIdx + 1)}
-                </td>
-                <td class="player">
-                  <div style="display:flex;align-items:center;gap:8px">
-                    <span class="avatar mini" style="background-image:${qs.face};width:24px;height:24px;font-size:10px;border-radius:50%;flex:none;border:1px solid rgba(255,255,255,0.2)">${qs.letter}</span>
-                    <div style="min-width:0">
-                      <div>${playerLink(qs.p)}</div>
-                      <span class="team" style="font-size:10px">${esc(qs.team)}</span>
-                    </div>
-                  </div>
-                </td>
-                <td style="text-align:center">${qs.gOvr.badgeHtml}</td>
-                <td style="text-align:center">
-                  <div style="display:inline-flex;align-items:center;justify-content:center">${qs.fOvr.badgeHtml}${diffHtml}</div>
-                </td>
-                <td style="text-align:center;white-space:nowrap;font-weight:800">${qs.record}</td>
-              </tr>`;
-            }).join('')}
-          </tbody>
-        </table>
-      </div>
-    </section>`;
-  }
-
   return `<div class="tc-container">
     <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:14px">
       <div style="display:flex;align-items:center;gap:10px">
@@ -4121,57 +4025,161 @@ function topCutSection(t, preview){
 
     ${podiumHtml}
 
-    <div class="tc-dashboard-layout">
-      <div class="tc-dashboard-main">
-        <div class="card" style="padding:22px;background:#101015;border-color:#2e2e38">
-          <div class="tc-bracket-scroll-pane">
-            <div style="margin-bottom:28px">
-              <div class="tc-section-header">
-                <h3><span style="color:#ffd166">🏆</span> Winners Bracket</h3>
-                <span style="font-size:10px;font-weight:800;letter-spacing:.8px;color:#8e8c95;text-transform:uppercase">Upper Bracket Path</span>
-              </div>
-              <div class="tc-bracket-grid">
-                ${model.wbRounds.map(r=>`
-                  <div class="tc-round-col">
-                    <div class="tc-round-head"><span>${esc(r.title)}</span></div>
-                    <div class="tc-round-matches">
-                      ${r.matches.map(m=>renderBracketCard(m)).join('')}
-                    </div>
-                  </div>
-                `).join('')}
-                <div class="tc-round-col" style="border-left:1px dashed #3a3a46;padding-left:24px;width:280px">
-                  <div class="tc-round-head"><span style="color:#ffd166">👑 Grand Finals</span></div>
-                  <div class="tc-round-matches">
-                    ${model.gfMatches.map(m=>renderBracketCard(m)).join('')}
-                  </div>
+    <div class="card" style="padding:22px;background:#101015;border-color:#2e2e38;width:100%">
+      <div class="tc-bracket-scroll-pane">
+        <div style="margin-bottom:28px">
+          <div class="tc-section-header">
+            <h3><span style="color:#ffd166">🏆</span> Winners Bracket</h3>
+            <span style="font-size:10px;font-weight:800;letter-spacing:.8px;color:#8e8c95;text-transform:uppercase">Upper Bracket Path</span>
+          </div>
+          <div class="tc-bracket-grid">
+            ${model.wbRounds.map(r=>`
+              <div class="tc-round-col">
+                <div class="tc-round-head"><span>${esc(r.title)}</span></div>
+                <div class="tc-round-matches">
+                  ${r.matches.map(m=>renderBracketCard(m)).join('')}
                 </div>
               </div>
-            </div>
-            <div>
-              <div class="tc-section-header">
-                <h3><span style="color:#7ad1ff">🛡️</span> Losers Bracket</h3>
-                <span style="font-size:10px;font-weight:800;letter-spacing:.8px;color:#8e8c95;text-transform:uppercase">Lower Elimination Path</span>
-              </div>
-              <div class="tc-bracket-grid">
-                ${model.lbRounds.map(r=>`
-                  <div class="tc-round-col">
-                    <div class="tc-round-head"><span>${esc(r.title)}</span></div>
-                    <div class="tc-round-matches">
-                      ${r.matches.map(m=>renderBracketCard(m)).join('')}
-                    </div>
-                  </div>
-                `).join('')}
+            `).join('')}
+            <div class="tc-round-col" style="border-left:1px dashed #3a3a46;padding-left:24px;width:280px">
+              <div class="tc-round-head"><span style="color:#ffd166">👑 Grand Finals</span></div>
+              <div class="tc-round-matches">
+                ${model.gfMatches.map(m=>renderBracketCard(m)).join('')}
               </div>
             </div>
           </div>
         </div>
-      </div>
-
-      <div class="tc-dashboard-side">
-        ${playoffStandingsHtml}
+        <div>
+          <div class="tc-section-header">
+            <h3><span style="color:#7ad1ff">🛡️</span> Losers Bracket</h3>
+            <span style="font-size:10px;font-weight:800;letter-spacing:.8px;color:#8e8c95;text-transform:uppercase">Lower Elimination Path</span>
+          </div>
+          <div class="tc-bracket-grid">
+            ${model.lbRounds.map(r=>`
+              <div class="tc-round-col">
+                <div class="tc-round-head"><span>${esc(r.title)}</span></div>
+                <div class="tc-round-matches">
+                  ${r.matches.map(m=>renderBracketCard(m)).join('')}
+                </div>
+              </div>
+            `).join('')}
+          </div>
+        </div>
       </div>
     </div>
   </div>`;
+}
+
+function tournamentRatingProgressionSection(t){
+  if(!t || !t.players || !t.players.length) return '';
+  let sortedT = (typeof sortedTournamentsChronological === 'function') ? sortedTournamentsChronological() : [];
+  let tIdx = sortedT.findIndex(x => x.id === t.id);
+  let isPastT = (t.status === 'COMPLETE');
+
+  let model = getTournamentTopCutModel(t);
+  let qualifiersList = (model.qualifiers && model.qualifiers.length)
+    ? model.qualifiers.map(q => typeof q === 'string' ? q : (q?.name || q?.p))
+    : qualified(t).map(x => x.p);
+  if(t.bracketManagerData?.participant?.length){
+    qualifiersList = t.bracketManagerData.participant.map(pt => typeof pt === 'string' ? pt : (pt?.name || pt?.p));
+  } else if(t.topCutCache?.participants?.length){
+    qualifiersList = t.topCutCache.participants.map(pt => typeof pt === 'string' ? pt : (pt?.name || pt?.p));
+  }
+  let qualifiersSet = new Set(qualifiersList.filter(isKnownPlayer));
+
+  let allPlayers = Array.from(new Set(t.players)).filter(isKnownPlayer);
+
+  let playerStats = allPlayers.map(p => {
+    let fin = tournamentFinish(t, p);
+    let inTopCut = qualifiersSet.has(p) || (fin.place < 100);
+
+    let gOvr = (isPastT && typeof getHistoricalPlayerOVR === 'function')
+      ? getHistoricalPlayerOVR(p, tIdx, 'group', sortedT)
+      : calculatePlayerOVR(p);
+
+    let fOvr = (inTopCut && isPastT && typeof getHistoricalPlayerOVR === 'function')
+      ? getHistoricalPlayerOVR(p, tIdx, 'complete', sortedT)
+      : (inTopCut ? calculatePlayerOVR(p) : gOvr);
+
+    let diff = inTopCut ? (fOvr.ovr - gOvr.ovr) : null;
+    let pFace = profilePictures[p] ? `url('${esc(profilePictures[p])}')` : (teamCovers[p] ? `url('${esc(teamCovers[p])}')` : fallbackArt(p));
+    let pLetter = (profilePictures[p] || teamCovers[p]) ? '' : esc((p || '?')[0]);
+
+    return {
+      p,
+      place: fin?.place || 999,
+      label: fin?.label || '—',
+      inTopCut,
+      gOvr,
+      fOvr,
+      diff,
+      team: teamName(t, p),
+      face: pFace,
+      letter: pLetter
+    };
+  });
+
+  playerStats.sort((a, b) => {
+    if(a.inTopCut !== b.inTopCut) return a.inTopCut ? -1 : 1;
+    return a.place - b.place || b.fOvr.ovr - a.fOvr.ovr || a.p.localeCompare(b.p);
+  });
+
+  return `<section class="section" style="margin-top:28px">
+    <div class="tc-section-header">
+      <h3><span style="color:#ffd166">📊</span> Rating Progression</h3>
+    </div>
+    <div class="card table-wrap" style="overflow-x:auto">
+      <table class="standings tc-playoff-table">
+        <thead>
+          <tr>
+            <th style="width:60px;text-align:center">#</th>
+            <th style="text-align:center">Trainer / Team</th>
+            <th style="text-align:center;white-space:nowrap" title="Coach rating at conclusion of Group Stage">Group OVR</th>
+            <th style="text-align:center;white-space:nowrap" title="Final coach rating after tournament conclusion">Final OVR</th>
+            <th style="text-align:center;white-space:nowrap" title="Rating growth from Group Stage to Top Cut">Growth</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${playerStats.map((qs, qIdx) => {
+            let medalIcon = qs.place === 1 ? '👑 ' : (qs.place === 2 ? '🥈 ' : (qs.place === 3 ? '🥉 ' : ''));
+            let rowCls = qs.place === 1 ? 'gold' : (qs.place === 2 ? 'silver' : (qs.place === 3 ? 'bronze' : ''));
+            let rankColor = qs.place === 1 ? '#ffd166' : (qs.place === 2 ? '#d5d5e2' : (qs.place === 3 ? '#d4986a' : '#8e8c95'));
+
+            let growthHtml = '-';
+            if(qs.inTopCut && qs.diff !== null){
+              if(qs.diff > 0){
+                growthHtml = `<span style="font-size:12px;font-weight:900;color:#53e89c">+${qs.diff}</span>`;
+              } else if(qs.diff < 0){
+                growthHtml = `<span style="font-size:12px;font-weight:900;color:#ff8e95">${qs.diff}</span>`;
+              } else {
+                growthHtml = `<span style="font-size:12px;font-weight:700;color:#8e8c95">0</span>`;
+              }
+            } else {
+              growthHtml = `<span style="font-size:14px;font-weight:700;color:#6e6c75">-</span>`;
+            }
+
+            return `<tr class="${rowCls}">
+              <td class="rank" style="text-align:center;font-weight:900;color:${rankColor}">
+                ${medalIcon}${qs.label || (qIdx + 1)}
+              </td>
+              <td class="player" style="text-align:center">
+                <div style="display:inline-flex;align-items:center;gap:8px;text-align:left">
+                  <span class="avatar mini" style="background-image:${qs.face};width:24px;height:24px;font-size:10px;border-radius:50%;flex:none;border:1px solid rgba(255,255,255,0.2)">${qs.letter}</span>
+                  <div style="min-width:0">
+                    <div>${playerLink(qs.p)}</div>
+                    <span class="team" style="font-size:10px">${esc(qs.team)}</span>
+                  </div>
+                </div>
+              </td>
+              <td style="text-align:center">${qs.gOvr.badgeHtml}</td>
+              <td style="text-align:center">${qs.fOvr.badgeHtml}</td>
+              <td style="text-align:center;white-space:nowrap">${growthHtml}</td>
+            </tr>`;
+          }).join('')}
+        </tbody>
+      </table>
+    </div>
+  </section>`;
 }
 
 function mountTopCutViewer(){}
@@ -7994,7 +8002,7 @@ function Standings(){
     return renderDraftLockedStandings(t);
   }
   let groups=Object.keys(groupsOf(t)),controls=moderator?`<div><button class="btn ghost" onclick="openGroupDrawCeremony('${jsArg(t.id)}')">🎩 Draw ceremony</button> <button class="btn ghost" onclick="openRankingEditor()">Arrange rankings</button> <button class="btn ghost" onclick="openSettings()">Edit qualification</button></div>`:'';
-  return head('Standings',t.name+' · group stage',controls)+`<div style="display:grid;grid-template-columns:repeat(${groups.length>1?2:1},minmax(0,1fr));gap:15px">${groups.map(g=>`<div class="card table-wrap">${standingTable(t,g)}</div>`).join('')}</div><p class="sub">The default order is W-L, games won, game differential, then head-to-head. Moderators can use Arrange rankings to apply a manual standings override.</p>`;
+  return head('Standings',t.name+' · group stage',controls)+`<div style="display:grid;grid-template-columns:repeat(${groups.length>1?2:1},minmax(0,1fr));gap:15px">${groups.map(g=>`<div class="card table-wrap">${standingTable(t,g)}</div>`).join('')}</div><p class="sub">The default order is W-L, games won, game differential, then head-to-head. Moderators can use Arrange rankings to apply a manual standings override.</p>` + tournamentRatingProgressionSection(t);
 }
 
 function matchPlayerName(p){return `<button class="player-link match-hover-name" onclick="openProfile('${jsArg(p)}')" onmouseenter="highlightMatches('${jsArg(p)}',true)" onmouseleave="highlightMatches('',false)">${esc(p)}</button>`}
@@ -11652,13 +11660,6 @@ function predictions(t=activeT()){
   let sideRail = `
     <div style="display:flex;flex-direction:column;gap:16px">
       ${leaderboard}
-      <aside class="card side" style="padding:16px 18px">
-        <div class="card-title" style="font-size:11px;letter-spacing:1px;color:#ffd166;text-transform:uppercase">Tournament Record</div>
-        <div class="side-line" style="padding:8px 0;font-size:11px">${esc(t.regulation || '')}</div>
-        <div class="side-line" style="padding:8px 0;font-size:11px"><b>${t.players?.length || 0}</b> Trainers · ${groupsList.length} Group${groupsList.length === 1 ? '' : 's'}</div>
-        <div class="side-line" style="padding:8px 0;font-size:11px">Top ${advancePerGroup(t)} Per Group</div>
-        <div class="side-line" style="padding:8px 0;font-size:11px">${esc(t.start || '')} → ${esc(t.end || '')}</div>
-      </aside>
     </div>
   `;
 
@@ -13893,7 +13894,7 @@ function tournamentDetail(){
   }
 
   let content=detailTab==='Draft'?DraftRostersView(t)
-    :detailTab==='Standings'?(isDraftOngoing ? renderDraftLockedStandings(t, true) : `<div style="display:grid;grid-template-columns:repeat(${groups.length>1?2:1},minmax(0,1fr));gap:16px;align-items:start">${groups.map(g=>`<div class="card table-wrap" style="align-self:start">${standingTable(t,g)}</div>`).join('')}</div>`)
+    :detailTab==='Standings'?(isDraftOngoing ? renderDraftLockedStandings(t, true) : `<div style="display:grid;grid-template-columns:repeat(${groups.length>1?2:1},minmax(0,1fr));gap:16px;align-items:start">${groups.map(g=>`<div class="card table-wrap" style="align-self:start">${standingTable(t,g)}</div>`).join('')}</div>` + tournamentRatingProgressionSection(t))
     :detailTab==='Group Stage'?(isDraftOngoing ? renderDraftLockedMatches(t, true) : matchesView(t,false))
     :detailTab==='Top Cut'?(isDraftOngoing ? renderDraftLockedTopCut(t, true) : topCutSection(t,!t.bracketManagerData))
     :detailTab==='Predictions'?(isDraftOngoing ? renderDraftLockedPredictions(t, true) : predictions(t))
