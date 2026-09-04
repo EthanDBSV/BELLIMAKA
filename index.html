@@ -8843,7 +8843,7 @@ function calculatePlayerOVR(p, leagueData=null){
     badgeCls,
     badgeHtml: `<span class="ovr-badge-pill ${badgeCls}">${badgePrefix}${finalOvr}</span>`,
     subStats: {
-      win: Math.round(effectiveWinPct),
+      win: Math.round(overallWinPct),
       tit: career.titles,
       cut: career.topCuts,
       strk: s.maxWinStreak || ms.maxWinStreak || 0
@@ -10506,7 +10506,7 @@ function savePredictionPick(question, choice, el){
   }
 
   // Fire Supabase sync in background
-  if(supabaseClient && sessionUser){
+  if(!isSandboxMode() && supabaseClient && sessionUser){
     (async () => {
       try {
         if(isTogglingOff){
@@ -11045,7 +11045,7 @@ function saveBracketPredictionPick(mId, choice){
   }
 
   // Fire Supabase sync in background
-  if(supabaseClient && sessionUser){
+  if(!isSandboxMode() && supabaseClient && sessionUser){
     (async () => {
       try {
         if(isTogglingOff){
@@ -14019,14 +14019,14 @@ function writeTeams(bump=true){
 }
 var teamsPushTimer=null;
 function schedulePushTeams(){
-  if(!supabaseClient||!sessionUser)return;
+  if(isSandboxMode() || !supabaseClient || !sessionUser) return;
   clearTimeout(teamsPushTimer);
   teamsPushTimer=setTimeout(async()=>{
     try{await supabaseClient.auth.updateUser({data:{draftTeams:{teams:teamStore.teams,activeId:teamStore.activeId,updatedAt:teamStore.updatedAt,adoptedGuest:teamStore.adoptedGuest}}})}catch(e){}
   },800)
 }
 async function pullRemoteTeams(){
-  if(!supabaseClient||!sessionUser)return;
+  if(isSandboxMode() || !supabaseClient || !sessionUser) return;
   let key=accountKey();
   if(window.__teamsPulled[key])return;
   window.__teamsPulled[key]=true;
