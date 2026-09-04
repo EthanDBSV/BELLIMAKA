@@ -155,6 +155,11 @@
 .tc-ledger-table th{padding:9px 12px;font-size:9px;font-weight:800;letter-spacing:.7px;text-transform:uppercase;color:#8e8c95;border-bottom:1px solid #2a2a34;text-align:left}
 .tc-ledger-table td{padding:10px 12px;font-size:12px;border-bottom:1px solid #202028}
 .tc-ledger-table tr:last-child td{border-bottom:0}
+
+.tc-playoff-table{width:100%}
+.tc-playoff-table tr.gold td{background:rgba(255,209,102,0.06)}
+.tc-playoff-table tr.silver td{background:rgba(200,200,216,0.04)}
+.tc-playoff-table tr.bronze td{background:rgba(205,127,50,0.04)}
 /* PATCH: fix Teams cards shrinking after cover-edit wrapper was added */
 .teams>div{width:100%}
 .teams .team-card{width:100%;display:block;box-sizing:border-box}
@@ -3967,6 +3972,108 @@ function topCutSection(t, preview){
     `;
   }
 
+  let playoffStandingsHtml = '';
+  let showPlayoffStandings = (t.status === 'COMPLETE' || isPastT || model.completedList.length > 0 || (typeof isTournamentTopCutOfficial === 'function' && isTournamentTopCutOfficial(t)));
+  let qualifiersList = (model.qualifiers && model.qualifiers.length)
+    ? model.qualifiers.map(q => typeof q === 'string' ? q : (q?.name || q?.p))
+    : qualified(t).map(x => x.p);
+  if(t.bracketManagerData?.participant?.length){
+    qualifiersList = t.bracketManagerData.participant.map(pt => typeof pt === 'string' ? pt : (pt?.name || pt?.p));
+  } else if(t.topCutCache?.participants?.length){
+    qualifiersList = t.topCutCache.participants.map(pt => typeof pt === 'string' ? pt : (pt?.name || pt?.p));
+  }
+  qualifiersList = Array.from(new Set(qualifiersList)).filter(isKnownPlayer);
+
+  if(showPlayoffStandings && qualifiersList.length){
+    let qualifierStats = qualifiersList.map(p => {
+      let fin = tournamentFinish(t, p);
+      let gOvr = (isPastT && typeof getHistoricalPlayerOVR === 'function')
+        ? getHistoricalPlayerOVR(p, tIdx, 'group', sortedT)
+        : calculatePlayerOVR(p);
+      let fOvr = (isPastT && typeof getHistoricalPlayerOVR === 'function')
+        ? getHistoricalPlayerOVR(p, tIdx, 'complete', sortedT)
+        : calculatePlayerOVR(p);
+      let pWins = model.completedList.filter(m => m.winner === p).length;
+      let pLosses = model.completedList.filter(m => m.loser === p).length;
+      let pFace = profilePictures[p] ? `url('${esc(profilePictures[p])}')` : (teamCovers[p] ? `url('${esc(teamCovers[p])}')` : fallbackArt(p));
+      let pLetter = (profilePictures[p] || teamCovers[p]) ? '' : esc((p || '?')[0]);
+
+      return {
+        p,
+        place: fin?.place || 999,
+        label: fin?.label || '—',
+        note: fin?.note || (fin?.place === 1 ? 'Champion' : `${fin?.place}th Place`),
+        cls: fin?.cls || '',
+        gOvr,
+        fOvr,
+        diff: fOvr.ovr - gOvr.ovr,
+        record: `${pWins}-${pLosses}`,
+        team: teamName(t, p),
+        face: pFace,
+        letter: pLetter
+      };
+    });
+
+    qualifierStats.sort((a, b) => {
+      return a.place - b.place || b.fOvr.ovr - a.fOvr.ovr || a.p.localeCompare(b.p);
+    });
+
+    playoffStandingsHtml = `<section class="section" style="margin-top:28px">
+      <div class="tc-section-header">
+        <h3><span style="color:#ffd166">📊</span> Playoff Standings &amp; Rating Progression</h3>
+        <span style="font-size:11px;color:#8e8c95;font-weight:700">${qualifierStats.length} QUALIFIERS</span>
+      </div>
+      <div class="card table-wrap">
+        <table class="standings tc-playoff-table">
+          <thead>
+            <tr>
+              <th style="width:48px;text-align:center">#</th>
+              <th>Trainer / Team</th>
+              <th style="text-align:center;white-space:nowrap" title="Coach rating at conclusion of Group Stage">Group OVR</th>
+              <th style="text-align:center;white-space:nowrap" title="Final coach rating after Top Cut playoffs">Playoff OVR</th>
+              <th style="text-align:center;white-space:nowrap">Playoff Series</th>
+              <th style="text-align:center;white-space:nowrap">Tournament Result</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${qualifierStats.map((qs, qIdx) => {
+              let diffHtml = qs.diff !== 0
+                ? `<span style="font-size:10px;font-weight:900;color:${qs.diff > 0 ? '#53e89c' : '#ff8e95'};margin-left:4px">(${qs.diff > 0 ? '+' : ''}${qs.diff})</span>`
+                : `<span style="font-size:10px;font-weight:700;color:#8e8c95;margin-left:4px">(0)</span>`;
+              
+              let medalIcon = qs.place === 1 ? '👑 ' : (qs.place === 2 ? '🥈 ' : (qs.place === 3 ? '🥉 ' : ''));
+              let tagCls = qs.place === 1 ? 'safe' : (qs.place <= 3 ? 'hunt' : 'out');
+              let rowCls = qs.place === 1 ? 'gold' : (qs.place === 2 ? 'silver' : (qs.place === 3 ? 'bronze' : ''));
+
+              return `<tr class="${rowCls}">
+                <td class="rank" style="text-align:center;font-weight:900;color:${qs.place===1?'#ffd166':(qs.place===2?'#d5d5e2':(qs.place===3?'#d4986a':'#8e8c95'))}">
+                  ${medalIcon}${qs.label || (qIdx + 1)}
+                </td>
+                <td class="player">
+                  <div style="display:flex;align-items:center;gap:8px">
+                    <span class="avatar mini" style="background-image:${qs.face};width:24px;height:24px;font-size:10px;border-radius:50%;flex:none;border:1px solid rgba(255,255,255,0.2)">${qs.letter}</span>
+                    <div style="min-width:0">
+                      <div>${playerLink(qs.p)}</div>
+                      <span class="team" style="font-size:10px">${esc(qs.team)}</span>
+                    </div>
+                  </div>
+                </td>
+                <td style="text-align:center">${qs.gOvr.badgeHtml}</td>
+                <td style="text-align:center">
+                  <div style="display:inline-flex;align-items:center;justify-content:center">${qs.fOvr.badgeHtml}${diffHtml}</div>
+                </td>
+                <td style="text-align:center;white-space:nowrap;font-weight:800">${qs.record}</td>
+                <td style="text-align:center;white-space:nowrap">
+                  <span class="tag ${tagCls}" style="font-weight:800">${esc(qs.note || (qs.place === 1 ? 'Champion' : `${qs.place}th Place`))}</span>
+                </td>
+              </tr>`;
+            }).join('')}
+          </tbody>
+        </table>
+      </div>
+    </section>`;
+  }
+
   let ledgerHtml = '';
   if(model.completedList.length){
     ledgerHtml = `<section class="section" style="margin-top:28px">
@@ -4080,6 +4187,7 @@ function topCutSection(t, preview){
         </div>
       </div>
     </div>
+    ${playoffStandingsHtml}
     ${ledgerHtml}
   </div>`;
 }
@@ -7536,25 +7644,18 @@ function standingTable(t, g){
   let sortedT = typeof sortedTournamentsChronological === 'function' ? sortedTournamentsChronological() : Object.values(tournamentData);
   let tIdx = t ? sortedT.findIndex(x => x.id === t.id || x.name === t.name) : -1;
   let isPastT = (t && t.status === 'COMPLETE' && tIdx >= 0);
-  let isTopCutDone = (typeof isTournamentTopCutOfficial === 'function') ? isTournamentTopCutOfficial(t) : (t.status === 'COMPLETE');
-  let showDualOvr = (isTopCutDone || t.status === 'COMPLETE');
 
   return `
     <div style="display:flex;justify-content:space-between;align-items:center;padding:14px 16px 10px;border-bottom:1px solid #282834">
       <span style="font:900 20px 'Barlow Condensed';letter-spacing:.5px;color:#f5f3f0;text-transform:uppercase">${esc(g)}</span>
-      <span style="font-size:10px;font-weight:800;color:${showDualOvr ? '#9d9ba4' : 'var(--amber)'};letter-spacing:.6px">${showDualOvr ? 'GROUP STAGE &amp; PLAYOFF RATINGS' : `TOP ${cut} ADVANCE`}</span>
+      <span style="font-size:10px;font-weight:800;color:var(--amber);letter-spacing:.6px">${isPastT ? 'FINAL GROUP STANDINGS' : `TOP ${cut} ADVANCE`}</span>
     </div>
     <table class="standings">
       <thead>
         <tr>
           <th style="width:36px;text-align:center">#</th>
           <th>Trainer / Team</th>
-          ${showDualOvr ? `
-            <th style="text-align:center;white-space:nowrap" title="Coach rating at conclusion of Group Stage">Group OVR</th>
-            <th style="text-align:center;white-space:nowrap" title="Final coach rating after Top Cut playoffs">Final OVR</th>
-          ` : `
-            <th style="text-align:center;white-space:nowrap" title="Current Coach Rating">OVR</th>
-          `}
+          <th style="text-align:center;white-space:nowrap" title="${isPastT ? 'Coach rating at conclusion of Group Stage' : 'Current Coach Rating'}">OVR</th>
           <th style="text-align:center;white-space:nowrap">W-L</th>
           <th style="text-align:center;white-space:nowrap">GW</th>
           <th style="text-align:center;white-space:nowrap">GD</th>
@@ -7566,30 +7667,9 @@ function standingTable(t, g){
         ${list.map((x, i) => {
           let p = x.p;
 
-          let gOvr = (isPastT && typeof getHistoricalPlayerOVR === 'function')
+          let ovrObj = (isPastT && typeof getHistoricalPlayerOVR === 'function')
             ? getHistoricalPlayerOVR(p, tIdx, 'group', sortedT)
             : calculatePlayerOVR(p);
-          let fOvr = (isPastT && typeof getHistoricalPlayerOVR === 'function')
-            ? getHistoricalPlayerOVR(p, tIdx, 'complete', sortedT)
-            : calculatePlayerOVR(p);
-
-          let madeTopCut = (t.topCutCache?.results || []).some(m => m.p1 === p || m.p2 === p || m.a === p || m.b === p) || ((tournamentFinish(t, p)?.place || 999) <= (t.advancePerGroup ? Object.keys(groupsOf(t)).length * t.advancePerGroup : 4));
-
-          let ovrCells = '';
-          if(showDualOvr){
-            let diff = fOvr.ovr - gOvr.ovr;
-            let diffHtml = diff !== 0
-              ? `<span style="font-size:9px;font-weight:800;color:${diff > 0 ? '#53e89c' : '#ff8e95'};margin-left:3px">(${diff > 0 ? '+' : ''}${diff})</span>`
-              : '';
-            ovrCells = `
-              <td style="text-align:center">${gOvr.badgeHtml}</td>
-              <td style="text-align:center">
-                ${madeTopCut ? `<div style="display:inline-flex;align-items:center;justify-content:center">${fOvr.badgeHtml}${diffHtml}</div>` : `<span style="font-size:11px;font-weight:700;color:#6b6976" title="Did not qualify for Top Cut">—</span>`}
-              </td>
-            `;
-          } else {
-            ovrCells = `<td style="text-align:center">${gOvr.badgeHtml}</td>`;
-          }
 
           let isCutoff = (i === cut);
           let statusTag = '';
@@ -7609,7 +7689,7 @@ function standingTable(t, g){
                 ${playerLink(p)}
                 <span class="team">${esc(teamName(t, p))}</span>
               </td>
-              ${ovrCells}
+              <td style="text-align:center">${ovrObj.badgeHtml}</td>
               <td style="text-align:center;white-space:nowrap;font-weight:800">${x.w}-${x.l}</td>
               <td style="text-align:center;white-space:nowrap">${x.gw}</td>
               <td style="text-align:center;white-space:nowrap">${gdStr}</td>
@@ -8573,6 +8653,16 @@ function tournamentFinish(t,p){
         let inBracket = qualifiers.includes(p);
 
         if(inBracket){
+          if(model.champion === p){
+            return {place:1, label:'1st', note:'Champion', cls:'gold'};
+          }
+          if(model.runnerUp === p){
+            return {place:2, label:'2nd', note:'Runner-up', cls:'silver'};
+          }
+          if(model.thirdPlace === p){
+            return {place:3, label:'3rd', note:'3rd Place', cls:'bronze'};
+          }
+
           let gf = model.gfMatches || [];
           let lastGf = gf[gf.length - 1];
           let gf1 = gf[0];
