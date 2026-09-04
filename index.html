@@ -113,7 +113,8 @@
 .tc-section-header{display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #2b2b35;padding-bottom:8px;margin-bottom:16px}
 .tc-section-header h3{font:800 18px 'Barlow Condensed';letter-spacing:.5px;margin:0;color:#f5f3f0;text-transform:uppercase;display:flex;align-items:center;gap:8px}
 
-.tc-bracket-grid{display:flex;align-items:flex-start;gap:28px;overflow-x:auto;padding:10px 4px 14px}
+.tc-bracket-scroll-pane{overflow-x:auto;overflow-y:hidden;width:100%;padding-bottom:6px}
+.tc-bracket-grid{display:flex;align-items:flex-start;gap:28px;overflow:visible;width:max-content;min-width:100%;padding:10px 4px 14px}
 .tc-round-col{display:flex;flex-direction:column;gap:16px;width:260px;flex-shrink:0}
 .tc-round-head{font:800 12px 'Barlow Condensed';letter-spacing:1px;text-transform:uppercase;color:#d8b44b;padding:0 2px;margin-bottom:2px;display:flex;justify-content:space-between;align-items:center}
 .tc-round-matches{display:flex;flex-direction:column;justify-content:space-around;flex:1;gap:16px}
@@ -156,16 +157,43 @@
 .tc-ledger-table td{padding:10px 12px;font-size:12px;border-bottom:1px solid #202028}
 .tc-ledger-table tr:last-child td{border-bottom:0}
 
-.tc-playoff-table{width:100%}
+.tc-playoff-table{width:100%;border-collapse:collapse}
+.tc-playoff-table th,.tc-playoff-table td{padding:8px 6px}
+.tc-playoff-table th:first-child,.tc-playoff-table td:first-child{padding-left:10px}
+.tc-playoff-table th:last-child,.tc-playoff-table td:last-child{padding-right:10px}
 .tc-playoff-table tr.gold td{background:rgba(255,209,102,0.06)}
 .tc-playoff-table tr.silver td{background:rgba(200,200,216,0.04)}
 .tc-playoff-table tr.bronze td{background:rgba(205,127,50,0.04)}
 
-.tc-dashboard-layout{display:grid;grid-template-columns:minmax(0,1fr) 420px;gap:20px;align-items:start;margin-top:4px}
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #383848 #0e0e14;
+}
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: #0e0e14;
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb {
+  background: #333342;
+  border-radius: 4px;
+  border: 2px solid #0e0e14;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #505064;
+}
+::-webkit-scrollbar-corner {
+  background: #0e0e14;
+}
+
+.tc-dashboard-layout{display:grid;grid-template-columns:minmax(0,1fr) 440px;gap:20px;align-items:start;margin-top:4px}
 .tc-dashboard-main{min-width:0}
 .tc-dashboard-side{display:flex;flex-direction:column;gap:18px;min-width:0}
 .tc-dashboard-side .section{margin-top:0!important}
-@media(max-width:1250px){
+@media(max-width:1300px){
   .tc-dashboard-layout{grid-template-columns:1fr}
 }
 /* PATCH: fix Teams cards shrinking after cover-edit wrapper was added */
@@ -4029,18 +4057,16 @@ function topCutSection(t, preview){
     playoffStandingsHtml = `<section class="section" style="margin-top:0">
       <div class="tc-section-header">
         <h3><span style="color:#ffd166">📊</span> Playoff Standings &amp; Rating Progression</h3>
-        <span style="font-size:11px;color:#8e8c95;font-weight:700">${qualifierStats.length} QUALIFIERS</span>
       </div>
-      <div class="card table-wrap">
+      <div class="card table-wrap" style="overflow-x:auto">
         <table class="standings tc-playoff-table">
           <thead>
             <tr>
-              <th style="width:48px;text-align:center">#</th>
+              <th style="width:40px;text-align:center">#</th>
               <th>Trainer / Team</th>
               <th style="text-align:center;white-space:nowrap" title="Coach rating at conclusion of Group Stage">Group OVR</th>
               <th style="text-align:center;white-space:nowrap" title="Final coach rating after Top Cut playoffs">Playoff OVR</th>
               <th style="text-align:center;white-space:nowrap">Playoff Series</th>
-              <th style="text-align:center;white-space:nowrap">Tournament Result</th>
             </tr>
           </thead>
           <tbody>
@@ -4050,7 +4076,6 @@ function topCutSection(t, preview){
                 : `<span style="font-size:10px;font-weight:700;color:#8e8c95;margin-left:4px">(0)</span>`;
               
               let medalIcon = qs.place === 1 ? '👑 ' : (qs.place === 2 ? '🥈 ' : (qs.place === 3 ? '🥉 ' : ''));
-              let tagCls = qs.place === 1 ? 'safe' : (qs.place <= 3 ? 'hunt' : 'out');
               let rowCls = qs.place === 1 ? 'gold' : (qs.place === 2 ? 'silver' : (qs.place === 3 ? 'bronze' : ''));
 
               return `<tr class="${rowCls}">
@@ -4071,65 +4096,6 @@ function topCutSection(t, preview){
                   <div style="display:inline-flex;align-items:center;justify-content:center">${qs.fOvr.badgeHtml}${diffHtml}</div>
                 </td>
                 <td style="text-align:center;white-space:nowrap;font-weight:800">${qs.record}</td>
-                <td style="text-align:center;white-space:nowrap">
-                  <span class="tag ${tagCls}" style="font-weight:800">${esc(qs.note || (qs.place === 1 ? 'Champion' : `${qs.place}th Place`))}</span>
-                </td>
-              </tr>`;
-            }).join('')}
-          </tbody>
-        </table>
-      </div>
-    </section>`;
-  }
-
-  let ledgerHtml = '';
-  if(model.completedList.length){
-    ledgerHtml = `<section class="section" style="margin-top:0">
-      <div class="tc-section-header">
-        <h3><span style="color:#ffd166">📜</span> Playoff Series Results</h3>
-        <span style="font-size:11px;color:#8e8c95;font-weight:700">${model.completedList.length} SERIES DECIDED</span>
-      </div>
-      <div class="card table-wrap">
-        <table class="tc-ledger-table">
-          <thead>
-            <tr>
-              <th style="width:36px">#</th>
-              <th>Playoff Stage</th>
-              <th>Winning Trainer</th>
-              <th style="text-align:center">Series Score</th>
-              <th>Losing Trainer</th>
-              <th>Series Outcome</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${model.completedList.map((m,idx)=>{
-              let wOvr = (isPastT && typeof getHistoricalPlayerOVR === 'function')
-                ? getHistoricalPlayerOVR(m.winner, tIdx, 'complete', sortedT)
-                : calculatePlayerOVR(m.winner);
-              let lOvr = (isPastT && typeof getHistoricalPlayerOVR === 'function')
-                ? getHistoricalPlayerOVR(m.loser, tIdx, 'complete', sortedT)
-                : calculatePlayerOVR(m.loser);
-              return `<tr>
-                <td style="color:#8e8c95;font-weight:700">${idx+1}</td>
-                <td style="font-weight:800;color:#d8b44b">${esc(m.title || 'Playoff Match')}</td>
-                <td>
-                  <div style="display:flex;align-items:center;gap:6px">
-                    <span style="font-weight:900;color:#4bdd91">${playerLink(m.winner)}</span>
-                    ${wOvr.badgeHtml}
-                  </div>
-                </td>
-                <td style="text-align:center;font:900 16px 'Barlow Condensed';color:#f5f3f0">
-                  <span style="color:#4bdd91">${Math.max(m.s1,m.s2)}</span> - <span style="color:#ff7079">${Math.min(m.s1,m.s2)}</span>
-                </td>
-                <td>
-                  <div style="display:flex;align-items:center;gap:6px">
-                    <span style="color:#a09fa8">${playerLink(m.loser)}</span>
-                    ${lOvr.badgeHtml}
-                  </div>
-                </td>
-                <td style="font-size:11px;font-weight:800;color:${m.title.includes('Grand')?'#ffd166':'#8e8c95'}">
-                  ${m.title.includes('Grand')?'👑 CROWNS CHAMPION':'Advances in bracket'}
-                </td>
               </tr>`;
             }).join('')}
           </tbody>
@@ -4158,42 +4124,44 @@ function topCutSection(t, preview){
     <div class="tc-dashboard-layout">
       <div class="tc-dashboard-main">
         <div class="card" style="padding:22px;background:#101015;border-color:#2e2e38">
-          <div style="margin-bottom:28px">
-            <div class="tc-section-header">
-              <h3><span style="color:#ffd166">🏆</span> Winners Bracket</h3>
-              <span style="font-size:10px;font-weight:800;letter-spacing:.8px;color:#8e8c95;text-transform:uppercase">Upper Bracket Path</span>
-            </div>
-            <div class="tc-bracket-grid">
-              ${model.wbRounds.map(r=>`
-                <div class="tc-round-col">
-                  <div class="tc-round-head"><span>${esc(r.title)}</span></div>
-                  <div class="tc-round-matches">
-                    ${r.matches.map(m=>renderBracketCard(m)).join('')}
+          <div class="tc-bracket-scroll-pane">
+            <div style="margin-bottom:28px">
+              <div class="tc-section-header">
+                <h3><span style="color:#ffd166">🏆</span> Winners Bracket</h3>
+                <span style="font-size:10px;font-weight:800;letter-spacing:.8px;color:#8e8c95;text-transform:uppercase">Upper Bracket Path</span>
+              </div>
+              <div class="tc-bracket-grid">
+                ${model.wbRounds.map(r=>`
+                  <div class="tc-round-col">
+                    <div class="tc-round-head"><span>${esc(r.title)}</span></div>
+                    <div class="tc-round-matches">
+                      ${r.matches.map(m=>renderBracketCard(m)).join('')}
+                    </div>
                   </div>
-                </div>
-              `).join('')}
-              <div class="tc-round-col" style="border-left:1px dashed #3a3a46;padding-left:24px;width:280px">
-                <div class="tc-round-head"><span style="color:#ffd166">👑 Grand Finals</span></div>
-                <div class="tc-round-matches">
-                  ${model.gfMatches.map(m=>renderBracketCard(m)).join('')}
+                `).join('')}
+                <div class="tc-round-col" style="border-left:1px dashed #3a3a46;padding-left:24px;width:280px">
+                  <div class="tc-round-head"><span style="color:#ffd166">👑 Grand Finals</span></div>
+                  <div class="tc-round-matches">
+                    ${model.gfMatches.map(m=>renderBracketCard(m)).join('')}
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
-          <div>
-            <div class="tc-section-header">
-              <h3><span style="color:#7ad1ff">🛡️</span> Losers Bracket</h3>
-              <span style="font-size:10px;font-weight:800;letter-spacing:.8px;color:#8e8c95;text-transform:uppercase">Lower Elimination Path</span>
-            </div>
-            <div class="tc-bracket-grid">
-              ${model.lbRounds.map(r=>`
-                <div class="tc-round-col">
-                  <div class="tc-round-head"><span>${esc(r.title)}</span></div>
-                  <div class="tc-round-matches">
-                    ${r.matches.map(m=>renderBracketCard(m)).join('')}
+            <div>
+              <div class="tc-section-header">
+                <h3><span style="color:#7ad1ff">🛡️</span> Losers Bracket</h3>
+                <span style="font-size:10px;font-weight:800;letter-spacing:.8px;color:#8e8c95;text-transform:uppercase">Lower Elimination Path</span>
+              </div>
+              <div class="tc-bracket-grid">
+                ${model.lbRounds.map(r=>`
+                  <div class="tc-round-col">
+                    <div class="tc-round-head"><span>${esc(r.title)}</span></div>
+                    <div class="tc-round-matches">
+                      ${r.matches.map(m=>renderBracketCard(m)).join('')}
+                    </div>
                   </div>
-                </div>
-              `).join('')}
+                `).join('')}
+              </div>
             </div>
           </div>
         </div>
@@ -4201,7 +4169,6 @@ function topCutSection(t, preview){
 
       <div class="tc-dashboard-side">
         ${playoffStandingsHtml}
-        ${ledgerHtml}
       </div>
     </div>
   </div>`;
@@ -11467,69 +11434,15 @@ function topCutPredictionBracket(t){
     </div>
 
     <div class="card" style="padding:22px;background:#101015;border-color:#2e2e38">
-      <!-- 1. Winners Bracket -->
-      <div style="margin-bottom:28px">
-        <div class="tc-section-header">
-          <h3><span style="color:#ffd166">🏆</span> Winners Bracket & Finals</h3>
-          <span style="font-size:10px;font-weight:800;letter-spacing:.8px;color:#8e8c95;text-transform:uppercase">Upper Bracket Path (20 PTS Each)</span>
-        </div>
-        <div class="tc-bracket-grid">
-          ${model.wbRounds.map(r => `
-            <div class="tc-round-col">
-              <div class="tc-round-head"><span>${esc(r.title)}</span></div>
-              <div class="tc-round-matches">
-                ${r.matches.map(m => {
-                  let mObj = predMap[m.id] || m;
-                  return `<div class="tc-match-card ${mObj.isDone ? 'completed' : ''}">
-                    <div class="tc-match-head">
-                      <span>${esc(m.title)}</span>
-                      <span style="color:${mObj.chosen ? '#ffd166' : '#8e8c95'}">${mObj.isDone ? 'FINAL' : (mObj.chosen ? 'PICKED' : 'OPEN')}</span>
-                    </div>
-                    ${renderInteractivePredSlot(mObj, true)}
-                    ${renderInteractivePredSlot(mObj, false)}
-                  </div>`;
-                }).join('')}
-              </div>
-            </div>
-          `).join('')}
-
-          <!-- Grand Finals Column -->
-          <div class="tc-round-col" style="border-left:1px dashed #3a3a46;padding-left:24px;width:280px">
-            <div class="tc-round-head"><span style="color:#ffd166">👑 Grand Finals</span></div>
-            <div class="tc-round-matches">
-              <div class="tc-match-card" style="border-color:#5c3510;box-shadow:0 0 16px rgba(243,194,69,0.2)">
-                <div class="tc-match-head" style="background:#26180b;color:#ffd166">
-                  <span>Championship Final</span>
-                  <span style="color:${predMap[gfId]?.chosen ? '#ffd166' : '#8e8c95'}">${predMap[gfId]?.isDone ? 'FINAL' : (predMap[gfId]?.chosen ? 'PICKED' : 'OPEN')}</span>
-                </div>
-                ${renderInteractivePredSlot(predMap[gfId], true)}
-                ${renderInteractivePredSlot(predMap[gfId], false)}
-              </div>
-
-              ${isResetRequired ? `
-                <div class="tc-match-card" style="border-color:#e65c00;box-shadow:0 0 16px rgba(255,102,0,0.25);margin-top:12px">
-                  <div class="tc-match-head" style="background:#2a1205;color:#ff944d">
-                    <span>🔥 Bracket Reset Match</span>
-                    <span style="color:${predMap['gf2']?.chosen ? '#ffd166' : '#8e8c95'}">${predMap['gf2']?.isDone ? 'FINAL' : (predMap['gf2']?.chosen ? 'PICKED' : 'OPEN')}</span>
-                  </div>
-                  ${renderInteractivePredSlot(predMap['gf2'], true)}
-                  ${renderInteractivePredSlot(predMap['gf2'], false)}
-                </div>
-              ` : ''}
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- 2. Losers Bracket -->
-      ${model.lbRounds?.length ? `
-        <div>
+      <div class="tc-bracket-scroll-pane">
+        <!-- 1. Winners Bracket -->
+        <div style="margin-bottom:28px">
           <div class="tc-section-header">
-            <h3><span style="color:#7ad1ff">🛡️</span> Losers Bracket</h3>
-            <span style="font-size:10px;font-weight:800;letter-spacing:.8px;color:#8e8c95;text-transform:uppercase">Lower Elimination Path (20 PTS Each)</span>
+            <h3><span style="color:#ffd166">🏆</span> Winners Bracket & Finals</h3>
+            <span style="font-size:10px;font-weight:800;letter-spacing:.8px;color:#8e8c95;text-transform:uppercase">Upper Bracket Path (20 PTS Each)</span>
           </div>
           <div class="tc-bracket-grid">
-            ${model.lbRounds.map(r => `
+            ${model.wbRounds.map(r => `
               <div class="tc-round-col">
                 <div class="tc-round-head"><span>${esc(r.title)}</span></div>
                 <div class="tc-round-matches">
@@ -11547,9 +11460,65 @@ function topCutPredictionBracket(t){
                 </div>
               </div>
             `).join('')}
+
+            <!-- Grand Finals Column -->
+            <div class="tc-round-col" style="border-left:1px dashed #3a3a46;padding-left:24px;width:280px">
+              <div class="tc-round-head"><span style="color:#ffd166">👑 Grand Finals</span></div>
+              <div class="tc-round-matches">
+                <div class="tc-match-card" style="border-color:#5c3510;box-shadow:0 0 16px rgba(243,194,69,0.2)">
+                  <div class="tc-match-head" style="background:#26180b;color:#ffd166">
+                    <span>Championship Final</span>
+                    <span style="color:${predMap[gfId]?.chosen ? '#ffd166' : '#8e8c95'}">${predMap[gfId]?.isDone ? 'FINAL' : (predMap[gfId]?.chosen ? 'PICKED' : 'OPEN')}</span>
+                  </div>
+                  ${renderInteractivePredSlot(predMap[gfId], true)}
+                  ${renderInteractivePredSlot(predMap[gfId], false)}
+                </div>
+
+                ${isResetRequired ? `
+                  <div class="tc-match-card" style="border-color:#e65c00;box-shadow:0 0 16px rgba(255,102,0,0.25);margin-top:12px">
+                    <div class="tc-match-head" style="background:#2a1205;color:#ff944d">
+                      <span>🔥 Bracket Reset Match</span>
+                      <span style="color:${predMap['gf2']?.chosen ? '#ffd166' : '#8e8c95'}">${predMap['gf2']?.isDone ? 'FINAL' : (predMap['gf2']?.chosen ? 'PICKED' : 'OPEN')}</span>
+                    </div>
+                    ${renderInteractivePredSlot(predMap['gf2'], true)}
+                    ${renderInteractivePredSlot(predMap['gf2'], false)}
+                  </div>
+                ` : ''}
+              </div>
+            </div>
           </div>
         </div>
-      ` : ''}
+
+        <!-- 2. Losers Bracket -->
+        ${model.lbRounds?.length ? `
+          <div>
+            <div class="tc-section-header">
+              <h3><span style="color:#7ad1ff">🛡️</span> Losers Bracket</h3>
+              <span style="font-size:10px;font-weight:800;letter-spacing:.8px;color:#8e8c95;text-transform:uppercase">Lower Elimination Path (20 PTS Each)</span>
+            </div>
+            <div class="tc-bracket-grid">
+              ${model.lbRounds.map(r => `
+                <div class="tc-round-col">
+                  <div class="tc-round-head"><span>${esc(r.title)}</span></div>
+                  <div class="tc-round-matches">
+                    ${r.matches.map(m => {
+                      let mObj = predMap[m.id] || m;
+                      return `<div class="tc-match-card ${mObj.isDone ? 'completed' : ''}">
+                        <div class="tc-match-head">
+                          <span>${esc(m.title)}</span>
+                          <span style="color:${mObj.chosen ? '#ffd166' : '#8e8c95'}">${mObj.isDone ? 'FINAL' : (mObj.chosen ? 'PICKED' : 'OPEN')}</span>
+                        </div>
+                        ${renderInteractivePredSlot(mObj, true)}
+                        ${renderInteractivePredSlot(mObj, false)}
+                      </div>`;
+                    }).join('')}
+                  </div>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+        ` : ''}
+      </div>
     </div>
   </div>`;
 }
@@ -13936,8 +13905,8 @@ function tournamentDetail(){
   let headerHtml = `<div class="page-head" style="align-items:flex-start">
     <div>
       <div class="eyebrow">${esc(t.season || '')} · ${esc(t.status)}</div>
-      <h1>${t.name + directorBadge}</h1>
-      <div style="display:flex;align-items:center;flex-wrap:wrap;gap:8px 12px;margin-top:6px;font-size:12px;color:#a09fa8">
+      <h1 style="margin-bottom:0;line-height:1.15">${t.name + directorBadge}</h1>
+      <div style="display:flex;align-items:center;flex-wrap:wrap;gap:8px 12px;margin-top:14px;font-size:12px;line-height:1.4;color:#a09fa8">
         ${t.regulation ? `<span style="font-weight:800;color:#f5f3f0"><span style="color:var(--red)">⚔️</span> ${esc(t.regulation)}</span><span style="color:#555460">·</span>` : ''}
         <span><b>${t.players.length}</b> Trainers</span>
         <span style="color:#555460">·</span>
