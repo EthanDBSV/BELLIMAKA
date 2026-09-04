@@ -5993,6 +5993,7 @@ function openProfileManager(){let rows=Object.entries(profiles).map(([p,q])=>`<d
 
 
 function finalQualifiers(t){if(t.finalStandings)return Object.entries(t.finalStandings).flatMap(([,players])=>players.slice(0,advancePerGroup(t)));return qualified(t).map(x=>x.p)}
+function ensureProfile(p){if(!profiles[p])profiles[p]={team:'No default team',record:'0-0',tops:0,cups:[]};if(!Array.isArray(profiles[p].cups))profiles[p].cups=[];if(typeof profiles[p].tops!=='number')profiles[p].tops=0;if(!profiles[p].record)profiles[p].record='0-0';return profiles[p]}
 function isTournamentGroupStageOfficial(t){
   if(!t) return false;
   if(t.status === 'COMPLETE') return true;
