@@ -2292,11 +2292,18 @@ function matchCard(m,latest=false){
   let p2 = m.b || m.p2;
   let s1 = m.as ?? m.s1 ?? '-';
   let s2 = m.bs ?? m.s2 ?? '-';
-  let t = activeT() || ongoingT();
+  let t = (m.tournamentId && tournamentData[m.tournamentId]) || activeT() || ongoingT();
   let t1Name = teamName(t, p1) || 'Team 1';
   let t2Name = teamName(t, p2) || 'Team 2';
-  let ovr1 = calculatePlayerOVR(p1);
-  let ovr2 = calculatePlayerOVR(p2);
+  let sortedT = typeof sortedTournamentsChronological === 'function' ? sortedTournamentsChronological() : Object.values(tournamentData);
+  let tIdx = t ? sortedT.findIndex(x => x.id === t.id || x.name === t.name) : -1;
+  let isPastT = (t && t.status === 'COMPLETE' && tIdx >= 0);
+  let ovr1 = (isPastT && typeof getHistoricalPlayerOVR === 'function')
+    ? getHistoricalPlayerOVR(p1, tIdx, 'complete', sortedT)
+    : calculatePlayerOVR(p1);
+  let ovr2 = (isPastT && typeof getHistoricalPlayerOVR === 'function')
+    ? getHistoricalPlayerOVR(p2, tIdx, 'complete', sortedT)
+    : calculatePlayerOVR(p2);
   let rec1 = tournamentRecord(t, p1);
   let rec2 = tournamentRecord(t, p2);
 
@@ -3751,6 +3758,10 @@ function topCutSection(t, preview){
   let model = getTournamentTopCutModel(t);
   if(!model) return '<div class="card empty"><div class="card-title">Top Cut bracket data unavailable</div></div>';
 
+  let sortedT = typeof sortedTournamentsChronological === 'function' ? sortedTournamentsChronological() : Object.values(tournamentData);
+  let tIdx = t ? sortedT.findIndex(x => x.id === t.id || x.name === t.name) : -1;
+  let isPastT = (t.status === 'COMPLETE' && tIdx >= 0);
+
   let isModEditable = canManageTournament(t) && (t.status === 'ONGOING' || t.phase === 'topcut' || !!t.bracketManagerData);
   let statusBadge = preview ? `<span class="tag hunt">PROJECTED SEEDS</span>` : (t.status === 'COMPLETE' ? `<span class="tag safe">TOURNAMENT ARCHIVE · COMPLETE</span>` : `<span class="tag hunt">PLAYOFFS LIVE</span>`);
 
@@ -3766,7 +3777,9 @@ function topCutSection(t, preview){
       </div>`;
     }
 
-    let ovrObj = calculatePlayerOVR(pName);
+    let ovrObj = (isPastT && typeof getHistoricalPlayerOVR === 'function')
+      ? getHistoricalPlayerOVR(pName, tIdx, 'complete', sortedT)
+      : calculatePlayerOVR(pName);
     let faceArt = profilePictures[pName] ? `url('${esc(profilePictures[pName])}')` : (teamCovers[pName] ? `url('${esc(teamCovers[pName])}')` : fallbackArt(pName));
     let faceLetter = (profilePictures[pName] || teamCovers[pName]) ? '' : esc((pName || '?')[0]);
     let teamStr = teamName(t, pName);
@@ -3816,7 +3829,9 @@ function topCutSection(t, preview){
     let champName = model.champion || t.champion;
     let runnerName = model.runnerUp;
     let thirdName = model.thirdPlace;
-    let champOvr = calculatePlayerOVR(champName);
+    let champOvr = (isPastT && typeof getHistoricalPlayerOVR === 'function')
+      ? getHistoricalPlayerOVR(champName, tIdx, 'complete', sortedT)
+      : calculatePlayerOVR(champName);
 
     podiumHtml = `<div class="tc-podium">
       <div class="tc-podium-card champ" onclick="openProfile('${esc(champName)}')">
@@ -3865,8 +3880,12 @@ function topCutSection(t, preview){
           </thead>
           <tbody>
             ${model.completedList.map((m,idx)=>{
-              let wOvr = calculatePlayerOVR(m.winner);
-              let lOvr = calculatePlayerOVR(m.loser);
+              let wOvr = (isPastT && typeof getHistoricalPlayerOVR === 'function')
+                ? getHistoricalPlayerOVR(m.winner, tIdx, 'complete', sortedT)
+                : calculatePlayerOVR(m.winner);
+              let lOvr = (isPastT && typeof getHistoricalPlayerOVR === 'function')
+                ? getHistoricalPlayerOVR(m.loser, tIdx, 'complete', sortedT)
+                : calculatePlayerOVR(m.loser);
               return `<tr>
                 <td style="color:#8e8c95;font-weight:700">${idx+1}</td>
                 <td style="font-weight:800;color:#d8b44b">${esc(m.title || 'Playoff Match')}</td>
@@ -5039,7 +5058,11 @@ function OffseasonHome(){
   let champ = last?.champion;
   let champFace = profilePictures[champ] ? `url('${esc(profilePictures[champ])}')` : (teamCovers[champ] ? `url('${esc(teamCovers[champ])}')` : fallbackArt(champ));
   let champLetter = (profilePictures[champ] || teamCovers[champ]) ? '' : esc(champ?.[0] || '—');
-  let champOvr = calculatePlayerOVR(champ);
+  let sortedT = typeof sortedTournamentsChronological === 'function' ? sortedTournamentsChronological() : Object.values(tournamentData);
+  let lastIdx = last ? sortedT.findIndex(x => x.id === last.id || x.name === last.name) : -1;
+  let champOvr = (lastIdx >= 0 && typeof getHistoricalPlayerOVR === 'function')
+    ? getHistoricalPlayerOVR(champ, lastIdx, 'complete', sortedT)
+    : calculatePlayerOVR(champ);
   let champTeam = champ ? teamName(last, champ) : '';
   let champRecord = last && champ ? tournamentRecord(last, champ) : '—';
   let champHistory = champ ? (teamHistory[champ] || []).find(h => h.tournament === last?.name || h.tournament === (last?.name + ' · ' + last?.season) || h.tournament === last?.season) : null;
@@ -5988,7 +6011,6 @@ function Home(){
 function advancePerGroup(t){if(Number.isFinite(Number(t.advancePerGroup)))return Math.max(1,Number(t.advancePerGroup));if(Number.isFinite(Number(t.advance)))return Math.max(1,Number(t.advance));let groups=Object.keys(groupsOf(t)).length,total=Number(t.id==='scarlet'?cut:t.advance||1);return Math.max(1,Math.floor(total/groups))}
 function openSettings(){let t=ongoingT(),groupSize=Math.max(...Object.values(groupsOf(t)).map(x=>x.length));document.querySelector('#modal').innerHTML=`<div class="modal-wrap"><div class="modal" style="max-width:430px"><div class="modal-head"><div><div class="eyebrow">Moderator setting</div><h2>Group qualification</h2></div><button class="close" onclick="closeModal()">×</button></div><div class="field"><label>Players advancing from each group</label><input id="cutSelect" type="number" min="1" max="${groupSize}" value="${advancePerGroup(t)}"></div><p class="sub">This is per group. It immediately updates standings, the cutoff line, and Top Cut seeding.</p><div class="creator-actions"><button class="btn" onclick="saveQualification()">Save qualification</button></div></div></div>`}
 function saveQualification(){let t=ongoingT(),value=Math.max(1,+document.querySelector('#cutSelect').value||1);t.advancePerGroup=value;if(t.id==='scarlet')cut=value*Object.keys(groupsOf(t)).length;persistLeague();closeModal();render()}
-function standingTable(t=activeT(),group='Group A'){let final=t.finalStandings?.[group],list=final?final.map(p=>getStand(t,group).find(x=>x.p===p)).filter(Boolean):getStand(t,group),cut=advancePerGroup(t),odds={};if(final){list.forEach((x,i)=>odds[x.p]=i<cut?100:0)}else{try{odds=playoffOddsData(t)}catch{list.forEach((x,i)=>odds[x.p]=i<cut?100:1)}}let complete=final||isGroupComplete(t,group);return `<div style="display:flex;justify-content:space-between;align-items:center;padding:12px 14px;border-bottom:1px solid #2b2b35;background:#141419"><div style="display:flex;align-items:center;gap:8px"><span style="font:800 16px 'Barlow Condensed';letter-spacing:0.8px;color:#f5f3f0;text-transform:uppercase">${esc(group)}</span><span style="font-size:8px;font-weight:800;letter-spacing:0.7px;padding:2px 6px;border-radius:3px;background:${complete?'#163821':'#272730'};color:${complete?'#7df0aa':'#a09fa8'};text-transform:uppercase">${final?'FINAL':(complete?'COMPLETE':'LIVE')}</span></div><span style="font-size:9px;font-weight:800;color:#9d9ba4;letter-spacing:0.6px;text-transform:uppercase">TOP ${cut} ADVANCE</span></div><table class="standings"><thead><tr><th style="width:32px;text-align:center">#</th><th>Trainer / Team</th><th style="white-space:nowrap;text-align:center">W-L</th><th style="white-space:nowrap;text-align:center">GW</th><th style="white-space:nowrap;text-align:center">GD</th><th style="white-space:nowrap;text-align:center">H2H</th><th style="text-align:right;white-space:nowrap">Top Cut status</th></tr></thead><tbody>${list.map((x,i)=>{let pct=Number(odds[x.p]??0),status=pct>=100?'safe':pct<=0?'out':'hunt',label=pct>=100?'Qualified':pct<=0?'Eliminated':'In The Hunt';let faceArt=profilePictures[x.p]?`url('${esc(profilePictures[x.p])}')`:(teamCovers[x.p]?`url('${esc(teamCovers[x.p])}')`:fallbackArt(x.p));let faceLetter=(profilePictures[x.p]||teamCovers[x.p])?'':esc((x.p||'?')[0]);let diff=x.gw-x.gl;return `<tr class="${status} ${i===cut?'cutoff-row':''}"><td class="rank" style="text-align:center">${i+1}</td><td class="player"><div style="display:flex;align-items:center;gap:9px"><span class="mrow-face" style="background-image:${faceArt};background-size:cover;background-position:center;width:28px;height:28px;font-size:12px;border-radius:50%;flex:none;display:grid;place-items:center;border:1px solid #ffffff1f">${faceLetter}</span><div style="min-width:0"><div style="font-size:13px;font-weight:800;line-height:1.2">${playerLink(x.p)}</div><span class="team" style="margin-top:2px">${esc(teamName(t,x.p))}</span></div></div></td><td style="white-space:nowrap;text-align:center">${x.w}-${x.l}</td><td style="white-space:nowrap;text-align:center">${x.gw}</td><td style="white-space:nowrap;text-align:center">${diff>0?'+':''}${diff}</td><td style="white-space:nowrap;text-align:center">${x.h2h}</td><td style="text-align:right;white-space:nowrap"><span class="tag ${status}">${label}${final?' · Final':(pct>=100||pct<=0?' · Final':` · ${pct}%`)}</span></td></tr>`}).join('')}</tbody></table>`}
 function deleteProfile(p){if(Object.values(tournamentData).some(t=>t.players?.includes(p))){alert('Remove this player from all tournaments first.');return}if(!confirm(`Delete ${p}'s profile?`))return;delete profiles[p];delete roster[p];delete teamHistory[p];persistLeague();openProfileManager()}
 function openProfileManager(){let rows=Object.entries(profiles).map(([p,q])=>`<div class="card" style="padding:12px;margin-top:8px"><b>${p}</b><span class="sub" style="margin-left:8px">${q.team}</span><button class="save" style="float:right;color:#ff969c" onclick="deleteProfile('${p}')">Delete</button><button class="save" style="float:right;margin-right:7px" onclick="editProfile('${p}')">Edit</button></div>`).join('');document.querySelector('#modal').innerHTML=`<div class="modal-wrap"><div class="modal"><div class="modal-head"><div><div class="eyebrow">Moderator only</div><h2>Player profiles</h2></div><button class="close" onclick="closeModal()">×</button></div><div class="field"><label>New profile name</label><input id="profileNewName" placeholder="Player name"></div><div class="field"><label>Default team name (optional)</label><input id="profileNewTeam" placeholder="Used outside specific tournaments"></div><button class="btn" style="margin-top:12px" onclick="createProfile()">Create player profile</button><button class="btn ghost" style="margin:12px 0 0;color:#ff9ba1" onclick="removeStarterData()">Remove starter sample data</button><div class="section">${rows||'<p class="sub">No profiles yet.</p>'}</div></div></div>`}
 
@@ -7403,6 +7425,9 @@ function getStand(t=activeT(),group=null){
 function standingTable(t, g){
   let list = getStand(t, g);
   let cut = advancePerGroup(t);
+  let sortedT = typeof sortedTournamentsChronological === 'function' ? sortedTournamentsChronological() : Object.values(tournamentData);
+  let tIdx = t ? sortedT.findIndex(x => x.id === t.id || x.name === t.name) : -1;
+  let isPastT = (t && t.status === 'COMPLETE' && tIdx >= 0);
   return `
     <div style="display:flex;justify-content:space-between;align-items:center;padding:14px 16px 10px;border-bottom:1px solid #282834">
       <span style="font:900 20px 'Barlow Condensed';letter-spacing:.5px;color:#f5f3f0;text-transform:uppercase">${esc(g)}</span>
@@ -7424,7 +7449,9 @@ function standingTable(t, g){
       <tbody>
         ${list.map((x, i) => {
           let p = x.p;
-          let ovrObj = calculatePlayerOVR(p);
+          let ovrObj = (isPastT && typeof getHistoricalPlayerOVR === 'function')
+            ? getHistoricalPlayerOVR(p, tIdx, 'complete', sortedT)
+            : calculatePlayerOVR(p);
           let isCutoff = (i === cut);
           let statusTag = '';
           if(isMathematicallyClinched(t, p)){
@@ -9211,7 +9238,7 @@ function openProfile(p){
               <div style="font:900 20px/1.1 'Barlow Condensed';color:#ffd166;display:flex;align-items:center;justify-content:flex-end;gap:4px;margin-top:2px">
                 <span>🚀 ${profiles[p]?.peakOvr || ovrCard.ovr}</span> <span style="font-size:11px;font-weight:700;color:#a09fa8">OVR</span>
               </div>
-              ${profiles[p]?.peakOvrTourney ? `<div style="font-size:10px;font-weight:700;color:#c0bec8;margin-top:1px">${esc(profiles[p].peakOvrTourney)}</div>` : ''}
+              ${profiles[p]?.peakOvrTourney ? `<div style="font-size:10px;font-weight:700;color:#c0bec8;margin-top:1px">(${esc(profiles[p].peakOvrTourney)})</div>` : ''}
             </div>
           ` : ''}
         </div>
@@ -10780,6 +10807,9 @@ function renderChampionPredictionPicker(t, question, locked){
   let outcome = predictionOutcome(t, question);
   let isSettled = outcome.answer != null;
   let players = t.players || [];
+  let sortedT = typeof sortedTournamentsChronological === 'function' ? sortedTournamentsChronological() : Object.values(tournamentData);
+  let tIdx = t ? sortedT.findIndex(x => x.id === t.id || x.name === t.name) : -1;
+  let isPastT = (t && t.status === 'COMPLETE' && tIdx >= 0);
 
   return `<section class="pred-section">
     <div class="card" style="padding:16px 18px;background:linear-gradient(135deg,#1f1318 0%,#15151c 60%,#121520 100%);border-color:#5c242d">
@@ -10794,7 +10824,9 @@ function renderChampionPredictionPicker(t, question, locked){
       <div class="pred-contender-grid">
         ${players.map(p => {
           let isChosen = (chosen === p);
-          let ovr = calculatePlayerOVR(p);
+          let ovr = (isPastT && typeof getHistoricalPlayerOVR === 'function')
+            ? getHistoricalPlayerOVR(p, tIdx, 'complete', sortedT)
+            : calculatePlayerOVR(p);
           let tName = teamName(t, p);
           let face = profilePictures[p] ? `url('${esc(profilePictures[p])}')` : (teamCovers[p] ? `url('${esc(teamCovers[p])}')` : fallbackArt(p));
           let letter = (profilePictures[p] || teamCovers[p]) ? '' : esc((p || '?')[0]);
@@ -10821,6 +10853,9 @@ function renderChampionPredictionPicker(t, question, locked){
 function renderGroupWinnersPredictionPicker(t, groups, locked){
   let groupEntries = Object.entries(groups);
   if(!groupEntries.length) return '';
+  let sortedT = typeof sortedTournamentsChronological === 'function' ? sortedTournamentsChronological() : Object.values(tournamentData);
+  let tIdx = t ? sortedT.findIndex(x => x.id === t.id || x.name === t.name) : -1;
+  let isPastT = (t && t.status === 'COMPLETE' && tIdx >= 0);
 
   return `<section class="pred-section">
     <div class="section-head" style="margin-bottom:10px">
@@ -10847,7 +10882,9 @@ function renderGroupWinnersPredictionPicker(t, groups, locked){
           <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:6px">
             ${ps.map(p => {
               let isChosen = (chosen === p);
-              let ovr = calculatePlayerOVR(p);
+              let ovr = (isPastT && typeof getHistoricalPlayerOVR === 'function')
+                ? getHistoricalPlayerOVR(p, tIdx, 'complete', sortedT)
+                : calculatePlayerOVR(p);
               let face = profilePictures[p] ? `url('${esc(profilePictures[p])}')` : (teamCovers[p] ? `url('${esc(teamCovers[p])}')` : fallbackArt(p));
               let letter = (profilePictures[p] || teamCovers[p]) ? '' : esc((p || '?')[0]);
               let isHit = isSettled && outcome.answer === p && isChosen;
@@ -10878,8 +10915,16 @@ function compactMatchPredictionCard(t, m){
   let winner = isDecided ? (+m.as > +m.bs ? p1 : p2) : null;
   let chosen = savedPick(t, question);
 
-  let ovr1 = calculatePlayerOVR(p1);
-  let ovr2 = calculatePlayerOVR(p2);
+  let sortedT = typeof sortedTournamentsChronological === 'function' ? sortedTournamentsChronological() : Object.values(tournamentData);
+  let tIdx = t ? sortedT.findIndex(x => x.id === t.id || x.name === t.name) : -1;
+  let isPastT = (t && t.status === 'COMPLETE' && tIdx >= 0);
+
+  let ovr1 = (isPastT && typeof getHistoricalPlayerOVR === 'function')
+    ? getHistoricalPlayerOVR(p1, tIdx, 'complete', sortedT)
+    : calculatePlayerOVR(p1);
+  let ovr2 = (isPastT && typeof getHistoricalPlayerOVR === 'function')
+    ? getHistoricalPlayerOVR(p2, tIdx, 'complete', sortedT)
+    : calculatePlayerOVR(p2);
   let t1Name = teamName(t, p1);
   let t2Name = teamName(t, p2);
 
@@ -12032,7 +12077,7 @@ function calculateLeagueRecords(forceRefresh = false){
         let gOvr = getHistoricalPlayerOVR(p, tIdx, 'group', sortedTournaments);
         if(gOvr.ovr > playerPeak){
           playerPeak = gOvr.ovr;
-          playerPeakTourney = `${seasonLabel} (Group Stage)`;
+          playerPeakTourney = seasonLabel;
         }
       }
 
@@ -12040,8 +12085,7 @@ function calculateLeagueRecords(forceRefresh = false){
         let fOvr = getHistoricalPlayerOVR(p, tIdx, 'complete', sortedTournaments);
         if(fOvr.ovr > playerPeak){
           playerPeak = fOvr.ovr;
-          let isChamp = (t.champion === p);
-          playerPeakTourney = `${seasonLabel}${isChamp ? ' (Champion)' : ''}`;
+          playerPeakTourney = seasonLabel;
         }
       }
     });
@@ -12054,6 +12098,18 @@ function calculateLeagueRecords(forceRefresh = false){
       let rawSeason = (lastT?.season || lastT?.name || 'Season 1').replace(/[()]/g, '').trim();
       let seasonMatch = rawSeason.match(/Season\s*\d+/i);
       playerPeakTourney = seasonMatch ? seasonMatch[0].replace(/Season\s*/i, 'Season ') : (rawSeason || 'Season 1');
+    }
+
+    // 3. Preserve saved profile peak OVR if higher
+    if((prof.peakOvr || 0) > playerPeak){
+      playerPeak = prof.peakOvr;
+      if(prof.peakOvrTourney) playerPeakTourney = prof.peakOvrTourney;
+    }
+
+    if(playerPeakTourney){
+      let sMatch = playerPeakTourney.replace(/[()]/g, '').match(/Season\s*\d+/i);
+      if(sMatch) playerPeakTourney = sMatch[0].replace(/Season\s*/i, 'Season ');
+      else playerPeakTourney = playerPeakTourney.replace(/[()]/g, '').replace(/\s*Champion/i, '').trim();
     }
 
     prof.peakOvr = playerPeak;
