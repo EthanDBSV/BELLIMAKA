@@ -4482,14 +4482,20 @@ function setupLeagueStateRealtime(){
 }
 
 function teardownDraftRealtime(){
-  if(draftRealtimeChannel && supabaseClient){
-    try { supabaseClient.removeChannel(draftRealtimeChannel); } catch(e){}
-    draftRealtimeChannel = null;
+  if(supabaseClient){
+    if(draftRealtimeChannel){
+      try { supabaseClient.removeChannel(draftRealtimeChannel); } catch(e){}
+      draftRealtimeChannel = null;
+    }
+    try { supabaseClient.realtime?.disconnect(); } catch(e){}
   }
 }
 
 function setupDraftRealtime(){
-  if(isSandboxMode() || !supabaseClient) return;
+  if(isSandboxMode() || !supabaseClient){
+    teardownDraftRealtime();
+    return;
+  }
   let t = ongoingT() || activeT();
   let isDraftActive = (t && t.phase === 'draft');
   let isViewingDraft = (current === 'Draft');
@@ -4501,6 +4507,8 @@ function setupDraftRealtime(){
   }
 
   if(draftRealtimeChannel) return; // already active
+
+  try { supabaseClient.realtime?.connect(); } catch(e){}
 
   draftRealtimeChannel = supabaseClient.channel('draftdex-realtime-draft', {
     config: { broadcast: { self: false } }
@@ -4679,6 +4687,7 @@ async function initSupabase(){
   supabaseInited = true;
   try {
     supabaseClient = window.supabase.createClient(window.DRAFTDEX_SUPABASE.url, window.DRAFTDEX_SUPABASE.anonKey);
+    try { supabaseClient.realtime?.disconnect(); } catch(e){}
     let { data: { session } } = await supabaseClient.auth.getSession();
     await updateSession(session);
     supabaseClient.auth.onAuthStateChange(async (_, s) => await updateSession(s));
@@ -6376,7 +6385,7 @@ async function updateSession(session){
       };
     }
 
-    if(supabaseClient){
+    if(!isSandboxMode() && supabaseClient && !cached){
       try{
         let {data}=await supabaseClient.from('user_profiles').select('role,username,prediction_points').eq('id',sessionUser.id).maybeSingle();
         if(myReq===sessionReqId && data){
