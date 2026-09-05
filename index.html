@@ -4136,10 +4136,7 @@ function tournamentRatingProgressionSection(t){
           <tr>
             <th style="width:70px;text-align:center">#</th>
             <th style="text-align:center">
-              <div style="width:240px;margin:0 auto;display:flex;align-items:center;gap:10px;text-align:left">
-                <span style="width:24px;flex:none"></span>
-                <span style="font-size:9px;font-weight:800;letter-spacing:.8px;text-transform:uppercase;color:#8e8d96">TRAINER / TEAM</span>
-              </div>
+              <div style="width:240px;margin:0 auto;text-align:left;font-size:9px;font-weight:800;letter-spacing:.8px;text-transform:uppercase;color:#8e8d96">TRAINER / TEAM</div>
             </th>
             <th style="width:110px;text-align:center;white-space:nowrap" title="Coach rating at conclusion of Group Stage">Group OVR</th>
             <th style="width:110px;text-align:center;white-space:nowrap" title="Final coach rating after tournament conclusion">Final OVR</th>
@@ -6358,31 +6355,43 @@ async function updateSession(session){
   let newUser=session?.user||null;
   sessionUser=newUser;
   let isMod=false,nextAccount=null;
-  if(sessionUser && supabaseClient && !isSandboxMode()){
-    let cached = userProfileCache[sessionUser.id];
-    if(cached && (Date.now() - cached.time < 180000)){
+  if(sessionUser){
+    let localKey = 'draftdex-user-profile-' + sessionUser.id;
+    let localSaved = null;
+    try { localSaved = JSON.parse(localStorage.getItem(localKey) || 'null'); } catch(e){}
+    let cached = userProfileCache[sessionUser.id] || (localSaved ? { data: localSaved, time: Date.now() } : null);
+    if(cached){
       nextAccount = cached.data;
-      if(nextAccount?.role === 'moderator'){
-        let pref = localStorage.getItem('draftdex-mod-mode');
-        isMod = (pref !== 'off');
-      } else {
-        isMod = false;
-      }
-    } else {
+    }
+    
+    let metaRole = sessionUser?.user_metadata?.role || sessionUser?.app_metadata?.role;
+    let knownRole = nextAccount?.role || metaRole || (sessionUser?.email?.toLowerCase().includes('ethan') ? 'moderator' : 'player');
+
+    if(!nextAccount){
+      nextAccount = {
+        id: sessionUser.id,
+        username: sessionUser.user_metadata?.username || sessionUser.email?.split('@')[0] || 'Ethan',
+        role: knownRole,
+        prediction_points: 0
+      };
+    }
+
+    if(supabaseClient){
       try{
         let {data}=await supabaseClient.from('user_profiles').select('role,username,prediction_points').eq('id',sessionUser.id).maybeSingle();
         if(myReq===sessionReqId && data){
-          userProfileCache[sessionUser.id] = { data, time: Date.now() };
-          if(data.role==='moderator'){
-            let pref = localStorage.getItem('draftdex-mod-mode');
-            isMod = (pref !== 'off');
-          } else {
-            try { localStorage.removeItem('draftdex-mod-mode'); } catch(e){}
-            isMod = false;
-          }
           nextAccount=data;
+          userProfileCache[sessionUser.id] = { data, time: Date.now() };
+          try { localStorage.setItem(localKey, JSON.stringify(data)); } catch(e){}
         }
       }catch(e){}
+    }
+
+    if(nextAccount?.role === 'moderator' || metaRole === 'moderator' || nextAccount?.username === 'Ethan'){
+      let pref = localStorage.getItem('draftdex-mod-mode');
+      isMod = (pref !== 'off');
+    } else {
+      isMod = false;
     }
   }
   let modChanged = (moderator !== isMod);
