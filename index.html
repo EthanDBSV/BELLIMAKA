@@ -158,11 +158,11 @@
 .tc-ledger-table tr:last-child td{border-bottom:0}
 
 .tc-playoff-table{width:100%;border-collapse:collapse}
-.tc-playoff-table th{padding:10px 12px;font-size:9px;font-weight:800;letter-spacing:.8px;text-transform:uppercase;color:#8e8d96;border-bottom:1px solid var(--line);white-space:nowrap}
-.tc-playoff-table td{padding:10px 12px;border-bottom:1px solid #2a2a30;font-size:12px}
-.tc-playoff-table th:first-child,.tc-playoff-table td:first-child{padding-left:12px}
-.tc-playoff-table th:last-child,.tc-playoff-table td:last-child{padding-right:12px}
-.tc-playoff-table .player-cell-wrap{display:flex;align-items:center;justify-content:flex-start;gap:10px;text-align:left}
+.tc-playoff-table th{padding:10px 12px;font-size:9px;font-weight:800;letter-spacing:.8px;text-transform:uppercase;color:#8e8d96;border-bottom:1px solid var(--line);text-align:center!important;white-space:nowrap}
+.tc-playoff-table td{padding:10px 12px;border-bottom:1px solid #2a2a30;font-size:12px;text-align:center!important}
+.tc-playoff-table th:first-child,.tc-playoff-table td:first-child{padding-left:12px!important;text-align:center!important}
+.tc-playoff-table th:last-child,.tc-playoff-table td:last-child{padding-right:12px!important;text-align:center!important}
+.tc-playoff-table .player-cell-wrap{display:inline-flex;align-items:center;justify-content:flex-start;gap:10px;text-align:left;width:240px;max-width:100%;margin:0 auto}
 .tc-playoff-table tr.gold td{background:rgba(255,209,102,0.06)}
 .tc-playoff-table tr.silver td{background:rgba(200,200,216,0.04)}
 .tc-playoff-table tr.bronze td{background:rgba(205,127,50,0.04)}
@@ -398,7 +398,7 @@
 .past-tourney-card.bronze{border-left-color:#cd7f32;background:linear-gradient(90deg,rgba(205,127,50,0.12),#15151e 40%)}
 .past-tourney-card.cut{border-left-color:#a855f7;background:linear-gradient(90deg,rgba(168,85,247,0.10),#15151e 40%)}
 
-.past-tourney-summary{display:grid;grid-template-columns:58px minmax(0,1fr) auto 24px;gap:12px;align-items:center;padding:10px 14px;cursor:pointer;user-select:none;list-style:none}
+.past-tourney-summary{display:grid;grid-template-columns:78px minmax(0,1fr) auto 24px;gap:12px;align-items:center;padding:10px 14px;cursor:pointer;user-select:none;list-style:none}
 .past-tourney-summary::-webkit-details-marker{display:none}
 .past-tourney-summary:hover{background:rgba(255,255,255,0.03)}
 .past-ovr-wrap{display:flex;flex-direction:column;align-items:center;justify-content:center;min-width:40px}
@@ -407,12 +407,12 @@
 details[open] > .past-tourney-summary .past-chevron{transform:rotate(180deg);color:var(--amber)}
 .past-tourney-body{padding:12px 14px 14px;background:#101016;border-top:1px solid #232330}
 
-.past-row{display:grid;grid-template-columns:58px minmax(0,1fr) auto;gap:12px;align-items:center;padding:10px 12px;border:1px solid #2f2f38;border-left:3px solid #4a4a55;border-radius:7px;margin-top:8px;background:#17171d}
+.past-row{display:grid;grid-template-columns:78px minmax(0,1fr) auto;gap:12px;align-items:center;padding:10px 12px;border:1px solid #2f2f38;border-left:3px solid #4a4a55;border-radius:7px;margin-top:8px;background:#17171d}
 .past-row.gold{border-left-color:#f3c245;background:linear-gradient(90deg,rgba(243,194,69,0.18),#17171d 55%)}
 .past-row.silver{border-left-color:#c8c8d2;background:linear-gradient(90deg,rgba(200,200,210,0.15),#17171d 55%)}
 .past-row.bronze{border-left-color:#cd7f32;background:linear-gradient(90deg,rgba(205,127,50,0.18),#17171d 55%)}
 .past-row.cut{border-left-color:#a855f7;background:linear-gradient(90deg,rgba(168,85,247,0.12),#17171d 55%)}
-.past-place{font:800 20px 'Barlow Condensed';text-align:center;color:#e9e7ec;line-height:1}
+.past-place{font:800 18px 'Barlow Condensed';text-align:center;color:#e9e7ec;line-height:1.05;white-space:nowrap;letter-spacing:-.2px}
 .past-place small{display:block;font:800 8px 'DM Sans';letter-spacing:.6px;color:#8e8c95;text-transform:uppercase;margin-top:2px}
 .past-name{font-weight:800;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .past-meta{font-size:10px;color:#8e8c95;margin-top:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -4127,61 +4127,59 @@ function tournamentRatingProgressionSection(t){
   });
 
   return `<section class="section" style="margin-top:28px">
-    <div style="max-width:840px;margin:0 auto">
-      <div class="tc-section-header">
-        <h3><span style="color:#ffd166">📊</span> Rating Progression</h3>
-      </div>
-      <div class="card table-wrap" style="overflow-x:auto">
-        <table class="standings tc-playoff-table">
-          <thead>
-            <tr>
-              <th style="width:65px;text-align:center">#</th>
-              <th style="text-align:left;padding-left:18px">Trainer / Team</th>
-              <th style="width:110px;text-align:center;white-space:nowrap" title="Coach rating at conclusion of Group Stage">Group OVR</th>
-              <th style="width:110px;text-align:center;white-space:nowrap" title="Final coach rating after tournament conclusion">Final OVR</th>
-              <th style="width:90px;text-align:center;white-space:nowrap" title="Rating growth from Group Stage to Top Cut">Growth</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${playerStats.map((qs, qIdx) => {
-              let medalIcon = qs.place === 1 ? '👑 ' : (qs.place === 2 ? '🥈 ' : (qs.place === 3 ? '🥉 ' : ''));
-              let rowCls = qs.place === 1 ? 'gold' : (qs.place === 2 ? 'silver' : (qs.place === 3 ? 'bronze' : ''));
-              let rankColor = qs.place === 1 ? '#ffd166' : (qs.place === 2 ? '#d5d5e2' : (qs.place === 3 ? '#d4986a' : '#8e8c95'));
+    <div class="tc-section-header">
+      <h3><span style="color:#ffd166">📊</span> Rating Progression</h3>
+    </div>
+    <div class="card table-wrap" style="overflow-x:auto">
+      <table class="standings tc-playoff-table">
+        <thead>
+          <tr>
+            <th style="width:70px;text-align:center">#</th>
+            <th style="text-align:center">Trainer / Team</th>
+            <th style="width:110px;text-align:center;white-space:nowrap" title="Coach rating at conclusion of Group Stage">Group OVR</th>
+            <th style="width:110px;text-align:center;white-space:nowrap" title="Final coach rating after tournament conclusion">Final OVR</th>
+            <th style="width:90px;text-align:center;white-space:nowrap" title="Rating growth from Group Stage to Top Cut">Growth</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${playerStats.map((qs, qIdx) => {
+            let medalIcon = qs.place === 1 ? '👑 ' : (qs.place === 2 ? '🥈 ' : (qs.place === 3 ? '🥉 ' : ''));
+            let rowCls = qs.place === 1 ? 'gold' : (qs.place === 2 ? 'silver' : (qs.place === 3 ? 'bronze' : ''));
+            let rankColor = qs.place === 1 ? '#ffd166' : (qs.place === 2 ? '#d5d5e2' : (qs.place === 3 ? '#d4986a' : '#8e8c95'));
 
-              let growthHtml = '-';
-              if(qs.inTopCut && qs.diff !== null){
-                if(qs.diff > 0){
-                  growthHtml = `<span style="font-size:13px;font-weight:900;color:#53e89c">+${qs.diff}</span>`;
-                } else if(qs.diff < 0){
-                  growthHtml = `<span style="font-size:13px;font-weight:900;color:#ff8e95">${qs.diff}</span>`;
-                } else {
-                  growthHtml = `<span style="font-size:13px;font-weight:700;color:#8e8c95">0</span>`;
-                }
+            let growthHtml = '-';
+            if(qs.inTopCut && qs.diff !== null){
+              if(qs.diff > 0){
+                growthHtml = `<span style="font-size:13px;font-weight:900;color:#53e89c">+${qs.diff}</span>`;
+              } else if(qs.diff < 0){
+                growthHtml = `<span style="font-size:13px;font-weight:900;color:#ff8e95">${qs.diff}</span>`;
               } else {
-                growthHtml = `<span style="font-size:14px;font-weight:700;color:#6e6c75">-</span>`;
+                growthHtml = `<span style="font-size:13px;font-weight:700;color:#8e8c95">0</span>`;
               }
+            } else {
+              growthHtml = `<span style="font-size:14px;font-weight:700;color:#6e6c75">-</span>`;
+            }
 
-              return `<tr class="${rowCls}">
-                <td style="text-align:center;font-weight:900;color:${rankColor};white-space:nowrap">
-                  ${medalIcon}${qs.label || (qIdx + 1)}
-                </td>
-                <td style="text-align:left;padding-left:18px">
-                  <div class="player-cell-wrap" style="display:flex;align-items:center;gap:10px;text-align:left">
-                    <span class="avatar mini" style="background-image:${qs.face};width:24px;height:24px;font-size:10px;border-radius:50%;flex:none;border:1px solid rgba(255,255,255,0.2);display:grid;place-items:center">${qs.letter}</span>
-                    <div style="min-width:0;text-align:left">
-                      <div>${playerLink(qs.p)}</div>
-                      <span class="team" style="font-size:10px;margin-top:1px">${esc(qs.team)}</span>
-                    </div>
+            return `<tr class="${rowCls}">
+              <td style="text-align:center;font-weight:900;color:${rankColor};white-space:nowrap">
+                ${medalIcon}${qs.label || (qIdx + 1)}
+              </td>
+              <td style="text-align:center">
+                <div class="player-cell-wrap">
+                  <span class="avatar mini" style="background-image:${qs.face};width:24px;height:24px;font-size:10px;border-radius:50%;flex:none;border:1px solid rgba(255,255,255,0.2);display:grid;place-items:center">${qs.letter}</span>
+                  <div style="min-width:0;text-align:left">
+                    <div>${playerLink(qs.p)}</div>
+                    <span class="team" style="font-size:10px;margin-top:1px">${esc(qs.team)}</span>
                   </div>
-                </td>
-                <td style="text-align:center">${qs.gOvr.badgeHtml}</td>
-                <td style="text-align:center">${qs.fOvr.badgeHtml}</td>
-                <td style="text-align:center;white-space:nowrap">${growthHtml}</td>
-              </tr>`;
-            }).join('')}
-          </tbody>
-        </table>
-      </div>
+                </div>
+              </td>
+              <td style="text-align:center">${qs.gOvr.badgeHtml}</td>
+              <td style="text-align:center">${qs.fOvr.badgeHtml}</td>
+              <td style="text-align:center;white-space:nowrap">${growthHtml}</td>
+            </tr>`;
+          }).join('')}
+        </tbody>
+      </table>
     </div>
   </section>`;
 }
