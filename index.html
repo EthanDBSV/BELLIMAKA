@@ -4073,7 +4073,7 @@ function topCutSection(t, preview){
 }
 
 function tournamentRatingProgressionSection(t){
-  if(!t || !t.players || !t.players.length) return '';
+  if(!t || !t.players || !t.players.length || t.status !== 'COMPLETE') return '';
   let sortedT = (typeof sortedTournamentsChronological === 'function') ? sortedTournamentsChronological() : [];
   let tIdx = sortedT.findIndex(x => x.id === t.id);
   let isPastT = (t.status === 'COMPLETE');
@@ -4135,7 +4135,12 @@ function tournamentRatingProgressionSection(t){
         <thead>
           <tr>
             <th style="width:70px;text-align:center">#</th>
-            <th style="text-align:center">Trainer / Team</th>
+            <th style="text-align:center">
+              <div style="width:240px;margin:0 auto;display:flex;align-items:center;gap:10px;text-align:left">
+                <span style="width:24px;flex:none"></span>
+                <span style="font-size:9px;font-weight:800;letter-spacing:.8px;text-transform:uppercase;color:#8e8d96">TRAINER / TEAM</span>
+              </div>
+            </th>
             <th style="width:110px;text-align:center;white-space:nowrap" title="Coach rating at conclusion of Group Stage">Group OVR</th>
             <th style="width:110px;text-align:center;white-space:nowrap" title="Final coach rating after tournament conclusion">Final OVR</th>
             <th style="width:90px;text-align:center;white-space:nowrap" title="Rating growth from Group Stage to Top Cut">Growth</th>
@@ -4165,7 +4170,7 @@ function tournamentRatingProgressionSection(t){
                 ${medalIcon}${qs.label || (qIdx + 1)}
               </td>
               <td style="text-align:center">
-                <div class="player-cell-wrap">
+                <div class="player-cell-wrap" style="width:240px;margin:0 auto;display:flex;align-items:center;gap:10px;text-align:left">
                   <span class="avatar mini" style="background-image:${qs.face};width:24px;height:24px;font-size:10px;border-radius:50%;flex:none;border:1px solid rgba(255,255,255,0.2);display:grid;place-items:center">${qs.letter}</span>
                   <div style="min-width:0;text-align:left">
                     <div>${playerLink(qs.p)}</div>
@@ -4290,7 +4295,7 @@ async function fetchMediaFromCloud(){
     if(!error && data?.data){
       let m = data.data;
       let cloudTime = data.updated_at ? new Date(data.updated_at).getTime() : Date.now();
-      localMediaRev = m.mediaRev || cloudTime;
+      localMediaRev = Math.max(Number(m.mediaRev || 0), cloudTime);
       try { localStorage.setItem('draftdex-media-rev', String(localMediaRev)); } catch(e){}
 
       if(m.teamCovers){
@@ -4625,9 +4630,14 @@ async function syncFromCloud(){
       }
     }
 
-    let { data, error } = await supabaseClient.from('league_state').select('data').eq('id', 'main').maybeSingle();
+    let { data, error } = await supabaseClient.from('league_state').select('data,updated_at').eq('id', 'main').maybeSingle();
     if(!error && data?.data){
       let incoming = data.data;
+      if(data.updated_at){
+        let cloudTime = new Date(data.updated_at).getTime();
+        lastLocalUpdate = Math.max(Number(lastLocalUpdate || 0), cloudTime);
+        try { localStorage.setItem('draftdex-updated-at', String(lastLocalUpdate)); } catch(e){}
+      }
       if(shouldApply(incoming)){
         applySharedState(incoming);
         render();
@@ -6348,7 +6358,7 @@ async function updateSession(session){
   let newUser=session?.user||null;
   sessionUser=newUser;
   let isMod=false,nextAccount=null;
-  if(sessionUser&&supabaseClient){
+  if(sessionUser && supabaseClient && !isSandboxMode()){
     let cached = userProfileCache[sessionUser.id];
     if(cached && (Date.now() - cached.time < 180000)){
       nextAccount = cached.data;
@@ -8014,7 +8024,6 @@ function highlightMatches(name,on){
   });
 }
 
-initSupabase();
 /* ------------------------------------------------------------
    SPRINT LAYER (rebased onto the consolidated code)
    · Draft Board: live Google Sheet embed + private mock-draft builder
@@ -9853,7 +9862,7 @@ function knownAccounts(){
 }
 
 async function loadAccounts(forceFresh = false){
-  if(!supabaseClient)return window.leagueAccounts||[];
+  if(isSandboxMode() || !supabaseClient) return window.leagueAccounts||[];
   if(!forceFresh && window.leagueAccounts && window.leagueAccounts.length && (Date.now() - (window._leagueAccountsTime || 0) < 300000)){
     return window.leagueAccounts;
   }
@@ -9918,6 +9927,10 @@ async function saveAccountLinks(){
 }
 
 async function forceCloudSync(){
+  if(isSandboxMode()){
+    alert('You are currently in Sandbox Mode. Local test tournaments and draft simulations in Sandbox Mode stay in your browser only. To publish live to Supabase, disable Sandbox Mode or use "Publish Sandbox" in the Sandbox banner.');
+    return;
+  }
   if(!supabaseClient){
     alert('Supabase is not connected.');
     return;
@@ -10883,7 +10896,7 @@ async function renderPredictionLeaders(t, forceFresh = false){
   let effectiveUsername = window.currentAccount?.username || (sessionUser?.user_metadata?.username) || 'You';
   let currentUserId = sessionUser?.id || effectiveUsername;
 
-  if(supabaseClient && supabaseReady()){
+  if(!isSandboxMode() && supabaseClient && supabaseReady()){
     try {
       let res = await supabaseClient.from('predictions').select('user_id,prediction_key,selection').eq('tournament_id', t.id);
       rows = res.data || [];
@@ -14461,7 +14474,6 @@ function savedPick(t,question){
     return ''
   }catch{return ''}
 }
-if(supabaseReady())loadAccounts();
 /* ------------------------------------------------------------
    5. DRAFT TOOLS REWORK
    The sheet-parsing pool proved unreliable, so the planner is now
