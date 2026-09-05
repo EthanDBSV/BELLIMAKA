@@ -4127,59 +4127,61 @@ function tournamentRatingProgressionSection(t){
   });
 
   return `<section class="section" style="margin-top:28px">
-    <div class="tc-section-header">
-      <h3><span style="color:#ffd166">📊</span> Rating Progression</h3>
-    </div>
-    <div class="card table-wrap" style="overflow-x:auto">
-      <table class="standings tc-playoff-table">
-        <thead>
-          <tr>
-            <th style="width:65px;text-align:center">#</th>
-            <th style="text-align:left;padding-left:16px">Trainer / Team</th>
-            <th style="width:110px;text-align:center;white-space:nowrap" title="Coach rating at conclusion of Group Stage">Group OVR</th>
-            <th style="width:110px;text-align:center;white-space:nowrap" title="Final coach rating after tournament conclusion">Final OVR</th>
-            <th style="width:90px;text-align:center;white-space:nowrap" title="Rating growth from Group Stage to Top Cut">Growth</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${playerStats.map((qs, qIdx) => {
-            let medalIcon = qs.place === 1 ? '👑 ' : (qs.place === 2 ? '🥈 ' : (qs.place === 3 ? '🥉 ' : ''));
-            let rowCls = qs.place === 1 ? 'gold' : (qs.place === 2 ? 'silver' : (qs.place === 3 ? 'bronze' : ''));
-            let rankColor = qs.place === 1 ? '#ffd166' : (qs.place === 2 ? '#d5d5e2' : (qs.place === 3 ? '#d4986a' : '#8e8c95'));
+    <div style="max-width:840px;margin:0 auto">
+      <div class="tc-section-header">
+        <h3><span style="color:#ffd166">📊</span> Rating Progression</h3>
+      </div>
+      <div class="card table-wrap" style="overflow-x:auto">
+        <table class="standings tc-playoff-table">
+          <thead>
+            <tr>
+              <th style="width:65px;text-align:center">#</th>
+              <th style="text-align:left;padding-left:18px">Trainer / Team</th>
+              <th style="width:110px;text-align:center;white-space:nowrap" title="Coach rating at conclusion of Group Stage">Group OVR</th>
+              <th style="width:110px;text-align:center;white-space:nowrap" title="Final coach rating after tournament conclusion">Final OVR</th>
+              <th style="width:90px;text-align:center;white-space:nowrap" title="Rating growth from Group Stage to Top Cut">Growth</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${playerStats.map((qs, qIdx) => {
+              let medalIcon = qs.place === 1 ? '👑 ' : (qs.place === 2 ? '🥈 ' : (qs.place === 3 ? '🥉 ' : ''));
+              let rowCls = qs.place === 1 ? 'gold' : (qs.place === 2 ? 'silver' : (qs.place === 3 ? 'bronze' : ''));
+              let rankColor = qs.place === 1 ? '#ffd166' : (qs.place === 2 ? '#d5d5e2' : (qs.place === 3 ? '#d4986a' : '#8e8c95'));
 
-            let growthHtml = '-';
-            if(qs.inTopCut && qs.diff !== null){
-              if(qs.diff > 0){
-                growthHtml = `<span style="font-size:13px;font-weight:900;color:#53e89c">+${qs.diff}</span>`;
-              } else if(qs.diff < 0){
-                growthHtml = `<span style="font-size:13px;font-weight:900;color:#ff8e95">${qs.diff}</span>`;
+              let growthHtml = '-';
+              if(qs.inTopCut && qs.diff !== null){
+                if(qs.diff > 0){
+                  growthHtml = `<span style="font-size:13px;font-weight:900;color:#53e89c">+${qs.diff}</span>`;
+                } else if(qs.diff < 0){
+                  growthHtml = `<span style="font-size:13px;font-weight:900;color:#ff8e95">${qs.diff}</span>`;
+                } else {
+                  growthHtml = `<span style="font-size:13px;font-weight:700;color:#8e8c95">0</span>`;
+                }
               } else {
-                growthHtml = `<span style="font-size:13px;font-weight:700;color:#8e8c95">0</span>`;
+                growthHtml = `<span style="font-size:14px;font-weight:700;color:#6e6c75">-</span>`;
               }
-            } else {
-              growthHtml = `<span style="font-size:14px;font-weight:700;color:#6e6c75">-</span>`;
-            }
 
-            return `<tr class="${rowCls}">
-              <td style="text-align:center;font-weight:900;color:${rankColor};white-space:nowrap">
-                ${medalIcon}${qs.label || (qIdx + 1)}
-              </td>
-              <td style="text-align:left;padding-left:16px">
-                <div class="player-cell-wrap" style="display:flex;align-items:center;gap:10px;text-align:left">
-                  <span class="avatar mini" style="background-image:${qs.face};width:24px;height:24px;font-size:10px;border-radius:50%;flex:none;border:1px solid rgba(255,255,255,0.2);display:grid;place-items:center">${qs.letter}</span>
-                  <div style="min-width:0;text-align:left">
-                    <div>${playerLink(qs.p)}</div>
-                    <span class="team" style="font-size:10px;margin-top:1px">${esc(qs.team)}</span>
+              return `<tr class="${rowCls}">
+                <td style="text-align:center;font-weight:900;color:${rankColor};white-space:nowrap">
+                  ${medalIcon}${qs.label || (qIdx + 1)}
+                </td>
+                <td style="text-align:left;padding-left:18px">
+                  <div class="player-cell-wrap" style="display:flex;align-items:center;gap:10px;text-align:left">
+                    <span class="avatar mini" style="background-image:${qs.face};width:24px;height:24px;font-size:10px;border-radius:50%;flex:none;border:1px solid rgba(255,255,255,0.2);display:grid;place-items:center">${qs.letter}</span>
+                    <div style="min-width:0;text-align:left">
+                      <div>${playerLink(qs.p)}</div>
+                      <span class="team" style="font-size:10px;margin-top:1px">${esc(qs.team)}</span>
+                    </div>
                   </div>
-                </div>
-              </td>
-              <td style="text-align:center">${qs.gOvr.badgeHtml}</td>
-              <td style="text-align:center">${qs.fOvr.badgeHtml}</td>
-              <td style="text-align:center;white-space:nowrap">${growthHtml}</td>
-            </tr>`;
-          }).join('')}
-        </tbody>
-      </table>
+                </td>
+                <td style="text-align:center">${qs.gOvr.badgeHtml}</td>
+                <td style="text-align:center">${qs.fOvr.badgeHtml}</td>
+                <td style="text-align:center;white-space:nowrap">${growthHtml}</td>
+              </tr>`;
+            }).join('')}
+          </tbody>
+        </table>
+      </div>
     </div>
   </section>`;
 }
@@ -9009,7 +9011,7 @@ function pastTournaments(p){
         <div class="past-place">${esc(f.label)}<small>${t.status==='ONGOING'?'so far':'finish'}</small></div>
         <div style="min-width:0">
           <div class="past-name">${esc(t.name)}</div>
-          <div class="past-meta">${esc([t.season, f.note].filter(Boolean).join(' · '))}</div>
+          <div class="past-meta">${esc([t.season, (tTeam && tTeam !== 'Unassigned team') ? tTeam : null].filter(Boolean).join(' · '))}</div>
         </div>
         <div class="past-rec">${esc(rec)}<small>W-L</small></div>
         <div class="past-chevron">▼</div>
