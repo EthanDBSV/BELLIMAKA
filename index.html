@@ -10330,6 +10330,312 @@ async function saveAccountLinks(){
   render();
 }
 
+function openChangePasswordModal(){
+  if(!sessionUser){
+    alert('Please sign in first.');
+    return;
+  }
+  let username = window.currentAccount?.username || sessionUser?.user_metadata?.username || 'Trainer';
+  document.querySelector('#modal').innerHTML = `
+    <div class="modal-wrap">
+      <div class="modal" style="max-width:440px">
+        <div class="modal-head">
+          <div>
+            <div class="eyebrow" style="color:var(--amber)">ACCOUNT SECURITY</div>
+            <h2 style="font:800 24px 'Barlow Condensed';margin-top:2px">Change Password</h2>
+          </div>
+          <button class="close" onclick="closeModal()">×</button>
+        </div>
+        <p class="sub" style="margin:8px 0 16px;font-size:12px;line-height:1.4">
+          Update your login password for <b>${esc(username)}</b>.
+        </p>
+        <form onsubmit="submitChangePassword(event); return false;" style="display:flex;flex-direction:column;gap:12px">
+          <div class="field" style="margin-top:0">
+            <label style="margin-top:0;font-size:11px">Current Password</label>
+            <input id="pwCurrent" type="password" placeholder="Enter current password" required autocomplete="current-password">
+          </div>
+          <div class="field" style="margin-top:0">
+            <label style="margin-top:0;font-size:11px">New Password (min 6 characters)</label>
+            <input id="pwNew" type="password" placeholder="Enter new password" required minlength="6" autocomplete="new-password">
+          </div>
+          <div class="field" style="margin-top:0">
+            <label style="margin-top:0;font-size:11px">Confirm New Password</label>
+            <input id="pwConfirm" type="password" placeholder="Re-enter new password" required minlength="6" autocomplete="new-password">
+          </div>
+          <div id="pwChangeNotice" class="auth-notice-card" style="display:none;margin-top:4px"></div>
+          <div class="creator-actions" style="margin-top:10px">
+            <button type="button" class="btn ghost" onclick="closeModal()">Cancel</button>
+            <button id="pwChangeSubmitBtn" type="submit" class="btn">Update Password</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  `;
+  setTimeout(() => {
+    let inp = document.querySelector('#pwCurrent');
+    if(inp) inp.focus();
+  }, 50);
+}
+
+async function submitChangePassword(event){
+  if(event && event.preventDefault) event.preventDefault();
+  let currentPassword = document.querySelector('#pwCurrent')?.value || '';
+  let newPassword = document.querySelector('#pwNew')?.value || '';
+  let confirmPassword = document.querySelector('#pwConfirm')?.value || '';
+  let noticeEl = document.querySelector('#pwChangeNotice');
+  let btn = document.querySelector('#pwChangeSubmitBtn');
+
+  function showNotice(msg, type){
+    if(!noticeEl) return;
+    noticeEl.style.display = 'block';
+    noticeEl.className = `auth-notice-card ${type}`;
+    noticeEl.textContent = msg;
+  }
+
+  if(!currentPassword){
+    showNotice('⚠️ Please enter your current password.', 'err');
+    return;
+  }
+  if(newPassword.length < 6){
+    showNotice('⚠️ New password must be at least 6 characters long.', 'err');
+    return;
+  }
+  if(newPassword !== confirmPassword){
+    showNotice('⚠️ New passwords do not match.', 'err');
+    return;
+  }
+
+  let username = window.currentAccount?.username || sessionUser?.user_metadata?.username;
+  let bType = getBackendType();
+
+  if(bType !== 'cloudflare'){
+    if(supabaseClient){
+      try {
+        if(btn) { btn.disabled = true; btn.textContent = 'Updating...'; }
+        let { error } = await supabaseClient.auth.updateUser({ password: newPassword });
+        if(error) throw error;
+        showNotice('✓ Password changed successfully!', 'success');
+        setTimeout(() => closeModal(), 1200);
+      } catch(e){
+        showNotice('⚠️ ' + (e.message || e), 'err');
+      } finally {
+        if(btn) { btn.disabled = false; btn.textContent = 'Update Password'; }
+      }
+      return;
+    }
+    showNotice('⚠️ Cloud backend is offline.', 'err');
+    return;
+  }
+
+  try {
+    if(btn) { btn.disabled = true; btn.textContent = 'Updating...'; }
+    let cfUrl = getCloudflareUrl();
+    let res = await fetch(`${cfUrl}/api/auth/change-password`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        username,
+        currentPassword,
+        newPassword
+      })
+    });
+    let data = await res.json();
+    if(!res.ok || data.error){
+      showNotice('⚠️ ' + (data.error || 'Password update failed'), 'err');
+    } else {
+      showNotice('✓ Password changed successfully!', 'success');
+      setTimeout(() => {
+        closeModal();
+        if(typeof showDraftToast === 'function') showDraftToast('🔒 Password updated successfully!');
+      }, 1000);
+    }
+  } catch(e){
+    showNotice('⚠️ ' + (e.message || e), 'err');
+  } finally {
+    if(btn) { btn.disabled = false; btn.textContent = 'Update Password'; }
+  }
+}
+
+async function openAccountRoleManager(){
+  if(!moderator) return;
+  document.querySelector('#modal').innerHTML = `
+    <div class="modal-wrap">
+      <div class="modal" style="max-width:680px">
+        <div class="modal-head">
+          <div>
+            <div class="eyebrow" style="color:var(--amber)">MODERATOR CONTROL</div>
+            <h2 style="font:800 28px 'Barlow Condensed';margin-top:2px">User Accounts & Permissions</h2>
+          </div>
+          <button class="close" onclick="closeModal()">×</button>
+        </div>
+        <p class="sub" style="margin:6px 0 16px;line-height:1.4">
+          Manage trainer roles and permissions. Promoted moderators can update scores, manage drafts, and configure tournament settings.
+        </p>
+        <div id="accountRolesLoading" style="padding:30px;text-align:center;color:#aaa">
+          ⏳ Loading registered accounts...
+        </div>
+        <div id="accountRolesContainer" style="display:none"></div>
+      </div>
+    </div>
+  `;
+
+  let accounts = await loadAccounts(true);
+  let container = document.querySelector('#accountRolesContainer');
+  let loader = document.querySelector('#accountRolesLoading');
+  if(!container) return;
+
+  if(loader) loader.style.display = 'none';
+  container.style.display = 'block';
+
+  if(!accounts || !accounts.length){
+    container.innerHTML = '<p class="sub" style="text-align:center;padding:20px">No registered accounts found.</p>';
+    return;
+  }
+
+  let myUsername = (window.currentAccount?.username || sessionUser?.user_metadata?.username || '').toLowerCase();
+
+  let listHtml = accounts.map(acc => {
+    let uName = acc.username || acc.id;
+    let isMod = (acc.role === 'moderator');
+    let isMe = (uName.toLowerCase() === myUsername);
+    let linkedP = typeof playerForAccount === 'function' ? playerForAccount(uName) : null;
+
+    return `
+      <div class="card" style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 16px;margin-top:8px;background:#141419;border-color:#2f2f38">
+        <div style="display:flex;align-items:center;gap:12px;min-width:0">
+          <div class="avatar" style="width:38px;height:38px;font-size:16px;flex:none;border:1px solid #ffffff1f">${esc((uName || '?')[0])}</div>
+          <div style="min-width:0">
+            <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+              <span style="font-weight:800;font-size:15px;color:#f5f3f0">${esc(uName)}</span>
+              ${isMod ? `<span class="tag" style="background:#3b1319;color:#ff8e95;border:1px solid #6b242e;font-size:9px;padding:2px 7px">👑 Moderator</span>` : `<span class="tag" style="background:#162c1e;color:#7df0aa;border:1px solid #2f5c3b;font-size:9px;padding:2px 7px">🎮 Player</span>`}
+              ${isMe ? `<span class="tag" style="background:#262635;color:#c084fc;font-size:9px;padding:2px 6px">You</span>` : ''}
+            </div>
+            <div class="sub" style="font-size:11px;margin-top:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
+              ${linkedP ? `Linked player: <b style="color:var(--amber)">${esc(linkedP)}</b>` : `<span style="color:#777">No player linked</span>`}
+            </div>
+          </div>
+        </div>
+
+        <div style="display:flex;align-items:center;gap:8px;flex:none">
+          ${isMod ? `
+            <button class="btn ghost btn-sm" style="font-size:11px;color:#ff969c;border-color:#5c2229" ${isMe ? 'disabled title="Cannot demote yourself"' : ''} onclick="updateAccountRole('${jsArg(uName)}', 'player')">
+              Demote to Player
+            </button>
+          ` : `
+            <button class="btn btn-sm" style="font-size:11px;background:#2d6b41;color:#fff" onclick="updateAccountRole('${jsArg(uName)}', 'moderator')">
+              👑 Promote to Moderator
+            </button>
+          `}
+          <button class="btn ghost btn-sm" style="font-size:11px;color:#cbd5e1" onclick="adminPromptResetPassword('${jsArg(uName)}')">
+            🔑 Reset PW
+          </button>
+        </div>
+      </div>
+    `;
+  }).join('');
+
+  container.innerHTML = `
+    <div style="max-height:420px;overflow-y:auto;padding-right:2px">
+      ${listHtml}
+    </div>
+    <div class="creator-actions" style="margin-top:18px">
+      <button class="btn ghost" onclick="closeModal()">Close</button>
+      <button class="btn ghost" style="color:var(--amber);border-color:#5e4a1a" onclick="openAccountLinks()">🔗 Link to Players</button>
+    </div>
+  `;
+}
+
+async function updateAccountRole(targetUsername, newRole){
+  if(!moderator) return;
+  let actionText = newRole === 'moderator' ? `promote "${targetUsername}" to Moderator` : `demote "${targetUsername}" to Player`;
+  if(!confirm(`Are you sure you want to ${actionText}?`)) return;
+
+  let bType = getBackendType();
+  if(bType === 'cloudflare'){
+    try {
+      let cfUrl = getCloudflareUrl();
+      let myUser = window.currentAccount?.username || sessionUser?.user_metadata?.username;
+      let masterKey = window.DRAFTDEX_BACKEND?.masterKey || 'bellimaka-master-2026';
+      let res = await fetch(`${cfUrl}/api/auth/update-role`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          targetUsername,
+          newRole,
+          requesterUsername: myUser,
+          masterKey
+        })
+      });
+      let data = await res.json();
+      if(!res.ok || data.error){
+        alert('Could not update role: ' + (data.error || 'Server error'));
+        return;
+      }
+      if(typeof showDraftToast === 'function'){
+        showDraftToast(`✓ ${targetUsername} is now a ${newRole}!`);
+      }
+      await loadAccounts(true);
+      openAccountRoleManager();
+    } catch(e){
+      alert('Update failed: ' + e.message);
+    }
+    return;
+  }
+
+  if(supabaseClient){
+    try {
+      let { error } = await supabaseClient.from('user_profiles').update({ role: newRole }).ilike('username', targetUsername);
+      if(error) throw error;
+      if(typeof showDraftToast === 'function'){
+        showDraftToast(`✓ ${targetUsername} is now a ${newRole}!`);
+      }
+      await loadAccounts(true);
+      openAccountRoleManager();
+    } catch(e){
+      alert('Update failed: ' + e.message);
+    }
+  }
+}
+
+async function adminPromptResetPassword(targetUsername){
+  if(!moderator) return;
+  let newPass = prompt(`Enter a new temporary password for "${targetUsername}" (min 6 characters):`);
+  if(!newPass) return;
+  if(newPass.trim().length < 6){
+    alert('Password must be at least 6 characters long.');
+    return;
+  }
+
+  let bType = getBackendType();
+  if(bType === 'cloudflare'){
+    try {
+      let cfUrl = getCloudflareUrl();
+      let myUser = window.currentAccount?.username || sessionUser?.user_metadata?.username;
+      let masterKey = window.DRAFTDEX_BACKEND?.masterKey || 'bellimaka-master-2026';
+      let res = await fetch(`${cfUrl}/api/auth/reset-password`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          targetUsername,
+          newPassword: newPass.trim(),
+          requesterUsername: myUser,
+          masterKey
+        })
+      });
+      let data = await res.json();
+      if(!res.ok || data.error){
+        alert('Password reset failed: ' + (data.error || 'Server error'));
+        return;
+      }
+      alert(`✓ Password for "${targetUsername}" has been reset to: ${newPass.trim()}`);
+    } catch(e){
+      alert('Reset failed: ' + e.message);
+    }
+    return;
+  }
+  alert('Password reset for other users requires the Cloudflare backend.');
+}
+
 async function forceCloudSync(){
   if(isSandboxMode()){
     alert('You are currently in Sandbox Mode. Local test tournaments and draft simulations in Sandbox Mode stay in your browser only. To publish live to the cloud, disable Sandbox Mode or use "Publish Sandbox" in the Sandbox banner.');
@@ -10893,9 +11199,15 @@ function renderAccountPredictionHistory(userId, username){
   `;
 }
 
-function renderModeratorToolsGridHtml(){
-  return `
-    <div class="acct-tools-grid">
+      <div class="acct-tool-card" onclick="openAccountRoleManager()">
+        <div class="acct-tool-icon">👑</div>
+        <div class="acct-tool-body">
+          <h4>User Accounts & Roles</h4>
+          <p>Promote trainers to moderators, manage league permissions, and reset user passwords.</p>
+        </div>
+        <button class="btn ghost btn-sm" style="color:var(--amber);border-color:#5e4a1a" onclick="event.stopPropagation();openAccountRoleManager()">Manage Accounts</button>
+      </div>
+
       <div class="acct-tool-card" onclick="openProfileManager()">
         <div class="acct-tool-icon">👥</div>
         <div class="acct-tool-body">
@@ -10936,7 +11248,7 @@ function renderModeratorToolsGridHtml(){
         <div class="acct-tool-icon">☁️</div>
         <div class="acct-tool-body">
           <h4>Cloud Database Sync</h4>
-          <p>Push all local tournaments and rosters to Supabase so they show on all devices.</p>
+          <p>Push all local tournaments and rosters to the cloud so they show on all devices.</p>
         </div>
         <button id="forceSyncBtn" class="btn ghost btn-sm" style="color:#53e89c;border-color:#23613a" onclick="event.stopPropagation();forceCloudSync()">☁️ Push to Cloud Now</button>
       </div>
@@ -11008,7 +11320,8 @@ function Account(){
           `}
         </div>
 
-        <div style="margin-top:auto;padding-top:16px">
+        <div style="margin-top:auto;padding-top:16px;display:flex;flex-direction:column;gap:8px">
+          <button class="btn ghost" style="width:100%;font-size:11px;padding:8px 10px;cursor:pointer" onclick="openChangePasswordModal()">🔒 Change Password</button>
           <button id="signOutBtn" class="btn ghost" style="width:100%;color:#ff9ba1;border-color:#4a242a;cursor:pointer;transition:all .15s ease" onclick="signOut(this)">Sign Out</button>
         </div>
       </aside>
