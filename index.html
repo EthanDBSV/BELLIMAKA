@@ -641,29 +641,63 @@ details[open] > .past-tourney-summary .past-chevron{transform:rotate(180deg);col
 .draft-import-dropzone:hover{border-color:var(--red);background:#1a1418}
 .draft-import-textarea{width:100%;height:180px;background:#0f0f14;border:1px solid #2d2d3c;border-radius:6px;padding:12px;color:#f5f3f0;font-family:monospace;font-size:12px;resize:vertical}
 
-/* ------------------------------------------------------------ Modern Teams Roster UI ------------------------------------------------------------ */
-.teams{display:grid;grid-template-columns:repeat(auto-fill,minmax(350px,1fr));gap:16px;margin-top:14px}
-@media (max-width: 650px){.teams{grid-template-columns:1fr}}
+/* ------------------------------------------------------------ Grand Teams & Franchise Showcase UI ------------------------------------------------------------ */
+.teams{display:grid;grid-template-columns:repeat(auto-fit,minmax(500px,1fr));gap:24px;margin-top:18px}
+@media (max-width: 960px){.teams{grid-template-columns:1fr;gap:18px}}
 
-.team-modern-card{background:#14141c;border:1px solid #282836;border-radius:10px;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 6px 20px rgba(0,0,0,0.45);transition:all .16s ease;cursor:pointer;position:relative}
-.team-modern-card:hover{border-color:#5c242c;transform:translateY(-2px);box-shadow:0 10px 28px rgba(0,0,0,0.65)}
+.team-modern-card{background:linear-gradient(180deg,#15151f 0%,#101017 100%);border:1px solid #28283a;border-radius:14px;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 10px 32px rgba(0,0,0,0.55);transition:transform .22s cubic-bezier(0.16,1,0.3,1),border-color .22s ease,box-shadow .22s ease;cursor:pointer;position:relative}
+.team-modern-card:hover{border-color:#6e2b34;transform:translateY(-4px);box-shadow:0 18px 44px rgba(0,0,0,0.75),0 0 24px rgba(239,48,56,0.14)}
 
-.team-card-banner{height:100px;background-size:cover;background-position:center;position:relative;padding:14px 16px;display:flex;align-items:flex-end;background-color:#1e1e28}
-.team-card-banner-overlay{position:absolute;inset:0;background:linear-gradient(180deg,rgba(14,14,20,0.3) 0%,rgba(14,14,20,0.92) 100%);pointer-events:none}
-.team-card-topbar{position:relative;z-index:2;width:100%;display:flex;justify-content:space-between;align-items:center;gap:12px}
+.team-card-banner{height:200px;background-size:cover;background-position:center;position:relative;padding:16px 20px;display:flex;flex-direction:column;justify-content:space-between;background-color:#1c1c26;overflow:hidden}
+.team-card-banner::before{content:'';position:absolute;inset:0;background-image:inherit;background-size:cover;background-position:inherit;filter:blur(0px);transition:transform .4s cubic-bezier(0.16,1,0.3,1);pointer-events:none}
+.team-modern-card:hover .team-card-banner::before{transform:scale(1.04)}
+.team-card-banner-overlay{position:absolute;inset:0;background:linear-gradient(180deg,rgba(8,8,13,0.55) 0%,rgba(8,8,13,0.15) 35%,rgba(10,10,16,0.92) 100%);pointer-events:none;z-index:1}
 
-.team-card-body{padding:14px 16px 12px;background:#14141c;flex:1;display:flex;flex-direction:column}
-.team-roster-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(98px,1fr));gap:6px;margin-top:2px}
-.team-mon-chip{display:flex;align-items:center;gap:6px;padding:5px 8px;background:#181822;border:1px solid #282838;border-radius:6px;transition:all .12s ease;min-width:0}
-.team-mon-chip:hover{background:#20202c;border-color:#3d3d52}
-.team-mon-sprite{width:24px;height:24px;object-fit:contain;flex:none;filter:drop-shadow(0 2px 4px rgba(0,0,0,0.5))}
-.team-mon-name{font:800 11.5px 'Barlow Condensed';color:#f5f3f0;letter-spacing:.3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1}
+.team-card-banner-top{position:relative;z-index:2;display:flex;justify-content:space-between;align-items:center;gap:10px}
+.team-franchise-tag{font:800 10px 'Barlow Condensed';letter-spacing:1.2px;text-transform:uppercase;padding:3px 8px;border-radius:4px;background:rgba(12,12,18,0.75);backdrop-filter:blur(6px);border:1px solid rgba(255,255,255,0.14);color:#ffd166;display:flex;align-items:center;gap:5px}
 
-.team-card-foot{padding:10px 16px;background:#101016;border-top:1px solid #20202c;display:flex;justify-content:space-between;align-items:center;gap:10px}
-.team-profile-link{font:800 11.5px 'Barlow Condensed';color:#a09fa8;letter-spacing:.4px;transition:color .12s ease}
+.team-card-banner-bottom{position:relative;z-index:2;display:flex;align-items:flex-end;gap:14px;min-width:0}
+.team-coach-emblem-wrap{position:relative;flex:none}
+.team-coach-emblem{width:60px;height:60px;border-radius:50%;background-size:cover;background-position:center;display:grid;place-items:center;font:800 22px 'Barlow Condensed';color:#fff;box-shadow:0 6px 20px rgba(0,0,0,0.85);transition:transform .2s ease;flex:none}
+.team-modern-card:hover .team-coach-emblem{transform:scale(1.05)}
+.team-champ-crown{position:absolute;top:-8px;right:-6px;background:linear-gradient(135deg,#ffe066,#d4a017);color:#1a1400;font-size:11px;font-weight:900;width:22px;height:22px;border-radius:50%;display:grid;place-items:center;box-shadow:0 3px 8px rgba(0,0,0,0.6);border:1.5px solid #14141c}
+
+.team-title-wrap{min-width:0;flex:1}
+.team-coach-eyebrow{font-size:10px;font-weight:800;letter-spacing:1.2px;text-transform:uppercase;color:#ff858b;display:flex;align-items:center;gap:6px;margin-bottom:2px}
+.team-franchise-name{font:800 28px/1.1 'Barlow Condensed';color:#ffffff;margin:0;letter-spacing:.4px;text-shadow:0 2px 10px rgba(0,0,0,0.9);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+.team-card-statsbar{display:flex;align-items:center;gap:14px;padding:8px 20px;background:#0d0d14;border-top:1px solid #1f1f2c;border-bottom:1px solid #1f1f2c;font-size:11px;font-weight:700;color:#94929f;flex-wrap:wrap}
+.team-stat-item{display:flex;align-items:center;gap:5px}
+.team-stat-item b{color:#f0eef5;font-weight:800;font-family:'Barlow Condensed';font-size:14px;letter-spacing:.3px}
+
+.team-card-body{padding:16px 20px;background:#13131c;flex:1;display:flex;flex-direction:column}
+.team-roster-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+.team-roster-title{font-size:10.5px;font-weight:800;color:#ffd166;letter-spacing:1px;text-transform:uppercase;display:flex;align-items:center;gap:6px}
+.team-roster-count{font:800 11px 'Barlow Condensed';color:#8c8a98;letter-spacing:.4px;background:#1b1b26;padding:2px 7px;border-radius:4px;border:1px solid #2a2a3c}
+
+/* Modern Drafted Pokmon Cards */
+.team-roster-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(112px,1fr));gap:8px}
+.team-mon-card{position:relative;border-radius:8px;padding:8px 6px;display:flex;flex-direction:column;align-items:center;text-align:center;transition:all .16s ease;overflow:hidden;border-width:1px;border-style:solid}
+.team-mon-card:hover{transform:translateY(-3px);box-shadow:0 6px 18px rgba(0,0,0,0.5)}
+.team-mon-card-type-badge{font-size:7.5px;font-weight:900;letter-spacing:.6px;text-transform:uppercase;padding:2px 6px;border-radius:3px;margin-bottom:4px;max-width:90%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.team-mon-card-sprite{width:46px;height:46px;object-fit:contain;filter:drop-shadow(0 4px 6px rgba(0,0,0,0.65));transition:transform .18s ease;margin:2px 0}
+.team-mon-card:hover .team-mon-card-sprite{transform:scale(1.1)}
+.team-mon-card-name{font:800 13px 'Barlow Condensed';color:#f5f3f0;letter-spacing:.3px;width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-top:2px}
+
+/* Grand Pre-Draft Showcase (10 Numbered Pedestal Slots) */
+.team-draft-pedestal-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:8px}
+@media (max-width: 600px){.team-draft-pedestal-grid{grid-template-columns:repeat(2,1fr)}}
+.team-draft-pedestal{background:rgba(18,18,26,0.7);border:1px dashed #2c2c3e;border-radius:8px;padding:12px 6px;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:3px;position:relative;transition:all .15s ease}
+.team-draft-pedestal:hover{border-color:#5c5c7a;background:rgba(26,26,38,0.85)}
+.team-draft-slot-num{font:900 12px 'Barlow Condensed';color:#ff858b;letter-spacing:.6px}
+.team-draft-slot-label{font-size:8.5px;font-weight:800;color:#6b6978;text-transform:uppercase;letter-spacing:.6px}
+.team-draft-slot-icon{font-size:16px;opacity:0.35;margin:2px 0}
+
+.team-card-foot{padding:12px 20px;background:#0d0d14;border-top:1px solid #1f1f2c;display:flex;justify-content:space-between;align-items:center;gap:12px}
+.team-profile-link{font:800 12px 'Barlow Condensed';color:#a09fa8;letter-spacing:.5px;display:flex;align-items:center;gap:5px;transition:color .14s ease}
 .team-modern-card:hover .team-profile-link{color:#ff777d}
-.cover-edit-btn{border:1px solid #3d3d4e;background:#1c1c26;color:#d0d0dc;border-radius:5px;padding:4px 9px;font-size:10px;font-weight:800;cursor:pointer;transition:all .12s ease}
-.cover-edit-btn:hover{background:#401b21;border-color:#ff5964;color:#fff}
+.cover-edit-btn{border:1px solid #3d3d52;background:#1c1c28;color:#e0dee8;border-radius:6px;padding:6px 12px;font-size:11px;font-weight:800;font-family:'Barlow Condensed';letter-spacing:.4px;cursor:pointer;transition:all .14s ease;display:flex;align-items:center;gap:6px}
+.cover-edit-btn:hover{background:#451c24;border-color:#ff5964;color:#fff;box-shadow:0 3px 10px rgba(239,48,56,0.3)}
 
 /* ------------------------------------------------------------ Modern Matches UI ------------------------------------------------------------ */
 .match-layout-modern{display:flex;flex-direction:column;gap:18px;width:100%}
@@ -2299,7 +2333,35 @@ function teamName(t,p){return t&&Object.prototype.hasOwnProperty.call(t,'teamNam
 
 function teamCoverBg(p){return teamCovers[p]?`style="background-image:url('${esc(teamCovers[p])}');background-size:cover;background-position:center"`:''}
 
-function openTeamCoverEditor(p){document.querySelector('#modal').innerHTML=`<div class="modal-wrap"><div class="modal" style="max-width:510px"><div class="modal-head"><div><div class="eyebrow">Team cover</div><h2>${p}'s team</h2></div><button class="close" onclick="closeModal()">×</button></div><p class="sub">Choose a Pokémon image up to 2 MB. This limit is for the current browser/JSON storage setup, not your website host.</p><div class="field"><label>Upload cover image</label><input id="teamCoverFile" type="file" accept="image/png,image/jpeg,image/webp" onchange="previewTeamCover(event)"></div><div id="teamCoverPreview" style="height:190px;border-radius:6px;margin-top:14px;background:${teamCovers[p]?`url('${teamCovers[p]}') center/cover`:'#25252b'}"></div><div class="creator-actions"><button class="btn ghost" onclick="removeTeamCover('${p}')">Remove cover</button><button class="btn" onclick="saveTeamCover('${p}')">Save cover</button></div></div></div>`}
+function openTeamCoverEditor(p){
+  let t = ongoingT() || activeT();
+  let tName = t ? teamName(t, p) : (profiles[p]?.team || `${p}'s Team`);
+  let curCover = teamCovers[p] || '';
+
+  openVisualCoverCropper({
+    title: tName,
+    eyebrow: `Franchise Banner · ${p}`,
+    description: `Frame and crop your franchise banner artwork. This image is showcased across the Teams tab, Standings, and coach cards. Drag the photo or use the sliders to frame.`,
+    aspectRatio: 2.2,
+    panelShapeName: 'Franchise Banner (2.2:1)',
+    currentCover: curCover,
+    mockOverlay: 'team',
+    coachName: p,
+    teamName: tName,
+    onSave: function(croppedDataUrl){
+      teamCovers[p] = croppedDataUrl;
+      try{ localStorage.setItem('draftdex-teamcovers', JSON.stringify(teamCovers)); }catch(e){}
+      if(moderator) pushMediaToCloud();
+      persistLeague();
+      closeModal();
+      render();
+      if(typeof showDraftToast === 'function') showDraftToast('🎨 Franchise banner cropped & saved!');
+    },
+    onRemove: function(){
+      removeTeamCover(p);
+    }
+  });
+}
 function saveTeamCover(p){
   if(!window.pendingTeamCover){closeModal();return}
   teamCovers[p]=window.pendingTeamCover;
@@ -2318,8 +2380,35 @@ function removeTeamCover(p){
   persistLeague();
   closeModal();
   render();
+  if(typeof showDraftToast === 'function') showDraftToast('Franchise cover removed');
 }
-function openProfilePictureEditor(p){document.querySelector('#modal').innerHTML=`<div class="modal-wrap"><div class="modal" style="max-width:510px"><div class="modal-head"><div><div class="eyebrow">Profile picture</div><h2>${p}</h2></div><button class="close" onclick="closeModal()">×</button></div><p class="sub">This image shows on the player profile card and leaderboard-style avatar chips. It keeps the same upload limit as team covers.</p><div class="field"><label>Upload profile picture</label><input id="profilePicFile" type="file" accept="image/png,image/jpeg,image/webp" onchange="previewProfilePicture(event)"></div><div id="profilePicPreview" style="height:190px;border-radius:6px;margin-top:14px;background:${profilePictures[p]||teamCovers[p]?`url('${profilePictures[p]||teamCovers[p]}') center/cover`:'#25252b'}"></div><div class="creator-actions"><button class="btn ghost" onclick="removeProfilePicture('${p}')">Remove picture</button><button class="btn" onclick="saveProfilePicture('${p}')">Save picture</button></div></div></div>`}
+function openProfilePictureEditor(p){
+  let curPic = profilePictures[p] || '';
+
+  openVisualCoverCropper({
+    title: p,
+    eyebrow: 'Coach Profile Avatar',
+    description: 'Frame your coach avatar image. The illuminated circular guide shows exactly what will remain visible across round avatar badges, matchup cards, and leaderboards.',
+    aspectRatio: 1.0,
+    panelShapeName: 'Square Avatar (1:1)',
+    currentCover: curPic,
+    mockOverlay: 'avatar',
+    circularGuide: true,
+    coachName: p,
+    onSave: function(croppedDataUrl){
+      profilePictures[p] = croppedDataUrl;
+      try{ localStorage.setItem('draftdex-profilepics', JSON.stringify(profilePictures)); }catch(e){}
+      if(moderator) pushMediaToCloud();
+      persistLeague();
+      closeModal();
+      render();
+      if(typeof showDraftToast === 'function') showDraftToast('👤 Coach avatar cropped & saved!');
+    },
+    onRemove: function(){
+      removeProfilePicture(p);
+    }
+  });
+}
 function saveProfilePicture(p){
   if(!window.pendingProfilePicture){closeModal();return}
   profilePictures[p]=window.pendingProfilePicture;
@@ -2338,6 +2427,7 @@ function removeProfilePicture(p){
   persistLeague();
   closeModal();
   render();
+  if(typeof showDraftToast === 'function') showDraftToast('Coach avatar removed');
 }
 
 function createProfile(){let p=document.querySelector('#profileNewName').value.trim(),team=document.querySelector('#profileNewTeam').value.trim();if(!p){alert('Enter a player name.');return}if(profiles[p]){alert('That profile already exists.');return}profiles[p]={team:team||'No default team',record:'0-0',tops:0,cups:[]};roster[p]=[];teamHistory[p]=[];persistLeague();openProfileManager()}
@@ -5516,9 +5606,12 @@ function openCreator(){
     <div class="field" style="margin-top:16px"><label>Add new player profiles (comma separated)</label><input id="newPlayers" placeholder="e.g. Cynthia, Steven, Leon"></div>
 
     <div class="field" style="margin-top:16px">
-      <label>Tournament Cover Photo (Optional)</label>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+        <label style="margin:0">Tournament Cover Photo (Optional)</label>
+        ${window.pendingCreatorCover ? `<button type="button" class="btn ghost btn-sm" style="font-size:10px;padding:2px 8px" onclick="openCreatorExistingCropper()">✂️ Adjust Crop</button>` : ''}
+      </div>
       <input id="creatorCoverFile" type="file" accept="image/png,image/jpeg,image/webp" onchange="previewCreatorCover(event)">
-      <div id="creatorCoverPreview" style="display:none;height:140px;border-radius:6px;margin-top:8px;background-size:cover;background-position:center"></div>
+      <div id="creatorCoverPreview" style="${window.pendingCreatorCover ? `display:block;background-image:url('${window.pendingCreatorCover}')` : 'display:none'};height:140px;border-radius:6px;margin-top:8px;background-size:cover;background-position:center;border:1px solid #2e2e3e"></div>
     </div>
     
     <div class="creator-actions" style="margin-top:20px">
@@ -5528,18 +5621,96 @@ function openCreator(){
   </div></div>`;
 }
 
+function openCreatorExistingCropper(){
+  if(!window.pendingCreatorCover) return;
+  let savedName = document.querySelector('#creatorName')?.value || '';
+  let savedFormat = document.querySelector('#creatorFormat')?.value || '';
+  let savedGroups = document.querySelector('#creatorGroups')?.value || '';
+  let savedPer = document.querySelector('#creatorPerGroup')?.value || '';
+  let savedPlayers = Array.from(document.querySelectorAll('.profileChoice:checked')).map(cb => cb.value);
+  let savedNewPlayers = document.querySelector('#newPlayers')?.value || '';
+
+  openVisualCoverCropper({
+    title: savedName || 'Tournament Cover',
+    eyebrow: 'Tournament Cover & Crop',
+    description: 'Frame and crop your tournament cover artwork.',
+    aspectRatio: 1.77,
+    panelShapeName: 'Archive Card (16:9)',
+    currentCover: window.pendingCreatorCover,
+    mockOverlay: 'archive',
+    onSave: function(croppedDataUrl){
+      window.pendingCreatorCover = croppedDataUrl;
+      openCreator();
+      if(savedName && document.querySelector('#creatorName')) document.querySelector('#creatorName').value = savedName;
+      if(savedFormat && document.querySelector('#creatorFormat')) document.querySelector('#creatorFormat').value = savedFormat;
+      if(savedGroups && document.querySelector('#creatorGroups')) document.querySelector('#creatorGroups').value = savedGroups;
+      if(savedPer && document.querySelector('#creatorPerGroup')) document.querySelector('#creatorPerGroup').value = savedPer;
+      if(savedNewPlayers && document.querySelector('#newPlayers')) document.querySelector('#newPlayers').value = savedNewPlayers;
+      document.querySelectorAll('.profileChoice').forEach(cb => {
+        if(savedPlayers.includes(cb.value)) cb.checked = true;
+      });
+      updateCreatorSelectedCount();
+      let prev = document.querySelector('#creatorCoverPreview');
+      if(prev){
+        prev.style.display = 'block';
+        prev.style.backgroundImage = `url('${croppedDataUrl}')`;
+      }
+      if(typeof showDraftToast === 'function') showDraftToast('🖼️ Cover cropped & updated!');
+    },
+    onRemove: function(){
+      window.pendingCreatorCover = null;
+      openCreator();
+    }
+  });
+}
+
 async function previewCreatorCover(e){
   let f = e.target.files?.[0];
   if(!f) return;
-  try {
-    let data = await shrinkImage(f, 850, 0.70);
-    window.pendingCreatorCover = data;
-    let prev = document.querySelector('#creatorCoverPreview');
-    if(prev){
-      prev.style.display = 'block';
-      prev.style.backgroundImage = `url('${data}')`;
-    }
-  } catch(err){}
+  let savedName = document.querySelector('#creatorName')?.value || '';
+  let savedFormat = document.querySelector('#creatorFormat')?.value || '';
+  let savedGroups = document.querySelector('#creatorGroups')?.value || '';
+  let savedPer = document.querySelector('#creatorPerGroup')?.value || '';
+  let savedPlayers = Array.from(document.querySelectorAll('.profileChoice:checked')).map(cb => cb.value);
+  let savedNewPlayers = document.querySelector('#newPlayers')?.value || '';
+
+  let reader = new FileReader();
+  reader.onload = function(ev){
+    let rawData = ev.target.result;
+    openVisualCoverCropper({
+      title: savedName || 'New Tournament Cover',
+      eyebrow: 'Tournament Cover & Crop',
+      description: 'Frame your cover photo for this tournament archive card. Drag or use the sliders to crop.',
+      aspectRatio: 1.77,
+      panelShapeName: 'Archive Card (16:9)',
+      currentCover: rawData,
+      mockOverlay: 'archive',
+      onSave: function(croppedDataUrl){
+        window.pendingCreatorCover = croppedDataUrl;
+        openCreator();
+        if(savedName && document.querySelector('#creatorName')) document.querySelector('#creatorName').value = savedName;
+        if(savedFormat && document.querySelector('#creatorFormat')) document.querySelector('#creatorFormat').value = savedFormat;
+        if(savedGroups && document.querySelector('#creatorGroups')) document.querySelector('#creatorGroups').value = savedGroups;
+        if(savedPer && document.querySelector('#creatorPerGroup')) document.querySelector('#creatorPerGroup').value = savedPer;
+        if(savedNewPlayers && document.querySelector('#newPlayers')) document.querySelector('#newPlayers').value = savedNewPlayers;
+        document.querySelectorAll('.profileChoice').forEach(cb => {
+          if(savedPlayers.includes(cb.value)) cb.checked = true;
+        });
+        updateCreatorSelectedCount();
+        let prev = document.querySelector('#creatorCoverPreview');
+        if(prev){
+          prev.style.display = 'block';
+          prev.style.backgroundImage = `url('${croppedDataUrl}')`;
+        }
+        if(typeof showDraftToast === 'function') showDraftToast('🖼️ Tournament cover cropped & staged!');
+      },
+      onRemove: function(){
+        window.pendingCreatorCover = null;
+        openCreator();
+      }
+    });
+  };
+  reader.readAsDataURL(f);
 }
 
 function updateCreatorSelectedCount(){
@@ -6842,6 +7013,47 @@ function openVisualCoverCropper(opts){
         <div style="font-size:10px;color:#888">Archive Card Preview</div>
       </div>
     `;
+  } else if(opts.mockOverlay === 'team'){
+    let coachName = opts.coachName || 'Coach Name';
+    let franchiseName = opts.teamName || opts.title || 'Franchise Name';
+    mockHtml = `
+      <div id="cropperMockOverlay" style="position:absolute;inset:0;pointer-events:none;background:linear-gradient(180deg,rgba(8,8,13,0.55) 0%,rgba(8,8,13,0.1) 40%,rgba(10,10,16,0.92) 100%);padding:14px 16px;display:flex;flex-direction:column;justify-content:space-between">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <span class="tag" style="background:#28181d;color:#ff9ba1;border:1px solid #5c242c;font-size:8px;padding:2px 6px">FRANCHISE BANNER</span>
+          <span class="tag" style="background:#1e1a12;color:#ffd166;border:1px solid #665020;font-size:8px;padding:2px 6px">85+ OVR</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:12px">
+          <div style="width:44px;height:44px;border-radius:50%;background:rgba(255,255,255,0.15);border:2px solid #ffd166;display:grid;place-items:center;font:800 18px 'Barlow Condensed';color:#fff;box-shadow:0 4px 12px rgba(0,0,0,0.7)">${(coachName[0] || 'C').toUpperCase()}</div>
+          <div>
+            <div style="font-size:9px;font-weight:800;color:#ff858b;letter-spacing:1px;text-transform:uppercase">HEAD COACH · ${esc(coachName)}</div>
+            <div style="font:800 24px 'Barlow Condensed';color:#fff;line-height:1.1;letter-spacing:.3px">${esc(franchiseName)}</div>
+          </div>
+        </div>
+      </div>
+    `;
+  } else if(opts.mockOverlay === 'avatar' || opts.circularGuide){
+    mockHtml = `
+      <div id="cropperMockOverlay" style="position:absolute;inset:0;pointer-events:none;display:flex;align-items:center;justify-content:center">
+        <div style="width:230px;height:230px;border-radius:50%;border:2.5px dashed #ffd166;box-shadow:0 0 0 9999px rgba(0,0,0,0.5), 0 0 16px rgba(255,209,102,0.35);position:relative;display:flex;align-items:center;justify-content:center">
+          <div style="width:6px;height:6px;border-radius:50%;background:#ffd166;opacity:0.7"></div>
+          <div style="position:absolute;bottom:12px;background:rgba(0,0,0,0.85);padding:3px 8px;border-radius:10px;font-size:8.5px;font-weight:800;color:#ffd166;letter-spacing:.6px">AVATAR CIRCLE</div>
+        </div>
+      </div>
+    `;
+  } else if(opts.mockOverlay === 'primetime'){
+    mockHtml = `
+      <div id="cropperMockOverlay" style="position:absolute;inset:0;pointer-events:none;background:linear-gradient(180deg,rgba(10,10,16,0.3) 0%,rgba(10,10,16,0.88) 100%);padding:14px;display:flex;flex-direction:column;justify-content:space-between">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <span style="font:800 12px 'Barlow Condensed';color:#ffd166;letter-spacing:1px">⚔️ PRIMETIME SHOWCASE</span>
+          <span class="tag" style="background:#28181d;color:#ff9ba1;border:1px solid #5c242c;font-size:8px">BROADCAST</span>
+        </div>
+        <div style="text-align:center;background:rgba(0,0,0,0.6);padding:8px;border-radius:6px;border:1px dashed rgba(255,255,255,0.2)">
+          <div style="font:800 18px 'Barlow Condensed';color:#fff;letter-spacing:.5px">FEATURED MATCH OF THE WEEK</div>
+          <div style="font-size:10px;color:#bbb">Broadcast Card Background Graphic</div>
+        </div>
+        <div style="font-size:9px;color:#888;text-align:right">Primetime Card Preview</div>
+      </div>
+    `;
   } else {
     mockHtml = `
       <div id="cropperMockOverlay" style="position:absolute;inset:0;pointer-events:none;background:linear-gradient(180deg,rgba(5,5,8,.3) 0%,rgba(5,5,8,.75) 100%);padding:14px">
@@ -6881,9 +7093,10 @@ function openVisualCoverCropper(opts){
         <!-- Aspect Ratio Selection Quick Bar -->
         <div style="display:flex;align-items:center;gap:6px;margin-bottom:12px;flex-wrap:wrap;background:#121218;padding:7px 11px;border-radius:6px;border:1px solid #232332">
           <span style="font-size:10px;font-weight:800;color:#ffd166;letter-spacing:.6px;text-transform:uppercase;margin-right:2px">Ratio Preset:</span>
-          <button type="button" class="btn ghost btn-sm" style="font-size:10px;padding:4px 9px" onclick="cropperSetAspectRatio(${vertRatioDisplay}, 'Vertical Panel (~${vertRatioDisplay})')">📱 Vertical Panel (${vertRatioDisplay})</button>
-          <button type="button" class="btn ghost btn-sm" style="font-size:10px;padding:4px 9px" onclick="cropperSetAspectRatio(1.0, 'Square (1:1)')">⏹️ Square (1:1)</button>
-          <button type="button" class="btn ghost btn-sm" style="font-size:10px;padding:4px 9px" onclick="cropperSetAspectRatio(1.77, 'Wide Archive (16:9)')">🖥️ Wide (16:9)</button>
+          <button type="button" class="btn ghost btn-sm cropper-ratio-btn" data-ratio="2.2" style="font-size:10px;padding:4px 9px;${Math.abs(targetRatio-2.2)<0.1?'border-color:var(--red);background:#28181d;color:#fff':''}" onclick="cropperSetAspectRatio(2.2, 'Franchise Banner (2.2:1)')">🏆 Franchise (2.2:1)</button>
+          <button type="button" class="btn ghost btn-sm cropper-ratio-btn" data-ratio="1.77" style="font-size:10px;padding:4px 9px;${Math.abs(targetRatio-1.77)<0.1?'border-color:var(--red);background:#28181d;color:#fff':''}" onclick="cropperSetAspectRatio(1.77, 'Wide (16:9)')">🖥️ Wide (16:9)</button>
+          <button type="button" class="btn ghost btn-sm cropper-ratio-btn" data-ratio="1.0" style="font-size:10px;padding:4px 9px;${Math.abs(targetRatio-1.0)<0.1?'border-color:var(--red);background:#28181d;color:#fff':''}" onclick="cropperSetAspectRatio(1.0, 'Square (1:1)')">⏹️ Square (1:1)</button>
+          <button type="button" class="btn ghost btn-sm cropper-ratio-btn" data-ratio="${vertRatioDisplay}" style="font-size:10px;padding:4px 9px;${Math.abs(targetRatio-vertRatioDisplay)<0.05?'border-color:var(--red);background:#28181d;color:#fff':''}" onclick="cropperSetAspectRatio(${vertRatioDisplay}, 'Vertical Panel (~${vertRatioDisplay})')">📱 Vertical (~${vertRatioDisplay})</button>
           <span id="cropperShapeTag" class="tag" style="margin-left:auto;font-size:9px;background:#1f1f2a;color:#ffd166;border:1px solid #48485e;padding:3px 7px">
             ${esc(window._activeCropper.panelShapeName)}
           </span>
@@ -7076,6 +7289,20 @@ function cropperSetAspectRatio(ratio, shapeName){
   if(!state) return;
   state.aspectRatio = ratio;
   state.panelShapeName = shapeName;
+  let shapeTag = document.querySelector('#cropperShapeTag');
+  if(shapeTag) shapeTag.textContent = shapeName;
+  document.querySelectorAll('.cropper-ratio-btn').forEach(btn => {
+    let r = parseFloat(btn.dataset.ratio);
+    if(Math.abs(r - ratio) < 0.08){
+      btn.style.borderColor = 'var(--red)';
+      btn.style.background = '#28181d';
+      btn.style.color = '#fff';
+    } else {
+      btn.style.borderColor = '';
+      btn.style.background = '';
+      btn.style.color = '';
+    }
+  });
   cropperComputeBoxDimensions();
   cropperUpdateView();
 }
@@ -7350,11 +7577,14 @@ function cropperCommitSave(){
   let canvas = document.createElement('canvas');
   let targetRatio = boxW / boxH;
   let outW, outH;
-  if(targetRatio < 1){ // Portrait / vertical card
+  if(Math.abs(targetRatio - 1.0) < 0.08){ // Square avatar
+    outW = 512;
+    outH = 512;
+  } else if(targetRatio < 1){ // Portrait / vertical card
     outW = 640;
     outH = Math.round(outW / targetRatio);
-  } else { // Landscape card
-    outW = 900;
+  } else { // Landscape card / franchise banner
+    outW = 960;
     outH = Math.round(outW / targetRatio);
   }
   canvas.width = outW;
@@ -7568,7 +7798,7 @@ function removePrimetimeCover(){
 }
 
 function openPrimetimeCoverEditor(){
-  if(!moderator)return;
+  if(!moderator) return;
   let currentCover = pulsePanelImages.primetime
     || pulsePanelImages.global
     || '';
@@ -7577,25 +7807,33 @@ function openPrimetimeCoverEditor(){
     if(saved && !currentCover) currentCover = saved;
   } catch(e){}
 
-  document.querySelector('#modal').innerHTML=`<div class="modal-wrap"><div class="modal" style="max-width:510px">
-    <div class="modal-head">
-      <div>
-        <div class="eyebrow">Primetime Broadcast Graphic</div>
-        <h2>Edit Primetime Cover</h2>
-      </div>
-      <button class="close" onclick="closeModal()">×</button>
-    </div>
-    <p class="sub">This image is used as the background graphic for the PRIMETIME Matchup card. It saves globally as the default across all tournaments until you change it.</p>
-    <div class="field">
-      <label>Upload Primetime Background</label>
-      <input id="primetimeFile" type="file" accept="image/png,image/jpeg,image/webp" onchange="previewPrimetimeCover(event)">
-    </div>
-    <div id="primetimePreview" style="height:190px;border-radius:6px;margin-top:14px;background:${currentCover?`url('${currentCover}') center/cover`:'#25252b'};border:1px solid #3d232c"></div>
-    <div class="creator-actions">
-      <button class="btn ghost" onclick="removePrimetimeCover()">Remove cover</button>
-      <button class="btn" onclick="savePrimetimeCover()">Save cover</button>
-    </div>
-  </div></div>`;
+  openVisualCoverCropper({
+    title: 'Primetime Matchup Graphic',
+    eyebrow: 'Broadcast Graphic & Banner',
+    description: 'Frame your background artwork for the primetime broadcast card. Drag or use the sliders to crop and focus.',
+    aspectRatio: 1.85,
+    panelShapeName: 'Broadcast Banner (~1.85)',
+    currentCover: currentCover,
+    mockOverlay: 'primetime',
+    onSave: function(croppedDataUrl){
+      pulsePanelImages.primetime = croppedDataUrl;
+      pulsePanelImages.global = croppedDataUrl;
+      if(pulsePanelImages.primetimeSlots) delete pulsePanelImages.primetimeSlots;
+      try {
+        localStorage.setItem('draftdex-primetime-cover', croppedDataUrl);
+        localStorage.setItem('draftdex-pulsepanels', JSON.stringify(pulsePanelImages));
+        for(let i=0; i<10; i++) localStorage.removeItem(`draftdex-primetime-slot-${i}`);
+      } catch(e){}
+      if(moderator) pushMediaToCloud();
+      persistLeague();
+      closeModal();
+      render();
+      if(typeof showDraftToast === 'function') showDraftToast('📺 Primetime graphic cropped & saved!');
+    },
+    onRemove: function(){
+      removePrimetimeCover();
+    }
+  });
 }
 
 function seedTopCut(t){let groups=Object.keys(groupsOf(t)),per=advancePerGroup(t),entries=[];for(let rank=0;rank<per;rank++)groups.forEach(g=>{let x=getStand(t,g)[rank];if(x)entries.push(x.p)});return entries}
@@ -15317,7 +15555,7 @@ function Teams(){
 
   let actions = moderator ? `<button class="btn ghost" onclick="openTournamentPlayers()">Edit tournament teams</button>` : '';
 
-  return head('Teams', t.name + ' rosters & franchises', actions) + `
+  return head('Teams', t.name + ' Rosters & Franchises', actions) + `
     <div class="teams">
       ${t.players.map(p => {
         let ovrObj = calculatePlayerOVR(p);
@@ -15327,51 +15565,101 @@ function Teams(){
         let coverImg = teamCovers[p];
         let bannerBg = coverImg 
           ? `style="background-image:url('${esc(coverImg)}');background-size:cover;background-position:center"`
-          : `style="background:linear-gradient(135deg, hsl(${hueOf(p)} 42% 22%), #171722 80%)"`;
+          : `style="background:linear-gradient(135deg, hsl(${hueOf(p)} 45% 22%), #13131c 85%)"`;
         let rec = tournamentRecord(t, p);
+        let q = ensureProfile(p);
+        let titlesCount = (q.cups && q.cups.length) || 0;
+        let pGroup = groupsOf(t)[p] || t.groupAssignments?.[p] || '';
 
         return `
           <div class="team-modern-card" onclick="openProfile('${jsArg(p)}')">
-            <!-- Header Banner with Cover Art & Coach Info -->
+            <!-- Grand Franchise Banner -->
             <div class="team-card-banner" ${bannerBg}>
               <div class="team-card-banner-overlay"></div>
-              <div class="team-card-topbar">
-                <div style="display:flex;align-items:center;gap:11px;min-width:0">
-                  <span class="avatar mini" style="background-image:${faceArt};background-size:cover;background-position:center;width:42px;height:42px;border-radius:50%;display:grid;place-items:center;border:2px solid ${ovrObj.color};font:800 16px 'Barlow Condensed';flex:none;box-shadow:0 3px 12px rgba(0,0,0,0.65)">${faceLetter}</span>
-                  <div style="min-width:0">
-                    <div style="font-size:10px;font-weight:800;letter-spacing:1px;color:#ff858b;text-transform:uppercase">${esc(p)}</div>
-                    <h3 style="font:800 22px 'Barlow Condensed';color:#f5f3f0;margin:1px 0 0;line-height:1.1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;letter-spacing:.3px">${esc(teamName(t,p))}</h3>
-                  </div>
+              
+              <!-- Top bar: Group tag, Tournament Record chip & OVR badge -->
+              <div class="team-card-banner-top">
+                <div style="display:flex;align-items:center;gap:6px">
+                  ${pGroup ? `<span class="team-franchise-tag">⚡ ${esc(pGroup)}</span>` : `<span class="team-franchise-tag">⚡ FRANCHISE</span>`}
+                  ${titlesCount > 0 ? `<span class="team-franchise-tag" style="color:#ffd166;border-color:rgba(255,209,102,0.3)">🏆 ${titlesCount}x CHAMP</span>` : ''}
                 </div>
-                <div style="display:flex;align-items:center;gap:6px;flex:none">
+                <div style="display:flex;align-items:center;gap:8px">
+                  <span style="font:800 12px 'Barlow Condensed';background:rgba(10,10,16,0.85);backdrop-filter:blur(6px);border:1px solid rgba(255,255,255,0.18);padding:3px 8px;border-radius:4px;color:#f5f3f0;letter-spacing:.5px">
+                    ${rec.w}-${rec.l} <span style="color:#8e8c98;font-size:10px">RECORD</span>
+                  </span>
                   ${ovrObj.badgeHtml}
+                </div>
+              </div>
+
+              <!-- Bottom of Banner: Coach Emblem & Franchise Title -->
+              <div class="team-card-banner-bottom">
+                <div class="team-coach-emblem-wrap">
+                  <div class="team-coach-emblem" style="background-image:${faceArt};border:2.5px solid ${ovrObj.color};box-shadow:0 0 14px ${ovrObj.glow || 'rgba(0,0,0,0.6)'}">${faceLetter}</div>
+                  ${titlesCount > 0 ? `<div class="team-champ-crown" title="${titlesCount}x League Champion">👑</div>` : ''}
+                </div>
+                <div class="team-title-wrap">
+                  <div class="team-coach-eyebrow">
+                    <span>HEAD COACH · ${esc(p)}</span>
+                  </div>
+                  <h3 class="team-franchise-name" title="${esc(teamName(t,p))}">${esc(teamName(t,p))}</h3>
                 </div>
               </div>
             </div>
 
-            <!-- Body: Drafted Pokémon Roster Grid with Sprites -->
+            <!-- Stats Bar -->
+            <div class="team-card-statsbar">
+              <div class="team-stat-item"><span>All-Time:</span> <b>${esc(q.record || '0-0')}</b></div>
+              <div class="team-stat-item"><span>Top Cut:</span> <b>${q.tops || 0}x</b></div>
+              <div class="team-stat-item"><span>Titles:</span> <b>${titlesCount}</b></div>
+              <div class="team-stat-item" style="margin-left:auto"><span>Tournament Form:</span> <b style="color:${rec.w > rec.l ? '#4bdd91' : (rec.l > rec.w ? '#ff7575' : '#ffd166')}">${rec.w}-${rec.l}</b></div>
+            </div>
+
+            <!-- Body: Drafted Pokémon Roster Showcase -->
             <div class="team-card-body">
-              <div style="margin-bottom:8px">
-                <span style="font-size:10px;font-weight:800;color:#a09fa8;letter-spacing:.8px;text-transform:uppercase">Roster</span>
+              <div class="team-roster-head">
+                <span class="team-roster-title">⚔️ Draft Roster</span>
+                <span class="team-roster-count">${teamMons.length ? `${teamMons.length} Pokémon Drafted` : '10 Allocation Slots'}</span>
               </div>
 
-              <div class="team-roster-grid">
-                ${teamMons.length ? teamMons.map(mon => `
-                  <div class="team-mon-chip" title="${esc(mon)}">
-                    <img src="${esc(pokeSprite(mon))}" class="team-mon-sprite" alt="${esc(mon)}" loading="lazy" onerror="handleSpriteError(this)">
-                    <span class="team-mon-name">${esc(mon)}</span>
+              ${teamMons.length ? `
+                <div class="team-roster-grid">
+                  ${teamMons.map(mon => {
+                    let monName = typeof mon === 'string' ? mon : (mon.pokemon || mon.name || '');
+                    let theme = getPokemonTypeTheme(monName);
+                    let pType = getPokemonPrimaryType(monName);
+                    let sprite = pokeSprite(monName);
+                    return `
+                      <div class="team-mon-card" style="background:linear-gradient(145deg,${theme.bg},${theme.bgEnd});border-color:${theme.border};box-shadow:0 4px 14px ${theme.glow}" title="${esc(monName)} · ${esc(pType)}">
+                        <span class="team-mon-card-type-badge" style="background:${theme.badgeBg};color:${theme.badgeText}">${esc(pType)}</span>
+                        <img src="${esc(sprite)}" class="team-mon-card-sprite" alt="${esc(monName)}" loading="lazy" onerror="handleSpriteError(this)">
+                        <span class="team-mon-card-name">${esc(monName)}</span>
+                      </div>
+                    `;
+                  }).join('')}
+                </div>
+              ` : `
+                <!-- Authentic 10-Slot Pre-Draft Showcase -->
+                <div>
+                  <div class="team-draft-pedestal-grid">
+                    ${[1,2,3,4,5,6,7,8,9,10].map(slotNum => `
+                      <div class="team-draft-pedestal">
+                        <span class="team-draft-slot-num">#${slotNum < 10 ? '0' + slotNum : slotNum}</span>
+                        <span class="team-draft-slot-icon">⚡</span>
+                        <span class="team-draft-slot-label">Slot</span>
+                      </div>
+                    `).join('')}
                   </div>
-                `).join('') : `
-                  <div style="grid-column:1/-1;padding:16px 10px;text-align:center;font-size:11px;color:#747280;background:#111116;border:1px dashed #242430;border-radius:6px">
-                    No Pokémon drafted yet
+                  <div style="margin-top:10px;padding:8px 12px;background:#101017;border:1px solid #20202e;border-radius:6px;display:flex;align-items:center;justify-content:space-between">
+                    <span style="font-size:11px;color:#858392;font-weight:600">Awaiting tournament draft session</span>
+                    <span class="tag" style="font-size:9px;background:#1e1a12;color:#ffd166;border-color:#524018">SEASON DRAFT PENDING</span>
                   </div>
-                `}
-              </div>
+                </div>
+              `}
             </div>
 
             <!-- Footer: Actions -->
             <div class="team-card-foot">
-              <span class="team-profile-link">View Coach Profile & Career History →</span>
+              <span class="team-profile-link">View Coach Profile &amp; Career History →</span>
               ${moderator ? `
                 <button class="cover-edit-btn" onclick="event.stopPropagation();openTeamCoverEditor('${jsArg(p)}')">
                   📷 Edit Cover
