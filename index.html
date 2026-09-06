@@ -491,6 +491,8 @@ details[open] > .past-tourney-summary .past-chevron{transform:rotate(180deg);col
 .hof-card.hof-glow-ice:hover{border-color:#60a5fa;box-shadow:0 0 28px rgba(59,130,246,0.52)}
 .hof-card.hof-glow-prophet{border-color:#6366f1;background:linear-gradient(135deg,#19193b,#16161c 65%);box-shadow:0 0 20px rgba(99,102,241,0.32),inset 0 0 12px rgba(99,102,241,0.08)}
 .hof-card.hof-glow-prophet:hover{border-color:#818cf8;box-shadow:0 0 28px rgba(99,102,241,0.52)}
+.hof-card.hof-glow-heartbreak{border-color:#f43f5e;background:linear-gradient(135deg,#2e0c14,#16161c 65%);box-shadow:0 0 20px rgba(244,63,94,0.30),inset 0 0 12px rgba(244,63,94,0.08)}
+.hof-card.hof-glow-heartbreak:hover{border-color:#fb7185;box-shadow:0 0 28px rgba(244,63,94,0.50)}
 .hof-card.gold-card{border-color:#6e501e;background:linear-gradient(135deg,#23190d,#16161c 65%)}
 .hof-card.red-card{border-color:#6b242e;background:linear-gradient(135deg,#261216,#16161c 65%)}
 .hof-card-icon{font-size:26px;margin-bottom:8px}
@@ -11759,6 +11761,7 @@ function calculateLeagueRecords(forceRefresh = false){
       losses:0,
       cleanSweeps:0,
       game3Wins:0,
+      game3Losses:0,
       predPoints:0,
       consecutiveMissedTopCuts:0,
       maxWinStreak:0,
@@ -11797,6 +11800,7 @@ function calculateLeagueRecords(forceRefresh = false){
         curL++;
         curW=0;
         if(curL>maxL)maxL=curL;
+        if(maxS === 2 && minS === 1) s.game3Losses = (s.game3Losses || 0) + 1;
       }
     });
     s.wins=s.matches.filter(x=>x.won).length;
@@ -12360,6 +12364,8 @@ function calculateLeagueRecords(forceRefresh = false){
   let maxSweepsHolders = [];
   let maxGame3WinsAll = 0;
   let maxGame3WinsHolders = [];
+  let maxGame3LossesAll = 0;
+  let maxGame3LossesHolders = [];
   let maxPredPointsAll = 0;
   let maxPredPointsHolders = [];
 
@@ -12379,6 +12385,13 @@ function calculateLeagueRecords(forceRefresh = false){
       maxGame3WinsHolders = [p];
     } else if(s.game3Wins === maxGame3WinsAll && maxGame3WinsAll > 0){
       if(!maxGame3WinsHolders.includes(p)) maxGame3WinsHolders.push(p);
+    }
+
+    if(s.game3Losses > maxGame3LossesAll){
+      maxGame3LossesAll = s.game3Losses;
+      maxGame3LossesHolders = [p];
+    } else if(s.game3Losses === maxGame3LossesAll && maxGame3LossesAll > 0){
+      if(!maxGame3LossesHolders.includes(p)) maxGame3LossesHolders.push(p);
     }
 
     // Evaluate consecutive missed top cuts for 'The Process' badge
@@ -12596,6 +12609,7 @@ function calculateLeagueRecords(forceRefresh = false){
         maxCareerWins:{value:maxCareerWinsAll,holders:allPlayers.filter(p=>statsByPlayer[p].wins===maxCareerWinsAll&&maxCareerWinsAll>0)},
         maxSweeps:{value:maxSweepsAll,holders:maxSweepsHolders},
         maxGame3Wins:{value:maxGame3WinsAll,holders:maxGame3WinsHolders},
+        maxGame3Losses:{value:maxGame3LossesAll,holders:maxGame3LossesHolders},
         maxWinStreak:{value:maxWinAll,holders:allPlayers.filter(p=>statsByPlayer[p].maxWinStreak===maxWinAll&&maxWinAll>0)},
         maxLossStreak:{value:maxLossAll,holders:allPlayers.filter(p=>statsByPlayer[p].maxLossStreak===maxLossAll&&maxLossAll>0)},
         bestTourneyGD:{value:maxTourneyGDAll,entries:maxTourneyGDHolders},
@@ -12656,7 +12670,20 @@ function Records(){
         </div>
       </div>
 
-      <!-- 4. All-Time Match Wins -->
+      <!-- 4. Career Prediction Points -->
+      <div class="hof-card hof-glow-prophet">
+        <div>
+          <div class="hof-card-icon">🔮</div>
+          <div class="hof-card-title">Career Prediction Points</div>
+          <div class="hof-card-val">${records.maxPredPoints.value} <span style="font-size:18px;font-weight:600;color:#a5b4fc">Pts</span></div>
+        </div>
+        <div class="hof-card-holder">
+          <span style="font-size:11px;color:#8e8c95">All-Time Prophet:</span>
+          <b>${records.maxPredPoints.holders.length ? records.maxPredPoints.holders.map(p => playerLink(p)).join(', ') : '—'}</b>
+        </div>
+      </div>
+
+      <!-- 5. All-Time Match Wins -->
       <div class="hof-card hof-glow-wins">
         <div>
           <div class="hof-card-icon">🏆</div>
@@ -12669,7 +12696,7 @@ function Records(){
         </div>
       </div>
 
-      <!-- 5. Most 2-0 Clean Sweeps -->
+      <!-- 6. Most 2-0 Clean Sweeps -->
       <div class="hof-card hof-glow-sweeps">
         <div>
           <div class="hof-card-icon">🧹</div>
@@ -12682,7 +12709,7 @@ function Records(){
         </div>
       </div>
 
-      <!-- 6. Most Game 3 Wins -->
+      <!-- 7. Most Game 3 Wins -->
       <div class="hof-card hof-glow-ice">
         <div>
           <div class="hof-card-icon">🧊</div>
@@ -12695,7 +12722,20 @@ function Records(){
         </div>
       </div>
 
-      <!-- 7. All-Time Win Streak -->
+      <!-- 8. Most Game 3 Losses -->
+      <div class="hof-card hof-glow-heartbreak">
+        <div>
+          <div class="hof-card-icon">💔</div>
+          <div class="hof-card-title">Most Game 3 Losses</div>
+          <div class="hof-card-val">${records.maxGame3Losses.value} <span style="font-size:18px;font-weight:600;color:#fb7185">Deciders</span></div>
+        </div>
+        <div class="hof-card-holder">
+          <span style="font-size:11px;color:#8e8c95">Heartbreak Leader:</span>
+          <b>${records.maxGame3Losses.holders.length?records.maxGame3Losses.holders.map(p=>playerLink(p)).join(', '):'—'}</b>
+        </div>
+      </div>
+
+      <!-- 9. All-Time Win Streak -->
       <div class="hof-card hof-glow-win-streak">
         <div>
           <div class="hof-card-icon">🔥</div>
@@ -12708,7 +12748,7 @@ function Records(){
         </div>
       </div>
 
-      <!-- 8. All-Time Loss Streak -->
+      <!-- 10. All-Time Loss Streak -->
       <div class="hof-card hof-glow-cold-streak">
         <div>
           <div class="hof-card-icon">❄️</div>
@@ -12721,7 +12761,7 @@ function Records(){
         </div>
       </div>
 
-      <!-- 9. Best Game Differential (Season) -->
+      <!-- 11. Best Game Diff (Season) -->
       <div class="hof-card hof-glow-best-gd">
         <div>
           <div class="hof-card-icon">⚡</div>
@@ -12734,7 +12774,7 @@ function Records(){
         </div>
       </div>
 
-      <!-- 10. Worst Game Differential (Season) -->
+      <!-- 12. Worst Game Diff (Season) -->
       <div class="hof-card hof-glow-worst-gd">
         <div>
           <div class="hof-card-icon">💀</div>
@@ -12744,19 +12784,6 @@ function Records(){
         <div class="hof-card-holder">
           <span style="font-size:11px;color:#8e8c95">Historic Low:</span>
           <b>${records.worstTourneyGD.entries.length ? records.worstTourneyGD.entries.map(e => playerLink(e.player) + ` <span style="font-size:10px;color:#f472b6;font-weight:700">(${esc(e.tournament)})</span>`).join(', ') : '—'}</b>
-        </div>
-      </div>
-
-      <!-- 11. Most Prediction Points -->
-      <div class="hof-card hof-glow-prophet">
-        <div>
-          <div class="hof-card-icon">🔮</div>
-          <div class="hof-card-title">Career Prediction Points</div>
-          <div class="hof-card-val">${records.maxPredPoints.value} <span style="font-size:18px;font-weight:600;color:#a5b4fc">Pts</span></div>
-        </div>
-        <div class="hof-card-holder">
-          <span style="font-size:11px;color:#8e8c95">All-Time Prophet:</span>
-          <b>${records.maxPredPoints.holders.length ? records.maxPredPoints.holders.map(p => playerLink(p)).join(', ') : '—'}</b>
         </div>
       </div>
     </div>
