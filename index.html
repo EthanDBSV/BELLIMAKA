@@ -3220,21 +3220,26 @@ function shouldApply(incoming){
   }
 
   // 2. Protect and accept draft progress: if incoming cloud draft has more picks, ALWAYS accept!
-  let curT = ongoingT() || activeT();
-  if(curT && incoming.tournaments && incoming.tournaments[curT.id]){
-    let incDraft = incoming.tournaments[curT.id].draftData;
-    let locDraft = curT.draftData;
-    if(incDraft && Array.isArray(incDraft.picks)){
-      let locPicksLen = (locDraft && Array.isArray(locDraft.picks)) ? locDraft.picks.length : 0;
-      if(incDraft.picks.length > locPicksLen){
-        knownRev = Math.max(knownRev, incomingRev);
-        lastLocalUpdate = Math.max(lastLocalUpdate, incomingTime || Date.now());
-        try {
-          localStorage.setItem('draftdex-rev', String(knownRev));
-          localStorage.setItem('draftdex-updated-at', String(lastLocalUpdate));
-        } catch(e){}
-        return true;
+  if(incoming.tournaments && typeof incoming.tournaments === 'object'){
+    let hasMorePicks = false;
+    for(let tId in incoming.tournaments){
+      let incT = incoming.tournaments[tId];
+      let locT = tournamentData[tId];
+      let incPicks = incT?.draftData?.picks?.length || 0;
+      let locPicks = locT?.draftData?.picks?.length || 0;
+      if(incPicks > locPicks){
+        hasMorePicks = true;
+        break;
       }
+    }
+    if(hasMorePicks){
+      knownRev = Math.max(knownRev, incomingRev);
+      lastLocalUpdate = Math.max(lastLocalUpdate, incomingTime || Date.now());
+      try {
+        localStorage.setItem('draftdex-rev', String(knownRev));
+        localStorage.setItem('draftdex-updated-at', String(lastLocalUpdate));
+      } catch(e){}
+      return true;
     }
   }
 
@@ -4484,6 +4489,10 @@ function setupLeagueStateRealtime(){
 }
 
 function teardownDraftRealtime(){
+  if(draftPollTimer){
+    clearInterval(draftPollTimer);
+    draftPollTimer = null;
+  }
   if(supabaseClient){
     if(draftRealtimeChannel){
       try { supabaseClient.removeChannel(draftRealtimeChannel); } catch(e){}
@@ -4502,10 +4511,25 @@ function setupDraftRealtime(){
   let isDraftActive = (t && t.phase === 'draft');
   let isViewingDraft = (current === 'Draft');
 
-  // ONLY connect WebSocket if tournament is in active draft phase AND user is looking at Draft Room in a visible tab!
+  // ONLY connect WebSocket and background poll if tournament is in active draft phase AND user is looking at Draft Room in a visible tab!
   if(!isDraftActive || !isViewingDraft || document.hidden){
     teardownDraftRealtime();
     return;
+  }
+
+  // 1. Gentle background safety check (every 4 seconds) ONLY while actively viewing visible Draft Room
+  // Transmits only ~350 bytes per check (less than 300 KB per hour)
+  if(!draftPollTimer){
+    draftPollTimer = setInterval(() => {
+      if(current === 'Draft' && !document.hidden && !isSandboxMode()){
+        syncFromCloud(false);
+      } else {
+        if(draftPollTimer){
+          clearInterval(draftPollTimer);
+          draftPollTimer = null;
+        }
+      }
+    }, 4000);
   }
 
   if(draftRealtimeChannel) return; // already active
@@ -4532,6 +4556,10 @@ function setupDraftRealtime(){
 
   draftRealtimeChannel.subscribe((status) => {
     console.log('Draftdex Realtime broadcast status:', status);
+    if(status === 'SUBSCRIBED'){
+      // Catch up on any picks missed while channel was connecting
+      syncFromCloud(false);
+    }
   });
 }
 
@@ -4619,35 +4647,67 @@ function applyRemoteDraftControl(payload){
 }
 
 var isSyncingFromCloud = false;
-async function syncFromCloud(){
+async function syncFromCloud(force = false){
   if(isSandboxMode() || !supabaseClient || isSyncingFromCloud) return;
   isSyncingFromCloud = true;
   try {
     let localUpdatedAt = Number(localStorage.getItem('draftdex-updated-at') || 0);
+    let localRev = Number(localStorage.getItem('draftdex-rev') || 0) || knownRev || 0;
     let hasLocalTourneys = Object.keys(tournamentData).length > 0;
+    let curT = ongoingT() || activeT();
+    let isDraftActive = (curT && curT.phase === 'draft');
 
-    // Ultra-lightweight revision check (transfers only ~30 bytes instead of 69 KB)
-    if(hasLocalTourneys && localUpdatedAt > 0){
-      let { data: meta, error: metaErr } = await supabaseClient.from('league_state').select('updated_at').eq('id', 'main').maybeSingle();
-      if(!metaErr && meta?.updated_at){
-        let cloudTime = new Date(meta.updated_at).getTime();
-        if(localUpdatedAt >= cloudTime){
-          return; // Local state is already fresh; skip downloading 69 KB!
+    // Ultra-lightweight check: ONLY query ~58 bytes (rev/time) or ~350 bytes (if draft active)
+    if(!force && hasLocalTourneys && (localUpdatedAt > 0 || localRev > 0)){
+      let selectFields = 'updated_at,data->rev';
+      if(isDraftActive && curT.id){
+        selectFields += `,data->tournaments->${curT.id}->draftData->picks`;
+      }
+
+      let { data: meta, error: metaErr } = await supabaseClient
+        .from('league_state')
+        .select(selectFields)
+        .eq('id', 'main')
+        .maybeSingle();
+
+      if(!metaErr && meta){
+        let cloudRev = Number(meta.rev || 0);
+        let cloudTime = meta.updated_at ? new Date(meta.updated_at).getTime() : 0;
+        let cloudPicks = Array.isArray(meta.picks) ? meta.picks : null;
+        let localPicksCount = (curT?.draftData?.picks || []).length;
+
+        let hasNewDraftPicks = (cloudPicks && cloudPicks.length > localPicksCount);
+        let hasNewRev = (cloudRev > localRev);
+        let hasNewTime = (cloudTime > 0 && cloudTime > localUpdatedAt);
+
+        // If local state is completely up-to-date across all indicators, exit immediately.
+        // Zero wasted egress!
+        if(!hasNewDraftPicks && !hasNewRev && !hasNewTime){
+          return;
         }
       }
     }
 
-    let { data, error } = await supabaseClient.from('league_state').select('data,updated_at').eq('id', 'main').maybeSingle();
+    // Changes confirmed in cloud! Download the updated payload.
+    let { data, error } = await supabaseClient
+      .from('league_state')
+      .select('data,updated_at')
+      .eq('id', 'main')
+      .maybeSingle();
+
     if(!error && data?.data){
       let incoming = data.data;
-      if(data.updated_at){
-        let cloudTime = new Date(data.updated_at).getTime();
-        lastLocalUpdate = Math.max(Number(lastLocalUpdate || 0), cloudTime);
-        try { localStorage.setItem('draftdex-updated-at', String(lastLocalUpdate)); } catch(e){}
-      }
       if(shouldApply(incoming)){
         applySharedState(incoming);
+        if(data.updated_at){
+          let cloudTime = new Date(data.updated_at).getTime();
+          lastLocalUpdate = Math.max(Number(lastLocalUpdate || 0), cloudTime);
+          try { localStorage.setItem('draftdex-updated-at', String(lastLocalUpdate)); } catch(e){}
+        }
         render();
+        if(current === 'Draft' && typeof centerActiveDraftPickTile === 'function'){
+          setTimeout(centerActiveDraftPickTile, 50);
+        }
       }
     }
   } catch(e){
@@ -4657,32 +4717,34 @@ async function syncFromCloud(){
   }
 }
 
-// Throttled re-sync on mobile / tab wake (minimum 15s interval)
-var lastCloudSyncTime = 0;
+// Sync on mobile wake / tab visibility / window focus
+var lastCloudCheckTime = 0;
+function handleAppForeground(forced = false){
+  if(document.hidden || isSandboxMode()) return;
+  let now = Date.now();
+  let isDraftRoom = (current === 'Draft');
+
+  // If viewing the Draft Room, ALWAYS check immediately on wake (no delay!)
+  // If viewing static tabs, throttle checks to at least 8 seconds between focus switches
+  if(forced || isDraftRoom || (now - lastCloudCheckTime > 8000)){
+    lastCloudCheckTime = now;
+    syncFromCloud(false);
+  }
+  setupLeagueStateRealtime();
+  setupDraftRealtime();
+}
+
 document.addEventListener('visibilitychange', () => {
   if(document.visibilityState === 'visible'){
-    let now = Date.now();
-    if(now - lastCloudSyncTime > 15000){
-      lastCloudSyncTime = now;
-      syncFromCloud();
-    }
-    setupLeagueStateRealtime();
-    setupDraftRealtime();
+    handleAppForeground(false);
   } else {
-    // When tab is hidden / backgrounded, immediately disconnect all WebSockets to consume ZERO heartbeats
     teardownDraftRealtime();
     teardownLeagueStateRealtime();
   }
 });
-window.addEventListener('pageshow', () => {
-  let now = Date.now();
-  if(now - lastCloudSyncTime > 15000){
-    lastCloudSyncTime = now;
-    syncFromCloud();
-  }
-  setupLeagueStateRealtime();
-  setupDraftRealtime();
-});
+window.addEventListener('pageshow', () => handleAppForeground(false));
+window.addEventListener('focus', () => handleAppForeground(false));
+window.addEventListener('online', () => handleAppForeground(true));
 
 async function initSupabase(){
   if(!supabaseReady() || supabaseInited) return;
@@ -4724,7 +4786,7 @@ async function pushStateToSupabase(payload, updateTime){
 }
 
 async function flushSync(){
-  if(isSandboxMode() || !supabaseClient || !moderator) return;
+  if(isSandboxMode() || !supabaseClient || (!moderator && !sessionUser)) return;
 
   // Clean tournaments to remove heavy base64 strings from frequent main sync payload
   let cleanTournaments = {};
@@ -15736,6 +15798,10 @@ function makeDraftPick(tId, pokemonName, forcedPlayer = null){
       });
     } catch(e){}
   }
+  if(!isSandboxMode() && (moderator || sessionUser)){
+    clearTimeout(syncTimer);
+    flushSync();
+  }
 }
 
 function undoDraftPick(tId){
@@ -15771,6 +15837,10 @@ function undoDraftPick(tId){
       });
     } catch(e){}
   }
+  if(!isSandboxMode() && (moderator || sessionUser)){
+    clearTimeout(syncTimer);
+    flushSync();
+  }
 }
 
 function startDraft(tId){
@@ -15789,6 +15859,10 @@ function startDraft(tId){
         payload: { tournamentId: t.id, action: 'start', timestamp: Date.now() }
       });
     } catch(e){}
+  }
+  if(!isSandboxMode() && (moderator || sessionUser)){
+    clearTimeout(syncTimer);
+    flushSync();
   }
 }
 
@@ -15809,6 +15883,10 @@ function pauseDraft(tId){
       });
     } catch(e){}
   }
+  if(!isSandboxMode() && (moderator || sessionUser)){
+    clearTimeout(syncTimer);
+    flushSync();
+  }
 }
 
 function resumeDraft(tId){
@@ -15827,6 +15905,10 @@ function resumeDraft(tId){
         payload: { tournamentId: t.id, action: 'resume', timestamp: Date.now() }
       });
     } catch(e){}
+  }
+  if(!isSandboxMode() && (moderator || sessionUser)){
+    clearTimeout(syncTimer);
+    flushSync();
   }
 }
 
