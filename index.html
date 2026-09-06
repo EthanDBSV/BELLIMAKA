@@ -3208,8 +3208,8 @@ function shouldApply(incoming){
   let incomingRev = typeof incoming.rev === 'number' ? incoming.rev : 0;
   let incomingTime = typeof incoming.updatedAt === 'number' ? incoming.updatedAt : (Date.parse(incoming.updated_at) || 0);
 
-  // 1. If incoming timestamp is strictly newer or revision is higher, ALWAYS accept!
-  if(!lastLocalUpdate || (incomingTime && incomingTime > lastLocalUpdate) || incomingRev > knownRev){
+  // 1. If local client has no pending unpushed edits in flight, ALWAYS accept cloud truth!
+  if(syncTimer === null){
     knownRev = Math.max(knownRev, incomingRev);
     lastLocalUpdate = Math.max(lastLocalUpdate, incomingTime || Date.now());
     try {
@@ -3219,20 +3219,20 @@ function shouldApply(incoming){
     return true;
   }
 
-  // 2. Protect and accept draft progress: if incoming cloud draft has more picks, ALWAYS accept!
+  // 2. Protect draft progress: if incoming cloud draft has different or more picks, ALWAYS accept!
   if(incoming.tournaments && typeof incoming.tournaments === 'object'){
-    let hasMorePicks = false;
+    let hasDraftDiff = false;
     for(let tId in incoming.tournaments){
       let incT = incoming.tournaments[tId];
       let locT = tournamentData[tId];
       let incPicks = incT?.draftData?.picks?.length || 0;
       let locPicks = locT?.draftData?.picks?.length || 0;
-      if(incPicks > locPicks){
-        hasMorePicks = true;
+      if(incPicks !== locPicks){
+        hasDraftDiff = true;
         break;
       }
     }
-    if(hasMorePicks){
+    if(hasDraftDiff){
       knownRev = Math.max(knownRev, incomingRev);
       lastLocalUpdate = Math.max(lastLocalUpdate, incomingTime || Date.now());
       try {
@@ -3243,22 +3243,19 @@ function shouldApply(incoming){
     }
   }
 
-  // 3. If local made an edit strictly AFTER incoming was saved, reject stale cloud packet
-  if(incomingTime && lastLocalUpdate && incomingTime < lastLocalUpdate && incomingRev <= knownRev){
-    return false;
+  // 3. If incoming timestamp is strictly newer or revision is higher, accept
+  if(!lastLocalUpdate || (incomingTime && incomingTime > lastLocalUpdate) || incomingRev > knownRev){
+    knownRev = Math.max(knownRev, incomingRev);
+    lastLocalUpdate = Math.max(lastLocalUpdate, incomingTime || Date.now());
+    try {
+      localStorage.setItem('draftdex-rev', String(knownRev));
+      localStorage.setItem('draftdex-updated-at', String(lastLocalUpdate));
+    } catch(e){}
+    return true;
   }
 
-  if(knownRev > incomingRev){
-    return false;
-  }
-
-  knownRev = Math.max(knownRev, incomingRev);
-  lastLocalUpdate = Math.max(lastLocalUpdate, incomingTime || Date.now());
-  try {
-    localStorage.setItem('draftdex-rev', String(knownRev));
-    localStorage.setItem('draftdex-updated-at', String(lastLocalUpdate));
-  } catch(e){}
-  return true;
+  // 4. Stale packet while local save is actively in debounce flight
+  return false;
 }
 function sortedTournamentsChronological(){
   return Object.values(tournamentData).sort((a,b)=>{
@@ -4558,7 +4555,7 @@ function setupDraftRealtime(){
     console.log('Draftdex Realtime broadcast status:', status);
     if(status === 'SUBSCRIBED'){
       // Catch up on any picks missed while channel was connecting
-      syncFromCloud(false);
+      syncFromCloud(true);
     }
   });
 }
@@ -4569,23 +4566,31 @@ function applyRemoteDraftPick(payload){
   let d = ensureTournamentDraft(t);
   if(!d) return;
 
-  let exists = (d.picks || []).some(x => x.pickNumber === payload.pickNumber || (x.player === payload.player && x.pokemon.toLowerCase().trim() === payload.pokemon.toLowerCase().trim()));
-  if(!exists){
-    d.picks = d.picks || [];
-    d.picks.push({
-      round: payload.round,
-      pickNumber: payload.pickNumber,
-      player: payload.player,
-      pokemon: payload.pokemon,
-      cost: payload.cost,
-      timestamp: payload.timestamp || Date.now()
-    });
+  if(Array.isArray(payload.picks) && payload.picks.length >= (d.picks || []).length){
+    d.picks = payload.picks;
+  } else {
+    let exists = (d.picks || []).some(x => x.pickNumber === payload.pickNumber || (x.player === payload.player && x.pokemon.toLowerCase().trim() === payload.pokemon.toLowerCase().trim()));
+    if(!exists){
+      d.picks = d.picks || [];
+      d.picks.push({
+        round: payload.round,
+        pickNumber: payload.pickNumber,
+        player: payload.player,
+        pokemon: payload.pokemon,
+        cost: payload.cost,
+        timestamp: payload.timestamp || Date.now()
+      });
+    }
   }
 
-  if(!t.rosters) t.rosters = {};
-  if(!t.rosters[payload.player]) t.rosters[payload.player] = [];
-  if(!t.rosters[payload.player].includes(payload.pokemon)){
-    t.rosters[payload.player].push(payload.pokemon);
+  if(payload.rosters && typeof payload.rosters === 'object'){
+    t.rosters = payload.rosters;
+  } else {
+    if(!t.rosters) t.rosters = {};
+    if(!t.rosters[payload.player]) t.rosters[payload.player] = [];
+    if(!t.rosters[payload.player].includes(payload.pokemon)){
+      t.rosters[payload.player].push(payload.pokemon);
+    }
   }
 
   if(!roster[payload.player]) roster[payload.player] = [];
@@ -4622,11 +4627,18 @@ function applyRemoteDraftControl(payload){
   let d = ensureTournamentDraft(t);
   if(!d) return;
 
+  if(Array.isArray(payload.picks)){
+    d.picks = payload.picks;
+  }
+  if(payload.rosters && typeof payload.rosters === 'object'){
+    t.rosters = payload.rosters;
+  }
+
   if(payload.action === 'start' || payload.action === 'resume'){
     d.status = 'active';
   } else if(payload.action === 'pause'){
     d.status = 'paused';
-  } else if(payload.action === 'undo'){
+  } else if(payload.action === 'undo' && !Array.isArray(payload.picks)){
     let lastPick = (d.picks || []).pop();
     if(lastPick){
       let p = lastPick.player;
@@ -4676,9 +4688,9 @@ async function syncFromCloud(force = false){
         let cloudPicks = Array.isArray(meta.picks) ? meta.picks : null;
         let localPicksCount = (curT?.draftData?.picks || []).length;
 
-        let hasNewDraftPicks = (cloudPicks && cloudPicks.length > localPicksCount);
-        let hasNewRev = (cloudRev > localRev);
-        let hasNewTime = (cloudTime > 0 && cloudTime > localUpdatedAt);
+        let hasNewDraftPicks = (cloudPicks && cloudPicks.length !== localPicksCount);
+        let hasNewRev = (cloudRev !== localRev);
+        let hasNewTime = (cloudTime > 0 && cloudTime !== localUpdatedAt);
 
         // If local state is completely up-to-date across all indicators, exit immediately.
         // Zero wasted egress!
@@ -4728,7 +4740,7 @@ function handleAppForeground(forced = false){
   // If viewing static tabs, throttle checks to at least 8 seconds between focus switches
   if(forced || isDraftRoom || (now - lastCloudCheckTime > 8000)){
     lastCloudCheckTime = now;
-    syncFromCloud(false);
+    syncFromCloud(isDraftRoom);
   }
   setupLeagueStateRealtime();
   setupDraftRealtime();
@@ -4761,7 +4773,7 @@ async function initSupabase(){
     setupDraftRealtime();
 
     // Pull latest cloud data immediately on startup
-    await syncFromCloud();
+    await syncFromCloud(true);
   } catch(e) {
     console.warn('Draftdex: initSupabase error:', e);
     supabaseInited = false;
@@ -4786,7 +4798,7 @@ async function pushStateToSupabase(payload, updateTime){
 }
 
 async function flushSync(){
-  if(isSandboxMode() || !supabaseClient || (!moderator && !sessionUser)) return;
+  if(isSandboxMode() || !supabaseClient) return;
 
   // Clean tournaments to remove heavy base64 strings from frequent main sync payload
   let cleanTournaments = {};
@@ -14922,15 +14934,26 @@ function getDraftCurrentTurn(t){
   if(!d) return null;
   let totalPicks = getDraftTotalPicks(t);
   let picks = d.picks || [];
-  let isComplete = (picks.length >= totalPicks);
-  let currentPickDetails = isComplete ? null : getDraftPickDetails(t, picks.length);
+
+  // Find the first unpicked slot in snake draft order
+  let currentPickIdx = 0;
+  while(currentPickIdx < totalPicks && picks.some(p => p.pickNumber === (currentPickIdx + 1))){
+    currentPickIdx++;
+  }
+  if(currentPickIdx === 0 && picks.length > 0 && !picks.some(p => p.pickNumber === 1)){
+    currentPickIdx = Math.min(picks.length, totalPicks);
+  }
+
+  let isComplete = (picks.length >= totalPicks || currentPickIdx >= totalPicks);
+  let currentPickDetails = isComplete ? null : getDraftPickDetails(t, currentPickIdx);
   let upcoming = [];
   if(!isComplete){
-    for(let i = 1; i <= 8; i++){
-      let nextIdx = picks.length + i;
-      if(nextIdx < totalPicks){
-        upcoming.push(getDraftPickDetails(t, nextIdx));
+    let scanned = currentPickIdx + 1;
+    while(scanned < totalPicks && upcoming.length < 8){
+      if(!picks.some(p => p.pickNumber === (scanned + 1))){
+        upcoming.push(getDraftPickDetails(t, scanned));
       }
+      scanned++;
     }
   }
   let order = getDraftOrderList(t);
@@ -14938,10 +14961,10 @@ function getDraftCurrentTurn(t){
     isComplete,
     status: d.status || (isComplete ? 'completed' : 'pending'),
     totalPicks,
-    currentPickNumber: picks.length + 1,
+    currentPickNumber: isComplete ? totalPicks : (currentPickDetails?.pickNumber || (currentPickIdx + 1)),
     currentRound: currentPickDetails?.round || Math.ceil(totalPicks / Math.max(1, order.length)),
     player: currentPickDetails?.player || null,
-    pickIdx: picks.length,
+    pickIdx: currentPickIdx,
     upcoming
   };
 }
@@ -15798,7 +15821,7 @@ function makeDraftPick(tId, pokemonName, forcedPlayer = null){
       });
     } catch(e){}
   }
-  if(!isSandboxMode() && (moderator || sessionUser)){
+  if(!isSandboxMode() && supabaseClient){
     clearTimeout(syncTimer);
     flushSync();
   }
@@ -15833,11 +15856,11 @@ function undoDraftPick(tId){
       draftRealtimeChannel.send({
         type: 'broadcast',
         event: 'draft-control',
-        payload: { tournamentId: t.id, action: 'undo', timestamp: Date.now() }
+        payload: { tournamentId: t.id, action: 'undo', picks: t.draftData.picks, rosters: t.rosters, timestamp: Date.now() }
       });
     } catch(e){}
   }
-  if(!isSandboxMode() && (moderator || sessionUser)){
+  if(!isSandboxMode() && supabaseClient){
     clearTimeout(syncTimer);
     flushSync();
   }
@@ -15860,7 +15883,7 @@ function startDraft(tId){
       });
     } catch(e){}
   }
-  if(!isSandboxMode() && (moderator || sessionUser)){
+  if(!isSandboxMode() && supabaseClient){
     clearTimeout(syncTimer);
     flushSync();
   }
@@ -15883,7 +15906,7 @@ function pauseDraft(tId){
       });
     } catch(e){}
   }
-  if(!isSandboxMode() && (moderator || sessionUser)){
+  if(!isSandboxMode() && supabaseClient){
     clearTimeout(syncTimer);
     flushSync();
   }
@@ -15906,7 +15929,7 @@ function resumeDraft(tId){
       });
     } catch(e){}
   }
-  if(!isSandboxMode() && (moderator || sessionUser)){
+  if(!isSandboxMode() && supabaseClient){
     clearTimeout(syncTimer);
     flushSync();
   }
@@ -16064,9 +16087,9 @@ function DraftRoom(t){
           <div class="draft-snake-track">
             ${Array.from({length: turn.totalPicks}, (_, idx) => {
               let pickInfo = getDraftPickDetails(t, idx);
-              let isDone = idx < d.picks.length;
-              let isCurrent = idx === d.picks.length;
-              let pickObj = d.picks[idx];
+              let pickObj = (d.picks || []).find(p => p.pickNumber === pickInfo.pickNumber) || (idx < (d.picks || []).length ? d.picks[idx] : null);
+              let isDone = Boolean(pickObj);
+              let isCurrent = (idx === turn.pickIdx);
               let pFace = profilePictures[pickInfo.player] ? `url('${esc(profilePictures[pickInfo.player])}')` : (teamCovers[pickInfo.player] ? `url('${esc(teamCovers[pickInfo.player])}')` : fallbackArt(pickInfo.player));
               let pLetter = (profilePictures[pickInfo.player] || teamCovers[pickInfo.player]) ? '' : esc((pickInfo.player || '?')[0]);
               let pOvr = calculatePlayerOVR(pickInfo.player);
