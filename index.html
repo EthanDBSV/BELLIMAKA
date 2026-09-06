@@ -6784,8 +6784,7 @@ function removeCover(id){
 window._activeCropper = null;
 
 function openVisualCoverCropper(opts){
-  let targetRatio = opts.aspectRatio || (480 / 360);
-  let viewportH = Math.round(Math.min(320, 500 / targetRatio));
+  let targetRatio = opts.aspectRatio || (opts.mockOverlay === 'recap' ? 0.72 : (opts.mockOverlay === 'archive' ? 1.77 : 1.25));
   let initialCover = opts.currentCover || '';
 
   window._activeCropper = {
@@ -6794,7 +6793,11 @@ function openVisualCoverCropper(opts){
     panX: 50,
     panY: 50,
     aspectRatio: targetRatio,
-    viewportH: viewportH,
+    panelShapeName: opts.panelShapeName || (targetRatio < 0.9 ? 'Vertical Panel' : (targetRatio > 1.2 ? 'Wide Card' : 'Panel Cover')),
+    boxW: 0,
+    boxH: 0,
+    boxLeft: 0,
+    boxTop: 0,
     isDragging: false,
     dragStartX: 0,
     dragStartY: 0,
@@ -6809,20 +6812,20 @@ function openVisualCoverCropper(opts){
   let mockHtml = '';
   if(opts.mockOverlay === 'recap'){
     mockHtml = `
-      <div id="cropperMockOverlay" style="position:absolute;inset:0;pointer-events:none;background:linear-gradient(180deg,rgba(5,5,8,.38) 0%,rgba(5,5,8,.82) 100%);padding:14px;display:flex;flex-direction:column;justify-content:space-between">
+      <div id="cropperMockOverlay" style="position:absolute;inset:0;pointer-events:none;background:linear-gradient(180deg,rgba(5,5,8,.32) 0%,rgba(5,5,8,.82) 100%);padding:14px;display:flex;flex-direction:column;justify-content:space-between">
         <div>
           <div style="display:flex;justify-content:space-between;align-items:center">
-            <span style="font:800 13px 'Barlow Condensed';color:#f5f3f0;letter-spacing:.5px;opacity:0.85">LAST TOURNAMENT RECAP</span>
+            <span style="font:800 13px 'Barlow Condensed';color:#f5f3f0;letter-spacing:.5px;opacity:0.9">LAST TOURNAMENT RECAP</span>
             <span class="tag" style="background:#28181d;color:#ff9ba1;border:1px solid #5c242c;font-size:8px;padding:2px 6px">COMPLETE</span>
           </div>
           <div style="font-size:9px;color:var(--red);font-weight:800;letter-spacing:1px;margin-top:2px">SEASON RECAP</div>
-          <div style="margin-top:10px;background:rgba(16,16,21,0.78);padding:7px 10px;border-radius:6px;border:1px solid rgba(255,255,255,0.15);max-width:210px">
+          <div style="margin-top:10px;background:rgba(16,16,21,0.85);padding:7px 10px;border-radius:6px;border:1px solid rgba(255,255,255,0.16);max-width:210px">
             <div style="font-size:8px;color:#ffd166;font-weight:800;text-transform:uppercase">Defending Champion</div>
             <div style="font:800 15px 'Barlow Condensed';color:#fff;margin-top:1px">Champion Trainer 👑</div>
           </div>
         </div>
-        <div style="background:rgba(0,0,0,0.55);border:1px dashed rgba(255,209,102,0.45);border-radius:6px;padding:6px 10px;font-size:10px;color:#ffd166;text-align:center">
-          🏆 Winning Draft Roster Area
+        <div style="background:rgba(0,0,0,0.65);border:1px dashed rgba(255,209,102,0.5);border-radius:6px;padding:8px 10px;font-size:10px;color:#ffd166;text-align:center">
+          🏆 10-Pokémon Winning Roster Area
         </div>
       </div>
     `;
@@ -6845,115 +6848,155 @@ function openVisualCoverCropper(opts){
     `;
   }
 
+  let vertRatioDisplay = +(targetRatio < 1 ? targetRatio : 0.72).toFixed(2);
+
   document.querySelector('#modal').innerHTML = `
     <div class="modal-wrap">
-      <div class="modal" style="max-width:560px;padding:22px">
+      <div class="modal" style="max-width:640px;padding:22px;max-height:94vh;overflow-y:auto">
         <div class="modal-head">
           <div>
-            <div class="eyebrow" style="color:var(--red)">${esc(opts.eyebrow || 'Panel Cover & Crop')}</div>
+            <div class="eyebrow" style="color:var(--red)">${esc(opts.eyebrow || 'Panel Cover & Visual Crop')}</div>
             <h2 style="font:800 26px 'Barlow Condensed';margin-top:2px">${esc(opts.title || 'Edit Cover')}</h2>
           </div>
           <button class="close" onclick="closeModal()">×</button>
         </div>
-        <p class="sub" style="margin:4px 0 14px;font-size:12px;line-height:1.4">${esc(opts.description || 'Upload and frame your artwork. Drag or use the sliders to crop.')}</p>
+        <p class="sub" style="margin:4px 0 12px;font-size:12px;line-height:1.4">${esc(opts.description || 'Upload and frame your artwork. Drag or use the sliders to crop.')}</p>
 
-        <!-- File selection bar -->
-        <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;flex-wrap:wrap">
-          <label class="btn btn-sm" style="padding:7px 12px;font-size:11px;cursor:pointer;display:inline-flex;align-items:center;gap:6px">
+        <!-- Top Control Bar: Upload, Name & Overlay Toggle -->
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;flex-wrap:wrap">
+          <label class="btn btn-sm" style="padding:7px 13px;font-size:11px;cursor:pointer;display:inline-flex;align-items:center;gap:6px">
             <span>📁 Upload Image</span>
             <input id="cropperFileInput" type="file" accept="image/png,image/jpeg,image/webp" style="display:none" onchange="cropperHandleFileSelected(event)">
           </label>
           <span id="cropperFileName" style="font-size:11px;color:#9d9ba6;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:210px">
-            ${initialCover ? 'Current cover loaded' : 'No file chosen'}
+            ${initialCover ? 'Current artwork loaded' : 'No file chosen'}
           </span>
           <button id="cropperToggleOverlayBtn" type="button" class="btn ghost btn-sm" style="margin-left:auto;font-size:10px;padding:5px 9px" onclick="cropperToggleMockOverlay()">
             👁️ Overlay: ON
           </button>
         </div>
 
-        <!-- Live Viewport Frame -->
-        <div style="position:relative;width:100%;margin:0 auto">
-          <div id="cropperViewport" style="position:relative;width:100%;height:${viewportH}px;background:#0d0d12;border:2px solid #ef3038;border-radius:8px;overflow:hidden;cursor:grab;box-shadow:0 8px 30px rgba(0,0,0,0.6);touch-action:none"
+        <!-- Aspect Ratio Selection Quick Bar -->
+        <div style="display:flex;align-items:center;gap:6px;margin-bottom:12px;flex-wrap:wrap;background:#121218;padding:7px 11px;border-radius:6px;border:1px solid #232332">
+          <span style="font-size:10px;font-weight:800;color:#ffd166;letter-spacing:.6px;text-transform:uppercase;margin-right:2px">Ratio Preset:</span>
+          <button type="button" class="btn ghost btn-sm" style="font-size:10px;padding:4px 9px" onclick="cropperSetAspectRatio(${vertRatioDisplay}, 'Vertical Panel (~${vertRatioDisplay})')">📱 Vertical Panel (${vertRatioDisplay})</button>
+          <button type="button" class="btn ghost btn-sm" style="font-size:10px;padding:4px 9px" onclick="cropperSetAspectRatio(1.0, 'Square (1:1)')">⏹️ Square (1:1)</button>
+          <button type="button" class="btn ghost btn-sm" style="font-size:10px;padding:4px 9px" onclick="cropperSetAspectRatio(1.77, 'Wide Archive (16:9)')">🖥️ Wide (16:9)</button>
+          <span id="cropperShapeTag" class="tag" style="margin-left:auto;font-size:9px;background:#1f1f2a;color:#ffd166;border:1px solid #48485e;padding:3px 7px">
+            ${esc(window._activeCropper.panelShapeName)}
+          </span>
+        </div>
+
+        <!-- Live Visual Framing Stage -->
+        <div style="position:relative;width:100%">
+          <div id="cropperStage" style="position:relative;width:100%;height:390px;background:#08080c;background-image:radial-gradient(circle,#1a1a24 10%,transparent 11%);background-size:16px 16px;border:1px solid #2d2d3c;border-radius:8px;overflow:hidden;cursor:grab;user-select:none;touch-action:none"
+               onwheel="cropperHandleWheel(event)"
                onmousedown="cropperStartDrag(event)"
                ontouchstart="cropperStartDrag(event)">
             
+            <!-- Full Uploaded Image (Visible behind dimmed mask) -->
             <img id="cropperImg" src="${initialCover}" style="position:absolute;user-select:none;pointer-events:none;display:${initialCover ? 'block' : 'none'};transform-origin:top left">
 
-            <!-- Faint Rule of Thirds Grid -->
-            <div id="cropperGrid" style="position:absolute;inset:0;pointer-events:none;display:grid;grid-template-columns:1fr 1fr 1fr;grid-template-rows:1fr 1fr 1fr;opacity:0.25">
-              <div style="border-right:1px dashed #fff;border-bottom:1px dashed #fff"></div>
-              <div style="border-right:1px dashed #fff;border-bottom:1px dashed #fff"></div>
-              <div style="border-bottom:1px dashed #fff"></div>
-              <div style="border-right:1px dashed #fff;border-bottom:1px dashed #fff"></div>
-              <div style="border-right:1px dashed #fff;border-bottom:1px dashed #fff"></div>
-              <div style="border-bottom:1px dashed #fff"></div>
-              <div style="border-right:1px dashed #fff"></div>
-              <div style="border-right:1px dashed #fff"></div>
-              <div></div>
+            <!-- Illuminated Target Crop Box with Dark Surrounding Scrim Mask -->
+            <div id="cropperCropBox" style="position:absolute;box-shadow:0 0 0 9999px rgba(8,8,13,0.72);border:2px solid #ef3038;border-radius:4px;pointer-events:none;overflow:hidden">
+              
+              <!-- Faint Rule of Thirds Grid -->
+              <div id="cropperGrid" style="position:absolute;inset:0;pointer-events:none;display:grid;grid-template-columns:1fr 1fr 1fr;grid-template-rows:1fr 1fr 1fr;opacity:0.25">
+                <div style="border-right:1px dashed #fff;border-bottom:1px dashed #fff"></div>
+                <div style="border-right:1px dashed #fff;border-bottom:1px dashed #fff"></div>
+                <div style="border-bottom:1px dashed #fff"></div>
+                <div style="border-right:1px dashed #fff;border-bottom:1px dashed #fff"></div>
+                <div style="border-right:1px dashed #fff;border-bottom:1px dashed #fff"></div>
+                <div style="border-bottom:1px dashed #fff"></div>
+                <div style="border-right:1px dashed #fff"></div>
+                <div style="border-right:1px dashed #fff"></div>
+                <div></div>
+              </div>
+
+              <!-- Glowing Corner Bracket Crop Marks -->
+              <div style="position:absolute;top:-2px;left:-2px;width:16px;height:16px;border-top:3px solid #ffd166;border-left:3px solid #ffd166;pointer-events:none;filter:drop-shadow(0 0 4px rgba(255,209,102,0.6))"></div>
+              <div style="position:absolute;top:-2px;right:-2px;width:16px;height:16px;border-top:3px solid #ffd166;border-right:3px solid #ffd166;pointer-events:none;filter:drop-shadow(0 0 4px rgba(255,209,102,0.6))"></div>
+              <div style="position:absolute;bottom:-2px;left:-2px;width:16px;height:16px;border-bottom:3px solid #ffd166;border-left:3px solid #ffd166;pointer-events:none;filter:drop-shadow(0 0 4px rgba(255,209,102,0.6))"></div>
+              <div style="position:absolute;bottom:-2px;right:-2px;width:16px;height:16px;border-bottom:3px solid #ffd166;border-right:3px solid #ffd166;pointer-events:none;filter:drop-shadow(0 0 4px rgba(255,209,102,0.6))"></div>
+
+              <!-- Panel Mockup Overlay Inside Frame -->
+              ${mockHtml}
             </div>
 
-            <!-- Corner Bracket Crop Marks -->
-            <div style="position:absolute;top:8px;left:8px;width:14px;height:14px;border-top:2px solid #ef3038;border-left:2px solid #ef3038;pointer-events:none"></div>
-            <div style="position:absolute;top:8px;right:8px;width:14px;height:14px;border-top:2px solid #ef3038;border-right:2px solid #ef3038;pointer-events:none"></div>
-            <div style="position:absolute;bottom:8px;left:8px;width:14px;height:14px;border-bottom:2px solid #ef3038;border-left:2px solid #ef3038;pointer-events:none"></div>
-            <div style="position:absolute;bottom:8px;right:8px;width:14px;height:14px;border-bottom:2px solid #ef3038;border-right:2px solid #ef3038;pointer-events:none"></div>
-
-            <!-- Panel Text Mockup Overlay -->
-            ${mockHtml}
+            <!-- Visual Explainer Pill at bottom left -->
+            <div style="position:absolute;bottom:8px;left:10px;pointer-events:none;background:rgba(0,0,0,0.78);backdrop-filter:blur(4px);padding:4px 9px;border-radius:4px;font-size:10px;color:#c0bfca;display:flex;align-items:center;gap:6px;border:1px solid rgba(255,255,255,0.08)">
+              <span>💡</span>
+              <span>Dimmed area is cut off · Bright box is what stays</span>
+            </div>
 
             <!-- Empty Placeholder -->
-            <div id="cropperEmptyMsg" style="position:absolute;inset:0;display:${initialCover ? 'none' : 'flex'};align-items:center;justify-content:center;flex-direction:column;gap:8px;color:#8e8c95;pointer-events:none">
-              <span style="font-size:32px">🖼️</span>
-              <span style="font-size:12px;font-weight:700">Upload an image above to start framing</span>
+            <div id="cropperEmptyMsg" style="position:absolute;inset:0;display:${initialCover ? 'none' : 'flex'};align-items:center;justify-content:center;flex-direction:column;gap:8px;color:#8e8c95;pointer-events:none;background:rgba(10,10,14,0.85)">
+              <span style="font-size:36px">🖼️</span>
+              <span style="font-size:13px;font-weight:700;color:#e0dee5">Upload an image above to start framing</span>
+              <span style="font-size:11px;color:#8e8c95">Supports PNG, JPG, and WebP</span>
             </div>
           </div>
         </div>
 
-        <!-- Framing & Position Sliders -->
-        <div style="margin-top:12px;background:#13131a;border:1px solid #292938;border-radius:8px;padding:11px 13px">
-          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-            <span style="font-size:10px;font-weight:800;color:#ffd166;letter-spacing:.6px;text-transform:uppercase">Position &amp; Crop Controls</span>
-            <span class="sub" style="font-size:10px;color:#8e8c95">Drag image or use sliders below</span>
+        <!-- Framing, Zoom & Precise Slider Controls -->
+        <div style="margin-top:12px;background:#13131a;border:1px solid #292938;border-radius:8px;padding:12px 14px">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+            <span style="font-size:10px;font-weight:800;color:#ffd166;letter-spacing:.6px;text-transform:uppercase">Position &amp; Framing Controls</span>
+            <span class="sub" style="font-size:10px;color:#8e8c95">Drag image directly on stage or use sliders</span>
           </div>
 
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
-            <!-- Zoom -->
-            <div>
-              <div style="display:flex;justify-content:space-between;font-size:11px;color:#d0d0dc;margin-bottom:3px">
-                <span>🔍 Zoom Scale</span>
-                <b id="cropperZoomVal" style="color:var(--amber)">1.0x</b>
+          <!-- Row 1: Zoom Scale -->
+          <div style="margin-bottom:10px">
+            <div style="display:flex;justify-content:space-between;font-size:11px;color:#d0d0dc;margin-bottom:4px">
+              <span>🔍 Zoom Scale</span>
+              <div style="display:flex;align-items:center;gap:8px">
+                <button type="button" class="btn ghost btn-sm" style="font-size:9px;padding:2px 6px" onclick="cropperSetZoom(1.0)">Fit (1.0x)</button>
+                <button type="button" class="btn ghost btn-sm" style="font-size:9px;padding:2px 6px" onclick="cropperSetZoom(1.5)">1.5x</button>
+                <button type="button" class="btn ghost btn-sm" style="font-size:9px;padding:2px 6px" onclick="cropperSetZoom(2.0)">2.0x</button>
+                <b id="cropperZoomVal" style="color:var(--amber);min-width:38px;text-align:right">1.00x</b>
               </div>
-              <input id="cropperZoomSlider" type="range" min="1" max="3" step="0.05" value="1" style="width:100%;accent-color:var(--red);cursor:pointer" oninput="cropperSetZoom(this.value)">
+            </div>
+            <input id="cropperZoomSlider" type="range" min="1" max="3.5" step="0.02" value="1" style="width:100%;accent-color:var(--red);cursor:pointer" oninput="cropperSetZoom(this.value)">
+          </div>
+
+          <!-- Row 2: Horizontal & Vertical Sliders -->
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+            <!-- Horizontal Position -->
+            <div>
+              <div style="display:flex;justify-content:space-between;font-size:11px;color:#d0d0dc;margin-bottom:4px">
+                <span>↔️ Horizontal Position</span>
+                <b id="cropperPanXVal" style="color:#ffd166;min-width:32px;text-align:right">50%</b>
+              </div>
+              <input id="cropperPanXSlider" type="range" min="0" max="100" step="1" value="50" style="width:100%;accent-color:var(--red);cursor:pointer" oninput="cropperSetPanX(this.value)">
+              <div style="display:flex;gap:4px;margin-top:4px">
+                <button type="button" class="btn ghost btn-sm" style="flex:1;font-size:9px;padding:2px 0" onclick="cropperSetPanX(0)">Left (0%)</button>
+                <button type="button" class="btn ghost btn-sm" style="flex:1;font-size:9px;padding:2px 0" onclick="cropperSetPanX(50)">Center</button>
+                <button type="button" class="btn ghost btn-sm" style="flex:1;font-size:9px;padding:2px 0" onclick="cropperSetPanX(100)">Right (100%)</button>
+              </div>
             </div>
 
             <!-- Vertical Position -->
             <div>
-              <div style="display:flex;justify-content:space-between;font-size:11px;color:#d0d0dc;margin-bottom:3px">
+              <div style="display:flex;justify-content:space-between;font-size:11px;color:#d0d0dc;margin-bottom:4px">
                 <span>↕️ Vertical Position</span>
-                <b id="cropperPanYVal" style="color:#a09fa8">50%</b>
+                <b id="cropperPanYVal" style="color:#ffd166;min-width:32px;text-align:right">50%</b>
               </div>
               <input id="cropperPanYSlider" type="range" min="0" max="100" step="1" value="50" style="width:100%;accent-color:var(--red);cursor:pointer" oninput="cropperSetPanY(this.value)">
+              <div style="display:flex;gap:4px;margin-top:4px">
+                <button type="button" class="btn ghost btn-sm" style="flex:1;font-size:9px;padding:2px 0" onclick="cropperSetPanY(0)">Top (0%)</button>
+                <button type="button" class="btn ghost btn-sm" style="flex:1;font-size:9px;padding:2px 0" onclick="cropperSetPanY(50)">Center</button>
+                <button type="button" class="btn ghost btn-sm" style="flex:1;font-size:9px;padding:2px 0" onclick="cropperSetPanY(100)">Bottom (100%)</button>
+              </div>
             </div>
           </div>
 
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:8px">
-            <!-- Horizontal Position -->
-            <div>
-              <div style="display:flex;justify-content:space-between;font-size:11px;color:#d0d0dc;margin-bottom:3px">
-                <span>↔️ Horizontal Position</span>
-                <b id="cropperPanXVal" style="color:#a09fa8">50%</b>
-              </div>
-              <input id="cropperPanXSlider" type="range" min="0" max="100" step="1" value="50" style="width:100%;accent-color:var(--red);cursor:pointer" oninput="cropperSetPanX(this.value)">
-            </div>
-
-            <!-- Reset -->
-            <div style="display:flex;align-items:flex-end">
-              <button type="button" class="btn ghost btn-sm" style="width:100%;font-size:11px;padding:6px 0" onclick="cropperResetFraming()">🎯 Reset to Center</button>
-            </div>
+          <!-- Reset Button -->
+          <div style="margin-top:10px;display:flex;justify-content:flex-end">
+            <button type="button" class="btn ghost btn-sm" style="font-size:11px;padding:6px 14px" onclick="cropperResetFraming()">🎯 Reset Framing &amp; Center</button>
           </div>
         </div>
 
-        <!-- Footer Actions -->
+        <!-- Modal Footer Actions -->
         <div class="creator-actions" style="margin-top:14px">
           ${opts.onRemove ? `<button type="button" class="btn ghost" style="color:#ff969c;border-color:#5c242c" onclick="cropperRemoveCover()">Remove cover</button>` : ''}
           <button type="button" class="btn ghost" onclick="closeModal()">Cancel</button>
@@ -6963,15 +7006,76 @@ function openVisualCoverCropper(opts){
     </div>
   `;
 
-  if(initialCover){
-    let img = new Image();
-    img.onload = function(){
-      if(!window._activeCropper) return;
-      window._activeCropper.img = img;
-      cropperUpdateView();
-    };
-    img.src = initialCover;
+  setTimeout(function(){
+    cropperComputeBoxDimensions();
+    if(initialCover){
+      let img = new Image();
+      img.onload = function(){
+        if(!window._activeCropper) return;
+        window._activeCropper.img = img;
+        cropperComputeBoxDimensions();
+        cropperUpdateView();
+      };
+      img.src = initialCover;
+    }
+  }, 25);
+}
+
+function cropperComputeBoxDimensions(){
+  let state = window._activeCropper;
+  if(!state) return;
+  let stage = document.querySelector('#cropperStage');
+  if(!stage) return;
+  let stageW = stage.clientWidth || 540;
+  let stageH = stage.clientHeight || 390;
+
+  let ratio = state.aspectRatio || 0.72;
+  let boxW, boxH;
+
+  if(ratio < 1){ // Vertical / portrait
+    boxH = Math.min(345, stageH - 30);
+    boxW = Math.round(boxH * ratio);
+    if(boxW > stageW - 30){
+      boxW = stageW - 30;
+      boxH = Math.round(boxW / ratio);
+    }
+  } else { // Horizontal / landscape
+    boxW = Math.min(480, stageW - 30);
+    boxH = Math.round(boxW / ratio);
+    if(boxH > stageH - 30){
+      boxH = stageH - 30;
+      boxW = Math.round(boxH * ratio);
+    }
   }
+
+  let boxLeft = Math.round((stageW - boxW) / 2);
+  let boxTop = Math.round((stageH - boxH) / 2);
+
+  state.boxW = boxW;
+  state.boxH = boxH;
+  state.boxLeft = boxLeft;
+  state.boxTop = boxTop;
+
+  let cropBox = document.querySelector('#cropperCropBox');
+  if(cropBox){
+    cropBox.style.width = boxW + 'px';
+    cropBox.style.height = boxH + 'px';
+    cropBox.style.left = boxLeft + 'px';
+    cropBox.style.top = boxTop + 'px';
+  }
+  let shapeTag = document.querySelector('#cropperShapeTag');
+  if(shapeTag && state.panelShapeName){
+    shapeTag.textContent = state.panelShapeName;
+  }
+}
+
+function cropperSetAspectRatio(ratio, shapeName){
+  let state = window._activeCropper;
+  if(!state) return;
+  state.aspectRatio = ratio;
+  state.panelShapeName = shapeName;
+  cropperComputeBoxDimensions();
+  cropperUpdateView();
 }
 
 function cropperHandleFileSelected(event){
@@ -7006,11 +7110,20 @@ function cropperHandleFileSelected(event){
 
       let zSlider = document.querySelector('#cropperZoomSlider');
       if(zSlider) zSlider.value = 1;
+      let zVal = document.querySelector('#cropperZoomVal');
+      if(zVal) zVal.textContent = '1.00x';
+
       let xSlider = document.querySelector('#cropperPanXSlider');
       if(xSlider) xSlider.value = 50;
+      let xVal = document.querySelector('#cropperPanXVal');
+      if(xVal) xVal.textContent = '50%';
+
       let ySlider = document.querySelector('#cropperPanYSlider');
       if(ySlider) ySlider.value = 50;
+      let yVal = document.querySelector('#cropperPanYVal');
+      if(yVal) yVal.textContent = '50%';
 
+      cropperComputeBoxDimensions();
       cropperUpdateView();
     };
     img.src = e.target.result;
@@ -7022,35 +7135,36 @@ function cropperUpdateView(){
   let state = window._activeCropper;
   if(!state || !state.img) return;
 
-  let vp = document.querySelector('#cropperViewport');
   let imgEl = document.querySelector('#cropperImg');
-  if(!vp || !imgEl) return;
+  if(!imgEl) return;
 
-  let vw = vp.clientWidth;
-  let vh = vp.clientHeight;
+  if(!state.boxW || !state.boxH){
+    cropperComputeBoxDimensions();
+  }
+
   let imgW = state.img.naturalWidth;
   let imgH = state.img.naturalHeight;
-  if(!vw || !vh || !imgW || !imgH) return;
+  if(!imgW || !imgH) return;
 
-  let baseScale = Math.max(vw / imgW, vh / imgH);
+  let baseScale = Math.max(state.boxW / imgW, state.boxH / imgH);
   let currentScale = baseScale * state.zoom;
 
   let renderedW = imgW * currentScale;
   let renderedH = imgH * currentScale;
 
-  let extraW = Math.max(0, renderedW - vw);
-  let extraH = Math.max(0, renderedH - vh);
+  let extraW = Math.max(0, renderedW - state.boxW);
+  let extraH = Math.max(0, renderedH - state.boxH);
 
-  let left = - (extraW * (state.panX / 100));
-  let top = - (extraH * (state.panY / 100));
+  let left = state.boxLeft - (extraW * (state.panX / 100));
+  let top = state.boxTop - (extraH * (state.panY / 100));
 
-  imgEl.style.width = renderedW + 'px';
-  imgEl.style.height = renderedH + 'px';
-  imgEl.style.left = left + 'px';
-  imgEl.style.top = top + 'px';
+  imgEl.style.width = Math.round(renderedW) + 'px';
+  imgEl.style.height = Math.round(renderedH) + 'px';
+  imgEl.style.left = Math.round(left) + 'px';
+  imgEl.style.top = Math.round(top) + 'px';
 
   let zVal = document.querySelector('#cropperZoomVal');
-  if(zVal) zVal.textContent = state.zoom.toFixed(1) + 'x';
+  if(zVal) zVal.textContent = state.zoom.toFixed(2) + 'x';
   let xVal = document.querySelector('#cropperPanXVal');
   if(xVal) xVal.textContent = Math.round(state.panX) + '%';
   let yVal = document.querySelector('#cropperPanYVal');
@@ -7060,22 +7174,46 @@ function cropperUpdateView(){
 function cropperSetZoom(val){
   let state = window._activeCropper;
   if(!state) return;
-  state.zoom = parseFloat(val) || 1;
+  let n = parseFloat(val);
+  state.zoom = (Number.isFinite(n) && n >= 1) ? Math.min(3.5, Math.max(1, n)) : 1;
+  let zVal = document.querySelector('#cropperZoomVal');
+  if(zVal) zVal.textContent = state.zoom.toFixed(2) + 'x';
+  let zSlider = document.querySelector('#cropperZoomSlider');
+  if(zSlider && parseFloat(zSlider.value) !== state.zoom) zSlider.value = state.zoom;
   cropperUpdateView();
 }
 
 function cropperSetPanX(val){
   let state = window._activeCropper;
   if(!state) return;
-  state.panX = parseFloat(val) || 50;
+  let n = parseFloat(val);
+  state.panX = Number.isFinite(n) ? Math.min(100, Math.max(0, n)) : 50;
+  let xVal = document.querySelector('#cropperPanXVal');
+  if(xVal) xVal.textContent = Math.round(state.panX) + '%';
+  let xSlider = document.querySelector('#cropperPanXSlider');
+  if(xSlider && parseFloat(xSlider.value) !== state.panX) xSlider.value = state.panX;
   cropperUpdateView();
 }
 
 function cropperSetPanY(val){
   let state = window._activeCropper;
   if(!state) return;
-  state.panY = parseFloat(val) || 50;
+  let n = parseFloat(val);
+  state.panY = Number.isFinite(n) ? Math.min(100, Math.max(0, n)) : 50;
+  let yVal = document.querySelector('#cropperPanYVal');
+  if(yVal) yVal.textContent = Math.round(state.panY) + '%';
+  let ySlider = document.querySelector('#cropperPanYSlider');
+  if(ySlider && parseFloat(ySlider.value) !== state.panY) ySlider.value = state.panY;
   cropperUpdateView();
+}
+
+function cropperHandleWheel(e){
+  let state = window._activeCropper;
+  if(!state || !state.img) return;
+  e.preventDefault();
+  let delta = e.deltaY < 0 ? 0.08 : -0.08;
+  let newZoom = Math.min(3.5, Math.max(1, state.zoom + delta));
+  cropperSetZoom(Math.round(newZoom * 100) / 100);
 }
 
 function cropperResetFraming(){
@@ -7087,10 +7225,18 @@ function cropperResetFraming(){
 
   let zSlider = document.querySelector('#cropperZoomSlider');
   if(zSlider) zSlider.value = 1;
+  let zVal = document.querySelector('#cropperZoomVal');
+  if(zVal) zVal.textContent = '1.00x';
+
   let xSlider = document.querySelector('#cropperPanXSlider');
   if(xSlider) xSlider.value = 50;
+  let xVal = document.querySelector('#cropperPanXVal');
+  if(xVal) xVal.textContent = '50%';
+
   let ySlider = document.querySelector('#cropperPanYSlider');
   if(ySlider) ySlider.value = 50;
+  let yVal = document.querySelector('#cropperPanYVal');
+  if(yVal) yVal.textContent = '50%';
 
   cropperUpdateView();
 }
@@ -7115,8 +7261,8 @@ function cropperStartDrag(e){
   state.dragInitialPanX = state.panX;
   state.dragInitialPanY = state.panY;
 
-  let vp = document.querySelector('#cropperViewport');
-  if(vp) vp.style.cursor = 'grabbing';
+  let stage = document.querySelector('#cropperStage');
+  if(stage) stage.style.cursor = 'grabbing';
 }
 
 function cropperOnDragMove(e){
@@ -7127,29 +7273,31 @@ function cropperOnDragMove(e){
   let dx = pt.clientX - state.dragStartX;
   let dy = pt.clientY - state.dragStartY;
 
-  let vp = document.querySelector('#cropperViewport');
-  if(!vp) return;
-  let vw = vp.clientWidth;
-  let vh = vp.clientHeight;
   let imgW = state.img.naturalWidth;
   let imgH = state.img.naturalHeight;
-  let baseScale = Math.max(vw / imgW, vh / imgH);
+  let boxW = state.boxW || 260;
+  let boxH = state.boxH || 360;
+  let baseScale = Math.max(boxW / imgW, boxH / imgH);
   let currentScale = baseScale * state.zoom;
-  let extraW = Math.max(0, imgW * currentScale - vw);
-  let extraH = Math.max(0, imgH * currentScale - vh);
+  let extraW = Math.max(0, imgW * currentScale - boxW);
+  let extraH = Math.max(0, imgH * currentScale - boxH);
 
   if(extraW > 0){
     let panDeltaX = (dx / extraW) * 100;
     state.panX = Math.min(100, Math.max(0, state.dragInitialPanX - panDeltaX));
     let xSlider = document.querySelector('#cropperPanXSlider');
-    if(xSlider) xSlider.value = state.panX;
+    if(xSlider) xSlider.value = Math.round(state.panX);
+    let xVal = document.querySelector('#cropperPanXVal');
+    if(xVal) xVal.textContent = Math.round(state.panX) + '%';
   }
 
   if(extraH > 0){
     let panDeltaY = (dy / extraH) * 100;
     state.panY = Math.min(100, Math.max(0, state.dragInitialPanY - panDeltaY));
     let ySlider = document.querySelector('#cropperPanYSlider');
-    if(ySlider) ySlider.value = state.panY;
+    if(ySlider) ySlider.value = Math.round(state.panY);
+    let yVal = document.querySelector('#cropperPanYVal');
+    if(yVal) yVal.textContent = Math.round(state.panY) + '%';
   }
 
   cropperUpdateView();
@@ -7158,8 +7306,8 @@ function cropperOnDragMove(e){
 function cropperEndDrag(){
   let state = window._activeCropper;
   if(state) state.isDragging = false;
-  let vp = document.querySelector('#cropperViewport');
-  if(vp) vp.style.cursor = 'grab';
+  let stage = document.querySelector('#cropperStage');
+  if(stage) stage.style.cursor = 'grab';
 }
 
 document.addEventListener('mousemove', cropperOnDragMove);
@@ -7176,38 +7324,46 @@ function cropperCommitSave(){
   let btn = document.querySelector('#cropperSaveBtn');
   if(btn){ btn.disabled = true; btn.textContent = 'Cropping & Saving...'; }
 
-  let vp = document.querySelector('#cropperViewport');
-  let vw = vp ? vp.clientWidth : 460;
-  let vh = vp ? vp.clientHeight : 340;
   let imgW = state.img.naturalWidth;
   let imgH = state.img.naturalHeight;
+  let boxW = state.boxW || 260;
+  let boxH = state.boxH || 360;
 
-  let baseScale = Math.max(vw / imgW, vh / imgH);
-  let currentScale = baseScale * state.zoom;
-  let renderedW = imgW * currentScale;
-  let renderedH = imgH * currentScale;
+  let baseScale = Math.max(boxW / imgW, boxH / imgH);
+  let scale = baseScale * state.zoom;
+  let renderedW = imgW * scale;
+  let renderedH = imgH * scale;
 
-  let extraW = Math.max(0, renderedW - vw);
-  let extraH = Math.max(0, renderedH - vh);
+  let extraW = Math.max(0, renderedW - boxW);
+  let extraH = Math.max(0, renderedH - boxH);
 
-  let left = - (extraW * (state.panX / 100));
-  let top = - (extraH * (state.panY / 100));
+  let cropLeft = extraW * (state.panX / 100);
+  let cropTop = extraH * (state.panY / 100);
+
+  let sx = Math.max(0, cropLeft / scale);
+  let sy = Math.max(0, cropTop / scale);
+  let sw = Math.min(imgW - sx, boxW / scale);
+  let sh = Math.min(imgH - sy, boxH / scale);
 
   let canvas = document.createElement('canvas');
-  let targetW = 850;
-  let targetH = Math.round(targetW / (vw / vh));
-  canvas.width = targetW;
-  canvas.height = targetH;
+  let targetRatio = boxW / boxH;
+  let outW, outH;
+  if(targetRatio < 1){ // Portrait / vertical card
+    outW = 640;
+    outH = Math.round(outW / targetRatio);
+  } else { // Landscape card
+    outW = 900;
+    outH = Math.round(outW / targetRatio);
+  }
+  canvas.width = outW;
+  canvas.height = outH;
   let ctx = canvas.getContext('2d');
 
-  let scaleRatio = imgW / renderedW;
-  let sx = Math.max(0, (-left) * scaleRatio);
-  let sy = Math.max(0, (-top) * scaleRatio);
-  let sw = Math.min(imgW - sx, vw * scaleRatio);
-  let sh = Math.min(imgH - sy, vh * scaleRatio);
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = 'high';
+  ctx.drawImage(state.img, sx, sy, sw, sh, 0, 0, outW, outH);
 
-  ctx.drawImage(state.img, sx, sy, sw, sh, 0, 0, targetW, targetH);
-  let croppedDataUrl = canvas.toDataURL('image/jpeg', 0.76);
+  let croppedDataUrl = canvas.toDataURL('image/jpeg', 0.80);
 
   if(typeof state.onSave === 'function'){
     state.onSave(croppedDataUrl);
@@ -7229,6 +7385,7 @@ function openCoverEditor(id){
     eyebrow: 'Tournament Archive Cover',
     description: 'Frame your artwork for the tournament archive card. Drag the image or use the sliders to crop and focus.',
     aspectRatio: 1.77,
+    panelShapeName: 'Archive Card (16:9)',
     currentCover: t.backgroundImage,
     mockOverlay: 'archive',
     onSave: function(croppedDataUrl){
@@ -7250,11 +7407,20 @@ function openCoverEditor(id){
 function openRecapPanelCoverEditor(id){
   let t = tournamentData[id];
   let currentCover = pulsePanelImages.recap || t?.recapPanelImage || t?.backgroundImage || '';
+  
+  // Measure live vertical recap panel
+  let liveCard = document.querySelector('.hero aside.pulse');
+  let ratio = 0.72; // default portrait aspect ratio for recap card (approx 450w x 625h)
+  if(liveCard && liveCard.offsetWidth > 50 && liveCard.offsetHeight > 50){
+    ratio = +(liveCard.offsetWidth / liveCard.offsetHeight).toFixed(3);
+  }
+
   openVisualCoverCropper({
-    title: t?.name ? `${t.name} Recap Cover` : 'Off-Season Recap Cover',
-    eyebrow: 'Recap Panel Cover',
-    description: 'Frame your artwork to fit the Last Tournament Recap card. Drag or use the sliders to crop, zoom, and frame.',
-    aspectRatio: 1.18,
+    title: t?.name ? `${t.name} Recap Cover` : 'Last Tournament Recap Cover',
+    eyebrow: 'Vertical Panel Cover & Crop',
+    description: 'Frame and position your artwork specifically for the vertical Last Tournament Recap card. Drag the photo or use the sliders to crop.',
+    aspectRatio: ratio,
+    panelShapeName: `Vertical Panel (~${ratio})`,
     currentCover: currentCover,
     mockOverlay: 'recap',
     onSave: function(croppedDataUrl){
@@ -7285,6 +7451,7 @@ function openPulsePanelCoverEditor(id){
     eyebrow: 'Tournament Pulse Cover',
     description: 'Frame your artwork for the live Tournament Pulse card. Drag or use the sliders to crop.',
     aspectRatio: 1.25,
+    panelShapeName: 'Pulse Card (~1.25)',
     currentCover: currentCover,
     mockOverlay: 'pulse',
     onSave: function(croppedDataUrl){
