@@ -13,6 +13,7 @@
   <style>button,input,select,textarea{color:var(--text)}button.team-card{color:var(--text)}</style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="supabase-config.js"></script>
+<script src="backend-config.js"></script>
 <script src="brackets-manager.browser.js"></script>
 <style>
 .score-match{padding:0;overflow:hidden;margin:10px 0;border:1px solid #34343d;background:#17171d}.score-match-head{display:flex;justify-content:space-between;gap:12px;padding:10px 14px;border-bottom:1px solid #303039;font-size:10px;font-weight:800;letter-spacing:.8px;color:#aaa;text-transform:uppercase}.score-match-body{display:grid;grid-template-columns:minmax(0,1fr) 38px minmax(0,1fr);align-items:center;padding:13px 14px;gap:8px}.score-competitor{display:flex;align-items:center;justify-content:space-between;gap:10px;min-width:0}.score-competitor.right{flex-direction:row-reverse;text-align:right}.score-competitor .player-link{font-size:15px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.score-box{width:58px!important;height:48px!important;font-size:22px!important;font-weight:900!important;text-align:center!important;background:#09090d!important;color:#fff!important;border:1px solid #6a2029!important;border-radius:6px!important;padding:0!important;flex:0 0 auto}.score-match-vs{text-align:center;color:#f05059;font-size:10px;font-weight:900;letter-spacing:1px}.score-match-foot{display:flex;justify-content:flex-end;align-items:center;gap:10px;padding:0 14px 12px}.score-match-foot .save{min-width:100px}.group-placement-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(185px,1fr));gap:12px;margin-top:18px}.group-dropzone{min-height:120px;border:1px dashed #5c5c67;border-radius:7px;padding:10px;background:#15151a}.group-dropzone.over{border-color:#ff5c64;background:#29161a}.group-placement-drag{display:block;width:100%;margin:7px 0;padding:10px;border-radius:5px;background:#24242c;color:#f5f3f0;border:1px solid #3a3a43;text-align:left;font:inherit;font-weight:800;cursor:grab}.group-placement-drag:active{cursor:grabbing}.group-placement-drag:hover{border-color:#f35a63;color:#ff9aa0}@media(max-width:650px){.score-match-body{grid-template-columns:1fr 25px 1fr;padding:11px 9px}.score-competitor{flex-direction:column;align-items:flex-start;gap:7px}.score-competitor.right{flex-direction:column;align-items:flex-end}.score-competitor .player-link{font-size:13px;max-width:100%}.score-box{width:48px!important;height:42px!important;font-size:19px!important}}
@@ -2868,7 +2869,33 @@ function toggleSandboxMode(){
 
 async function restoreCloudStateFromModal(){
   if(!moderator) return;
-  if(!confirm('Discard all local test edits and reload fresh live data from the Supabase cloud?')) return;
+  if(!confirm('Discard all local test edits and reload fresh live data from the cloud?')) return;
+  if(!backendReady()){
+    alert('Cloud backend is not connected.');
+    return;
+  }
+  let bType = getBackendType();
+  if(bType === 'cloudflare'){
+    try {
+      let cfUrl = getCloudflareUrl();
+      let res = await fetch(`${cfUrl}/api/state`);
+      let data = await res.json();
+      if(!res.ok || !data){
+        alert('Could not fetch cloud data from Cloudflare.');
+        return;
+      }
+      applySharedState(data);
+      sandboxMode = false;
+      try { localStorage.setItem('draftdex-sandbox-mode', 'false'); } catch(e){}
+      setupDraftRealtime();
+      closeModal();
+      render();
+      showDraftToast('✅ Live cloud data restored successfully!');
+    } catch(e){
+      alert('Restore failed: ' + e.message);
+    }
+    return;
+  }
   if(!supabaseClient){
     alert('Supabase client not initialized.');
     return;
@@ -2894,8 +2921,8 @@ async function restoreCloudStateFromModal(){
 
 async function pushSandboxToCloudFromModal(){
   if(!confirm('Publish your current local tournament state as the official live cloud database? This will overwrite the cloud database with your current state.')) return;
-  if(!supabaseClient){
-    alert('Supabase client not initialized.');
+  if(!backendReady()){
+    alert('Cloud backend is not connected.');
     return;
   }
   try {
@@ -3195,9 +3222,24 @@ function openEgressReportModal(){
   `;
 }
 
-/* Supabase connection: activate by filling in supabase-config.js */
-var supabaseClient=null,sessionUser=null;
+/* Backend Connection (Cloudflare Workers / Supabase) */
+var supabaseClient=null,sessionUser=null,cloudflareSession=null;
+function getBackendType(){
+  let cf = window.DRAFTDEX_BACKEND;
+  if(cf && typeof cf.url === 'string' && cf.url.trim().length > 0){
+    return 'cloudflare';
+  }
+  if(supabaseReady()){
+    return 'supabase';
+  }
+  return 'local';
+}
+function getCloudflareUrl(){
+  let u = window.DRAFTDEX_BACKEND?.url || '';
+  return u.replace(/\/+$/, '');
+}
 function supabaseReady(){let c=window.DRAFTDEX_SUPABASE;return Boolean(c&&c.url&&c.anonKey&&window.supabase)}
+function backendReady(){return getBackendType() !== 'local';}
 var knownRev = Number(localStorage.getItem('draftdex-rev')) || 0;
 var lastLocalUpdate = Number(localStorage.getItem('draftdex-updated-at')) || 0;
 var syncTimer = null, lastSentSnapshot = '';
@@ -4275,28 +4317,43 @@ try {
 } catch(e){}
 
 async function fetchMediaFromCloud(){
-  if(isSandboxMode() || !supabaseClient || isFetchingMediaFromCloud) return;
+  let bType = getBackendType();
+  if(isSandboxMode() || bType === 'local' || isFetchingMediaFromCloud) return;
   isFetchingMediaFromCloud = true;
   try {
     let cachedRev = Number(localStorage.getItem('draftdex-media-rev') || 0);
     let hasLocalPics = (Object.keys(profilePictures).length > 0 || Object.keys(teamCovers).length > 0);
 
-    // Lightweight metadata check (only transfers ~30 bytes instead of 1.07 MB)
-    if(hasLocalPics && cachedRev > 0){
-      let { data: meta, error: metaErr } = await supabaseClient.from('league_state').select('updated_at').eq('id', 'media').maybeSingle();
-      if(!metaErr && meta?.updated_at){
-        let cloudTime = new Date(meta.updated_at).getTime();
-        if(cachedRev >= cloudTime){
-          return; // Local media cache is fresh; skip downloading 1.07 MB payload!
+    let m = null;
+    if(bType === 'cloudflare'){
+      let cfUrl = getCloudflareUrl();
+      let res = await fetch(`${cfUrl}/api/state?id=media`);
+      if(res.ok){
+        m = await res.json();
+      }
+    } else if(supabaseClient){
+      // Lightweight metadata check (only transfers ~30 bytes instead of 1.07 MB)
+      if(hasLocalPics && cachedRev > 0){
+        let { data: meta, error: metaErr } = await supabaseClient.from('league_state').select('updated_at').eq('id', 'media').maybeSingle();
+        if(!metaErr && meta?.updated_at){
+          let cloudTime = new Date(meta.updated_at).getTime();
+          if(cachedRev >= cloudTime){
+            return; // Local media cache is fresh; skip downloading 1.07 MB payload!
+          }
+        }
+      }
+
+      let { data, error } = await supabaseClient.from('league_state').select('data,updated_at').eq('id', 'media').maybeSingle();
+      if(!error && data?.data){
+        m = data.data;
+        if(data.updated_at){
+          m._cloudTime = new Date(data.updated_at).getTime();
         }
       }
     }
 
-    let { data, error } = await supabaseClient.from('league_state').select('data,updated_at').eq('id', 'media').maybeSingle();
-    if(!error && data?.data){
-      let m = data.data;
-      let cloudTime = data.updated_at ? new Date(data.updated_at).getTime() : Date.now();
-      localMediaRev = Math.max(Number(m.mediaRev || 0), cloudTime);
+    if(m && (m.teamCovers || m.profilePictures || m.pulsePanelImages || m.tournamentCovers || m.recapPanelImages)){
+      localMediaRev = Math.max(Number(m.mediaRev || 0), m._cloudTime || Date.now());
       try { localStorage.setItem('draftdex-media-rev', String(localMediaRev)); } catch(e){}
 
       if(m.teamCovers){
@@ -4338,7 +4395,8 @@ async function fetchMediaFromCloud(){
 }
 
 async function pushMediaToSupabase(){
-  if(isSandboxMode() || !supabaseClient) return;
+  let bType = getBackendType();
+  if(isSandboxMode() || bType === 'local') return;
   localMediaRev = Date.now();
   try { localStorage.setItem('draftdex-media-rev', String(localMediaRev)); } catch(e){}
   let mediaPayload = {
@@ -4349,14 +4407,29 @@ async function pushMediaToSupabase(){
     tournamentCovers: tournamentCovers,
     recapPanelImages: recapPanelImages
   };
-  try {
-    await supabaseClient.from('league_state').upsert({
-      id: 'media',
-      data: mediaPayload,
-      updated_at: new Date().toISOString()
-    });
-  } catch(e){
-    console.warn('Draftdex: pushMediaToSupabase note:', e);
+  if(bType === 'cloudflare'){
+    try {
+      let cfUrl = getCloudflareUrl();
+      await fetch(`${cfUrl}/api/state?id=media`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ data: mediaPayload, updatedAt: localMediaRev })
+      });
+    } catch(e){
+      console.warn('Draftdex: pushMediaToCloudflare note:', e);
+    }
+    return;
+  }
+  if(supabaseClient){
+    try {
+      await supabaseClient.from('league_state').upsert({
+        id: 'media',
+        data: mediaPayload,
+        updated_at: new Date().toISOString()
+      });
+    } catch(e){
+      console.warn('Draftdex: pushMediaToSupabase note:', e);
+    }
   }
 }
 
@@ -4500,7 +4573,8 @@ function teardownDraftRealtime(){
 }
 
 function setupDraftRealtime(){
-  if(isSandboxMode() || !supabaseClient){
+  let bType = getBackendType();
+  if(isSandboxMode() || bType === 'local'){
     teardownDraftRealtime();
     return;
   }
@@ -4514,8 +4588,7 @@ function setupDraftRealtime(){
     return;
   }
 
-  // 1. Gentle background safety check (every 4 seconds) ONLY while actively viewing visible Draft Room
-  // Transmits only ~350 bytes per check (less than 300 KB per hour)
+  // Active Draft Room polling: every 2.5s for Cloudflare (unlimited bandwidth!), 4s for Supabase
   if(!draftPollTimer){
     draftPollTimer = setInterval(() => {
       if(current === 'Draft' && !document.hidden && !isSandboxMode()){
@@ -4526,10 +4599,12 @@ function setupDraftRealtime(){
           draftPollTimer = null;
         }
       }
-    }, 4000);
+    }, bType === 'cloudflare' ? 2500 : 4000);
   }
 
-  if(draftRealtimeChannel) return; // already active
+  if(bType === 'cloudflare') return; // Cloudflare uses ultra-fast edge polling with zero egress charges
+
+  if(!supabaseClient || draftRealtimeChannel) return; // already active or no client
 
   try { supabaseClient.realtime?.connect(); } catch(e){}
 
@@ -4660,7 +4735,8 @@ function applyRemoteDraftControl(payload){
 
 var isSyncingFromCloud = false;
 async function syncFromCloud(force = false){
-  if(isSandboxMode() || !supabaseClient || isSyncingFromCloud) return;
+  let bType = getBackendType();
+  if(isSandboxMode() || bType === 'local' || isSyncingFromCloud) return;
   isSyncingFromCloud = true;
   try {
     let localUpdatedAt = Number(localStorage.getItem('draftdex-updated-at') || 0);
@@ -4668,6 +4744,55 @@ async function syncFromCloud(force = false){
     let hasLocalTourneys = Object.keys(tournamentData).length > 0;
     let curT = ongoingT() || activeT();
     let isDraftActive = (curT && curT.phase === 'draft');
+
+    if(bType === 'cloudflare'){
+      let cfUrl = getCloudflareUrl();
+      // If viewing active draft, quickly check lightweight /api/draft endpoint
+      if(isDraftActive && curT.id && current === 'Draft'){
+        try {
+          let dRes = await fetch(`${cfUrl}/api/draft?tournamentId=${encodeURIComponent(curT.id)}`);
+          if(dRes.ok){
+            let dJson = await dRes.json();
+            if(dJson && dJson.draft && Array.isArray(dJson.draft.picks)){
+              let localD = ensureTournamentDraft(curT);
+              let remotePicksCount = dJson.draft.picks.length;
+              let localPicksCount = (localD?.picks || []).length;
+              if(remotePicksCount !== localPicksCount || dJson.draft.status !== localD?.status){
+                curT.draft = dJson.draft;
+                if(dJson.roster) roster = dJson.roster;
+                persistLeague();
+                render();
+                if(typeof centerActiveDraftPickTile === 'function'){
+                  setTimeout(centerActiveDraftPickTile, 50);
+                }
+              }
+            }
+          }
+        } catch(e){}
+      }
+
+      // Fetch full state from Cloudflare
+      let res = await fetch(`${cfUrl}/api/state`);
+      if(res.ok){
+        let incoming = await res.json();
+        if(incoming && shouldApply(incoming)){
+          applySharedState(incoming);
+          let incomingTime = Number(incoming.updatedAt || 0);
+          if(incomingTime){
+            lastLocalUpdate = Math.max(Number(lastLocalUpdate || 0), incomingTime);
+            try { localStorage.setItem('draftdex-updated-at', String(lastLocalUpdate)); } catch(e){}
+          }
+          render();
+          if(current === 'Draft' && typeof centerActiveDraftPickTile === 'function'){
+            setTimeout(centerActiveDraftPickTile, 50);
+          }
+        }
+      }
+      return;
+    }
+
+    // Supabase fallback logic:
+    if(!supabaseClient) return;
 
     // Ultra-lightweight check: ONLY query ~58 bytes (rev/time) or ~350 bytes (if draft active)
     if(!force && hasLocalTourneys && (localUpdatedAt > 0 || localRev > 0)){
@@ -4758,30 +4883,73 @@ window.addEventListener('pageshow', () => handleAppForeground(false));
 window.addEventListener('focus', () => handleAppForeground(false));
 window.addEventListener('online', () => handleAppForeground(true));
 
-async function initSupabase(){
-  if(!supabaseReady() || supabaseInited) return;
-  supabaseInited = true;
-  try {
-    supabaseClient = window.supabase.createClient(window.DRAFTDEX_SUPABASE.url, window.DRAFTDEX_SUPABASE.anonKey);
-    try { supabaseClient.realtime?.disconnect(); } catch(e){}
-    let { data: { session } } = await supabaseClient.auth.getSession();
-    await updateSession(session);
-    supabaseClient.auth.onAuthStateChange(async (_, s) => await updateSession(s));
-    
-    // Setup Realtime listeners only if tab is in foreground and not in sandbox
-    setupLeagueStateRealtime();
-    setupDraftRealtime();
+var backendInited = false;
+async function initBackend(){
+  if(backendInited) return;
+  let bType = getBackendType();
+  if(bType === 'local') return;
+  backendInited = true;
 
-    // Pull latest cloud data immediately on startup
-    await syncFromCloud(true);
-  } catch(e) {
-    console.warn('Draftdex: initSupabase error:', e);
-    supabaseInited = false;
+  if(bType === 'cloudflare'){
+    try {
+      let savedCf = localStorage.getItem('draftdex-cf-session');
+      if(savedCf){
+        let s = JSON.parse(savedCf);
+        if(s && s.id){
+          sessionUser = s;
+          moderator = (s.role === 'moderator');
+          window.currentAccount = s;
+        }
+      }
+      setupDraftRealtime();
+      await syncFromCloud(true);
+      fetchMediaFromCloud();
+      render();
+    } catch(e){
+      console.warn('Draftdex: initCloudflare error:', e);
+      backendInited = false;
+    }
+    return;
+  }
+
+  if(bType === 'supabase'){
+    if(!supabaseReady()) { backendInited = false; return; }
+    try {
+      supabaseClient = window.supabase.createClient(window.DRAFTDEX_SUPABASE.url, window.DRAFTDEX_SUPABASE.anonKey);
+      try { supabaseClient.realtime?.disconnect(); } catch(e){}
+      let { data: { session } } = await supabaseClient.auth.getSession();
+      await updateSession(session);
+      supabaseClient.auth.onAuthStateChange(async (_, s) => await updateSession(s));
+      
+      setupLeagueStateRealtime();
+      setupDraftRealtime();
+      await syncFromCloud(true);
+      fetchMediaFromCloud();
+    } catch(e) {
+      console.warn('Draftdex: initSupabase error:', e);
+      backendInited = false;
+    }
   }
 }
-setTimeout(initSupabase, 0);
+async function initSupabase(){ return initBackend(); }
+setTimeout(initBackend, 0);
 
 async function pushStateToSupabase(payload, updateTime){
+  let bType = getBackendType();
+  if(bType === 'cloudflare'){
+    try {
+      let cfUrl = getCloudflareUrl();
+      let res = await fetch(`${cfUrl}/api/state`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ data: payload, updatedAt: updateTime || Date.now() })
+      });
+      let json = await res.json();
+      return json.error ? { error: new Error(json.error) } : { data: json };
+    } catch(upErr){
+      return { error: upErr };
+    }
+  }
   if(!supabaseClient) return { error: new Error('Supabase client not initialized') };
   let iso = new Date(updateTime || Date.now()).toISOString();
 
@@ -4798,7 +4966,8 @@ async function pushStateToSupabase(payload, updateTime){
 }
 
 async function flushSync(){
-  if(isSandboxMode() || !supabaseClient) return;
+  let bType = getBackendType();
+  if(isSandboxMode() || bType === 'local') return;
 
   // Clean tournaments to remove heavy base64 strings from frequent main sync payload
   let cleanTournaments = {};
@@ -4879,6 +5048,7 @@ async function signOut(btnEl){
 
   // 2. Clear persisted auth and session tokens from localStorage
   try {
+    localStorage.removeItem('draftdex-cf-session');
     for(let i = localStorage.length - 1; i >= 0; i--){
       let key = localStorage.key(i);
       if(key && (key.startsWith('sb-') || key.includes('supabase.auth.token') || key === 'draftdex-moderator' || key === 'draftdex-mod-mode')){
@@ -4938,8 +5108,54 @@ async function pick(el){
   }
   let t=ongoingT(),key=el.closest('.prediction')?.querySelector('h3')?.textContent||'prediction',choice=el.textContent;
   localStorage.setItem('draftdex-pick-'+(t?.id||'')+'-'+key,choice);
-  if(!isSandboxMode() && supabaseClient && sessionUser && t){
-    await supabaseClient.from('predictions').upsert({user_id:sessionUser.id,tournament_id:t.id,prediction_key:key,selection:choice},{onConflict:'user_id,tournament_id,prediction_key'});
+  if(!isSandboxMode() && backendReady() && sessionUser && t){
+    await syncPredictionRecord(t.id, key, choice, false);
+  }
+}
+
+async function syncPredictionRecord(tournamentId, key, choice, isDelete = false){
+  if(isSandboxMode() || !sessionUser || !tournamentId) return;
+  let bType = getBackendType();
+  if(bType === 'local') return;
+
+  if(bType === 'cloudflare'){
+    try {
+      let cfUrl = getCloudflareUrl();
+      await fetch(`${cfUrl}/api/predictions?tournament_id=${encodeURIComponent(tournamentId)}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: isDelete ? 'delete' : 'upsert',
+          user_id: sessionUser.id,
+          prediction_key: key,
+          selection: choice
+        })
+      });
+    } catch(e){
+      console.warn('Prediction sync error (Cloudflare):', e);
+    }
+    return;
+  }
+
+  if(supabaseClient){
+    try {
+      if(isDelete){
+        await supabaseClient.from('predictions').delete().match({
+          user_id: sessionUser.id,
+          tournament_id: tournamentId,
+          prediction_key: key
+        });
+      } else {
+        await supabaseClient.from('predictions').upsert({
+          user_id: sessionUser.id,
+          tournament_id: tournamentId,
+          prediction_key: key,
+          selection: choice
+        }, { onConflict: 'user_id,tournament_id,prediction_key' });
+      }
+    } catch(e){
+      console.warn('Prediction sync error (Supabase):', e);
+    }
   }
 }
 function recapRankings(){
@@ -7099,12 +7315,15 @@ function handleAuthKeypress(e, action){
   }
 }
 
-async function ensureSupabase(){
+async function ensureBackend(){
+  let bType = getBackendType();
+  if(bType === 'cloudflare') return true;
   if(supabaseClient && supabaseInited) return true;
   if(!supabaseReady()) return false;
-  await initSupabase();
+  await initBackend();
   return !!supabaseClient;
 }
+async function ensureSupabase(){ return ensureBackend(); }
 
 async function signIn(event){
   if(event && typeof event.preventDefault === 'function') event.preventDefault();
@@ -7126,8 +7345,8 @@ async function signIn(event){
     return;
   }
 
-  if(!await ensureSupabase()){
-    authNotice('⚠️ Supabase connection is currently offline. Check internet connection or credentials.', 'err');
+  if(!await ensureBackend()){
+    authNotice('⚠️ Backend connection is currently offline. Check internet connection or credentials.', 'err');
     return;
   }
 
@@ -7136,6 +7355,46 @@ async function signIn(event){
     btn.disabled = true;
     btn.dataset.origHtml = btn.innerHTML;
     btn.innerHTML = '<span>⏳ Signing In...</span>';
+  }
+
+  let bType = getBackendType();
+  if(bType === 'cloudflare'){
+    try {
+      let cfUrl = getCloudflareUrl();
+      let res = await fetch(`${cfUrl}/api/auth/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password })
+      });
+      let data = await res.json();
+      if(!res.ok || data.error){
+        authNotice('⚠️ ' + (data.error || 'Invalid credentials'), 'err');
+      } else {
+        authNotice('✓ Signed in successfully! Welcome back.', 'success');
+        sessionUser = data.user;
+        moderator = (data.user?.role === 'moderator');
+        window.currentAccount = data.user;
+        localStorage.setItem('draftdex-cf-session', JSON.stringify(data.user));
+        if(moderator){
+          localStorage.setItem('draftdex-moderator', 'true');
+        } else {
+          localStorage.removeItem('draftdex-moderator');
+        }
+        if(document.querySelector('#modal .auth-form-card')){
+          closeModal();
+        }
+        render();
+      }
+    } catch(err) {
+      console.error('Sign in exception:', err);
+      authNotice('⚠️ Sign in error: ' + (err.message || err), 'err');
+    } finally {
+      if(btn){
+        btn.disabled = false;
+        if(btn.dataset.origHtml) btn.innerHTML = btn.dataset.origHtml;
+      }
+    }
+    return;
   }
 
   try {
@@ -7222,8 +7481,8 @@ async function signUp(event){
     return;
   }
 
-  if(!await ensureSupabase()){
-    authNotice('⚠️ Supabase connection is currently offline. Check internet connection or credentials.', 'err');
+  if(!await ensureBackend()){
+    authNotice('⚠️ Backend connection is currently offline. Check internet connection or credentials.', 'err');
     return;
   }
 
@@ -7232,6 +7491,44 @@ async function signUp(event){
     btn.disabled = true;
     btn.dataset.origHtml = btn.innerHTML;
     btn.innerHTML = '<span>⏳ Creating Account...</span>';
+  }
+
+  let bType = getBackendType();
+  if(bType === 'cloudflare'){
+    try {
+      let cfUrl = getCloudflareUrl();
+      let res = await fetch(`${cfUrl}/api/auth/register`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password, email: emailInput })
+      });
+      let data = await res.json();
+      if(!res.ok || data.error){
+        authNotice('⚠️ ' + (data.error || 'Registration failed'), 'err');
+      } else {
+        authNotice('✓ Account created and signed in! Welcome to Bellimaka.', 'success');
+        sessionUser = data.user;
+        moderator = (data.user?.role === 'moderator');
+        window.currentAccount = data.user;
+        localStorage.setItem('draftdex-cf-session', JSON.stringify(data.user));
+        if(moderator){
+          localStorage.setItem('draftdex-moderator', 'true');
+        }
+        if(document.querySelector('#modal .auth-form-card')){
+          closeModal();
+        }
+        render();
+      }
+    } catch(err) {
+      console.error('Sign up exception:', err);
+      authNotice('⚠️ Registration error: ' + (err.message || err), 'err');
+    } finally {
+      if(btn){
+        btn.disabled = false;
+        if(btn.dataset.origHtml) btn.innerHTML = btn.dataset.origHtml;
+      }
+    }
+    return;
   }
 
   try {
@@ -7294,7 +7591,7 @@ async function signUp(event){
 
 function renderAuthComponent(isModal = false, prefillUsername = ''){
   let isSignIn = currentAuthTab === 'signin';
-  let hasSupabase = supabaseReady();
+  let hasBackend = backendReady();
 
   let signinFormHtml = `
     <form onsubmit="signIn(event); return false;" style="display:flex;flex-direction:column">
@@ -7397,9 +7694,9 @@ function renderAuthComponent(isModal = false, prefillUsername = ''){
         <!-- Status & Notice Area -->
         <div id="authNotice" class="auth-notice-card"></div>
 
-        ${!hasSupabase ? `
+        ${!hasBackend ? `
           <div class="auth-notice-card err" style="margin-top:14px">
-            ⚠️ Supabase credentials not found in <code>supabase-config.js</code>. Offline / spectator mode is active.
+            ⚠️ Cloud backend not connected. Configure <code>backend-config.js</code> or <code>supabase-config.js</code>. Offline / spectator mode is active.
           </div>
         ` : ''}
 
@@ -9956,16 +10253,29 @@ function knownAccounts(){
 }
 
 async function loadAccounts(forceFresh = false){
-  if(isSandboxMode() || !supabaseClient) return window.leagueAccounts||[];
+  if(isSandboxMode()) return window.leagueAccounts||[];
+  let bType = getBackendType();
+  if(bType === 'local') return window.leagueAccounts||[];
   if(!forceFresh && window.leagueAccounts && window.leagueAccounts.length && (Date.now() - (window._leagueAccountsTime || 0) < 300000)){
     return window.leagueAccounts;
   }
   try{
-    let {data}=await supabaseClient.from('user_profiles').select('id,username,role');
-    window.leagueAccounts=data||[];
-    window._leagueAccountsTime = Date.now();
+    if(bType === 'cloudflare'){
+      let cfUrl = getCloudflareUrl();
+      let res = await fetch(`${cfUrl}/api/accounts`);
+      if(res.ok){
+        let data = await res.json();
+        window.leagueAccounts = Array.isArray(data) ? data : [];
+        window._leagueAccountsTime = Date.now();
+        return window.leagueAccounts;
+      }
+    } else if(supabaseClient){
+      let {data}=await supabaseClient.from('user_profiles').select('id,username,role');
+      window.leagueAccounts=data||[];
+      window._leagueAccountsTime = Date.now();
+    }
   }catch(e){}
-  return window.leagueAccounts||[]
+  return window.leagueAccounts||[];
 }
 
 function openAccountLinks(focusPlayer){
@@ -10022,11 +10332,11 @@ async function saveAccountLinks(){
 
 async function forceCloudSync(){
   if(isSandboxMode()){
-    alert('You are currently in Sandbox Mode. Local test tournaments and draft simulations in Sandbox Mode stay in your browser only. To publish live to Supabase, disable Sandbox Mode or use "Publish Sandbox" in the Sandbox banner.');
+    alert('You are currently in Sandbox Mode. Local test tournaments and draft simulations in Sandbox Mode stay in your browser only. To publish live to the cloud, disable Sandbox Mode or use "Publish Sandbox" in the Sandbox banner.');
     return;
   }
-  if(!supabaseClient){
-    alert('Supabase is not connected.');
+  if(!backendReady()){
+    alert('Cloud backend is not connected.');
     return;
   }
   let btn = document.getElementById('forceSyncBtn');
@@ -10037,8 +10347,9 @@ async function forceCloudSync(){
   try {
     if(moderator) await pushMediaToSupabase();
     await flushSync();
-    if(typeof showDraftToast === 'function') showDraftToast('☁️ Synced all tournaments to Supabase!');
-    alert(`✓ Cloud Sync Successful!\n\nAll tournaments (${Object.keys(tournamentData).length} total) and rosters are now live in Supabase.\nAny phone or computer refreshing the site will now see this exact state.`);
+    let dest = getBackendType() === 'cloudflare' ? 'Cloudflare' : 'Supabase';
+    if(typeof showDraftToast === 'function') showDraftToast(`☁️ Synced all tournaments to ${dest}!`);
+    alert(`✓ Cloud Sync Successful!\n\nAll tournaments (${Object.keys(tournamentData).length} total) and rosters are now live in ${dest}.\nAny phone or computer refreshing the site will now see this exact state.`);
     render();
   } catch(e){
     alert('Cloud Sync Exception: ' + e.message);
@@ -10990,11 +11301,21 @@ async function renderPredictionLeaders(t, forceFresh = false){
   let effectiveUsername = window.currentAccount?.username || (sessionUser?.user_metadata?.username) || 'You';
   let currentUserId = sessionUser?.id || effectiveUsername;
 
-  if(!isSandboxMode() && supabaseClient && supabaseReady()){
+  if(!isSandboxMode() && backendReady()){
     try {
-      let res = await supabaseClient.from('predictions').select('user_id,prediction_key,selection').eq('tournament_id', t.id);
-      rows = res.data || [];
-      accounts = await loadAccounts();
+      let bType = getBackendType();
+      if(bType === 'cloudflare'){
+        let cfUrl = getCloudflareUrl();
+        let res = await fetch(`${cfUrl}/api/predictions?tournament_id=${encodeURIComponent(t.id)}`);
+        if(res.ok){
+          rows = await res.json();
+        }
+        accounts = await loadAccounts();
+      } else if(supabaseClient && supabaseReady()){
+        let res = await supabaseClient.from('predictions').select('user_id,prediction_key,selection').eq('tournament_id', t.id);
+        rows = res.data || [];
+        accounts = await loadAccounts();
+      }
     } catch(e){
       console.warn('Prediction scores load error:', e);
     }
@@ -11069,28 +11390,9 @@ function savePredictionPick(question, choice, el){
     render();
   }
 
-  // Fire Supabase sync in background
-  if(!isSandboxMode() && supabaseClient && sessionUser){
-    (async () => {
-      try {
-        if(isTogglingOff){
-          await supabaseClient.from('predictions').delete().match({
-            user_id: sessionUser.id,
-            tournament_id: t.id,
-            prediction_key: question
-          });
-        } else {
-          await supabaseClient.from('predictions').upsert({
-            user_id: sessionUser.id,
-            tournament_id: t.id,
-            prediction_key: question,
-            selection: choice
-          }, { onConflict: 'user_id,tournament_id,prediction_key' });
-        }
-      } catch(e){
-        console.warn('Prediction background sync error:', e);
-      }
-    })();
+  // Fire backend sync in background
+  if(!isSandboxMode() && backendReady() && sessionUser){
+    syncPredictionRecord(t.id, question, choice, isTogglingOff);
   }
 }
 
@@ -11628,28 +11930,9 @@ function saveBracketPredictionPick(mId, choice){
     render();
   }
 
-  // Fire Supabase sync in background
-  if(!isSandboxMode() && supabaseClient && sessionUser){
-    (async () => {
-      try {
-        if(isTogglingOff){
-          await supabaseClient.from('predictions').delete().match({
-            user_id: sessionUser.id,
-            tournament_id: t.id,
-            prediction_key: question
-          });
-        } else {
-          await supabaseClient.from('predictions').upsert({
-            user_id: sessionUser.id,
-            tournament_id: t.id,
-            prediction_key: question,
-            selection: choice
-          }, { onConflict: 'user_id,tournament_id,prediction_key' });
-        }
-      } catch(e){
-        console.warn('Bracket prediction background sync error:', e);
-      }
-    })();
+  // Fire backend sync in background
+  if(!isSandboxMode() && backendReady() && sessionUser){
+    syncPredictionRecord(t.id, question, choice, isTogglingOff);
   }
 }
 
@@ -15821,7 +16104,7 @@ function makeDraftPick(tId, pokemonName, forcedPlayer = null){
       });
     } catch(e){}
   }
-  if(!isSandboxMode() && supabaseClient){
+  if(!isSandboxMode() && backendReady()){
     clearTimeout(syncTimer);
     flushSync();
   }
@@ -15860,7 +16143,7 @@ function undoDraftPick(tId){
       });
     } catch(e){}
   }
-  if(!isSandboxMode() && supabaseClient){
+  if(!isSandboxMode() && backendReady()){
     clearTimeout(syncTimer);
     flushSync();
   }
@@ -15883,7 +16166,7 @@ function startDraft(tId){
       });
     } catch(e){}
   }
-  if(!isSandboxMode() && supabaseClient){
+  if(!isSandboxMode() && backendReady()){
     clearTimeout(syncTimer);
     flushSync();
   }
@@ -15906,7 +16189,7 @@ function pauseDraft(tId){
       });
     } catch(e){}
   }
-  if(!isSandboxMode() && supabaseClient){
+  if(!isSandboxMode() && backendReady()){
     clearTimeout(syncTimer);
     flushSync();
   }
@@ -15929,7 +16212,7 @@ function resumeDraft(tId){
       });
     } catch(e){}
   }
-  if(!isSandboxMode() && supabaseClient){
+  if(!isSandboxMode() && backendReady()){
     clearTimeout(syncTimer);
     flushSync();
   }
