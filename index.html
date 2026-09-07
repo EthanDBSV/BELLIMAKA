@@ -356,7 +356,7 @@
 .in-season-hero{display:grid;grid-template-columns:1.15fr 0.85fr;gap:18px;align-items:stretch}
 .tourney-hero-card{position:relative;overflow:hidden;display:flex;flex-direction:column;justify-content:space-between;padding:26px 24px;background:linear-gradient(135deg,#1b1216 0%,#15151c 60%,#11141c 100%);border:1px solid #4a2832;border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,0.55),0 0 16px rgba(239,48,56,0.12);min-height:430px;height:100%}
 .tourney-hero-card.has-bg{background-size:cover;background-position:center}
-.tourney-hero-backdrop{position:absolute;inset:0;background:linear-gradient(90deg,rgba(12,12,18,0.60) 0%,rgba(12,12,18,0.35) 42%,rgba(12,12,18,0.06) 75%,transparent 100%);pointer-events:none;z-index:0}
+.tourney-hero-backdrop{position:absolute;inset:0;background:linear-gradient(90deg,rgba(12,12,18,0.64) 0%,rgba(12,12,18,0.38) 42%,rgba(12,12,18,0.10) 70%,rgba(12,12,18,0.20) 100%);pointer-events:none;z-index:0}
 .tourney-hero-content{position:relative;z-index:1;display:flex;flex-direction:column;justify-content:space-between;height:100%}
 .tourney-hero-title{font:900 44px/1.02 'Barlow Condensed';color:#f5f3f0;letter-spacing:.5px;margin:12px 0 14px;text-shadow:0 2px 10px rgba(0,0,0,0.85)}
 .tourney-chips-row{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px}
@@ -641,36 +641,391 @@ details[open] > .past-tourney-summary .past-chevron{transform:rotate(180deg);col
 .draft-import-dropzone:hover{border-color:var(--red);background:#1a1418}
 .draft-import-textarea{width:100%;height:180px;background:#0f0f14;border:1px solid #2d2d3c;border-radius:6px;padding:12px;color:#f5f3f0;font-family:monospace;font-size:12px;resize:vertical}
 
-/* ------------------------------------------------------------ Compact Teams UI ------------------------------------------------------------ */
-.teams{display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:16px;margin-top:16px}
-@media (max-width: 768px){.teams{grid-template-columns:1fr;gap:14px}}
+/* ------------------------------------------------------------ Modern Teams UI & Roster Deep-Dive ------------------------------------------------------------ */
+.teams-showcase-grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fill,minmax(420px,1fr));
+  gap:18px;
+  margin-top:16px;
+}
+@media (max-width: 900px){
+  .teams-showcase-grid{grid-template-columns:1fr;gap:14px}
+}
 
-.team-compact-card{background:#13131c;border:1px solid #282838;border-radius:12px;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 6px 20px rgba(0,0,0,0.45);transition:transform .18s ease,border-color .18s ease,box-shadow .18s ease;cursor:pointer;position:relative}
-.team-compact-card:hover{border-color:#5a3440;transform:translateY(-3px);box-shadow:0 12px 30px rgba(0,0,0,0.65),0 0 16px rgba(239,48,56,0.1)}
+/* Primary Card (Image 2 style) */
+.team-showcase-card{
+  background:#13131d;
+  border:1px solid #28283a;
+  border-radius:12px;
+  overflow:hidden;
+  display:flex;
+  flex-direction:column;
+  box-shadow:0 6px 22px rgba(0,0,0,0.5);
+  transition:transform .18s ease,border-color .18s ease,box-shadow .18s ease;
+  cursor:pointer;
+  position:relative;
+}
+.team-showcase-card:hover{
+  border-color:#5c3b82;
+  transform:translateY(-3px);
+  box-shadow:0 12px 32px rgba(0,0,0,0.68),0 0 20px rgba(168,85,247,0.12);
+}
 
-.team-compact-banner{height:115px;background-size:cover;background-position:center;position:relative;padding:12px 14px;display:flex;flex-direction:column;justify-content:space-between;background-color:#1c1c26;overflow:hidden}
-.team-compact-banner::before{content:'';position:absolute;inset:0;background-image:inherit;background-size:cover;background-position:inherit;transition:transform .3s ease;pointer-events:none}
-.team-compact-card:hover .team-compact-banner::before{transform:scale(1.04)}
-.team-compact-banner-overlay{position:absolute;inset:0;background:linear-gradient(180deg,rgba(10,10,16,0.4) 0%,rgba(10,10,16,0.2) 30%,rgba(10,10,16,0.92) 100%);pointer-events:none;z-index:1}
+.team-card-head{
+  padding:14px 16px 10px;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+}
+.team-card-identity{
+  display:flex;
+  align-items:center;
+  gap:12px;
+  min-width:0;
+  flex:1;
+}
+.team-card-avatar{
+  width:44px;
+  height:44px;
+  border-radius:50%;
+  background-size:cover;
+  background-position:center;
+  display:grid;
+  place-items:center;
+  font:900 18px 'Barlow Condensed';
+  color:#fff;
+  border:2px solid rgba(255,255,255,0.22);
+  box-shadow:0 4px 12px rgba(0,0,0,0.6);
+  flex:none;
+}
+.team-card-meta{
+  min-width:0;
+  flex:1;
+}
+.team-card-name{
+  font:900 20px/1.15 'Barlow Condensed';
+  color:#ffffff;
+  margin:0;
+  letter-spacing:0.5px;
+  text-transform:uppercase;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+.team-card-coach{
+  font:800 11px 'Barlow Condensed';
+  letter-spacing:0.8px;
+  color:#8e8c9c;
+  text-transform:uppercase;
+  margin-top:2px;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
 
-.team-compact-top{position:relative;z-index:2;display:flex;justify-content:space-between;align-items:center}
-.team-compact-bottom{position:relative;z-index:2;display:flex;align-items:center;gap:10px;min-width:0}
+.team-card-chips{
+  display:flex;
+  align-items:center;
+  gap:6px;
+  flex:none;
+}
+.team-stat-chip{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  padding:3px 8px;
+  border-radius:6px;
+  font:800 11px 'Barlow Condensed';
+  letter-spacing:0.4px;
+  background:#1b1b26;
+  border:1px solid #2e2e42;
+  color:#ffffff;
+  white-space:nowrap;
+}
+.team-stat-chip.pts{
+  color:#c084fc;
+  border-color:rgba(192,132,252,0.32);
+  background:rgba(192,132,252,0.08);
+}
 
-.team-compact-avatar{width:40px;height:40px;border-radius:50%;background-size:cover;background-position:center;display:grid;place-items:center;font:800 17px 'Barlow Condensed';color:#fff;border:2px solid rgba(255,255,255,0.25);box-shadow:0 4px 12px rgba(0,0,0,0.7);flex:none}
-.team-compact-name{font:800 22px/1.1 'Barlow Condensed';color:#ffffff;margin:0;letter-spacing:.4px;text-shadow:0 2px 8px rgba(0,0,0,0.9);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.team-compact-coach{font-size:11px;font-weight:700;color:#c0beca;letter-spacing:.3px;margin-top:1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+/* Primary Card Sprites (2 rows of 5) */
+.team-card-sprites-box{
+  padding:8px 14px 12px;
+  flex:1;
+  display:flex;
+  flex-direction:column;
+  justify-content:center;
+}
+.team-card-sprites-grid{
+  display:grid;
+  grid-template-columns:repeat(5,1fr);
+  gap:8px 6px;
+  justify-items:center;
+  align-items:center;
+  padding:10px 8px;
+  background:rgba(12,12,18,0.55);
+  border-radius:8px;
+  border:1px solid rgba(255,255,255,0.04);
+  min-height:125px;
+}
+.team-card-sprite-slot{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  width:100%;
+  height:52px;
+  position:relative;
+}
+.team-card-sprite-img{
+  width:48px;
+  height:48px;
+  object-fit:contain;
+  filter:drop-shadow(0 3px 6px rgba(0,0,0,0.6));
+  transition:transform .15s ease,filter .15s ease;
+}
+.team-showcase-card:hover .team-card-sprite-img{
+  transform:scale(1.06);
+}
+.team-card-sprite-slot:hover .team-card-sprite-img{
+  transform:scale(1.22)!important;
+  filter:drop-shadow(0 5px 10px rgba(0,0,0,0.9));
+  z-index:5;
+}
+.team-card-sprite-empty{
+  width:32px;
+  height:32px;
+  border-radius:50%;
+  border:1px dashed rgba(255,255,255,0.12);
+  background:rgba(255,255,255,0.02);
+  display:grid;
+  place-items:center;
+  color:rgba(255,255,255,0.16);
+  font-size:11px;
+}
 
-.team-compact-roster{padding:10px 12px;background:#101017;flex:1;display:flex;flex-direction:column}
-.team-compact-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(72px,1fr));gap:6px}
+.team-card-foot{
+  padding:4px 16px 14px;
+  display:flex;
+  align-items:center;
+  justify-content:flex-start;
+}
+.team-card-view-btn{
+  font:900 11px 'Barlow Condensed';
+  letter-spacing:0.8px;
+  color:#a855f7;
+  text-transform:uppercase;
+  background:none;
+  border:none;
+  padding:0;
+  cursor:pointer;
+  display:inline-flex;
+  align-items:center;
+  gap:4px;
+  transition:color .15s ease,transform .15s ease;
+}
+.team-card-view-btn:hover{
+  color:#c084fc;
+  transform:translateX(4px);
+}
 
-.team-compact-mon{position:relative;border-radius:6px;padding:5px 4px;display:flex;flex-direction:column;align-items:center;text-align:center;transition:transform .14s ease;overflow:hidden;border:1px solid #2d2d3e;background:#161622}
-.team-compact-mon:hover{transform:translateY(-2px);box-shadow:0 4px 12px rgba(0,0,0,0.45)}
-.team-compact-type{font-size:7px;font-weight:900;letter-spacing:.5px;text-transform:uppercase;padding:1px 4px;border-radius:3px;margin-bottom:2px;max-width:92%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.team-compact-sprite{width:38px;height:38px;object-fit:contain;filter:drop-shadow(0 3px 5px rgba(0,0,0,0.6));transition:transform .15s ease}
-.team-compact-mon:hover .team-compact-sprite{transform:scale(1.12)}
-.team-compact-mon-name{font:800 11px 'Barlow Condensed';color:#f5f3f0;letter-spacing:.3px;width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-top:2px}
+/* Secondary View (Roster Deep-Dive - Image 3 style) */
+.team-detail-container{
+  display:flex;
+  flex-direction:column;
+  gap:20px;
+  width:100%;
+}
+.team-detail-header-card{
+  background:linear-gradient(135deg,#181528 0%,#12121c 65%,#0f0f16 100%);
+  border:1px solid #322648;
+  border-radius:12px;
+  padding:22px 24px;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  flex-wrap:wrap;
+  gap:16px;
+  box-shadow:0 8px 26px rgba(0,0,0,0.5);
+  position:relative;
+  overflow:hidden;
+}
+.team-detail-identity{
+  display:flex;
+  align-items:center;
+  gap:16px;
+  min-width:0;
+  flex:1;
+}
+.team-detail-avatar{
+  width:62px;
+  height:62px;
+  border-radius:50%;
+  background-size:cover;
+  background-position:center;
+  display:grid;
+  place-items:center;
+  font:900 24px 'Barlow Condensed';
+  color:#fff;
+  border:3px solid rgba(255,255,255,0.28);
+  box-shadow:0 4px 16px rgba(0,0,0,0.65);
+  flex:none;
+}
+.team-detail-titles{
+  min-width:0;
+  flex:1;
+}
+.team-detail-team-name{
+  font:900 38px/1.05 'Barlow Condensed';
+  letter-spacing:0.6px;
+  text-transform:uppercase;
+  color:#ffffff;
+  margin:0;
+  text-shadow:0 3px 12px rgba(0,0,0,0.7);
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+.team-detail-coach-sub{
+  font:800 13px 'Barlow Condensed';
+  letter-spacing:1px;
+  color:#a09fa8;
+  text-transform:uppercase;
+  margin-top:4px;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+.team-detail-badges{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  flex-wrap:wrap;
+}
+.team-detail-pill{
+  background:#11111a;
+  border:1px solid #2e2e42;
+  border-radius:8px;
+  padding:7px 14px;
+  font:800 12px 'Barlow Condensed';
+  letter-spacing:0.6px;
+  color:#8e8c98;
+  text-transform:uppercase;
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+  box-shadow:0 2px 8px rgba(0,0,0,0.4);
+}
+.team-detail-pill b{
+  color:#ffffff;
+  font-size:13px;
+}
+.team-detail-pill.pts{
+  border-color:rgba(192,132,252,0.35);
+}
+.team-detail-pill.pts b{
+  color:#c084fc;
+}
 
-.team-compact-empty{padding:14px 10px;text-align:center;color:#787685;font-size:11px;font-weight:600;display:flex;align-items:center;justify-content:center;gap:6px}
+/* Two-column deep dive grid (Image 3) */
+.team-detail-roster-grid{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:12px;
+}
+@media (max-width: 768px){
+  .team-detail-roster-grid{grid-template-columns:1fr;gap:10px}
+  .team-detail-team-name{font-size:28px}
+}
+
+.team-detail-mon-row{
+  background:linear-gradient(135deg,#151522 0%,#12121a 100%);
+  border:1px solid #28283c;
+  border-radius:10px;
+  padding:10px 16px;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:14px;
+  transition:transform .14s ease,border-color .14s ease,box-shadow .14s ease;
+  min-height:60px;
+  box-shadow:0 4px 14px rgba(0,0,0,0.35);
+}
+.team-detail-mon-row:hover{
+  border-color:#5c3b82;
+  transform:translateY(-2px);
+  box-shadow:0 8px 22px rgba(0,0,0,0.5),0 0 14px rgba(168,85,247,0.1);
+}
+.team-detail-mon-left{
+  display:flex;
+  align-items:center;
+  gap:14px;
+  min-width:0;
+  flex:1;
+}
+.team-detail-mon-sprite{
+  width:44px;
+  height:44px;
+  object-fit:contain;
+  filter:drop-shadow(0 2px 5px rgba(0,0,0,0.6));
+  flex:none;
+  transition:transform .15s ease;
+}
+.team-detail-mon-row:hover .team-detail-mon-sprite{
+  transform:scale(1.15);
+}
+.team-detail-mon-info{
+  min-width:0;
+  display:flex;
+  flex-direction:column;
+}
+.team-detail-mon-name{
+  font:800 15px/1.15 'Barlow Condensed';
+  letter-spacing:0.5px;
+  text-transform:uppercase;
+  color:#f5f3f0;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+.team-detail-type-row{
+  display:flex;
+  align-items:center;
+  gap:4px;
+  margin-top:3px;
+  flex-wrap:wrap;
+}
+.team-type-badge{
+  font-size:8px;
+  font-weight:900;
+  letter-spacing:0.6px;
+  text-transform:uppercase;
+  padding:2px 6px;
+  border-radius:4px;
+  line-height:1.1;
+}
+.team-detail-mon-cost{
+  font:900 20px 'Barlow Condensed';
+  color:#c0beca;
+  flex:none;
+  min-width:28px;
+  text-align:right;
+}
+
+.team-detail-empty-slot{
+  background:rgba(18,18,26,0.5);
+  border:1px dashed #2e2e42;
+  border-radius:10px;
+  padding:12px 16px;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  color:#6a6875;
+  font:800 12px 'Barlow Condensed';
+  letter-spacing:0.6px;
+  text-transform:uppercase;
+  min-height:60px;
+}
 
 
 /* ------------------------------------------------------------ Modern Matches UI ------------------------------------------------------------ */
@@ -1468,6 +1823,224 @@ function getPokemonTypeTheme(name){
   return TYPE_THEMES[type] || TYPE_THEMES['Normal'];
 }
 
+const POKEMON_DUAL_MAP = {
+  'megafroslass': ['Ice', 'Ghost'],
+  'froslass': ['Ice', 'Ghost'],
+  'kingambit': ['Dark', 'Steel'],
+  'bisharp': ['Dark', 'Steel'],
+  'pawniard': ['Dark', 'Steel'],
+  'hisuianarcanine': ['Fire', 'Rock'],
+  'arcaninehisui': ['Fire', 'Rock'],
+  'megadragonite': ['Dragon', 'Flying'],
+  'dragonite': ['Dragon', 'Flying'],
+  'palafin': ['Water'],
+  'palafinhero': ['Water'],
+  'kangaskhan': ['Normal'],
+  'megakangaskhan': ['Normal'],
+  'megabanette': ['Ghost'],
+  'banette': ['Ghost'],
+  'chesnaught': ['Grass', 'Fighting'],
+  'rotomfrost': ['Electric', 'Ice'],
+  'rotomheat': ['Electric', 'Fire'],
+  'rotomwash': ['Electric', 'Water'],
+  'rotommow': ['Electric', 'Grass'],
+  'rotomfan': ['Electric', 'Flying'],
+  'rotom': ['Electric', 'Ghost'],
+  'ariados': ['Bug', 'Poison'],
+  'spinarak': ['Bug', 'Poison'],
+  'archaludon': ['Steel', 'Dragon'],
+  'duraludon': ['Steel', 'Dragon'],
+  'sinistcha': ['Grass', 'Ghost'],
+  'poltchageist': ['Grass', 'Ghost'],
+  'megalopunny': ['Normal', 'Fighting'],
+  'lopunny': ['Normal'],
+  'politoed': ['Water'],
+  'sableye': ['Dark', 'Ghost'],
+  'megasableye': ['Dark', 'Ghost'],
+  'weavile': ['Dark', 'Ice'],
+  'sneasel': ['Dark', 'Ice'],
+  'sneaselhisui': ['Poison', 'Fighting'],
+  'sneasler': ['Poison', 'Fighting'],
+  'megasteelix': ['Steel', 'Ground'],
+  'steelix': ['Steel', 'Ground'],
+  'toxicroak': ['Poison', 'Fighting'],
+  'croagunk': ['Poison', 'Fighting'],
+  'beartic': ['Ice'],
+  'cubchoo': ['Ice'],
+  'altaria': ['Dragon', 'Flying'],
+  'megaaltaria': ['Dragon', 'Fairy'],
+  'blastoise': ['Water'],
+  'megablastoise': ['Water'],
+  'dragapult': ['Dragon', 'Ghost'],
+  'drakloak': ['Dragon', 'Ghost'],
+  'dreepy': ['Dragon', 'Ghost'],
+  'lucario': ['Fighting', 'Steel'],
+  'megalucario': ['Fighting', 'Steel'],
+  'vivillon': ['Bug', 'Flying'],
+  'snorlax': ['Normal'],
+  'tsareena': ['Grass'],
+  'aromatisse': ['Fairy'],
+  'espathra': ['Psychic'],
+  'samurotthisui': ['Water', 'Dark'],
+  'samurott': ['Water'],
+  'basculegion': ['Water', 'Ghost'],
+  'basculegionf': ['Water', 'Ghost'],
+  'sylveon': ['Fairy'],
+  'scizor': ['Bug', 'Steel'],
+  'megascizor': ['Bug', 'Steel'],
+  'krookodile': ['Ground', 'Dark'],
+  'krokorok': ['Ground', 'Dark'],
+  'sandile': ['Ground', 'Dark'],
+  'noivern': ['Flying', 'Dragon'],
+  'noibat': ['Flying', 'Dragon'],
+  'armarouge': ['Fire', 'Psychic'],
+  'ceruledge': ['Fire', 'Ghost'],
+  'charcadet': ['Fire'],
+  'raichualola': ['Electric', 'Psychic'],
+  'raichu': ['Electric'],
+  'hawlucha': ['Fighting', 'Flying'],
+  'sharpedo': ['Water', 'Dark'],
+  'megasharpedo': ['Water', 'Dark'],
+  'greattusk': ['Ground', 'Fighting'],
+  'screamtail': ['Fairy', 'Psychic'],
+  'brutebonnet': ['Grass', 'Dark'],
+  'fluttermane': ['Ghost', 'Fairy'],
+  'slitherwing': ['Bug', 'Fighting'],
+  'sandyshocks': ['Electric', 'Ground'],
+  'roaringmoon': ['Dragon', 'Dark'],
+  'irontreads': ['Ground', 'Steel'],
+  'ironbundle': ['Ice', 'Water'],
+  'ironhands': ['Fighting', 'Electric'],
+  'ironjugulis': ['Dark', 'Flying'],
+  'ironmoth': ['Fire', 'Poison'],
+  'ironthorns': ['Rock', 'Electric'],
+  'ironvaliant': ['Fairy', 'Fighting'],
+  'walkingwake': ['Water', 'Dragon'],
+  'gougingfire': ['Fire', 'Dragon'],
+  'ragingbolt': ['Electric', 'Dragon'],
+  'ironleaves': ['Grass', 'Psychic'],
+  'ironboulder': ['Rock', 'Psychic'],
+  'ironcrown': ['Steel', 'Psychic'],
+  'ogerponwellspring': ['Grass', 'Water'],
+  'ogerponhearthflame': ['Grass', 'Fire'],
+  'ogerponcornerstone': ['Grass', 'Rock'],
+  'ogerpon': ['Grass'],
+  'meowscarada': ['Grass', 'Dark'],
+  'skeledirge': ['Fire', 'Ghost'],
+  'quaquaval': ['Water', 'Fighting'],
+  'tinkaton': ['Fairy', 'Steel'],
+  'tinkatuff': ['Fairy', 'Steel'],
+  'tinkatink': ['Fairy', 'Steel'],
+  'baxcalibur': ['Dragon', 'Ice'],
+  'arctibax': ['Dragon', 'Ice'],
+  'frigibax': ['Dragon', 'Ice'],
+  'gholdengo': ['Steel', 'Ghost'],
+  'gimmighoul': ['Ghost'],
+  'tinglu': ['Dark', 'Ground'],
+  'chienpao': ['Dark', 'Ice'],
+  'wochien': ['Dark', 'Grass'],
+  'chiyu': ['Dark', 'Fire'],
+  'koraidon': ['Fighting', 'Dragon'],
+  'miraidon': ['Electric', 'Dragon'],
+  'charizard': ['Fire', 'Flying'],
+  'megacharizardx': ['Fire', 'Dragon'],
+  'megacharizardy': ['Fire', 'Flying'],
+  'venusaur': ['Grass', 'Poison'],
+  'megavenusaur': ['Grass', 'Poison'],
+  'gengar': ['Ghost', 'Poison'],
+  'megagengar': ['Ghost', 'Poison'],
+  'gyarados': ['Water', 'Flying'],
+  'megagyarados': ['Water', 'Dark'],
+  'zapdos': ['Electric', 'Flying'],
+  'zapdosgalar': ['Fighting', 'Flying'],
+  'moltres': ['Fire', 'Flying'],
+  'moltresgalar': ['Dark', 'Flying'],
+  'articuno': ['Ice', 'Flying'],
+  'articunogalar': ['Psychic', 'Flying'],
+  'tyranitar': ['Rock', 'Dark'],
+  'megatyranitar': ['Rock', 'Dark'],
+  'salamence': ['Dragon', 'Flying'],
+  'megasalamence': ['Dragon', 'Flying'],
+  'metagross': ['Steel', 'Psychic'],
+  'megametagross': ['Steel', 'Psychic'],
+  'garchomp': ['Dragon', 'Ground'],
+  'megagarchomp': ['Dragon', 'Ground'],
+  'heatran': ['Fire', 'Steel'],
+  'landorus': ['Ground', 'Flying'],
+  'landorustherian': ['Ground', 'Flying'],
+  'thundurus': ['Electric', 'Flying'],
+  'thundurustherian': ['Electric', 'Flying'],
+  'tornadus': ['Flying'],
+  'volcarona': ['Bug', 'Fire'],
+  'ferrothorn': ['Grass', 'Steel'],
+  'ferroseed': ['Grass', 'Steel'],
+  'toxapex': ['Poison', 'Water'],
+  'mareanie': ['Poison', 'Water'],
+  'urshifurapidstrike': ['Fighting', 'Water'],
+  'urshifu': ['Fighting', 'Dark'],
+  'grimmsnarl': ['Dark', 'Fairy'],
+  'gliscor': ['Ground', 'Flying'],
+  'gligar': ['Ground', 'Flying'],
+  'slowbro': ['Water', 'Psychic'],
+  'slowking': ['Water', 'Psychic'],
+  'slowbrogalar': ['Poison', 'Psychic'],
+  'slowkinggalar': ['Poison', 'Psychic'],
+  'amoonguss': ['Grass', 'Poison'],
+  'excadrill': ['Ground', 'Steel'],
+  'hydreigon': ['Dark', 'Dragon'],
+  'corviknight': ['Flying', 'Steel'],
+  'tatsugiri': ['Dragon', 'Water'],
+  'annihilape': ['Fighting', 'Ghost'],
+  'clodsire': ['Poison', 'Ground'],
+  'garganacl': ['Rock'],
+  'glimmora': ['Rock', 'Poison'],
+  'farigiraf': ['Normal', 'Psychic'],
+  'kilowattrel': ['Electric', 'Flying'],
+  'bellibolt': ['Electric'],
+  'pawmot': ['Electric', 'Fighting'],
+  'toedscruel': ['Ground', 'Grass'],
+  'scovillain': ['Grass', 'Fire'],
+  'rabsca': ['Bug', 'Psychic'],
+  'lokix': ['Bug', 'Dark'],
+  'dachsbun': ['Fairy'],
+  'grafaiai': ['Poison', 'Normal'],
+  'brambleghast': ['Grass', 'Ghost'],
+  'arboliva': ['Grass', 'Normal'],
+  'flamigo': ['Flying', 'Fighting'],
+  'veluza': ['Water', 'Psychic'],
+  'dondozo': ['Water'],
+  'cyclizar': ['Dragon', 'Normal'],
+  'bombirdier': ['Flying', 'Dark'],
+  'revavroom': ['Steel', 'Poison'],
+  'dipplin': ['Grass', 'Dragon'],
+  'hydrapple': ['Grass', 'Dragon'],
+  'pecharunt': ['Poison', 'Ghost'],
+  'okidogi': ['Poison', 'Fighting'],
+  'munkidori': ['Poison', 'Psychic'],
+  'fezandipiti': ['Poison', 'Fairy']
+};
+
+function getPokemonTypes(name){
+  let raw = String(name || '').toLowerCase().trim().replace(/\s*\(\d+.*?\)$/, '');
+  let alpha = raw.replace(/[^a-z0-9]/g, '');
+  if(POKEMON_DUAL_MAP[alpha]) return POKEMON_DUAL_MAP[alpha];
+  if(POKEMON_DUAL_MAP[raw]) return POKEMON_DUAL_MAP[raw];
+  
+  let stripped = alpha.replace(/^(mega|hisuian|hisui|galarian|galar|alolan|alola|paldean|paldea)/, '');
+  if(POKEMON_DUAL_MAP[stripped]) return POKEMON_DUAL_MAP[stripped];
+
+  let primary = getPokemonPrimaryType(name);
+  return [primary];
+}
+
+function renderPokemonTypeBadges(monName, extraStyle=''){
+  let types = getPokemonTypes(monName);
+  return types.map(t => {
+    let theme = TYPE_THEMES[t] || TYPE_THEMES['Normal'];
+    return `<span class="team-type-badge" style="background:${theme.badgeBg};color:${theme.badgeText};${extraStyle}">${esc(t)}</span>`;
+  }).join('');
+}
+
 
 
 window.onerror = function(msg, url, line, col, error) {
@@ -1503,6 +2076,7 @@ function nav(){
   if(typeof renderTopNavExtras === 'function') renderTopNavExtras();
 }
 function go(t,updateHash=true){
+  if(t !== 'Teams') window.selectedTeamRosterCoach = null;
   current=(t==='Draft Board'||t==='Draft Tools')?'Draft':t;
   try{
     localStorage.setItem('draftdex-active-tab',current);
@@ -9849,6 +10423,7 @@ function savedPick(t,question){try{return localStorage.getItem('draftdex-pick-'+
 tabs.length=0;
 tabs.push('Home','Standings','Teams','Draft','Matches','Top Cut','Playoff Odds','Predictions','Records','Tournaments');
 function go(tab, updateHash=true){
+  if(tab !== 'Teams') window.selectedTeamRosterCoach = null;
   current=(tab==='Draft Board'||tab==='Draft Tools')?'Draft':tab;
   try{
     localStorage.setItem('draftdex-active-tab', current);
@@ -15632,72 +16207,197 @@ function teamName(t,p){
   if(fallback&&fallback!=='No default team')return fallback;
   return 'Unassigned team'
 }
+function openTeamRosterView(p){
+  window.selectedTeamRosterCoach = p;
+  window.scrollTo(0, 0);
+  render();
+}
+
+function closeTeamRosterView(){
+  window.selectedTeamRosterCoach = null;
+  window.scrollTo(0, 0);
+  render();
+}
+
+function TeamRosterDetailView(t, p){
+  let tName = teamName(t, p);
+  let faceArt = profilePictures[p] ? `url('${esc(profilePictures[p])}')` : (teamCovers[p] ? `url('${esc(teamCovers[p])}')` : fallbackArt(p));
+  let faceLetter = (profilePictures[p] || teamCovers[p]) ? '' : esc((p || '?')[0]);
+  let teamMons = (t.rosters && t.rosters[p]) ? t.rosters[p] : (roster[p] || []);
+  let coachStats = getDraftCoachStats(t, p);
+  let maxSlots = coachStats.maxSlots || 10;
+  let hasBudget = coachStats.budget > 0;
+
+  // Build slot list: 10 slots (or maxSlots)
+  let totalSlots = Math.max(10, maxSlots, teamMons.length);
+  let slots = [];
+  for(let i = 0; i < totalSlots; i++){
+    let mon = teamMons[i];
+    if(mon){
+      let monName = typeof mon === 'string' ? mon : (mon.pokemon || mon.name || '');
+      let sprite = pokeSprite(monName);
+      let cost = findPokemonCostOnBoard(t, monName);
+      let costDisplay = (cost > 0) ? String(cost) : (hasBudget ? '0' : '—');
+      slots.push({
+        filled: true,
+        monName,
+        sprite,
+        costDisplay,
+        slotNum: i + 1
+      });
+    } else {
+      slots.push({
+        filled: false,
+        slotNum: i + 1
+      });
+    }
+  }
+
+  let actions = canManageTournament(t) ? `
+    <button class="btn ghost btn-sm" onclick="openTeamCoverEditor('${jsArg(p)}')">
+      📷 Edit Cover
+    </button>
+  ` : '';
+
+  return `
+    <div class="team-detail-container">
+      <!-- Back Navigation -->
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">
+        <button class="btn ghost btn-sm" onclick="closeTeamRosterView()" style="display:inline-flex;align-items:center;gap:6px;padding:6px 14px;font-weight:800;font-size:12px;border-color:#38384a;color:#c0beca;cursor:pointer">
+          ← ALL COACHES
+        </button>
+        ${actions}
+      </div>
+
+      <!-- Hero Header (Image 3) -->
+      <div class="team-detail-header-card">
+        <div class="team-detail-identity">
+          <div class="team-detail-avatar" style="background-image:${faceArt}">${faceLetter}</div>
+          <div class="team-detail-titles">
+            <h1 class="team-detail-team-name" title="${esc(tName)}">${esc(tName)}</h1>
+            <div class="team-detail-coach-sub">COACH: ${esc(p.toUpperCase())}</div>
+          </div>
+        </div>
+
+        <div class="team-detail-badges">
+          <div class="team-detail-pill">
+            PICKS <b>${coachStats.count}/${coachStats.maxSlots}</b>
+          </div>
+          ${hasBudget ? `
+            <div class="team-detail-pill pts">
+              SPENT <b>${coachStats.pointsSpent}/${coachStats.budget}</b>
+            </div>
+          ` : ''}
+        </div>
+      </div>
+
+      <!-- Two-Column Roster Grid (Image 3) -->
+      <div class="team-detail-roster-grid">
+        ${slots.map(s => {
+          if(s.filled){
+            return `
+              <div class="team-detail-mon-row">
+                <div class="team-detail-mon-left">
+                  <img src="${esc(s.sprite)}" class="team-detail-mon-sprite" alt="${esc(s.monName)}" loading="lazy" onerror="handleSpriteError(this)">
+                  <div class="team-detail-mon-info">
+                    <span class="team-detail-mon-name" title="${esc(s.monName)}">${esc(s.monName)}</span>
+                    <div class="team-detail-type-row">
+                      ${renderPokemonTypeBadges(s.monName)}
+                    </div>
+                  </div>
+                </div>
+                <div class="team-detail-mon-cost" title="Draft Cost / Value">${esc(s.costDisplay)}</div>
+              </div>
+            `;
+          } else {
+            return `
+              <div class="team-detail-empty-slot">
+                <span>Slot ${s.slotNum} · Open</span>
+                <span>—</span>
+              </div>
+            `;
+          }
+        }).join('')}
+      </div>
+    </div>
+  `;
+}
+
 function Teams(){
   let t = ongoingT();
   if(!t) return noTournament();
   viewTournament = t.id; /* keep the editor on this tournament */
 
-  let actions = moderator ? `<button class="btn ghost" onclick="openTournamentPlayers()">Edit tournament teams</button>` : '';
+  let activeCoach = window.selectedTeamRosterCoach;
+  if(activeCoach && t.players.includes(activeCoach)){
+    return TeamRosterDetailView(t, activeCoach);
+  }
+
+  let actions = canManageTournament(t) ? `<button class="btn ghost" onclick="openTournamentPlayers()">Edit tournament teams</button>` : '';
 
   return head('Teams', t.name + ' · Rosters', actions) + `
-    <div class="teams">
+    <div class="teams-showcase-grid">
       ${t.players.map(p => {
+        let tName = teamName(t, p);
         let faceArt = profilePictures[p] ? `url('${esc(profilePictures[p])}')` : (teamCovers[p] ? `url('${esc(teamCovers[p])}')` : fallbackArt(p));
         let faceLetter = (profilePictures[p] || teamCovers[p]) ? '' : esc((p || '?')[0]);
         let teamMons = (t.rosters && t.rosters[p]) ? t.rosters[p] : (roster[p] || []);
-        let coverImg = teamCovers[p];
-        let bannerBg = coverImg 
-          ? `style="background-image:url('${esc(coverImg)}');background-size:cover;background-position:center"`
-          : `style="background:linear-gradient(135deg, hsl(${hueOf(p)} 45% 22%), #13131c 85%)"`;
-        let pGroup = groupsOf(t)[p] || t.groupAssignments?.[p] || '';
+        let coachStats = getDraftCoachStats(t, p);
+        let maxSlots = coachStats.maxSlots || 10;
+        let hasBudget = coachStats.budget > 0;
+
+        // Build 10 slots (or maxSlots)
+        let slotCount = Math.max(10, maxSlots, teamMons.length);
+        let slotsHtml = [];
+        for(let i = 0; i < slotCount; i++){
+          let mon = teamMons[i];
+          if(mon){
+            let monName = typeof mon === 'string' ? mon : (mon.pokemon || mon.name || '');
+            let sprite = pokeSprite(monName);
+            let types = getPokemonTypes(monName).join(' · ');
+            slotsHtml.push(`
+              <div class="team-card-sprite-slot" title="${esc(monName)} · ${esc(types)}">
+                <img src="${esc(sprite)}" class="team-card-sprite-img" alt="${esc(monName)}" loading="lazy" onerror="handleSpriteError(this)">
+              </div>
+            `);
+          } else {
+            slotsHtml.push(`
+              <div class="team-card-sprite-slot" title="Empty Slot ${i+1}">
+                <div class="team-card-sprite-empty">·</div>
+              </div>
+            `);
+          }
+        }
 
         return `
-          <div class="team-compact-card" onclick="openProfile('${jsArg(p)}')">
-            <!-- Compact Team Banner -->
-            <div class="team-compact-banner" ${bannerBg}>
-              <div class="team-compact-banner-overlay"></div>
-              
-              <div class="team-compact-top">
-                ${pGroup ? `<span class="tag" style="font-size:9px;padding:2px 7px;background:rgba(12,12,18,0.75);backdrop-filter:blur(4px);border:1px solid rgba(255,255,255,0.16);color:#ffd166;font-weight:800">${esc(pGroup)}</span>` : '<span></span>'}
-                ${moderator ? `
-                  <button class="btn ghost btn-sm" style="padding:2px 8px!important;font-size:10px!important;background:rgba(12,12,18,0.75);backdrop-filter:blur(4px);border-color:rgba(255,255,255,0.2)" onclick="event.stopPropagation();openTeamCoverEditor('${jsArg(p)}')">
-                    📷 Cover
-                  </button>
-                ` : ''}
-              </div>
-
-              <div class="team-compact-bottom">
-                <div class="team-compact-avatar" style="background-image:${faceArt}">${faceLetter}</div>
-                <div style="min-width:0;flex:1">
-                  <h3 class="team-compact-name" title="${esc(teamName(t,p))}">${esc(teamName(t,p))}</h3>
-                  <div class="team-compact-coach">Coach: <b style="color:#f5f3f0">${esc(p)}</b></div>
+          <div class="team-showcase-card" onclick="openTeamRosterView('${jsArg(p)}')">
+            <!-- Header -->
+            <div class="team-card-head">
+              <div class="team-card-identity">
+                <div class="team-card-avatar" style="background-image:${faceArt}">${faceLetter}</div>
+                <div class="team-card-meta">
+                  <h3 class="team-card-name" title="${esc(tName)}">${esc(tName)}</h3>
+                  <div class="team-card-coach">COACH: ${esc(p.toUpperCase())}</div>
                 </div>
+              </div>
+              <div class="team-card-chips">
+                <span class="team-stat-chip" title="Drafted Picks">${coachStats.count}/${coachStats.maxSlots}</span>
+                ${hasBudget ? `<span class="team-stat-chip pts" title="Points Budget">${coachStats.pointsSpent}/${coachStats.budget}</span>` : ''}
               </div>
             </div>
 
-            <!-- Pokémon Team Roster -->
-            <div class="team-compact-roster">
-              ${teamMons.length ? `
-                <div class="team-compact-grid">
-                  ${teamMons.map(mon => {
-                    let monName = typeof mon === 'string' ? mon : (mon.pokemon || mon.name || '');
-                    let theme = getPokemonTypeTheme(monName);
-                    let pType = getPokemonPrimaryType(monName);
-                    let sprite = pokeSprite(monName);
-                    return `
-                      <div class="team-compact-mon" style="background:linear-gradient(145deg,${theme.bg},${theme.bgEnd});border-color:${theme.border}" title="${esc(monName)} · ${esc(pType)}">
-                        <span class="team-compact-type" style="background:${theme.badgeBg};color:${theme.badgeText}">${esc(pType)}</span>
-                        <img src="${esc(sprite)}" class="team-compact-sprite" alt="${esc(monName)}" loading="lazy" onerror="handleSpriteError(this)">
-                        <span class="team-compact-mon-name">${esc(monName)}</span>
-                      </div>
-                    `;
-                  }).join('')}
-                </div>
-              ` : `
-                <div class="team-compact-empty">
-                  <span>📦 No Pokémon drafted yet</span>
-                </div>
-              `}
+            <!-- Sprites (2 rows of 5) -->
+            <div class="team-card-sprites-box">
+              <div class="team-card-sprites-grid">
+                ${slotsHtml.join('')}
+              </div>
+            </div>
+
+            <!-- Footer -->
+            <div class="team-card-foot">
+              <button class="team-card-view-btn" onclick="event.stopPropagation();openTeamRosterView('${jsArg(p)}')">
+                VIEW ROSTER →
+              </button>
             </div>
           </div>
         `;
