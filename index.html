@@ -4023,178 +4023,360 @@ async function announceDraftPickToDiscord(t, pickObj, nextTurn){
   }
 }
 
-function generateMatchCardDataUrl(data){
+async function generateMatchCardDataUrl(data){
+  if(!data) return null;
   try {
+    if(typeof document !== 'undefined' && document.fonts && document.fonts.ready){
+      try { await document.fonts.ready; } catch(e){}
+    }
+
     let canvas = document.createElement('canvas');
     canvas.width = 760;
-    canvas.height = 280;
+    canvas.height = 300;
     let ctx = canvas.getContext('2d');
     if(!ctx) return null;
     let w = canvas.width, h = canvas.height;
 
-    // Background gradient matching website theme
-    let bg = ctx.createLinearGradient(0, 0, w, h);
-    bg.addColorStop(0, '#260f18');
-    bg.addColorStop(0.5, '#140e15');
-    bg.addColorStop(1, '#0c0c10');
-    ctx.fillStyle = bg;
+    // Resolve images
+    let coverUrl = data.coverImage
+      || (typeof pulsePanelImages !== 'undefined' ? (pulsePanelImages.primetime || pulsePanelImages.global) : '')
+      || '';
+    if(!coverUrl && typeof localStorage !== 'undefined'){
+      try { coverUrl = localStorage.getItem('draftdex-primetime-cover') || ''; } catch(e){}
+    }
 
-    // Rounded rectangle
+    let p1ImgUrl = data.p1Photo
+      || (typeof profilePictures !== 'undefined' ? profilePictures[data.p1] : '')
+      || (typeof teamCovers !== 'undefined' ? teamCovers[data.p1] : '')
+      || '';
+    let p2ImgUrl = data.p2Photo
+      || (typeof profilePictures !== 'undefined' ? profilePictures[data.p2] : '')
+      || (typeof teamCovers !== 'undefined' ? teamCovers[data.p2] : '')
+      || '';
+
+    function loadImg(url, timeoutMs = 2000){
+      if(!url || typeof url !== 'string') return Promise.resolve(null);
+      return new Promise(resolve => {
+        let done = false;
+        let t = setTimeout(() => {
+          if(!done){ done = true; resolve(null); }
+        }, timeoutMs);
+        let img = new Image();
+        if(!url.startsWith('data:') && !url.startsWith('blob:')){
+          img.crossOrigin = 'anonymous';
+        }
+        img.onload = () => {
+          if(!done){ done = true; clearTimeout(t); resolve(img); }
+        };
+        img.onerror = () => {
+          if(!done){ done = true; clearTimeout(t); resolve(null); }
+        };
+        img.src = url;
+      });
+    }
+
+    let [bgImg, img1, img2] = await Promise.all([
+      loadImg(coverUrl),
+      loadImg(p1ImgUrl),
+      loadImg(p2ImgUrl)
+    ]);
+
+    // Rounded card clipping for the entire canvas
+    ctx.save();
     ctx.beginPath();
-    if(typeof ctx.roundRect === 'function') ctx.roundRect(0, 0, w, h, 12);
+    if(typeof ctx.roundRect === 'function') ctx.roundRect(0, 0, w, h, 10);
     else ctx.rect(0, 0, w, h);
-    ctx.fill();
+    ctx.clip();
 
-    // Subtle red glow on top
-    let glow = ctx.createRadialGradient(w/2, 0, 10, w/2, 0, 350);
-    glow.addColorStop(0, 'rgba(239, 48, 56, 0.22)');
-    glow.addColorStop(1, 'rgba(0, 0, 0, 0)');
-    ctx.fillStyle = glow;
+    // 1. Base dark background
+    let baseGrad = ctx.createLinearGradient(0, 0, w, h);
+    baseGrad.addColorStop(0, '#1f1116');
+    baseGrad.addColorStop(0.5, '#13131a');
+    baseGrad.addColorStop(1, '#121622');
+    ctx.fillStyle = baseGrad;
     ctx.fillRect(0, 0, w, h);
 
-    // Card border
-    ctx.strokeStyle = '#482028';
-    ctx.lineWidth = 2;
-    ctx.stroke();
+    // 2. Cover image if available
+    if(bgImg){
+      let bw = bgImg.naturalWidth || bgImg.width || 1;
+      let bh = bgImg.naturalHeight || bgImg.height || 1;
+      let scale = Math.max(w / bw, h / bh);
+      let sw = bw * scale;
+      let sh = bh * scale;
+      let sx = (w - sw) / 2;
+      let sy = (h - sh) / 2;
+      ctx.drawImage(bgImg, sx, sy, sw, sh);
 
-    // Top banner bar
+      // Dark vignette / theme tint matching website
+      let overlay = ctx.createLinearGradient(0, 0, w, h);
+      if(data.isTopCut){
+        overlay.addColorStop(0, 'rgba(46, 20, 24, 0.88)');
+        overlay.addColorStop(0.5, 'rgba(24, 14, 22, 0.92)');
+        overlay.addColorStop(1, 'rgba(13, 13, 18, 0.94)');
+      } else {
+        overlay.addColorStop(0, 'rgba(32, 12, 18, 0.88)');
+        overlay.addColorStop(0.5, 'rgba(18, 12, 18, 0.92)');
+        overlay.addColorStop(1, 'rgba(13, 13, 18, 0.94)');
+      }
+      ctx.fillStyle = overlay;
+      ctx.fillRect(0, 0, w, h);
+    }
+
+    // 3. Top Banner Bar
+    let bannerH = 38;
     ctx.fillStyle = 'rgba(0, 0, 0, 0.45)';
-    ctx.fillRect(0, 0, w, 42);
+    ctx.fillRect(0, 0, w, bannerH);
     ctx.strokeStyle = 'rgba(255, 255, 255, 0.08)';
     ctx.beginPath();
-    ctx.moveTo(0, 42); ctx.lineTo(w, 42);
+    ctx.moveTo(0, bannerH);
+    ctx.lineTo(w, bannerH);
     ctx.stroke();
 
-    // Banner title (Stage)
-    ctx.font = '900 13px "Barlow Condensed", sans-serif';
-    ctx.fillStyle = '#ffd166';
+    // Banner Stage / Division Text
+    ctx.font = '800 12px "Barlow Condensed", sans-serif';
+    ctx.fillStyle = '#ff9f1c';
     ctx.textAlign = 'left';
-    let stageTitle = (data.stage || 'GROUP STAGE').toUpperCase();
-    if(data.roundLabel) stageTitle += ' • ' + data.roundLabel.toUpperCase();
-    ctx.fillText('⚡  ' + stageTitle, 20, 26);
+    ctx.textBaseline = 'middle';
+    ctx.fillText('⚡', 16, bannerH / 2);
 
-    // FINAL SCORE pill badge
+    ctx.fillStyle = '#ffd166';
+    let stageTitle = (data.stage || 'PRIMETIME MATCHUP').toUpperCase();
+    if(data.roundLabel && !stageTitle.includes(data.roundLabel.toUpperCase())){
+      stageTitle += ' • ' + data.roundLabel.toUpperCase();
+    }
+    ctx.fillText(stageTitle, 34, bannerH / 2 + 0.5);
+
+    // Banner Pill Badge: FINAL SCORE
+    let pillW = 86, pillH = 22, pillX = w - pillW - 16, pillY = (bannerH - pillH) / 2;
     ctx.fillStyle = 'rgba(0, 0, 0, 0.65)';
-    let pillW = 86, pillH = 22, pillX = w - pillW - 20, pillY = 10;
     ctx.beginPath();
     if(typeof ctx.roundRect === 'function') ctx.roundRect(pillX, pillY, pillW, pillH, 4);
     else ctx.rect(pillX, pillY, pillW, pillH);
     ctx.fill();
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.18)';
+    ctx.lineWidth = 1;
     ctx.stroke();
+
     ctx.font = '900 10px "Barlow Condensed", sans-serif';
     ctx.fillStyle = '#7df0aa';
     ctx.textAlign = 'center';
-    ctx.fillText('FINAL SCORE', pillX + pillW/2, pillY + 15);
+    ctx.textBaseline = 'middle';
+    ctx.fillText('FINAL SCORE', pillX + pillW / 2, pillY + pillH / 2 + 0.5);
 
+    // 4. Center Score & FINAL
     let p1Won = +data.s1 > +data.s2;
     let p2Won = +data.s2 > +data.s1;
 
-    // Helper to draw each coach
-    function drawCoachSide(c, cx){
-      let cy = 105;
-      let r = 30;
+    let scoreY = 160;
+    // Left score
+    ctx.textAlign = 'right';
+    ctx.textBaseline = 'middle';
+    ctx.font = '900 36px "Barlow Condensed", sans-serif';
+    ctx.fillStyle = p1Won ? '#4ade80' : '#8e8c98';
+    ctx.fillText(String(data.s1 ?? 0), w / 2 - 18, scoreY);
 
-      // Avatar circle
+    // Dash
+    ctx.textAlign = 'center';
+    ctx.font = '800 20px "Barlow Condensed", sans-serif';
+    ctx.fillStyle = '#6b6a78';
+    ctx.fillText('-', w / 2, scoreY - 1);
+
+    // Right score
+    ctx.textAlign = 'left';
+    ctx.font = '900 36px "Barlow Condensed", sans-serif';
+    ctx.fillStyle = p2Won ? '#4ade80' : '#8e8c98';
+    ctx.fillText(String(data.s2 ?? 0), w / 2 + 18, scoreY);
+
+    // FINAL label
+    ctx.textAlign = 'center';
+    ctx.font = '900 11px "Barlow Condensed", sans-serif';
+    ctx.fillStyle = '#7df0aa';
+    ctx.fillText('FINAL', w / 2, scoreY + 28);
+
+    // 5. Coaches (Left & Right)
+    function drawCoach(c, cx, avatarImg){
+      let cy = 108;
+      let r = 35;
+
+      // Outer glow for winner
+      if(c.won){
+        ctx.save();
+        ctx.shadowColor = 'rgba(74, 222, 128, 0.35)';
+        ctx.shadowBlur = 18;
+        ctx.beginPath();
+        ctx.arc(cx, cy, r, 0, Math.PI * 2);
+        ctx.fillStyle = 'rgba(74, 222, 128, 0.1)';
+        ctx.fill();
+        ctx.restore();
+      }
+
+      // Avatar circle clip
+      ctx.save();
       ctx.beginPath();
       ctx.arc(cx, cy, r, 0, Math.PI * 2);
-      let grad = ctx.createLinearGradient(cx - r, cy - r, cx + r, cy + r);
-      grad.addColorStop(0, '#f14449');
-      grad.addColorStop(1, '#6e1826');
-      ctx.fillStyle = grad;
-      ctx.fill();
+      ctx.closePath();
+      ctx.clip();
 
-      ctx.strokeStyle = c.won ? '#4ade80' : '#ffd166';
+      if(avatarImg){
+        let iw = avatarImg.naturalWidth || avatarImg.width || 1;
+        let ih = avatarImg.naturalHeight || avatarImg.height || 1;
+        let scale = Math.max((r * 2) / iw, (r * 2) / ih);
+        let dw = iw * scale, dh = ih * scale;
+        ctx.drawImage(avatarImg, cx - dw / 2, cy - dh / 2, dw, dh);
+      } else {
+        let grad = ctx.createLinearGradient(cx - r, cy - r, cx + r, cy + r);
+        grad.addColorStop(0, '#f14449');
+        grad.addColorStop(1, '#6e1826');
+        ctx.fillStyle = grad;
+        ctx.fill();
+
+        ctx.fillStyle = '#ffffff';
+        ctx.font = '900 26px "Barlow Condensed", sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText((c.name || '?')[0].toUpperCase(), cx, cy);
+      }
+      ctx.restore();
+
+      // Avatar border ring
+      ctx.beginPath();
+      ctx.arc(cx, cy, r, 0, Math.PI * 2);
+      ctx.strokeStyle = c.won ? '#4ade80' : (c.ovrColor || '#ffd166');
       ctx.lineWidth = 2.5;
       ctx.stroke();
 
-      // Letter avatar
-      ctx.font = '900 22px "Barlow Condensed", sans-serif';
-      ctx.fillStyle = '#ffffff';
-      ctx.textAlign = 'center';
-      ctx.fillText((c.name || '?')[0].toUpperCase(), cx, cy + 8);
-
-      // OVR rating badge
+      // OVR Badge (Bottom Right of Avatar)
       if(c.ovr){
-        let bW = 24, bH = 16, bX = cx + 12, bY = cy + 12;
+        let bW = 34, bH = 18, bX = cx + 13, bY = cy + 14;
+        let bGrad = ctx.createLinearGradient(bX, bY, bX + bW, bY + bH);
+        let borderCol = '#ffe066';
+        if(c.tier === 'elite'){
+          bGrad.addColorStop(0, '#ef3038'); bGrad.addColorStop(1, '#b51821');
+          borderCol = '#ff8087';
+        } else if(c.tier === 'silver'){
+          bGrad.addColorStop(0, '#6d7185'); bGrad.addColorStop(1, '#464957');
+          borderCol = '#a8abb9';
+        } else if(c.tier === 'bronze'){
+          bGrad.addColorStop(0, '#8c542a'); bGrad.addColorStop(1, '#543015');
+          borderCol = '#b87747';
+        } else {
+          // Gold / Diamond
+          bGrad.addColorStop(0, '#e6b800'); bGrad.addColorStop(1, '#a68000');
+          borderCol = '#ffe066';
+        }
+
+        ctx.fillStyle = bGrad;
         ctx.beginPath();
-        if(typeof ctx.roundRect === 'function') ctx.roundRect(bX, bY, bW, bH, 3);
+        if(typeof ctx.roundRect === 'function') ctx.roundRect(bX, bY, bW, bH, 4);
         else ctx.rect(bX, bY, bW, bH);
-        ctx.fillStyle = '#eab308';
         ctx.fill();
-        ctx.font = '900 10px "Barlow Condensed", sans-serif';
-        ctx.fillStyle = '#000000';
+        ctx.strokeStyle = borderCol;
+        ctx.lineWidth = 1;
+        ctx.stroke();
+
+        ctx.font = '900 12px "Barlow Condensed", sans-serif';
+        ctx.fillStyle = '#ffffff';
         ctx.textAlign = 'center';
-        ctx.fillText(String(c.ovr), bX + bW/2, bY + 12);
+        ctx.textBaseline = 'middle';
+        ctx.fillText(String(c.ovr), bX + bW / 2, bY + bH / 2 + 0.5);
       }
 
-      // Record
-      ctx.font = '900 28px "Barlow Condensed", sans-serif';
-      ctx.fillStyle = c.won ? '#4ade80' : '#ffd166';
+      // Record text (aligned with center score)
       ctx.textAlign = 'center';
-      ctx.fillText(c.rec || (c.won ? 'WIN' : 'LOSS'), cx, cy + 60);
+      ctx.textBaseline = 'middle';
+      ctx.font = '900 32px "Barlow Condensed", sans-serif';
+      ctx.fillStyle = c.won ? '#4ade80' : '#ffd166';
+      ctx.fillText(c.rec || (c.won ? 'WIN' : 'LOSS'), cx, 175);
 
       // Team Name
-      ctx.font = '700 13px "Barlow Condensed", sans-serif';
-      ctx.fillStyle = '#c6c4ce';
-      ctx.textAlign = 'center';
-      let teamText = c.team || '';
-      if(teamText.length > 24) teamText = teamText.slice(0, 22) + '...';
-      ctx.fillText(teamText, cx, cy + 84);
+      ctx.font = '800 14px "Barlow Condensed", sans-serif';
+      ctx.fillStyle = '#e2e0e8';
+      let tName = c.team || '';
+      if(tName.length > 22) tName = tName.slice(0, 20) + '...';
+      ctx.fillText(tName, cx, 205);
 
       // Coach Name
-      ctx.font = '900 15px "Barlow Condensed", sans-serif';
+      ctx.font = '800 13px "Barlow Condensed", sans-serif';
       ctx.fillStyle = '#ffffff';
-      ctx.textAlign = 'center';
-      ctx.fillText(c.name || '', cx, cy + 104);
+      ctx.fillText(c.name || '', cx, 227);
     }
 
-    // Left Coach
-    drawCoachSide({
+    // Draw Left Coach
+    drawCoach({
       name: data.p1,
       team: data.p1Team,
       rec: data.rec1,
       ovr: data.ovr1,
+      ovrColor: data.ovrColor1,
+      tier: data.ovrTier1,
       won: p1Won
-    }, 160);
+    }, 190, img1);
 
-    // Center Set Score
-    ctx.textAlign = 'right';
-    ctx.font = '900 38px "Barlow Condensed", sans-serif';
-    ctx.fillStyle = p1Won ? '#4ade80' : '#8e8c98';
-    ctx.fillText(String(data.s1 ?? 0), w/2 - 18, 125);
-
-    ctx.textAlign = 'center';
-    ctx.font = '900 24px "Barlow Condensed", sans-serif';
-    ctx.fillStyle = '#5c5a68';
-    ctx.fillText('-', w/2, 122);
-
-    ctx.textAlign = 'left';
-    ctx.font = '900 38px "Barlow Condensed", sans-serif';
-    ctx.fillStyle = p2Won ? '#4ade80' : '#8e8c98';
-    ctx.fillText(String(data.s2 ?? 0), w/2 + 18, 125);
-
-    ctx.textAlign = 'center';
-    ctx.font = '900 11px "Barlow Condensed", sans-serif';
-    ctx.fillStyle = '#7df0aa';
-    ctx.fillText('FINAL', w/2, 148);
-
-    // Right Coach
-    drawCoachSide({
+    // Draw Right Coach
+    drawCoach({
       name: data.p2,
       team: data.p2Team,
       rec: data.rec2,
       ovr: data.ovr2,
+      ovrColor: data.ovrColor2,
+      tier: data.ovrTier2,
       won: p2Won
-    }, w - 160);
+    }, w - 190, img2);
 
-    // Footer text
-    ctx.font = '700 10px "Barlow Condensed", sans-serif';
-    ctx.fillStyle = '#5e5c68';
-    ctx.textAlign = 'center';
-    ctx.fillText('BELLIMAKA POKEMON LEAGUE', w/2, h - 14);
+    // 6. Navigation arrow circles (website fidelity)
+    function drawNavArrow(ax, ay, symbol){
+      ctx.beginPath();
+      ctx.arc(ax, ay, 13, 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(18, 18, 24, 0.7)';
+      ctx.fill();
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)';
+      ctx.lineWidth = 1;
+      ctx.stroke();
 
-    return canvas.toDataURL('image/png');
+      ctx.font = '800 15px sans-serif';
+      ctx.fillStyle = '#c8c6ce';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(symbol, ax, ay - 1);
+    }
+    drawNavArrow(28, 160, '‹');
+    drawNavArrow(w - 28, 160, '›');
+
+    // 7. Carousel dots at bottom (website fidelity)
+    let dotY = 282;
+    let dotStartX = w / 2 - 25;
+    // Active red pill
+    ctx.fillStyle = data.isTopCut ? '#ffd166' : '#ef3038';
+    ctx.beginPath();
+    if(typeof ctx.roundRect === 'function') ctx.roundRect(dotStartX, dotY - 2, 16, 4, 2);
+    else ctx.rect(dotStartX, dotY - 2, 16, 4);
+    ctx.fill();
+
+    // Inactive dots
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.25)';
+    for(let i = 0; i < 4; i++){
+      let dotX = dotStartX + 22 + (i * 9);
+      ctx.beginPath();
+      if(typeof ctx.roundRect === 'function') ctx.roundRect(dotX, dotY - 2, 5, 4, 2);
+      else ctx.rect(dotX, dotY - 2, 5, 4);
+      ctx.fill();
+    }
+
+    // 8. Card Outer Border
+    ctx.restore(); // restore clipping
+    ctx.beginPath();
+    if(typeof ctx.roundRect === 'function') ctx.roundRect(0, 0, w, h, 10);
+    else ctx.rect(0, 0, w, h);
+    ctx.strokeStyle = data.isTopCut ? '#5c3a1e' : '#4a2834';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+
+    try {
+      return canvas.toDataURL('image/png');
+    } catch(err) {
+      console.warn('Canvas toDataURL security error:', err);
+      return null;
+    }
   } catch(e) {
     console.warn('Could not generate match card image:', e);
     return null;
@@ -5304,36 +5486,65 @@ async function saveTopCutScore(matchId){
     if(p1 && p2){
       let rec1 = typeof tournamentRecord === 'function' ? tournamentRecord(t, p1) : (profiles[p1]?.record || '');
       let rec2 = typeof tournamentRecord === 'function' ? tournamentRecord(t, p2) : (profiles[p2]?.record || '');
-      let ovr1 = typeof calculatePlayerOVR === 'function' ? (calculatePlayerOVR(p1)?.rating || 85) : 85;
-      let ovr2 = typeof calculatePlayerOVR === 'function' ? (calculatePlayerOVR(p2)?.rating || 85) : 85;
+      let ovrObj1 = typeof calculatePlayerOVR === 'function' ? calculatePlayerOVR(p1) : null;
+      let ovrObj2 = typeof calculatePlayerOVR === 'function' ? calculatePlayerOVR(p2) : null;
+      let ovr1 = ovrObj1?.ovr || 75;
+      let ovr2 = ovrObj2?.ovr || 75;
+      let ovrColor1 = ovrObj1?.color || '#ffd166';
+      let ovrColor2 = ovrObj2?.color || '#ffd166';
+      let ovrTier1 = ovrObj1?.tier || 'silver';
+      let ovrTier2 = ovrObj2?.tier || 'silver';
 
-      let imageBase64 = generateMatchCardDataUrl({
-        p1: p1,
-        p2: p2,
-        s1: sa,
-        s2: sb,
-        p1Team: teamName(t, p1),
-        p2Team: teamName(t, p2),
-        rec1: rec1,
-        rec2: rec2,
-        ovr1: ovr1,
-        ovr2: ovr2,
-        stage: 'TOP CUT PLAYOFFS',
-        roundLabel: roundNum ? `Round ${roundNum}` : 'Playoffs'
-      });
+      let p1Photo = profilePictures[p1] || teamCovers[p1] || '';
+      let p2Photo = profilePictures[p2] || teamCovers[p2] || '';
 
-      announceMatchScoreToDiscord(t, {
-        p1: p1,
-        p2: p2,
-        p1Team: teamName(t, p1),
-        p2Team: teamName(t, p2),
-        s1: sa,
-        s2: sb,
-        winner: sa > sb ? p1 : p2,
-        stage: 'Top Cut Playoffs',
-        roundLabel: roundNum ? `Round ${roundNum}` : 'Playoffs',
-        imageBase64: imageBase64
-      }, true);
+      let coverImage = pulsePanelImages.primetime || pulsePanelImages.global || '';
+      if(!coverImage){
+        try { coverImage = localStorage.getItem('draftdex-primetime-cover') || ''; } catch(e){}
+      }
+      if(!coverImage && t?.backgroundImage) coverImage = t.backgroundImage;
+
+      (async () => {
+        try {
+          let imageBase64 = await generateMatchCardDataUrl({
+            p1: p1,
+            p2: p2,
+            s1: sa,
+            s2: sb,
+            p1Team: teamName(t, p1),
+            p2Team: teamName(t, p2),
+            rec1: rec1,
+            rec2: rec2,
+            ovr1: ovr1,
+            ovr2: ovr2,
+            ovrColor1: ovrColor1,
+            ovrColor2: ovrColor2,
+            ovrTier1: ovrTier1,
+            ovrTier2: ovrTier2,
+            stage: 'TOP CUT PLAYOFFS',
+            roundLabel: roundNum ? `Round ${roundNum}` : 'Playoffs',
+            coverImage: coverImage,
+            p1Photo: p1Photo,
+            p2Photo: p2Photo,
+            isTopCut: true
+          });
+
+          announceMatchScoreToDiscord(t, {
+            p1: p1,
+            p2: p2,
+            p1Team: teamName(t, p1),
+            p2Team: teamName(t, p2),
+            s1: sa,
+            s2: sb,
+            winner: sa > sb ? p1 : p2,
+            stage: 'Top Cut Playoffs',
+            roundLabel: roundNum ? `Round ${roundNum}` : 'Playoffs',
+            imageBase64: imageBase64
+          }, true);
+        } catch(err) {
+          console.warn('Discord playoff score async error:', err);
+        }
+      })();
     }
   } catch(e){
     console.warn('Discord playoff score trigger error:', e);
@@ -6954,36 +7165,70 @@ function score(i){
     let winner = m.as > m.bs ? m.a : (m.bs > m.as ? m.b : null);
     let rec1 = typeof tournamentRecord === 'function' ? tournamentRecord(t, m.a) : (profiles[m.a]?.record || '');
     let rec2 = typeof tournamentRecord === 'function' ? tournamentRecord(t, m.b) : (profiles[m.b]?.record || '');
-    let ovr1 = typeof calculatePlayerOVR === 'function' ? (calculatePlayerOVR(m.a)?.rating || 85) : 85;
-    let ovr2 = typeof calculatePlayerOVR === 'function' ? (calculatePlayerOVR(m.b)?.rating || 85) : 85;
+    let ovrObj1 = typeof calculatePlayerOVR === 'function' ? calculatePlayerOVR(m.a) : null;
+    let ovrObj2 = typeof calculatePlayerOVR === 'function' ? calculatePlayerOVR(m.b) : null;
+    let ovr1 = ovrObj1?.ovr || 75;
+    let ovr2 = ovrObj2?.ovr || 75;
+    let ovrColor1 = ovrObj1?.color || '#ffd166';
+    let ovrColor2 = ovrObj2?.color || '#ffd166';
+    let ovrTier1 = ovrObj1?.tier || 'silver';
+    let ovrTier2 = ovrObj2?.tier || 'silver';
 
-    let imageBase64 = generateMatchCardDataUrl({
-      p1: m.a,
-      p2: m.b,
-      s1: m.as,
-      s2: m.bs,
-      p1Team: teamName(t, m.a),
-      p2Team: teamName(t, m.b),
-      rec1: rec1,
-      rec2: rec2,
-      ovr1: ovr1,
-      ovr2: ovr2,
-      stage: m.g || 'Group Stage',
-      roundLabel: m.round || (m.w ? `Week ${m.w}` : '')
-    });
+    let p1Photo = profilePictures[m.a] || teamCovers[m.a] || '';
+    let p2Photo = profilePictures[m.b] || teamCovers[m.b] || '';
 
-    announceMatchScoreToDiscord(t, {
-      p1: m.a,
-      p2: m.b,
-      p1Team: teamName(t, m.a),
-      p2Team: teamName(t, m.b),
-      s1: m.as,
-      s2: m.bs,
-      winner: winner,
-      stage: m.g || 'Group Stage',
-      roundLabel: m.round || (m.w ? `Week ${m.w}` : ''),
-      imageBase64: imageBase64
-    }, false);
+    let coverImage = m.coverImage || pulsePanelImages.primetime || pulsePanelImages.global || '';
+    if(!coverImage){
+      try { coverImage = localStorage.getItem('draftdex-primetime-cover') || ''; } catch(e){}
+    }
+    if(!coverImage && t?.backgroundImage) coverImage = t.backgroundImage;
+
+    let stageName = m.g || 'Group Stage';
+    if(/^group\s+[a-z]$/i.test(stageName)){
+      stageName = stageName.toUpperCase() + ' DIVISION';
+    }
+
+    (async () => {
+      try {
+        let imageBase64 = await generateMatchCardDataUrl({
+          p1: m.a,
+          p2: m.b,
+          s1: m.as,
+          s2: m.bs,
+          p1Team: teamName(t, m.a),
+          p2Team: teamName(t, m.b),
+          rec1: rec1,
+          rec2: rec2,
+          ovr1: ovr1,
+          ovr2: ovr2,
+          ovrColor1: ovrColor1,
+          ovrColor2: ovrColor2,
+          ovrTier1: ovrTier1,
+          ovrTier2: ovrTier2,
+          stage: stageName,
+          roundLabel: m.round || (m.w ? `Week ${m.w}` : ''),
+          coverImage: coverImage,
+          p1Photo: p1Photo,
+          p2Photo: p2Photo,
+          isTopCut: false
+        });
+
+        announceMatchScoreToDiscord(t, {
+          p1: m.a,
+          p2: m.b,
+          p1Team: teamName(t, m.a),
+          p2Team: teamName(t, m.b),
+          s1: m.as,
+          s2: m.bs,
+          winner: winner,
+          stage: stageName,
+          roundLabel: m.round || (m.w ? `Week ${m.w}` : ''),
+          imageBase64: imageBase64
+        }, false);
+      } catch(err) {
+        console.warn('Discord match score async error:', err);
+      }
+    })();
   } catch(e){
     console.warn('Discord match score trigger error:', e);
   }
