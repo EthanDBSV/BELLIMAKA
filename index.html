@@ -2312,6 +2312,9 @@ function createTournament(){
   });
   if(window.pendingCreatorCover){
     tournamentData[id].backgroundImage = window.pendingCreatorCover;
+    tournamentCovers[id] = window.pendingCreatorCover;
+    try { localStorage.setItem('draftdex-tournament-covers', JSON.stringify(tournamentCovers)); } catch(e){}
+    if(moderator) pushMediaToCloud();
     window.pendingCreatorCover = null;
   }
   window.creatorSelectedDraftBoard = 'offseason';
@@ -2353,8 +2356,11 @@ function openTeamCoverEditor(p){
       try{ localStorage.setItem('draftdex-teamcovers', JSON.stringify(teamCovers)); }catch(e){}
       if(moderator) pushMediaToCloud();
       persistLeague();
-      closeModal();
-      render();
+      if(document.querySelector('#modal')?.innerHTML?.trim()){
+        openProfile(p);
+      } else {
+        render();
+      }
       if(typeof showDraftToast === 'function') showDraftToast('🎨 Franchise banner cropped & saved!');
     },
     onRemove: function(){
@@ -2400,8 +2406,11 @@ function openProfilePictureEditor(p){
       try{ localStorage.setItem('draftdex-profilepics', JSON.stringify(profilePictures)); }catch(e){}
       if(moderator) pushMediaToCloud();
       persistLeague();
-      closeModal();
-      render();
+      if(document.querySelector('#modal')?.innerHTML?.trim()){
+        openProfile(p);
+      } else {
+        render();
+      }
       if(typeof showDraftToast === 'function') showDraftToast('👤 Coach avatar cropped & saved!');
     },
     onRemove: function(){
@@ -5495,6 +5504,7 @@ function saveCreatorCustomDraftBoard(){
 }
 
 function openCreator(){
+  window.pendingCreatorCover = null;
   let players=Object.keys(profiles).sort((a,b)=>a.localeCompare(b));
   let playerTiles=players.map(p=>{
     let q=profiles[p]||{};
@@ -5522,8 +5532,8 @@ function openCreator(){
     <div class="card" style="padding:16px;margin-top:14px;background:#121217;border-color:#2d2d38">
       <div class="eyebrow" style="margin-bottom:10px">Tournament Details</div>
       <div class="creator-grid">
-        <div class="field" style="margin-top:0"><label style="margin-top:0">Tournament name</label><input id="tn" placeholder="e.g. Moonlit Cup"></div>
-        <div class="field" style="margin-top:0"><label style="margin-top:0">Regulation</label><input id="tr" placeholder="e.g. Regulation I · Singles"></div>
+        <div class="field" style="margin-top:0"><label style="margin-top:0">Tournament name</label><input id="tn" placeholder="e.g. Moonlit Cup" oninput="updateCreatorLiveCardPreview()"></div>
+        <div class="field" style="margin-top:0"><label style="margin-top:0">Regulation</label><input id="tr" placeholder="e.g. Regulation I · Singles" oninput="updateCreatorLiveCardPreview()"></div>
         <div class="field"><label>Number of groups</label><select id="gc">${Array.from({length:8},(_,i)=>`<option value="${i+1}">${i+1} group${i?'s':''}</option>`).join('')}</select></div>
         <div class="field"><label>Advance per group to Top Cut</label><input id="ap" type="number" min="1" max="10" value="2"></div>
         <div class="field"><label>Start date</label><input id="sd" type="date"></div>
@@ -5605,13 +5615,8 @@ function openCreator(){
 
     <div class="field" style="margin-top:16px"><label>Add new player profiles (comma separated)</label><input id="newPlayers" placeholder="e.g. Cynthia, Steven, Leon"></div>
 
-    <div class="field" style="margin-top:16px">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
-        <label style="margin:0">Tournament Cover Photo (Optional)</label>
-        ${window.pendingCreatorCover ? `<button type="button" class="btn ghost btn-sm" style="font-size:10px;padding:2px 8px" onclick="openCreatorExistingCropper()">✂️ Adjust Crop</button>` : ''}
-      </div>
-      <input id="creatorCoverFile" type="file" accept="image/png,image/jpeg,image/webp" onchange="previewCreatorCover(event)">
-      <div id="creatorCoverPreview" style="${window.pendingCreatorCover ? `display:block;background-image:url('${window.pendingCreatorCover}')` : 'display:none'};height:140px;border-radius:6px;margin-top:8px;background-size:cover;background-position:center;border:1px solid #2e2e3e"></div>
+    <div id="creatorCoverSectionWrap" class="field" style="margin-top:16px">
+      ${renderCreatorCoverSectionHtml()}
     </div>
     
     <div class="creator-actions" style="margin-top:20px">
@@ -5621,96 +5626,156 @@ function openCreator(){
   </div></div>`;
 }
 
+function renderCreatorCoverSectionHtml(){
+  let nameVal = document.querySelector('#tn')?.value?.trim() || 'New Tournament';
+  let regVal = document.querySelector('#tr')?.value?.trim() || 'Regulation · Format';
+  let hasCover = !!window.pendingCreatorCover;
+
+  return `
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+      <label style="margin:0;font-size:11px;font-weight:800;color:#f5f3f0;display:flex;align-items:center;gap:6px">
+        <span>🖼️ Tournament Cover Artwork</span>
+        <span class="tag" style="font-size:8.5px;background:#1b1a24;color:#ffd166;border:1px solid #48485e">16:9 Widescreen</span>
+      </label>
+      ${hasCover ? `
+        <div style="display:flex;gap:6px">
+          <button type="button" class="btn ghost btn-sm" style="font-size:10px;padding:3px 8px;color:#ffd166" onclick="openCreatorExistingCropper()">✂️ Adjust Framing</button>
+          <button type="button" class="btn ghost btn-sm" style="font-size:10px;padding:3px 8px;color:#ff858b" onclick="removeCreatorCover()">🗑️ Remove</button>
+        </div>
+      ` : ''}
+    </div>
+
+    <!-- Hidden file input triggered by upload dropzone or change button -->
+    <input id="creatorCoverFile" type="file" accept="image/png,image/jpeg,image/webp" style="display:none" onchange="previewCreatorCover(event)">
+
+    ${hasCover ? `
+      <!-- Authentic 16:9 Tournament Archive Card Mockup Preview -->
+      <div style="position:relative;width:100%;max-width:540px;margin:8px auto 0;aspect-ratio:16/9;border-radius:10px;overflow:hidden;border:1px solid #3c3c4f;box-shadow:0 8px 24px rgba(0,0,0,0.65);background-image:linear-gradient(90deg,rgba(16,16,22,0.94) 0%,rgba(16,16,22,0.65) 55%,rgba(16,16,22,0.15) 100%),url('${esc(window.pendingCreatorCover)}');background-size:cover;background-position:center">
+        <!-- Live Tournament Card Overlay -->
+        <div style="position:absolute;inset:0;padding:16px 20px;display:flex;flex-direction:column;justify-content:space-between;pointer-events:none">
+          <div>
+            <div style="display:flex;align-items:center;justify-content:space-between">
+              <span class="status" style="font-size:9px;padding:2px 8px;font-weight:800"><i style="width:6px;height:6px"></i>ONGOING</span>
+              <span class="tag" style="font-size:8px;background:rgba(0,0,0,0.6);color:#ffd166;border:1px solid rgba(255,209,102,0.4);padding:2px 6px">CARD PREVIEW</span>
+            </div>
+            <h3 id="creatorCardPreviewTitle" style="font:800 24px/1.15 'Barlow Condensed';color:#fff;margin:8px 0 2px;letter-spacing:.3px;text-shadow:0 2px 8px rgba(0,0,0,0.8)">${esc(nameVal)}</h3>
+            <p id="creatorCardPreviewSub" style="font-size:11px;color:#d0d0d8;margin:0;text-shadow:0 1px 4px rgba(0,0,0,0.8)">${esc(regVal)}</p>
+          </div>
+
+          <div style="display:flex;align-items:center;justify-content:space-between;border-top:1px solid rgba(255,255,255,0.1);padding-top:8px">
+            <span style="font-size:10px;color:#a09fa8">Tournament Archive Preview</span>
+            <span style="font-size:10px;font-weight:700;color:#4bdd91">Framed &amp; Ready</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Preview Action Controls -->
+      <div style="display:flex;justify-content:center;gap:8px;margin-top:10px;flex-wrap:wrap">
+        <button type="button" class="btn ghost btn-sm" style="font-size:11px;padding:5px 12px" onclick="openCreatorExistingCropper()">
+          ✂️ Adjust Crop &amp; Framing
+        </button>
+        <button type="button" class="btn ghost btn-sm" style="font-size:11px;padding:5px 12px" onclick="document.getElementById('creatorCoverFile').click()">
+          🔄 Change Image
+        </button>
+        <button type="button" class="btn ghost btn-sm" style="font-size:11px;padding:5px 12px;color:#ff858b;border-color:#5c242c" onclick="removeCreatorCover()">
+          🗑️ Remove Cover
+        </button>
+      </div>
+    ` : `
+      <!-- Inviting Dropzone / Upload State -->
+      <div onclick="document.getElementById('creatorCoverFile').click()" style="width:100%;max-width:540px;margin:8px auto 0;border:2px dashed #333344;border-radius:10px;background:#111116;padding:24px 18px;text-align:center;cursor:pointer;transition:border-color .18s,background .18s" onmouseover="this.style.borderColor='var(--red)';this.style.background='#17171f'" onmouseout="this.style.borderColor='#333344';this.style.background='#111116'">
+        <div style="font-size:28px">🖼️</div>
+        <div style="font:800 14px 'Barlow Condensed';color:#f5f3f0;margin-top:6px;letter-spacing:.4px">+ Add Tournament Cover Artwork</div>
+        <div style="font-size:11px;color:#8e8c95;margin-top:3px">Framed in 16:9 widescreen for archive cards &amp; showcase banners</div>
+        <div style="margin-top:10px">
+          <span class="btn ghost btn-sm" style="font-size:10px;padding:3px 10px;pointer-events:none">Browse Image...</span>
+        </div>
+      </div>
+    `}
+  `;
+}
+
+function updateCreatorLiveCardPreview(){
+  let nameEl = document.querySelector('#tn');
+  let regEl = document.querySelector('#tr');
+  let titlePrev = document.querySelector('#creatorCardPreviewTitle');
+  let subPrev = document.querySelector('#creatorCardPreviewSub');
+  if(titlePrev && nameEl){
+    titlePrev.textContent = nameEl.value.trim() || 'New Tournament';
+  }
+  if(subPrev && regEl){
+    subPrev.textContent = regEl.value.trim() || 'Regulation · Format';
+  }
+}
+
 function openCreatorExistingCropper(){
   if(!window.pendingCreatorCover) return;
-  let savedName = document.querySelector('#creatorName')?.value || '';
-  let savedFormat = document.querySelector('#creatorFormat')?.value || '';
-  let savedGroups = document.querySelector('#creatorGroups')?.value || '';
-  let savedPer = document.querySelector('#creatorPerGroup')?.value || '';
-  let savedPlayers = Array.from(document.querySelectorAll('.profileChoice:checked')).map(cb => cb.value);
-  let savedNewPlayers = document.querySelector('#newPlayers')?.value || '';
+  let curName = document.querySelector('#tn')?.value?.trim() || 'Tournament Cover';
+  let curReg = document.querySelector('#tr')?.value?.trim() || 'Custom Regulation';
 
   openVisualCoverCropper({
-    title: savedName || 'Tournament Cover',
+    title: curName,
     eyebrow: 'Tournament Cover & Crop',
-    description: 'Frame and crop your tournament cover artwork.',
+    description: 'Frame and crop your tournament cover artwork. Drag the image or use the sliders to adjust.',
     aspectRatio: 1.77,
     panelShapeName: 'Archive Card (16:9)',
     currentCover: window.pendingCreatorCover,
     mockOverlay: 'archive',
+    tournamentRegulation: curReg,
     onSave: function(croppedDataUrl){
       window.pendingCreatorCover = croppedDataUrl;
-      openCreator();
-      if(savedName && document.querySelector('#creatorName')) document.querySelector('#creatorName').value = savedName;
-      if(savedFormat && document.querySelector('#creatorFormat')) document.querySelector('#creatorFormat').value = savedFormat;
-      if(savedGroups && document.querySelector('#creatorGroups')) document.querySelector('#creatorGroups').value = savedGroups;
-      if(savedPer && document.querySelector('#creatorPerGroup')) document.querySelector('#creatorPerGroup').value = savedPer;
-      if(savedNewPlayers && document.querySelector('#newPlayers')) document.querySelector('#newPlayers').value = savedNewPlayers;
-      document.querySelectorAll('.profileChoice').forEach(cb => {
-        if(savedPlayers.includes(cb.value)) cb.checked = true;
-      });
-      updateCreatorSelectedCount();
-      let prev = document.querySelector('#creatorCoverPreview');
-      if(prev){
-        prev.style.display = 'block';
-        prev.style.backgroundImage = `url('${croppedDataUrl}')`;
-      }
-      if(typeof showDraftToast === 'function') showDraftToast('🖼️ Cover cropped & updated!');
+      let wrap = document.querySelector('#creatorCoverSectionWrap');
+      if(wrap) wrap.innerHTML = renderCreatorCoverSectionHtml();
+      if(typeof showDraftToast === 'function') showDraftToast('🖼️ Cover crop updated!');
     },
     onRemove: function(){
       window.pendingCreatorCover = null;
-      openCreator();
+      let wrap = document.querySelector('#creatorCoverSectionWrap');
+      if(wrap) wrap.innerHTML = renderCreatorCoverSectionHtml();
     }
   });
 }
 
-async function previewCreatorCover(e){
+function previewCreatorCover(e){
   let f = e.target.files?.[0];
   if(!f) return;
-  let savedName = document.querySelector('#creatorName')?.value || '';
-  let savedFormat = document.querySelector('#creatorFormat')?.value || '';
-  let savedGroups = document.querySelector('#creatorGroups')?.value || '';
-  let savedPer = document.querySelector('#creatorPerGroup')?.value || '';
-  let savedPlayers = Array.from(document.querySelectorAll('.profileChoice:checked')).map(cb => cb.value);
-  let savedNewPlayers = document.querySelector('#newPlayers')?.value || '';
+  e.target.value = '';
+  let curName = document.querySelector('#tn')?.value?.trim() || 'New Tournament';
+  let curReg = document.querySelector('#tr')?.value?.trim() || 'Custom Regulation';
 
   let reader = new FileReader();
   reader.onload = function(ev){
     let rawData = ev.target.result;
     openVisualCoverCropper({
-      title: savedName || 'New Tournament Cover',
+      title: curName,
       eyebrow: 'Tournament Cover & Crop',
       description: 'Frame your cover photo for this tournament archive card. Drag or use the sliders to crop.',
       aspectRatio: 1.77,
       panelShapeName: 'Archive Card (16:9)',
       currentCover: rawData,
       mockOverlay: 'archive',
+      tournamentRegulation: curReg,
       onSave: function(croppedDataUrl){
         window.pendingCreatorCover = croppedDataUrl;
-        openCreator();
-        if(savedName && document.querySelector('#creatorName')) document.querySelector('#creatorName').value = savedName;
-        if(savedFormat && document.querySelector('#creatorFormat')) document.querySelector('#creatorFormat').value = savedFormat;
-        if(savedGroups && document.querySelector('#creatorGroups')) document.querySelector('#creatorGroups').value = savedGroups;
-        if(savedPer && document.querySelector('#creatorPerGroup')) document.querySelector('#creatorPerGroup').value = savedPer;
-        if(savedNewPlayers && document.querySelector('#newPlayers')) document.querySelector('#newPlayers').value = savedNewPlayers;
-        document.querySelectorAll('.profileChoice').forEach(cb => {
-          if(savedPlayers.includes(cb.value)) cb.checked = true;
-        });
-        updateCreatorSelectedCount();
-        let prev = document.querySelector('#creatorCoverPreview');
-        if(prev){
-          prev.style.display = 'block';
-          prev.style.backgroundImage = `url('${croppedDataUrl}')`;
-        }
+        let wrap = document.querySelector('#creatorCoverSectionWrap');
+        if(wrap) wrap.innerHTML = renderCreatorCoverSectionHtml();
         if(typeof showDraftToast === 'function') showDraftToast('🖼️ Tournament cover cropped & staged!');
       },
       onRemove: function(){
         window.pendingCreatorCover = null;
-        openCreator();
+        let wrap = document.querySelector('#creatorCoverSectionWrap');
+        if(wrap) wrap.innerHTML = renderCreatorCoverSectionHtml();
       }
     });
   };
   reader.readAsDataURL(f);
+}
+
+function removeCreatorCover(){
+  window.pendingCreatorCover = null;
+  let wrap = document.querySelector('#creatorCoverSectionWrap');
+  if(wrap) wrap.innerHTML = renderCreatorCoverSectionHtml();
+  if(typeof showDraftToast === 'function') showDraftToast('🗑️ Tournament cover removed');
 }
 
 function updateCreatorSelectedCount(){
@@ -6956,6 +7021,16 @@ function removeCover(id){
 ------------------------------------------------------------ */
 window._activeCropper = null;
 
+function closeCropperModal(){
+  let el = document.getElementById('cropperModalWrap');
+  if(el) el.remove();
+  window._activeCropper = null;
+  let mainModal = document.querySelector('#modal');
+  if(!mainModal || !mainModal.innerHTML.trim()){
+    render();
+  }
+}
+
 function openVisualCoverCropper(opts){
   let targetRatio = opts.aspectRatio || (opts.mockOverlay === 'recap' ? 0.72 : (opts.mockOverlay === 'archive' ? 1.77 : 1.25));
   let initialCover = opts.currentCover || '';
@@ -7003,14 +7078,17 @@ function openVisualCoverCropper(opts){
       </div>
     `;
   } else if(opts.mockOverlay === 'archive'){
+    let regText = opts.tournamentRegulation || 'Custom Regulation · Top Cut';
     mockHtml = `
-      <div id="cropperMockOverlay" style="position:absolute;inset:0;pointer-events:none;background:linear-gradient(90deg,rgba(20,20,25,.92),rgba(20,20,25,.65));padding:16px;display:flex;flex-direction:column;justify-content:space-between">
+      <div id="cropperMockOverlay" style="position:absolute;inset:0;pointer-events:none;background:linear-gradient(90deg,rgba(16,16,22,.92) 0%,rgba(16,16,22,.65) 55%,rgba(16,16,22,.15) 100%);padding:16px;display:flex;flex-direction:column;justify-content:space-between">
         <div>
-          <span class="tag" style="background:#28181d;color:#ff9ba1;border:1px solid #5c242c;font-size:9px">ONGOING / COMPLETE</span>
+          <span class="tag" style="background:#28181d;color:#ff9ba1;border:1px solid #5c242c;font-size:9px">ONGOING ARCHIVE CARD</span>
           <h3 style="font:800 24px 'Barlow Condensed';margin:6px 0 2px;color:#fff">${esc(opts.title || 'Tournament Name')}</h3>
-          <div style="font-size:11px;color:#bbb">Tournament Details &amp; Trainers</div>
+          <div style="font-size:11px;color:#bbb">${esc(regText)}</div>
         </div>
-        <div style="font-size:10px;color:#888">Archive Card Preview</div>
+        <div style="font-size:10px;color:#ffd166;display:flex;align-items:center;gap:6px">
+          <span>🖥️ 16:9 Card Framing</span>
+        </div>
       </div>
     `;
   } else if(opts.mockOverlay === 'team'){
@@ -7064,162 +7142,170 @@ function openVisualCoverCropper(opts){
 
   let vertRatioDisplay = +(targetRatio < 1 ? targetRatio : 0.72).toFixed(2);
 
-  document.querySelector('#modal').innerHTML = `
-    <div class="modal-wrap">
-      <div class="modal" style="max-width:640px;padding:22px;max-height:94vh;overflow-y:auto">
-        <div class="modal-head">
-          <div>
-            <div class="eyebrow" style="color:var(--red)">${esc(opts.eyebrow || 'Panel Cover & Visual Crop')}</div>
-            <h2 style="font:800 26px 'Barlow Condensed';margin-top:2px">${esc(opts.title || 'Edit Cover')}</h2>
-          </div>
-          <button class="close" onclick="closeModal()">×</button>
-        </div>
-        <p class="sub" style="margin:4px 0 12px;font-size:12px;line-height:1.4">${esc(opts.description || 'Upload and frame your artwork. Drag or use the sliders to crop.')}</p>
+  let oldWrap = document.getElementById('cropperModalWrap');
+  if(oldWrap) oldWrap.remove();
 
-        <!-- Top Control Bar: Upload, Name & Overlay Toggle -->
-        <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;flex-wrap:wrap">
-          <label class="btn btn-sm" style="padding:7px 13px;font-size:11px;cursor:pointer;display:inline-flex;align-items:center;gap:6px">
-            <span>📁 Upload Image</span>
-            <input id="cropperFileInput" type="file" accept="image/png,image/jpeg,image/webp" style="display:none" onchange="cropperHandleFileSelected(event)">
-          </label>
-          <span id="cropperFileName" style="font-size:11px;color:#9d9ba6;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:210px">
-            ${initialCover ? 'Current artwork loaded' : 'No file chosen'}
-          </span>
-          <button id="cropperToggleOverlayBtn" type="button" class="btn ghost btn-sm" style="margin-left:auto;font-size:10px;padding:5px 9px" onclick="cropperToggleMockOverlay()">
-            👁️ Overlay: ON
-          </button>
-        </div>
+  let wrap = document.createElement('div');
+  wrap.id = 'cropperModalWrap';
+  wrap.className = 'modal-wrap';
+  wrap.style.cssText = 'position:fixed;inset:0;background:rgba(4,4,8,0.88);backdrop-filter:blur(8px);z-index:99999;display:flex;align-items:center;justify-content:center;padding:16px;overflow-y:auto';
+  wrap.onclick = function(e){ if(e.target === wrap) closeCropperModal(); };
 
-        <!-- Aspect Ratio Selection Quick Bar -->
-        <div style="display:flex;align-items:center;gap:6px;margin-bottom:12px;flex-wrap:wrap;background:#121218;padding:7px 11px;border-radius:6px;border:1px solid #232332">
-          <span style="font-size:10px;font-weight:800;color:#ffd166;letter-spacing:.6px;text-transform:uppercase;margin-right:2px">Ratio Preset:</span>
-          <button type="button" class="btn ghost btn-sm cropper-ratio-btn" data-ratio="2.2" style="font-size:10px;padding:4px 9px;${Math.abs(targetRatio-2.2)<0.1?'border-color:var(--red);background:#28181d;color:#fff':''}" onclick="cropperSetAspectRatio(2.2, 'Franchise Banner (2.2:1)')">🏆 Franchise (2.2:1)</button>
-          <button type="button" class="btn ghost btn-sm cropper-ratio-btn" data-ratio="1.77" style="font-size:10px;padding:4px 9px;${Math.abs(targetRatio-1.77)<0.1?'border-color:var(--red);background:#28181d;color:#fff':''}" onclick="cropperSetAspectRatio(1.77, 'Wide (16:9)')">🖥️ Wide (16:9)</button>
-          <button type="button" class="btn ghost btn-sm cropper-ratio-btn" data-ratio="1.0" style="font-size:10px;padding:4px 9px;${Math.abs(targetRatio-1.0)<0.1?'border-color:var(--red);background:#28181d;color:#fff':''}" onclick="cropperSetAspectRatio(1.0, 'Square (1:1)')">⏹️ Square (1:1)</button>
-          <button type="button" class="btn ghost btn-sm cropper-ratio-btn" data-ratio="${vertRatioDisplay}" style="font-size:10px;padding:4px 9px;${Math.abs(targetRatio-vertRatioDisplay)<0.05?'border-color:var(--red);background:#28181d;color:#fff':''}" onclick="cropperSetAspectRatio(${vertRatioDisplay}, 'Vertical Panel (~${vertRatioDisplay})')">📱 Vertical (~${vertRatioDisplay})</button>
-          <span id="cropperShapeTag" class="tag" style="margin-left:auto;font-size:9px;background:#1f1f2a;color:#ffd166;border:1px solid #48485e;padding:3px 7px">
-            ${esc(window._activeCropper.panelShapeName)}
-          </span>
+  wrap.innerHTML = `
+    <div class="modal" style="max-width:640px;padding:22px;max-height:94vh;overflow-y:auto">
+      <div class="modal-head">
+        <div>
+          <div class="eyebrow" style="color:var(--red)">${esc(opts.eyebrow || 'Panel Cover & Visual Crop')}</div>
+          <h2 style="font:800 26px 'Barlow Condensed';margin-top:2px">${esc(opts.title || 'Edit Cover')}</h2>
         </div>
+        <button class="close" onclick="closeCropperModal()">×</button>
+      </div>
+      <p class="sub" style="margin:4px 0 12px;font-size:12px;line-height:1.4">${esc(opts.description || 'Upload and frame your artwork. Drag or use the sliders to crop.')}</p>
 
-        <!-- Live Visual Framing Stage -->
-        <div style="position:relative;width:100%">
-          <div id="cropperStage" style="position:relative;width:100%;height:390px;background:#08080c;background-image:radial-gradient(circle,#1a1a24 10%,transparent 11%);background-size:16px 16px;border:1px solid #2d2d3c;border-radius:8px;overflow:hidden;cursor:grab;user-select:none;touch-action:none"
-               onwheel="cropperHandleWheel(event)"
-               onmousedown="cropperStartDrag(event)"
-               ontouchstart="cropperStartDrag(event)">
+      <!-- Top Control Bar: Upload, Name & Overlay Toggle -->
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;flex-wrap:wrap">
+        <label class="btn btn-sm" style="padding:7px 13px;font-size:11px;cursor:pointer;display:inline-flex;align-items:center;gap:6px">
+          <span>📁 Upload Image</span>
+          <input id="cropperFileInput" type="file" accept="image/png,image/jpeg,image/webp" style="display:none" onchange="cropperHandleFileSelected(event)">
+        </label>
+        <span id="cropperFileName" style="font-size:11px;color:#9d9ba6;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:210px">
+          ${initialCover ? 'Current artwork loaded' : 'No file chosen'}
+        </span>
+        <button id="cropperToggleOverlayBtn" type="button" class="btn ghost btn-sm" style="margin-left:auto;font-size:10px;padding:5px 9px" onclick="cropperToggleMockOverlay()">
+          👁️ Overlay: ON
+        </button>
+      </div>
+
+      <!-- Aspect Ratio Selection Quick Bar -->
+      <div style="display:flex;align-items:center;gap:6px;margin-bottom:12px;flex-wrap:wrap;background:#121218;padding:7px 11px;border-radius:6px;border:1px solid #232332">
+        <span style="font-size:10px;font-weight:800;color:#ffd166;letter-spacing:.6px;text-transform:uppercase;margin-right:2px">Ratio Preset:</span>
+        <button type="button" class="btn ghost btn-sm cropper-ratio-btn" data-ratio="2.2" style="font-size:10px;padding:4px 9px;${Math.abs(targetRatio-2.2)<0.1?'border-color:var(--red);background:#28181d;color:#fff':''}" onclick="cropperSetAspectRatio(2.2, 'Franchise Banner (2.2:1)')">🏆 Franchise (2.2:1)</button>
+        <button type="button" class="btn ghost btn-sm cropper-ratio-btn" data-ratio="1.77" style="font-size:10px;padding:4px 9px;${Math.abs(targetRatio-1.77)<0.1?'border-color:var(--red);background:#28181d;color:#fff':''}" onclick="cropperSetAspectRatio(1.77, 'Wide (16:9)')">🖥️ Wide (16:9)</button>
+        <button type="button" class="btn ghost btn-sm cropper-ratio-btn" data-ratio="1.0" style="font-size:10px;padding:4px 9px;${Math.abs(targetRatio-1.0)<0.1?'border-color:var(--red);background:#28181d;color:#fff':''}" onclick="cropperSetAspectRatio(1.0, 'Square (1:1)')">⏹️ Square (1:1)</button>
+        <button type="button" class="btn ghost btn-sm cropper-ratio-btn" data-ratio="${vertRatioDisplay}" style="font-size:10px;padding:4px 9px;${Math.abs(targetRatio-vertRatioDisplay)<0.05?'border-color:var(--red);background:#28181d;color:#fff':''}" onclick="cropperSetAspectRatio(${vertRatioDisplay}, 'Vertical Panel (~${vertRatioDisplay})')">📱 Vertical (~${vertRatioDisplay})</button>
+        <span id="cropperShapeTag" class="tag" style="margin-left:auto;font-size:9px;background:#1f1f2a;color:#ffd166;border:1px solid #48485e;padding:3px 7px">
+          ${esc(window._activeCropper.panelShapeName)}
+        </span>
+      </div>
+
+      <!-- Live Visual Framing Stage -->
+      <div style="position:relative;width:100%">
+        <div id="cropperStage" style="position:relative;width:100%;height:390px;background:#08080c;background-image:radial-gradient(circle,#1a1a24 10%,transparent 11%);background-size:16px 16px;border:1px solid #2d2d3c;border-radius:8px;overflow:hidden;cursor:grab;user-select:none;touch-action:none"
+             onwheel="cropperHandleWheel(event)"
+             onmousedown="cropperStartDrag(event)"
+             ontouchstart="cropperStartDrag(event)">
+          
+          <!-- Full Uploaded Image (Visible behind dimmed mask) -->
+          <img id="cropperImg" src="${initialCover}" style="position:absolute;user-select:none;pointer-events:none;display:${initialCover ? 'block' : 'none'};transform-origin:top left">
+
+          <!-- Illuminated Target Crop Box with Dark Surrounding Scrim Mask -->
+          <div id="cropperCropBox" style="position:absolute;box-shadow:0 0 0 9999px rgba(8,8,13,0.72);border:2px solid #ef3038;border-radius:4px;pointer-events:none;overflow:hidden">
             
-            <!-- Full Uploaded Image (Visible behind dimmed mask) -->
-            <img id="cropperImg" src="${initialCover}" style="position:absolute;user-select:none;pointer-events:none;display:${initialCover ? 'block' : 'none'};transform-origin:top left">
-
-            <!-- Illuminated Target Crop Box with Dark Surrounding Scrim Mask -->
-            <div id="cropperCropBox" style="position:absolute;box-shadow:0 0 0 9999px rgba(8,8,13,0.72);border:2px solid #ef3038;border-radius:4px;pointer-events:none;overflow:hidden">
-              
-              <!-- Faint Rule of Thirds Grid -->
-              <div id="cropperGrid" style="position:absolute;inset:0;pointer-events:none;display:grid;grid-template-columns:1fr 1fr 1fr;grid-template-rows:1fr 1fr 1fr;opacity:0.25">
-                <div style="border-right:1px dashed #fff;border-bottom:1px dashed #fff"></div>
-                <div style="border-right:1px dashed #fff;border-bottom:1px dashed #fff"></div>
-                <div style="border-bottom:1px dashed #fff"></div>
-                <div style="border-right:1px dashed #fff;border-bottom:1px dashed #fff"></div>
-                <div style="border-right:1px dashed #fff;border-bottom:1px dashed #fff"></div>
-                <div style="border-bottom:1px dashed #fff"></div>
-                <div style="border-right:1px dashed #fff"></div>
-                <div style="border-right:1px dashed #fff"></div>
-                <div></div>
-              </div>
-
-              <!-- Glowing Corner Bracket Crop Marks -->
-              <div style="position:absolute;top:-2px;left:-2px;width:16px;height:16px;border-top:3px solid #ffd166;border-left:3px solid #ffd166;pointer-events:none;filter:drop-shadow(0 0 4px rgba(255,209,102,0.6))"></div>
-              <div style="position:absolute;top:-2px;right:-2px;width:16px;height:16px;border-top:3px solid #ffd166;border-right:3px solid #ffd166;pointer-events:none;filter:drop-shadow(0 0 4px rgba(255,209,102,0.6))"></div>
-              <div style="position:absolute;bottom:-2px;left:-2px;width:16px;height:16px;border-bottom:3px solid #ffd166;border-left:3px solid #ffd166;pointer-events:none;filter:drop-shadow(0 0 4px rgba(255,209,102,0.6))"></div>
-              <div style="position:absolute;bottom:-2px;right:-2px;width:16px;height:16px;border-bottom:3px solid #ffd166;border-right:3px solid #ffd166;pointer-events:none;filter:drop-shadow(0 0 4px rgba(255,209,102,0.6))"></div>
-
-              <!-- Panel Mockup Overlay Inside Frame -->
-              ${mockHtml}
+            <!-- Faint Rule of Thirds Grid -->
+            <div id="cropperGrid" style="position:absolute;inset:0;pointer-events:none;display:grid;grid-template-columns:1fr 1fr 1fr;grid-template-rows:1fr 1fr 1fr;opacity:0.25">
+              <div style="border-right:1px dashed #fff;border-bottom:1px dashed #fff"></div>
+              <div style="border-right:1px dashed #fff;border-bottom:1px dashed #fff"></div>
+              <div style="border-bottom:1px dashed #fff"></div>
+              <div style="border-right:1px dashed #fff;border-bottom:1px dashed #fff"></div>
+              <div style="border-right:1px dashed #fff;border-bottom:1px dashed #fff"></div>
+              <div style="border-bottom:1px dashed #fff"></div>
+              <div style="border-right:1px dashed #fff"></div>
+              <div style="border-right:1px dashed #fff"></div>
+              <div></div>
             </div>
 
-            <!-- Visual Explainer Pill at bottom left -->
-            <div style="position:absolute;bottom:8px;left:10px;pointer-events:none;background:rgba(0,0,0,0.78);backdrop-filter:blur(4px);padding:4px 9px;border-radius:4px;font-size:10px;color:#c0bfca;display:flex;align-items:center;gap:6px;border:1px solid rgba(255,255,255,0.08)">
-              <span>💡</span>
-              <span>Dimmed area is cut off · Bright box is what stays</span>
-            </div>
+            <!-- Glowing Corner Bracket Crop Marks -->
+            <div style="position:absolute;top:-2px;left:-2px;width:16px;height:16px;border-top:3px solid #ffd166;border-left:3px solid #ffd166;pointer-events:none;filter:drop-shadow(0 0 4px rgba(255,209,102,0.6))"></div>
+            <div style="position:absolute;top:-2px;right:-2px;width:16px;height:16px;border-top:3px solid #ffd166;border-right:3px solid #ffd166;pointer-events:none;filter:drop-shadow(0 0 4px rgba(255,209,102,0.6))"></div>
+            <div style="position:absolute;bottom:-2px;left:-2px;width:16px;height:16px;border-bottom:3px solid #ffd166;border-left:3px solid #ffd166;pointer-events:none;filter:drop-shadow(0 0 4px rgba(255,209,102,0.6))"></div>
+            <div style="position:absolute;bottom:-2px;right:-2px;width:16px;height:16px;border-bottom:3px solid #ffd166;border-right:3px solid #ffd166;pointer-events:none;filter:drop-shadow(0 0 4px rgba(255,209,102,0.6))"></div>
 
-            <!-- Empty Placeholder -->
-            <div id="cropperEmptyMsg" style="position:absolute;inset:0;display:${initialCover ? 'none' : 'flex'};align-items:center;justify-content:center;flex-direction:column;gap:8px;color:#8e8c95;pointer-events:none;background:rgba(10,10,14,0.85)">
-              <span style="font-size:36px">🖼️</span>
-              <span style="font-size:13px;font-weight:700;color:#e0dee5">Upload an image above to start framing</span>
-              <span style="font-size:11px;color:#8e8c95">Supports PNG, JPG, and WebP</span>
-            </div>
+            <!-- Panel Mockup Overlay Inside Frame -->
+            ${mockHtml}
+          </div>
+
+          <!-- Visual Explainer Pill at bottom left -->
+          <div style="position:absolute;bottom:8px;left:10px;pointer-events:none;background:rgba(0,0,0,0.78);backdrop-filter:blur(4px);padding:4px 9px;border-radius:4px;font-size:10px;color:#c0bfca;display:flex;align-items:center;gap:6px;border:1px solid rgba(255,255,255,0.08)">
+            <span>💡</span>
+            <span>Dimmed area is cut off · Bright box is what stays</span>
+          </div>
+
+          <!-- Empty Placeholder -->
+          <div id="cropperEmptyMsg" style="position:absolute;inset:0;display:${initialCover ? 'none' : 'flex'};align-items:center;justify-content:center;flex-direction:column;gap:8px;color:#8e8c95;pointer-events:none;background:rgba(10,10,14,0.85)">
+            <span style="font-size:36px">🖼️</span>
+            <span style="font-size:13px;font-weight:700;color:#e0dee5">Upload an image above to start framing</span>
+            <span style="font-size:11px;color:#8e8c95">Supports PNG, JPG, and WebP</span>
           </div>
         </div>
+      </div>
 
-        <!-- Framing, Zoom & Precise Slider Controls -->
-        <div style="margin-top:12px;background:#13131a;border:1px solid #292938;border-radius:8px;padding:12px 14px">
-          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
-            <span style="font-size:10px;font-weight:800;color:#ffd166;letter-spacing:.6px;text-transform:uppercase">Position &amp; Framing Controls</span>
-            <span class="sub" style="font-size:10px;color:#8e8c95">Drag image directly on stage or use sliders</span>
+      <!-- Framing, Zoom & Precise Slider Controls -->
+      <div style="margin-top:12px;background:#13131a;border:1px solid #292938;border-radius:8px;padding:12px 14px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+          <span style="font-size:10px;font-weight:800;color:#ffd166;letter-spacing:.6px;text-transform:uppercase">Position &amp; Framing Controls</span>
+          <span class="sub" style="font-size:10px;color:#8e8c95">Drag image directly on stage or use sliders</span>
+        </div>
+
+        <!-- Row 1: Zoom Scale -->
+        <div style="margin-bottom:10px">
+          <div style="display:flex;justify-content:space-between;font-size:11px;color:#d0d0dc;margin-bottom:4px">
+            <span>🔍 Zoom Scale</span>
+            <div style="display:flex;align-items:center;gap:8px">
+              <button type="button" class="btn ghost btn-sm" style="font-size:9px;padding:2px 6px" onclick="cropperSetZoom(1.0)">Fit (1.0x)</button>
+              <button type="button" class="btn ghost btn-sm" style="font-size:9px;padding:2px 6px" onclick="cropperSetZoom(1.5)">1.5x</button>
+              <button type="button" class="btn ghost btn-sm" style="font-size:9px;padding:2px 6px" onclick="cropperSetZoom(2.0)">2.0x</button>
+              <b id="cropperZoomVal" style="color:var(--amber);min-width:38px;text-align:right">1.00x</b>
+            </div>
           </div>
+          <input id="cropperZoomSlider" type="range" min="1" max="3.5" step="0.02" value="1" style="width:100%;accent-color:var(--red);cursor:pointer" oninput="cropperSetZoom(this.value)">
+        </div>
 
-          <!-- Row 1: Zoom Scale -->
-          <div style="margin-bottom:10px">
+        <!-- Row 2: Horizontal & Vertical Sliders -->
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+          <!-- Horizontal Position -->
+          <div>
             <div style="display:flex;justify-content:space-between;font-size:11px;color:#d0d0dc;margin-bottom:4px">
-              <span>🔍 Zoom Scale</span>
-              <div style="display:flex;align-items:center;gap:8px">
-                <button type="button" class="btn ghost btn-sm" style="font-size:9px;padding:2px 6px" onclick="cropperSetZoom(1.0)">Fit (1.0x)</button>
-                <button type="button" class="btn ghost btn-sm" style="font-size:9px;padding:2px 6px" onclick="cropperSetZoom(1.5)">1.5x</button>
-                <button type="button" class="btn ghost btn-sm" style="font-size:9px;padding:2px 6px" onclick="cropperSetZoom(2.0)">2.0x</button>
-                <b id="cropperZoomVal" style="color:var(--amber);min-width:38px;text-align:right">1.00x</b>
-              </div>
+              <span>↔️ Horizontal Position</span>
+              <b id="cropperPanXVal" style="color:#ffd166;min-width:32px;text-align:right">50%</b>
             </div>
-            <input id="cropperZoomSlider" type="range" min="1" max="3.5" step="0.02" value="1" style="width:100%;accent-color:var(--red);cursor:pointer" oninput="cropperSetZoom(this.value)">
-          </div>
-
-          <!-- Row 2: Horizontal & Vertical Sliders -->
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
-            <!-- Horizontal Position -->
-            <div>
-              <div style="display:flex;justify-content:space-between;font-size:11px;color:#d0d0dc;margin-bottom:4px">
-                <span>↔️ Horizontal Position</span>
-                <b id="cropperPanXVal" style="color:#ffd166;min-width:32px;text-align:right">50%</b>
-              </div>
-              <input id="cropperPanXSlider" type="range" min="0" max="100" step="1" value="50" style="width:100%;accent-color:var(--red);cursor:pointer" oninput="cropperSetPanX(this.value)">
-              <div style="display:flex;gap:4px;margin-top:4px">
-                <button type="button" class="btn ghost btn-sm" style="flex:1;font-size:9px;padding:2px 0" onclick="cropperSetPanX(0)">Left (0%)</button>
-                <button type="button" class="btn ghost btn-sm" style="flex:1;font-size:9px;padding:2px 0" onclick="cropperSetPanX(50)">Center</button>
-                <button type="button" class="btn ghost btn-sm" style="flex:1;font-size:9px;padding:2px 0" onclick="cropperSetPanX(100)">Right (100%)</button>
-              </div>
-            </div>
-
-            <!-- Vertical Position -->
-            <div>
-              <div style="display:flex;justify-content:space-between;font-size:11px;color:#d0d0dc;margin-bottom:4px">
-                <span>↕️ Vertical Position</span>
-                <b id="cropperPanYVal" style="color:#ffd166;min-width:32px;text-align:right">50%</b>
-              </div>
-              <input id="cropperPanYSlider" type="range" min="0" max="100" step="1" value="50" style="width:100%;accent-color:var(--red);cursor:pointer" oninput="cropperSetPanY(this.value)">
-              <div style="display:flex;gap:4px;margin-top:4px">
-                <button type="button" class="btn ghost btn-sm" style="flex:1;font-size:9px;padding:2px 0" onclick="cropperSetPanY(0)">Top (0%)</button>
-                <button type="button" class="btn ghost btn-sm" style="flex:1;font-size:9px;padding:2px 0" onclick="cropperSetPanY(50)">Center</button>
-                <button type="button" class="btn ghost btn-sm" style="flex:1;font-size:9px;padding:2px 0" onclick="cropperSetPanY(100)">Bottom (100%)</button>
-              </div>
+            <input id="cropperPanXSlider" type="range" min="0" max="100" step="1" value="50" style="width:100%;accent-color:var(--red);cursor:pointer" oninput="cropperSetPanX(this.value)">
+            <div style="display:flex;gap:4px;margin-top:4px">
+              <button type="button" class="btn ghost btn-sm" style="flex:1;font-size:9px;padding:2px 0" onclick="cropperSetPanX(0)">Left (0%)</button>
+              <button type="button" class="btn ghost btn-sm" style="flex:1;font-size:9px;padding:2px 0" onclick="cropperSetPanX(50)">Center</button>
+              <button type="button" class="btn ghost btn-sm" style="flex:1;font-size:9px;padding:2px 0" onclick="cropperSetPanX(100)">Right (100%)</button>
             </div>
           </div>
 
-          <!-- Reset Button -->
-          <div style="margin-top:10px;display:flex;justify-content:flex-end">
-            <button type="button" class="btn ghost btn-sm" style="font-size:11px;padding:6px 14px" onclick="cropperResetFraming()">🎯 Reset Framing &amp; Center</button>
+          <!-- Vertical Position -->
+          <div>
+            <div style="display:flex;justify-content:space-between;font-size:11px;color:#d0d0dc;margin-bottom:4px">
+              <span>↕️ Vertical Position</span>
+              <b id="cropperPanYVal" style="color:#ffd166;min-width:32px;text-align:right">50%</b>
+            </div>
+            <input id="cropperPanYSlider" type="range" min="0" max="100" step="1" value="50" style="width:100%;accent-color:var(--red);cursor:pointer" oninput="cropperSetPanY(this.value)">
+            <div style="display:flex;gap:4px;margin-top:4px">
+              <button type="button" class="btn ghost btn-sm" style="flex:1;font-size:9px;padding:2px 0" onclick="cropperSetPanY(0)">Top (0%)</button>
+              <button type="button" class="btn ghost btn-sm" style="flex:1;font-size:9px;padding:2px 0" onclick="cropperSetPanY(50)">Center</button>
+              <button type="button" class="btn ghost btn-sm" style="flex:1;font-size:9px;padding:2px 0" onclick="cropperSetPanY(100)">Bottom (100%)</button>
+            </div>
           </div>
         </div>
 
-        <!-- Modal Footer Actions -->
-        <div class="creator-actions" style="margin-top:14px">
-          ${opts.onRemove ? `<button type="button" class="btn ghost" style="color:#ff969c;border-color:#5c242c" onclick="cropperRemoveCover()">Remove cover</button>` : ''}
-          <button type="button" class="btn ghost" onclick="closeModal()">Cancel</button>
-          <button id="cropperSaveBtn" type="button" class="btn" onclick="cropperCommitSave()">💾 Save &amp; Apply Crop</button>
+        <!-- Reset Button -->
+        <div style="margin-top:10px;display:flex;justify-content:flex-end">
+          <button type="button" class="btn ghost btn-sm" style="font-size:11px;padding:6px 14px" onclick="cropperResetFraming()">🎯 Reset Framing &amp; Center</button>
         </div>
+      </div>
+
+      <!-- Modal Footer Actions -->
+      <div class="creator-actions" style="margin-top:14px">
+        ${opts.onRemove ? `<button type="button" class="btn ghost" style="color:#ff969c;border-color:#5c242c" onclick="cropperRemoveCover()">Remove cover</button>` : ''}
+        <button type="button" class="btn ghost" onclick="closeCropperModal()">Cancel</button>
+        <button id="cropperSaveBtn" type="button" class="btn" onclick="cropperCommitSave()">💾 Save &amp; Apply Crop</button>
       </div>
     </div>
   `;
+  document.body.appendChild(wrap);
 
   setTimeout(function(){
     cropperComputeBoxDimensions();
@@ -7547,7 +7633,7 @@ document.addEventListener('touchend', cropperEndDrag);
 function cropperCommitSave(){
   let state = window._activeCropper;
   if(!state || !state.img){
-    closeModal();
+    closeCropperModal();
     return;
   }
   let btn = document.querySelector('#cropperSaveBtn');
@@ -7597,6 +7683,8 @@ function cropperCommitSave(){
 
   let croppedDataUrl = canvas.toDataURL('image/jpeg', 0.80);
 
+  closeCropperModal();
+
   if(typeof state.onSave === 'function'){
     state.onSave(croppedDataUrl);
   }
@@ -7604,6 +7692,7 @@ function cropperCommitSave(){
 
 function cropperRemoveCover(){
   let state = window._activeCropper;
+  closeCropperModal();
   if(state && typeof state.onRemove === 'function'){
     state.onRemove();
   }
