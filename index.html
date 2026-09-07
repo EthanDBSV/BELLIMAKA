@@ -3780,7 +3780,7 @@ async function openDiscordSettingsModal(){
 
   let cfg = await fetchDiscordConfig();
   if(!cfg) {
-    cfg = { webhookUrl: '', coachDiscordIds: {}, announcePicks: true, announceScores: true, announceTopCut: true };
+    cfg = { webhookUrl: '', draftWebhookUrl: '', scoreWebhookUrl: '', coachDiscordIds: {}, announcePicks: true, announceScores: true, announceTopCut: true };
   }
 
   // Gather all known league coaches
@@ -3813,7 +3813,7 @@ async function openDiscordSettingsModal(){
 
   modalEl.innerHTML = `
     <div class="modal-wrap">
-      <div class="modal" style="max-width:680px">
+      <div class="modal" style="max-width:700px">
         <div class="modal-head">
           <div>
             <div class="eyebrow" style="color:#7983f5;display:flex;align-items:center;gap:6px">
@@ -3825,19 +3825,52 @@ async function openDiscordSettingsModal(){
           <button class="close" onclick="closeModal()">×</button>
         </div>
 
-        <p class="sub" style="margin-top:6px;margin-bottom:18px">Automatically broadcast live draft picks with Showdown sprites, @mention the next coach on the clock, and publish match scores directly to your Discord league channel.</p>
+        <p class="sub" style="margin-top:6px;margin-bottom:16px">Route draft announcements and match results to dedicated Discord channels, @mention coaches on the clock, and publish winner graphics automatically.</p>
 
-        <!-- Webhook URL Field -->
-        <div class="field" style="margin-bottom:14px">
-          <label style="font-weight:700;color:#e1e0e5;display:flex;justify-content:space-between">
-            <span>Discord Webhook URL</span>
-            <span style="font-weight:normal;color:#9694a0;font-size:10px">Channel Settings → Integrations → Webhooks</span>
-          </label>
-          <div style="display:flex;gap:8px;margin-top:5px">
-            <input id="discordWebhookUrl" type="text" placeholder="https://discord.com/api/webhooks/..." value="${esc(cfg.webhookUrl || '')}" style="flex:1;background:#101014;border:1px solid #3a3a44;border-radius:5px;padding:9px 12px;color:white;font-size:12px;font-family:monospace">
-            <button id="discordTestBtn" class="btn ghost btn-sm" onclick="testDiscordWebhook()" style="white-space:nowrap;padding:8px 14px;border-color:#5865F2;color:#7983f5">🔔 Test Webhook</button>
+        <!-- Webhook Channel Routing Section -->
+        <div style="background:#141419;border:1px solid #2f2f3a;border-radius:8px;padding:14px;margin-bottom:16px;display:flex;flex-direction:column;gap:12px">
+          <div style="display:flex;justify-content:space-between;align-items:center">
+            <div class="eyebrow" style="color:#7983f5;font-size:11px">Discord Channel Webhooks</div>
+            <span style="color:#8f8d97;font-size:10px">Channel Settings → Integrations → Webhooks</span>
           </div>
-          <div id="discordTestStatus" style="font-size:11px;margin-top:6px;min-height:16px"></div>
+
+          <!-- Draft Webhook Field -->
+          <div>
+            <label style="font-weight:700;color:#e1e0e5;font-size:12px;display:flex;justify-content:space-between;margin-bottom:4px">
+              <span>🎯 Draft Channel Webhook</span>
+              <span style="font-weight:normal;color:#9694a0;font-size:10px">Live picks, sprites & @pings (e.g. #draft-room)</span>
+            </label>
+            <div style="display:flex;gap:8px">
+              <input id="discordDraftWebhookUrl" type="text" placeholder="https://discord.com/api/webhooks/..." value="${esc(cfg.draftWebhookUrl || '')}" style="flex:1;background:#0c0c0f;border:1px solid #3a3a44;border-radius:5px;padding:8px 12px;color:white;font-size:12px;font-family:monospace">
+              <button class="btn ghost btn-sm" onclick="testDiscordWebhook('draft')" style="white-space:nowrap;padding:7px 12px;border-color:#5865F2;color:#7983f5">🔔 Test Draft</button>
+            </div>
+          </div>
+
+          <!-- Match Scores Webhook Field -->
+          <div>
+            <label style="font-weight:700;color:#e1e0e5;font-size:12px;display:flex;justify-content:space-between;margin-bottom:4px">
+              <span>⚔️ Match Scores Channel Webhook</span>
+              <span style="font-weight:normal;color:#9694a0;font-size:10px">Final scores & graphics cards (e.g. #match-results)</span>
+            </label>
+            <div style="display:flex;gap:8px">
+              <input id="discordScoreWebhookUrl" type="text" placeholder="https://discord.com/api/webhooks/..." value="${esc(cfg.scoreWebhookUrl || '')}" style="flex:1;background:#0c0c0f;border:1px solid #3a3a44;border-radius:5px;padding:8px 12px;color:white;font-size:12px;font-family:monospace">
+              <button class="btn ghost btn-sm" onclick="testDiscordWebhook('score')" style="white-space:nowrap;padding:7px 12px;border-color:#5865F2;color:#7983f5">🔔 Test Scores</button>
+            </div>
+          </div>
+
+          <!-- General Fallback Webhook Field -->
+          <div>
+            <label style="font-weight:700;color:#e1e0e5;font-size:12px;display:flex;justify-content:space-between;margin-bottom:4px">
+              <span>🌐 General / Fallback Webhook (Optional)</span>
+              <span style="font-weight:normal;color:#9694a0;font-size:10px">Used as fallback if a specific channel is blank</span>
+            </label>
+            <div style="display:flex;gap:8px">
+              <input id="discordWebhookUrl" type="text" placeholder="https://discord.com/api/webhooks/..." value="${esc(cfg.webhookUrl || '')}" style="flex:1;background:#0c0c0f;border:1px solid #3a3a44;border-radius:5px;padding:8px 12px;color:white;font-size:12px;font-family:monospace">
+              <button class="btn ghost btn-sm" onclick="testDiscordWebhook('general')" style="white-space:nowrap;padding:7px 12px;border-color:#5865F2;color:#7983f5">🔔 Test General</button>
+            </div>
+          </div>
+
+          <div id="discordTestStatus" style="font-size:11px;min-height:16px;padding-top:2px"></div>
         </div>
 
         <!-- Notification Toggles -->
@@ -3887,45 +3920,50 @@ async function openDiscordSettingsModal(){
   `;
 }
 
-async function testDiscordWebhook(){
-  let urlInput = document.querySelector('#discordWebhookUrl');
+async function testDiscordWebhook(channel = 'general'){
+  let inputId = channel === 'draft' ? '#discordDraftWebhookUrl' : (channel === 'score' ? '#discordScoreWebhookUrl' : '#discordWebhookUrl');
+  let urlInput = document.querySelector(inputId);
   let statusEl = document.querySelector('#discordTestStatus');
-  let testBtn = document.querySelector('#discordTestBtn');
   let url = (urlInput?.value || '').trim();
 
+  // If specific channel input is empty, fallback to general webhook
+  if(!url && channel !== 'general'){
+    url = (document.querySelector('#discordWebhookUrl')?.value || '').trim();
+  }
+
+  let label = channel === 'draft' ? 'Draft Picks' : (channel === 'score' ? 'Match Scores' : 'General');
+
   if(!url){
-    if(statusEl) statusEl.innerHTML = `<span style="color:#fa8a90">⚠️ Please enter a Discord Webhook URL first.</span>`;
+    if(statusEl) statusEl.innerHTML = `<span style="color:#fa8a90">⚠️ Please enter a Webhook URL for <b>${label}</b> first.</span>`;
     return;
   }
 
-  if(testBtn) { testBtn.disabled = true; testBtn.innerText = 'Sending...'; }
-  if(statusEl) statusEl.innerHTML = `<span style="color:#aaa">Sending test alert to Discord channel...</span>`;
+  if(statusEl) statusEl.innerHTML = `<span style="color:#aaa">Sending test alert to <b>${label}</b> channel...</span>`;
 
   try {
     let cfUrl = getCloudflareUrl();
     let res = await fetch(`${cfUrl}/api/discord/test`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ webhookUrl: url })
+      body: JSON.stringify({ webhookUrl: url, channel: channel, type: label })
     });
     let data = await res.json();
     if(res.ok && data.success){
-      if(statusEl) statusEl.innerHTML = `<span style="color:#53e89c">✅ Success! Test message sent to your Discord channel. Check Discord!</span>`;
+      if(statusEl) statusEl.innerHTML = `<span style="color:#53e89c">✅ Success! Test message sent to your <b>${label}</b> Discord channel. Check Discord!</span>`;
     } else {
       if(statusEl) statusEl.innerHTML = `<span style="color:#fa8a90">❌ Error: ${esc(data.error || 'Failed to post webhook')}</span>`;
     }
   } catch(e){
     if(statusEl) statusEl.innerHTML = `<span style="color:#fa8a90">❌ Connection Error: ${esc(e.message)}</span>`;
-  } finally {
-    if(testBtn) { testBtn.disabled = false; testBtn.innerText = '🔔 Test Webhook'; }
   }
 }
 
 async function saveDiscordSettings(){
-  let urlInput = document.querySelector('#discordWebhookUrl');
+  let draftWebhookUrl = (document.querySelector('#discordDraftWebhookUrl')?.value || '').trim();
+  let scoreWebhookUrl = (document.querySelector('#discordScoreWebhookUrl')?.value || '').trim();
+  let webhookUrl = (document.querySelector('#discordWebhookUrl')?.value || '').trim();
   let saveBtn = document.querySelector('#saveDiscordBtn');
   let statusEl = document.querySelector('#discordTestStatus');
-  let webhookUrl = (urlInput?.value || '').trim();
 
   let coachDiscordIds = {};
   document.querySelectorAll('.discord-coach-id-input').forEach(inp => {
@@ -3945,6 +3983,8 @@ async function saveDiscordSettings(){
   try {
     let cfUrl = getCloudflareUrl();
     let payload = {
+      draftWebhookUrl,
+      scoreWebhookUrl,
       webhookUrl,
       coachDiscordIds,
       announcePicks,
