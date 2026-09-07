@@ -4021,6 +4021,182 @@ async function announceDraftPickToDiscord(t, pickObj, nextTurn){
   } catch(e){
     console.warn('Error queuing Discord draft pick announcement:', e);
   }
+function generateMatchCardDataUrl(data){
+  try {
+    let canvas = document.createElement('canvas');
+    canvas.width = 760;
+    canvas.height = 280;
+    let ctx = canvas.getContext('2d');
+    if(!ctx) return null;
+    let w = canvas.width, h = canvas.height;
+
+    // Background gradient matching website theme
+    let bg = ctx.createLinearGradient(0, 0, w, h);
+    bg.addColorStop(0, '#260f18');
+    bg.addColorStop(0.5, '#140e15');
+    bg.addColorStop(1, '#0c0c10');
+    ctx.fillStyle = bg;
+
+    // Rounded rectangle
+    ctx.beginPath();
+    if(typeof ctx.roundRect === 'function') ctx.roundRect(0, 0, w, h, 12);
+    else ctx.rect(0, 0, w, h);
+    ctx.fill();
+
+    // Subtle red glow on top
+    let glow = ctx.createRadialGradient(w/2, 0, 10, w/2, 0, 350);
+    glow.addColorStop(0, 'rgba(239, 48, 56, 0.22)');
+    glow.addColorStop(1, 'rgba(0, 0, 0, 0)');
+    ctx.fillStyle = glow;
+    ctx.fillRect(0, 0, w, h);
+
+    // Card border
+    ctx.strokeStyle = '#482028';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+
+    // Top banner bar
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.45)';
+    ctx.fillRect(0, 0, w, 42);
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.08)';
+    ctx.beginPath();
+    ctx.moveTo(0, 42); ctx.lineTo(w, 42);
+    ctx.stroke();
+
+    // Banner title (Stage)
+    ctx.font = '900 13px "Barlow Condensed", sans-serif';
+    ctx.fillStyle = '#ffd166';
+    ctx.textAlign = 'left';
+    let stageTitle = (data.stage || 'GROUP STAGE').toUpperCase();
+    if(data.roundLabel) stageTitle += ' • ' + data.roundLabel.toUpperCase();
+    ctx.fillText('⚡  ' + stageTitle, 20, 26);
+
+    // FINAL SCORE pill badge
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.65)';
+    let pillW = 86, pillH = 22, pillX = w - pillW - 20, pillY = 10;
+    ctx.beginPath();
+    if(typeof ctx.roundRect === 'function') ctx.roundRect(pillX, pillY, pillW, pillH, 4);
+    else ctx.rect(pillX, pillY, pillW, pillH);
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
+    ctx.stroke();
+    ctx.font = '900 10px "Barlow Condensed", sans-serif';
+    ctx.fillStyle = '#7df0aa';
+    ctx.textAlign = 'center';
+    ctx.fillText('FINAL SCORE', pillX + pillW/2, pillY + 15);
+
+    let p1Won = +data.s1 > +data.s2;
+    let p2Won = +data.s2 > +data.s1;
+
+    // Helper to draw each coach
+    function drawCoachSide(c, cx){
+      let cy = 105;
+      let r = 30;
+
+      // Avatar circle
+      ctx.beginPath();
+      ctx.arc(cx, cy, r, 0, Math.PI * 2);
+      let grad = ctx.createLinearGradient(cx - r, cy - r, cx + r, cy + r);
+      grad.addColorStop(0, '#f14449');
+      grad.addColorStop(1, '#6e1826');
+      ctx.fillStyle = grad;
+      ctx.fill();
+
+      ctx.strokeStyle = c.won ? '#4ade80' : '#ffd166';
+      ctx.lineWidth = 2.5;
+      ctx.stroke();
+
+      // Letter avatar
+      ctx.font = '900 22px "Barlow Condensed", sans-serif';
+      ctx.fillStyle = '#ffffff';
+      ctx.textAlign = 'center';
+      ctx.fillText((c.name || '?')[0].toUpperCase(), cx, cy + 8);
+
+      // OVR rating badge
+      if(c.ovr){
+        let bW = 24, bH = 16, bX = cx + 12, bY = cy + 12;
+        ctx.beginPath();
+        if(typeof ctx.roundRect === 'function') ctx.roundRect(bX, bY, bW, bH, 3);
+        else ctx.rect(bX, bY, bW, bH);
+        ctx.fillStyle = '#eab308';
+        ctx.fill();
+        ctx.font = '900 10px "Barlow Condensed", sans-serif';
+        ctx.fillStyle = '#000000';
+        ctx.textAlign = 'center';
+        ctx.fillText(String(c.ovr), bX + bW/2, bY + 12);
+      }
+
+      // Record
+      ctx.font = '900 28px "Barlow Condensed", sans-serif';
+      ctx.fillStyle = c.won ? '#4ade80' : '#ffd166';
+      ctx.textAlign = 'center';
+      ctx.fillText(c.rec || (c.won ? 'WIN' : 'LOSS'), cx, cy + 60);
+
+      // Team Name
+      ctx.font = '700 13px "Barlow Condensed", sans-serif';
+      ctx.fillStyle = '#c6c4ce';
+      ctx.textAlign = 'center';
+      let teamText = c.team || '';
+      if(teamText.length > 24) teamText = teamText.slice(0, 22) + '...';
+      ctx.fillText(teamText, cx, cy + 84);
+
+      // Coach Name
+      ctx.font = '900 15px "Barlow Condensed", sans-serif';
+      ctx.fillStyle = '#ffffff';
+      ctx.textAlign = 'center';
+      ctx.fillText(c.name || '', cx, cy + 104);
+    }
+
+    // Left Coach
+    drawCoachSide({
+      name: data.p1,
+      team: data.p1Team,
+      rec: data.rec1,
+      ovr: data.ovr1,
+      won: p1Won
+    }, 160);
+
+    // Center Set Score
+    ctx.textAlign = 'right';
+    ctx.font = '900 38px "Barlow Condensed", sans-serif';
+    ctx.fillStyle = p1Won ? '#4ade80' : '#8e8c98';
+    ctx.fillText(String(data.s1 ?? 0), w/2 - 18, 125);
+
+    ctx.textAlign = 'center';
+    ctx.font = '900 24px "Barlow Condensed", sans-serif';
+    ctx.fillStyle = '#5c5a68';
+    ctx.fillText('-', w/2, 122);
+
+    ctx.textAlign = 'left';
+    ctx.font = '900 38px "Barlow Condensed", sans-serif';
+    ctx.fillStyle = p2Won ? '#4ade80' : '#8e8c98';
+    ctx.fillText(String(data.s2 ?? 0), w/2 + 18, 125);
+
+    ctx.textAlign = 'center';
+    ctx.font = '900 11px "Barlow Condensed", sans-serif';
+    ctx.fillStyle = '#7df0aa';
+    ctx.fillText('FINAL', w/2, 148);
+
+    // Right Coach
+    drawCoachSide({
+      name: data.p2,
+      team: data.p2Team,
+      rec: data.rec2,
+      ovr: data.ovr2,
+      won: p2Won
+    }, w - 160);
+
+    // Footer text
+    ctx.font = '700 10px "Barlow Condensed", sans-serif';
+    ctx.fillStyle = '#5e5c68';
+    ctx.textAlign = 'center';
+    ctx.fillText('BELLIMAKA POKEMON LEAGUE', w/2, h - 14);
+
+    return canvas.toDataURL('image/png');
+  } catch(e) {
+    console.warn('Could not generate match card image:', e);
+    return null;
+  }
 }
 
 async function announceMatchScoreToDiscord(t, matchData, isTopCut = false){
@@ -5124,6 +5300,26 @@ async function saveTopCutScore(matchId){
   // Instant 24/7 Discord Notification for Playoff Score
   try {
     if(p1 && p2){
+      let rec1 = typeof tournamentRecord === 'function' ? tournamentRecord(t, p1) : (profiles[p1]?.record || '');
+      let rec2 = typeof tournamentRecord === 'function' ? tournamentRecord(t, p2) : (profiles[p2]?.record || '');
+      let ovr1 = typeof calculatePlayerOVR === 'function' ? (calculatePlayerOVR(p1)?.rating || 85) : 85;
+      let ovr2 = typeof calculatePlayerOVR === 'function' ? (calculatePlayerOVR(p2)?.rating || 85) : 85;
+
+      let imageBase64 = generateMatchCardDataUrl({
+        p1: p1,
+        p2: p2,
+        s1: sa,
+        s2: sb,
+        p1Team: teamName(t, p1),
+        p2Team: teamName(t, p2),
+        rec1: rec1,
+        rec2: rec2,
+        ovr1: ovr1,
+        ovr2: ovr2,
+        stage: 'TOP CUT PLAYOFFS',
+        roundLabel: roundNum ? `Round ${roundNum}` : 'Playoffs'
+      });
+
       announceMatchScoreToDiscord(t, {
         p1: p1,
         p2: p2,
@@ -5133,7 +5329,8 @@ async function saveTopCutScore(matchId){
         s2: sb,
         winner: sa > sb ? p1 : p2,
         stage: 'Top Cut Playoffs',
-        roundLabel: roundNum ? `Round ${roundNum}` : 'Playoffs'
+        roundLabel: roundNum ? `Round ${roundNum}` : 'Playoffs',
+        imageBase64: imageBase64
       }, true);
     }
   } catch(e){
@@ -6753,6 +6950,26 @@ function score(i){
   // Instant 24/7 Discord Notification for Match Score
   try {
     let winner = m.as > m.bs ? m.a : (m.bs > m.as ? m.b : null);
+    let rec1 = typeof tournamentRecord === 'function' ? tournamentRecord(t, m.a) : (profiles[m.a]?.record || '');
+    let rec2 = typeof tournamentRecord === 'function' ? tournamentRecord(t, m.b) : (profiles[m.b]?.record || '');
+    let ovr1 = typeof calculatePlayerOVR === 'function' ? (calculatePlayerOVR(m.a)?.rating || 85) : 85;
+    let ovr2 = typeof calculatePlayerOVR === 'function' ? (calculatePlayerOVR(m.b)?.rating || 85) : 85;
+
+    let imageBase64 = generateMatchCardDataUrl({
+      p1: m.a,
+      p2: m.b,
+      s1: m.as,
+      s2: m.bs,
+      p1Team: teamName(t, m.a),
+      p2Team: teamName(t, m.b),
+      rec1: rec1,
+      rec2: rec2,
+      ovr1: ovr1,
+      ovr2: ovr2,
+      stage: m.g || 'Group Stage',
+      roundLabel: m.round || (m.w ? `Week ${m.w}` : '')
+    });
+
     announceMatchScoreToDiscord(t, {
       p1: m.a,
       p2: m.b,
@@ -6762,7 +6979,8 @@ function score(i){
       s2: m.bs,
       winner: winner,
       stage: m.g || 'Group Stage',
-      roundLabel: m.round || (m.w ? `Week ${m.w}` : '')
+      roundLabel: m.round || (m.w ? `Week ${m.w}` : ''),
+      imageBase64: imageBase64
     }, false);
   } catch(e){
     console.warn('Discord match score trigger error:', e);
