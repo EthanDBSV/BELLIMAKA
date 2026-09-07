@@ -16974,15 +16974,14 @@ function saveRenamedBoardPokemon(tId, oldMonName, cost, tierName){
   openDraftConfirmationModal(t.id, newName, cost, tierName);
 }
 
-function openDraftConfirmationModal(tId, monName, cost, tierName, forcedCoach = null){
+function openDraftConfirmationModal(tId, monName, cost, tierName){
   let t = tournamentData[tId] || activeT();
   if(!t) return;
   let d = ensureTournamentDraft(t);
   let turn = getDraftCurrentTurn(t);
   if(!turn || turn.isComplete) return;
 
-  let canManage = canManageTournament(t);
-  let pickingCoach = (forcedCoach && (t.players || []).includes(forcedCoach)) ? forcedCoach : turn.player;
+  let pickingCoach = turn.player;
   let coachStats = getDraftCoachStats(t, pickingCoach);
   let spriteUrl = pokeSprite(monName);
 
@@ -16990,7 +16989,7 @@ function openDraftConfirmationModal(tId, monName, cost, tierName, forcedCoach = 
   let linkedPlayerName = (typeof myPlayer === 'function' ? myPlayer() : null) || (typeof playerForAccount === 'function' ? playerForAccount(currentUsername) : null);
   let isMe = (currentUsername && currentUsername.toLowerCase() === (pickingCoach || '').toLowerCase()) ||
              (linkedPlayerName && linkedPlayerName.toLowerCase() === (pickingCoach || '').toLowerCase());
-  let canPick = canManage || isMe;
+  let canPick = moderator || canManageTournament(t) || isMe;
   let hasDirectBudget = (coachStats.budget === 0 || coachStats.remainingBudget >= cost);
   let satisfiesReserve = (coachStats.budget === 0 || cost <= coachStats.maxAffordableCost);
   let hasBudget = hasDirectBudget && satisfiesReserve;
@@ -17021,23 +17020,11 @@ function openDraftConfirmationModal(tId, monName, cost, tierName, forcedCoach = 
             <span class="tag" style="background:#3d2c12;color:#ffd166;font-weight:800;border:1px solid #6b4d1b">${cost} Points</span>
           </div>
 
-          ${canManage ? `
-            <div style="background:#1d1726;border:1px solid #582a85;border-radius:8px;padding:8px 12px;margin-bottom:12px;display:flex;align-items:center;justify-content:space-between;gap:8px;text-align:left">
-              <div>
-                <div style="font-size:10px;font-weight:800;color:#d8b4fe;text-transform:uppercase;letter-spacing:.5px">${moderator ? '👑 Commissioner Draft Control' : '⭐ Tournament Director Draft Control'}</div>
-                <div style="font-size:11px;color:#c4b5fd">Drafting on behalf of coach:</div>
-              </div>
-              <select style="background:#131118;border:1px solid #7c3aed;color:#f5f3f0;font-size:12px;font-weight:700;border-radius:6px;padding:5px 8px;cursor:pointer" onchange="openDraftConfirmationModal('${jsArg(t.id)}', '${jsArg(monName)}', ${cost}, '${jsArg(tierName)}', this.value)">
-                ${(t.players||[]).map(p => `<option value="${esc(p)}" ${p === pickingCoach ? 'selected' : ''}>${esc(p)}${p === turn.player ? ' (On the clock)' : ''}</option>`).join('')}
-              </select>
-            </div>
-          ` : ''}
-
           <div class="card" style="padding:14px;background:#14141c;border-color:#2a2a3a;text-align:left;margin-bottom:14px">
             <div style="display:flex;align-items:center;justify-content:space-between">
               <div>
-                <div style="font-size:10px;font-weight:800;color:#8e8c95;text-transform:uppercase">Target Coach Roster</div>
-                <div style="font-weight:800;font-size:15px;color:#f5f3f0">${esc(pickingCoach)} ${isMe ? '⭐ (You)' : (pickingCoach === turn.player ? '⏱️ (On Clock)' : '')}</div>
+                <div style="font-size:10px;font-weight:800;color:#8e8c95;text-transform:uppercase">On The Clock</div>
+                <div style="font-weight:800;font-size:15px;color:#f5f3f0">${esc(pickingCoach)} ${isMe ? '⭐ (You)' : ''}</div>
               </div>
               <div style="text-align:right">
                 <div style="font-size:10px;font-weight:800;color:#8e8c95;text-transform:uppercase">Points Balance</div>
@@ -17057,13 +17044,13 @@ function openDraftConfirmationModal(tId, monName, cost, tierName, forcedCoach = 
 
           ${!canPick ? `<div class="sub" style="color:#a09fa8;margin-bottom:10px">Waiting for <b>${esc(pickingCoach)}</b> to make official Pick #${turn.currentPickNumber}.</div>` : ''}
           ${canPick && !hasDirectBudget ? `<div class="sub" style="color:#ff4b54;margin-bottom:10px">⚠️ Not enough points. ${esc(pickingCoach)} only has ${coachStats.remainingBudget} pts remaining (costs ${cost} pts).</div>` : ''}
-          ${canPick && hasDirectBudget && !satisfiesReserve ? `<div class="sub" style="color:#ff4b54;margin-bottom:10px">⚠️ Roster Reserve Guardrail: Must keep at least 1 point for every remaining slot (${coachStats.minPointsReserve} pts for ${coachStats.slotsAfterPick} slot(s)). Maximum affordable on this pick is <b>${coachStats.maxAffordableCost} pts</b>.</div>` : ''}
+          ${canPick && hasDirectBudget && !satisfiesReserve ? `<div class="sub" style="color:#ff4b54;margin-bottom:10px">⚠️ Roster Reserve Guardrail: You must keep at least 1 point for every remaining slot (${coachStats.minPointsReserve} pts for ${coachStats.slotsAfterPick} slot(s)). Maximum affordable on this pick is <b>${coachStats.maxAffordableCost} pts</b>.</div>` : ''}
           ${canPick && !hasSlots ? `<div class="sub" style="color:#ff4b54;margin-bottom:10px">⚠️ Roster is already full (${coachStats.maxSlots}/${coachStats.maxSlots}).</div>` : ''}
 
           <div style="display:flex;flex-direction:column;gap:8px">
             ${canPick ? `
-              <button class="btn" ${(!hasBudget || !hasSlots) ? 'disabled style="opacity:.4;cursor:not-allowed"' : ''} style="padding:11px 16px;font-weight:800;width:100%" onclick="makeDraftPick('${jsArg(t.id)}', '${jsArg(monName)}', '${jsArg(pickingCoach)}');closeModal()">
-                ${isMe ? `🎯 Official Draft Pick (${esc(monName)})` : `🎯 Draft for ${esc(pickingCoach)} (${esc(monName)})`}
+              <button class="btn" ${(!hasBudget || !hasSlots) ? 'disabled style="opacity:.4;cursor:not-allowed"' : ''} style="padding:11px 16px;font-weight:800;width:100%" onclick="makeDraftPick('${jsArg(t.id)}', '${jsArg(monName)}');closeModal()">
+                🎯 Official Draft Pick (${esc(monName)})
               </button>
             ` : ''}
 
@@ -17077,6 +17064,7 @@ function openDraftConfirmationModal(tId, monName, cost, tierName, forcedCoach = 
     </div>
   `;
 }
+
 
 function makeDraftPick(tId, pokemonName, forcedPlayer = null){
   let t = tournamentData[tId] || ongoingT() || activeT();
