@@ -6894,76 +6894,6 @@ function homeDraftPicksSection(t){
   `;
 }
 
-function homeCoachWarRoomsSection(t){
-  let d = ensureTournamentDraft(t);
-  if(!d || !t.players || !t.players.length) return '';
-  let turn = getDraftCurrentTurn(t);
-  let maxSlots = d.maxRosterSize || 10;
-
-  return `
-    <section class="section">
-      <div class="section-head" style="align-items:center">
-        <div>
-          <div class="eyebrow" style="color:var(--red);margin-bottom:2px">👥 Draft War Rooms</div>
-          <h2>COACH ROSTER TRACKER</h2>
-        </div>
-        <button class="link" onclick="go('Teams')">VIEW FULL ROSTERS →</button>
-      </div>
-      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(290px,1fr));gap:14px">
-        ${t.players.map(p => {
-          let stats = getDraftCoachStats(t, p);
-          let faceArt = profilePictures[p] ? `url('${esc(profilePictures[p])}')` : (teamCovers[p] ? `url('${esc(teamCovers[p])}')` : fallbackArt(p));
-          let faceLetter = (profilePictures[p] || teamCovers[p]) ? '' : esc(p[0]);
-          let isCurrent = (turn && turn.player === p && !turn.isComplete);
-          let ovrObj = calculatePlayerOVR(p);
-          let draftedMons = t.rosters?.[p] || roster[p] || [];
-          let totalSlots = Math.max(10, maxSlots);
-
-          return `
-            <div class="card" style="padding:16px;background:#14141c;border:1px solid ${isCurrent ? 'var(--red)' : '#282836'};box-shadow:${isCurrent ? '0 0 20px rgba(239,48,56,0.35)' : 'none'};border-radius:10px;position:relative">
-              ${isCurrent ? `<span style="position:absolute;top:10px;right:10px;background:var(--red);color:#fff;font-size:8px;font-weight:900;letter-spacing:1px;padding:2px 7px;border-radius:4px;text-transform:uppercase">ON THE CLOCK</span>` : ''}
-              <div style="display:flex;align-items:center;gap:12px">
-                <span class="avatar" style="background-image:${faceArt};background-size:cover;background-position:center;width:44px;height:44px;border-radius:50%;border:2px solid ${ovrObj.color};display:grid;place-items:center;font-size:18px;flex:none">${faceLetter}</span>
-                <div style="min-width:0;flex:1">
-                  <div style="font:800 17px 'Barlow Condensed';color:#f5f3f0;display:flex;align-items:center;gap:6px">
-                    <span onclick="openProfile('${jsArg(p)}')" style="cursor:pointer">${playerLink(p)}</span>
-                    ${ovrObj.badgeHtml}
-                  </div>
-                  <div style="font-size:11px;color:#8e8c95;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(teamName(t, p))}</div>
-                </div>
-                <div style="text-align:right">
-                  <div style="font:800 16px 'Barlow Condensed';color:#ffd166">${stats ? `${stats.remainingBudget} pts` : ''}</div>
-                  <div style="font-size:10px;color:#8e8c95">${stats ? `${stats.count}/${stats.maxSlots}` : '0/10'} picks</div>
-                </div>
-              </div>
-
-              <!-- 2 Rows of 5 Larger Pokémon Slots -->
-              <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin-top:14px">
-                ${Array.from({ length: totalSlots }, (_, i) => {
-                  let mon = draftedMons[i];
-                  if(mon){
-                    return `
-                      <div style="height:50px;background:#0d0d12;border:1px solid #2d2d3c;border-radius:6px;display:grid;place-items:center;transition:all .15s ease" title="${esc(mon)}">
-                        <img src="${esc(pokeSprite(mon))}" style="width:38px;height:38px;object-fit:contain;filter:drop-shadow(0 2px 4px rgba(0,0,0,0.5))" onerror="handleSpriteError(this)">
-                      </div>
-                    `;
-                  } else {
-                    return `
-                      <div style="height:50px;background:#111116;border:1px dashed #242430;border-radius:6px;display:grid;place-items:center;color:#454452;font:800 10px 'Barlow Condensed'">
-                        ${i + 1}
-                      </div>
-                    `;
-                  }
-                }).join('')}
-              </div>
-            </div>
-          `;
-        }).join('')}
-      </div>
-    </section>
-  `;
-}
-
 function Home(){
   let t = ongoingT();
   if(!t) return OffseasonHome();
@@ -7117,7 +7047,6 @@ function Home(){
     <!-- Phase Specific Interactive Sections -->
     ${isDraftPhase ? `
       ${homeDraftPicksSection(t)}
-      ${homeCoachWarRoomsSection(t)}
     ` : `
       <section class="section">
         <div class="section-head">
