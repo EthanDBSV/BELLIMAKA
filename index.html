@@ -1635,6 +1635,32 @@ function renderDirectorSelectorGrid(selectedManagers=[], className='managerChoic
   `;
 }
 
+function renderReadOnlyDirectorBadges(selectedManagers=[]){
+  let list = (selectedManagers || []).map(x => String(x).trim()).filter(Boolean);
+  if(!list.length){
+    return `<div style="font-size:11px;color:#8e8c95;padding:10px 12px;background:#14141c;border:1px dashed #2e2e3e;border-radius:6px">No tournament directors currently assigned.</div>`;
+  }
+  return `
+    <div style="display:flex;flex-wrap:wrap;gap:8px;padding:8px 10px;background:#14141c;border:1px solid #2e2e3e;border-radius:6px">
+      ${list.map(p => {
+        let faceArt = profilePictures[p] ? `url('${esc(profilePictures[p])}')` : (teamCovers[p] ? `url('${esc(teamCovers[p])}')` : fallbackArt(p));
+        let faceLetter = (profilePictures[p] || teamCovers[p]) ? '' : esc((p||'?')[0]);
+        let team = profiles[p]?.team && profiles[p].team !== 'No default team' ? profiles[p].team : '';
+        return `
+          <div style="display:inline-flex;align-items:center;gap:7px;background:#201929;border:1px solid #582a85;padding:4px 10px 4px 6px;border-radius:20px">
+            <span class="mrow-face" style="background-image:${faceArt};background-size:cover;background-position:center;width:20px;height:20px;font-size:9px;border-radius:50%;flex:none;display:grid;place-items:center;border:1px solid #ffffff1f">${faceLetter}</span>
+            <div style="line-height:1.2">
+              <span style="font-size:11px;font-weight:800;color:#f5f3f0">${esc(p)}</span>
+              ${team ? `<span style="font-size:9px;color:#a78bfa;margin-left:4px">(${esc(team)})</span>` : ''}
+            </div>
+            <span style="font-size:9px;color:#d8b4fe;background:#351a52;padding:1px 5px;border-radius:4px;font-weight:700">Director</span>
+          </div>
+        `;
+      }).join('')}
+    </div>
+  `;
+}
+
 function canManageTournament(t){
   if(moderator) return true; // Global commissioner always has full access
   if(!t) return false;
@@ -2655,11 +2681,11 @@ function openTournamentRecordEditor(id){
 
         <div class="field" style="grid-column:1/-1;margin-top:0">
           <label style="font-weight:800;color:#e2e0e8;margin-bottom:6px;display:flex;justify-content:space-between;align-items:center">
-            <span>Tournament Directors / Organizers (Optional)</span>
-            <span class="tag" style="font-size:9px;background:#221d28;color:#d8b4fe;border:1px solid #582a85">Tournament Admin Perms</span>
+            <span>${moderator ? 'Tournament Directors / Organizers (Optional)' : 'Tournament Directors'}</span>
+            <span class="tag" style="font-size:9px;background:#221d28;color:#d8b4fe;border:1px solid #582a85">${moderator ? 'Tournament Admin Perms' : 'Appointed by Commissioner'}</span>
           </label>
-          <span style="font-size:10px;color:#8e8c95;margin-bottom:8px;display:block">Select one or more trainers to grant tournament-specific moderator permissions (entering match scores, running live draft, group draw, and managing this tournament).</span>
-          ${renderDirectorSelectorGrid(getTournamentManagers(t), 'recordManagerChoice')}
+          <span style="font-size:10px;color:#8e8c95;margin-bottom:8px;display:block">${moderator ? 'Select one or more trainers to grant tournament-specific moderator permissions (entering match scores, running live draft, group draw, and managing this tournament).' : 'Appointed tournament directors. Only commissioners / global moderators can appoint or change tournament directors.'}</span>
+          ${moderator ? renderDirectorSelectorGrid(getTournamentManagers(t), 'recordManagerChoice') : renderReadOnlyDirectorBadges(getTournamentManagers(t))}
         </div>
       </div>
     </div>
@@ -2689,9 +2715,11 @@ function saveTournamentRecord(id){
   t.phase = newPhase;
   if(newPhase === 'draft') t.hasDraft = true;
 
-  let newManagers = [...document.querySelectorAll('.recordManagerChoice:checked')].map(x => x.value.trim()).filter(Boolean);
-  t.managers = newManagers;
-  t.manager = newManagers[0] || null;
+  if(moderator){
+    let newManagers = [...document.querySelectorAll('.recordManagerChoice:checked')].map(x => x.value.trim()).filter(Boolean);
+    t.managers = newManagers;
+    t.manager = newManagers[0] || null;
+  }
 
   if(!t.draftData && t.hasDraft){
     ensureTournamentDraft(t);
@@ -9083,13 +9111,13 @@ function standingTable(t, g){
 }
 
 function openRankingEditor(){
-  let t=ongoingT();if(!moderator||!t)return;
+  let t=ongoingT()||activeT();if(!t||!canManageTournament(t))return;
   let groups=Object.keys(groupsOf(t));
-  document.querySelector('#modal').innerHTML=`<div class="modal-wrap"><div class="modal" style="max-width:760px"><div class="modal-head"><div><div class="eyebrow">Moderator only</div><h2>Arrange standings</h2></div><button class="close" onclick="closeModal()">×</button></div><p class="sub">Drag a trainer onto another trainer in the same group to swap their displayed rank. This manual order is also used for qualification and Top Cut seeding.</p><div class="group-placement-grid">${groups.map(g=>`<section class="group-dropzone rank-dropzone" data-rank-group="${g}"><div class="eyebrow">${g}</div>${getStand(t,g).map((x,i)=>`<button class="group-placement-drag rank-placement-drag" draggable="true" data-player="${x.p}" data-rank-group="${g}"><span style="color:#aaa;margin-right:10px">${i+1}</span>${x.p}</button>`).join('')}</section>`).join('')}</div><div class="creator-actions"><button class="btn ghost" onclick="resetManualStandings()">Return to automatic order</button></div></div></div>`;
+  document.querySelector('#modal').innerHTML=`<div class="modal-wrap"><div class="modal" style="max-width:760px"><div class="modal-head"><div><div class="eyebrow">${moderator ? 'Moderator only' : 'Tournament Director'}</div><h2>Arrange standings</h2></div><button class="close" onclick="closeModal()">×</button></div><p class="sub">Drag a trainer onto another trainer in the same group to swap their displayed rank. This manual order is also used for qualification and Top Cut seeding.</p><div class="group-placement-grid">${groups.map(g=>`<section class="group-dropzone rank-dropzone" data-rank-group="${g}"><div class="eyebrow">${g}</div>${getStand(t,g).map((x,i)=>`<button class="group-placement-drag rank-placement-drag" draggable="true" data-player="${x.p}" data-rank-group="${g}"><span style="color:#aaa;margin-right:10px">${i+1}</span>${x.p}</button>`).join('')}</section>`).join('')}</div><div class="creator-actions"><button class="btn ghost" onclick="resetManualStandings()">Return to automatic order</button></div></div></div>`;
 }
 
 function swapStandingRanks(first,second,group){
-  let t=ongoingT();if(!t||!first||!second||first===second||!moderator)return;
+  let t=ongoingT()||activeT();if(!t||!first||!second||first===second||!canManageTournament(t))return;
   let ordered=getStand(t,group).map(x=>x.p),a=ordered.indexOf(first),b=ordered.indexOf(second);
   if(a<0||b<0)return;
   [ordered[a],ordered[b]]=[ordered[b],ordered[a]];
@@ -9101,16 +9129,16 @@ function swapStandingRanks(first,second,group){
 }
 
 function resetManualStandings(){
-  let t=ongoingT();if(!t)return;
+  let t=ongoingT()||activeT();if(!t||!canManageTournament(t))return;
   delete t.manualStandings;
   persistLeague();
   closeModal();
   render();
 }
 
-document.addEventListener('dragstart',e=>{let x=e.target.closest('.rank-placement-drag');if(x&&moderator)e.dataTransfer.setData('application/cherrymoon-rank-player',JSON.stringify({player:x.dataset.player,group:x.dataset.rankGroup}))});
-document.addEventListener('dragover',e=>{let target=e.target.closest('.rank-placement-drag');if(target&&moderator)e.preventDefault()});
-document.addEventListener('drop',e=>{let target=e.target.closest('.rank-placement-drag'),raw=e.dataTransfer.getData('application/cherrymoon-rank-player');if(!target||!raw||!moderator)return;let source;try{source=JSON.parse(raw)}catch{return}if(source.group!==target.dataset.rankGroup)return;e.preventDefault();swapStandingRanks(source.player,target.dataset.player,source.group)});
+document.addEventListener('dragstart',e=>{let x=e.target.closest('.rank-placement-drag');let t=ongoingT()||activeT();if(x&&canManageTournament(t))e.dataTransfer.setData('application/cherrymoon-rank-player',JSON.stringify({player:x.dataset.player,group:x.dataset.rankGroup}))});
+document.addEventListener('dragover',e=>{let target=e.target.closest('.rank-placement-drag');let t=ongoingT()||activeT();if(target&&canManageTournament(t))e.preventDefault()});
+document.addEventListener('drop',e=>{let target=e.target.closest('.rank-placement-drag'),raw=e.dataTransfer.getData('application/cherrymoon-rank-player');let t=ongoingT()||activeT();if(!target||!raw||!canManageTournament(t))return;let source;try{source=JSON.parse(raw)}catch{return}if(source.group!==target.dataset.rankGroup)return;e.preventDefault();swapStandingRanks(source.player,target.dataset.player,source.group)});
 
 function getPlayerRivals(p, allMatches){
   let oppMap = {};
@@ -9390,8 +9418,8 @@ function Standings(){
   if(t.phase === 'draft' && t.status === 'ONGOING'){
     return renderDraftLockedStandings(t);
   }
-  let groups=Object.keys(groupsOf(t)),controls=moderator?`<div><button class="btn ghost" onclick="openGroupDrawCeremony('${jsArg(t.id)}')">🎩 Draw ceremony</button> <button class="btn ghost" onclick="openRankingEditor()">Arrange rankings</button> <button class="btn ghost" onclick="openSettings()">Edit qualification</button></div>`:'';
-  return head('Standings',t.name+' · group stage',controls)+`<div style="display:grid;grid-template-columns:repeat(${groups.length>1?2:1},minmax(0,1fr));gap:15px">${groups.map(g=>`<div class="card table-wrap">${standingTable(t,g)}</div>`).join('')}</div><p class="sub">The default order is W-L, games won, game differential, then head-to-head. Moderators can use Arrange rankings to apply a manual standings override.</p>` + tournamentRatingProgressionSection(t);
+  let groups=Object.keys(groupsOf(t)),controls=canManageTournament(t)?`<div><button class="btn ghost" onclick="openGroupDrawCeremony('${jsArg(t.id)}')">🎩 Draw ceremony</button> <button class="btn ghost" onclick="openRankingEditor()">Arrange rankings</button> <button class="btn ghost" onclick="openSettings()">Edit qualification</button></div>`:'';
+  return head('Standings',t.name+' · group stage',controls)+`<div style="display:grid;grid-template-columns:repeat(${groups.length>1?2:1},minmax(0,1fr));gap:15px">${groups.map(g=>`<div class="card table-wrap">${standingTable(t,g)}</div>`).join('')}</div><p class="sub">The default order is W-L, games won, game differential, then head-to-head. Tournament Directors & Moderators can use Arrange rankings to apply a manual standings override.</p>` + tournamentRatingProgressionSection(t);
 }
 
 function matchPlayerName(p){return `<button class="player-link match-hover-name" onclick="openProfile('${jsArg(p)}')" onmouseenter="highlightMatches('${jsArg(p)}',true)" onmouseleave="highlightMatches('',false)">${esc(p)}</button>`}
@@ -15318,7 +15346,7 @@ function openTournamentEdit(id){
     </div>
     <p class="sub" style="margin-top:2px;margin-bottom:16px">${esc(t.season||'')} · ${esc(t.status)}${mgrSubtitle}</p>
     <div class="section" style="display:grid;gap:9px">
-      <button class="btn ghost" style="text-align:left;justify-content:flex-start;padding:10px 14px" onclick="openTournamentRecordEditor('${jsArg(t.id)}')">⚙️ Edit Details & Directors</button>
+      <button class="btn ghost" style="text-align:left;justify-content:flex-start;padding:10px 14px" onclick="openTournamentRecordEditor('${jsArg(t.id)}')">${moderator ? '⚙️ Edit Details & Directors' : '⚙️ Edit Details'}</button>
       <button class="btn ghost" style="text-align:left;justify-content:flex-start;padding:10px 14px" onclick="openTournamentPlayers()">👥 Edit Players & Teams</button>
       <button class="btn ghost" style="text-align:left;justify-content:flex-start;padding:10px 14px" ${locked?'disabled style="opacity:.5;cursor:not-allowed"':`onclick="openGroupPlacementEditor()"`}>👥 Arrange & Draw Groups${locked?' (Locked in Top Cut)':''}</button>
       <button class="btn ghost" style="text-align:left;justify-content:flex-start;padding:10px 14px" onclick="openSettings()">📊 Edit Qualification Cutoff</button>
@@ -16946,14 +16974,15 @@ function saveRenamedBoardPokemon(tId, oldMonName, cost, tierName){
   openDraftConfirmationModal(t.id, newName, cost, tierName);
 }
 
-function openDraftConfirmationModal(tId, monName, cost, tierName){
+function openDraftConfirmationModal(tId, monName, cost, tierName, forcedCoach = null){
   let t = tournamentData[tId] || activeT();
   if(!t) return;
   let d = ensureTournamentDraft(t);
   let turn = getDraftCurrentTurn(t);
   if(!turn || turn.isComplete) return;
 
-  let pickingCoach = turn.player;
+  let canManage = canManageTournament(t);
+  let pickingCoach = (forcedCoach && (t.players || []).includes(forcedCoach)) ? forcedCoach : turn.player;
   let coachStats = getDraftCoachStats(t, pickingCoach);
   let spriteUrl = pokeSprite(monName);
 
@@ -16961,7 +16990,7 @@ function openDraftConfirmationModal(tId, monName, cost, tierName){
   let linkedPlayerName = (typeof myPlayer === 'function' ? myPlayer() : null) || (typeof playerForAccount === 'function' ? playerForAccount(currentUsername) : null);
   let isMe = (currentUsername && currentUsername.toLowerCase() === (pickingCoach || '').toLowerCase()) ||
              (linkedPlayerName && linkedPlayerName.toLowerCase() === (pickingCoach || '').toLowerCase());
-  let canPick = moderator || isMe;
+  let canPick = canManage || isMe;
   let hasDirectBudget = (coachStats.budget === 0 || coachStats.remainingBudget >= cost);
   let satisfiesReserve = (coachStats.budget === 0 || cost <= coachStats.maxAffordableCost);
   let hasBudget = hasDirectBudget && satisfiesReserve;
@@ -16992,11 +17021,23 @@ function openDraftConfirmationModal(tId, monName, cost, tierName){
             <span class="tag" style="background:#3d2c12;color:#ffd166;font-weight:800;border:1px solid #6b4d1b">${cost} Points</span>
           </div>
 
+          ${canManage ? `
+            <div style="background:#1d1726;border:1px solid #582a85;border-radius:8px;padding:8px 12px;margin-bottom:12px;display:flex;align-items:center;justify-content:space-between;gap:8px;text-align:left">
+              <div>
+                <div style="font-size:10px;font-weight:800;color:#d8b4fe;text-transform:uppercase;letter-spacing:.5px">${moderator ? '👑 Commissioner Draft Control' : '⭐ Tournament Director Draft Control'}</div>
+                <div style="font-size:11px;color:#c4b5fd">Drafting on behalf of coach:</div>
+              </div>
+              <select style="background:#131118;border:1px solid #7c3aed;color:#f5f3f0;font-size:12px;font-weight:700;border-radius:6px;padding:5px 8px;cursor:pointer" onchange="openDraftConfirmationModal('${jsArg(t.id)}', '${jsArg(monName)}', ${cost}, '${jsArg(tierName)}', this.value)">
+                ${(t.players||[]).map(p => `<option value="${esc(p)}" ${p === pickingCoach ? 'selected' : ''}>${esc(p)}${p === turn.player ? ' (On the clock)' : ''}</option>`).join('')}
+              </select>
+            </div>
+          ` : ''}
+
           <div class="card" style="padding:14px;background:#14141c;border-color:#2a2a3a;text-align:left;margin-bottom:14px">
             <div style="display:flex;align-items:center;justify-content:space-between">
               <div>
-                <div style="font-size:10px;font-weight:800;color:#8e8c95;text-transform:uppercase">On The Clock</div>
-                <div style="font-weight:800;font-size:15px;color:#f5f3f0">${esc(pickingCoach)} ${isMe ? '⭐ (You)' : ''}</div>
+                <div style="font-size:10px;font-weight:800;color:#8e8c95;text-transform:uppercase">Target Coach Roster</div>
+                <div style="font-weight:800;font-size:15px;color:#f5f3f0">${esc(pickingCoach)} ${isMe ? '⭐ (You)' : (pickingCoach === turn.player ? '⏱️ (On Clock)' : '')}</div>
               </div>
               <div style="text-align:right">
                 <div style="font-size:10px;font-weight:800;color:#8e8c95;text-transform:uppercase">Points Balance</div>
@@ -17016,13 +17057,13 @@ function openDraftConfirmationModal(tId, monName, cost, tierName){
 
           ${!canPick ? `<div class="sub" style="color:#a09fa8;margin-bottom:10px">Waiting for <b>${esc(pickingCoach)}</b> to make official Pick #${turn.currentPickNumber}.</div>` : ''}
           ${canPick && !hasDirectBudget ? `<div class="sub" style="color:#ff4b54;margin-bottom:10px">⚠️ Not enough points. ${esc(pickingCoach)} only has ${coachStats.remainingBudget} pts remaining (costs ${cost} pts).</div>` : ''}
-          ${canPick && hasDirectBudget && !satisfiesReserve ? `<div class="sub" style="color:#ff4b54;margin-bottom:10px">⚠️ Roster Reserve Guardrail: You must keep at least 1 point for every remaining slot (${coachStats.minPointsReserve} pts for ${coachStats.slotsAfterPick} slot(s)). Maximum affordable on this pick is <b>${coachStats.maxAffordableCost} pts</b>.</div>` : ''}
+          ${canPick && hasDirectBudget && !satisfiesReserve ? `<div class="sub" style="color:#ff4b54;margin-bottom:10px">⚠️ Roster Reserve Guardrail: Must keep at least 1 point for every remaining slot (${coachStats.minPointsReserve} pts for ${coachStats.slotsAfterPick} slot(s)). Maximum affordable on this pick is <b>${coachStats.maxAffordableCost} pts</b>.</div>` : ''}
           ${canPick && !hasSlots ? `<div class="sub" style="color:#ff4b54;margin-bottom:10px">⚠️ Roster is already full (${coachStats.maxSlots}/${coachStats.maxSlots}).</div>` : ''}
 
           <div style="display:flex;flex-direction:column;gap:8px">
             ${canPick ? `
-              <button class="btn" ${(!hasBudget || !hasSlots) ? 'disabled style="opacity:.4;cursor:not-allowed"' : ''} style="padding:11px 16px;font-weight:800;width:100%" onclick="makeDraftPick('${jsArg(t.id)}', '${jsArg(monName)}');closeModal()">
-                🎯 Official Draft Pick (${esc(monName)})
+              <button class="btn" ${(!hasBudget || !hasSlots) ? 'disabled style="opacity:.4;cursor:not-allowed"' : ''} style="padding:11px 16px;font-weight:800;width:100%" onclick="makeDraftPick('${jsArg(t.id)}', '${jsArg(monName)}', '${jsArg(pickingCoach)}');closeModal()">
+                ${isMe ? `🎯 Official Draft Pick (${esc(monName)})` : `🎯 Draft for ${esc(pickingCoach)} (${esc(monName)})`}
               </button>
             ` : ''}
 
@@ -17064,8 +17105,8 @@ function makeDraftPick(tId, pokemonName, forcedPlayer = null){
     return;
   }
 
-  // Account authentication check
-  if(!canManageTournament(t) && !forcedPlayer){
+  // Account authentication check: only tournament managers can pick on behalf of someone else
+  if(!canManageTournament(t)){
     let currentUsername = window.currentAccount?.username || sessionUser?.user_metadata?.username || sessionUser?.email?.split('@')[0] || '';
     let linked = (typeof myPlayer === 'function' ? myPlayer() : null) || (typeof playerForAccount === 'function' ? playerForAccount(currentUsername) : null) || currentUsername;
     if(!linked || linked.toLowerCase() !== (targetPlayer || '').toLowerCase()){
@@ -17073,6 +17114,7 @@ function makeDraftPick(tId, pokemonName, forcedPlayer = null){
       return;
     }
   }
+
 
   let alreadyPicked = (d.picks || []).some(x => x.pokemon.toLowerCase().trim() === pokemonName.toLowerCase().trim());
   if(alreadyPicked){
@@ -17113,9 +17155,11 @@ function makeDraftPick(tId, pokemonName, forcedPlayer = null){
     t.rosters[targetPlayer].push(pokemonName);
   }
 
-  if(!roster[targetPlayer]) roster[targetPlayer] = [];
-  if(!roster[targetPlayer].includes(pokemonName)){
-    roster[targetPlayer].push(pokemonName);
+  if(typeof roster !== 'undefined'){
+    if(!roster[targetPlayer]) roster[targetPlayer] = [];
+    if(!roster[targetPlayer].includes(pokemonName)){
+      roster[targetPlayer].push(pokemonName);
+    }
   }
 
   if(d.picks.length >= getDraftTotalPicks(t)){
