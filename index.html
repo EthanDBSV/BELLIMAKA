@@ -3986,9 +3986,10 @@ async function announceDraftPickToDiscord(t, pickObj, nextTurn){
 
   try {
     let cfUrl = getCloudflareUrl();
-    let teamCount = (t.rosters?.[pickObj.player] || []).length;
-    let maxSlots = typeof getDraftMaxRosterSlots === 'function' ? getDraftMaxRosterSlots(t) : 11;
+    let d = typeof ensureTournamentDraft === 'function' ? ensureTournamentDraft(t) : null;
     let stats = typeof getDraftCoachStats === 'function' ? getDraftCoachStats(t, pickObj.player) : null;
+    let teamCount = (t.rosters?.[pickObj.player] || []).length;
+    let maxSlots = stats?.maxSlots || d?.maxRosterSize || t?.draftData?.maxRosterSize || 10;
     let remainingBudget = stats ? stats.remainingBudget : null;
 
     let payload = {
