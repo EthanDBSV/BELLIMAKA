@@ -4140,8 +4140,11 @@ async function generateMatchCardDataUrl(data){
     ctx.fillText('⚡', 16, bannerH / 2);
 
     ctx.fillStyle = '#ffd166';
-    let stageTitle = (data.stage || 'PRIMETIME MATCHUP').toUpperCase();
-    if(data.roundLabel && !stageTitle.includes(data.roundLabel.toUpperCase())){
+    let stageTitle = (data.stage || 'GROUP STAGE').toUpperCase();
+    if(/^GROUP\s+[A-Z]$/i.test(stageTitle)){
+      stageTitle += ' DIVISION';
+    }
+    if(data.isTopCut && data.roundLabel && !stageTitle.includes(data.roundLabel.toUpperCase())){
       stageTitle += ' • ' + data.roundLabel.toUpperCase();
     }
     ctx.fillText(stageTitle, 34, bannerH / 2 + 0.5);
@@ -4163,35 +4166,35 @@ async function generateMatchCardDataUrl(data){
     ctx.textBaseline = 'middle';
     ctx.fillText('FINAL SCORE', pillX + pillW / 2, pillY + pillH / 2 + 0.5);
 
-    // 4. Center Score & FINAL
+    // 4. Center Score & FINAL (Enlarged and bold for Discord readability)
     let p1Won = +data.s1 > +data.s2;
     let p2Won = +data.s2 > +data.s1;
 
-    let scoreY = 160;
+    let scoreY = 158;
     // Left score
     ctx.textAlign = 'right';
     ctx.textBaseline = 'middle';
-    ctx.font = '900 36px "Barlow Condensed", sans-serif';
+    ctx.font = '900 48px "Barlow Condensed", sans-serif';
     ctx.fillStyle = p1Won ? '#4ade80' : '#8e8c98';
-    ctx.fillText(String(data.s1 ?? 0), w / 2 - 18, scoreY);
+    ctx.fillText(String(data.s1 ?? 0), w / 2 - 20, scoreY);
 
     // Dash
     ctx.textAlign = 'center';
-    ctx.font = '800 20px "Barlow Condensed", sans-serif';
+    ctx.font = '900 28px "Barlow Condensed", sans-serif';
     ctx.fillStyle = '#6b6a78';
-    ctx.fillText('-', w / 2, scoreY - 1);
+    ctx.fillText('-', w / 2, scoreY - 2);
 
     // Right score
     ctx.textAlign = 'left';
-    ctx.font = '900 36px "Barlow Condensed", sans-serif';
+    ctx.font = '900 48px "Barlow Condensed", sans-serif';
     ctx.fillStyle = p2Won ? '#4ade80' : '#8e8c98';
-    ctx.fillText(String(data.s2 ?? 0), w / 2 + 18, scoreY);
+    ctx.fillText(String(data.s2 ?? 0), w / 2 + 20, scoreY);
 
     // FINAL label
     ctx.textAlign = 'center';
-    ctx.font = '900 11px "Barlow Condensed", sans-serif';
+    ctx.font = '900 12px "Barlow Condensed", sans-serif';
     ctx.fillStyle = '#7df0aa';
-    ctx.fillText('FINAL', w / 2, scoreY + 28);
+    ctx.fillText('FINAL', w / 2, scoreY + 34);
 
     // 5. Coaches (Left & Right)
     function drawCoach(c, cx, avatarImg){
@@ -4322,45 +4325,6 @@ async function generateMatchCardDataUrl(data){
       tier: data.ovrTier2,
       won: p2Won
     }, w - 190, img2);
-
-    // 6. Navigation arrow circles (website fidelity)
-    function drawNavArrow(ax, ay, symbol){
-      ctx.beginPath();
-      ctx.arc(ax, ay, 13, 0, Math.PI * 2);
-      ctx.fillStyle = 'rgba(18, 18, 24, 0.7)';
-      ctx.fill();
-      ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)';
-      ctx.lineWidth = 1;
-      ctx.stroke();
-
-      ctx.font = '800 15px sans-serif';
-      ctx.fillStyle = '#c8c6ce';
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.fillText(symbol, ax, ay - 1);
-    }
-    drawNavArrow(28, 160, '‹');
-    drawNavArrow(w - 28, 160, '›');
-
-    // 7. Carousel dots at bottom (website fidelity)
-    let dotY = 282;
-    let dotStartX = w / 2 - 25;
-    // Active red pill
-    ctx.fillStyle = data.isTopCut ? '#ffd166' : '#ef3038';
-    ctx.beginPath();
-    if(typeof ctx.roundRect === 'function') ctx.roundRect(dotStartX, dotY - 2, 16, 4, 2);
-    else ctx.rect(dotStartX, dotY - 2, 16, 4);
-    ctx.fill();
-
-    // Inactive dots
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.25)';
-    for(let i = 0; i < 4; i++){
-      let dotX = dotStartX + 22 + (i * 9);
-      ctx.beginPath();
-      if(typeof ctx.roundRect === 'function') ctx.roundRect(dotX, dotY - 2, 5, 4, 2);
-      else ctx.rect(dotX, dotY - 2, 5, 4);
-      ctx.fill();
-    }
 
     // 8. Card Outer Border
     ctx.restore(); // restore clipping
@@ -7183,9 +7147,20 @@ function score(i){
     }
     if(!coverImage && t?.backgroundImage) coverImage = t.backgroundImage;
 
-    let stageName = m.g || 'Group Stage';
-    if(/^group\s+[a-z]$/i.test(stageName)){
-      stageName = stageName.toUpperCase() + ' DIVISION';
+    let grp = m.group || m.g || '';
+    if(!grp && typeof groupsOf === 'function' && t){
+      let grps = groupsOf(t);
+      for(let g in grps){
+        if(grps[g]?.includes(m.a) && grps[g]?.includes(m.b)){
+          grp = g;
+          break;
+        }
+      }
+    }
+    if(!grp) grp = 'Group Stage';
+    let stageName = grp.toUpperCase();
+    if(/^GROUP\s+[A-Z]$/i.test(stageName)){
+      stageName += ' DIVISION';
     }
 
     (async () => {
@@ -7206,7 +7181,7 @@ function score(i){
           ovrTier1: ovrTier1,
           ovrTier2: ovrTier2,
           stage: stageName,
-          roundLabel: m.round || (m.w ? `Week ${m.w}` : ''),
+          roundLabel: '',
           coverImage: coverImage,
           p1Photo: p1Photo,
           p2Photo: p2Photo,
@@ -7222,7 +7197,7 @@ function score(i){
           s2: m.bs,
           winner: winner,
           stage: stageName,
-          roundLabel: m.round || (m.w ? `Week ${m.w}` : ''),
+          roundLabel: '',
           imageBase64: imageBase64
         }, false);
       } catch(err) {
