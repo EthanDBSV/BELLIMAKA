@@ -3280,8 +3280,211 @@ function deleteTournament(id){
   render();
 }
 
-function editProfile(p){let q=ensureProfile(p),career=playerCareerStats(p);document.querySelector('#modal').innerHTML=`<div class="modal-wrap"><div class="modal" style="max-width:520px"><div class="modal-head"><div><div class="eyebrow">Player profile</div><h2>Edit ${esc(p)}</h2></div><button class="close" onclick="closeModal()">×</button></div><div class="field"><label>Default team name</label><input id="editDefaultTeam" value="${esc(q.team)}"></div><div class="card" style="padding:14px;margin-top:14px;background:#111116;border-color:#32323a"><div class="eyebrow">Profile art</div><p class="sub" style="margin:7px 0 12px">Use the player photo on profile pages and the team cover on team cards.</p><div class="creator-actions" style="justify-content:start;flex-wrap:wrap">${moderator?`<button class="btn ghost" onclick="openProfilePictureEditor('${jsArg(p)}')">Edit profile picture</button><button class="btn ghost" onclick="openTeamCoverEditor('${jsArg(p)}')">Edit team cover</button>`:''}</div></div><div class="card" style="padding:14px;margin-top:14px;background:#111116;border-color:#32323a"><div class="eyebrow">Current snapshot</div><div class="mini-stats" style="margin-top:14px"><div><b>${career.titles}x</b><span>Champion</span></div><div><b>${career.topCuts}x</b><span>Top Cut</span></div><div><b>${esc(career.record)}</b><span>All-time W-L</span></div></div></div><div class="creator-actions"><button class="btn ghost" onclick="openProfileManager()">Back</button><button class="btn" onclick="saveProfile('${jsArg(p)}')">Save profile</button></div></div></div>`}
-function saveProfile(p){ensureProfile(p);let teamVal=document.querySelector('#editDefaultTeam')?.value.trim();profiles[p].team=teamVal||'No default team';rebuildAllPlayerStats();persistLeague();openProfileManager()}
+function renamePlayerProfile(oldName, newName){
+  if(!oldName || !newName || oldName === newName) return;
+
+  // 1. Rename in profiles
+  if(profiles[oldName]){
+    profiles[newName] = profiles[oldName];
+    delete profiles[oldName];
+  } else {
+    ensureProfile(newName);
+  }
+
+  // 2. Rename in active rosters
+  if(typeof roster === 'object' && roster && Object.hasOwn(roster, oldName)){
+    roster[newName] = roster[oldName];
+    delete roster[oldName];
+  }
+
+  // 3. Rename in teamHistory
+  if(typeof teamHistory === 'object' && teamHistory && Object.hasOwn(teamHistory, oldName)){
+    teamHistory[newName] = teamHistory[oldName];
+    delete teamHistory[oldName];
+  }
+
+  // 4. Rename in media (pictures & covers)
+  let mediaChanged = false;
+  if(typeof profilePictures === 'object' && profilePictures && Object.hasOwn(profilePictures, oldName)){
+    profilePictures[newName] = profilePictures[oldName];
+    delete profilePictures[oldName];
+    mediaChanged = true;
+  }
+  if(typeof teamCovers === 'object' && teamCovers && Object.hasOwn(teamCovers, oldName)){
+    teamCovers[newName] = teamCovers[oldName];
+    delete teamCovers[oldName];
+    mediaChanged = true;
+  }
+  if(typeof pulsePanelImages === 'object' && pulsePanelImages && Object.hasOwn(pulsePanelImages, oldName)){
+    pulsePanelImages[newName] = pulsePanelImages[oldName];
+    delete pulsePanelImages[oldName];
+    mediaChanged = true;
+  }
+
+  // 5. Rename in accountLinks
+  if(typeof accountLinks === 'object' && accountLinks){
+    let linkChanged = false;
+    Object.keys(accountLinks).forEach(k => {
+      if(accountLinks[k] === oldName){
+        accountLinks[k] = newName;
+        linkChanged = true;
+      }
+    });
+    if(linkChanged){
+      try { localStorage.setItem('draftdex-accountlinks', JSON.stringify(accountLinks)); } catch(e){}
+    }
+  }
+
+  // 6. Rename across all tournaments
+  if(typeof tournamentData === 'object' && tournamentData){
+    Object.values(tournamentData).forEach(t => {
+      if(!t) return;
+      if(Array.isArray(t.players)){
+        t.players = t.players.map(p => p === oldName ? newName : p);
+      }
+      if(t.teamNames && Object.hasOwn(t.teamNames, oldName)){
+        t.teamNames[newName] = t.teamNames[oldName];
+        delete t.teamNames[oldName];
+      }
+      if(t.groupAssignments && Object.hasOwn(t.groupAssignments, oldName)){
+        t.groupAssignments[newName] = t.groupAssignments[oldName];
+        delete t.groupAssignments[oldName];
+      }
+      if(t.rosters && Object.hasOwn(t.rosters, oldName)){
+        t.rosters[newName] = t.rosters[oldName];
+        delete t.rosters[oldName];
+      }
+      if(Array.isArray(t.matches)){
+        t.matches.forEach(m => {
+          if(!m) return;
+          if(m.a === oldName) m.a = newName;
+          if(m.b === oldName) m.b = newName;
+          if(m.p1 === oldName) m.p1 = newName;
+          if(m.p2 === oldName) m.p2 = newName;
+          if(m.winner === oldName) m.winner = newName;
+          if(m.loser === oldName) m.loser = newName;
+        });
+      }
+      if(Array.isArray(t.topCutMatches)){
+        t.topCutMatches.forEach(m => {
+          if(!m) return;
+          if(m.a === oldName) m.a = newName;
+          if(m.b === oldName) m.b = newName;
+        });
+      }
+      if(t.champion === oldName) t.champion = newName;
+      if(Array.isArray(t.managers)) t.managers = t.managers.map(m => m === oldName ? newName : m);
+      if(t.manager === oldName) t.manager = newName;
+      if(t.host === oldName) t.host = newName;
+      if(Array.isArray(t.pred)){
+        t.pred = t.pred.map(row => Array.isArray(row) && row[0] === oldName ? [newName, row[1]] : row);
+      }
+      if(t.finalStandings && typeof t.finalStandings === 'object'){
+        Object.keys(t.finalStandings).forEach(g => {
+          if(Array.isArray(t.finalStandings[g])){
+            t.finalStandings[g] = t.finalStandings[g].map(p => p === oldName ? newName : p);
+          }
+        });
+      }
+      if(Array.isArray(t.manualStandings)){
+        t.manualStandings = t.manualStandings.map(p => p === oldName ? newName : p);
+      }
+      if(t.topCutCache && typeof t.topCutCache === 'object'){
+        if(t.topCutCache.champion === oldName) t.topCutCache.champion = newName;
+        if(Array.isArray(t.topCutCache.participants)){
+          t.topCutCache.participants = t.topCutCache.participants.map(p => p === oldName ? newName : p);
+        }
+        if(Array.isArray(t.topCutCache.results)){
+          t.topCutCache.results.forEach(r => {
+            if(r.opponent1 && r.opponent1.name === oldName) r.opponent1.name = newName;
+            if(r.opponent2 && r.opponent2.name === oldName) r.opponent2.name = newName;
+          });
+        }
+      }
+      if(t.bracketManagerData && typeof t.bracketManagerData === 'object'){
+        if(Array.isArray(t.bracketManagerData.participant)){
+          t.bracketManagerData.participant.forEach(pt => {
+            if(pt && pt.name === oldName) pt.name = newName;
+          });
+        }
+        if(t.bracketManagerData.champion === oldName) t.bracketManagerData.champion = newName;
+        if(t.bracketManagerData.runnerUp === oldName) t.bracketManagerData.runnerUp = newName;
+      }
+      if(t.draftData && typeof t.draftData === 'object'){
+        if(Array.isArray(t.draftData.order)){
+          t.draftData.order = t.draftData.order.map(p => p === oldName ? newName : p);
+        }
+        if(Array.isArray(t.draftData.picks)){
+          t.draftData.picks.forEach(pk => {
+            if(pk && pk.player === oldName) pk.player = newName;
+          });
+        }
+      }
+    });
+  }
+
+  if(window.selectedTeamRosterCoach === oldName) window.selectedTeamRosterCoach = newName;
+
+  if(mediaChanged && moderator && typeof pushMediaToCloud === 'function'){
+    pushMediaToCloud();
+  }
+}
+
+function editProfile(p, returnToProfile = false){
+  let q=ensureProfile(p),career=playerCareerStats(p);
+  document.querySelector('#modal').innerHTML=`<div class="modal-wrap"><div class="modal" style="max-width:520px">
+    <div class="modal-head"><div><div class="eyebrow">Player profile</div><h2>Edit ${esc(p)}</h2></div><button class="close" onclick="closeModal()">×</button></div>
+    <div class="field"><label>Player name</label><input id="editPlayerName" value="${esc(p)}" placeholder="Player name"></div>
+    <div class="field"><label>Default team name</label><input id="editDefaultTeam" value="${esc(q.team)}" placeholder="e.g. Celestial Garchomps"></div>
+    <div class="card" style="padding:14px;margin-top:14px;background:#111116;border-color:#32323a">
+      <div class="eyebrow">Profile art</div>
+      <p class="sub" style="margin:7px 0 12px">Use the player photo on profile pages and the team cover on team cards.</p>
+      <div class="creator-actions" style="justify-content:start;flex-wrap:wrap">
+        ${moderator?`<button class="btn ghost" onclick="openProfilePictureEditor('${jsArg(p)}')">Edit profile picture</button><button class="btn ghost" onclick="openTeamCoverEditor('${jsArg(p)}')">Edit team cover</button>`:''}
+      </div>
+    </div>
+    <div class="card" style="padding:14px;margin-top:14px;background:#111116;border-color:#32323a">
+      <div class="eyebrow">Current snapshot</div>
+      <div class="mini-stats" style="margin-top:14px">
+        <div><b>${career.titles}x</b><span>Champion</span></div>
+        <div><b>${career.topCuts}x</b><span>Top Cut</span></div>
+        <div><b>${esc(career.record)}</b><span>All-time W-L</span></div>
+      </div>
+    </div>
+    <div class="creator-actions">
+      <button class="btn ghost" onclick="${returnToProfile ? `openProfile('${jsArg(p)}')` : `openProfileManager()`}">Back</button>
+      <button class="btn" onclick="saveProfile('${jsArg(p)}', ${returnToProfile ? 'true' : 'false'})">Save profile</button>
+    </div>
+  </div></div>`;
+}
+
+function saveProfile(p, returnToProfile = false){
+  ensureProfile(p);
+  let newName = document.querySelector('#editPlayerName')?.value.trim();
+  let teamVal = document.querySelector('#editDefaultTeam')?.value.trim();
+  if(!newName){
+    alert('Player name cannot be empty.');
+    return;
+  }
+  let currentKey = p;
+  if(newName !== p){
+    if(newName.toLowerCase() !== p.toLowerCase() && Object.keys(profiles).some(k => k.toLowerCase() === newName.toLowerCase())){
+      alert(`A player profile named "${newName}" already exists.`);
+      return;
+    }
+    renamePlayerProfile(p, newName);
+    currentKey = newName;
+  }
+  profiles[currentKey].team = teamVal || 'No default team';
+  rebuildAllPlayerStats();
+  persistLeague();
+  if(returnToProfile){
+    openProfile(currentKey);
+  } else {
+    openProfileManager();
+  }
+  render();
+}
 
 
 
@@ -8061,7 +8264,7 @@ function advancePerGroup(t){if(Number.isFinite(Number(t.advancePerGroup)))return
 function openSettings(){let t=ongoingT(),groupSize=Math.max(...Object.values(groupsOf(t)).map(x=>x.length));document.querySelector('#modal').innerHTML=`<div class="modal-wrap"><div class="modal" style="max-width:430px"><div class="modal-head"><div><div class="eyebrow">Moderator setting</div><h2>Group qualification</h2></div><button class="close" onclick="closeModal()">×</button></div><div class="field"><label>Players advancing from each group</label><input id="cutSelect" type="number" min="1" max="${groupSize}" value="${advancePerGroup(t)}"></div><p class="sub">This is per group. It immediately updates standings, the cutoff line, and Top Cut seeding.</p><div class="creator-actions"><button class="btn" onclick="saveQualification()">Save qualification</button></div></div></div>`}
 function saveQualification(){let t=ongoingT(),value=Math.max(1,+document.querySelector('#cutSelect').value||1);t.advancePerGroup=value;if(t.id==='scarlet')cut=value*Object.keys(groupsOf(t)).length;persistLeague();closeModal();render()}
 function deleteProfile(p){if(Object.values(tournamentData).some(t=>t.players?.includes(p))){alert('Remove this player from all tournaments first.');return}if(!confirm(`Delete ${p}'s profile?`))return;delete profiles[p];delete roster[p];delete teamHistory[p];persistLeague();openProfileManager()}
-function openProfileManager(){let rows=Object.entries(profiles).map(([p,q])=>`<div class="card" style="padding:12px;margin-top:8px"><b>${p}</b><span class="sub" style="margin-left:8px">${q.team}</span><button class="save" style="float:right;color:#ff969c" onclick="deleteProfile('${p}')">Delete</button><button class="save" style="float:right;margin-right:7px" onclick="editProfile('${p}')">Edit</button></div>`).join('');document.querySelector('#modal').innerHTML=`<div class="modal-wrap"><div class="modal"><div class="modal-head"><div><div class="eyebrow">Moderator only</div><h2>Player profiles</h2></div><button class="close" onclick="closeModal()">×</button></div><div class="field"><label>New profile name</label><input id="profileNewName" placeholder="Player name"></div><div class="field"><label>Default team name (optional)</label><input id="profileNewTeam" placeholder="Used outside specific tournaments"></div><button class="btn" style="margin-top:12px" onclick="createProfile()">Create player profile</button><button class="btn ghost" style="margin:12px 0 0;color:#ff9ba1" onclick="removeStarterData()">Remove starter sample data</button><div class="section">${rows||'<p class="sub">No profiles yet.</p>'}</div></div></div>`}
+function openProfileManager(){let rows=Object.entries(profiles).map(([p,q])=>`<div class="card" style="padding:12px;margin-top:8px"><b>${p}</b><span class="sub" style="margin-left:8px">${q.team}</span><button class="save" style="float:right;color:#ff969c" onclick="deleteProfile('${p}')">Delete</button><button class="save" style="float:right;margin-right:7px" onclick="editProfile('${p}')">Edit</button></div>`).join('');document.querySelector('#modal').innerHTML=`<div class="modal-wrap"><div class="modal"><div class="modal-head"><div><div class="eyebrow">Moderator only</div><h2>Player profiles</h2></div><button class="close" onclick="closeModal()">×</button></div><div class="field"><label>New profile name</label><input id="profileNewName" placeholder="Player name"></div><div class="field"><label>Default team name (optional)</label><input id="profileNewTeam" placeholder="Used outside specific tournaments"></div><button class="btn" style="margin-top:12px" onclick="createProfile()">Create player profile</button><div class="section">${rows||'<p class="sub">No profiles yet.</p>'}</div></div></div>`}
 
 
 
@@ -12246,7 +12449,7 @@ function openProfile(p){
               <button class="btn ghost btn-sm" style="color:var(--amber);border-color:#5e4a1a;grid-column:1/-1" onclick="openBadgeManager('${jsArg(p)}')">🎖️ Manage Player Badges</button>
               <button class="btn ghost btn-sm" onclick="openProfilePictureEditor('${jsArg(p)}')">Edit photo</button>
               <button class="btn ghost btn-sm" onclick="openTeamCoverEditor('${jsArg(p)}')">Edit cover</button>
-              <button class="btn ghost btn-sm" onclick="editProfile('${jsArg(p)}')">Default team</button>
+              <button class="btn ghost btn-sm" onclick="editProfile('${jsArg(p)}', true)">Edit Profile</button>
               <button class="btn ghost btn-sm" onclick="openAccountLinks('${jsArg(p)}')">Link account</button>
               <button class="btn ghost btn-sm" style="color:var(--amber);border-color:#5e4a1a;grid-column:1/-1" onclick="cleanAndSyncRostersPrompt()">🧹 Clean Active Rosters</button>
             </div>
@@ -13271,13 +13474,13 @@ function renderModeratorToolsGridHtml(){
         <button class="btn ghost btn-sm" onclick="event.stopPropagation();openAccountLinks()">Link Accounts</button>
       </div>
 
-      <div class="acct-tool-card" onclick="openTournamentPlayers()">
+      <div class="acct-tool-card" onclick="openTournamentPlayers(ongoingT()?.id)">
         <div class="acct-tool-icon">⚔️</div>
         <div class="acct-tool-body">
           <h4>Tournament Players</h4>
           <p>Set participants, group placements, and tournament teams.</p>
         </div>
-        <button class="btn ghost btn-sm" onclick="event.stopPropagation();openTournamentPlayers()">Edit Rosters</button>
+        <button class="btn ghost btn-sm" onclick="event.stopPropagation();openTournamentPlayers(ongoingT()?.id)">Edit Rosters</button>
       </div>
 
       <div class="acct-tool-card" onclick="openCreator()">
@@ -13449,7 +13652,6 @@ function openProfileManager(){
       <div style="display:flex;gap:6px;flex-wrap:wrap">
         <button class="btn ghost btn-sm" style="color:var(--amber);border-color:#5e4a1a" onclick="cleanAndSyncRostersPrompt()">🧹 Clean Active Rosters</button>
         <button class="btn ghost btn-sm" onclick="openAccountLinks()">Link Accounts</button>
-        <button class="btn ghost btn-sm" style="color:#ff9ba1" onclick="removeStarterData()">Remove Sample Data</button>
       </div>
     </div>
     <div style="max-height:360px;overflow-y:auto;padding-right:2px">${rows||'<p class="sub">No profiles yet.</p>'}</div>
@@ -16699,7 +16901,7 @@ function openTournamentEdit(id){
     <p class="sub" style="margin-top:2px;margin-bottom:16px">${esc(t.season||'')} · ${esc(t.status)}${mgrSubtitle}</p>
     <div class="section" style="display:grid;gap:9px">
       <button class="btn ghost" style="text-align:left;justify-content:flex-start;padding:10px 14px" onclick="openTournamentRecordEditor('${jsArg(t.id)}')">${moderator ? '⚙️ Edit Details & Directors' : '⚙️ Edit Details'}</button>
-      <button class="btn ghost" style="text-align:left;justify-content:flex-start;padding:10px 14px" onclick="openTournamentPlayers()">👥 Edit Players & Teams</button>
+      <button class="btn ghost" style="text-align:left;justify-content:flex-start;padding:10px 14px" onclick="openTournamentPlayers('${jsArg(t.id)}')">👥 Edit Players & Teams</button>
       <button class="btn ghost" style="text-align:left;justify-content:flex-start;padding:10px 14px" ${locked?'disabled style="opacity:.5;cursor:not-allowed"':`onclick="openGroupPlacementEditor()"`}>👥 Arrange & Draw Groups${locked?' (Locked in Top Cut)':''}</button>
       <button class="btn ghost" style="text-align:left;justify-content:flex-start;padding:10px 14px" onclick="openSettings()">📊 Edit Qualification Cutoff</button>
       ${canEditDraft ? `
@@ -17143,7 +17345,7 @@ function Teams(){
     return TeamRosterDetailView(t, activeCoach);
   }
 
-  let actions = canManageTournament(t) ? `<button class="btn ghost" onclick="openTournamentPlayers()">Edit tournament teams</button>` : '';
+  let actions = canManageTournament(t) ? `<button class="btn ghost" onclick="openTournamentPlayers('${jsArg(t.id)}')">Edit tournament teams</button>` : '';
 
   return head('Teams', t.name + ' · Rosters', actions) + `
     <div class="teams-showcase-grid">
@@ -17215,8 +17417,17 @@ function Teams(){
     </div>
   `;
 }
-function openTournamentPlayers(){
-  let t = activeT();
+function openTournamentPlayers(targetId){
+  let sorted = typeof sortedTournamentsChronological === 'function' ? sortedTournamentsChronological() : Object.values(tournamentData);
+  let ongoing = ongoingT();
+  let latest = sorted.length ? sorted[sorted.length - 1] : null;
+
+  let t = (targetId ? (tournamentData[targetId] || (typeof targetId === 'object' ? targetId : null)) : null)
+       || ongoing
+       || (current === 'Tournament Detail' && viewTournament && tournamentData[viewTournament] ? tournamentData[viewTournament] : null)
+       || latest
+       || activeT();
+
   if(!t || !canManageTournament(t)) return;
   window.editingTournamentId = t.id;
   let groups = Object.keys(groupsOf(t)), buckets = groupsOf(t);
@@ -17261,7 +17472,14 @@ function openTournamentPlayers(){
       <div class="modal-head" style="border-bottom:1px solid #242432;padding-bottom:14px;margin-bottom:12px;flex:none">
         <div>
           <div class="eyebrow" style="color:var(--amber)">${moderator ? 'Moderator' : 'Tournament Director'} · ${esc(t.name)}</div>
-          <h2 style="font:900 24px 'Barlow Condensed';letter-spacing:.3px;margin-top:2px">Edit Tournament Rosters & Teams</h2>
+          <div style="display:flex;align-items:center;gap:12px;margin-top:2px;flex-wrap:wrap">
+            <h2 style="font:900 24px 'Barlow Condensed';letter-spacing:.3px;margin:0">Edit Tournament Rosters & Teams</h2>
+            ${sorted.length > 1 ? `
+              <select onchange="openTournamentPlayers(this.value)" style="background:#1a1a24;border:1px solid #3c3c4f;border-radius:6px;padding:4px 8px;color:#f5f3f0;font:700 12px 'Barlow Condensed';cursor:pointer">
+                ${sorted.slice().reverse().map(item => `<option value="${esc(item.id)}" ${item.id === t.id ? 'selected' : ''}>${item.status === 'ONGOING' ? '🟢 ' : '📁 '}${esc(item.name)} (${esc(item.status || 'ARCHIVE')})</option>`).join('')}
+              </select>
+            ` : ''}
+          </div>
         </div>
         <button class="close" onclick="closeModal()">×</button>
       </div>
