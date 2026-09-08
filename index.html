@@ -10455,7 +10455,6 @@ function Matches(){
   let modActions = (canManageTournament(t) && t.status === 'ONGOING' && t.phase !== 'topcut') ? `
     <div style="display:flex;align-items:center;flex-wrap:wrap;gap:8px">
       <button class="btn ghost" style="padding:6px 11px;font-size:11px" onclick="openGroupPlacementEditor()">👥 Arrange groups</button>
-      <button class="btn ghost" style="padding:6px 11px;font-size:11px" onclick="openGroupDrawCeremony('${jsArg(t.id)}')">🎩 Draw ceremony</button>
       <button class="btn ghost" style="padding:6px 11px;font-size:11px" onclick="addCustom()">⚡ Custom match</button>
       <button class="btn ghost" style="padding:6px 11px;font-size:11px;color:#ff9ba1;border-color:#4a242a" onclick="resetGroupStageScores()">➔ Reset group scores</button>
       <button class="btn" style="padding:6px 13px;font-size:11px" onclick="endGroupStage()">🏆 End group stage</button>
@@ -11244,7 +11243,7 @@ function Standings(){
   }
   let criteria = getStandingsCriteria(t);
   let orderDesc = criteria.map(c => `${STANDING_METRICS[c]?.name || c.toUpperCase()} (${STANDING_METRICS[c]?.label || c.toUpperCase()})`).join(' → ');
-  let groups=Object.keys(groupsOf(t)),controls=canManageTournament(t)?`<div><button class="btn ghost" onclick="openGroupPlacementEditor()">👥 Arrange groups</button> <button class="btn ghost" onclick="openGroupDrawCeremony('${jsArg(t.id)}')">🎩 Draw ceremony</button> <button class="btn ghost" onclick="openRankingEditor()">Arrange rankings</button> <button class="btn ghost" onclick="openTiebreakerEditor('${jsArg(t.id)}')">⚖️ Ranking criteria</button> <button class="btn ghost" onclick="openSettings()">Edit qualification</button></div>`:'';
+  let groups=Object.keys(groupsOf(t)),controls=canManageTournament(t)?`<div><button class="btn ghost" onclick="openGroupPlacementEditor()">👥 Arrange groups</button> <button class="btn ghost" onclick="openRankingEditor()">Arrange rankings</button> <button class="btn ghost" onclick="openTiebreakerEditor('${jsArg(t.id)}')">⚖️ Ranking criteria</button> <button class="btn ghost" onclick="openSettings()">Edit qualification</button></div>`:'';
   return head('Standings',t.name+' · group stage',controls)+`<div style="display:grid;grid-template-columns:repeat(${groups.length>1?2:1},minmax(0,1fr));gap:15px">${groups.map(g=>`<div class="card table-wrap">${standingTable(t,g)}</div>`).join('')}</div><p class="sub">Tiebreak ranking order: <b>${orderDesc}</b>. Tournament Directors & Moderators can use <b>Ranking criteria</b> to customize tiebreakers.</p>` + tournamentRatingProgressionSection(t);
 }
 
