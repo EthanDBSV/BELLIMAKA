@@ -2661,6 +2661,8 @@ try{
   if(savedPics)Object.assign(profilePictures,savedPics);
   let savedPulse=JSON.parse(localStorage.getItem('draftdex-pulsepanels')||'null');
   if(savedPulse)Object.assign(pulsePanelImages,savedPulse);
+  let savedDraftCover=localStorage.getItem('draftdex-draft-cover');
+  if(savedDraftCover && !pulsePanelImages.draft) pulsePanelImages.draft = savedDraftCover;
   let savedTCover=JSON.parse(localStorage.getItem('draftdex-tournament-covers')||'null');
   if(savedTCover){
     if(typeof tournamentCovers!=='undefined') Object.assign(tournamentCovers,savedTCover);
@@ -7738,30 +7740,37 @@ function draftStageHeroCard(t){
   let d = ensureTournamentDraft(t);
   let turn = getDraftCurrentTurn(t);
   let curPlayer = turn.player;
-  let coachCover = curPlayer ? (teamCovers[curPlayer] || '') : '';
-  if(!coachCover && curPlayer && profilePictures[curPlayer]){
-    coachCover = profilePictures[curPlayer];
+  let draftCover = pulsePanelImages.draft || '';
+  if(!draftCover){
+    try { draftCover = localStorage.getItem('draftdex-draft-cover') || ''; } catch(e){}
   }
-  if(!coachCover && t.backgroundImage){
-    coachCover = t.backgroundImage;
-  }
+  if(!draftCover && curPlayer && teamCovers[curPlayer]) draftCover = teamCovers[curPlayer];
+  if(!draftCover && curPlayer && profilePictures[curPlayer]) draftCover = profilePictures[curPlayer];
+  if(!draftCover && t.backgroundImage) draftCover = t.backgroundImage;
+  if(!draftCover && pulsePanelImages.global) draftCover = pulsePanelImages.global;
   let faceArt = curPlayer ? (profilePictures[curPlayer] ? `url('${esc(profilePictures[curPlayer])}')` : (teamCovers[curPlayer] ? `url('${esc(teamCovers[curPlayer])}')` : fallbackArt(curPlayer))) : '';
   let faceLetter = curPlayer ? ((profilePictures[curPlayer] || teamCovers[curPlayer]) ? '' : esc(curPlayer[0])) : '—';
   let curOvr = curPlayer ? calculatePlayerOVR(curPlayer) : null;
   let coachStats = curPlayer ? getDraftCoachStats(t, curPlayer) : null;
   let curRoster = curPlayer ? (t.rosters?.[curPlayer] || roster[curPlayer] || []) : [];
 
+  let cardBgStyle = draftCover
+    ? `background-image:linear-gradient(135deg,rgba(31,19,24,0.84) 0%,rgba(19,19,28,0.88) 60%,rgba(14,14,20,0.92) 100%),url('${esc(draftCover)}');background-size:cover;background-position:center;border-color:#3d242c;position:relative;overflow:hidden`
+    : `background:linear-gradient(135deg,#1f1318 0%,#13131c 65%);border-color:#3d242c;position:relative;overflow:hidden`;
+
   return `
-    <aside class="card matchup-hero-card" style="background:linear-gradient(135deg,#1f1318 0%,#13131c 65%);border-color:#3d242c;position:relative;overflow:hidden">
-      ${coachCover ? `<div class="tourney-showcase-backdrop" style="background-image:url('${esc(coachCover)}')"></div>` : ''}
+    <aside class="card matchup-hero-card" style="${cardBgStyle}">
       <div class="matchup-hero-banner" style="position:relative;z-index:2">
         <div style="display:flex;align-items:center;gap:6px">
           <span style="font-size:13px">🎯</span>
           <span class="eyebrow" style="color:#ffd166;margin:0;letter-spacing:1px">LIVE DRAFT ROOM</span>
         </div>
-        <span class="tag" style="background:#00000070;border:1px solid #ffffff25;font-size:9px;font-weight:900;letter-spacing:1px;color:#ff9fa6;padding:3px 8px;border-radius:4px">
-          ${d.status === 'active' ? 'IN PROGRESS' : (d.status === 'paused' ? 'PAUSED' : 'PENDING')}
-        </span>
+        <div style="display:flex;align-items:center;gap:6px">
+          <span class="tag" style="background:#00000070;border:1px solid #ffffff25;font-size:9px;font-weight:900;letter-spacing:1px;color:#ff9fa6;padding:3px 8px;border-radius:4px">
+            ${d.status === 'active' ? 'IN PROGRESS' : (d.status === 'paused' ? 'PAUSED' : 'PENDING')}
+          </span>
+          ${moderator ? `<button class="cover-edit" style="position:static;padding:3px 8px;font-size:10px" onclick="event.stopPropagation();openDraftStageCoverEditor()">Edit cover</button>` : ''}
+        </div>
       </div>
 
       <div style="padding:16px 20px;display:flex;align-items:center;gap:16px;position:relative;z-index:2">
@@ -8396,6 +8405,20 @@ function openVisualCoverCropper(opts){
           <div style="font-size:10px;color:#bbb">Broadcast Card Background Graphic</div>
         </div>
         <div style="font-size:9px;color:#888;text-align:right">Primetime Card Preview</div>
+      </div>
+    `;
+  } else if(opts.mockOverlay === 'draft'){
+    mockHtml = `
+      <div id="cropperMockOverlay" style="position:absolute;inset:0;pointer-events:none;background:linear-gradient(180deg,rgba(10,10,16,0.25) 0%,rgba(10,10,16,0.85) 100%);padding:14px;display:flex;flex-direction:column;justify-content:space-between">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <span style="font:800 12px 'Barlow Condensed';color:#ffd166;letter-spacing:1px">🎯 LIVE DRAFT ROOM</span>
+          <span class="tag" style="background:#00000070;border:1px solid #ffffff25;font-size:8px;font-weight:900;color:#ff9fa6;padding:2px 6px;border-radius:3px">DRAFT STAGE</span>
+        </div>
+        <div style="text-align:center;background:rgba(0,0,0,0.6);padding:8px;border-radius:6px;border:1px dashed rgba(255,255,255,0.2)">
+          <div style="font:800 18px 'Barlow Condensed';color:#fff;letter-spacing:.5px">DRAFT ROOM HERO GRAPHIC</div>
+          <div style="font-size:10px;color:#bbb">Appears across all tournaments during draft phase</div>
+        </div>
+        <div style="font-size:9px;color:#888;text-align:right">Draft Stage Card Preview</div>
       </div>
     `;
   } else {
@@ -9189,6 +9212,54 @@ function openPrimetimeCoverEditor(){
       removePrimetimeCover();
     }
   });
+}
+
+function openDraftStageCoverEditor(){
+  if(!moderator) return;
+  let currentCover = pulsePanelImages.draft
+    || pulsePanelImages.global
+    || '';
+  try {
+    let saved = localStorage.getItem('draftdex-draft-cover');
+    if(saved && !currentCover) currentCover = saved;
+  } catch(e){}
+
+  openVisualCoverCropper({
+    title: 'Draft Stage Spotlight Cover',
+    eyebrow: 'Draft Room Hero Graphic',
+    description: 'Frame your background artwork for the live draft room spotlight card. This image will appear across all tournaments during their draft phase.',
+    aspectRatio: 1.85,
+    panelShapeName: 'Draft Stage Banner (~1.85)',
+    currentCover: currentCover,
+    mockOverlay: 'draft',
+    onSave: function(croppedDataUrl){
+      pulsePanelImages.draft = croppedDataUrl;
+      try {
+        localStorage.setItem('draftdex-draft-cover', croppedDataUrl);
+        localStorage.setItem('draftdex-pulsepanels', JSON.stringify(pulsePanelImages));
+      } catch(e){}
+      if(moderator && typeof pushMediaToCloud === 'function') pushMediaToCloud();
+      persistLeague();
+      closeModal();
+      render();
+      if(typeof showDraftToast === 'function') showDraftToast('🎯 Draft stage graphic cropped & saved!');
+    },
+    onRemove: function(){
+      removeDraftStageCover();
+    }
+  });
+}
+
+function removeDraftStageCover(){
+  delete pulsePanelImages.draft;
+  try {
+    localStorage.removeItem('draftdex-draft-cover');
+    localStorage.setItem('draftdex-pulsepanels', JSON.stringify(pulsePanelImages));
+  } catch(e){}
+  if(moderator && typeof pushMediaToCloud === 'function') pushMediaToCloud();
+  persistLeague();
+  closeModal();
+  render();
 }
 
 function seedTopCut(t){let groups=Object.keys(groupsOf(t)),per=advancePerGroup(t),entries=[];for(let rank=0;rank<per;rank++)groups.forEach(g=>{let x=getStand(t,g)[rank];if(x)entries.push(x.p)});return entries}
