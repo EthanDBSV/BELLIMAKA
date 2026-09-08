@@ -7282,7 +7282,28 @@ function recapRankings(){
     if(records.bestTourneyGD?.entries?.some(e => e.player === p) && (records.bestTourneyGD.value > 0)){
       recordsHeldList.push(`Best Tournament GD (+${records.bestTourneyGD.value})`);
     }
-    let recordsBonus = recordsHeldList.length * 50;
+    // Unranked Rookie Rule: Coaches with 0 official matches and 0 playoff cuts start at 0 Legacy Points
+    if(totalMatches === 0 && tops === 0 && cups.length === 0){
+      return {
+        p,
+        score: 0,
+        isRookie: true,
+        ovr: ovrObj.ovr,
+        ovrObj,
+        champ: 0,
+        tops: 0,
+        record: '0-0',
+        winPct: 0,
+        wins: 0,
+        losses: 0,
+        recordsHeld: recordsHeldList,
+        recordsHeldCount: recordsHeldList.length,
+        finishPoints: 0,
+        badges: s.badges || []
+      };
+    }
+
+    let recordsBonus = recordsHeldList.length * 30;
 
     // 2. Permanent Tournament Hardware & Placement Points (Zero Decay + Field-Size Scaled)
     let finishPoints = 0;
@@ -7298,51 +7319,56 @@ function recapRankings(){
         if(place >= fSize * 0.65 || (place >= 7 && fSize <= 8) || place >= 100) return;
 
         let basePts = 0;
-        if(place === 1) basePts = 250;        // Champion
-        else if(place === 2) basePts = 140;   // 2nd Place / Runner-up (Finals)
-        else if(place === 3) basePts = 90;    // 3rd Place / Losers Finalist
-        else if(place === 4) basePts = 60;    // 4th Place / Losers Semifinalist
-        else if(place <= 6 && fSize >= 10) basePts = 35; // 5th-6th Place (Top Cut)
-        else if(place <= 8 && fSize >= 14) basePts = 20; // 7th-8th Place (Deep Top Cut)
+        if(place === 1) basePts = 150;        // Champion
+        else if(place === 2) basePts = 90;    // 2nd Place / Runner-up (Finals)
+        else if(place === 3) basePts = 50;    // 3rd Place / Losers Finalist / Bronze
+        else if(place === 4) basePts = 35;    // 4th Place / Losers Semifinalist
+        else if(place <= 6) basePts = 25;     // 5th-6th Place (Top Cut)
+        else if(place <= 8) basePts = 15;     // 7th-8th Place (Deep Top Cut)
         finishPoints += Math.round(basePts * fMult);
       });
-    } else {
-      finishPoints = cups.length * 300 + Math.max(0, tops - cups.length) * 70;
     }
+    // Guaranteed accolade baseline: guarantees every Title is worth at least 150 pts and every Top Cut at least 45 pts
+    let minHardware = cups.length * 150 + Math.max(0, tops - cups.length) * 45;
+    finishPoints = Math.max(finishPoints, minHardware);
 
-    // 3. Career Match Performance: Net Win Points (+18W / -9L)
-    let netMatchImpact = (w * 18 - l * 9);
+    // 3. Career Match Performance: +12 per win, -4 per loss (softens losses while always rewarding match wins)
+    let matchImpact = Math.max(0, (w * 12) - (l * 4));
 
-    // 4. Win Percentage Efficiency Multiplier (Confidence scaled across match sample size)
+    // 4. Win Percentage Quality Factor: Scaled by confidence over sample size
     let conf = totalMatches > 0 ? Math.min(1.0, totalMatches / 10) : 0;
-    let winPctBonus = Math.round(conf * (career.winPct - 50) * 4);
+    let winPctBonus = Math.round(conf * (career.winPct - 50) * 0.8);
 
-    // 5. Historic Streaks Legacy
-    let streakBonus = (s.maxWinStreak || 0) * 6;
+    // 5. Historic Streaks Legacy (+4 per game in peak win streak)
+    let streakBonus = (s.maxWinStreak || 0) * 4;
 
-    // 6. Current Form (OVR) Boost
-    let ovrImpact = Math.max(0, (ovrObj.ovr - 70) * 4);
+    // 6. Current Form (OVR) Boost (+2 per OVR point above 70 baseline)
+    let ovrImpact = Math.max(0, (ovrObj.ovr - 70) * 2);
 
-    // Composite All-Time ELO / Legacy Score
-    let score = Math.max(0, Math.round(1000 + finishPoints + netMatchImpact + winPctBonus + recordsBonus + streakBonus + ovrImpact));
+    // Active Competitor Baseline: 100 pts on official competitive debut
+    let baseScore = 100;
+
+    // Composite All-Time ELO / Legacy Score (Grounded 0-1,000+ Scale)
+    let score = Math.max(0, Math.round(baseScore + finishPoints + matchImpact + winPctBonus + recordsBonus + streakBonus + ovrImpact));
 
     return {
       p,
       score, // All-Time Elo / Legacy Score
-      ovr:ovrObj.ovr,
+      isRookie: false,
+      ovr: ovrObj.ovr,
       ovrObj,
-      champ:cups.length,
+      champ: cups.length,
       tops,
-      record:career.record,
-      winPct:career.winPct,
-      wins:w,
-      losses:l,
-      recordsHeld:recordsHeldList,
-      recordsHeldCount:recordsHeldList.length,
+      record: career.record,
+      winPct: career.winPct,
+      wins: w,
+      losses: l,
+      recordsHeld: recordsHeldList,
+      recordsHeldCount: recordsHeldList.length,
       finishPoints,
-      badges:s.badges||[]
+      badges: s.badges || []
     };
-  }).sort((a,b)=>b.score-a.score || b.ovr-a.ovr);
+  }).sort((a,b)=>b.score-a.score || b.tops-a.tops || b.ovr-a.ovr || a.p.localeCompare(b.p));
 }
 
 
@@ -7983,7 +8009,10 @@ function OffseasonHome(){
           <h2>ALL-TIME ELO & LEGACY LEADERBOARD</h2>
           <p class="sub" style="margin:2px 0 0;font-size:12px;color:#a09fa8">Career power rankings combining tournament titles, win efficiency, records held, and active form.</p>
         </div>
-        <button class="link" onclick="go('Standings')">FULL ALL-TIME STANDINGS →</button>
+        <div style="display:flex;align-items:center;gap:8px">
+          <button class="btn ghost btn-sm" onclick="openLegacyEloGuide()" style="display:inline-flex;align-items:center;gap:5px;font-size:11px;padding:4px 10px;border-radius:20px;border-color:#40404c" title="View All-Time Elo and Legacy Score formula">📊 Legacy Guide</button>
+          <button class="link" onclick="go('Standings')">FULL ALL-TIME STANDINGS →</button>
+        </div>
       </div>
       <div class="card table-wrap">
         <table class="standings">
@@ -8018,8 +8047,8 @@ function OffseasonHome(){
                   </div>
                 </td>
                 <td style="text-align:center;white-space:nowrap">
-                  <b style="font:800 16px 'Barlow Condensed';color:#ffd166">${x.score}</b>
-                  <span style="display:block;font-size:9px;color:#8e8c95;font-weight:700;letter-spacing:.5px">LEGACY</span>
+                  <b style="font:800 16px 'Barlow Condensed';color:${x.score > 0 ? '#ffd166' : '#8e8c95'}">${x.score}</b>
+                  <span style="display:block;font-size:9px;color:${x.score > 0 ? '#8e8c95' : '#6b6976'};font-weight:700;letter-spacing:.5px">${x.isRookie || x.score === 0 ? 'ROOKIE' : 'LEGACY'}</span>
                 </td>
                 <td style="text-align:center">${ovrObj.badgeHtml}</td>
                 <td style="text-align:center">${x.champ > 0 ? `<b style="color:#ffd166;font:800 15px 'Barlow Condensed'">👑 ${x.champ}</b>` : '<span style="color:#6d6b75">0</span>'}</td>
@@ -11915,8 +11944,8 @@ function Standings(){
                   </div>
                 </td>
                 <td style="text-align:center;white-space:nowrap">
-                  <b style="font:800 16px 'Barlow Condensed';color:#ffd166">${x.score}</b>
-                  <span style="display:block;font-size:9px;color:#8e8c95;font-weight:700;letter-spacing:.5px">LEGACY</span>
+                  <b style="font:800 16px 'Barlow Condensed';color:${x.score > 0 ? '#ffd166' : '#8e8c95'}">${x.score}</b>
+                  <span style="display:block;font-size:9px;color:${x.score > 0 ? '#8e8c95' : '#6b6976'};font-weight:700;letter-spacing:.5px">${x.isRookie || x.score === 0 ? 'ROOKIE' : 'LEGACY'}</span>
                 </td>
                 <td style="text-align:center;white-space:nowrap">${ovrObj.badgeHtml}</td>
                 <td style="text-align:center;white-space:nowrap">${career.titles>0?`<b style="color:#ffd166;font:800 15px 'Barlow Condensed'">👑 ${career.titles}</b>`:'<span style="color:#6d6b75">0</span>'}</td>
@@ -17159,7 +17188,7 @@ function openOvrGuide(){
 function openLegacyEloGuide(){
   document.querySelector('#modal').innerHTML = `
     <div class="modal-wrap">
-      <div class="modal" style="max-width:840px">
+      <div class="modal" style="max-width:860px">
         <div class="modal-head">
           <div>
             <div class="eyebrow" style="color:var(--amber);display:flex;align-items:center;gap:6px">
@@ -17170,7 +17199,7 @@ function openLegacyEloGuide(){
           <button class="close" onclick="closeModal()">×</button>
         </div>
         <p class="sub" style="margin-top:6px;font-size:12px;line-height:1.5;color:#a09fa8">
-          All-Time Elo (Legacy Score) is the league's definitive all-time career ranking. Unlike seasonal ratings, your Legacy Score evaluates your complete historical body of work with zero decay, rewarding championships, net wins, tournament field depth, and official league records.
+          All-Time Elo (Legacy Score) is the league's definitive Hall of Fame metric. Rather than measuring week-to-week volatility, your Legacy Score evaluates your lifetime competitive resume on a grounded <b>0 to 1,000+</b> scale. Every title, playoff run, and match victory stays with you permanently with <b>zero decay</b>.
         </p>
         
         <div style="margin-top:16px;display:flex;flex-direction:column;gap:14px;max-height:68vh;overflow-y:auto;padding-right:4px">
@@ -17181,12 +17210,12 @@ function openLegacyEloGuide(){
             <div class="card" style="padding:14px;background:#141419;border-color:#383220;display:flex;flex-direction:column;justify-content:space-between;border-radius:8px">
               <div>
                 <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-                  <span style="font-size:20px">👑</span>
-                  <span class="tag" style="background:#2a2312;color:#ffd166;font-size:9px;font-weight:800;border-color:#5a4218">ZERO DECAY</span>
+                  <span style="font-size:20px">🛡️</span>
+                  <span class="tag" style="background:#2a2312;color:#ffd166;font-size:9px;font-weight:800;border-color:#5a4218">0 ROOKIE / 100 DEBUT</span>
                 </div>
-                <div style="font:800 14px 'Barlow Condensed';color:#ffd166;letter-spacing:.5px;text-transform:uppercase">Permanent Titles</div>
+                <div style="font:800 14px 'Barlow Condensed';color:#ffd166;letter-spacing:.5px;text-transform:uppercase">Earned Prestige</div>
                 <p style="font-size:11px;color:#d0cebe;line-height:1.4;margin:6px 0 0">
-                  Championship gold never fades. Titles in Season 1 hold the exact same permanent value as recent titles, multiplied by tournament field size.
+                  Legacy must be earned on the battlefield. Unplayed coaches start at 0 pts (Rookie). Playing your first official match unlocks the 100 pt Active Competitor baseline.
                 </p>
               </div>
             </div>
@@ -17194,36 +17223,118 @@ function openLegacyEloGuide(){
             <div class="card" style="padding:14px;background:#141419;border-color:#203828;display:flex;flex-direction:column;justify-content:space-between;border-radius:8px">
               <div>
                 <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-                  <span style="font-size:20px">📈</span>
-                  <span class="tag" style="background:#13261a;color:#7df0aa;font-size:9px;font-weight:800;border-color:#2a5035">+18W / -9L</span>
+                  <span style="font-size:20px">🏆</span>
+                  <span class="tag" style="background:#13261a;color:#7df0aa;font-size:9px;font-weight:800;border-color:#2a5035">PERMANENT HARDWARE</span>
                 </div>
-                <div style="font:800 14px 'Barlow Condensed';color:#7df0aa;letter-spacing:.5px;text-transform:uppercase">Match Differential</div>
+                <div style="font:800 14px 'Barlow Condensed';color:#7df0aa;letter-spacing:.5px;text-transform:uppercase">Championships & Cuts</div>
                 <p style="font-size:11px;color:#bed0c4;line-height:1.4;margin:6px 0 0">
-                  Net match wins award +18 per win and -9 per loss. Career win percentages above 50% provide scaled efficiency multipliers across all matches.
+                  Trophies and playoff appearances never expire. Championships (+150 min) and Top Cuts (+45 min) are locked in forever with zero decay, scaling upward in deeper fields.
                 </p>
               </div>
             </div>
 
-            <div class="card" style="padding:14px;background:#141419;border-color:#38202c;display:flex;flex-direction:column;justify-content:space-between;border-radius:8px">
+            <div class="card" style="padding:14px;background:#141419;border-color:#202c38;display:flex;flex-direction:column;justify-content:space-between;border-radius:8px">
               <div>
                 <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-                  <span style="font-size:20px">🌟</span>
-                  <span class="tag" style="background:#281420;color:#ff8e95;font-size:9px;font-weight:800;border-color:#5c2438">+50 PTS / RECORD</span>
+                  <span style="font-size:20px">⚔️</span>
+                  <span class="tag" style="background:#142230;color:#60a5fa;font-size:9px;font-weight:800;border-color:#244466">+12W / -4L NET</span>
                 </div>
-                <div style="font:800 14px 'Barlow Condensed';color:#ff8e95;letter-spacing:.5px;text-transform:uppercase">League Record Books</div>
-                <p style="font-size:11px;color:#d0bec6;line-height:1.4;margin:6px 0 0">
-                  Holding all-time league records (Titles, Top Cuts, Wins, Clean Sweeps, Game 3s, GD, Prediction Points) awards +50 Elo prestige per record held.
+                <div style="font:800 14px 'Barlow Condensed';color:#60a5fa;letter-spacing:.5px;text-transform:uppercase">Match Performance</div>
+                <p style="font-size:11px;color:#bed2eb;line-height:1.4;margin:6px 0 0">
+                  Every match win builds your legacy (+12 pts). Losses are softened (-4 pts) so active play always beats sitting out. Career win% provides a refined quality factor (up to ±30 pts).
                 </p>
               </div>
             </div>
 
           </div>
 
+          <!-- Legacy Tiers (0 to 1,000+ Scale) -->
+          <div class="card" style="padding:14px;background:#141419;border-color:#2a2a36">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+              <span class="eyebrow" style="margin:0;color:var(--amber)">Legacy Score Tiers & Hierarchy</span>
+              <span style="font-size:10px;font-weight:700;color:#8e8c95;letter-spacing:.5px;text-transform:uppercase">Grounded 0–1,000+ Scale</span>
+            </div>
+            
+            <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px">
+              <!-- Tier 1: GOAT / Immortals -->
+              <div style="padding:10px 12px;background:#191922;border-radius:8px;border:1px solid #4a3818;display:flex;flex-direction:column;justify-content:space-between">
+                <div>
+                  <div style="display:flex;justify-content:space-between;align-items:center">
+                    <span style="font:800 13px 'Barlow Condensed';color:#ffd166;letter-spacing:.5px">👑 GOAT & IMMORTALS</span>
+                    <span class="tag" style="background:#2a2010;color:#ffd166;font-size:9px;font-weight:800;border-color:#5a4518">1,000+ PTS</span>
+                  </div>
+                  <div style="font-size:10px;font-weight:700;color:#e8d4a0;margin-top:3px">Multi-Time Champions & Record Kings</div>
+                </div>
+                <p style="font-size:10px;color:#c0bca8;line-height:1.35;margin:6px 0 0">The pinnacle of league history. Reserved for coaches holding multiple titles, numerous top cuts, and dominant records.</p>
+              </div>
+
+              <!-- Tier 2: League Titans -->
+              <div style="padding:10px 12px;background:#191922;border-radius:8px;border:1px solid #403222;display:flex;flex-direction:column;justify-content:space-between">
+                <div>
+                  <div style="display:flex;justify-content:space-between;align-items:center">
+                    <span style="font:800 13px 'Barlow Condensed';color:#fbbf24;letter-spacing:.5px">🏆 LEAGUE TITANS</span>
+                    <span class="tag" style="background:#261e12;color:#fbbf24;font-size:9px;font-weight:800;border-color:#4d3b1e">600–999 PTS</span>
+                  </div>
+                  <div style="font-size:10px;font-weight:700;color:#e5c994;margin-top:3px">Proven Champions & Finalists</div>
+                </div>
+                <p style="font-size:10px;color:#c4b8a4;line-height:1.35;margin:6px 0 0">Pillars of the league with championship silverware, high-volume match wins, and repeated playoff finals appearances.</p>
+              </div>
+
+              <!-- Tier 3: Elite Contenders -->
+              <div style="padding:10px 12px;background:#191922;border-radius:8px;border:1px solid #1a3c2c;display:flex;flex-direction:column;justify-content:space-between">
+                <div>
+                  <div style="display:flex;justify-content:space-between;align-items:center">
+                    <span style="font:800 13px 'Barlow Condensed';color:#7df0aa;letter-spacing:.5px">🥇 ELITE CONTENDERS</span>
+                    <span class="tag" style="background:#102418;color:#7df0aa;font-size:9px;font-weight:800;border-color:#20482e">350–599 PTS</span>
+                  </div>
+                  <div style="font-size:10px;font-weight:700;color:#b2e4c4;margin-top:3px">Multi-Cut Playoff Threats</div>
+                </div>
+                <p style="font-size:10px;color:#a8c4b2;line-height:1.35;margin:6px 0 0">Perennial playoff threats with multiple Top Cut qualifications, winning career records, and playoff hardware.</p>
+              </div>
+
+              <!-- Tier 4: Established Veterans -->
+              <div style="padding:10px 12px;background:#191922;border-radius:8px;border:1px solid #32283e;display:flex;flex-direction:column;justify-content:space-between">
+                <div>
+                  <div style="display:flex;justify-content:space-between;align-items:center">
+                    <span style="font:800 13px 'Barlow Condensed';color:#c084fc;letter-spacing:.5px">🥈 VETERANS & TOP CUT</span>
+                    <span class="tag" style="background:#1e1428;color:#c084fc;font-size:9px;font-weight:800;border-color:#442860">150–349 PTS</span>
+                  </div>
+                  <div style="font-size:10px;font-weight:700;color:#d8b8f8;margin-top:3px">Battle-Tested Playoff Competitors</div>
+                </div>
+                <p style="font-size:10px;color:#baa8cb;line-height:1.35;margin:6px 0 0">Seasoned coaches who have advanced to Top Cut brackets. Their playoff pedigree securely establishes them ahead of unproven players.</p>
+              </div>
+
+              <!-- Tier 5: Challengers -->
+              <div style="padding:10px 12px;background:#191922;border-radius:8px;border:1px solid #282c38;display:flex;flex-direction:column;justify-content:space-between">
+                <div>
+                  <div style="display:flex;justify-content:space-between;align-items:center">
+                    <span style="font:800 13px 'Barlow Condensed';color:#93c5fd;letter-spacing:.5px">🥉 CHALLENGERS</span>
+                    <span class="tag" style="background:#121a26;color:#93c5fd;font-size:9px;font-weight:800;border-color:#20344c">50–149 PTS</span>
+                  </div>
+                  <div style="font-size:10px;font-weight:700;color:#b4d0f6;margin-top:3px">Active Resumes in Progress</div>
+                </div>
+                <p style="font-size:10px;color:#a4b4c8;line-height:1.35;margin:6px 0 0">Active competitors working to climb the standings, building match volume, and hunting for their first breakthrough playoff run.</p>
+              </div>
+
+              <!-- Tier 6: Unranked Rookies -->
+              <div style="padding:10px 12px;background:#191922;border-radius:8px;border:1px solid #2d2d3c;display:flex;flex-direction:column;justify-content:space-between">
+                <div>
+                  <div style="display:flex;justify-content:space-between;align-items:center">
+                    <span style="font:800 13px 'Barlow Condensed';color:#8e8c95;letter-spacing:.5px">🔰 UNRANKED ROOKIE</span>
+                    <span class="tag" style="background:#1d1d26;color:#8e8c95;font-size:9px;font-weight:800;border-color:#363646">0 PTS</span>
+                  </div>
+                  <div style="font-size:10px;font-weight:700;color:#b0aeb8;margin-top:3px">Awaiting Official Debut</div>
+                </div>
+                <p style="font-size:10px;color:#888690;line-height:1.35;margin:6px 0 0">Coaches who have not yet played an official league match. Zero unearned points ensure rookies cannot rank above active players.</p>
+              </div>
+            </div>
+          </div>
+
           <!-- Formula Breakdown: Symmetrical 2-Column Split -->
           <div class="card" style="padding:14px;background:#141419;border-color:#2a2a36">
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
               <span class="eyebrow" style="margin:0;color:var(--amber)">Legacy Score Formula Breakdown</span>
-              <span class="tag" style="background:#1d1810;color:#ffd166;font-size:9px;font-weight:800;border-color:#4a3f28">BASE 1,000 ELO</span>
+              <span class="tag" style="background:#1d1810;color:#ffd166;font-size:9px;font-weight:800;border-color:#4a3f28">CALIBRATED MODEL</span>
             </div>
 
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
@@ -17231,26 +17342,37 @@ function openLegacyEloGuide(){
               <div style="background:#191922;border:1px solid #2d2d3c;border-radius:8px;padding:12px">
                 <div style="font:800 13px 'Barlow Condensed';color:#ffd166;letter-spacing:.5px;margin-bottom:8px">🔢 TOURNAMENT & MATCH SCORING</div>
                 <ul style="margin:0 0 0 16px;padding:0;font-size:11px;color:#d0d0dc;line-height:1.6;display:flex;flex-direction:column;gap:4px">
-                  <li><b>Base Rating:</b> 1,000 Starting Elo points for all coaches.</li>
-                  <li><b>Tournament Hardware:</b> 250 (1st) · 140 (2nd) · 90 (3rd) · 60 (4th) · 35 (Top 8).</li>
-                  <li><b>Field Multiplier:</b> <code>1.0 + (Field - 4) × 0.05</code> for deep tournaments.</li>
-                  <li><b>Match Net:</b> +18 pts per match win, -9 pts per match loss.</li>
-                  <li><b>Win% Efficiency:</b> <code>Confidence × (Win% - 50) × 4</code> over 10+ games.</li>
+                  <li><b>Active Debut Baseline:</b> +100 pts on official competitive debut (0 pts for unplayed rookies).</li>
+                  <li><b>Championship Titles:</b> +150 base pts, scaled up to +240 pts by tournament field size.</li>
+                  <li><b>Top Cut Hardware:</b> 90 (2nd/Finals) · 50 (3rd/Bronze) · 35 (4th) · 25 (5th–6th) · 15 (7th–8th).</li>
+                  <li><b>Guaranteed Hardware Floor:</b> Guarantees at least +150 pts per Title and +45 pts per Top Cut appearance.</li>
+                  <li><b>Match Net (+12W / -4L):</b> +12 pts per win, -4 pts per loss (floor at 0 so match impact is never negative).</li>
                 </ul>
               </div>
 
               <div style="background:#191922;border:1px solid #2d2d3c;border-radius:8px;padding:12px">
-                <div style="font:800 13px 'Barlow Condensed';color:#7df0aa;letter-spacing:.5px;margin-bottom:8px">🎖️ ACCOLADES & PRESTIGE MULTIPLIERS</div>
+                <div style="font:800 13px 'Barlow Condensed';color:#7df0aa;letter-spacing:.5px;margin-bottom:8px">🎖️ QUALITY, ACCOLADES & FORM</div>
                 <ul style="margin:0 0 0 16px;padding:0;font-size:11px;color:#d0d0dc;line-height:1.6;display:flex;flex-direction:column;gap:4px">
-                  <li><b>All-Time Records:</b> +50 pts for each official league record held.</li>
-                  <li><b>Peak Win Streak:</b> +6 pts per game of peak all-time win streak.</li>
-                  <li><b>Current OVR Translation:</b> +4 pts per OVR point above 70 baseline.</li>
-                  <li><b>Zero Decay Guarantee:</b> Points earned in Season 1 are permanent forever.</li>
-                  <li><b>GOAT Criterion:</b> Determines the #1 All-Time Greatest of All Time badge.</li>
+                  <li><b>Win% Quality Factor:</b> <code>Confidence × (Win% - 50) × 0.8</code> (up to ±30 pts). Moderates negative records without wiping out playoff achievements.</li>
+                  <li><b>All-Time Records:</b> +30 pts for each official league record held.</li>
+                  <li><b>Peak Win Streak:</b> +4 pts per win in your longest career win streak.</li>
+                  <li><b>Current Form Boost:</b> +2 pts per OVR point above 70 baseline.</li>
+                  <li><b>Tiebreaker Sequence:</b> Legacy Score → Top Cuts → Current OVR → Alphabetical.</li>
                 </ul>
               </div>
 
             </div>
+          </div>
+
+          <!-- Case Study Box: Why the System is Balanced -->
+          <div class="card" style="padding:14px;background:#141419;border-color:#202c38">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+              <span class="eyebrow" style="margin:0;color:#60a5fa">Fairness in Practice · The Rookie vs. Veteran Balance</span>
+              <span class="tag" style="background:#142230;color:#60a5fa;font-size:9px;font-weight:800;border-color:#244466">INTEGRITY RULE</span>
+            </div>
+            <p style="font-size:11px;color:#bed2eb;line-height:1.5;margin:0">
+              <b>Why Top Cuts always outvalue inactivity:</b> A newcomer with 0 games sits at <b>0 pts (Rookie)</b>. Meanwhile, a coach with a negative record (e.g. 6–11) but a <b>Top Cut</b> finish earns the 100 pt debut base, +28 net match points, and +45 playoff hardware, landing at <b>~178 pts (#6 Veteran)</b> despite their win rate calibration (-9 pts). Playing matches and reaching playoffs will always triumph over sitting on the sidelines!
+            </p>
           </div>
 
           <!-- OVR vs Elo Comparison: Symmetrical 2-Column Split -->
@@ -17281,7 +17403,7 @@ function openLegacyEloGuide(){
                     <span class="tag" style="background:#2a2414;color:#ffd166;font-size:9px;font-weight:800;border-color:#5a4218">PERMANENT / ZERO DECAY</span>
                   </div>
                   <p style="font-size:11px;color:#d0ced6;margin:6px 0 0;line-height:1.4">
-                    Reflects lifetime historical greatness, total championships, record book dominance, and career win rates without decay. Used for Hall of Fame legacy rankings.
+                    Reflects lifetime historical greatness, total championships, playoff cut pedigree, and career records without decay. Used for Hall of Fame rankings and GOAT crowning.
                   </p>
                 </div>
               </div>
