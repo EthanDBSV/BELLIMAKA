@@ -1238,8 +1238,25 @@ function getSpriteBaseUrl() {
   return 'https://play.pokemonshowdown.com/sprites/home/';
 }
 
+const ANIMATED_ONLY_SPRITES = new Set([
+  'staraptor-mega', 'raichu-megax', 'raichu-megay', 'malamar-mega', 'dragalge-mega', 'scrafty-mega'
+]);
+
+const GEN5_ONLY_MEGAS = new Set([
+  'floette-mega', 'meganium-mega', 'feraligatr-mega', 'emboar-mega', 'chesnaught-mega',
+  'delphox-mega', 'greninja-mega', 'clefable-mega', 'victreebel-mega', 'starmie-mega',
+  'dragonite-mega', 'skarmory-mega', 'chimecho-mega', 'froslass-mega', 'excadrill-mega',
+  'chandelure-mega', 'hawlucha-mega'
+]);
+
 function getPokemonSpriteUrl(slug) {
   if(!slug) return 'https://play.pokemonshowdown.com/sprites/dex/substitute.png';
+  if(ANIMATED_ONLY_SPRITES.has(slug)){
+    return `https://play.pokemonshowdown.com/sprites/ani/${slug}.gif`;
+  }
+  if(GEN5_ONLY_MEGAS.has(slug)){
+    return `https://play.pokemonshowdown.com/sprites/gen5/${slug}.png`;
+  }
   return `${getSpriteBaseUrl()}${slug}.png`;
 }
 
@@ -1276,59 +1293,76 @@ function handleSpriteError(img){
   let src = img.src || '';
   let stage = +(img.dataset.fallbackStage || 0);
 
-  // Stage 0: Try base pokemon if mega/custom suffix failed in home or gen5
-  if(stage === 0){
-    img.dataset.fallbackStage = '1';
-    if(/-m-mega\.png$/i.test(src)){
-      img.src = src.replace(/-m-mega\.png$/i, '.png');
-      return;
-    }
-    if(/-f-mega\.png$/i.test(src)){
-      img.src = src.replace(/-f-mega\.png$/i, '-f.png');
-      return;
-    }
-    if(/-mega[xyz]?\.png$/i.test(src)){
-      img.src = src.replace(/-mega[xyz]?\.png$/i, '.png');
-      return;
-    }
-    if(src.includes('lycanroc-midday.png')){
-      img.src = src.replace('lycanroc-midday.png', 'lycanroc.png');
-      return;
-    }
-    if(src.includes('/sprites/home/')){
-      img.src = src.replace('/sprites/home/', '/sprites/gen5/');
-      return;
-    }
-    if(src.includes('/sprites/gen5/')){
-      img.src = src.replace('/sprites/gen5/', '/sprites/dex/');
-      return;
-    }
+  // Prevent infinite loops
+  if(stage >= 6){
+    img.src = 'https://play.pokemonshowdown.com/sprites/dex/substitute.png';
+    return;
   }
 
-  // Stage 1: Fallback from home to gen5, or gen5 to dex
-  if(stage === 1){
-    img.dataset.fallbackStage = '2';
-    if(src.includes('/sprites/home/')){
-      img.src = src.replace('/sprites/home/', '/sprites/gen5/');
-      return;
-    }
-    if(src.includes('/sprites/gen5/')){
-      img.src = src.replace('/sprites/gen5/', '/sprites/dex/');
-      return;
-    }
+  // Stage 1: Fallback from /sprites/home/ to /sprites/gen5/ keeping exact slug intact
+  // (Crucial for fan/custom Megas like Mega Floette, Mega Feraligatr, Mega Delphox, etc.)
+  if(src.includes('/sprites/home/')){
+    img.dataset.fallbackStage = String(stage + 1);
+    img.src = src.replace('/sprites/home/', '/sprites/gen5/');
+    return;
   }
 
-  // Stage 2: Fallback to Showdown dex directory
-  if(stage === 2){
-    img.dataset.fallbackStage = '3';
-    if(src.includes('/sprites/gen5/')){
-      img.src = src.replace('/sprites/gen5/', '/sprites/dex/');
-      return;
-    }
+  // Stage 2: Fallback from /sprites/gen5/ to animated GIF /sprites/ani/${slug}.gif
+  // (Crucial for custom Megas that only exist as animated GIFs, like Mega Staraptor, Mega Raichu X/Y, Mega Malamar, etc.)
+  if(src.includes('/sprites/gen5/')){
+    img.dataset.fallbackStage = String(stage + 1);
+    img.src = src.replace('/sprites/gen5/', '/sprites/ani/').replace(/\.png$/i, '.gif');
+    return;
+  }
+
+  // Stage 3: Fallback from /sprites/ani/ to Showdown /sprites/dex/${slug}.png
+  if(src.includes('/sprites/ani/')){
+    img.dataset.fallbackStage = String(stage + 1);
+    img.src = src.replace('/sprites/ani/', '/sprites/dex/').replace(/\.gif$/i, '.png');
+    return;
+  }
+
+  // Stage 4: If all repositories failed for this form slug, fall back to base Pokémon or base form
+  if(/-m-mega\.(png|gif)$/i.test(src)){
+    img.dataset.fallbackStage = String(stage + 1);
+    img.src = src.replace(/-m-mega\.(png|gif)$/i, '.png').replace('/sprites/dex/', '/sprites/gen5/');
+    return;
+  }
+  if(/-f-mega\.(png|gif)$/i.test(src)){
+    img.dataset.fallbackStage = String(stage + 1);
+    img.src = src.replace(/-f-mega\.(png|gif)$/i, '-f.png').replace('/sprites/dex/', '/sprites/gen5/');
+    return;
+  }
+  if(/-mega[xyz]?\.(png|gif)$/i.test(src)){
+    img.dataset.fallbackStage = String(stage + 1);
+    img.src = src.replace(/-mega[xyz]?\.(png|gif)$/i, '.png').replace('/sprites/dex/', '/sprites/gen5/');
+    return;
+  }
+  if(/-gmax\.(png|gif)$/i.test(src)){
+    img.dataset.fallbackStage = String(stage + 1);
+    img.src = src.replace(/-gmax\.(png|gif)$/i, '.png').replace('/sprites/dex/', '/sprites/gen5/');
+    return;
+  }
+  if(/-totem\.(png|gif)$/i.test(src)){
+    img.dataset.fallbackStage = String(stage + 1);
+    img.src = src.replace(/-totem\.(png|gif)$/i, '.png').replace('/sprites/dex/', '/sprites/gen5/');
+    return;
+  }
+  if(src.includes('lycanroc-midday')){
+    img.dataset.fallbackStage = String(stage + 1);
+    img.src = src.replace('lycanroc-midday', 'lycanroc');
+    return;
+  }
+
+  // Stage 5: If base Pokémon failed in gen5, try dex
+  if(src.includes('/sprites/gen5/')){
+    img.dataset.fallbackStage = String(stage + 1);
+    img.src = src.replace('/sprites/gen5/', '/sprites/dex/').replace(/\.gif$/i, '.png');
+    return;
   }
 
   // Final fallback to substitute doll
-  img.dataset.fallbackStage = '4';
+  img.dataset.fallbackStage = '6';
   img.src = 'https://play.pokemonshowdown.com/sprites/dex/substitute.png';
 }
 
@@ -1517,6 +1551,10 @@ function _resolvePokemonDataUncached(raw) {
     'absol-megaz': { slug: 'absol-mega', name: 'Mega Absol Z' },
     'mega staraptor': { slug: 'staraptor-mega', name: 'Mega Staraptor' },
     'staraptor-mega': { slug: 'staraptor-mega', name: 'Mega Staraptor' },
+    'staraptor mega': { slug: 'staraptor-mega', name: 'Mega Staraptor' },
+    'mega floette': { slug: 'floette-mega', name: 'Mega Floette' },
+    'floette-mega': { slug: 'floette-mega', name: 'Mega Floette' },
+    'floette mega': { slug: 'floette-mega', name: 'Mega Floette' },
     'mega garchomp z': { slug: 'garchomp-mega', name: 'Mega Garchomp Z' },
     'garchomp-megaz': { slug: 'garchomp-mega', name: 'Mega Garchomp Z' },
     'mega lucario z': { slug: 'lucario-mega', name: 'Mega Lucario Z' },
