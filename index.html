@@ -1260,7 +1260,7 @@ function getPokemonSpriteUrl(slug) {
   return `${getSpriteBaseUrl()}${slug}.png`;
 }
 
-function setPokemonSpriteStyle(style) {
+function setPokemonSpriteStyle(style, shouldPersist = true) {
   let finalStyle = (style === 'gen5') ? 'gen5' : 'home';
   try {
     if(typeof localStorage !== 'undefined'){
@@ -1275,16 +1275,19 @@ function setPokemonSpriteStyle(style) {
     }
   }
   if(typeof _spriteDataCache !== 'undefined') _spriteDataCache.clear();
+  if(shouldPersist && typeof persistLeague === 'function'){
+    persistLeague();
+  }
   if(typeof render === 'function') render();
 }
 
 function toggleSpriteStylePreference() {
   let curr = getSpriteStylePreference();
   let next = (curr === 'gen5') ? 'home' : 'gen5';
-  setPokemonSpriteStyle(next);
+  setPokemonSpriteStyle(next, true);
   let label = (next === 'home') ? '✨ Modern 3D HOME Renders' : '👾 Classic DS Pixel Art';
   if(typeof showDraftToast === 'function') {
-    showDraftToast(`🎨 Sprites: ${label}`);
+    showDraftToast(`🎨 League Sprites: ${label}`);
   }
 }
 
@@ -5848,6 +5851,9 @@ function applySharedState(data){
     Object.assign(accountLinks, data.accountLinks);
     try{ localStorage.setItem('draftdex-accountlinks', JSON.stringify(accountLinks)); }catch(e){}
   }
+  if(data.spriteStyle && typeof setPokemonSpriteStyle === 'function' && data.spriteStyle !== getSpriteStylePreference()){
+    setPokemonSpriteStyle(data.spriteStyle, false);
+  }
   if(data.draftPool && typeof data.draftPool === 'object' && typeof draftPool !== 'undefined'){
     draftPool = data.draftPool;
   }
@@ -6347,6 +6353,7 @@ async function flushSync(){
     teamHistory: teamHistory,
     cut: cut,
     boardLink: boardLink,
+    spriteStyle: getSpriteStylePreference(),
     draftPool: (typeof draftPool !== 'undefined' ? draftPool : null),
     offseasonDraftBoard: (typeof offseasonDraftBoard !== 'undefined' ? offseasonDraftBoard : []),
     accountLinks: accountLinks
@@ -18703,9 +18710,6 @@ function DraftRoom(t){
       ${canManageDraft && d.picks?.length ? `<button class="btn ghost btn-sm" style="color:#ff9ba1" onclick="undoDraftPick('${jsArg(t.id)}')">↩️ Undo Pick</button>` : ''}
       ${canManageDraft ? `<button class="btn ghost btn-sm" onclick="openDraftOrderEditor('${jsArg(t.id)}')">🔀 Draft Order</button>` : ''}
       ${canManageDraft ? `<button class="btn ghost btn-sm" onclick="openDraftBoardImporter('${jsArg(t.id)}')">📥 Import Sheet</button>` : ''}
-      ${canManageDraft ? `<button class="btn ghost btn-sm" onclick="openGroupDrawCeremony('${jsArg(t.id)}')">🎩 Group Draw</button>` : ''}
-      ${canManageDraft ? `<button class="btn ghost btn-sm" style="color:#7983f5;border-color:#5865F2" onclick="openDiscordSettingsModal()" title="Discord 24/7 Webhook & Alerts">🔔 Discord</button>` : ''}
-      <button class="btn ghost btn-sm" onclick="toggleSpriteStylePreference()" title="Toggle between Modern 3D HOME Renders and Classic DS Pixel Sprites">${getSpriteStylePreference() === 'gen5' ? '✨ 3D Renders' : '👾 Pixel Art'}</button>
       ${canManageDraft && (d.status === 'completed' || d.picks?.length >= getDraftTotalPicks(t)) ? `<button class="btn btn-sm" style="background:#10b981;border-color:#34d399" onclick="completeDraftAndAdvance('${jsArg(t.id)}')">🏁 Start Group Stage →</button>` : ''}
     </div>
   `;
