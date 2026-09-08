@@ -1235,6 +1235,7 @@ details[open] > .past-tourney-summary .past-chevron{transform:rotate(180deg);col
 <style>.bracket-drag{cursor:grab;font-weight:800}.bracket-drag:active{cursor:grabbing}.bracket-drag:hover{color:#ff888e;text-decoration:underline}</style>
 <style>.playerGroup{background:#fff!important;color:#111!important}</style>
 <style>.match-row.aligned{grid-template-columns:145px minmax(115px,1fr) 34px minmax(115px,1fr) 118px 78px auto}</style>
+<style>.col-swap-btn{background:#22222d;border:1px solid #3e3e52;border-radius:3px;color:#a4a2af;font-size:8px;line-height:1;padding:2px 4px;cursor:pointer;transition:all .15s ease}.col-swap-btn:hover{background:var(--red);color:#fff;border-color:var(--red)}.col-swap-group{display:inline-flex;align-items:center;gap:2px;margin-left:4px}</style>
 <style>#newMon{background:#fff!important;color:#111!important}#newMon::placeholder{color:#666}.hero-main:after{content:attr(data-season)!important}.player-link{border:0;background:none;color:#f5f3f0;padding:0;font:inherit;font-weight:800;cursor:pointer;text-align:left}.player-link:hover{color:#ff777d;text-decoration:underline}.match-row.aligned{grid-template-columns:145px minmax(115px,1fr) 34px minmax(115px,1fr) 118px 78px}.match-row.aligned .match-player{font-size:12px;min-width:0}.match-row.aligned .match-vs{text-align:center;color:#85838d;font-size:10px;font-weight:800}.bracket-match input{width:36px;background:#0f0f13;border:1px solid #474750;border-radius:3px;color:white;text-align:center;padding:3px}.bracket-grid-final{display:grid;grid-template-columns:repeat(4,210px);gap:42px;align-items:center;min-width:960px}.bracket-grid-final>div{display:grid;gap:38px}.bracket-grid-final>div:nth-child(2){padding-top:45px}.bracket-grid-final>div:nth-child(3){padding-top:115px}.bracket-grid-final>div:nth-child(4){padding-top:80px}.bracket-box{position:relative}.bracket-match-title{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.7px;color:var(--amber);margin:0 0 6px 2px}@media(max-width:560px){.match-row.aligned{grid-template-columns:75px 1fr 30px 1fr}.match-row.aligned .score-edit{grid-column:2/4}.match-row.aligned .save{grid-column:2/4}}</style>
 <body><div class="shell"><header class="topbar"><div class="brand" onclick="go('Home')"><img src="bellimaka_logo.jpg" class="bellimaka-logo" alt="Bellimaka"><span style="letter-spacing:1px">BELLIMAKA</span></div><nav class="nav" id="nav"></nav><div id="topbarActions" style="display:flex;align-items:center;gap:8px;margin-left:auto"><button class="account" onclick="go('Account')"><span class="mode-dot"></span><span id="accountText">Sign in</span></button></div></header><main class="page" id="app"></main></div><div id="modal"></div>
 <script>
@@ -2720,7 +2721,22 @@ function groupMatches(t,g){return (t?.matches||[]).filter(m=>(m.group||'Group A'
 function groupSchedule(t){let buckets=groupsOf(t);return Object.entries(buckets).flatMap(([g,ps])=>rr(ps).map(m=>({...m,group:g}))) }
 
 
-function qualified(t){return Object.keys(groupsOf(t)).flatMap(g=>getStand(t,g).slice(0,advancePerGroup(t)).map((x,i)=>({...x,group:g,groupSeed:i+1}))).sort((a,b)=>a.groupSeed-b.groupSeed||b.gw-a.gw||(b.gw-b.gl)-(a.gw-a.gl))}
+function qualified(t){
+  return Object.keys(groupsOf(t)).flatMap(g=>getStand(t,g).slice(0,advancePerGroup(t)).map((x,i)=>({...x,group:g,groupSeed:i+1}))).sort((a,b)=>{
+    if(a.groupSeed !== b.groupSeed) return a.groupSeed - b.groupSeed;
+    if(typeof getStandingsCriteria === 'function' && typeof STANDING_METRICS !== 'undefined'){
+      let criteria = getStandingsCriteria(t);
+      for(let critId of criteria){
+        let metric = STANDING_METRICS[critId];
+        if(metric && typeof metric.compare === 'function'){
+          let diff = metric.compare(a, b);
+          if(diff !== 0) return diff;
+        }
+      }
+    }
+    return (b.gw - a.gw) || ((b.gw - b.gl) - (a.gw - a.gl));
+  });
+}
 
 
 
@@ -10556,24 +10572,147 @@ function matchesView(t=activeT(), editable=canManageTournament(t)){
     }).join('')}
   </div>`;
 }
+var STANDING_METRICS = {
+  wl: {
+    id: 'wl',
+    label: 'W-L',
+    name: 'Match Record',
+    shortDesc: 'Wins - Losses',
+    desc: 'Match wins, then fewest match losses',
+    compare: (a, b) => (b.w - a.w) || (a.l - b.l),
+    format: (x) => `<span style="font-weight:800">${x.w}-${x.l}</span>`
+  },
+  gw: {
+    id: 'gw',
+    label: 'GW',
+    name: 'Games Won',
+    shortDesc: 'Total Games Won',
+    desc: 'Total individual games / sets won',
+    compare: (a, b) => b.gw - a.gw,
+    format: (x) => `${x.gw}`
+  },
+  gd: {
+    id: 'gd',
+    label: 'GD',
+    name: 'Game Differential',
+    shortDesc: 'Games Won minus Games Lost',
+    desc: 'Net game differential (GW - GL)',
+    compare: (a, b) => (b.gw - b.gl) - (a.gw - a.gl),
+    format: (x) => {
+      let gd = x.gw - x.gl;
+      return (gd > 0 ? '+' : '') + gd;
+    }
+  },
+  h2h: {
+    id: 'h2h',
+    label: 'H2H',
+    name: 'Head-to-Head',
+    shortDesc: 'Direct Matchup Result',
+    desc: 'Direct head-to-head match result between tied trainers',
+    compare: (a, b) => {
+      let ah = a.results ? a.results[b.p] : undefined;
+      let bh = b.results ? b.results[a.p] : undefined;
+      if(ah !== undefined && bh !== undefined && ah !== bh) return bh - ah;
+      return 0;
+    },
+    format: (x) => `${x.h2hWins || 0}`
+  },
+  gl: {
+    id: 'gl',
+    label: 'GL',
+    name: 'Fewest Games Lost',
+    shortDesc: 'Fewest Games Conceded',
+    desc: 'Fewer individual games lost ranks higher',
+    compare: (a, b) => a.gl - b.gl,
+    format: (x) => `${x.gl}`
+  },
+  gpct: {
+    id: 'gpct',
+    label: 'GW%',
+    name: 'Game Win %',
+    shortDesc: 'Percentage of Games Won',
+    desc: 'Game winning percentage: GW / (GW + GL)',
+    compare: (a, b) => {
+      let pA = (a.gw + a.gl > 0) ? (a.gw / (a.gw + a.gl)) : 0;
+      let pB = (b.gw + b.gl > 0) ? (b.gw / (b.gw + b.gl)) : 0;
+      return pB - pA;
+    },
+    format: (x) => {
+      let tot = x.gw + x.gl;
+      return tot > 0 ? Math.round((x.gw / tot) * 100) + '%' : '0%';
+    }
+  },
+  sos: {
+    id: 'sos',
+    label: 'SOS',
+    name: 'Strength of Schedule',
+    shortDesc: "Opponents' Match Wins",
+    desc: "Cumulative match wins of all opponents faced",
+    compare: (a, b) => (b.sos || 0) - (a.sos || 0),
+    format: (x) => `${x.sos || 0}`
+  },
+  ovr: {
+    id: 'ovr',
+    label: 'OVR',
+    name: 'Coach Rating (OVR)',
+    shortDesc: 'Higher Overall Rating',
+    desc: 'Higher coach overall rating breaks ties',
+    compare: (a, b) => (b.ovrVal || 0) - (a.ovrVal || 0),
+    format: (x) => x.ovrObj?.badgeHtml || `${x.ovrVal || 70}`
+  }
+};
+
+function getStandingsCriteria(t){
+  if(t && Array.isArray(t.standingsCriteria) && t.standingsCriteria.length){
+    let valid = t.standingsCriteria.filter(c => STANDING_METRICS[c]);
+    if(valid.length) return valid;
+  }
+  return ['wl', 'gw', 'gd', 'h2h'];
+}
+
 function getStand(t=activeT(),group=null){
   let buckets=groupsOf(t),g=group||Object.keys(buckets)[0],members=buckets[g]||t.players,s={};
-  members.forEach(p=>s[p]={p,w:0,l:0,gw:0,gl:0,h2h:0,results:{}});
-  groupMatches(t,g).filter(m=>m.as!==''&&m.as!=null&&m.bs!==''&&m.bs!=null).forEach(m=>{
+  members.forEach(p=>s[p]={p,w:0,l:0,gw:0,gl:0,h2h:0,h2hWins:0,sos:0,results:{}});
+  let matches = groupMatches(t,g).filter(m=>m.as!==''&&m.as!=null&&m.bs!==''&&m.bs!=null);
+  matches.forEach(m=>{
     let a=s[m.a],b=s[m.b];
     if(!a||!b)return;
     a.gw+=+m.as;a.gl+=+m.bs;b.gw+=+m.bs;b.gl+=+m.as;
-    if(+m.as>+m.bs){a.w++;b.l++;a.results[m.b]=1;b.results[m.a]=0}
-    else if(+m.bs>+m.as){b.w++;a.l++;b.results[m.a]=1;a.results[m.b]=0}
+    if(+m.as>+m.bs){
+      a.w++;b.l++;a.results[m.b]=1;b.results[m.a]=0;a.h2hWins++;
+    } else if(+m.bs>+m.as){
+      b.w++;a.l++;b.results[m.a]=1;a.results[m.b]=0;b.h2hWins++;
+    }
   });
+
   let list=Object.values(s);
+
+  // Precalculate SOS and OVR for each trainer in this group
+  list.forEach(item => {
+    let oppWins = 0;
+    matches.forEach(m => {
+      if(m.a === item.p && s[m.b]) oppWins += s[m.b].w;
+      else if(m.b === item.p && s[m.a]) oppWins += s[m.a].w;
+    });
+    item.sos = oppWins;
+    let ovrObj = calculatePlayerOVR(item.p);
+    item.ovrVal = ovrObj.rawScore || ovrObj.ovr || 70;
+    item.ovrObj = ovrObj;
+  });
+
+  let criteria = getStandingsCriteria(t);
+
   list.sort((a,b)=>{
-    let basic=b.w-a.w||b.gw-a.gw||(b.gw-b.gl)-(a.gw-a.gl);
-    if(basic)return basic;
-    let ah=a.results[b.p],bh=b.results[a.p];
-    if(ah!==undefined&&bh!==undefined)return bh-ah;
+    for(let critId of criteria){
+      let metric = STANDING_METRICS[critId];
+      if(metric && typeof metric.compare === 'function'){
+        let diff = metric.compare(a, b);
+        if(diff !== 0) return diff;
+      }
+    }
     return a.p.localeCompare(b.p);
   });
+
   let manual=t.manualStandings?.[g];
   if(Array.isArray(manual)&&manual.length===list.length&&manual.every(p=>members.includes(p))){
     let rank=Object.fromEntries(manual.map((p,i)=>[p,i]));
@@ -10588,63 +10727,224 @@ function standingTable(t, g){
   let sortedT = typeof sortedTournamentsChronological === 'function' ? sortedTournamentsChronological() : Object.values(tournamentData);
   let tIdx = t ? sortedT.findIndex(x => x.id === t.id || x.name === t.name) : -1;
   let isPastT = (t && t.status === 'COMPLETE' && tIdx >= 0);
+  let canManage = canManageTournament(t);
+  let criteria = getStandingsCriteria(t);
+  let hasOvrInCriteria = criteria.includes('ovr');
 
   return `
     <div style="display:flex;justify-content:space-between;align-items:center;padding:14px 16px 10px;border-bottom:1px solid #282834">
       <span style="font:900 20px 'Barlow Condensed';letter-spacing:.5px;color:#f5f3f0;text-transform:uppercase">${esc(g)}</span>
       <span style="font-size:10px;font-weight:800;color:var(--amber);letter-spacing:.6px">${isPastT ? 'FINAL GROUP STANDINGS' : `TOP ${cut} ADVANCE`}</span>
     </div>
-    <table class="standings">
-      <thead>
-        <tr>
-          <th style="width:36px;text-align:center">#</th>
-          <th>Trainer / Team</th>
-          <th style="text-align:center;white-space:nowrap" title="${isPastT ? 'Coach rating at conclusion of Group Stage' : 'Current Coach Rating'}">OVR</th>
-          <th style="text-align:center;white-space:nowrap">W-L</th>
-          <th style="text-align:center;white-space:nowrap">GW</th>
-          <th style="text-align:center;white-space:nowrap">GD</th>
-          <th style="text-align:center;white-space:nowrap">H2H</th>
-          <th style="text-align:center;white-space:nowrap">Status</th>
-        </tr>
-      </thead>
-      <tbody>
-        ${list.map((x, i) => {
-          let p = x.p;
+    <div class="table-scroll-wrap" style="overflow-x:auto">
+      <table class="standings">
+        <thead>
+          <tr>
+            <th style="width:36px;text-align:center">#</th>
+            <th>Trainer / Team</th>
+            ${!hasOvrInCriteria ? `<th style="text-align:center;white-space:nowrap" title="${isPastT ? 'Coach rating at conclusion of Group Stage' : 'Current Coach Rating'}">OVR</th>` : ''}
+            ${criteria.map((critId, cIdx) => {
+              let m = STANDING_METRICS[critId] || { label: critId.toUpperCase(), name: critId, desc: '' };
+              let priorityNum = cIdx + 1;
+              let swapControls = canManage ? `
+                <span class="col-swap-group">
+                  ${cIdx > 0 ? `<button type="button" class="col-swap-btn" title="Move ${m.label} higher priority" onclick="event.stopPropagation();swapStandingsCriteria('${jsArg(t.id)}', ${cIdx}, ${cIdx - 1})">◀</button>` : ''}
+                  ${cIdx < criteria.length - 1 ? `<button type="button" class="col-swap-btn" title="Move ${m.label} lower priority" onclick="event.stopPropagation();swapStandingsCriteria('${jsArg(t.id)}', ${cIdx}, ${cIdx + 1})">▶</button>` : ''}
+                </span>
+              ` : '';
+              return `
+                <th style="text-align:center;white-space:nowrap" title="${esc(m.name)}: ${esc(m.desc)} (Priority #${priorityNum})">
+                  <div style="display:inline-flex;align-items:center;justify-content:center;gap:4px">
+                    <span style="font-size:9px;color:var(--amber);opacity:.85;font-weight:800">#${priorityNum}</span>
+                    <span>${esc(m.label)}</span>
+                    ${swapControls}
+                  </div>
+                </th>
+              `;
+            }).join('')}
+            <th style="text-align:center;white-space:nowrap">Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${list.map((x, i) => {
+            let p = x.p;
 
-          let ovrObj = (isPastT && typeof getHistoricalPlayerOVR === 'function')
-            ? getHistoricalPlayerOVR(p, tIdx, 'group', sortedT)
-            : calculatePlayerOVR(p);
+            let ovrObj = (isPastT && typeof getHistoricalPlayerOVR === 'function')
+              ? getHistoricalPlayerOVR(p, tIdx, 'group', sortedT)
+              : calculatePlayerOVR(p);
 
-          let isCutoff = (i === cut);
-          let statusTag = '';
-          if(isMathematicallyClinched(t, p)){
-            statusTag = '<span class="tag safe">CLINCHED</span>';
-          } else if(isMathematicallyEliminated(t, p)){
-            statusTag = '<span class="tag out">ELIMINATED</span>';
-          } else {
-            statusTag = i < cut ? '<span class="tag hunt">IN CUT</span>' : '<span class="tag hunt">HUNT</span>';
-          }
-          let gd = x.gw - x.gl;
-          let gdStr = (gd > 0 ? '+' : '') + gd;
+            let isCutoff = (i === cut);
+            let statusTag = '';
+            if(isMathematicallyClinched(t, p)){
+              statusTag = '<span class="tag safe">CLINCHED</span>';
+            } else if(isMathematicallyEliminated(t, p)){
+              statusTag = '<span class="tag out">ELIMINATED</span>';
+            } else {
+              statusTag = i < cut ? '<span class="tag hunt">IN CUT</span>' : '<span class="tag hunt">HUNT</span>';
+            }
+
+            return `
+              <tr class="${isCutoff ? 'cutoff-row' : ''} ${i < cut ? 'safe' : ''}">
+                <td class="rank" style="text-align:center">${i + 1}</td>
+                <td class="player">
+                  ${playerLink(p)}
+                  <span class="team">${esc(teamName(t, p))}</span>
+                </td>
+                ${!hasOvrInCriteria ? `<td style="text-align:center">${ovrObj.badgeHtml}</td>` : ''}
+                ${criteria.map(critId => {
+                  let m = STANDING_METRICS[critId];
+                  let cellContent = m && typeof m.format === 'function' ? m.format(x) : '—';
+                  return `<td style="text-align:center;white-space:nowrap">${cellContent}</td>`;
+                }).join('')}
+                <td style="text-align:center">${statusTag}</td>
+              </tr>
+            `;
+          }).join('')}
+        </tbody>
+      </table>
+    </div>
+  `;
+}
+
+function swapStandingsCriteria(tId, fromIdx, toIdx){
+  let t = (tId ? tournamentData[tId] : null) || ongoingT() || activeT();
+  if(!t || !canManageTournament(t)) return;
+  let criteria = [...getStandingsCriteria(t)];
+  if(fromIdx < 0 || fromIdx >= criteria.length || toIdx < 0 || toIdx >= criteria.length) return;
+  let temp = criteria[fromIdx];
+  criteria[fromIdx] = criteria[toIdx];
+  criteria[toIdx] = temp;
+  t.standingsCriteria = criteria;
+  persistLeague();
+  render();
+}
+
+function openTiebreakerEditor(targetId){
+  let t = (targetId ? tournamentData[targetId] : null) || ongoingT() || activeT();
+  if(!t || !canManageTournament(t)) return;
+  window.editingTournamentId = t.id;
+  let active = [...getStandingsCriteria(t)];
+  let allKeys = Object.keys(STANDING_METRICS);
+  let available = allKeys.filter(k => !active.includes(k));
+
+  let activeListHtml = active.map((key, idx) => {
+    let m = STANDING_METRICS[key];
+    return `
+      <div class="card" style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;background:#161620;border:1px solid #2d2d3e;margin-bottom:8px;border-radius:8px">
+        <div style="display:flex;align-items:center;gap:12px;min-width:0">
+          <span class="tag" style="background:#282838;color:var(--amber);font-weight:900;font-size:11px;min-width:28px;text-align:center">#${idx + 1}</span>
+          <div style="min-width:0">
+            <div style="font:800 15px 'Barlow Condensed';letter-spacing:.3px;color:#f5f3f0">${esc(m.name)} <span style="font-size:11px;color:#8e8c95;font-weight:700">(${esc(m.label)})</span></div>
+            <div style="font-size:11px;color:#8e8c95;margin-top:2px">${esc(m.desc)}</div>
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;gap:6px;flex:none;margin-left:12px">
+          <button class="btn ghost btn-sm" style="padding:4px 8px;font-size:12px" ${idx === 0 ? 'disabled style="opacity:.3;cursor:not-allowed"' : `onclick="moveTiebreakerCriteria('${jsArg(t.id)}', ${idx}, -1)"`} title="Move higher priority">▲</button>
+          <button class="btn ghost btn-sm" style="padding:4px 8px;font-size:12px" ${idx === active.length - 1 ? 'disabled style="opacity:.3;cursor:not-allowed"' : `onclick="moveTiebreakerCriteria('${jsArg(t.id)}', ${idx}, 1)"`} title="Move lower priority">▼</button>
+          ${active.length > 1 ? `<button class="btn ghost btn-sm" style="color:#ff8e95;border-color:#4a242a;padding:4px 8px" onclick="removeTiebreakerCriteria('${jsArg(t.id)}', '${key}')" title="Remove tiebreaker">✕</button>` : ''}
+        </div>
+      </div>
+    `;
+  }).join('');
+
+  let availableListHtml = available.length ? `
+    <div style="margin-top:18px">
+      <div class="eyebrow" style="color:#8e8c95;margin-bottom:8px">Add More Tiebreakers</div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(220px, 1fr));gap:8px">
+        ${available.map(key => {
+          let m = STANDING_METRICS[key];
           return `
-            <tr class="${isCutoff ? 'cutoff-row' : ''} ${i < cut ? 'safe' : ''}">
-              <td class="rank" style="text-align:center">${i + 1}</td>
-              <td class="player">
-                ${playerLink(p)}
-                <span class="team">${esc(teamName(t, p))}</span>
-              </td>
-              <td style="text-align:center">${ovrObj.badgeHtml}</td>
-              <td style="text-align:center;white-space:nowrap;font-weight:800">${x.w}-${x.l}</td>
-              <td style="text-align:center;white-space:nowrap">${x.gw}</td>
-              <td style="text-align:center;white-space:nowrap">${gdStr}</td>
-              <td style="text-align:center;white-space:nowrap">${x.h2h}</td>
-              <td style="text-align:center">${statusTag}</td>
-            </tr>
+            <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 12px;background:#111118;border:1px solid #232330;border-radius:6px">
+              <div style="min-width:0;padding-right:8px">
+                <div style="font:800 13px 'Barlow Condensed';color:#f5f3f0">${esc(m.name)} <span style="font-size:10px;color:#8e8c95">(${esc(m.label)})</span></div>
+                <div style="font-size:10px;color:#8e8c95;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(m.shortDesc || m.desc)}</div>
+              </div>
+              <button class="btn ghost btn-sm" style="color:#7df0aa;border-color:#2a5038;flex:none;font-size:11px" onclick="addTiebreakerCriteria('${jsArg(t.id)}', '${key}')">+ Add</button>
+            </div>
           `;
         }).join('')}
-      </tbody>
-    </table>
+      </div>
+    </div>
+  ` : '';
+
+  document.querySelector('#modal').innerHTML = `
+    <div class="modal-wrap">
+      <div class="modal" style="max-width:680px;background:#111117;border:1px solid #2e2e3c;border-radius:12px;box-shadow:0 24px 60px rgba(0,0,0,0.85);max-height:90vh;display:flex;flex-direction:column">
+        <div class="modal-head" style="border-bottom:1px solid #242432;padding-bottom:14px;margin-bottom:12px;flex:none">
+          <div>
+            <div class="eyebrow" style="color:var(--amber)">${moderator ? 'Moderator' : 'Tournament Director'} · ${esc(t.name)}</div>
+            <h2 style="font:900 24px 'Barlow Condensed';letter-spacing:.3px;margin-top:2px">Tiebreaker & Ranking Priority</h2>
+          </div>
+          <button class="close" onclick="closeModal()">×</button>
+        </div>
+
+        <p class="sub" style="margin:0 0 14px;font-size:12px;flex:none">
+          Columns in the standings table appear in this priority order. When players are tied on the #1 metric, the system automatically checks metric #2, then #3, and so on.
+        </p>
+
+        <div style="overflow-y:auto;flex:1;padding-right:4px">
+          <div class="eyebrow" style="color:var(--amber);margin-bottom:8px">Active Priority Order</div>
+          ${activeListHtml}
+          ${availableListHtml}
+        </div>
+
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;margin-top:16px;padding-top:14px;border-top:1px solid #242432;flex:none">
+          <button class="btn ghost btn-sm" onclick="resetTiebreakerCriteria('${jsArg(t.id)}')">Reset to Defaults</button>
+          <div style="display:flex;gap:8px">
+            <button class="btn" style="background:var(--red);color:#fff;font-weight:800" onclick="closeModal()">Done</button>
+          </div>
+        </div>
+      </div>
+    </div>
   `;
+}
+
+function moveTiebreakerCriteria(tId, index, dir){
+  let t = (tId ? tournamentData[tId] : null) || ongoingT() || activeT();
+  if(!t || !canManageTournament(t)) return;
+  let criteria = [...getStandingsCriteria(t)];
+  let targetIdx = index + dir;
+  if(targetIdx < 0 || targetIdx >= criteria.length) return;
+  let temp = criteria[index];
+  criteria[index] = criteria[targetIdx];
+  criteria[targetIdx] = temp;
+  t.standingsCriteria = criteria;
+  persistLeague();
+  openTiebreakerEditor(t.id);
+  render();
+}
+
+function addTiebreakerCriteria(tId, critId){
+  let t = (tId ? tournamentData[tId] : null) || ongoingT() || activeT();
+  if(!t || !canManageTournament(t)) return;
+  let criteria = [...getStandingsCriteria(t)];
+  if(!criteria.includes(critId)){
+    criteria.push(critId);
+    t.standingsCriteria = criteria;
+    persistLeague();
+    openTiebreakerEditor(t.id);
+    render();
+  }
+}
+
+function removeTiebreakerCriteria(tId, critId){
+  let t = (tId ? tournamentData[tId] : null) || ongoingT() || activeT();
+  if(!t || !canManageTournament(t)) return;
+  let criteria = [...getStandingsCriteria(t)].filter(c => c !== critId);
+  if(!criteria.length) criteria = ['wl'];
+  t.standingsCriteria = criteria;
+  persistLeague();
+  openTiebreakerEditor(t.id);
+  render();
+}
+
+function resetTiebreakerCriteria(tId){
+  let t = (tId ? tournamentData[tId] : null) || ongoingT() || activeT();
+  if(!t || !canManageTournament(t)) return;
+  t.standingsCriteria = ['wl', 'gw', 'gd', 'h2h'];
+  persistLeague();
+  openTiebreakerEditor(t.id);
+  render();
 }
 
 function openRankingEditor(){
@@ -10955,8 +11255,10 @@ function Standings(){
   if(t.phase === 'draft' && t.status === 'ONGOING'){
     return renderDraftLockedStandings(t);
   }
-  let groups=Object.keys(groupsOf(t)),controls=canManageTournament(t)?`<div><button class="btn ghost" onclick="openGroupDrawCeremony('${jsArg(t.id)}')">🎩 Draw ceremony</button> <button class="btn ghost" onclick="openRankingEditor()">Arrange rankings</button> <button class="btn ghost" onclick="openSettings()">Edit qualification</button></div>`:'';
-  return head('Standings',t.name+' · group stage',controls)+`<div style="display:grid;grid-template-columns:repeat(${groups.length>1?2:1},minmax(0,1fr));gap:15px">${groups.map(g=>`<div class="card table-wrap">${standingTable(t,g)}</div>`).join('')}</div><p class="sub">The default order is W-L, games won, game differential, then head-to-head. Tournament Directors & Moderators can use Arrange rankings to apply a manual standings override.</p>` + tournamentRatingProgressionSection(t);
+  let criteria = getStandingsCriteria(t);
+  let orderDesc = criteria.map(c => `${STANDING_METRICS[c]?.name || c.toUpperCase()} (${STANDING_METRICS[c]?.label || c.toUpperCase()})`).join(' → ');
+  let groups=Object.keys(groupsOf(t)),controls=canManageTournament(t)?`<div><button class="btn ghost" onclick="openGroupDrawCeremony('${jsArg(t.id)}')">🎩 Draw ceremony</button> <button class="btn ghost" onclick="openRankingEditor()">Arrange rankings</button> <button class="btn ghost" onclick="openTiebreakerEditor('${jsArg(t.id)}')">⚖️ Ranking criteria</button> <button class="btn ghost" onclick="openSettings()">Edit qualification</button></div>`:'';
+  return head('Standings',t.name+' · group stage',controls)+`<div style="display:grid;grid-template-columns:repeat(${groups.length>1?2:1},minmax(0,1fr));gap:15px">${groups.map(g=>`<div class="card table-wrap">${standingTable(t,g)}</div>`).join('')}</div><p class="sub">Tiebreak ranking order: <b>${orderDesc}</b>. Tournament Directors & Moderators can swap columns (◀ ▶) or use <b>Ranking criteria</b> to customize tiebreakers.</p>` + tournamentRatingProgressionSection(t);
 }
 
 function matchPlayerName(p){return `<button class="player-link match-hover-name" onclick="openProfile('${jsArg(p)}')" onmouseenter="highlightMatches('${jsArg(p)}',true)" onmouseleave="highlightMatches('',false)">${esc(p)}</button>`}
@@ -16904,6 +17206,7 @@ function openTournamentEdit(id){
       <button class="btn ghost" style="text-align:left;justify-content:flex-start;padding:10px 14px" onclick="openTournamentPlayers('${jsArg(t.id)}')">👥 Edit Players & Teams</button>
       <button class="btn ghost" style="text-align:left;justify-content:flex-start;padding:10px 14px" ${locked?'disabled style="opacity:.5;cursor:not-allowed"':`onclick="openGroupPlacementEditor()"`}>👥 Arrange & Draw Groups${locked?' (Locked in Top Cut)':''}</button>
       <button class="btn ghost" style="text-align:left;justify-content:flex-start;padding:10px 14px" onclick="openSettings()">📊 Edit Qualification Cutoff</button>
+      <button class="btn ghost" style="text-align:left;justify-content:flex-start;padding:10px 14px" onclick="openTiebreakerEditor('${jsArg(t.id)}')">⚖️ Edit Tiebreakers & Column Order</button>
       ${canEditDraft ? `
         <button class="btn ghost" style="text-align:left;justify-content:flex-start;padding:10px 14px" onclick="openDraftBoardImporter('${jsArg(t.id)}')">📥 Import / Edit Draft Board</button>
         <button class="btn ghost" style="text-align:left;justify-content:flex-start;padding:10px 14px" onclick="openDraftOrderEditor('${jsArg(t.id)}')">🔀 Edit Draft Snake Order</button>
