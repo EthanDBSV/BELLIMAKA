@@ -386,9 +386,25 @@
 @media(max-width:1024px){.in-season-hero{grid-template-columns:1fr}.tourney-hero-card{min-height:340px}}
 @media(max-width:560px){.in-season-metrics-grid{grid-template-columns:1fr}.tourney-hero-title{font-size:34px}}
 
-.draft-picks-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
-@media(max-width:1100px){.draft-picks-grid{grid-template-columns:repeat(2,1fr)}}
-@media(max-width:580px){.draft-picks-grid{grid-template-columns:1fr}}
+.draft-picks-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(310px,1fr));gap:14px;margin-top:14px}
+.draft-pick-card{position:relative;overflow:hidden;border-radius:12px;padding:14px 16px;background:linear-gradient(135deg,#171724 0%,#111119 65%,#0d0d14 100%);border:1px solid #2d2d3e;display:flex;align-items:center;gap:14px;box-shadow:0 6px 20px rgba(0,0,0,0.45);transition:transform .18s ease,border-color .18s ease,box-shadow .18s ease}
+.draft-pick-card:hover{transform:translateY(-2px);border-color:#5a2630;box-shadow:0 10px 28px rgba(0,0,0,0.65),0 0 16px rgba(239,48,56,0.12)}
+.draft-pick-card.latest{border:1.5px solid #ef3038;background:linear-gradient(135deg,#241318 0%,#161520 60%,#0e0e16 100%);box-shadow:0 8px 28px rgba(239,48,56,0.24),0 0 18px rgba(239,48,56,0.14)}
+.draft-pick-sprite-stage{position:relative;flex:none;width:82px;height:82px;border-radius:12px;background:radial-gradient(circle at 50% 50%,rgba(255,255,255,0.09) 0%,rgba(10,10,16,0.92) 80%);border:1px solid rgba(255,255,255,0.12);display:grid;place-items:center;box-shadow:inset 0 0 16px rgba(0,0,0,0.8),0 4px 12px rgba(0,0,0,0.5)}
+.draft-pick-card.latest .draft-pick-sprite-stage{border-color:rgba(239,48,56,0.4);background:radial-gradient(circle at 50% 50%,rgba(239,48,56,0.18) 0%,rgba(14,10,14,0.95) 80%)}
+.draft-pick-sprite-img{width:74px;height:74px;object-fit:contain;filter:drop-shadow(0 6px 12px rgba(0,0,0,0.85));transition:transform .18s ease}
+.draft-pick-card:hover .draft-pick-sprite-img{transform:scale(1.12)}
+.draft-pick-info{min-width:0;flex:1;display:flex;flex-direction:column;gap:2px}
+.draft-pick-meta-row{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.draft-pick-round-tag{font:800 11px 'Barlow Condensed';letter-spacing:.4px;background:#251e12;color:#ffd166;border:1px solid #553e16;padding:1px 7px;border-radius:4px;text-transform:uppercase}
+.draft-pick-cost-tag{font:800 11px 'Barlow Condensed';letter-spacing:.4px;color:#ffd166;background:rgba(255,209,102,0.12);border:1px solid rgba(255,209,102,0.28);padding:1px 7px;border-radius:4px}
+.draft-pick-name{font:800 21px/1.1 'Barlow Condensed';letter-spacing:.4px;color:#ffffff;text-transform:uppercase;margin:4px 0 2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-shadow:0 2px 8px rgba(0,0,0,0.7)}
+.draft-pick-types{display:flex;gap:4px;margin-bottom:4px;flex-wrap:wrap}
+.draft-pick-coach{display:flex;align-items:center;gap:7px;margin-top:2px;padding-top:4px;border-top:1px solid rgba(255,255,255,0.06)}
+.draft-pick-coach-avatar{width:22px;height:22px;border-radius:50%;background-size:cover;background-position:center;display:grid;place-items:center;font:800 10px 'Barlow Condensed';color:#fff;border:1.5px solid #ffd166;flex:none}
+.draft-pick-coach-name{font-size:11.5px;font-weight:800;color:#dedce6;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.draft-pick-team-sub{font-size:10.5px;color:#8e8c9a;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.draft-pick-latest-badge{position:absolute;top:0;right:0;background:linear-gradient(135deg,#ef3038,#b9151c);color:#ffffff;font:900 9px 'Barlow Condensed';letter-spacing:.8px;padding:3px 9px;border-bottom-left-radius:6px;text-transform:uppercase;box-shadow:0 2px 8px rgba(239,48,56,0.4)}
 
 /* Modern Expandable Past Tournaments Accordion */
 .past-tourney-card{border:1px solid #2f2f3c;border-left:3px solid #4a4a58;border-radius:8px;margin-top:8px;background:#15151e;overflow:hidden;transition:border-color .15s ease, background .15s ease}
@@ -759,48 +775,61 @@ details[open] > .past-tourney-summary .past-chevron{transform:rotate(180deg);col
 .team-card-sprites-grid{
   display:grid;
   grid-template-columns:repeat(5,1fr);
-  gap:8px 6px;
+  gap:10px 8px;
   justify-items:center;
   align-items:center;
-  padding:10px 8px;
-  background:rgba(12,12,18,0.55);
-  border-radius:8px;
-  border:1px solid rgba(255,255,255,0.04);
-  min-height:125px;
+  padding:12px 10px;
+  background:linear-gradient(180deg,rgba(8,8,14,0.75) 0%,rgba(14,14,22,0.92) 100%);
+  border-radius:10px;
+  border:1px solid rgba(255,255,255,0.06);
+  min-height:168px;
 }
 .team-card-sprite-slot{
   display:flex;
   align-items:center;
   justify-content:center;
   width:100%;
-  height:52px;
+  height:74px;
   position:relative;
+  border-radius:8px;
+  transition:all .16s ease;
+}
+.team-card-sprite-slot.filled{
+  background:radial-gradient(circle at 50% 50%,rgba(255,255,255,0.06) 0%,rgba(0,0,0,0.3) 100%);
+  border:1px solid rgba(255,255,255,0.08);
+}
+.team-card-sprite-slot:hover{
+  background:rgba(255,255,255,0.08);
+  border-color:rgba(255,209,102,0.3);
 }
 .team-card-sprite-img{
-  width:48px;
-  height:48px;
+  width:68px;
+  height:68px;
   object-fit:contain;
-  filter:drop-shadow(0 3px 6px rgba(0,0,0,0.6));
-  transition:transform .15s ease,filter .15s ease;
-}
-.team-showcase-card:hover .team-card-sprite-img{
-  transform:scale(1.06);
+  filter:drop-shadow(0 5px 10px rgba(0,0,0,0.8));
+  transition:transform .16s ease,filter .16s ease;
 }
 .team-card-sprite-slot:hover .team-card-sprite-img{
-  transform:scale(1.22)!important;
-  filter:drop-shadow(0 5px 10px rgba(0,0,0,0.9));
+  transform:scale(1.18)!important;
+  filter:drop-shadow(0 8px 16px rgba(0,0,0,0.95)) drop-shadow(0 0 8px rgba(255,209,102,0.4));
   z-index:5;
 }
 .team-card-sprite-empty{
-  width:32px;
-  height:32px;
+  width:50px;
+  height:50px;
   border-radius:50%;
-  border:1px dashed rgba(255,255,255,0.12);
+  border:1.5px dashed rgba(255,255,255,0.18);
   background:rgba(255,255,255,0.02);
   display:grid;
   place-items:center;
-  color:rgba(255,255,255,0.16);
-  font-size:11px;
+  color:rgba(255,255,255,0.22);
+  font:800 11px 'Barlow Condensed';
+  letter-spacing:.5px;
+  transition:all .15s ease;
+}
+.team-card-sprite-slot:hover .team-card-sprite-empty{
+  border-color:rgba(255,209,102,0.4);
+  color:#ffd166;
 }
 
 .team-card-foot{
@@ -7823,23 +7852,28 @@ function homeDraftPicksSection(t){
             let ovrObj = calculatePlayerOVR(p.player);
 
             return `
-              <div class="card" style="padding:14px 16px;background:linear-gradient(135deg,#181822 0%,#111116 100%);border-color:${idx === 0 ? '#ef3038' : '#2b2b38'};box-shadow:${idx === 0 ? '0 4px 20px rgba(239,48,56,0.25)' : 'none'};display:flex;align-items:center;gap:14px;position:relative;overflow:hidden;border-radius:8px">
-                ${idx === 0 ? `<div style="position:absolute;top:0;right:0;background:var(--red);color:#fff;font-size:8px;font-weight:900;letter-spacing:1px;padding:2px 8px;border-bottom-left-radius:6px;text-transform:uppercase">LATEST PICK</div>` : ''}
+              <div class="draft-pick-card ${idx === 0 ? 'latest' : ''}">
+                ${idx === 0 ? `<div class="draft-pick-latest-badge">⚡ Latest Pick</div>` : ''}
                 
-                <div style="position:relative;flex:none;background:#0d0d12;border:1px solid #282836;border-radius:10px;padding:4px;width:58px;height:58px;display:grid;place-items:center">
-                  <img src="${esc(spriteUrl)}" style="width:48px;height:48px;object-fit:contain;filter:drop-shadow(0 4px 8px rgba(0,0,0,0.6))" onerror="handleSpriteError(this)">
+                <div class="draft-pick-sprite-stage">
+                  <img src="${esc(spriteUrl)}" class="draft-pick-sprite-img" alt="${esc(p.pokemon)}" loading="lazy" onerror="handleSpriteError(this)">
                 </div>
 
-                <div style="min-width:0;flex:1">
-                  <div style="display:flex;align-items:center;gap:6px;margin-bottom:3px">
-                    <span class="tag" style="background:#2d2210;color:#ffd166;font-size:9px;font-weight:800;border:1px solid #5a4218;padding:1px 6px">Round ${p.round} · Pick #${p.pickNumber}</span>
-                    <span style="font-size:10px;font-weight:800;color:#ffd166">${p.cost} pts</span>
+                <div class="draft-pick-info">
+                  <div class="draft-pick-meta-row">
+                    <span class="draft-pick-round-tag">Round ${p.round} · Pick #${p.pickNumber}</span>
+                    <span class="draft-pick-cost-tag">${p.cost} pts</span>
                   </div>
-                  <div style="font:800 16px 'Barlow Condensed';letter-spacing:.3px;color:#f5f3f0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(p.pokemon)}</div>
-                  <div style="display:flex;align-items:center;gap:6px;margin-top:4px">
-                    <span class="avatar mini" style="background-image:${pArt};background-size:cover;background-position:center;width:20px;height:20px;border-radius:50%;display:grid;place-items:center;border:1px solid ${ovrObj.color};font-size:9px">${pLetter}</span>
-                    <span style="font-size:11px;font-weight:800;color:#c8c7d2;cursor:pointer" onclick="openProfile('${jsArg(p.player)}')">${playerLink(p.player)}</span>
-                    <span style="font-size:10px;color:#8e8c95;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">(${esc(teamName(t, p.player))})</span>
+                  <div class="draft-pick-name" title="${esc(p.pokemon)}">${esc(p.pokemon)}</div>
+                  <div class="draft-pick-types">
+                    ${renderPokemonTypeBadges(p.pokemon)}
+                  </div>
+                  <div class="draft-pick-coach">
+                    <span class="draft-pick-coach-avatar" style="background-image:${pArt};border-color:${ovrObj.color}">${pLetter}</span>
+                    <div style="min-width:0">
+                      <span class="draft-pick-coach-name" onclick="openProfile('${jsArg(p.player)}')">${playerLink(p.player)}</span>
+                      <span class="draft-pick-team-sub">(${esc(teamName(t, p.player))})</span>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -17132,14 +17166,14 @@ function Teams(){
             let sprite = pokeSprite(monName);
             let types = getPokemonTypes(monName).join(' · ');
             slotsHtml.push(`
-              <div class="team-card-sprite-slot" title="${esc(monName)} · ${esc(types)}">
+              <div class="team-card-sprite-slot filled" title="${esc(monName)} · ${esc(types)}">
                 <img src="${esc(sprite)}" class="team-card-sprite-img" alt="${esc(monName)}" loading="lazy" onerror="handleSpriteError(this)">
               </div>
             `);
           } else {
             slotsHtml.push(`
               <div class="team-card-sprite-slot" title="Empty Slot ${i+1}">
-                <div class="team-card-sprite-empty">·</div>
+                <div class="team-card-sprite-empty">#${i+1}</div>
               </div>
             `);
           }
