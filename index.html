@@ -2860,8 +2860,8 @@ function createTournament(){
   syncTournamentSeasons();
   viewTournament=id;
   current= enableDraft ? 'Draft' : 'Tournament Detail';
-  rebuildAllPlayerStats();
   persistLeague();
+  rebuildAllPlayerStats();
   closeModal();
   render();
 }
@@ -10685,21 +10685,30 @@ function getStand(t=activeT(),group=null){
   });
 
   let list=Object.values(s);
-
-  // Precalculate SOS and OVR for each trainer in this group
-  list.forEach(item => {
-    let oppWins = 0;
-    matches.forEach(m => {
-      if(m.a === item.p && s[m.b]) oppWins += s[m.b].w;
-      else if(m.b === item.p && s[m.a]) oppWins += s[m.a].w;
-    });
-    item.sos = oppWins;
-    let ovrObj = calculatePlayerOVR(item.p);
-    item.ovrVal = ovrObj.rawScore || ovrObj.ovr || 70;
-    item.ovrObj = ovrObj;
-  });
-
   let criteria = getStandingsCriteria(t);
+  let needsSos = criteria.includes('sos');
+  let needsOvr = criteria.includes('ovr');
+
+  if(needsSos || needsOvr){
+    list.forEach(item => {
+      if(needsSos){
+        let oppWins = 0;
+        matches.forEach(m => {
+          if(m.a === item.p && s[m.b]) oppWins += s[m.b].w;
+          else if(m.b === item.p && s[m.a]) oppWins += s[m.a].w;
+        });
+        item.sos = oppWins;
+      }
+      if(needsOvr){
+        let ovrObj = (typeof _cachedPlayerOVR !== 'undefined' && _cachedPlayerOVR[item.p]) ? _cachedPlayerOVR[item.p] : null;
+        if(!ovrObj && typeof calculatePlayerOVR === 'function' && !window._ovrRecursionGuard && !(typeof isCalculatingRecords !== 'undefined' && isCalculatingRecords)){
+          try { ovrObj = calculatePlayerOVR(item.p); } catch(e){}
+        }
+        item.ovrVal = ovrObj?.rawScore || ovrObj?.ovr || 70;
+        item.ovrObj = ovrObj;
+      }
+    });
+  }
 
   list.sort((a,b)=>{
     for(let critId of criteria){
@@ -12365,6 +12374,7 @@ function getPlayerOfficialMilestoneStats(p, recs = null){
   };
 }
 
+var _ovrRecursionGuard = false;
 var _calculatingRecords = false;
 function calculatePlayerOVR(p, leagueData=null){
   if(!p) return { ovr:70, tier:'silver', tierName:'Silver', tierUpper:'SILVER', color:'#d0d0dc', badgeCls:'ovr-silver', badgeHtml:'<span class="ovr-badge-pill ovr-silver">70</span>', subStats:{win:50,tit:0,cut:0,strk:0} };
@@ -12373,189 +12383,200 @@ function calculatePlayerOVR(p, leagueData=null){
     return _cachedPlayerOVR[p];
   }
 
-  let career=playerCareerStats(p);
-  let recs = (leagueData && leagueData.statsByPlayer) ? leagueData : null;
-  if(!recs && !_calculatingRecords && typeof calculateLeagueRecords === 'function'){
-    try {
-      _calculatingRecords = true;
-      recs = calculateLeagueRecords();
-    } catch(e){}
-    finally {
-      _calculatingRecords = false;
-    }
+  if(_ovrRecursionGuard){
+    return _cachedPlayerOVR[p] || { ovr:70, tier:'silver', tierName:'Silver', tierUpper:'SILVER', color:'#d0d0dc', badgeCls:'ovr-silver', badgeHtml:'<span class="ovr-badge-pill ovr-silver">70</span>', subStats:{win:50,tit:0,cut:0,strk:0} };
   }
-  let s=recs?.statsByPlayer?.[p]||{wins:career.wins,losses:career.losses,maxWinStreak:0,currentWinStreak:0,currentLossStreak:0,bestGD:0,tournamentFinishes:[]};
 
-  // Milestone checkpoint stats for OVR (frozen during active stages, updated at Milestone 1 and Milestone 2)
-  let ms = getPlayerOfficialMilestoneStats(p, recs);
-  let wins = ms.wins;
-  let losses = ms.losses;
-  let total = ms.total;
-  let overallWinPct = ms.winPct;
+  _ovrRecursionGuard = true;
+  try {
+    let career=playerCareerStats(p);
+    let recs = (leagueData && leagueData.statsByPlayer) ? leagueData : null;
+    if(!recs && !_calculatingRecords && typeof calculateLeagueRecords === 'function'){
+      try {
+        _calculatingRecords = true;
+        recs = calculateLeagueRecords();
+      } catch(e){}
+      finally {
+        _calculatingRecords = false;
+      }
+    }
+    let s=recs?.statsByPlayer?.[p]||{wins:career.wins,losses:career.losses,maxWinStreak:0,currentWinStreak:0,currentLossStreak:0,bestGD:0,tournamentFinishes:[]};
 
-  if(total===0){
-    let res = {
-      ovr:70,
-      tier:'silver',
-      tierName:'Silver',
-      tierUpper:'SILVER',
-      color:'#d0d0dc',
-      badgeCls:'ovr-silver',
-      badgeHtml:'<span class="ovr-badge-pill ovr-silver">70</span>',
-      subStats:{win:50,tit:0,cut:0,strk:0}
+    // Milestone checkpoint stats for OVR (frozen during active stages, updated at Milestone 1 and Milestone 2)
+    let ms = getPlayerOfficialMilestoneStats(p, recs);
+    let wins = ms.wins;
+    let losses = ms.losses;
+    let total = ms.total;
+    let overallWinPct = ms.winPct;
+
+    let hasValidLeagueStats = Boolean(recs && recs.statsByPlayer && Object.keys(recs.statsByPlayer).length > 0);
+
+    if(total===0){
+      let res = {
+        ovr:70,
+        tier:'silver',
+        tierName:'Silver',
+        tierUpper:'SILVER',
+        color:'#d0d0dc',
+        badgeCls:'ovr-silver',
+        badgeHtml:'<span class="ovr-badge-pill ovr-silver">70</span>',
+        subStats:{win:50,tit:0,cut:0,strk:0}
+      };
+      if(!leagueData && hasValidLeagueStats) _cachedPlayerOVR[p] = res;
+      return res;
+    }
+
+    // Baseline: 73 (Forgiving in lower overalls; average players sit safely in Silver ~72-76)
+    let base=73;
+
+    // 1. Inactivity & Missed Tournaments Detection
+    let sortedT = typeof sortedTournamentsChronological === 'function' ? sortedTournamentsChronological() : Object.values(tournamentData);
+    let completedTList = sortedT.filter(t => isTournamentGroupStageOfficial(t) || isTournamentTopCutOfficial(t));
+    let latestCompletedT = completedTList[completedTList.length - 1] || null;
+    let isReigningChamp = (latestCompletedT && latestCompletedT.champion === p && latestCompletedT.status === 'COMPLETE');
+
+    // Filter player's tournament finishes that have reached official group stage or complete milestones
+    let allTfs = s.tournamentFinishes || [];
+    let tf = allTfs.filter(item => {
+      let t = item.tournament;
+      if(!t) return false;
+      return isTournamentGroupStageOfficial(t) || isTournamentTopCutOfficial(t);
+    });
+
+    // Calculate missed tournaments since last participation
+    let lastPlayedTournament = tf.length > 0 ? tf[tf.length - 1].tournament : null;
+    let missedRecentCount = 0;
+    if(completedTList.length > 0 && lastPlayedTournament){
+      let lastPlayedIdx = completedTList.findIndex(t => t.id === lastPlayedTournament.id || t.name === lastPlayedTournament.name);
+      if(lastPlayedIdx >= 0){
+        missedRecentCount = (completedTList.length - 1) - lastPlayedIdx;
+      }
+    } else if(completedTList.length > 0 && tf.length === 0){
+      missedRecentCount = completedTList.length;
+    }
+
+    // 2. Career Win Rate Anchor & Dynamic Recent Form Delta
+    let lastTFinish = tf[tf.length - 1] || null;
+    let isLastTOfficialTopCut = lastTFinish ? isTournamentTopCutOfficial(lastTFinish.tournament) : false;
+
+    // If the last tournament is in Top Cut (group stage official, but tournament not complete yet):
+    // evaluate recent stats strictly using its Group Stage milestone so eliminations don't cause mid-playoff rating shifts
+    let recentWins = lastTFinish
+      ? (isLastTOfficialTopCut ? (lastTFinish.w || 0) : (lastTFinish.mw || 0))
+      : 0;
+    let recentLosses = lastTFinish
+      ? (isLastTOfficialTopCut ? (lastTFinish.l || 0) : (lastTFinish.ml || 0))
+      : 0;
+    let recentTotal = recentWins + recentLosses;
+    let recentWinPct = recentTotal > 0 ? (recentWins / recentTotal) * 100 : overallWinPct;
+
+    let winRateDiff = (overallWinPct >= 50)
+      ? (overallWinPct - 50) * 0.28
+      : (overallWinPct - 50) * 0.22;
+
+    let recentFormDelta = (recentTotal >= 2 && missedRecentCount === 0)
+      ? ((recentWinPct - overallWinPct) / 100) * Math.min(2.2, recentTotal * 0.45)
+      : 0;
+
+    // 3. Permanent Career Hardware & Playoff Pedigree (Trophy Cabinet Foundation)
+    let careerTitleBonus = Math.min(6.0, (career.titles || 0) * 3.0);
+    let careerTopCutBonus = Math.min(4.5, (career.topCuts || 0) * 1.5);
+    let consistencyBonus = (career.topCuts >= 3) ? 1.5 : (career.topCuts === 2 ? 0.8 : 0);
+    let careerVolumeBonus = Math.min(2.0, total * 0.1);
+
+    // 4. Controlled Recent Placement Bonus (Top Cut placements unlock ONLY at tournament completion)
+    let lastPlace = 999;
+    if(missedRecentCount === 0 && lastTFinish){
+      if(isLastTOfficialTopCut){
+        lastPlace = lastTFinish.finish?.place || (isReigningChamp ? 1 : 999);
+      } else {
+        lastPlace = lastTFinish.gSeed ? (100 + lastTFinish.gSeed) : 100;
+      }
+    }
+
+    let recentPlacementBonus = 0;
+    if(missedRecentCount === 0){
+      if(isLastTOfficialTopCut){
+        if(lastPlace === 1 || isReigningChamp) recentPlacementBonus = 2.5; // Reigning Champion
+        else if(lastPlace === 2) recentPlacementBonus = 1.5; // Runner-up / Grand Finalist
+        else if(lastPlace <= 4) recentPlacementBonus = 1.0;  // Top 4 / Semifinalist
+        else if(lastPlace <= 100) recentPlacementBonus = 0.5; // Top of Group / Qualifier
+      } else {
+        // During active Top Cut before completion, qualifiers maintain stable group milestone bonus
+        recentPlacementBonus = 0.5;
+      }
+    }
+
+    // 5. Inactivity Penalty per Missed Tournament
+    let inactivityPenalty = 0;
+    if(missedRecentCount > 0){
+      inactivityPenalty = Math.min(4.0, missedRecentCount * 1.2);
+    }
+
+    // 6. Controlled Streak Momentum
+    let isTopFourFinish = (missedRecentCount === 0 && lastPlace <= 4);
+    let activeStreakBonus = (missedRecentCount === 0) ? Math.min(1.2, (ms.currentWinStreak || 0) * 0.30) : 0;
+    let activeLossPenalty = (missedRecentCount === 0 && !isTopFourFinish) ? Math.min(0.8, (ms.currentLossStreak || 0) * 0.20) : 0;
+    let maxStreakBonus = Math.min(1.0, (ms.maxWinStreak || 0) * 0.10);
+
+    let rawOvr = base + winRateDiff + recentFormDelta + careerTitleBonus + careerTopCutBonus + consistencyBonus + careerVolumeBonus + recentPlacementBonus + activeStreakBonus - activeLossPenalty + maxStreakBonus - inactivityPenalty;
+
+    // 7. Anti-Inflation Scarcity Compression Curve (controlled top ceiling)
+    if(rawOvr > 85){
+      rawOvr = 85 + (rawOvr - 85) * 0.65;
+    }
+    if(rawOvr > 90){
+      rawOvr = 90 + (rawOvr - 90) * 0.50;
+    }
+
+    // Regression / confidence weighting for low sample size (< 4 games)
+    let sampleWeight = Math.min(1.0, total / 4);
+    let finalOvr = Math.round(70 * (1 - sampleWeight) + rawOvr * sampleWeight);
+
+    // Hard clamp between 50 and 99
+    finalOvr = Math.max(50, Math.min(99, finalOvr));
+
+    let tier = 'bronze', tierName = 'Bronze', tierUpper = 'BRONZE', color = '#cd7f32', badgeCls = 'ovr-bronze', badgePrefix = '';
+    if(finalOvr >= 90){
+      tier = 'elite';
+      tierName = 'Elite';
+      tierUpper = 'ELITE';
+      color = '#ff4d58';
+      badgeCls = 'ovr-elite';
+    } else if(finalOvr >= 80){
+      tier = 'gold';
+      tierName = 'Gold';
+      tierUpper = 'GOLD';
+      color = '#ffd166';
+      badgeCls = 'ovr-gold';
+    } else if(finalOvr >= 70){
+      tier = 'silver';
+      tierName = 'Silver';
+      tierUpper = 'SILVER';
+      color = '#d0d0dc';
+      badgeCls = 'ovr-silver';
+    }
+
+    let result = {
+      ovr: finalOvr,
+      tier,
+      tierName,
+      tierUpper,
+      color,
+      badgeCls,
+      badgeHtml: `<span class="ovr-badge-pill ${badgeCls}">${badgePrefix}${finalOvr}</span>`,
+      subStats: {
+        win: Math.round(overallWinPct),
+        tit: career.titles,
+        cut: career.topCuts,
+        strk: s.maxWinStreak || ms.maxWinStreak || 0
+      }
     };
-    if(!leagueData) _cachedPlayerOVR[p] = res;
-    return res;
+    if(!leagueData && hasValidLeagueStats) _cachedPlayerOVR[p] = result;
+    return result;
+  } finally {
+    _ovrRecursionGuard = false;
   }
-
-  // Baseline: 73 (Forgiving in lower overalls; average players sit safely in Silver ~72-76)
-  let base=73;
-
-  // 1. Inactivity & Missed Tournaments Detection
-  let sortedT = typeof sortedTournamentsChronological === 'function' ? sortedTournamentsChronological() : Object.values(tournamentData);
-  let completedTList = sortedT.filter(t => isTournamentGroupStageOfficial(t) || isTournamentTopCutOfficial(t));
-  let latestCompletedT = completedTList[completedTList.length - 1] || null;
-  let isReigningChamp = (latestCompletedT && latestCompletedT.champion === p && latestCompletedT.status === 'COMPLETE');
-
-  // Filter player's tournament finishes that have reached official group stage or complete milestones
-  let allTfs = s.tournamentFinishes || [];
-  let tf = allTfs.filter(item => {
-    let t = item.tournament;
-    if(!t) return false;
-    return isTournamentGroupStageOfficial(t) || isTournamentTopCutOfficial(t);
-  });
-
-  // Calculate missed tournaments since last participation
-  let lastPlayedTournament = tf.length > 0 ? tf[tf.length - 1].tournament : null;
-  let missedRecentCount = 0;
-  if(completedTList.length > 0 && lastPlayedTournament){
-    let lastPlayedIdx = completedTList.findIndex(t => t.id === lastPlayedTournament.id || t.name === lastPlayedTournament.name);
-    if(lastPlayedIdx >= 0){
-      missedRecentCount = (completedTList.length - 1) - lastPlayedIdx;
-    }
-  } else if(completedTList.length > 0 && tf.length === 0){
-    missedRecentCount = completedTList.length;
-  }
-
-  // 2. Career Win Rate Anchor & Dynamic Recent Form Delta
-  let lastTFinish = tf[tf.length - 1] || null;
-  let isLastTOfficialTopCut = lastTFinish ? isTournamentTopCutOfficial(lastTFinish.tournament) : false;
-
-  // If the last tournament is in Top Cut (group stage official, but tournament not complete yet):
-  // evaluate recent stats strictly using its Group Stage milestone so eliminations don't cause mid-playoff rating shifts
-  let recentWins = lastTFinish
-    ? (isLastTOfficialTopCut ? (lastTFinish.w || 0) : (lastTFinish.mw || 0))
-    : 0;
-  let recentLosses = lastTFinish
-    ? (isLastTOfficialTopCut ? (lastTFinish.l || 0) : (lastTFinish.ml || 0))
-    : 0;
-  let recentTotal = recentWins + recentLosses;
-  let recentWinPct = recentTotal > 0 ? (recentWins / recentTotal) * 100 : overallWinPct;
-
-  let winRateDiff = (overallWinPct >= 50)
-    ? (overallWinPct - 50) * 0.28
-    : (overallWinPct - 50) * 0.22;
-
-  let recentFormDelta = (recentTotal >= 2 && missedRecentCount === 0)
-    ? ((recentWinPct - overallWinPct) / 100) * Math.min(2.2, recentTotal * 0.45)
-    : 0;
-
-  // 3. Permanent Career Hardware & Playoff Pedigree (Trophy Cabinet Foundation)
-  let careerTitleBonus = Math.min(6.0, (career.titles || 0) * 3.0);
-  let careerTopCutBonus = Math.min(4.5, (career.topCuts || 0) * 1.5);
-  let consistencyBonus = (career.topCuts >= 3) ? 1.5 : (career.topCuts === 2 ? 0.8 : 0);
-  let careerVolumeBonus = Math.min(2.0, total * 0.1);
-
-  // 4. Controlled Recent Placement Bonus (Top Cut placements unlock ONLY at tournament completion)
-  let lastPlace = 999;
-  if(missedRecentCount === 0 && lastTFinish){
-    if(isLastTOfficialTopCut){
-      lastPlace = lastTFinish.finish?.place || (isReigningChamp ? 1 : 999);
-    } else {
-      lastPlace = lastTFinish.gSeed ? (100 + lastTFinish.gSeed) : 100;
-    }
-  }
-
-  let recentPlacementBonus = 0;
-  if(missedRecentCount === 0){
-    if(isLastTOfficialTopCut){
-      if(lastPlace === 1 || isReigningChamp) recentPlacementBonus = 2.5; // Reigning Champion
-      else if(lastPlace === 2) recentPlacementBonus = 1.5; // Runner-up / Grand Finalist
-      else if(lastPlace <= 4) recentPlacementBonus = 1.0;  // Top 4 / Semifinalist
-      else if(lastPlace <= 100) recentPlacementBonus = 0.5; // Top of Group / Qualifier
-    } else {
-      // During active Top Cut before completion, qualifiers maintain stable group milestone bonus
-      recentPlacementBonus = 0.5;
-    }
-  }
-
-  // 5. Inactivity Penalty per Missed Tournament
-  let inactivityPenalty = 0;
-  if(missedRecentCount > 0){
-    inactivityPenalty = Math.min(4.0, missedRecentCount * 1.2);
-  }
-
-  // 6. Controlled Streak Momentum
-  let isTopFourFinish = (missedRecentCount === 0 && lastPlace <= 4);
-  let activeStreakBonus = (missedRecentCount === 0) ? Math.min(1.2, (ms.currentWinStreak || 0) * 0.30) : 0;
-  let activeLossPenalty = (missedRecentCount === 0 && !isTopFourFinish) ? Math.min(0.8, (ms.currentLossStreak || 0) * 0.20) : 0;
-  let maxStreakBonus = Math.min(1.0, (ms.maxWinStreak || 0) * 0.10);
-
-  let rawOvr = base + winRateDiff + recentFormDelta + careerTitleBonus + careerTopCutBonus + consistencyBonus + careerVolumeBonus + recentPlacementBonus + activeStreakBonus - activeLossPenalty + maxStreakBonus - inactivityPenalty;
-
-  // 7. Anti-Inflation Scarcity Compression Curve (controlled top ceiling)
-  if(rawOvr > 85){
-    rawOvr = 85 + (rawOvr - 85) * 0.65;
-  }
-  if(rawOvr > 90){
-    rawOvr = 90 + (rawOvr - 90) * 0.50;
-  }
-
-  // Regression / confidence weighting for low sample size (< 4 games)
-  let sampleWeight = Math.min(1.0, total / 4);
-  let finalOvr = Math.round(70 * (1 - sampleWeight) + rawOvr * sampleWeight);
-
-  // Hard clamp between 50 and 99
-  finalOvr = Math.max(50, Math.min(99, finalOvr));
-
-  let tier = 'bronze', tierName = 'Bronze', tierUpper = 'BRONZE', color = '#cd7f32', badgeCls = 'ovr-bronze', badgePrefix = '';
-  if(finalOvr >= 90){
-    tier = 'elite';
-    tierName = 'Elite';
-    tierUpper = 'ELITE';
-    color = '#ff4d58';
-    badgeCls = 'ovr-elite';
-  } else if(finalOvr >= 80){
-    tier = 'gold';
-    tierName = 'Gold';
-    tierUpper = 'GOLD';
-    color = '#ffd166';
-    badgeCls = 'ovr-gold';
-  } else if(finalOvr >= 70){
-    tier = 'silver';
-    tierName = 'Silver';
-    tierUpper = 'SILVER';
-    color = '#d0d0dc';
-    badgeCls = 'ovr-silver';
-  }
-
-  let result = {
-    ovr: finalOvr,
-    tier,
-    tierName,
-    tierUpper,
-    color,
-    badgeCls,
-    badgeHtml: `<span class="ovr-badge-pill ${badgeCls}">${badgePrefix}${finalOvr}</span>`,
-    subStats: {
-      win: Math.round(overallWinPct),
-      tit: career.titles,
-      cut: career.topCuts,
-      strk: s.maxWinStreak || ms.maxWinStreak || 0
-    }
-  };
-  if(!leagueData) _cachedPlayerOVR[p] = result;
-  return result;
 }
 
 /* --- Badge Importance & Ranking Logic --- */
@@ -15529,6 +15550,7 @@ function calculateLeagueRecords(forceRefresh = false){
 
     // 2. Check current live OVR
     let currentObj = calculatePlayerOVR(p, {statsByPlayer});
+    _cachedPlayerOVR[p] = currentObj;
     if(currentObj.ovr > playerPeak || playerPeak === 0){
       playerPeak = currentObj.ovr;
       let lastT = tf[tf.length - 1]?.tournament;
