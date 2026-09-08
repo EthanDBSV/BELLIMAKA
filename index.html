@@ -7324,7 +7324,7 @@ function recapRankings(){
       };
     }
 
-    let recordsBonus = recordsHeldList.length * 30;
+    let recordsBonus = recordsHeldList.length * 45;
 
     // 2. Permanent Tournament Hardware & Placement Points (Zero Decay + Field-Size Scaled)
     let finishPoints = 0;
@@ -7341,10 +7341,10 @@ function recapRankings(){
 
         let basePts = 0;
         if(place === 1) basePts = 150;        // Champion
-        else if(place === 2) basePts = 90;    // 2nd Place / Runner-up (Finals)
-        else if(place === 3) basePts = 50;    // 3rd Place / Losers Finalist / Bronze
-        else if(place === 4) basePts = 35;    // 4th Place / Losers Semifinalist
-        else if(place <= 6) basePts = 25;     // 5th-6th Place (Top Cut)
+        else if(place === 2) basePts = 95;    // 2nd Place / Runner-up (Grand Finals)
+        else if(place === 3) basePts = 70;    // 3rd Place / Losers Finals (Podium Bronze)
+        else if(place === 4) basePts = 50;    // 4th Place / Semifinalist (Top 4)
+        else if(place <= 6) basePts = 25;     // 5th-6th Place (Top Cut Quarterfinalist)
         else if(place <= 8) basePts = 15;     // 7th-8th Place (Deep Top Cut)
         finishPoints += Math.round(basePts * fMult);
       });
@@ -7353,6 +7353,9 @@ function recapRankings(){
     let minHardware = cups.length * 150 + Math.max(0, tops - cups.length) * 45;
     finishPoints = Math.max(finishPoints, minHardware);
 
+    // Dedicated Playoff Qualification Milestone (+25 pts per career Top Cut achieved)
+    let topCutBonus = tops * 25;
+
     // 3. Career Match Performance: +12 per win, -4 per loss (softens losses while always rewarding match wins)
     let matchImpact = Math.max(0, (w * 12) - (l * 4));
 
@@ -7360,17 +7363,17 @@ function recapRankings(){
     let conf = totalMatches > 0 ? Math.min(1.0, totalMatches / 10) : 0;
     let winPctBonus = Math.round(conf * (career.winPct - 50) * 0.8);
 
-    // 5. Historic Streaks Legacy (+4 per game in peak win streak)
-    let streakBonus = (s.maxWinStreak || 0) * 4;
+    // 5. Historic Streaks Legacy (+2 per game in peak win streak)
+    let streakBonus = (s.maxWinStreak || 0) * 2;
 
-    // 6. Current Form (OVR) Boost (+2 per OVR point above 70 baseline)
-    let ovrImpact = Math.max(0, (ovrObj.ovr - 70) * 2);
+    // 6. Current Form (OVR) Boost (+1.5 per OVR point above 70 baseline)
+    let ovrImpact = Math.max(0, Math.round((ovrObj.ovr - 70) * 1.5));
 
     // Active Competitor Baseline: 100 pts on official competitive debut
     let baseScore = 100;
 
     // Composite All-Time ELO / Legacy Score (Grounded 0-1,000+ Scale)
-    let score = Math.max(0, Math.round(baseScore + finishPoints + matchImpact + winPctBonus + recordsBonus + streakBonus + ovrImpact));
+    let score = Math.max(0, Math.round(baseScore + finishPoints + topCutBonus + matchImpact + winPctBonus + recordsBonus + streakBonus + ovrImpact));
 
     return {
       p,
@@ -13478,23 +13481,17 @@ function openProfile(p){
   let sortedBadges=sortBadgesByImportance(pBadges);
   let topBadges=sortedBadges.slice(0, 5);
   let ovrCard=calculatePlayerOVR(p, leagueRecs);
-  let pRankObj = (typeof recapRankings === 'function') ? recapRankings().find(x => x.p === p) : null;
-  let pTier = pRankObj?.tier || getLegacyTier(pRankObj?.score || 0, pRankObj?.isRookie);
 
   document.querySelector('#modal').innerHTML=`<div class="modal-wrap"><div class="modal" style="max-width:880px">
     <div class="modal-head"><div><div class="eyebrow">Trainer Profile</div><h2>${esc(p)}</h2></div><button class="close" onclick="closeModal()">×</button></div>
     <div class="pf-grid" style="margin-top:18px">
       <aside class="card profile-card ovr-card-${ovrCard.tier}" style="padding:18px">
         
-        <!-- Rating & Legacy Tier Header -->
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;width:100%">
+        <!-- OVR Header -->
+        <div style="display:flex;align-items:center;margin-bottom:6px;width:100%">
           <div style="display:flex;flex-direction:column;align-items:center;text-align:center;width:52px">
             <div style="font:900 46px/0.85 'Barlow Condensed';color:${ovrCard.color};font-variant-numeric:tabular-nums;letter-spacing:0;text-align:center;width:100%">${ovrCard.ovr}</div>
             <div style="font:800 11px/1 'DM Sans';letter-spacing:1.5px;text-transform:uppercase;color:${ovrCard.color};opacity:0.95;margin-top:3px;text-align:center;width:100%">OVR</div>
-          </div>
-          <div style="display:flex;flex-direction:column;align-items:flex-end;text-align:right">
-            <div style="font:800 24px/1 'Barlow Condensed';color:${pTier.color};letter-spacing:.3px">${pRankObj?.score ?? 0}</div>
-            <span style="font-size:9px;font-weight:800;letter-spacing:1px;text-transform:uppercase;color:${pTier.color};margin-top:3px">${pTier.name}</span>
           </div>
         </div>
 
@@ -17382,8 +17379,8 @@ function openLegacyEloGuide(){
                 <ul style="margin:0 0 0 16px;padding:0;font-size:11px;color:#d0d0dc;line-height:1.6;display:flex;flex-direction:column;gap:4px">
                   <li><b>Active Debut Baseline:</b> +100 pts on official competitive debut (0 pts for unplayed rookies).</li>
                   <li><b>Championship Titles:</b> +150 base pts, scaled up to +240 pts by tournament field size.</li>
-                  <li><b>Top Cut Hardware:</b> 90 (2nd/Finals) · 50 (3rd/Bronze) · 35 (4th) · 25 (5th–6th) · 15 (7th–8th).</li>
-                  <li><b>Guaranteed Hardware Floor:</b> Guarantees at least +150 pts per Title and +45 pts per Top Cut appearance.</li>
+                  <li><b>Placement Hardware:</b> 95 (2nd/Finals) · 70 (3rd/Bronze) · 50 (4th/Semis) · 25 (5th–6th) · 15 (7th–8th).</li>
+                  <li><b>Top Cut Qualification:</b> +25 pts per career playoff cut appearance (rewarding consistent qualifiers).</li>
                   <li><b>Match Net (+12W / -4L):</b> +12 pts per win, -4 pts per loss (floor at 0 so match impact is never negative).</li>
                 </ul>
               </div>
@@ -17391,10 +17388,10 @@ function openLegacyEloGuide(){
               <div style="background:#191922;border:1px solid #2d2d3c;border-radius:8px;padding:12px">
                 <div style="font:800 13px 'Barlow Condensed';color:#7df0aa;letter-spacing:.5px;margin-bottom:8px">🎖️ QUALITY, ACCOLADES & FORM</div>
                 <ul style="margin:0 0 0 16px;padding:0;font-size:11px;color:#d0d0dc;line-height:1.6;display:flex;flex-direction:column;gap:4px">
+                  <li><b>All-Time Records:</b> +45 pts for each official all-time league record held (e.g. Titles, Cuts, Deciders).</li>
                   <li><b>Win% Quality Factor:</b> <code>Confidence × (Win% - 50) × 0.8</code> (up to ±30 pts). Moderates negative records without wiping out playoff achievements.</li>
-                  <li><b>All-Time Records:</b> +30 pts for each official league record held.</li>
-                  <li><b>Peak Win Streak:</b> +4 pts per win in your longest career win streak.</li>
-                  <li><b>Current Form Boost:</b> +2 pts per OVR point above 70 baseline.</li>
+                  <li><b>Peak Win Streak:</b> +2 pts per win in your longest career win streak.</li>
+                  <li><b>Current Form Boost:</b> +1.5 pts per OVR point above 70 baseline.</li>
                   <li><b>Tiebreaker Sequence:</b> Legacy Score → Top Cuts → Current OVR → Alphabetical.</li>
                 </ul>
               </div>
@@ -17405,11 +17402,11 @@ function openLegacyEloGuide(){
           <!-- Case Study Box: Why the System is Balanced -->
           <div class="card" style="padding:14px;background:#141419;border-color:#202c38">
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-              <span class="eyebrow" style="margin:0;color:#60a5fa">Fairness in Practice · The Rookie vs. Veteran Balance</span>
+              <span class="eyebrow" style="margin:0;color:#60a5fa">Fairness in Practice · Consistency & Placement Depth</span>
               <span class="tag" style="background:#142230;color:#60a5fa;font-size:9px;font-weight:800;border-color:#244466">INTEGRITY RULE</span>
             </div>
             <p style="font-size:11px;color:#bed2eb;line-height:1.5;margin:0">
-              <b>Why Top Cuts always outvalue inactivity:</b> A newcomer with 0 games sits at <b>0 pts (Rookie)</b>. Meanwhile, a coach with a negative record (e.g. 6–11) but a <b>Top Cut</b> finish earns the 100 pt debut base, +28 net match points, and +45 playoff hardware, landing at <b>~178 pts (#6 Veteran)</b> despite their win rate calibration (-9 pts). Playing matches and reaching playoffs will always triumph over sitting on the sidelines!
+              <b>Why deep tournament runs & records define legacy:</b> Reaching the final weekend matters. A coach who consistently reaches Top 4 brackets (1st, 3rd, 4th) with multiple league records is properly honored over one-time runs. Furthermore, newcomers with 0 games sit at <b>0 pts (Rookie)</b>, guaranteeing that active competitors who battle through playoff brackets are always deservedly ranked ahead of inactivity.
             </p>
           </div>
 
