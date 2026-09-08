@@ -9546,8 +9546,8 @@ function isMathematicallyClinched(t,p){let g=Object.entries(groupsOf(t)).find(([
 function getPlayerTournamentPower(p, tourn, cachedLeagueRecs){
   let leagueRecs = cachedLeagueRecs || calculateLeagueRecords();
   let ovrObj = calculatePlayerOVR(p, leagueRecs);
-  let ovr = ovrObj.ovr || 70;
-  let s = leagueRecs.statsByPlayer[p] || {};
+  let ovr = ovrObj?.ovr || 70;
+  let s = leagueRecs?.statsByPlayer?.[p] || {};
   let elo = s.wins !== undefined ? (1000 + (s.wins - s.losses) * 16 + ((profiles[p]?.cups||[]).length * 40)) : 1000;
 
   // Tournament group form
@@ -12361,8 +12361,7 @@ function getPlayerOfficialMilestoneStats(p, recs = null){
   };
 }
 
-var _ovrRecursionGuard = false;
-var _calculatingRecords = false;
+var _ovrInProgress = new Set();
 function calculatePlayerOVR(p, leagueData=null){
   if(!p) return { ovr:70, tier:'silver', tierName:'Silver', tierUpper:'SILVER', color:'#d0d0dc', badgeCls:'ovr-silver', badgeHtml:'<span class="ovr-badge-pill ovr-silver">70</span>', subStats:{win:50,tit:0,cut:0,strk:0} };
 
@@ -12370,22 +12369,19 @@ function calculatePlayerOVR(p, leagueData=null){
     return _cachedPlayerOVR[p];
   }
 
-  if(_ovrRecursionGuard){
+  // Prevent circular re-entrant computation without leagueData for the SAME player
+  if(!leagueData && _ovrInProgress.has(p)){
     return _cachedPlayerOVR[p] || { ovr:70, tier:'silver', tierName:'Silver', tierUpper:'SILVER', color:'#d0d0dc', badgeCls:'ovr-silver', badgeHtml:'<span class="ovr-badge-pill ovr-silver">70</span>', subStats:{win:50,tit:0,cut:0,strk:0} };
   }
 
-  _ovrRecursionGuard = true;
+  if(!leagueData) _ovrInProgress.add(p);
   try {
     let career=playerCareerStats(p);
     let recs = (leagueData && leagueData.statsByPlayer) ? leagueData : null;
-    if(!recs && !_calculatingRecords && typeof calculateLeagueRecords === 'function'){
+    if(!recs && typeof calculateLeagueRecords === 'function'){
       try {
-        _calculatingRecords = true;
         recs = calculateLeagueRecords();
       } catch(e){}
-      finally {
-        _calculatingRecords = false;
-      }
     }
     let s=recs?.statsByPlayer?.[p]||{wins:career.wins,losses:career.losses,maxWinStreak:0,currentWinStreak:0,currentLossStreak:0,bestGD:0,tournamentFinishes:[]};
 
@@ -12562,7 +12558,7 @@ function calculatePlayerOVR(p, leagueData=null){
     if(!leagueData && hasValidLeagueStats) _cachedPlayerOVR[p] = result;
     return result;
   } finally {
-    _ovrRecursionGuard = false;
+    if(!leagueData) _ovrInProgress.delete(p);
   }
 }
 
