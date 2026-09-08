@@ -7760,66 +7760,40 @@ function draftStageHeroCard(t){
 
   return `
     <aside class="card matchup-hero-card" style="${cardBgStyle}">
-      <!-- Floating Glass Top Header -->
-      <div style="display:flex;justify-content:space-between;align-items:center;padding:12px 14px;position:relative;z-index:2">
-        <div style="display:flex;align-items:center;gap:6px;background:rgba(8,8,14,0.65);border:1px solid rgba(255,255,255,0.15);padding:4px 10px;border-radius:20px;backdrop-filter:blur(8px);box-shadow:0 4px 12px rgba(0,0,0,0.4)">
-          <span style="font-size:11px">🎯</span>
-          <span style="font:800 11px 'Barlow Condensed';color:#ffd166;letter-spacing:1px;margin:0">LIVE DRAFT ROOM</span>
-        </div>
-        <div style="display:flex;align-items:center;gap:6px">
-          <span class="tag" style="background:${d.status === 'active' ? 'rgba(74,222,128,0.18)' : 'rgba(239,48,56,0.2)'};border:1px solid ${d.status === 'active' ? 'rgba(74,222,128,0.4)' : 'rgba(239,48,56,0.4)'};color:${d.status === 'active' ? '#7df0aa' : '#ff9fa6'};backdrop-filter:blur(8px)">
-            ${d.status === 'active' ? 'IN PROGRESS' : (d.status === 'paused' ? 'PAUSED' : 'PENDING')}
-          </span>
-          ${moderator ? `<button class="cover-edit" style="position:static;padding:3px 9px;font-size:10px" onclick="event.stopPropagation();openDraftStageCoverEditor()">Edit cover</button>` : ''}
-        </div>
+      <!-- Top Actions (Edit cover) -->
+      <div style="display:flex;justify-content:flex-end;align-items:center;padding:12px 14px;position:relative;z-index:2">
+        ${moderator ? `<button class="cover-edit" style="position:static;padding:4px 10px;font-size:11px;background:rgba(8,8,14,0.7);border:1px solid rgba(255,255,255,0.22);border-radius:6px;backdrop-filter:blur(6px);box-shadow:0 4px 12px rgba(0,0,0,0.5)" onclick="event.stopPropagation();openDraftStageCoverEditor()">Edit cover</button>` : ''}
       </div>
 
       <!-- Integrated Lower-Third Dock -->
-      <div style="background:linear-gradient(180deg,rgba(10,10,16,0.72) 0%,rgba(6,6,10,0.96) 100%);border-top:1px solid rgba(255,255,255,0.12);padding:10px 14px;backdrop-filter:blur(12px);position:relative;z-index:2;box-shadow:0 -4px 20px rgba(0,0,0,0.5)">
-        <div style="display:flex;align-items:center;justify-content:space-between;gap:10px">
+      <div style="background:linear-gradient(180deg,rgba(10,10,16,0.72) 0%,rgba(6,6,10,0.96) 100%);border-top:1px solid rgba(255,255,255,0.12);padding:14px 16px;backdrop-filter:blur(12px);position:relative;z-index:2;box-shadow:0 -4px 20px rgba(0,0,0,0.5)">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:12px">
           <!-- Left: Coach Avatar & Info -->
-          <div style="display:flex;align-items:center;gap:10px;min-width:0">
+          <div style="display:flex;align-items:center;gap:12px;min-width:0">
             <div style="position:relative;flex:none;cursor:pointer" onclick="openProfile('${jsArg(curPlayer)}')">
-              <span class="avatar" style="background-image:${faceArt};background-size:cover;background-position:center;width:42px;height:42px;font-size:18px;border-radius:50%;border:2px solid ${curOvr?.color || '#fff'};box-shadow:0 3px 12px rgba(0,0,0,0.6);display:grid;place-items:center">${faceLetter}</span>
+              <span class="avatar" style="background-image:${faceArt};background-size:cover;background-position:center;width:46px;height:46px;font-size:20px;border-radius:50%;border:2px solid ${curOvr?.color || '#fff'};box-shadow:0 3px 12px rgba(0,0,0,0.6);display:grid;place-items:center">${faceLetter}</span>
               ${curOvr ? `<span style="position:absolute;bottom:-3px;right:-3px;transform:scale(0.85);transform-origin:bottom right">${curOvr.badgeHtml}</span>` : ''}
             </div>
             <div style="min-width:0">
               <div style="font-size:9px;font-weight:800;color:var(--red);letter-spacing:0.8px;text-transform:uppercase;display:flex;align-items:center;gap:4px">
                 <span>⏳</span> ${turn.isComplete ? 'DRAFT STATUS' : 'ON THE CLOCK'}
               </div>
-              <div style="font:800 18px 'Barlow Condensed';color:#fff;line-height:1.15;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${turn.isComplete ? 'Draft Completed' : esc(curPlayer)}</div>
-              <div style="font-size:11px;color:#a09fa8;line-height:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${turn.isComplete ? 'Ready for Group Stage' : esc(teamName(t, curPlayer))}</div>
+              <div style="font:800 20px 'Barlow Condensed';color:#fff;line-height:1.15;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${turn.isComplete ? 'Draft Completed' : esc(curPlayer)}</div>
+              <div style="font-size:12px;color:#a09fa8;line-height:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${turn.isComplete ? 'Ready for Group Stage' : esc(teamName(t, curPlayer))}</div>
             </div>
           </div>
 
           <!-- Right: Points + CTA Button -->
-          <div style="display:flex;align-items:center;gap:10px;flex:none">
+          <div style="display:flex;align-items:center;gap:14px;flex:none">
             ${coachStats ? `
               <div style="text-align:right">
-                <div style="font:800 16px 'Barlow Condensed';color:#ffd166;line-height:1">${coachStats.budget > 0 ? `${coachStats.remainingBudget} pts` : 'Unlimited'}</div>
-                <div style="font-size:9px;color:#8e8c95;margin-top:2px">${coachStats.count}/${coachStats.maxSlots} picks</div>
+                <div style="font:800 18px 'Barlow Condensed';color:#ffd166;line-height:1">${coachStats.budget > 0 ? `${coachStats.remainingBudget} pts` : 'Unlimited'}</div>
+                <div style="font-size:10px;color:#8e8c95;margin-top:2px">${coachStats.count}/${coachStats.maxSlots} picks</div>
               </div>
             ` : ''}
-            <button class="btn btn-sm" style="padding:6px 14px!important;font-weight:800;letter-spacing:.5px" onclick="go('Draft')">${turn.isComplete ? 'Draft Board →' : 'Draft Room →'}</button>
+            <button class="btn btn-sm" style="padding:7px 16px!important;font-weight:800;letter-spacing:.5px;font-size:13px" onclick="go('Draft')">${turn.isComplete ? 'Draft Board →' : 'Draft Room →'}</button>
           </div>
         </div>
-
-        ${curRoster.length ? `
-          <div style="display:flex;align-items:center;gap:6px;margin-top:8px;padding-top:6px;border-top:1px solid rgba(255,255,255,0.06);overflow-x:auto">
-            <span style="font-size:9px;font-weight:800;color:#7a7985;text-transform:uppercase;letter-spacing:.5px;flex:none">Drafted:</span>
-            ${curRoster.map(m => `
-              <div style="width:24px;height:24px;background:rgba(0,0,0,0.5);border:1px solid rgba(255,255,255,0.12);border-radius:4px;display:grid;place-items:center;flex:none" title="${esc(m)}">
-                <img src="${esc(pokeSprite(m))}" style="width:18px;height:18px;object-fit:contain" onerror="handleSpriteError(this)">
-              </div>
-            `).join('')}
-            <span style="margin-left:auto;font-size:10px;color:#a09fa8;flex:none">Pick <b style="color:#ffd166">#${turn.currentPickNumber} of ${turn.totalPicks}</b> · Round <b style="color:#fff">${turn.currentRound}</b></span>
-          </div>
-        ` : `
-          <div style="margin-top:8px;padding-top:6px;border-top:1px solid rgba(255,255,255,0.06);display:flex;justify-content:space-between;align-items:center;font-size:10px;color:#8e8c95">
-            <span>Pick <b style="color:#ffd166">#${turn.currentPickNumber} of ${turn.totalPicks}</b> · Round <b style="color:#fff">${turn.currentRound}</b></span>
-            <span style="font-size:9px;color:#6e6d78;font-weight:700">DRAFT STAGE ACTIVE</span>
-          </div>
-        `}
       </div>
     </aside>
   `;
