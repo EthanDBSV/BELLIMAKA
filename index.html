@@ -2678,6 +2678,11 @@ try{
   if(savedLeague){
     Object.keys(tournamentData).forEach(k=>delete tournamentData[k]);
     Object.assign(tournamentData,savedLeague);
+    Object.values(tournamentData).forEach(t => {
+      if(t && Array.isArray(t.standingsCriteria)){
+        t.standingsCriteria = t.standingsCriteria.filter(c => c !== 'ovr');
+      }
+    });
   }
   let savedProfiles=JSON.parse(localStorage.getItem('draftdex-profiles')||'null');
   if(savedProfiles)Object.assign(profiles,savedProfiles);
@@ -10649,22 +10654,16 @@ var STANDING_METRICS = {
     desc: "Cumulative match wins of all opponents faced",
     compare: (a, b) => (b.sos || 0) - (a.sos || 0),
     format: (x) => `${x.sos || 0}`
-  },
-  ovr: {
-    id: 'ovr',
-    label: 'OVR',
-    name: 'Coach Rating (OVR)',
-    shortDesc: 'Higher Overall Rating',
-    desc: 'Higher coach overall rating breaks ties',
-    compare: (a, b) => (b.ovrVal || 0) - (a.ovrVal || 0),
-    format: (x) => x.ovrObj?.badgeHtml || `${x.ovrVal || 70}`
   }
 };
 
 function getStandingsCriteria(t){
   if(t && Array.isArray(t.standingsCriteria) && t.standingsCriteria.length){
-    let valid = t.standingsCriteria.filter(c => STANDING_METRICS[c]);
-    if(valid.length) return valid;
+    let valid = t.standingsCriteria.filter(c => STANDING_METRICS[c] && c !== 'ovr');
+    if(valid.length){
+      t.standingsCriteria = valid;
+      return valid;
+    }
   }
   return ['wl', 'gw', 'gd', 'h2h'];
 }
@@ -10687,26 +10686,15 @@ function getStand(t=activeT(),group=null){
   let list=Object.values(s);
   let criteria = getStandingsCriteria(t);
   let needsSos = criteria.includes('sos');
-  let needsOvr = criteria.includes('ovr');
 
-  if(needsSos || needsOvr){
+  if(needsSos){
     list.forEach(item => {
-      if(needsSos){
-        let oppWins = 0;
-        matches.forEach(m => {
-          if(m.a === item.p && s[m.b]) oppWins += s[m.b].w;
-          else if(m.b === item.p && s[m.a]) oppWins += s[m.a].w;
-        });
-        item.sos = oppWins;
-      }
-      if(needsOvr){
-        let ovrObj = (typeof _cachedPlayerOVR !== 'undefined' && _cachedPlayerOVR[item.p]) ? _cachedPlayerOVR[item.p] : null;
-        if(!ovrObj && typeof calculatePlayerOVR === 'function' && !window._ovrRecursionGuard && !(typeof isCalculatingRecords !== 'undefined' && isCalculatingRecords)){
-          try { ovrObj = calculatePlayerOVR(item.p); } catch(e){}
-        }
-        item.ovrVal = ovrObj?.rawScore || ovrObj?.ovr || 70;
-        item.ovrObj = ovrObj;
-      }
+      let oppWins = 0;
+      matches.forEach(m => {
+        if(m.a === item.p && s[m.b]) oppWins += s[m.b].w;
+        else if(m.b === item.p && s[m.a]) oppWins += s[m.a].w;
+      });
+      item.sos = oppWins;
     });
   }
 
@@ -10737,7 +10725,6 @@ function standingTable(t, g){
   let isPastT = (t && t.status === 'COMPLETE' && tIdx >= 0);
   let canManage = canManageTournament(t);
   let criteria = getStandingsCriteria(t);
-  let hasOvrInCriteria = criteria.includes('ovr');
 
   return `
     <div style="display:flex;justify-content:space-between;align-items:center;padding:14px 16px 10px;border-bottom:1px solid #282834">
@@ -10750,7 +10737,7 @@ function standingTable(t, g){
           <tr>
             <th style="width:36px;text-align:center">#</th>
             <th>Trainer / Team</th>
-            ${!hasOvrInCriteria ? `<th style="text-align:center;white-space:nowrap" title="${isPastT ? 'Coach rating at conclusion of Group Stage' : 'Current Coach Rating'}">OVR</th>` : ''}
+            <th style="text-align:center;white-space:nowrap" title="${isPastT ? 'Coach rating at conclusion of Group Stage' : 'Current Coach Rating'}">OVR</th>
             ${criteria.map((critId, cIdx) => {
               let m = STANDING_METRICS[critId] || { label: critId.toUpperCase(), name: critId, desc: '' };
               return `
@@ -10785,7 +10772,7 @@ function standingTable(t, g){
                   ${playerLink(p)}
                   <span class="team">${esc(teamName(t, p))}</span>
                 </td>
-                ${!hasOvrInCriteria ? `<td style="text-align:center">${ovrObj.badgeHtml}</td>` : ''}
+                <td style="text-align:center">${ovrObj.badgeHtml}</td>
                 ${criteria.map(critId => {
                   let m = STANDING_METRICS[critId];
                   let cellContent = m && typeof m.format === 'function' ? m.format(x) : '—';
