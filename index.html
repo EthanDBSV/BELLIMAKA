@@ -7239,6 +7239,26 @@ async function syncPredictionRecord(tournamentId, key, choice, isDelete = false)
     }
   }
 }
+
+function getLegacyTier(score, isRookie = false){
+  if(isRookie || score <= 0){
+    return { name: 'Rookie', key: 'rookie', color: '#888690', badgeColor: '#363646', tagBg: '#1c1c24' };
+  }
+  if(score >= 1000){
+    return { name: 'Immortal', key: 'immortal', color: '#ffd166', badgeColor: '#5a4518', tagBg: '#2a2010' };
+  }
+  if(score >= 600){
+    return { name: 'Titan', key: 'titan', color: '#ff7b38', badgeColor: '#5c2d18', tagBg: '#2a1810' };
+  }
+  if(score >= 350){
+    return { name: 'Contender', key: 'contender', color: '#34d399', badgeColor: '#20482e', tagBg: '#102418' };
+  }
+  if(score >= 150){
+    return { name: 'Veteran', key: 'veteran', color: '#c084fc', badgeColor: '#442860', tagBg: '#1e1428' };
+  }
+  return { name: 'Challenger', key: 'challenger', color: '#38bdf8', badgeColor: '#20344c', tagBg: '#121a26' };
+}
+
 function recapRankings(){
   let leagueRecs=(typeof calculateLeagueRecords==='function'?calculateLeagueRecords():null);
   let stats=leagueRecs?.statsByPlayer||{};
@@ -7288,6 +7308,7 @@ function recapRankings(){
         p,
         score: 0,
         isRookie: true,
+        tier: getLegacyTier(0, true),
         ovr: ovrObj.ovr,
         ovrObj,
         champ: 0,
@@ -7355,6 +7376,7 @@ function recapRankings(){
       p,
       score, // All-Time Elo / Legacy Score
       isRookie: false,
+      tier: getLegacyTier(score, false),
       ovr: ovrObj.ovr,
       ovrObj,
       champ: cups.length,
@@ -8047,8 +8069,13 @@ function OffseasonHome(){
                   </div>
                 </td>
                 <td style="text-align:center;white-space:nowrap">
-                  <b style="font:800 16px 'Barlow Condensed';color:${x.score > 0 ? '#ffd166' : '#8e8c95'}">${x.score}</b>
-                  <span style="display:block;font-size:9px;color:${x.score > 0 ? '#8e8c95' : '#6b6976'};font-weight:700;letter-spacing:.5px">${x.isRookie || x.score === 0 ? 'ROOKIE' : 'LEGACY'}</span>
+                  ${(() => {
+                    let tier = x.tier || getLegacyTier(x.score, x.isRookie);
+                    return `
+                      <b style="font:800 16px 'Barlow Condensed';letter-spacing:.3px;color:${tier.color}">${x.score}</b>
+                      <span style="display:block;font-size:9px;color:${tier.color};font-weight:800;letter-spacing:.6px;opacity:0.9">${tier.name.toUpperCase()}</span>
+                    `;
+                  })()}
                 </td>
                 <td style="text-align:center">${ovrObj.badgeHtml}</td>
                 <td style="text-align:center">${x.champ > 0 ? `<b style="color:#ffd166;font:800 15px 'Barlow Condensed'">👑 ${x.champ}</b>` : '<span style="color:#6d6b75">0</span>'}</td>
@@ -11944,8 +11971,13 @@ function Standings(){
                   </div>
                 </td>
                 <td style="text-align:center;white-space:nowrap">
-                  <b style="font:800 16px 'Barlow Condensed';color:${x.score > 0 ? '#ffd166' : '#8e8c95'}">${x.score}</b>
-                  <span style="display:block;font-size:9px;color:${x.score > 0 ? '#8e8c95' : '#6b6976'};font-weight:700;letter-spacing:.5px">${x.isRookie || x.score === 0 ? 'ROOKIE' : 'LEGACY'}</span>
+                  ${(() => {
+                    let tier = x.tier || getLegacyTier(x.score, x.isRookie);
+                    return `
+                      <b style="font:800 16px 'Barlow Condensed';letter-spacing:.3px;color:${tier.color}">${x.score}</b>
+                      <span style="display:block;font-size:9px;color:${tier.color};font-weight:800;letter-spacing:.6px;opacity:0.9">${tier.name.toUpperCase()}</span>
+                    `;
+                  })()}
                 </td>
                 <td style="text-align:center;white-space:nowrap">${ovrObj.badgeHtml}</td>
                 <td style="text-align:center;white-space:nowrap">${career.titles>0?`<b style="color:#ffd166;font:800 15px 'Barlow Condensed'">👑 ${career.titles}</b>`:'<span style="color:#6d6b75">0</span>'}</td>
@@ -13446,17 +13478,23 @@ function openProfile(p){
   let sortedBadges=sortBadgesByImportance(pBadges);
   let topBadges=sortedBadges.slice(0, 5);
   let ovrCard=calculatePlayerOVR(p, leagueRecs);
+  let pRankObj = (typeof recapRankings === 'function') ? recapRankings().find(x => x.p === p) : null;
+  let pTier = pRankObj?.tier || getLegacyTier(pRankObj?.score || 0, pRankObj?.isRookie);
 
   document.querySelector('#modal').innerHTML=`<div class="modal-wrap"><div class="modal" style="max-width:880px">
     <div class="modal-head"><div><div class="eyebrow">Trainer Profile</div><h2>${esc(p)}</h2></div><button class="close" onclick="closeModal()">×</button></div>
     <div class="pf-grid" style="margin-top:18px">
       <aside class="card profile-card ovr-card-${ovrCard.tier}" style="padding:18px">
         
-        <!-- FIFA / Madden Top Rating Header -->
-        <div style="display:flex;justify-content:flex-start;align-items:center;margin-bottom:6px;width:100%">
+        <!-- Rating & Legacy Tier Header -->
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;width:100%">
           <div style="display:flex;flex-direction:column;align-items:center;text-align:center;width:52px">
             <div style="font:900 46px/0.85 'Barlow Condensed';color:${ovrCard.color};font-variant-numeric:tabular-nums;letter-spacing:0;text-align:center;width:100%">${ovrCard.ovr}</div>
             <div style="font:800 11px/1 'DM Sans';letter-spacing:1.5px;text-transform:uppercase;color:${ovrCard.color};opacity:0.95;margin-top:3px;text-align:center;width:100%">OVR</div>
+          </div>
+          <div style="display:flex;flex-direction:column;align-items:flex-end;text-align:right">
+            <div style="font:800 24px/1 'Barlow Condensed';color:${pTier.color};letter-spacing:.3px">${pRankObj?.score ?? 0}</div>
+            <span style="font-size:9px;font-weight:800;letter-spacing:1px;text-transform:uppercase;color:${pTier.color};margin-top:3px">${pTier.name}</span>
           </div>
         </div>
 
@@ -17256,11 +17294,11 @@ function openLegacyEloGuide(){
             </div>
             
             <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px">
-              <!-- Tier 1: GOAT / Immortals -->
-              <div style="padding:10px 12px;background:#191922;border-radius:8px;border:1px solid #4a3818;display:flex;flex-direction:column;justify-content:space-between">
+              <!-- Tier 1: Immortal -->
+              <div style="padding:10px 12px;background:#191922;border-radius:8px;border:1px solid #5a4518;display:flex;flex-direction:column;justify-content:space-between">
                 <div>
                   <div style="display:flex;justify-content:space-between;align-items:center">
-                    <span style="font:800 13px 'Barlow Condensed';color:#ffd166;letter-spacing:.5px">👑 GOAT & IMMORTALS</span>
+                    <span style="font:800 13px 'Barlow Condensed';color:#ffd166;letter-spacing:.5px">👑 IMMORTAL</span>
                     <span class="tag" style="background:#2a2010;color:#ffd166;font-size:9px;font-weight:800;border-color:#5a4518">1,000+ PTS</span>
                   </div>
                   <div style="font-size:10px;font-weight:700;color:#e8d4a0;margin-top:3px">Multi-Time Champions & Record Kings</div>
@@ -17268,35 +17306,35 @@ function openLegacyEloGuide(){
                 <p style="font-size:10px;color:#c0bca8;line-height:1.35;margin:6px 0 0">The pinnacle of league history. Reserved for coaches holding multiple titles, numerous top cuts, and dominant records.</p>
               </div>
 
-              <!-- Tier 2: League Titans -->
-              <div style="padding:10px 12px;background:#191922;border-radius:8px;border:1px solid #403222;display:flex;flex-direction:column;justify-content:space-between">
+              <!-- Tier 2: Titan -->
+              <div style="padding:10px 12px;background:#191922;border-radius:8px;border:1px solid #5c2d18;display:flex;flex-direction:column;justify-content:space-between">
                 <div>
                   <div style="display:flex;justify-content:space-between;align-items:center">
-                    <span style="font:800 13px 'Barlow Condensed';color:#fbbf24;letter-spacing:.5px">🏆 LEAGUE TITANS</span>
-                    <span class="tag" style="background:#261e12;color:#fbbf24;font-size:9px;font-weight:800;border-color:#4d3b1e">600–999 PTS</span>
+                    <span style="font:800 13px 'Barlow Condensed';color:#ff7b38;letter-spacing:.5px">🏆 TITAN</span>
+                    <span class="tag" style="background:#2a1810;color:#ff7b38;font-size:9px;font-weight:800;border-color:#5c2d18">600–999 PTS</span>
                   </div>
-                  <div style="font-size:10px;font-weight:700;color:#e5c994;margin-top:3px">Proven Champions & Finalists</div>
+                  <div style="font-size:10px;font-weight:700;color:#f5bba0;margin-top:3px">Proven Champions & Finalists</div>
                 </div>
-                <p style="font-size:10px;color:#c4b8a4;line-height:1.35;margin:6px 0 0">Pillars of the league with championship silverware, high-volume match wins, and repeated playoff finals appearances.</p>
+                <p style="font-size:10px;color:#cbb2a4;line-height:1.35;margin:6px 0 0">Pillars of the league with championship silverware, high-volume match wins, and repeated playoff finals appearances.</p>
               </div>
 
-              <!-- Tier 3: Elite Contenders -->
-              <div style="padding:10px 12px;background:#191922;border-radius:8px;border:1px solid #1a3c2c;display:flex;flex-direction:column;justify-content:space-between">
+              <!-- Tier 3: Contender -->
+              <div style="padding:10px 12px;background:#191922;border-radius:8px;border:1px solid #20482e;display:flex;flex-direction:column;justify-content:space-between">
                 <div>
                   <div style="display:flex;justify-content:space-between;align-items:center">
-                    <span style="font:800 13px 'Barlow Condensed';color:#7df0aa;letter-spacing:.5px">🥇 ELITE CONTENDERS</span>
-                    <span class="tag" style="background:#102418;color:#7df0aa;font-size:9px;font-weight:800;border-color:#20482e">350–599 PTS</span>
+                    <span style="font:800 13px 'Barlow Condensed';color:#34d399;letter-spacing:.5px">🥇 CONTENDER</span>
+                    <span class="tag" style="background:#102418;color:#34d399;font-size:9px;font-weight:800;border-color:#20482e">350–599 PTS</span>
                   </div>
                   <div style="font-size:10px;font-weight:700;color:#b2e4c4;margin-top:3px">Multi-Cut Playoff Threats</div>
                 </div>
                 <p style="font-size:10px;color:#a8c4b2;line-height:1.35;margin:6px 0 0">Perennial playoff threats with multiple Top Cut qualifications, winning career records, and playoff hardware.</p>
               </div>
 
-              <!-- Tier 4: Established Veterans -->
-              <div style="padding:10px 12px;background:#191922;border-radius:8px;border:1px solid #32283e;display:flex;flex-direction:column;justify-content:space-between">
+              <!-- Tier 4: Veteran -->
+              <div style="padding:10px 12px;background:#191922;border-radius:8px;border:1px solid #442860;display:flex;flex-direction:column;justify-content:space-between">
                 <div>
                   <div style="display:flex;justify-content:space-between;align-items:center">
-                    <span style="font:800 13px 'Barlow Condensed';color:#c084fc;letter-spacing:.5px">🥈 VETERANS & TOP CUT</span>
+                    <span style="font:800 13px 'Barlow Condensed';color:#c084fc;letter-spacing:.5px">🥈 VETERAN</span>
                     <span class="tag" style="background:#1e1428;color:#c084fc;font-size:9px;font-weight:800;border-color:#442860">150–349 PTS</span>
                   </div>
                   <div style="font-size:10px;font-weight:700;color:#d8b8f8;margin-top:3px">Battle-Tested Playoff Competitors</div>
@@ -17304,24 +17342,24 @@ function openLegacyEloGuide(){
                 <p style="font-size:10px;color:#baa8cb;line-height:1.35;margin:6px 0 0">Seasoned coaches who have advanced to Top Cut brackets. Their playoff pedigree securely establishes them ahead of unproven players.</p>
               </div>
 
-              <!-- Tier 5: Challengers -->
-              <div style="padding:10px 12px;background:#191922;border-radius:8px;border:1px solid #282c38;display:flex;flex-direction:column;justify-content:space-between">
+              <!-- Tier 5: Challenger -->
+              <div style="padding:10px 12px;background:#191922;border-radius:8px;border:1px solid #20344c;display:flex;flex-direction:column;justify-content:space-between">
                 <div>
                   <div style="display:flex;justify-content:space-between;align-items:center">
-                    <span style="font:800 13px 'Barlow Condensed';color:#93c5fd;letter-spacing:.5px">🥉 CHALLENGERS</span>
-                    <span class="tag" style="background:#121a26;color:#93c5fd;font-size:9px;font-weight:800;border-color:#20344c">50–149 PTS</span>
+                    <span style="font:800 13px 'Barlow Condensed';color:#38bdf8;letter-spacing:.5px">🥉 CHALLENGER</span>
+                    <span class="tag" style="background:#121a26;color:#38bdf8;font-size:9px;font-weight:800;border-color:#20344c">1–149 PTS</span>
                   </div>
-                  <div style="font-size:10px;font-weight:700;color:#b4d0f6;margin-top:3px">Active Resumes in Progress</div>
+                  <div style="font-size:10px;font-weight:700;color:#a8e2fc;margin-top:3px">Active Resumes in Progress</div>
                 </div>
-                <p style="font-size:10px;color:#a4b4c8;line-height:1.35;margin:6px 0 0">Active competitors working to climb the standings, building match volume, and hunting for their first breakthrough playoff run.</p>
+                <p style="font-size:10px;color:#a0bcd0;line-height:1.35;margin:6px 0 0">Active competitors working to climb the standings, building match volume, and hunting for their first breakthrough playoff run.</p>
               </div>
 
-              <!-- Tier 6: Unranked Rookies -->
-              <div style="padding:10px 12px;background:#191922;border-radius:8px;border:1px solid #2d2d3c;display:flex;flex-direction:column;justify-content:space-between">
+              <!-- Tier 6: Rookie -->
+              <div style="padding:10px 12px;background:#191922;border-radius:8px;border:1px solid #363646;display:flex;flex-direction:column;justify-content:space-between">
                 <div>
                   <div style="display:flex;justify-content:space-between;align-items:center">
-                    <span style="font:800 13px 'Barlow Condensed';color:#8e8c95;letter-spacing:.5px">🔰 UNRANKED ROOKIE</span>
-                    <span class="tag" style="background:#1d1d26;color:#8e8c95;font-size:9px;font-weight:800;border-color:#363646">0 PTS</span>
+                    <span style="font:800 13px 'Barlow Condensed';color:#888690;letter-spacing:.5px">🔰 ROOKIE</span>
+                    <span class="tag" style="background:#1d1d26;color:#888690;font-size:9px;font-weight:800;border-color:#363646">0 PTS</span>
                   </div>
                   <div style="font-size:10px;font-weight:700;color:#b0aeb8;margin-top:3px">Awaiting Official Debut</div>
                 </div>
