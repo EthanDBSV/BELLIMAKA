@@ -2722,11 +2722,283 @@ try{
 addEventListener('beforeunload',()=>{clearTimeout(syncTimer);flushSync()});
 /* Group-stage and flexible-cut upgrades */
 
-function groupMatches(t,g){return (t?.matches||[]).filter(m=>(m.group||'Group A')===g)}
-function groupSchedule(t){let buckets=groupsOf(t);return Object.entries(buckets).flatMap(([g,ps])=>rr(ps).map(m=>({...m,group:g}))) }
+/* Stage 1 & Stage 2 format helpers & Swiss engine */
+function getStage1Format(t){ return t?.stage1Format || 'round_robin'; }
+function getStage2Format(t){ return t?.stage2Format || 'double_elimination'; }
 
+function getSwissStand(t = activeT()){
+  if(!t) return [];
+  let players = (t.players || []).slice();
+  let s = {};
+  players.forEach(p => {
+    s[p] = { p, w: 0, l: 0, gw: 0, gl: 0, diff: 0, opponents: [], results: {}, h2hWins: 0, sos: 0, buch: 0 };
+  });
+
+  let matches = (t.matches || []).filter(m => m.as !== '' && m.as != null && m.bs !== '' && m.bs != null);
+  matches.forEach(m => {
+    let a = s[m.a], b = s[m.b];
+    if(a && m.b === 'BYE'){
+      a.w += 1;
+      a.gw += Number(m.as) || 2;
+      a.gl += Number(m.bs) || 0;
+      a.diff = a.gw - a.gl;
+      return;
+    }
+    if(b && m.a === 'BYE'){
+      b.w += 1;
+      b.gw += Number(m.bs) || 2;
+      b.gl += Number(m.as) || 0;
+      b.diff = b.gw - b.gl;
+      return;
+    }
+    if(!a || !b) return;
+
+    let as = Number(m.as) || 0;
+    let bs = Number(m.bs) || 0;
+    a.gw += as;
+    a.gl += bs;
+    b.gw += bs;
+    b.gl += as;
+    a.diff = a.gw - a.gl;
+    b.diff = b.gw - b.gl;
+    a.opponents.push(m.b);
+    b.opponents.push(m.a);
+
+    if(as > bs){
+      a.w++; b.l++;
+      a.results[m.b] = 1; b.results[m.a] = 0;
+      a.h2hWins++;
+    } else if(bs > as){
+      b.w++; a.l++;
+      b.results[m.a] = 1; b.results[m.b] = 0;
+      b.h2hWins++;
+    }
+  });
+
+  let list = Object.values(s);
+  list.forEach(item => {
+    let oppWins = 0;
+    item.opponents.forEach(oppName => {
+      if(s[oppName]) oppWins += s[oppName].w;
+    });
+    item.sos = oppWins;
+    item.buch = oppWins;
+  });
+
+  list.sort((a, b) => {
+    if(b.w !== a.w) return b.w - a.w;
+    if(a.l !== b.l) return a.l - b.l;
+    if(b.sos !== a.sos) return b.sos - a.sos;
+    if(b.diff !== a.diff) return b.diff - a.diff;
+    if(b.gw !== a.gw) return b.gw - a.gw;
+    if(a.results[b.p] !== undefined && b.results[a.p] !== undefined){
+      let diff = a.results[b.p] - b.results[a.p];
+      if(diff !== 0) return diff > 0 ? -1 : 1;
+    }
+    return a.p.localeCompare(b.p);
+  });
+
+  return list;
+}
+
+function generateSwissRound(t, roundNum = 1){
+  let players = (t.players || []).slice();
+  if(players.length < 2) return [];
+
+  if(roundNum === 1){
+    let pool = players.slice();
+    for(let i = pool.length - 1; i > 0; i--){
+      let j = Math.floor(Math.random() * (i + 1));
+      [pool[i], pool[j]] = [pool[j], pool[i]];
+    }
+
+    let matches = [];
+    if(pool.length % 2 === 1){
+      let byeP = pool.pop();
+      matches.push({
+        id: 'swiss-1-bye',
+        round: 'Round 1',
+        a: byeP,
+        b: 'BYE',
+        as: '2',
+        bs: '0',
+        date: 'BYE',
+        group: 'Swiss Stage'
+      });
+    }
+
+    for(let i = 0; i < pool.length; i += 2){
+      let matchIdx = Math.floor(i / 2) + 1;
+      matches.push({
+        id: 'swiss-1-' + matchIdx,
+        round: 'Round 1',
+        a: pool[i],
+        b: pool[i + 1],
+        as: '',
+        bs: '',
+        date: 'TBD',
+        group: 'Swiss Stage'
+      });
+    }
+    return matches;
+  }
+
+  let stand = getSwissStand(t);
+  let played = new Set();
+  let byesGiven = new Set();
+  (t.matches || []).forEach(m => {
+    if(m.b === 'BYE') byesGiven.add(m.a);
+    else if(m.a === 'BYE') byesGiven.add(m.b);
+    else if(m.a && m.b){
+      played.add([m.a, m.b].sort().join('::'));
+    }
+  });
+
+  let candidates = stand.map(x => x.p);
+  let matches = [];
+
+  if(candidates.length % 2 === 1){
+    let byeCandidateIdx = -1;
+    for(let i = candidates.length - 1; i >= 0; i--){
+      if(!byesGiven.has(candidates[i])){
+        byeCandidateIdx = i;
+        break;
+      }
+    }
+    if(byeCandidateIdx === -1) byeCandidateIdx = candidates.length - 1;
+    let byePlayer = candidates.splice(byeCandidateIdx, 1)[0];
+    matches.push({
+      id: 'swiss-' + roundNum + '-bye',
+      round: 'Round ' + roundNum,
+      a: byePlayer,
+      b: 'BYE',
+      as: '2',
+      bs: '0',
+      date: 'BYE',
+      group: 'Swiss Stage'
+    });
+  }
+
+  function findPairs(list){
+    if(list.length === 0) return [];
+    let p1 = list[0];
+    for(let i = 1; i < list.length; i++){
+      let p2 = list[i];
+      let key = [p1, p2].sort().join('::');
+      if(!played.has(key)){
+        let rest = list.slice(1, i).concat(list.slice(i + 1));
+        let sub = findPairs(rest);
+        if(sub !== null){
+          return [[p1, p2], ...sub];
+        }
+      }
+    }
+    return null;
+  }
+
+  let pairs = findPairs(candidates);
+  if(!pairs){
+    pairs = [];
+    for(let i = 0; i < candidates.length; i += 2){
+      pairs.push([candidates[i], candidates[i + 1]]);
+    }
+  }
+
+  pairs.forEach((pair, idx) => {
+    matches.push({
+      id: 'swiss-' + roundNum + '-' + (idx + 1),
+      round: 'Round ' + roundNum,
+      a: pair[0],
+      b: pair[1],
+      as: '',
+      bs: '',
+      date: 'TBD',
+      group: 'Swiss Stage'
+    });
+  });
+
+  return matches;
+}
+
+function pairSwissNextRound(targetT = null){
+  let t = targetT || (viewTournament ? tournamentData[viewTournament] : null) || ongoingT();
+  if(!t || !canManageTournament(t)) return;
+  let curRound = t.swissCurrentRound || 1;
+  let curRoundMatches = (t.matches || []).filter(m => m.round === 'Round ' + curRound);
+  let uncompleted = curRoundMatches.filter(m => m.as === '' || m.as == null || m.bs === '' || m.bs == null);
+  if(uncompleted.length > 0){
+    alert(`Please report all scores for Round ${curRound} before generating the next round (${uncompleted.length} matches remaining).`);
+    return;
+  }
+  let nextRound = curRound + 1;
+  let totalRounds = t.swissRounds || 4;
+  if(nextRound > totalRounds){
+    alert(`All ${totalRounds} Swiss rounds have been completed! You can now end the Swiss stage and advance to Top Cut.`);
+    return;
+  }
+
+  let newMatches = generateSwissRound(t, nextRound);
+  t.matches = (t.matches || []).concat(newMatches);
+  t.swissCurrentRound = nextRound;
+  persistLeague();
+  render();
+}
+
+function repairCurrentSwissRound(targetT = null){
+  let t = targetT || (viewTournament ? tournamentData[viewTournament] : null) || ongoingT();
+  if(!t || !canManageTournament(t)) return;
+  let curRound = t.swissCurrentRound || 1;
+  let curRoundMatches = (t.matches || []).filter(m => m.round === 'Round ' + curRound);
+  let reported = curRoundMatches.filter(m => m.b !== 'BYE' && m.as !== '' && m.as != null && m.bs !== '' && m.bs != null);
+  if(reported.length > 0){
+    if(!confirm(`Some scores for Round ${curRound} have already been reported. Re-pairing will clear these scores and re-generate pairings. Continue?`)) return;
+  } else {
+    if(!confirm(`Re-generate pairings for Round ${curRound}?`)) return;
+  }
+  t.matches = (t.matches || []).filter(m => m.round !== 'Round ' + curRound);
+  let freshMatches = generateSwissRound(t, curRound);
+  t.matches = (t.matches || []).concat(freshMatches);
+  persistLeague();
+  render();
+}
+
+async function endFirstPhase(targetT = null){
+  let t = targetT || (viewTournament ? tournamentData[viewTournament] : null) || ongoingT();
+  if(!t || !canManageTournament(t)) return;
+  if(t.matches.some(m => m.as === '' || m.as == null || m.bs === '' || m.bs == null)){
+    alert('Enter a score for every match before ending this phase.');
+    return;
+  }
+  if(t.stage1Format === 'swiss'){
+    t.finalStandings = { 'Swiss Stage': getSwissStand(t).map(x => x.p) };
+  } else {
+    t.finalStandings = Object.fromEntries(Object.keys(groupsOf(t)).map(g => [g, getStand(t, g).map(x => x.p)]));
+  }
+  t.phase = 'topcut';
+  await createTopCutStage(t);
+  rebuildAllPlayerStats();
+  persistLeague();
+  current = 'Top Cut';
+  render();
+}
+async function endSwissStage(targetT = null){ return await endFirstPhase(targetT); }
+
+function groupMatches(t,g){
+  if(t?.stage1Format === 'swiss') return (t?.matches || []);
+  return (t?.matches||[]).filter(m=>(m.group||'Group A')===g);
+}
+function groupSchedule(t){
+  if(t?.stage1Format === 'swiss') return generateSwissRound(t, 1);
+  let buckets=groupsOf(t);
+  return Object.entries(buckets).flatMap(([g,ps])=>rr(ps).map(m=>({...m,group:g})));
+}
 
 function qualified(t){
+  if(t?.stage1Format === 'swiss'){
+    let swissStand = getSwissStand(t);
+    let cutCount = advancePerGroup(t);
+    return swissStand.slice(0, cutCount).map((x, i) => ({ ...x, group: 'Swiss Stage', groupSeed: i + 1 }));
+  }
   return Object.keys(groupsOf(t)).flatMap(g=>getStand(t,g).slice(0,advancePerGroup(t)).map((x,i)=>({...x,group:g,groupSeed:i+1}))).sort((a,b)=>{
     if(a.groupSeed !== b.groupSeed) return a.groupSeed - b.groupSeed;
     if(typeof getStandingsCriteria === 'function' && typeof STANDING_METRICS !== 'undefined'){
@@ -2797,8 +3069,13 @@ function createTournament(){
     return;
   }
   let id='t'+Date.now();
-  let groupCount=Math.min(+document.querySelector('#gc').value,selected.length);
-  let perGroup=Math.max(1,+document.querySelector('#ap').value||1);
+  let stage1Format = document.querySelector('#stage1Format')?.value || 'round_robin';
+  let stage2Format = document.querySelector('#stage2Format')?.value || 'double_elimination';
+  let swissRounds = Math.max(2, +(document.querySelector('#swissRounds')?.value || 4));
+  let swissCut = Math.max(2, +(document.querySelector('#swissCut')?.value || 4));
+
+  let groupCount = (stage1Format === 'swiss') ? 1 : Math.min(+(document.querySelector('#gc')?.value || 1), selected.length);
+  let perGroup = (stage1Format === 'swiss') ? swissCut : Math.max(1, +(document.querySelector('#ap')?.value || 1));
   let enableDraft = document.querySelector('#enableDraft')?.checked ?? true;
   let draftBudget = Math.max(0, +(document.querySelector('#draftBudget')?.value || 100));
   let draftRounds = Math.max(1, +(document.querySelector('#draftRounds')?.value || 10));
@@ -2824,8 +3101,13 @@ function createTournament(){
     id,
     name,
     status:'ONGOING',
-    phase: enableDraft ? 'draft' : 'group',
+    phase: enableDraft ? 'draft' : (stage1Format === 'swiss' ? 'swiss' : 'group'),
     hasDraft: enableDraft,
+    stage1Format,
+    stage2Format,
+    swissRounds,
+    swissCut,
+    swissCurrentRound: 1,
     start:document.querySelector('#sd').value||'TBD',
     end:document.querySelector('#ed').value||'TBD',
     regulation:document.querySelector('#tr').value||'Custom regulation',
@@ -2861,7 +3143,7 @@ function createTournament(){
   }
   window.creatorSelectedDraftBoard = 'offseason';
   window.creatorCustomDraftBoard = null;
-  tournamentData[id].matches=groupSchedule(tournamentData[id]);
+  tournamentData[id].matches = (stage1Format === 'swiss') ? generateSwissRound(tournamentData[id], 1) : groupSchedule(tournamentData[id]);
   syncTournamentSeasons();
   viewTournament=id;
   current= enableDraft ? 'Draft' : 'Tournament Detail';
@@ -3510,17 +3792,20 @@ function saveProfile(p, returnToProfile = false){
 
 
 function groupsOf(t){
-  if(t.groups && typeof t.groups === 'object' && !Array.isArray(t.groups)) {
+  if(t && t.stage1Format === 'swiss'){
+    return { 'Swiss Stage': (t.players || []).slice() };
+  }
+  if(t && t.groups && typeof t.groups === 'object' && !Array.isArray(t.groups)) {
     return t.groups;
   }
-  let rawCount = t.groupCount || (typeof t.groups === 'number' ? t.groups : 1);
+  let rawCount = t?.groupCount || (typeof t?.groups === 'number' ? t.groups : 1);
   let count = Math.max(1, Number(rawCount) || 1);
   let names = Array.from({length:count},(_,i)=>'Group '+String.fromCharCode(65+i));
   let buckets = Object.fromEntries(names.map(x=>[x,[]]));
-  if(t.groupAssignments){
+  if(t?.groupAssignments){
     Object.entries(t.groupAssignments).forEach(([p,g])=>{if(buckets[g])buckets[g].push(p)});
     (t.players||[]).filter(p=>!Object.hasOwn(t.groupAssignments,p)).forEach((p,i)=>buckets[names[i%count]]?.push(p));
-  } else (t.players||[]).forEach((p,i)=>buckets[names[i%count]]?.push(p));
+  } else (t?.players||[]).forEach((p,i)=>buckets[names[i%count]]?.push(p));
   return buckets;
 }
 
@@ -4874,13 +5159,32 @@ function hydrateTopCutManager(t){if(!t.bracketManagerData||!window.BracketsManag
 
 async function createTopCutStage(t){
   let {seeding,size}=buildTopCutSeeding(t);
+  let stage2 = t?.stage2Format || 'double_elimination';
   if(window.BracketsManagerLib){
     try{
       let storage=new window.BracketsManagerLib.InMemoryDatabase();
       let manager=new window.BracketsManagerLib.BracketsManager(storage);
-      await manager.create.stage({tournamentId:0,name:t.name,type:'double_elimination',seeding,settings:{grandFinal:'double',seedOrdering:['inner_outer'],size}});
+      if(stage2 === 'single_elimination'){
+        await manager.create.stage({
+          tournamentId: 0,
+          name: t.name,
+          type: 'single_elimination',
+          seeding,
+          settings: { seedOrdering: ['inner_outer'], size, consolationFinal: true }
+        });
+      } else {
+        await manager.create.stage({
+          tournamentId: 0,
+          name: t.name,
+          type: 'double_elimination',
+          seeding,
+          settings: { grandFinal: 'double', seedOrdering: ['inner_outer'], size }
+        });
+      }
       t.bracketManagerData=JSON.parse(JSON.stringify(storage.data));
-    }catch(e){}
+    }catch(e){
+      console.error('createTopCutStage error for ' + t?.name + ':', e);
+    }
   }
   t.topCutMatchTimestamps={};
   await refreshTopCutCache(t);
@@ -4900,10 +5204,23 @@ function topCutMatchTitle(data,m){
   if(!round)return 'Match';
   let roundCount=roundsInGroup.length;
   let matchesInRound=(data.match||[]).filter(x=>x.round_id===m.round_id);
+  let isSingleElim = (data.stage?.[0]?.type === 'single_elimination');
   let label;
-  if(group.number===1)label=round.number===roundCount?'Winners Final':(roundCount-round.number===1?'Winners Semifinal':'Winners Round '+round.number);
-  else if(group.number===2)label=round.number===roundCount?'Losers Final':'Losers Round '+round.number;
-  else label=round.number===1?'Grand Final':'Bracket Reset';
+  if(group.number===1){
+    if(isSingleElim){
+      label = round.number===roundCount ? 'Championship Final' : (roundCount - round.number === 1 ? 'Semifinal' : (roundCount - round.number === 2 ? 'Quarterfinal' : 'Round ' + round.number));
+    } else {
+      label = round.number===roundCount?'Winners Final':(roundCount-round.number===1?'Winners Semifinal':'Winners Round '+round.number);
+    }
+  } else if(group.number===2){
+    if(isSingleElim){
+      label = '3rd Place Bronze Match';
+    } else {
+      label = round.number===roundCount?'Losers Final':'Losers Round '+round.number;
+    }
+  } else {
+    label = round.number===1?'Grand Final':'Bracket Reset';
+  }
   if(matchesInRound.length>1)label+=' · Match '+m.number;
   return label;
 }
@@ -4928,15 +5245,44 @@ async function refreshTopCutCache(t){
     let total=data.match.length;
     let done=data.match.filter(m=>m.opponent1?.result||m.opponent2?.result||m.opponent1===null||m.opponent2===null).length;
     let finalGroup=data.group.find(g=>g.number===3);
-    let complete=false,champion=null;
-    if(!finalGroup){
+    let complete=false,champion=null,runnerUp=null,thirdPlace=null;
+    let isSingleElim = (data.stage?.[0]?.type === 'single_elimination');
+
+    if(isSingleElim){
+      let mainGroup = data.group.find(g => g.number === 1);
+      let group1Matches = (data.match||[]).filter(m => m.group_id === mainGroup?.id);
+      let finalMatch = group1Matches.slice().reverse()[0];
+      if(finalMatch && (finalMatch.opponent1?.result || finalMatch.opponent2?.result)){
+        complete = true;
+        champion = finalMatch.opponent1?.result === 'win' ? nameOf(finalMatch.opponent1.id) : nameOf(finalMatch.opponent2.id);
+        runnerUp = finalMatch.opponent1?.result === 'win' ? nameOf(finalMatch.opponent2.id) : nameOf(finalMatch.opponent1.id);
+      }
+      let consolationGroup = data.group.find(g => g.number === 2);
+      if(consolationGroup){
+        let thirdMatch = (data.match||[]).find(m => m.group_id === consolationGroup.id);
+        if(thirdMatch && (thirdMatch.opponent1?.result || thirdMatch.opponent2?.result)){
+          thirdPlace = thirdMatch.opponent1?.result === 'win' ? nameOf(thirdMatch.opponent1.id) : nameOf(thirdMatch.opponent2.id);
+        }
+      }
+    } else if(!finalGroup){
       let m=data.match[0];
-      if(m&&(m.opponent1?.result||m.opponent2?.result)){complete=true;champion=m.opponent1?.result==='win'?nameOf(m.opponent1.id):nameOf(m.opponent2.id)}
-    }else{
-      try{let h=hydrateTopCutManager(t);let final=await h.manager.get.finalStandings(0);champion=nameOf(final[0].id);complete=true}catch(e){complete=false}
+      if(m&&(m.opponent1?.result||m.opponent2?.result)){
+        complete=true;
+        champion=m.opponent1?.result==='win'?nameOf(m.opponent1.id):nameOf(m.opponent2.id);
+        runnerUp=m.opponent1?.result==='win'?nameOf(m.opponent2.id):nameOf(m.opponent1.id);
+      }
+    } else {
+      try{
+        let h=hydrateTopCutManager(t);
+        let final=await h.manager.get.finalStandings(0);
+        champion=nameOf(final[0].id);
+        if(final.length > 1) runnerUp = nameOf(final[1].id);
+        if(final.length > 2) thirdPlace = nameOf(final[2].id);
+        complete=true;
+      }catch(e){complete=false}
     }
     let participants=data.participant.map(p=>p.name);
-    t.topCutCache={total,done,complete,champion,playable,results,participants};
+    t.topCutCache={total,done,complete,champion,runnerUp,thirdPlace,playable,results,participants};
     return;
   }
 
@@ -5030,11 +5376,109 @@ function getTournamentTopCutModel(t){
     matchObj.loser = sm.loser;
   }
 
+  let stage2 = t.stage2Format || (bmd?.stage?.[0]?.type === 'single_elimination' ? 'single_elimination' : 'double_elimination');
+  let isSingleElim = (stage2 === 'single_elimination');
+
   let wbRounds = [];
   let lbRounds = [];
   let gfMatches = [];
 
-  if(count === 8){
+  if(isSingleElim){
+    if(count === 8){
+      let p8Label = qualifiers.length <= 7 ? 'BYE' : 'Seed #8';
+      let p7Label = qualifiers.length <= 6 ? 'BYE' : 'Seed #7';
+      let qfMatches = [
+        { id:'qf1', title:'Quarterfinal 1', p1:seededNames[0]||'Seed #1', p1Seed:1, p2:seededNames[7]||p8Label, p2Seed:8, originP1:'Seed #1', originP2:p8Label },
+        { id:'qf2', title:'Quarterfinal 2', p1:seededNames[3]||'Seed #4', p1Seed:4, p2:seededNames[4]||'Seed #5', p2Seed:5, originP1:'Seed #4', originP2:'Seed #5' },
+        { id:'qf3', title:'Quarterfinal 3', p1:seededNames[1]||'Seed #2', p1Seed:2, p2:seededNames[6]||p7Label, p2Seed:7, originP1:'Seed #2', originP2:p7Label },
+        { id:'qf4', title:'Quarterfinal 4', p1:seededNames[2]||'Seed #3', p1Seed:3, p2:seededNames[5]||'Seed #6', p2Seed:6, originP1:'Seed #3', originP2:'Seed #6' },
+      ];
+      [1, 2, 3, 4].forEach((num, idx)=>{
+        let sm = findStageMatch(bmd, 1, 1, num);
+        if(sm){
+          applyStageMatch(qfMatches[idx], sm);
+        } else if(qfMatches[idx].p2 === 'BYE' && qfMatches[idx].p1 && isKnownPlayer(qfMatches[idx].p1)){
+          qfMatches[idx].isDone = true;
+          qfMatches[idx].winner = qfMatches[idx].p1;
+          qfMatches[idx].loser = null;
+          qfMatches[idx].s1 = 2;
+          qfMatches[idx].s2 = 0;
+        }
+      });
+      wbRounds.push({ title:'Quarterfinals', name:'Round 1', matches:qfMatches });
+
+      let sfMatches = [
+        { id:'sf1', title:'Semifinal 1', p1:qfMatches[0].winner||'Winner QF 1', p2:qfMatches[1].winner||'Winner QF 2', originP1:'Winner of QF 1', originP2:'Winner of QF 2' },
+        { id:'sf2', title:'Semifinal 2', p1:qfMatches[2].winner||'Winner QF 3', p2:qfMatches[3].winner||'Winner QF 4', originP1:'Winner of QF 3', originP2:'Winner of QF 4' },
+      ];
+      [1, 2].forEach((num, idx)=>{
+        let sm = findStageMatch(bmd, 1, 2, num);
+        if(sm){
+          applyStageMatch(sfMatches[idx], sm);
+        }
+      });
+      wbRounds.push({ title:'Semifinals', name:'Round 2', matches:sfMatches });
+
+      let finalsMatch = {
+        id:'finals', title:'Championship Final', p1:sfMatches[0].winner||'Winner SF 1', p2:sfMatches[1].winner||'Winner SF 2', originP1:'Winner of SF 1', originP2:'Winner of SF 2'
+      };
+      let smFinals = findStageMatch(bmd, 1, 3, 1);
+      if(smFinals){
+        applyStageMatch(finalsMatch, smFinals);
+      }
+      gfMatches.push(finalsMatch);
+
+      let thirdMatch = {
+        id:'third', title:'3rd Place Bronze Match', p1:sfMatches[0].loser||'Loser SF 1', p2:sfMatches[1].loser||'Loser SF 2', originP1:'Loser of SF 1', originP2:'Loser of SF 2'
+      };
+      let smThird = findStageMatch(bmd, 2, 1, 1);
+      if(smThird){
+        applyStageMatch(thirdMatch, smThird);
+      }
+      gfMatches.push(thirdMatch);
+
+    } else if(count === 4){
+      let sfMatches = [
+        { id:'sf1', title:'Semifinal 1', p1:seededNames[0]||'Seed #1', p1Seed:1, p2:seededNames[3]||'Seed #4', p2Seed:4, originP1:'Seed #1', originP2:'Seed #4' },
+        { id:'sf2', title:'Semifinal 2', p1:seededNames[1]||'Seed #2', p1Seed:2, p2:seededNames[2]||'Seed #3', p2Seed:3, originP1:'Seed #2', originP2:'Seed #3' }
+      ];
+      [1, 2].forEach((num, idx)=>{
+        let sm = findStageMatch(bmd, 1, 1, num);
+        if(sm){
+          applyStageMatch(sfMatches[idx], sm);
+        }
+      });
+      wbRounds.push({ title:'Semifinals', name:'Round 1', matches:sfMatches });
+
+      let finalsMatch = {
+        id:'finals', title:'Championship Final', p1:sfMatches[0].winner||'Winner SF 1', p2:sfMatches[1].winner||'Winner SF 2', originP1:'Winner of SF 1', originP2:'Winner of SF 2'
+      };
+      let smFinals = findStageMatch(bmd, 1, 2, 1);
+      if(smFinals){
+        applyStageMatch(finalsMatch, smFinals);
+      }
+      gfMatches.push(finalsMatch);
+
+      let thirdMatch = {
+        id:'third', title:'3rd Place Bronze Match', p1:sfMatches[0].loser||'Loser SF 1', p2:sfMatches[1].loser||'Loser SF 2', originP1:'Loser of SF 1', originP2:'Loser of SF 2'
+      };
+      let smThird = findStageMatch(bmd, 2, 1, 1);
+      if(smThird){
+        applyStageMatch(thirdMatch, smThird);
+      }
+      gfMatches.push(thirdMatch);
+
+    } else {
+      let finalsMatch = {
+        id:'finals', title:'Championship Final', p1:seededNames[0]||'Seed #1', p1Seed:1, p2:seededNames[1]||'Seed #2', p2Seed:2, originP1:'Seed #1', originP2:'Seed #2'
+      };
+      let smFinals = findStageMatch(bmd, 1, 1, 1);
+      if(smFinals){
+        applyStageMatch(finalsMatch, smFinals);
+      }
+      gfMatches.push(finalsMatch);
+    }
+  } else if(count === 8){
     let p8Label = qualifiers.length <= 7 ? 'BYE' : 'Seed #8';
     let p7Label = qualifiers.length <= 6 ? 'BYE' : 'Seed #7';
     let wb1Matches = [
@@ -5247,18 +5691,32 @@ function getTournamentTopCutModel(t){
 
   let champion = t.champion;
   let runnerUp = null;
+  let thirdPlace = null;
 
-  if(gfMatches.length > 1){
-    if(gfMatches[1].isDone){
-      champion = gfMatches[1].winner;
-      runnerUp = gfMatches[1].loser;
-    } else {
-      champion = null;
-      runnerUp = null;
+  if(isSingleElim){
+    if(gfMatches[0]?.isDone && gfMatches[0].winner){
+      champion = gfMatches[0].winner;
+      runnerUp = gfMatches[0].loser;
     }
-  } else if(gfMatches[0]?.isDone && gfMatches[0].winner === gfMatches[0].p1){
-    champion = gfMatches[0].winner;
-    runnerUp = gfMatches[0].loser;
+    if(gfMatches[1]?.isDone && gfMatches[1].winner){
+      thirdPlace = gfMatches[1].winner;
+    } else if(!thirdPlace && gfMatches[0]?.isDone){
+      let semiLosers = wbRounds.slice().reverse().find(r => (r.title||'').toLowerCase().includes('semifinal'))?.matches?.map(m => m.loser).filter(isKnownPlayer) || [];
+      if(semiLosers.length) thirdPlace = semiLosers[0];
+    }
+  } else {
+    if(gfMatches.length > 1){
+      if(gfMatches[1].isDone){
+        champion = gfMatches[1].winner;
+        runnerUp = gfMatches[1].loser;
+      } else {
+        champion = null;
+        runnerUp = null;
+      }
+    } else if(gfMatches[0]?.isDone && gfMatches[0].winner === gfMatches[0].p1){
+      champion = gfMatches[0].winner;
+      runnerUp = gfMatches[0].loser;
+    }
   }
 
   if(!champion && (t.bracketManagerData?.champion || t.topCutCache?.champion) && (t.status === 'COMPLETE' || !gfMatches.some(m=>!m.isDone))){
@@ -5278,17 +5736,19 @@ function getTournamentTopCutModel(t){
     if(gf) runnerUp = (gf.p1 === champion) ? gf.p2 : gf.p1;
   }
 
-  let lbFinal = lbRounds.slice().reverse().find(r => (r.title || '').toLowerCase().includes('loser') || (r.title || '').toLowerCase().includes('final') || (r.matches && r.matches.length === 1));
-  let thirdPlace = (lbFinal?.matches?.[0]?.isDone ? lbFinal.matches[0].loser : null);
   if(!thirdPlace && t.bracketManagerData?.thirdPlace){
     thirdPlace = t.bracketManagerData.thirdPlace;
   }
   if(!thirdPlace && t.topCutCache?.thirdPlace){
     thirdPlace = t.topCutCache.thirdPlace;
   }
-  if(!thirdPlace && completedList.length){
-    let lf = completedList.find(m => (m.title || '').toLowerCase().includes('loser') && (m.title || '').toLowerCase().includes('final'));
-    if(lf) thirdPlace = lf.loser || (lf.s1 > lf.s2 ? lf.p2 : (lf.s2 > lf.s1 ? lf.p1 : null));
+  if(!thirdPlace && !isSingleElim){
+    let lbFinal = lbRounds.slice().reverse().find(r => (r.title || '').toLowerCase().includes('loser') || (r.title || '').toLowerCase().includes('final') || (r.matches && r.matches.length === 1));
+    thirdPlace = (lbFinal?.matches?.[0]?.isDone ? lbFinal.matches[0].loser : null);
+    if(!thirdPlace && completedList.length){
+      let lf = completedList.find(m => (m.title || '').toLowerCase().includes('loser') && (m.title || '').toLowerCase().includes('final'));
+      if(lf) thirdPlace = lf.loser || (lf.s1 > lf.s2 ? lf.p2 : (lf.s2 > lf.s1 ? lf.p1 : null));
+    }
   }
 
   return {
@@ -5613,10 +6073,10 @@ function topCutSection(t, preview){
 
     <div class="card" style="padding:22px;background:#101015;border-color:#2e2e38;width:100%">
       <div class="tc-bracket-scroll-pane">
-        <div style="margin-bottom:28px">
+        <div style="margin-bottom:${model.lbRounds?.length ? '28px' : '0'}">
           <div class="tc-section-header">
-            <h3><span style="color:#ffd166">🏆</span> Winners Bracket</h3>
-            <span style="font-size:10px;font-weight:800;letter-spacing:.8px;color:#8e8c95;text-transform:uppercase">Upper Bracket Path</span>
+            <h3><span style="color:#ffd166">🏆</span> ${model.lbRounds?.length ? 'Winners Bracket' : 'Championship Bracket'}</h3>
+            <span style="font-size:10px;font-weight:800;letter-spacing:.8px;color:#8e8c95;text-transform:uppercase">${model.lbRounds?.length ? 'Upper Bracket Path' : 'Knockout Stage'}</span>
           </div>
           <div class="tc-bracket-grid">
             ${model.wbRounds.map(r=>`
@@ -5628,13 +6088,14 @@ function topCutSection(t, preview){
               </div>
             `).join('')}
             <div class="tc-round-col" style="border-left:1px dashed #3a3a46;padding-left:24px;width:280px">
-              <div class="tc-round-head"><span style="color:#ffd166">👑 Grand Finals</span></div>
+              <div class="tc-round-head"><span style="color:#ffd166">👑 ${model.lbRounds?.length ? 'Grand Finals' : 'Championship Finals'}</span></div>
               <div class="tc-round-matches">
                 ${model.gfMatches.map(m=>renderBracketCard(m)).join('')}
               </div>
             </div>
           </div>
         </div>
+        ${model.lbRounds?.length ? `
         <div>
           <div class="tc-section-header">
             <h3><span style="color:#7ad1ff">🛡️</span> Losers Bracket</h3>
@@ -5650,7 +6111,7 @@ function topCutSection(t, preview){
               </div>
             `).join('')}
           </div>
-        </div>
+        </div>` : ''}
       </div>
     </div>
   </div>`;
@@ -7053,8 +7514,53 @@ function openCreator(){
       <div class="creator-grid">
         <div class="field" style="margin-top:0"><label style="margin-top:0">Tournament name</label><input id="tn" placeholder="e.g. Moonlit Cup" oninput="updateCreatorLiveCardPreview()"></div>
         <div class="field" style="margin-top:0"><label style="margin-top:0">Regulation</label><input id="tr" placeholder="e.g. Regulation I · Singles" oninput="updateCreatorLiveCardPreview()"></div>
-        <div class="field"><label>Number of groups</label><select id="gc">${Array.from({length:8},(_,i)=>`<option value="${i+1}">${i+1} group${i?'s':''}</option>`).join('')}</select></div>
-        <div class="field"><label>Advance per group to Top Cut</label><input id="ap" type="number" min="1" max="10" value="2"></div>
+        <div class="field">
+          <label style="display:flex;justify-content:space-between;align-items:center">
+            <span>First Phase (Opening Stage)</span>
+            <span class="tag" style="font-size:8.5px;background:#201824;color:#fca5a5;border:1px solid #6b2128">Stage 1</span>
+          </label>
+          <select id="stage1Format" onchange="onCreatorStage1FormatChange(this.value)">
+            <option value="round_robin" selected>Round Robin Groups (Default)</option>
+            <option value="swiss">Swiss System Stage</option>
+          </select>
+        </div>
+
+        <div class="field">
+          <label style="display:flex;justify-content:space-between;align-items:center">
+            <span>Second Phase (Playoffs / Top Cut)</span>
+            <span class="tag" style="font-size:8.5px;background:#182028;color:#93c5fd;border:1px solid #1e3a8a">Stage 2 · Playoffs</span>
+          </label>
+          <select id="stage2Format">
+            <option value="double_elimination" selected>Double Elimination (Default)</option>
+            <option value="single_elimination">Single Elimination</option>
+          </select>
+        </div>
+
+        <!-- Dynamic Phase 1 Options: Round Robin -->
+        <div id="creatorRoundRobinOptions" style="display:contents">
+          <div class="field"><label>Number of groups</label><select id="gc">${Array.from({length:8},(_,i)=>`<option value="${i+1}">${i+1} group${i?'s':''}</option>`).join('')}</select></div>
+          <div class="field"><label>Advance per group to Top Cut</label><input id="ap" type="number" min="1" max="10" value="2"></div>
+        </div>
+
+        <!-- Dynamic Phase 1 Options: Swiss Stage -->
+        <div id="creatorSwissOptions" style="display:none">
+          <div class="field">
+            <label style="display:flex;justify-content:space-between">
+              <span>Swiss Stage Rounds</span>
+              <span id="swissRecommendedLabel" style="font-size:9px;color:#ffd166;font-weight:700">3–4 rounds recommended</span>
+            </label>
+            <input id="swissRounds" type="number" min="2" max="10" value="4" placeholder="4" oninput="this.dataset.userEdited='true'">
+          </div>
+          <div class="field">
+            <label>Advancing to Top Cut Playoffs</label>
+            <select id="swissCut">
+              <option value="2">Top 2 Qualify</option>
+              <option value="4" selected>Top 4 Qualify</option>
+              <option value="8">Top 8 Qualify</option>
+            </select>
+          </div>
+        </div>
+
         <div class="field"><label>Start date</label><input id="sd" type="date"></div>
         <div class="field"><label>End date</label><input id="ed" type="date"></div>
         <div class="field" style="grid-column:1/-1;margin-top:4px">
@@ -7301,6 +7807,27 @@ function updateCreatorSelectedCount(){
   let count=document.querySelectorAll('.profileChoice:checked').length;
   let label=document.querySelector('#creatorSelectedCount');
   if(label)label.textContent=`${count} Selected`;
+  updateCreatorSwissRecommendations();
+}
+
+function updateCreatorSwissRecommendations(){
+  let count = document.querySelectorAll('.profileChoice:checked').length;
+  let recRounds = Math.max(2, Math.ceil(Math.log2(count || 8)));
+  let recEl = document.getElementById('swissRecommendedLabel');
+  if(recEl) recEl.textContent = `${recRounds} rounds recommended for ${count || 0} trainers`;
+  let roundsInput = document.getElementById('swissRounds');
+  if(roundsInput && !roundsInput.dataset.userEdited){
+    roundsInput.value = recRounds;
+  }
+}
+
+function onCreatorStage1FormatChange(val){
+  let isSwiss = (val === 'swiss');
+  let rrEl = document.getElementById('creatorRoundRobinOptions');
+  let swEl = document.getElementById('creatorSwissOptions');
+  if(rrEl) rrEl.style.display = isSwiss ? 'none' : 'contents';
+  if(swEl) swEl.style.display = isSwiss ? 'contents' : 'none';
+  updateCreatorSwissRecommendations();
 }
 
 function selectAllCreatorPlayers(check){
@@ -7659,7 +8186,7 @@ function safeRecord(p){let raw=String(profiles[p]?.record||'0-0'),parts=raw.spli
 
 
 
-async function endGroupStage(){let t=ongoingT();if(!t||!canManageTournament(t))return;if(t.matches.some(m=>m.as===''||m.bs==='')){alert('Enter a score for every group-stage match before ending the group stage.');return}t.finalStandings=Object.fromEntries(Object.keys(groupsOf(t)).map(g=>[g,getStand(t,g).map(x=>x.p)]));t.phase='topcut';await createTopCutStage(t);rebuildAllPlayerStats();persistLeague();current='Top Cut';render()}
+async function endGroupStage(targetT = null){let t=targetT||(viewTournament?tournamentData[viewTournament]:null)||ongoingT();if(!t||!canManageTournament(t))return;if(t.stage1Format==='swiss')return await endFirstPhase(t);if(t.matches.some(m=>m.as===''||m.as==null||m.bs===''||m.bs==null)){alert('Enter a score for every group-stage match before ending the group stage.');return}t.finalStandings=Object.fromEntries(Object.keys(groupsOf(t)).map(g=>[g,getStand(t,g).map(x=>x.p)]));t.phase='topcut';await createTopCutStage(t);rebuildAllPlayerStats();persistLeague();current='Top Cut';render()}
 function endTournament(){
   let t=ongoingT();
   if(!t||!canManageTournament(t)||!t.topCutCache?.complete){alert('Complete every Top Cut match before ending the tournament.');return}
@@ -8281,9 +8808,52 @@ function Home(){
 
 
 
-function advancePerGroup(t){if(Number.isFinite(Number(t.advancePerGroup)))return Math.max(1,Number(t.advancePerGroup));if(Number.isFinite(Number(t.advance)))return Math.max(1,Number(t.advance));let groups=Object.keys(groupsOf(t)).length,total=Number(t.id==='scarlet'?cut:t.advance||1);return Math.max(1,Math.floor(total/groups))}
-function openSettings(){let t=ongoingT(),groupSize=Math.max(...Object.values(groupsOf(t)).map(x=>x.length));document.querySelector('#modal').innerHTML=`<div class="modal-wrap"><div class="modal" style="max-width:430px"><div class="modal-head"><div><div class="eyebrow">Moderator setting</div><h2>Group qualification</h2></div><button class="close" onclick="closeModal()">×</button></div><div class="field"><label>Players advancing from each group</label><input id="cutSelect" type="number" min="1" max="${groupSize}" value="${advancePerGroup(t)}"></div><p class="sub">This is per group. It immediately updates standings, the cutoff line, and Top Cut seeding.</p><div class="creator-actions"><button class="btn" onclick="saveQualification()">Save qualification</button></div></div></div>`}
-function saveQualification(){let t=ongoingT(),value=Math.max(1,+document.querySelector('#cutSelect').value||1);t.advancePerGroup=value;if(t.id==='scarlet')cut=value*Object.keys(groupsOf(t)).length;persistLeague();closeModal();render()}
+function advancePerGroup(t){
+  if(t?.stage1Format === 'swiss') return Math.max(1, Number(t.swissCut) || 4);
+  if(Number.isFinite(Number(t?.advancePerGroup)))return Math.max(1,Number(t.advancePerGroup));
+  if(Number.isFinite(Number(t?.advance)))return Math.max(1,Number(t.advance));
+  let groups=Object.keys(groupsOf(t)).length,total=Number(t?.id==='scarlet'?cut:t?.advance||1);
+  return Math.max(1,Math.floor(total/groups));
+}
+
+function openSettings(){
+  let t=ongoingT();
+  if(!t) return;
+  let isSwiss = (t.stage1Format === 'swiss');
+  if(isSwiss){
+    document.querySelector('#modal').innerHTML=`<div class="modal-wrap"><div class="modal" style="max-width:430px">
+      <div class="modal-head"><div><div class="eyebrow">Moderator setting</div><h2>Swiss qualification</h2></div><button class="close" onclick="closeModal()">×</button></div>
+      <div class="field"><label>Trainers advancing to Top Cut Playoffs</label><select id="cutSelect">
+        <option value="2" ${advancePerGroup(t)===2?'selected':''}>Top 2</option>
+        <option value="4" ${advancePerGroup(t)===4?'selected':''}>Top 4</option>
+        <option value="8" ${advancePerGroup(t)===8?'selected':''}>Top 8</option>
+      </select></div>
+      <div class="field"><label>Total Swiss Rounds</label><input id="roundsSelect" type="number" min="2" max="10" value="${t.swissRounds || 4}"></div>
+      <p class="sub">This updates the playoff qualification cutoff line and Swiss schedule.</p>
+      <div class="creator-actions"><button class="btn" onclick="saveQualification()">Save qualification</button></div>
+    </div></div>`;
+    return;
+  }
+  let groupSize=Math.max(...Object.values(groupsOf(t)).map(x=>x.length));
+  document.querySelector('#modal').innerHTML=`<div class="modal-wrap"><div class="modal" style="max-width:430px"><div class="modal-head"><div><div class="eyebrow">Moderator setting</div><h2>Group qualification</h2></div><button class="close" onclick="closeModal()">×</button></div><div class="field"><label>Players advancing from each group</label><input id="cutSelect" type="number" min="1" max="${groupSize}" value="${advancePerGroup(t)}"></div><p class="sub">This is per group. It immediately updates standings, the cutoff line, and Top Cut seeding.</p><div class="creator-actions"><button class="btn" onclick="saveQualification()">Save qualification</button></div></div></div>`;
+}
+
+function saveQualification(){
+  let t=ongoingT();
+  if(!t) return;
+  let value=Math.max(1,+document.querySelector('#cutSelect').value||1);
+  if(t.stage1Format === 'swiss'){
+    t.swissCut = value;
+    let roundsVal = +document.querySelector('#roundsSelect')?.value;
+    if(roundsVal && roundsVal >= 2) t.swissRounds = roundsVal;
+  } else {
+    t.advancePerGroup=value;
+    if(t.id==='scarlet')cut=value*Object.keys(groupsOf(t)).length;
+  }
+  persistLeague();
+  closeModal();
+  render();
+}
 function deleteProfile(p){if(Object.values(tournamentData).some(t=>t.players?.includes(p))){alert('Remove this player from all tournaments first.');return}if(!confirm(`Delete ${p}'s profile?`))return;delete profiles[p];delete roster[p];delete teamHistory[p];persistLeague();openProfileManager()}
 function openProfileManager(){let rows=Object.entries(profiles).map(([p,q])=>`<div class="card" style="padding:12px;margin-top:8px"><b>${p}</b><span class="sub" style="margin-left:8px">${q.team}</span><button class="save" style="float:right;color:#ff969c" onclick="deleteProfile('${p}')">Delete</button><button class="save" style="float:right;margin-right:7px" onclick="editProfile('${p}')">Edit</button></div>`).join('');document.querySelector('#modal').innerHTML=`<div class="modal-wrap"><div class="modal"><div class="modal-head"><div><div class="eyebrow">Moderator only</div><h2>Player profiles</h2></div><button class="close" onclick="closeModal()">×</button></div><div class="field"><label>New profile name</label><input id="profileNewName" placeholder="Player name"></div><div class="field"><label>Default team name (optional)</label><input id="profileNewTeam" placeholder="Used outside specific tournaments"></div><button class="btn" style="margin-top:12px" onclick="createProfile()">Create player profile</button><div class="section">${rows||'<p class="sub">No profiles yet.</p>'}</div></div></div>`}
 
@@ -9511,7 +10081,16 @@ function removeDraftStageCover(){
   render();
 }
 
-function seedTopCut(t){let groups=Object.keys(groupsOf(t)),per=advancePerGroup(t),entries=[];for(let rank=0;rank<per;rank++)groups.forEach(g=>{let x=getStand(t,g)[rank];if(x)entries.push(x.p)});return entries}
+function seedTopCut(t){
+  if(t?.stage1Format === 'swiss'){
+    let swissStand = getSwissStand(t);
+    let cutCount = advancePerGroup(t);
+    return swissStand.slice(0, cutCount).map(x => x.p);
+  }
+  let groups=Object.keys(groupsOf(t)),per=advancePerGroup(t),entries=[];
+  for(let rank=0;rank<per;rank++)groups.forEach(g=>{let x=getStand(t,g)[rank];if(x)entries.push(x.p)});
+  return entries;
+}
 function topCutBracketSeedOrder(size){let order=[1,2];for(let n=4;n<=size;n*=2)order=order.flatMap(seed=>[seed,n+1-seed]);return order}
 function buildTopCutSeeding(t){
   let names=(t.customTopCutSeeding && t.customTopCutSeeding.length) ? t.customTopCutSeeding.filter(Boolean) : seedTopCut(t).filter(Boolean);
@@ -10348,32 +10927,39 @@ function resetGroupStageScores(){
 function renderMatchRow(m, i, t){
   let editable = canManageTournament(t) && t.status === 'ONGOING' && t.phase !== 'topcut';
   let a = m.a || 'TBD', b = m.b || 'TBD';
-  let av = scoreDrafts['a'+i] ?? m.as ?? '';
-  let bv = scoreDrafts['b'+i] ?? m.bs ?? '';
-  let reported = m.as !== '' && m.as != null && m.bs !== '' && m.bs != null;
+  let isBye = (m.b === 'BYE' || m.a === 'BYE');
+  if(isBye) editable = false;
+  let av = scoreDrafts['a'+i] ?? m.as ?? (isBye && a !== 'BYE' ? '2' : '');
+  let bv = scoreDrafts['b'+i] ?? m.bs ?? (isBye && b !== 'BYE' ? '2' : '');
+  let reported = isBye || (m.as !== '' && m.as != null && m.bs !== '' && m.bs != null);
 
-  let sa = reported ? +m.as : null;
-  let sb = reported ? +m.bs : null;
+  let sa = reported ? (isBye ? (a === 'BYE' ? 0 : 2) : +m.as) : null;
+  let sb = reported ? (isBye ? (b === 'BYE' ? 0 : 2) : +m.bs) : null;
   let aWon = reported && sa > sb;
   let bWon = reported && sb > sa;
 
-  let aFace = profilePictures[a] ? `url('${esc(profilePictures[a])}')` : (teamCovers[a] ? `url('${esc(teamCovers[a])}')` : fallbackArt(a));
-  let aLetter = (profilePictures[a] || teamCovers[a]) ? '' : esc((a || '?')[0]);
+  let aFace = (a === 'BYE') ? 'linear-gradient(135deg,#23232c,#17171f)' : (profilePictures[a] ? `url('${esc(profilePictures[a])}')` : (teamCovers[a] ? `url('${esc(teamCovers[a])}')` : fallbackArt(a)));
+  let aLetter = (a === 'BYE') ? '—' : ((profilePictures[a] || teamCovers[a]) ? '' : esc((a || '?')[0]));
 
-  let bFace = profilePictures[b] ? `url('${esc(profilePictures[b])}')` : (teamCovers[b] ? `url('${esc(teamCovers[b])}')` : fallbackArt(b));
-  let bLetter = (profilePictures[b] || teamCovers[b]) ? '' : esc((b || '?')[0]);
+  let bFace = (b === 'BYE') ? 'linear-gradient(135deg,#23232c,#17171f)' : (profilePictures[b] ? `url('${esc(profilePictures[b])}')` : (teamCovers[b] ? `url('${esc(teamCovers[b])}')` : fallbackArt(b)));
+  let bLetter = (b === 'BYE') ? '—' : ((profilePictures[b] || teamCovers[b]) ? '' : esc((b || '?')[0]));
 
-  let aTeam = esc(teamName(t, a));
-  let bTeam = esc(teamName(t, b));
+  let aTeam = (a === 'BYE') ? 'Automatic Bye (+1 Win)' : esc(teamName(t, a));
+  let bTeam = (b === 'BYE') ? 'Automatic Bye (+1 Win)' : esc(teamName(t, b));
 
   let label = m.custom ? 'Custom Match' : (m.group || 'Group Match');
 
   let headerBadge = '';
-  if(reported){
+  if(isBye){
+    headerBadge = `<span style="color:#4bdd91;font-weight:900">BYE · 2-0 WIN</span>`;
+  } else if(reported){
     headerBadge = `<span style="color:#4bdd91;font-weight:900">FINAL ${m.date ? `· ${esc(m.date)}` : ''}</span>`;
   } else {
     headerBadge = `<span style="color:#ffd166;font-weight:800">AWAITING SCORE</span>`;
   }
+
+  let aNameHtml = (a === 'BYE') ? '<span style="color:#8e8c95;font-weight:700">BYE</span>' : playerLink(a);
+  let bNameHtml = (b === 'BYE') ? '<span style="color:#8e8c95;font-weight:700">BYE</span>' : playerLink(b);
 
   return `<article class="m-card ${reported ? 'reported' : ''}" data-players="${esc(a)}|${esc(b)}">
     <div class="m-card-head">
@@ -10385,14 +10971,14 @@ function renderMatchRow(m, i, t){
         <span class="m-slot-avatar" style="background-image:${aFace}">${aLetter}</span>
         <div class="m-slot-info">
           <div class="m-slot-name-row">
-            <span class="m-slot-name">${playerLink(a)}</span>
+            <span class="m-slot-name">${aNameHtml}</span>
           </div>
           <span class="m-slot-team">${aTeam}</span>
         </div>
         ${editable ? `
           <input aria-label="${esc(a)} score" id="a${i}" class="m-slot-input" type="number" min="0" inputmode="numeric" placeholder="0" value="${av}">
         ` : `
-          <span class="m-slot-score">${reported ? m.as : '—'}</span>
+          <span class="m-slot-score">${reported ? (isBye ? (a === 'BYE' ? 0 : 2) : m.as) : '—'}</span>
         `}
       </div>
 
@@ -10400,21 +10986,21 @@ function renderMatchRow(m, i, t){
         <span class="m-slot-avatar" style="background-image:${bFace}">${bLetter}</span>
         <div class="m-slot-info">
           <div class="m-slot-name-row">
-            <span class="m-slot-name">${playerLink(b)}</span>
+            <span class="m-slot-name">${bNameHtml}</span>
           </div>
           <span class="m-slot-team">${bTeam}</span>
         </div>
         ${editable ? `
           <input aria-label="${esc(b)} score" id="b${i}" class="m-slot-input" type="number" min="0" inputmode="numeric" placeholder="0" value="${bv}">
         ` : `
-          <span class="m-slot-score">${reported ? m.bs : '—'}</span>
+          <span class="m-slot-score">${reported ? (isBye ? (b === 'BYE' ? 0 : 2) : m.bs) : '—'}</span>
         `}
       </div>
     </div>
     ${editable ? `
       <div class="m-card-foot">
         ${m.custom ? `<button class="btn ghost btn-sm" style="color:#ff969c;padding:3px 8px;font-size:10px" onclick="removeCustom(${i})">Remove</button>` : ''}
-        ${reported ? `<button class="btn ghost btn-sm" style="padding:3px 8px;font-size:10px;color:#a09fa8" onclick="clearSingleScore(${i})">Clear</button>` : ''}
+        ${reported && !isBye ? `<button class="btn ghost btn-sm" style="padding:3px 8px;font-size:10px;color:#a09fa8" onclick="clearSingleScore(${i})">Clear</button>` : ''}
         <button class="btn btn-sm" style="padding:4px 12px;font-size:10px" onclick="score(${i})">Save Result</button>
       </div>
     ` : ''}
@@ -10450,25 +11036,51 @@ function Matches(){
     return renderDraftLockedMatches(t);
   }
 
-  let groups = Object.keys(groupsOf(t));
+  let isSwiss = (t.stage1Format === 'swiss');
+  let groups = isSwiss ? ['Swiss Stage'] : Object.keys(groupsOf(t));
   let allMatches = t.matches || [];
   let totalMatches = allMatches.length;
-  let reportedMatches = allMatches.filter(m => m.as !== '' && m.as != null && m.bs !== '' && m.bs != null).length;
+  let reportedMatches = allMatches.filter(m => m.b === 'BYE' || m.a === 'BYE' || (m.as !== '' && m.as != null && m.bs !== '' && m.bs != null)).length;
 
-  let visibleGroups = matchGroupTab === 'all' ? groups : groups.filter(g => g === matchGroupTab);
+  let swissRoundsList = isSwiss ? Array.from(new Set(allMatches.map(m => m.round || 'Round 1'))).sort((a,b) => {
+    let na = parseInt(a.replace(/\D/g, '')) || 0;
+    let nb = parseInt(b.replace(/\D/g, '')) || 0;
+    return na - nb;
+  }) : [];
 
-  let modActions = (canManageTournament(t) && t.status === 'ONGOING' && t.phase !== 'topcut') ? `
-    <div style="display:flex;align-items:center;flex-wrap:wrap;gap:8px">
-      <button class="btn ghost" style="padding:6px 11px;font-size:11px" onclick="openGroupPlacementEditor()">👥 Arrange groups</button>
-      <button class="btn ghost" style="padding:6px 11px;font-size:11px" onclick="addCustom()">⚡ Custom match</button>
-      <button class="btn ghost" style="padding:6px 11px;font-size:11px;color:#ff9ba1;border-color:#4a242a" onclick="resetGroupStageScores()">➔ Reset group scores</button>
-      <button class="btn" style="padding:6px 13px;font-size:11px" onclick="endGroupStage()">🏆 End group stage</button>
-    </div>
-  ` : '';
+  let curRound = t.swissCurrentRound || (swissRoundsList.length ? parseInt(swissRoundsList[swissRoundsList.length - 1].replace(/\D/g, '')) : 1);
+  let totalRounds = t.swissRounds || 4;
+  let curRoundMatches = isSwiss ? allMatches.filter(m => m.round === 'Round ' + curRound) : [];
+  let curRoundDone = isSwiss && curRoundMatches.length > 0 && curRoundMatches.every(m => m.b === 'BYE' || m.a === 'BYE' || (m.as !== '' && m.as != null && m.bs !== '' && m.bs != null));
+
+  let visibleSections = isSwiss
+    ? (matchGroupTab === 'all' ? swissRoundsList : swissRoundsList.filter(r => r === matchGroupTab))
+    : (matchGroupTab === 'all' ? groups : groups.filter(g => g === matchGroupTab));
+
+  let modActions = (canManageTournament(t) && t.status === 'ONGOING' && t.phase !== 'topcut') ? (
+    isSwiss ? `
+      <div style="display:flex;align-items:center;flex-wrap:wrap;gap:8px">
+        ${curRoundDone && curRound < totalRounds ? `<button class="btn" style="padding:6px 13px;font-size:11px;background:#2563eb" onclick="pairSwissNextRound()">🎲 Pair Round ${curRound + 1}</button>` : ''}
+        ${curRoundDone && curRound >= totalRounds ? `<button class="btn" style="padding:6px 13px;font-size:11px" onclick="endFirstPhase()">🏆 End Swiss Stage · Start Top Cut</button>` : ''}
+        <button class="btn ghost" style="padding:6px 11px;font-size:11px" onclick="repairCurrentSwissRound()">🎲 Re-pair Round ${curRound}</button>
+        <button class="btn ghost" style="padding:6px 11px;font-size:11px" onclick="addCustom()">⚡ Custom match</button>
+        <button class="btn ghost" style="padding:6px 11px;font-size:11px;color:#ff9ba1;border-color:#4a242a" onclick="resetGroupStageScores()">➔ Reset scores</button>
+        ${!curRoundDone ? `<button class="btn" style="padding:6px 13px;font-size:11px" onclick="endFirstPhase()">🏆 Conclude Swiss stage</button>` : ''}
+      </div>
+    ` : `
+      <div style="display:flex;align-items:center;flex-wrap:wrap;gap:8px">
+        <button class="btn ghost" style="padding:6px 11px;font-size:11px" onclick="openGroupPlacementEditor()">👥 Arrange groups</button>
+        <button class="btn ghost" style="padding:6px 11px;font-size:11px" onclick="addCustom()">⚡ Custom match</button>
+        <button class="btn ghost" style="padding:6px 11px;font-size:11px;color:#ff9ba1;border-color:#4a242a" onclick="resetGroupStageScores()">➔ Reset group scores</button>
+        <button class="btn" style="padding:6px 13px;font-size:11px" onclick="endGroupStage()">🏆 End group stage</button>
+      </div>
+    `
+  ) : '';
 
   let filterMatch = m => {
-    if(matchStatusTab === 'pending' && m.as !== '' && m.as != null && m.bs !== '' && m.bs != null) return false;
-    if(matchStatusTab === 'reported' && (m.as === '' || m.as == null || m.bs === '' || m.bs == null)) return false;
+    let isRep = (m.b === 'BYE' || m.a === 'BYE' || (m.as !== '' && m.as != null && m.bs !== '' && m.bs != null));
+    if(matchStatusTab === 'pending' && isRep) return false;
+    if(matchStatusTab === 'reported' && !isRep) return false;
     if(matchFilterPlayers.length && !matchFilterPlayers.includes(m.a) && !matchFilterPlayers.includes(m.b)) return false;
     if(matchSearchTerm){
       let q = matchSearchTerm.toLowerCase();
@@ -10480,15 +11092,16 @@ function Matches(){
   };
 
   let playersList = t.players || [];
+  let stageSubtitle = isSwiss ? (t.name + ` · Swiss stage fixtures (Round ${curRound} of ${totalRounds})`) : (t.name + ' · group stage fixtures');
 
-  return head('Matches', t.name + ' · group stage fixtures', modActions) + `
+  return head('Matches', stageSubtitle, modActions) + `
     <div class="match-layout-modern">
       <div class="match-controls-bar">
         <div style="display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px;width:100%">
           <div style="display:flex;flex-wrap:wrap;align-items:center;gap:12px">
             <div class="match-filter-tabs">
-              <button class="m-tab ${matchGroupTab === 'all' ? 'active' : ''}" onclick="matchGroupTab='all';render()">All Groups</button>
-              ${groups.map(g => `<button class="m-tab ${matchGroupTab === g ? 'active' : ''}" onclick="matchGroupTab='${g}';render()">${esc(g)}</button>`).join('')}
+              <button class="m-tab ${matchGroupTab === 'all' ? 'active' : ''}" onclick="matchGroupTab='all';render()">${isSwiss ? 'All Rounds' : 'All Groups'}</button>
+              ${(isSwiss ? swissRoundsList : groups).map(item => `<button class="m-tab ${matchGroupTab === item ? 'active' : ''}" onclick="matchGroupTab='${item}';render()">${esc(item)}</button>`).join('')}
             </div>
 
             <span style="color:#4a4a58">|</span>
@@ -10524,21 +11137,21 @@ function Matches(){
       </div>
 
       <div>
-        ${visibleGroups.map(g => {
-          let gMatches = (t.matches || []).filter(m => (m.group || 'Group A') === g);
-          let filtered = gMatches.filter(filterMatch);
-          let gReported = gMatches.filter(m => m.as !== '' && m.as != null && m.bs !== '' && m.bs != null).length;
-          let isDone = gMatches.length > 0 && gReported === gMatches.length;
+        ${visibleSections.map(sec => {
+          let sMatches = isSwiss ? (t.matches || []).filter(m => (m.round || 'Round 1') === sec) : (t.matches || []).filter(m => (m.group || 'Group A') === sec);
+          let filtered = sMatches.filter(filterMatch);
+          let sReported = sMatches.filter(m => m.b === 'BYE' || m.a === 'BYE' || (m.as !== '' && m.as != null && m.bs !== '' && m.bs != null)).length;
+          let isDone = sMatches.length > 0 && sReported === sMatches.length;
 
           return `
             <section class="card round-list" style="margin-bottom:20px;padding:16px 18px;background:#141419;border-color:#2c2c36">
               <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;border-bottom:1px solid #252530;padding-bottom:12px;margin-bottom:16px">
                 <div style="display:flex;align-items:center;gap:10px">
-                  <span style="font:900 22px 'Barlow Condensed';letter-spacing:.6px;color:#f5f3f0;text-transform:uppercase">${esc(g)}</span>
-                  <span class="tag ${isDone ? 'safe' : 'hunt'}">${gReported}/${gMatches.length} REPORTED</span>
+                  <span style="font:900 22px 'Barlow Condensed';letter-spacing:.6px;color:#f5f3f0;text-transform:uppercase">${esc(sec)}</span>
+                  <span class="tag ${isDone ? 'safe' : 'hunt'}">${sReported}/${sMatches.length} REPORTED</span>
                 </div>
                 <div style="font-size:11px;color:#8e8c95;font-weight:700">
-                  ${isDone ? '✨ Group Stage Complete' : `${gMatches.length - gReported} matches remaining`}
+                  ${isDone ? (isSwiss ? '✨ Round Complete' : '✨ Group Stage Complete') : `${sMatches.length - sReported} matches remaining`}
                 </div>
               </div>
 
@@ -10555,6 +11168,34 @@ function Matches(){
 
 function matchesView(t=activeT(), editable=canManageTournament(t)){
   if(!t) return '';
+  if(getStage1Format(t) === 'swiss'){
+    let allMatches = t.matches || [];
+    let rounds = Array.from(new Set(allMatches.map(m => m.round || 'Round 1'))).sort((a,b) => {
+      let na = parseInt(a.replace(/\D/g, '')) || 0;
+      let nb = parseInt(b.replace(/\D/g, '')) || 0;
+      return na - nb;
+    });
+    if(!rounds.length) rounds = ['Round 1'];
+    return `<div style="display:grid;gap:20px">
+      ${rounds.map(r => {
+        let rMatches = allMatches.filter(m => (m.round || 'Round 1') === r);
+        let rReported = rMatches.filter(m => m.b === 'BYE' || m.a === 'BYE' || (m.as !== '' && m.as != null && m.bs !== '' && m.bs != null)).length;
+        let isDone = rMatches.length > 0 && rReported === rMatches.length;
+        return `<section class="card round-list" style="margin-bottom:0;padding:16px 18px;background:#141419;border-color:#2c2c36">
+          <div style="display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #252530;padding-bottom:12px;margin-bottom:16px">
+            <div style="display:flex;align-items:center;gap:10px">
+              <span style="font:900 20px 'Barlow Condensed';letter-spacing:.5px;color:#f5f3f0;text-transform:uppercase">${esc(r)}</span>
+              <span class="tag ${isDone ? 'safe' : 'hunt'}">${rReported}/${rMatches.length} REPORTED</span>
+            </div>
+            <span style="font-size:11px;color:#8e8c95;font-weight:700">${rMatches.length - rReported === 0 ? 'All Matches Complete' : `${rMatches.length - rReported} remaining`}</span>
+          </div>
+          <div class="match-grid-modern">
+            ${rMatches.map(m => renderMatchRow(m, (t.matches || []).indexOf(m), t)).join('') || '<div class="empty" style="grid-column:1/-1">No matches scheduled.</div>'}
+          </div>
+        </section>`;
+      }).join('')}
+    </div>`;
+  }
   let groups = Object.keys(groupsOf(t));
   return `<div style="display:grid;gap:20px">
     ${groups.map(g => {
@@ -10669,6 +11310,7 @@ function getStandingsCriteria(t){
 }
 
 function getStand(t=activeT(),group=null){
+  if(getStage1Format(t) === 'swiss') return getSwissStand(t);
   let buckets=groupsOf(t),g=group||Object.keys(buckets)[0],members=buckets[g]||t.players,s={};
   members.forEach(p=>s[p]={p,w:0,l:0,gw:0,gl:0,h2h:0,h2hWins:0,sos:0,results:{}});
   let matches = groupMatches(t,g).filter(m=>m.as!==''&&m.as!=null&&m.bs!==''&&m.bs!=null);
@@ -10718,6 +11360,69 @@ function getStand(t=activeT(),group=null){
 }
 
 function standingTable(t, g){
+  if(getStage1Format(t) === 'swiss'){
+    let list = getSwissStand(t);
+    let cut = advancePerGroup(t);
+    let sortedT = typeof sortedTournamentsChronological === 'function' ? sortedTournamentsChronological() : Object.values(tournamentData);
+    let tIdx = t ? sortedT.findIndex(x => x.id === t.id || x.name === t.name) : -1;
+    let isPastT = (t && t.status === 'COMPLETE' && tIdx >= 0);
+
+    return `
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:14px 16px 10px;border-bottom:1px solid #282834">
+        <span style="font:900 20px 'Barlow Condensed';letter-spacing:.5px;color:#f5f3f0;text-transform:uppercase">SWISS STAGE STANDINGS</span>
+        <span style="font-size:10px;font-weight:800;color:var(--amber);letter-spacing:.6px">${isPastT ? 'FINAL SWISS STANDINGS' : `TOP ${cut} ADVANCE TO PLAYOFFS`}</span>
+      </div>
+      <div class="table-scroll-wrap" style="overflow-x:auto">
+        <table class="standings">
+          <thead>
+            <tr>
+              <th style="width:36px;text-align:center">#</th>
+              <th>Trainer / Team</th>
+              <th style="text-align:center;white-space:nowrap" title="${isPastT ? 'Coach rating at conclusion of Swiss Stage' : 'Current Coach Rating'}">OVR</th>
+              <th style="text-align:center;white-space:nowrap" title="Match Record (Wins - Losses)">W-L</th>
+              <th style="text-align:center;white-space:nowrap" title="Game Record (Games Won - Games Lost)">GW-GL</th>
+              <th style="text-align:center;white-space:nowrap" title="Game Differential (Net Games)">DIFF</th>
+              <th style="text-align:center;white-space:nowrap" title="Buchholz / Strength of Schedule (Sum of Opponents' Match Wins)">BUCH / SOS</th>
+              <th style="text-align:center;white-space:nowrap">Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${list.map((x, i) => {
+              let p = x.p;
+              let ovrObj = (isPastT && typeof getHistoricalPlayerOVR === 'function')
+                ? getHistoricalPlayerOVR(p, tIdx, 'group', sortedT)
+                : calculatePlayerOVR(p);
+
+              let isCutoff = (i === cut);
+              let statusTag = '';
+              if(t.phase === 'topcut' || t.status === 'COMPLETE'){
+                statusTag = i < cut ? '<span class="tag safe">ADVANCED</span>' : '<span class="tag out">ELIMINATED</span>';
+              } else {
+                statusTag = i < cut ? '<span class="tag safe">IN CUT</span>' : '<span class="tag hunt">HUNT</span>';
+              }
+
+              return `
+                <tr class="${isCutoff ? 'cutoff-row' : ''} ${i < cut ? 'safe' : ''}">
+                  <td class="rank" style="text-align:center">${i + 1}</td>
+                  <td class="player">
+                    ${playerLink(p)}
+                    <span class="team">${esc(teamName(t, p))}</span>
+                  </td>
+                  <td style="text-align:center">${ovrObj.badgeHtml}</td>
+                  <td style="text-align:center;font-weight:800;white-space:nowrap">${x.w}-${x.l}</td>
+                  <td style="text-align:center;white-space:nowrap">${x.gw}-${x.gl}</td>
+                  <td style="text-align:center;font-weight:700;color:${x.diff > 0 ? '#7df0aa' : (x.diff < 0 ? '#ff8e95' : '#e6e6e6')};white-space:nowrap">${x.diff > 0 ? '+' : ''}${x.diff}</td>
+                  <td style="text-align:center;font-weight:700;color:var(--amber);white-space:nowrap">${x.buch || x.sos || 0}</td>
+                  <td style="text-align:center">${statusTag}</td>
+                </tr>
+              `;
+            }).join('')}
+          </tbody>
+        </table>
+      </div>
+    `;
+  }
+
   let list = getStand(t, g);
   let cut = advancePerGroup(t);
   let sortedT = typeof sortedTournamentsChronological === 'function' ? sortedTournamentsChronological() : Object.values(tournamentData);
@@ -11237,10 +11942,21 @@ function Standings(){
   if(t.phase === 'draft' && t.status === 'ONGOING'){
     return renderDraftLockedStandings(t);
   }
+  let isSwiss = getStage1Format(t) === 'swiss';
+  let groups = Object.keys(groupsOf(t));
+  let controls = canManageTournament(t) ? (
+    isSwiss 
+      ? `<div><button class="btn ghost" onclick="openRankingEditor()">Arrange rankings</button> <button class="btn ghost" onclick="openSettings()">Edit qualification</button></div>`
+      : `<div><button class="btn ghost" onclick="openGroupPlacementEditor()">👥 Arrange groups</button> <button class="btn ghost" onclick="openRankingEditor()">Arrange rankings</button> <button class="btn ghost" onclick="openTiebreakerEditor('${jsArg(t.id)}')">⚖️ Ranking criteria</button> <button class="btn ghost" onclick="openSettings()">Edit qualification</button></div>`
+  ) : '';
+
+  if(isSwiss){
+    return head('Standings', t.name + ' · Swiss System Stage', controls) + `<div class="card table-wrap" style="max-width:100%">${standingTable(t, 'Swiss Stage')}</div><p class="sub">Swiss ranking order: <b>Match Wins (W-L) → Buchholz Strength of Schedule (BUCH) → Game Differential (DIFF) → Game Wins (GW) → Head-to-Head</b>.</p>` + tournamentRatingProgressionSection(t);
+  }
+
   let criteria = getStandingsCriteria(t);
   let orderDesc = criteria.map(c => `${STANDING_METRICS[c]?.name || c.toUpperCase()} (${STANDING_METRICS[c]?.label || c.toUpperCase()})`).join(' → ');
-  let groups=Object.keys(groupsOf(t)),controls=canManageTournament(t)?`<div><button class="btn ghost" onclick="openGroupPlacementEditor()">👥 Arrange groups</button> <button class="btn ghost" onclick="openRankingEditor()">Arrange rankings</button> <button class="btn ghost" onclick="openTiebreakerEditor('${jsArg(t.id)}')">⚖️ Ranking criteria</button> <button class="btn ghost" onclick="openSettings()">Edit qualification</button></div>`:'';
-  return head('Standings',t.name+' · group stage',controls)+`<div style="display:grid;grid-template-columns:repeat(${groups.length>1?2:1},minmax(0,1fr));gap:15px">${groups.map(g=>`<div class="card table-wrap">${standingTable(t,g)}</div>`).join('')}</div><p class="sub">Tiebreak ranking order: <b>${orderDesc}</b>. Tournament Directors & Moderators can use <b>Ranking criteria</b> to customize tiebreakers.</p>` + tournamentRatingProgressionSection(t);
+  return head('Standings', t.name + ' · group stage', controls) + `<div style="display:grid;grid-template-columns:repeat(${groups.length > 1 ? 2 : 1},minmax(0,1fr));gap:15px">${groups.map(g => `<div class="card table-wrap">${standingTable(t, g)}</div>`).join('')}</div><p class="sub">Tiebreak ranking order: <b>${orderDesc}</b>. Tournament Directors & Moderators can use <b>Ranking criteria</b> to customize tiebreakers.</p>` + tournamentRatingProgressionSection(t);
 }
 
 function matchPlayerName(p){return `<button class="player-link match-hover-name" onclick="openProfile('${jsArg(p)}')" onmouseenter="highlightMatches('${jsArg(p)}',true)" onmouseleave="highlightMatches('',false)">${esc(p)}</button>`}
@@ -11892,14 +12608,40 @@ function tournamentFinish(t,p){
           }
 
           let gf = model.gfMatches || [];
-          let lastGf = gf[gf.length - 1];
-          let gf1 = gf[0];
+          let isSingleElim = (t.stage2Format === 'single_elimination' || (!model.lbRounds?.length && model.wbRounds?.length));
+          if(isSingleElim){
+            let finalsMatch = gf[0];
+            let bronzeMatch = gf[1];
+            if(finalsMatch?.isDone && finalsMatch.winner === p){
+              return {place:1, label:'1st', note:'Champion', cls:'gold'};
+            }
+            if(finalsMatch?.isDone && finalsMatch.loser === p){
+              return {place:2, label:'2nd', note:'Runner-up', cls:'silver'};
+            }
+            if(bronzeMatch?.isDone && bronzeMatch.winner === p){
+              return {place:3, label:'3rd', note:'3rd Place', cls:'bronze'};
+            }
+            if(bronzeMatch?.isDone && bronzeMatch.loser === p){
+              return {place:4, label:'4th', note:'4th Place', cls:'cut'};
+            }
+            let sfRound = model.wbRounds?.find(r => (r.title || '').toLowerCase().includes('semifinal'));
+            if(sfRound?.matches?.some(m => m.isDone && m.loser === p)){
+              return {place: bronzeMatch ? 4 : 3, label:'Top 4', note:'Semifinalist', cls:'cut'};
+            }
+            let qfRound = model.wbRounds?.find(r => (r.title || '').toLowerCase().includes('quarterfinal'));
+            if(qfRound?.matches?.some(m => m.isDone && m.loser === p)){
+              return {place:5, label:'Top 8', note:'Quarterfinalist', cls:'cut'};
+            }
+          } else {
+            let lastGf = gf[gf.length - 1];
+            let gf1 = gf[0];
 
-          if(lastGf?.isDone && lastGf.winner === p){
-            return {place:1, label:'1st', note:'Champion', cls:'gold'};
-          }
-          if((lastGf?.isDone && lastGf.loser === p) || (gf1?.isDone && !lastGf?.isDone && gf1.loser === p && gf.length === 1)){
-            return {place:2, label:'2nd', note:'Runner-up', cls:'silver'};
+            if(lastGf?.isDone && lastGf.winner === p){
+              return {place:1, label:'1st', note:'Champion', cls:'gold'};
+            }
+            if((lastGf?.isDone && lastGf.loser === p) || (gf1?.isDone && !lastGf?.isDone && gf1.loser === p && gf.length === 1)){
+              return {place:2, label:'2nd', note:'Runner-up', cls:'silver'};
+            }
           }
 
           // Losers Bracket Rounds (checked in reverse from Final to R1)
@@ -11952,8 +12694,11 @@ function tournamentFinish(t,p){
     let lastLoss=losses[0];
     let title=(lastLoss.title||'').toLowerCase();
 
-    if(title.includes('grand final')||title.includes('bracket reset')){
+    if(title.includes('grand final')||title.includes('bracket reset')||title.includes('championship final')){
       return {place:2,label:'2nd',note:'Runner-up',cls:'silver'};
+    }
+    if(title.includes('3rd place')||title.includes('bronze')){
+      return {place:4,label:'4th',note:'4th Place',cls:'cut'};
     }
     if(title.includes('losers final')){
       return {place:3,label:'3rd',note:'3rd Place',cls:'bronze'};
@@ -11973,6 +12718,12 @@ function tournamentFinish(t,p){
     }
     if(title.includes('winners final')){
       return {place:3,label:'Top 3',note:'Winners Finalist',cls:'bronze'};
+    }
+    if(title.includes('quarterfinal')){
+      return {place:5,label:'Top 8',note:'Quarterfinalist',cls:'cut'};
+    }
+    if(title.includes('semifinal')){
+      return {place:3,label:'Top 4',note:'Semifinalist',cls:'cut'};
     }
     return {place:3,label:'Top Cut',note:lastLoss.title||'Top Cut',cls:'cut'};
   }
@@ -17127,20 +17878,24 @@ function swapGroupPlacements(first,second,targetGroup){
 function tournamentDetail(){
   let t=activeT();if(!t)return noTournament();
   window.editingTournamentId=t.id;
+  let isSwiss = (getStage1Format(t) === 'swiss');
+  let stage1TabName = isSwiss ? 'Swiss Stage' : 'Group Stage';
   let groups=Object.keys(groupsOf(t));
   let hasDraft = Boolean(t.hasDraft || t.draftData?.picks?.length || t.draftData?.board?.length);
   let isDraftOngoing = (t.status === 'ONGOING' && t.phase === 'draft');
   let availableTabs = hasDraft 
-    ? ['Standings', 'Draft', 'Group Stage', 'Top Cut', 'Predictions'] 
-    : ['Standings', 'Group Stage', 'Top Cut', 'Predictions'];
+    ? ['Standings', 'Draft', stage1TabName, 'Top Cut', 'Predictions'] 
+    : ['Standings', stage1TabName, 'Top Cut', 'Predictions'];
 
   if(!availableTabs.includes(detailTab)){
-    detailTab = isDraftOngoing ? 'Draft' : 'Standings';
+    if(detailTab === 'Group Stage' && isSwiss) detailTab = 'Swiss Stage';
+    else if(detailTab === 'Swiss Stage' && !isSwiss) detailTab = 'Group Stage';
+    else detailTab = isDraftOngoing ? 'Draft' : 'Standings';
   }
 
   let content=detailTab==='Draft'?DraftRostersView(t)
-    :detailTab==='Standings'?(isDraftOngoing ? renderDraftLockedStandings(t, true) : `<div style="display:grid;grid-template-columns:repeat(${groups.length>1?2:1},minmax(0,1fr));gap:16px;align-items:start">${groups.map(g=>`<div class="card table-wrap" style="align-self:start">${standingTable(t,g)}</div>`).join('')}</div>` + tournamentRatingProgressionSection(t))
-    :detailTab==='Group Stage'?(isDraftOngoing ? renderDraftLockedMatches(t, true) : matchesView(t,false))
+    :detailTab==='Standings'?(isDraftOngoing ? renderDraftLockedStandings(t, true) : (isSwiss ? `<div class="card table-wrap" style="max-width:100%">${standingTable(t,'Swiss Stage')}</div>` : `<div style="display:grid;grid-template-columns:repeat(${groups.length>1?2:1},minmax(0,1fr));gap:16px;align-items:start">${groups.map(g=>`<div class="card table-wrap" style="align-self:start">${standingTable(t,g)}</div>`).join('')}</div>`) + tournamentRatingProgressionSection(t))
+    :detailTab===stage1TabName?(isDraftOngoing ? renderDraftLockedMatches(t, true) : matchesView(t,false))
     :detailTab==='Top Cut'?(isDraftOngoing ? renderDraftLockedTopCut(t, true) : topCutSection(t,!t.bracketManagerData))
     :detailTab==='Predictions'?(isDraftOngoing ? renderDraftLockedPredictions(t, true) : predictions(t))
     :predictions(t);
@@ -17155,9 +17910,9 @@ function tournamentDetail(){
         ${t.regulation ? `<span style="font-weight:800;color:#f5f3f0"><span style="color:var(--red)">⚔️</span> ${esc(t.regulation)}</span><span style="color:#555460">·</span>` : ''}
         <span><b>${t.players.length}</b> Trainers</span>
         <span style="color:#555460">·</span>
-        <span><b>${groups.length}</b> Group${groups.length===1?'':'s'}</span>
+        <span><b>${isSwiss ? (t.swissRounds || 4) + ' Swiss Rounds' : groups.length + ' Group' + (groups.length===1?'':'s')}</b></span>
         <span style="color:#555460">·</span>
-        <span>Top <b>${advancePerGroup(t)}</b> Per Group</span>
+        <span>${isSwiss ? 'Top <b>' + advancePerGroup(t) + '</b> Advance to Playoffs' : 'Top <b>' + advancePerGroup(t) + '</b> Per Group'}</span>
         ${(t.start || t.end) ? `
           <span style="color:#555460">·</span>
           <span>📅 ${esc(t.start || '')} → ${esc(t.end || '')}</span>
