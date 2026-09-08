@@ -3466,7 +3466,7 @@ function openTournamentRecordEditor(id){
           <label style="font-weight:800;color:#e2e0e8;margin-bottom:6px">Current Phase</label>
           <select id="recordPhase" style="background:#181822;border:1px solid #363646;border-radius:6px;padding:10px 12px;color:#f5f3f0">
             <option value="draft" ${t.phase === 'draft' ? 'selected' : ''}>Live Draft Room</option>
-            <option value="group" ${t.phase === 'group' || !t.phase ? 'selected' : ''}>Group Stage</option>
+            <option value="${getStage1Format(t) === 'swiss' ? 'swiss' : 'group'}" ${t.phase === 'group' || t.phase === 'swiss' || !t.phase ? 'selected' : ''}>${getStage1Format(t) === 'swiss' ? 'Swiss Stage' : 'Group Stage'}</option>
             <option value="topcut" ${t.phase === 'topcut' ? 'selected' : ''}>Top Cut Playoffs</option>
           </select>
         </div>
@@ -8719,7 +8719,7 @@ function Home(){
         <div class="tourney-hero-content">
           <div>
             <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-              <span class="status"><i></i>${isDraftPhase ? 'DRAFT ROOM LIVE' : (isTopCutPhase ? 'TOP CUT PLAYOFFS LIVE' : 'GROUP STAGE LIVE')}</span>
+              <span class="status"><i></i>${isDraftPhase ? 'DRAFT ROOM LIVE' : (isTopCutPhase ? 'TOP CUT PLAYOFFS LIVE' : (getStage1Format(t) === 'swiss' ? 'SWISS STAGE LIVE' : 'GROUP STAGE LIVE'))}</span>
               <span class="status status-grey">${esc(t.season ? t.season.toUpperCase() : 'IN-SEASON')}</span>
             </div>
 
@@ -8731,7 +8731,7 @@ function Home(){
 
           <div style="display:flex;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;gap:10px;margin-top:20px;padding-top:16px;border-top:1px solid rgba(255,255,255,0.1)">
             <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
-              <button class="btn btn-sm" style="padding:9px 16px!important;font-weight:800" onclick="current='${target}';render()">${isDraftPhase ? 'Enter Live Draft Room →' : (isTopCutPhase ? 'View Championship Bracket →' : 'View Group Matches →')}</button>
+              <button class="btn btn-sm" style="padding:9px 16px!important;font-weight:800" onclick="current='${target}';render()">${isDraftPhase ? 'Enter Live Draft Room →' : (isTopCutPhase ? 'View Championship Bracket →' : (getStage1Format(t) === 'swiss' ? 'View Swiss Matches →' : 'View Group Matches →'))}</button>
               ${isDraftPhase ? `
                 ${canManageTournament(t) ? `<button class="btn ghost btn-sm" style="padding:8px 12px!important" onclick="openDraftBoardImporter('${jsArg(t.id)}')">📥 Import Board</button>` : ''}
                 <button class="btn ghost btn-sm" style="padding:8px 12px!important" onclick="go('Teams')">View Rosters</button>
@@ -8759,12 +8759,12 @@ function Home(){
         <div class="in-season-metrics-grid">
           <div class="card pulse-stat-box">
             <span class="pulse-stat-label">Tournament Phase</span>
-            <div class="pulse-stat-val">${isDraftPhase ? 'Live Draft' : (isTopCutPhase ? 'Top Cut Playoffs' : 'Group Stage')}</div>
+            <div class="pulse-stat-val">${isDraftPhase ? 'Live Draft' : (isTopCutPhase ? 'Top Cut Playoffs' : (getStage1Format(t) === 'swiss' ? 'Swiss Stage' : 'Group Stage'))}</div>
             <div class="pulse-stat-sub">${t.players.length} Competitors</div>
           </div>
 
           <div class="card pulse-stat-box">
-            <span class="pulse-stat-label">${isDraftPhase ? 'Draft Picks Made' : (isTopCutPhase ? 'Playoff Fixtures' : 'Group Fixtures')}</span>
+            <span class="pulse-stat-label">${isDraftPhase ? 'Draft Picks Made' : (isTopCutPhase ? 'Playoff Fixtures' : (getStage1Format(t) === 'swiss' ? 'Swiss Fixtures' : 'Group Fixtures'))}</span>
             <div class="pulse-stat-val">${isDraftPhase && turn ? `${turn.currentPickNumber - 1} <small style="font-size:12px;color:#8e8c95;font-weight:700">/ ${turn.totalPicks}</small>` : `${activePhaseCompleted} <small style="font-size:12px;color:#8e8c95;font-weight:700">/ ${activePhaseTotal}</small>`}</div>
             <div class="progress" style="margin-top:4px;height:4px"><span style="width:${isDraftPhase ? draftPct : completionPct}%;${isTopCutPhase ? 'background:#ffd166;' : ''}"></span></div>
           </div>
@@ -8778,7 +8778,7 @@ function Home(){
 
             <div class="card pulse-stat-box" style="cursor:pointer" onclick="go('Standings')" title="Click to view Standings & Cutoff Lines">
               <span class="pulse-stat-label" style="display:flex;justify-content:space-between;align-items:center"><span>Top Cut Cutoff</span><span style="color:#ffd166;font-size:10px">↗</span></span>
-              <div class="pulse-stat-val">Top ${advancePerGroup(t)} Per Group</div>
+              <div class="pulse-stat-val">${getStage1Format(t) === 'swiss' ? 'Top ' + advancePerGroup(t) + ' Advance' : 'Top ' + advancePerGroup(t) + ' Per Group'}</div>
               <div class="pulse-stat-sub" style="color:#ffd166;font-weight:700">Open Full Standings Tab →</div>
             </div>
           ` : ''}
@@ -8874,7 +8874,7 @@ function isTournamentGroupStageOfficial(t){
   if(t.status === 'COMPLETE') return true;
   if(t.phase === 'topcut' || t.phase === 'complete') return true;
   if(t.finalStandings && Object.keys(t.finalStandings).length > 0) return true;
-  if(t.bracketManagerData && t.phase !== 'groups' && t.phase !== 'draft') return true;
+  if(t.bracketManagerData && t.phase !== 'groups' && t.phase !== 'group' && t.phase !== 'swiss' && t.phase !== 'draft') return true;
   return false;
 }
 
@@ -9066,7 +9066,7 @@ function tournamentTotalMatches(t){
 function tournamentCard(t){
   let bg=t.backgroundImage?`style="background-image:linear-gradient(90deg,rgba(20,20,25,.92),rgba(20,20,25,.68)),url('${t.backgroundImage}') ;background-size:cover;background-position:center"`:'';
   let totalMatches = tournamentTotalMatches(t);
-  return `<button class="card archive-card" ${bg} onclick="openTournament('${t.id}')"><div class="${t.status==='ONGOING'?'status':'eyebrow'}">${t.status==='ONGOING'?'<i></i>':''}${t.status}</div><h3>${t.name} · ${t.season}</h3><p>${t.champion?'Champion: '+esc(t.champion):(t.phase==='topcut'?'Top Cut':'Group Stage')+' · '+t.players.length+' Trainers'}<br>${esc(t.regulation||'')}</p><div class="archive-stats"><span><b>${totalMatches}</b>Matches</span><span><b>${esc(t.start||'TBD')}</b>Started</span></div></button>`;
+  return `<button class="card archive-card" ${bg} onclick="openTournament('${t.id}')"><div class="${t.status==='ONGOING'?'status':'eyebrow'}">${t.status==='ONGOING'?'<i></i>':''}${t.status}</div><h3>${t.name} · ${t.season}</h3><p>${t.champion?'Champion: '+esc(t.champion):(t.phase==='topcut'?'Top Cut':(getStage1Format(t)==='swiss'?'Swiss Stage':'Group Stage'))+' · '+t.players.length+' Trainers'}<br>${esc(t.regulation||'')}</p><div class="archive-stats"><span><b>${totalMatches}</b>Matches</span><span><b>${esc(t.start||'TBD')}</b>Started</span></div></button>`;
 }
 
 function Tournaments(){
@@ -17656,7 +17656,7 @@ function commitGroupDrawCeremony(){
   if(t.phase === 'draft'){
     let d = ensureTournamentDraft(t);
     d.status = 'completed';
-    t.phase = 'group';
+    t.phase = (getStage1Format(t) === 'swiss') ? 'swiss' : 'group';
   }
 
   persistLeague();
@@ -17974,7 +17974,7 @@ function playoffOdds(){
   if(!t) return noTournament();
 
   let d = ensureTournamentDraft(t);
-  let isDraftPhase = (t.phase === 'draft' || (t.hasDraft && d && d.status !== 'completed' && t.phase !== 'group' && t.phase !== 'groups' && t.phase !== 'topcut' && t.phase !== 'complete'));
+  let isDraftPhase = (t.phase === 'draft' || (t.hasDraft && d && d.status !== 'completed' && t.phase !== 'group' && t.phase !== 'groups' && t.phase !== 'swiss' && t.phase !== 'topcut' && t.phase !== 'complete'));
   if(isDraftPhase){
     return head('Playoff & Championship Odds', (t.season || '') + ': ' + t.name + ' · Locked During Draft') + `
       <div class="card empty" style="padding:48px 20px;text-align:center;max-width:560px;margin:30px auto;background:#14141c;border:1px solid #2b2b3a;border-radius:12px;box-shadow:0 8px 30px rgba(0,0,0,0.5)">
@@ -19998,11 +19998,13 @@ function resumeDraft(tId){
 function completeDraftAndAdvance(tId){
   let t = tournamentData[tId] || activeT();
   if(!t || !canManageTournament(t)) return;
-  if(!confirm(`Finish draft for ${t.name} and advance to Group Stage? All drafted rosters will be locked in.`)) return;
+  let isSwiss = (getStage1Format(t) === 'swiss');
+  let stageName = isSwiss ? 'Swiss Stage' : 'Group Stage';
+  if(!confirm(`Finish draft for ${t.name} and advance to ${stageName}? All drafted rosters will be locked in.`)) return;
 
   let d = ensureTournamentDraft(t);
   d.status = 'completed';
-  t.phase = 'group';
+  t.phase = isSwiss ? 'swiss' : 'group';
   current = 'Matches';
   persistLeague();
   render();
@@ -20063,7 +20065,7 @@ function DraftRoom(t){
       ${canManageDraft && d.picks?.length ? `<button class="btn ghost btn-sm" style="color:#ff9ba1" onclick="undoDraftPick('${jsArg(t.id)}')">↩️ Undo Pick</button>` : ''}
       ${canManageDraft ? `<button class="btn ghost btn-sm" onclick="openDraftOrderEditor('${jsArg(t.id)}')">🔀 Draft Order</button>` : ''}
       ${canManageDraft ? `<button class="btn ghost btn-sm" onclick="openDraftBoardImporter('${jsArg(t.id)}')">📥 Import Sheet</button>` : ''}
-      ${canManageDraft && (d.status === 'completed' || d.picks?.length >= getDraftTotalPicks(t)) ? `<button class="btn btn-sm" style="background:#10b981;border-color:#34d399" onclick="completeDraftAndAdvance('${jsArg(t.id)}')">🏁 Start Group Stage →</button>` : ''}
+      ${canManageDraft && (d.status === 'completed' || d.picks?.length >= getDraftTotalPicks(t)) ? `<button class="btn btn-sm" style="background:#10b981;border-color:#34d399" onclick="completeDraftAndAdvance('${jsArg(t.id)}')">🏁 Start ${getStage1Format(t) === 'swiss' ? 'Swiss Stage' : 'Group Stage'} →</button>` : ''}
     </div>
   `;
 
@@ -20777,20 +20779,22 @@ function DraftCompletedView(t){
   let totalPicks = (d.picks || []).length;
   let order = getDraftOrderList(t);
   let canManage = canManageTournament(t);
+  let isSwiss = (getStage1Format(t) === 'swiss');
+  let hasActiveDraft = Boolean(t.hasDraft);
 
   return `
     <div style="display:flex;flex-direction:column;gap:16px">
       <!-- Quick Status & Actions Bar -->
       <div class="card" style="padding:12px 16px;background:#14141c;border-color:#282836;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px">
         <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
-          <span class="tag" style="background:#0d2d1f;border:1px solid #10b981;color:#52e3a4;font-weight:800;letter-spacing:.5px">🏁 DRAFT COMPLETED</span>
+          <span class="tag" style="${hasActiveDraft ? 'background:#0d2d1f;border:1px solid #10b981;color:#52e3a4;' : 'background:#1e1e28;border:1px solid #424254;color:#a09fa8;'}font-weight:800;letter-spacing:.5px">${hasActiveDraft ? '🏁 DRAFT COMPLETED' : '📋 DRAFT BOARD'}</span>
           <span style="font-size:12px;color:#a09fa8">${order.length} Coaches · ${totalPicks} Total Drafted Pokémon · Budget Cap: ${d.pointBudget ? d.pointBudget + ' pts' : 'Unlimited'}</span>
         </div>
         <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
           ${canManage ? `
             <button class="btn ghost btn-sm" onclick="openDraftOrderEditor('${jsArg(t.id)}')">🔀 Draft Order</button>
-            <button class="btn ghost btn-sm" onclick="openGroupDrawCeremony('${jsArg(t.id)}')">🎩 Group Draw</button>
-            <button class="btn ghost btn-sm" style="color:#ffd166;border-color:#5a441c" onclick="reopenDraftPhase('${jsArg(t.id)}')">↩️ Reopen Live Draft</button>
+            ${!isSwiss ? `<button class="btn ghost btn-sm" onclick="openGroupDrawCeremony('${jsArg(t.id)}')">🎩 Group Draw</button>` : ''}
+            ${hasActiveDraft ? `<button class="btn ghost btn-sm" style="color:#ffd166;border-color:#5a441c" onclick="reopenDraftPhase('${jsArg(t.id)}')">↩️ Reopen Live Draft</button>` : `<button class="btn ghost btn-sm" onclick="openDraftBoardImporter('${jsArg(t.id)}')">📥 Import Board</button>`}
           ` : ''}
         </div>
       </div>
@@ -21160,7 +21164,7 @@ function Board(){
   // 1. If an active in-season tournament is ONGOING:
   if(t && t.status === 'ONGOING'){
     let d = ensureTournamentDraft(t);
-    let isDraftOver = (t.phase === 'group' || t.phase === 'groups' || t.phase === 'topcut' || t.phase === 'complete' || d.status === 'completed');
+    let isDraftOver = (!t.hasDraft || t.phase !== 'draft' || t.phase === 'group' || t.phase === 'groups' || t.phase === 'swiss' || t.phase === 'topcut' || t.phase === 'complete' || d.status === 'completed');
 
     if(isDraftOver){
       return head('Draft Rosters & Budgets', (t.season || '') + ': ' + t.name + ' · Coach Rosters & Draft Board') + DraftCompletedView(t);
