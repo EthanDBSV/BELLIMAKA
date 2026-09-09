@@ -253,6 +253,40 @@
 .badge-miss{background:#4a1c22;color:#ff858b}
 .clash-center-vs{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);z-index:3;width:24px;height:24px;border-radius:50%;background:#0d0d12;border:1px solid #3d242d;display:grid;place-items:center;font:900 10px 'Barlow Condensed';color:#ff858b;box-shadow:0 2px 8px rgba(0,0,0,0.8);pointer-events:none}
 
+/* Compact Esports Group Stage Pick'Ems Grid */
+.pred-compact-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:10px}
+@media(max-width:900px){.pred-compact-grid{grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:8px}}
+@media(max-width:500px){.pred-compact-grid{grid-template-columns:1fr}}
+
+.pred-compact-card{background:#272a33;border:1px solid #383c48;border-radius:6px;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 2px 8px rgba(0,0,0,0.28);transition:border-color .15s ease,transform .15s ease,box-shadow .15s ease}
+.pred-compact-card:hover{border-color:#52586a;box-shadow:0 4px 14px rgba(0,0,0,0.4);transform:translateY(-1px)}
+
+.pred-team-row{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:7px 10px;background:#272a33;border:0;width:100%;cursor:pointer;text-align:left;transition:background .15s ease,box-shadow .15s ease;user-select:none;box-sizing:border-box;position:relative}
+.pred-team-row:first-child{border-bottom:1px solid #343743}
+.pred-team-row:hover:not([disabled]){background:#313540}
+.pred-team-row.is-selected{background:rgba(239,48,56,0.16);box-shadow:inset 3px 0 0 var(--red,#ef3038)}
+.pred-team-row.is-selected:hover:not([disabled]){background:rgba(239,48,56,0.24)}
+.pred-team-row.is-hit{background:rgba(35,122,61,0.22)!important;box-shadow:inset 3px 0 0 #4bdd91!important}
+.pred-team-row.is-miss{opacity:.55;filter:grayscale(.4)}
+.pred-team-row[disabled]{cursor:default}
+
+.pred-vct-meta{display:flex;align-items:center;gap:8px;min-width:0;flex:1}
+.pred-vct-logo{width:22px;height:22px;border-radius:4px;background-size:cover;background-position:center;background-color:#1a1b22;flex:none;display:grid;place-items:center;font:800 11px 'Barlow Condensed';color:#fff;border:1px solid rgba(255,255,255,0.12)}
+.pred-vct-name-wrap{min-width:0;display:flex;flex-direction:column;justify-content:center}
+.pred-vct-name{font:700 13px 'Barlow Condensed','DM Sans',sans-serif;letter-spacing:.2px;color:#f1f2f5;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.15}
+.pred-team-row.is-selected .pred-vct-name{color:#fff;font-weight:800}
+.pred-vct-sub{font-size:9px;color:#8c909e;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.1;text-transform:uppercase}
+
+.pred-vct-right{display:flex;align-items:center;gap:6px;flex:none}
+.pred-vct-score{font:800 12px 'Barlow Condensed';color:#a0a3b0;min-width:12px;text-align:right}
+.pred-vct-score.is-winner{color:#4bdd91;font-weight:900}
+
+.pred-pick-box{width:22px;height:22px;border-radius:4px;background:#767c8b;border:1px solid #8e95a5;display:grid;place-items:center;flex:none;transition:all .15s ease;font-size:13px;font-weight:900;line-height:1;color:transparent}
+.pred-team-row:hover:not([disabled]) .pred-pick-box{background:#8a91a2;border-color:#a0a8b9}
+.pred-team-row.is-selected .pred-pick-box{background:var(--red,#ef3038);border-color:#ff5c65;color:#fff;box-shadow:0 0 8px rgba(239,48,56,0.5)}
+.pred-team-row.is-hit .pred-pick-box{background:#237a3d!important;border-color:#4bdd91!important;color:#7df0aa!important;box-shadow:0 0 8px rgba(75,221,145,0.4)!important}
+.pred-team-row.is-miss .pred-pick-box{background:#4a1c22!important;border-color:#ff5c65!important;color:#ff858b!important}
+
 /* Modern Contender Outright Pickers */
 .pred-contender-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(145px,1fr));gap:8px}
 .pred-contender-card{display:flex;align-items:center;gap:8px;padding:8px 10px;background:#16161e;border:1px solid #2d2d38;border-radius:7px;cursor:pointer;transition:border-color .15s,transform .15s,background .15s;text-align:left;position:relative}
@@ -11139,7 +11173,10 @@ function getTournamentOddsChecksum(t){
 }
 
 function isOddsDarkHorse(x, i, totalCount = 8){
-  if(!x || i < 3) return false;
+  if(!x) return false;
+  // Disqualified if >= 10.0% chance of winning tournament (Dark horse strictly requires < 10%)
+  if(x.champPct >= 10.0) return false;
+  if(i < 3) return false;
   let cutoffRank = Math.max(5, Math.ceil(totalCount * 0.6));
   return (x.champPct >= 3.5) || (i < cutoffRank && x.champPct >= 2.0) || (x.topCutPct >= 14 && x.champPct >= 1.5);
 }
@@ -16020,68 +16057,57 @@ function compactMatchPredictionCard(t, m){
   let winner = isDecided ? (+m.as > +m.bs ? p1 : p2) : null;
   let chosen = savedPick(t, question);
 
-  let sortedT = typeof sortedTournamentsChronological === 'function' ? sortedTournamentsChronological() : Object.values(tournamentData);
-  let tIdx = t ? sortedT.findIndex(x => x.id === t.id || x.name === t.name) : -1;
-  let isPastT = (t && t.status === 'COMPLETE' && tIdx >= 0);
-
-  let ovr1 = (isPastT && typeof getHistoricalPlayerOVR === 'function')
-    ? getHistoricalPlayerOVR(p1, tIdx, 'complete', sortedT)
-    : calculatePlayerOVR(p1);
-  let ovr2 = (isPastT && typeof getHistoricalPlayerOVR === 'function')
-    ? getHistoricalPlayerOVR(p2, tIdx, 'complete', sortedT)
-    : calculatePlayerOVR(p2);
   let t1Name = teamName(t, p1);
   let t2Name = teamName(t, p2);
 
-  let face1 = profilePictures[p1] ? `url('${esc(profilePictures[p1])}')` : (teamCovers[p1] ? `url('${esc(teamCovers[p1])}')` : fallbackArt(p1));
-  let letter1 = (profilePictures[p1] || teamCovers[p1]) ? '' : esc((p1 || '?')[0]);
-  let face2 = profilePictures[p2] ? `url('${esc(profilePictures[p2])}')` : (teamCovers[p2] ? `url('${esc(teamCovers[p2])}')` : fallbackArt(p2));
-  let letter2 = (profilePictures[p2] || teamCovers[p2]) ? '' : esc((p2 || '?')[0]);
+  let face1 = (typeof profilePictures !== 'undefined' && profilePictures[p1]) || (typeof teamCovers !== 'undefined' && teamCovers[p1]) || '';
+  let faceArt1 = face1 ? `url('${esc(face1)}')` : fallbackArt(p1);
+  let letter1 = face1 ? '' : esc((p1 || '?')[0]);
+
+  let face2 = (typeof profilePictures !== 'undefined' && profilePictures[p2]) || (typeof teamCovers !== 'undefined' && teamCovers[p2]) || '';
+  let faceArt2 = face2 ? `url('${esc(face2)}')` : fallbackArt(p2);
+  let letter2 = face2 ? '' : esc((p2 || '?')[0]);
 
   let isHit1 = (chosen === p1 && winner === p1);
   let isMiss1 = (chosen === p1 && winner && winner !== p1);
   let isHit2 = (chosen === p2 && winner === p2);
   let isMiss2 = (chosen === p2 && winner && winner !== p2);
 
-  return `<article class="pred-clash-card">
-    <div class="pred-clash-meta">${esc(m.group || 'Fixture')} · 8 PTS</div>
-    
-    <!-- Left Side: Player 1 -->
-    <button class="clash-side left ${chosen === p1 ? 'is-selected' : ''} ${isHit1 ? 'is-hit' : (isMiss1 ? 'is-miss' : '')}"
-      style="--art:${teamArt(p1, t)}"
+  return `<article class="pred-compact-card">
+    <!-- Top Row: Team 1 -->
+    <button type="button" class="pred-team-row ${chosen === p1 ? 'is-selected' : ''} ${isHit1 ? 'is-hit' : (isMiss1 ? 'is-miss' : '')}"
       ${locked ? 'disabled' : ''}
       title="${chosen === p1 ? 'Click to unselect ' + esc(p1) : 'Click to pick ' + esc(p1)}"
       onclick="savePredictionPick('${jsArg(question)}', '${jsArg(p1)}', this)">
-      <span class="avatar mini" style="background-image:${face1};background-size:cover;background-position:center;width:28px;height:28px;border-radius:50%;font-size:12px;border:1px solid ${ovr1.color};display:grid;place-items:center;flex:none;position:relative;z-index:2">${letter1}</span>
-      <div style="min-width:0;position:relative;z-index:2">
-        <div style="font-size:13px;font-weight:800;line-height:1.2;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(p1)}</div>
-        <div style="font-size:10px;color:#a09fa8;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(t1Name)}</div>
+      <div class="pred-vct-meta">
+        <span class="pred-vct-logo" style="background-image:${faceArt1}">${letter1}</span>
+        <div class="pred-vct-name-wrap">
+          <span class="pred-vct-name">${esc(p1)}</span>
+          ${t1Name && t1Name !== p1 ? `<span class="pred-vct-sub">${esc(t1Name)}</span>` : ''}
+        </div>
       </div>
-      ${chosen === p1 ? `
-        <span class="clash-side-badge ${isHit1 ? 'badge-hit' : (isMiss1 ? 'badge-miss' : 'badge-picked')}">
-          ${isHit1 ? '✓ +8 PTS' : (isMiss1 ? '✗ MISSED' : 'YOUR PICK')}
-        </span>
-      ` : ''}
+      <div class="pred-vct-right">
+        ${locked ? `<span class="pred-vct-score ${winner === p1 ? 'is-winner' : ''}">${m.as ?? ''}</span>` : ''}
+        <span class="pred-pick-box">${isHit1 ? '✓' : (isMiss1 ? '✗' : (chosen === p1 ? '✓' : ''))}</span>
+      </div>
     </button>
 
-    <div class="clash-center-vs">VS</div>
-
-    <!-- Right Side: Player 2 -->
-    <button class="clash-side right ${chosen === p2 ? 'is-selected' : ''} ${isHit2 ? 'is-hit' : (isMiss2 ? 'is-miss' : '')}"
-      style="--art:${teamArt(p2, t)}"
+    <!-- Bottom Row: Team 2 -->
+    <button type="button" class="pred-team-row ${chosen === p2 ? 'is-selected' : ''} ${isHit2 ? 'is-hit' : (isMiss2 ? 'is-miss' : '')}"
       ${locked ? 'disabled' : ''}
       title="${chosen === p2 ? 'Click to unselect ' + esc(p2) : 'Click to pick ' + esc(p2)}"
       onclick="savePredictionPick('${jsArg(question)}', '${jsArg(p2)}', this)">
-      <span class="avatar mini" style="background-image:${face2};background-size:cover;background-position:center;width:28px;height:28px;border-radius:50%;font-size:12px;border:1px solid ${ovr2.color};display:grid;place-items:center;flex:none;position:relative;z-index:2">${letter2}</span>
-      <div style="min-width:0;position:relative;z-index:2">
-        <div style="font-size:13px;font-weight:800;line-height:1.2;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(p2)}</div>
-        <div style="font-size:10px;color:#a09fa8;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(t2Name)}</div>
+      <div class="pred-vct-meta">
+        <span class="pred-vct-logo" style="background-image:${faceArt2}">${letter2}</span>
+        <div class="pred-vct-name-wrap">
+          <span class="pred-vct-name">${esc(p2)}</span>
+          ${t2Name && t2Name !== p2 ? `<span class="pred-vct-sub">${esc(t2Name)}</span>` : ''}
+        </div>
       </div>
-      ${chosen === p2 ? `
-        <span class="clash-side-badge ${isHit2 ? 'badge-hit' : (isMiss2 ? 'badge-miss' : 'badge-picked')}">
-          ${isHit2 ? '✓ +8 PTS' : (isMiss2 ? '✗ MISSED' : 'YOUR PICK')}
-        </span>
-      ` : ''}
+      <div class="pred-vct-right">
+        ${locked ? `<span class="pred-vct-score ${winner === p2 ? 'is-winner' : ''}">${m.bs ?? ''}</span>` : ''}
+        <span class="pred-pick-box">${isHit2 ? '✓' : (isMiss2 ? '✗' : (chosen === p2 ? '✓' : ''))}</span>
+      </div>
     </button>
   </article>`;
 }
@@ -16536,7 +16562,7 @@ function predictions(t=activeT()){
               </div>
             </div>
             ${filteredGames.length ? `
-              <div class="pred-clash-grid">
+              <div class="pred-compact-grid">
                 ${filteredGames.map(m => compactMatchPredictionCard(t, m)).join('')}
               </div>
             ` : '<div class="card empty"><p class="sub">No fixtures matching current filter.</p></div>'}
@@ -16856,8 +16882,8 @@ function calculateLeagueRecords(forceRefresh = false){
           let preOdds = getPreTournamentOdds(t, { statsByPlayer });
           let isDarkHorse = preOdds?.darkHorses?.includes(p);
           if(!isDarkHorse && preOdds?.list){
-            let idx = preOdds.list.findIndex(x => x.player === p);
-            if(idx >= 3 && ((preOdds.list[idx]?.champPct || 0) >= 3.5 || (idx <= 5 && (preOdds.list[idx]?.champPct || 0) >= 2.5))){
+            let pChamp = preOdds.list[idx]?.champPct || 0;
+            if(idx >= 3 && pChamp < 10.0 && (pChamp >= 3.5 || (idx <= 5 && pChamp >= 2.5))){
               isDarkHorse = true;
             }
           }
@@ -19108,16 +19134,18 @@ function playoffOdds(){
   html += `
     <div class="odds-grid">
       ${list.map((x, i) => {
-        let isDarkHorse = isOddsDarkHorse(x, i, list.length);
-        let tierCls = i === 0 ? 'tier-1' : (i < 3 ? 'tier-2' : (isDarkHorse ? 'tier-3' : ''));
-        let badgeTag = i === 0 ? '<span class="odds-badge-chip fav">👑 Favorite</span>' 
-          : (i < 3 ? '<span class="odds-badge-chip contender">⚡ Contender</span>' 
+        let isFav = (i === 0);
+        let isContender = !isFav && (i < 3 || x.champPct >= 10.0);
+        let isDarkHorse = !isFav && !isContender && isOddsDarkHorse(x, i, list.length);
+        let tierCls = isFav ? 'tier-1' : (isContender ? 'tier-2' : (isDarkHorse ? 'tier-3' : ''));
+        let badgeTag = isFav ? '<span class="odds-badge-chip fav">👑 Favorite</span>' 
+          : (isContender ? '<span class="odds-badge-chip contender">⚡ Contender</span>' 
           : (isDarkHorse ? '<span class="odds-badge-chip darkhorse">🔥 Dark Horse</span>' 
           : '<span class="odds-badge-chip longshot">🎲 Longshot</span>'));
         
         let barPct = Math.min(100, Math.max(x.champPct > 0 ? 2 : 0, +x.champPct.toFixed(1)));
-        let barGradient = i === 0 ? 'linear-gradient(90deg,#ffd166,#ef3038)' 
-          : (i < 3 ? 'linear-gradient(90deg,#ff8e95,#ef3038)' 
+        let barGradient = isFav ? 'linear-gradient(90deg,#ffd166,#ef3038)' 
+          : (isContender ? 'linear-gradient(90deg,#ff8e95,#ef3038)' 
           : (isDarkHorse ? 'linear-gradient(90deg,#dca2f5,#a855f7)' : 'linear-gradient(90deg,#7ad1ff,#3b82f6)'));
 
         let faceImg = (typeof profilePictures !== 'undefined' && profilePictures[x.player]) || (typeof teamCovers !== 'undefined' && teamCovers[x.player]) || '';
