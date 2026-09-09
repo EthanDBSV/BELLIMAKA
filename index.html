@@ -11078,6 +11078,23 @@ function simulateTournamentOdds(tourn, runs = 2000, rng = Math.random, passedLea
     let unplayed = (tourn.matches || []).filter(m => (m.a === p || m.b === p) && (m.as === '' || m.as == null));
     let remainingOpponents = unplayed.map(m => m.a === p ? m.b : m.a);
 
+    let remSosOvr = remainingOpponents.length
+      ? Math.round(remainingOpponents.reduce((sum, opp) => sum + (playerPowers[opp]?.ovr || 70), 0) / remainingOpponents.length)
+      : null;
+    let sosOvr = avgGroupOvr || 70;
+
+    let isClinched = (typeof isMathematicallyClinched === 'function') ? isMathematicallyClinched(tourn, p) : false;
+    let isElim = (typeof isMathematicallyEliminated === 'function') ? isMathematicallyEliminated(tourn, p) : false;
+
+    let topCutDisplay = `${topCutPct}%`;
+    if(unplayed.length > 0){
+      if(topCutPct >= 100 && !isClinched){
+        topCutDisplay = '>99%';
+      } else if(topCutPct <= 0 && !isElim){
+        topCutDisplay = '<1%';
+      }
+    }
+
     results[p] = {
       player: p,
       ovr: pPow.ovr,
@@ -11086,9 +11103,12 @@ function simulateTournamentOdds(tourn, runs = 2000, rng = Math.random, passedLea
       form: pPow.form,
       group: gName,
       avgGroupOvr,
+      sosOvr,
+      remSosOvr,
       unplayedCount: unplayed.length,
       remainingOpponents,
       topCutPct,
+      topCutDisplay,
       finalsPct,
       champPct,
       moneyline: ml,
@@ -19031,7 +19051,7 @@ function playoffOdds(){
         <div class="odds-metric-icon">🛡️</div>
         <div class="odds-metric-body">
           <div class="odds-metric-label">Top Cut Lock / Leader</div>
-          <div class="odds-metric-val">${esc(topCutLeader.player)} <span style="font-size:18px;color:#ff8e95">(${topCutLeader.topCutPct}%)</span></div>
+          <div class="odds-metric-val">${esc(topCutLeader.player)} <span style="font-size:18px;color:#ff8e95">(${topCutLeader.topCutDisplay || (topCutLeader.topCutPct + '%')})</span></div>
           <div class="odds-metric-sub">Advancement equity in Top Cut playoffs</div>
         </div>
       </div>
@@ -19067,12 +19087,11 @@ function playoffOdds(){
         let faceLetter = faceImg ? '' : esc((x.player||'?')[0]);
         let faceStyle = `style="background-image:${faceArt};background-size:cover;background-position:center;width:34px;height:34px;border-radius:50%;flex:none;display:grid;place-items:center;border:1px solid #ffffff22;font:800 13px 'Barlow Condensed'"`;
 
-        let statusTag = x.topCutPct === 100 ? '<span class="tag safe" style="font-size:8px;padding:2px 6px">CLINCHED</span>'
-          : (x.topCutPct === 0 ? '<span class="tag out" style="font-size:8px;padding:2px 6px">ELIMINATED</span>'
-          : '<span class="tag hunt" style="font-size:8px;padding:2px 6px">IN THE HUNT</span>');
-
-        let gd = (x.form.gw - x.form.gl);
-        let gdFormatted = (gd >= 0 ? '+' : '') + gd;
+        let sosOvr = x.sosOvr || x.avgGroupOvr || 70;
+        let remSosOvr = (x.remSosOvr !== undefined) ? x.remSosOvr : (x.remainingOpponents && x.remainingOpponents.length ? Math.round(x.remainingOpponents.reduce((sum, opp) => sum + (sim[opp]?.ovr || 70), 0) / x.remainingOpponents.length) : null);
+        let sosDifficultyLabel = remSosOvr !== null 
+          ? (remSosOvr >= 83 ? '<span style="color:#ff8e95;font-weight:700">Hard</span>' : (remSosOvr >= 77 ? '<span style="color:#ffd166;font-weight:700">Moderate</span>' : '<span style="color:#4bdd91;font-weight:700">Favorable</span>'))
+          : '<span style="color:#4bdd91;font-weight:700">Finished</span>';
 
         return `
           <div class="odds-contender-card ${tierCls}" onclick="openProfile('${jsArg(x.player)}')">
@@ -19107,7 +19126,7 @@ function playoffOdds(){
             <!-- Key Scenario Metrics -->
             <div class="odds-submetrics">
               <div>
-                <div class="odds-submetric-val" style="color:${x.topCutPct>=80?'#4bdd91':x.topCutPct>=40?'#ffd166':'#ff8e95'}">${x.topCutPct}%</div>
+                <div class="odds-submetric-val" style="color:${x.topCutPct>=80?'#4bdd91':x.topCutPct>=40?'#ffd166':'#ff8e95'}">${x.topCutDisplay || (x.topCutPct + '%')}</div>
                 <div class="odds-submetric-lbl">Top Cut</div>
               </div>
               <div>
@@ -19120,10 +19139,10 @@ function playoffOdds(){
               </div>
             </div>
 
-            <!-- Coach Form & Clinch Status Strip -->
+            <!-- Strength of Schedule Strip -->
             <div style="display:flex;align-items:center;justify-content:space-between;padding-top:8px;border-top:1px solid #20202a;font-size:11px;color:#8e8c95">
-              <span><b>Record:</b> <span style="color:#f5f3f0;font-weight:800">${x.form.w}-${x.form.l}</span> <small style="color:${gd>=0?'#4bdd91':'#ff8e95'}">(${gdFormatted} GD)</small></span>
-              ${statusTag}
+              <span><b>Strength of Schedule:</b> <span style="color:#ffd166;font-weight:800">${sosOvr} OVR</span></span>
+              <span><b>Remaining SOS:</b> <span style="color:#f5f3f0;font-weight:800">${remSosOvr !== null ? remSosOvr + ' OVR' : 'Finished'}</span> <small>(${sosDifficultyLabel})</small></span>
             </div>
           </div>
         `;
