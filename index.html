@@ -1347,64 +1347,70 @@ details[open] > .past-tourney-summary .past-chevron{transform:rotate(180deg);col
   font-size: 12px !important;
 }
 
-/* Reverted Tournament Archive Page (Exact Pre-Scaling 2-Column 1420px Layout) */
-.page:has(.tournament-archive-page) {
-  max-width: 1420px !important;
-  margin: 0 auto !important;
-  padding: 34px 36px 70px !important;
+/* Exact Tournament Archive from Old Website File */
+.archive {
+  grid-template-columns: repeat(auto-fit, minmax(420px, 1fr)) !important;
+  display: grid;
+  gap: 15px;
 }
-.tournament-archive-page .page-head {
-  gap: 20px !important;
-  margin-bottom: 26px !important;
+.archive > div:only-child {
+  grid-column: 1 / -1;
 }
-.tournament-archive-page .page-head h1 {
-  font: 800 47px/.9 'Barlow Condensed' !important;
-}
-.tournament-archive-page .archive {
-  display: grid !important;
-  grid-template-columns: repeat(2, 1fr) !important;
-  gap: 15px !important;
+.archive-card {
   width: 100% !important;
-  max-width: 100% !important;
-  margin: 0 !important;
-}
-.tournament-archive-page .archive-card {
-  width: 100% !important;
-  min-height: 185px !important;
+  min-height: 260px !important;
+  background-size: cover !important;
   padding: 21px !important;
-  border-radius: 8px !important;
-  font-size: 12px !important;
+  text-align: left !important;
+  cursor: pointer !important;
+  transition: .16s !important;
   display: block !important;
-  aspect-ratio: auto !important;
 }
-.tournament-archive-page .archive-card h3 {
-  font: 800 25px 'Barlow Condensed' !important;
+.archive-card:hover {
+  border-color: #85313b !important;
+  transform: translateY(-2px) !important;
+}
+.archive-card h3 {
+  font: 800 33px 'Barlow Condensed' !important;
   margin: 10px 0 6px !important;
 }
-.tournament-archive-page .archive-card p {
+.archive-card p {
   color: #aaa !important;
-  font-size: 12px !important;
+  font-size: 14px !important;
   margin: 0 !important;
-  line-height: normal !important;
 }
-.tournament-archive-page .archive-stats {
+.archive-stats {
   display: flex !important;
   gap: 28px !important;
-  margin-top: 23px !important;
+  margin-top: 40px !important;
   font-size: 10px !important;
   color: #97959e !important;
   border-top: none !important;
   padding-top: 0 !important;
 }
-.tournament-archive-page .archive-stats b {
+.archive-stats b {
   display: block !important;
   color: white !important;
   font: 800 17px 'Barlow Condensed' !important;
 }
-@media(max-width:900px){
-  .tournament-archive-page .archive {
-    grid-template-columns: 1fr !important;
-  }
+.cover-edit {
+  position: absolute !important;
+  right: 12px !important;
+  bottom: 12px !important;
+  border: 1px solid #ffffff33 !important;
+  background: #111c !important;
+  color: #fff !important;
+  border-radius: 4px !important;
+  padding: 6px 8px !important;
+  font-size: 10px !important;
+  font-weight: 800 !important;
+  cursor: pointer !important;
+  opacity: .85 !important;
+  z-index: 2 !important;
+}
+.cover-edit:hover {
+  opacity: 1 !important;
+  background: #401b21 !important;
 }
 
 /* Scaled Matches Top Controls Bar */
@@ -9837,7 +9843,7 @@ function tournamentCard(t){
 
 function Tournaments(){
   let sorted = sortedTournamentsChronological();
-  return `<div class="tournament-archive-page">` + head('Tournaments','League archive',moderator?`<button class="btn" onclick="openCreator()">+ New tournament</button>`:'')+`<div class="archive">${sorted.map(t=>`<div style="position:relative">${tournamentCard(t)}${moderator?`<button class="cover-edit" onclick="event.stopPropagation();openCoverEditor('${t.id}')">Edit cover</button>`:''}</div>`).join('')}</div><p class="sub">Moderators can add a tournament cover image from the archive page.</p></div>`;
+  return head('Tournaments','League archive',moderator?`<button class="btn" onclick="openCreator()">+ New tournament</button>`:'')+`<div class="archive">${sorted.map(t=>`<div style="position:relative">${tournamentCard(t)}${moderator?`<button class="cover-edit" onclick="event.stopPropagation();openCoverEditor('${t.id}')">Edit cover</button>`:''}</div>`).join('')}</div><p class="sub">Moderators can add a tournament cover image from the archive page.</p>`;
 }
 
 
