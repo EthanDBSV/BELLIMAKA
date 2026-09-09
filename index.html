@@ -1347,13 +1347,7 @@ details[open] > .past-tourney-summary .past-chevron{transform:rotate(180deg);col
   font-size: 12px !important;
 }
 
-/* Revert Tournament Archive Page to Exact Pre-Scaling 1420px Layout */
-.page:has(.tournament-archive-page),
-.page.archive-page-mode {
-  max-width: 1420px !important;
-  margin: 0 auto !important;
-  padding: 34px 36px 70px !important;
-}
+/* Revert Tournament Archive Page to Exact 3 Square Tiles per Row Layout */
 .tournament-archive-page .page-head {
   gap: 20px !important;
   margin-bottom: 26px !important;
@@ -1363,46 +1357,100 @@ details[open] > .past-tourney-summary .past-chevron{transform:rotate(180deg);col
 }
 .tournament-archive-page .archive {
   display: grid !important;
-  grid-template-columns: repeat(2, 1fr) !important;
-  gap: 15px !important;
+  grid-template-columns: repeat(3, 1fr) !important;
+  gap: 24px !important;
   width: 100% !important;
   max-width: 100% !important;
   margin: 0 !important;
 }
 .tournament-archive-page .archive-card {
   width: 100% !important;
-  min-height: 185px !important;
-  padding: 21px !important;
-  border-radius: 8px !important;
-  font-size: 12px !important;
-  display: block !important;
+  aspect-ratio: 1 / 1 !important;
+  min-height: 350px !important;
+  padding: 28px !important;
+  border-radius: 12px !important;
+  font-size: 13px !important;
+  display: flex !important;
+  flex-direction: column !important;
+  justify-content: space-between !important;
+  text-align: left !important;
+  box-sizing: border-box !important;
 }
 .tournament-archive-page .archive-card h3 {
-  font: 800 25px 'Barlow Condensed' !important;
-  margin: 10px 0 6px !important;
+  font: 800 30px 'Barlow Condensed' !important;
+  margin: 12px 0 8px !important;
+  line-height: 1.1 !important;
 }
 .tournament-archive-page .archive-card p {
-  color: #aaa !important;
-  font-size: 12px !important;
+  color: #c4c2cc !important;
+  font-size: 13px !important;
   margin: 0 !important;
-  line-height: normal !important;
+  line-height: 1.4 !important;
 }
 .tournament-archive-page .archive-stats {
   display: flex !important;
-  gap: 28px !important;
-  margin-top: 23px !important;
-  font-size: 10px !important;
+  gap: 32px !important;
+  margin-top: auto !important;
+  padding-top: 18px !important;
+  border-top: 1px solid rgba(255,255,255,0.1) !important;
+  font-size: 11px !important;
   color: #97959e !important;
 }
 .tournament-archive-page .archive-stats b {
   display: block !important;
   color: white !important;
-  font: 800 17px 'Barlow Condensed' !important;
+  font: 800 20px 'Barlow Condensed' !important;
 }
-@media(max-width:900px){
+@media(max-width:1120px){
+  .tournament-archive-page .archive {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+}
+@media(max-width:640px){
   .tournament-archive-page .archive {
     grid-template-columns: 1fr !important;
   }
+}
+
+/* Scaled Matches Top Controls Bar */
+.match-controls-bar {
+  padding: 16px 20px !important;
+  gap: 16px !important;
+  border-radius: 10px !important;
+}
+.m-tab {
+  padding: 9px 18px !important;
+  font-size: 13px !important;
+  font-weight: 800 !important;
+  border-radius: 6px !important;
+}
+#matchSearchBox {
+  font-size: 13px !important;
+  padding: 10px 18px !important;
+  min-width: 260px !important;
+  border-radius: 6px !important;
+}
+.match-player-filter-bar {
+  margin-top: 14px !important;
+  padding-top: 14px !important;
+  gap: 8px !important;
+}
+.match-player-filter-bar > span {
+  font-size: 12px !important;
+  letter-spacing: 0.8px !important;
+  margin-right: 4px !important;
+}
+.m-player-chip {
+  padding: 6px 14px !important;
+  font-size: 13px !important;
+  font-weight: 800 !important;
+  gap: 8px !important;
+  border-radius: 24px !important;
+}
+.m-player-chip-face {
+  width: 22px !important;
+  height: 22px !important;
+  font-size: 11px !important;
 }
 .profile-card .avatar {
   height: 68px !important;
@@ -1585,19 +1633,19 @@ details[open] > .past-tourney-summary .past-chevron{transform:rotate(180deg);col
   font-size: 11px !important;
 }
 .tc-bracket-grid {
-  gap: 32px !important;
-  padding: 14px 6px 20px !important;
+  gap: 24px !important;
+  padding: 10px 4px 16px !important;
 }
 .tc-round-col {
-  width: 360px !important;
-  gap: 20px !important;
+  width: 290px !important;
+  gap: 16px !important;
 }
 .tc-round-matches {
-  gap: 20px !important;
+  gap: 16px !important;
 }
 .tc-round-head {
-  font-size: 14px !important;
-  letter-spacing: 1px !important;
+  font-size: 13px !important;
+  letter-spacing: 0.8px !important;
   padding: 0 4px !important;
   margin-bottom: 6px !important;
 }
@@ -1605,36 +1653,50 @@ details[open] > .past-tourney-summary .past-chevron{transform:rotate(180deg);col
   font-size: 22px !important;
 }
 .tc-match-card {
+  background: #14141d !important;
+  border: 1px solid #2e2e3c !important;
+  border-left: 4px solid #ffd166 !important;
   border-radius: 9px !important;
-  box-shadow: 0 6px 20px rgba(0,0,0,0.5) !important;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.45) !important;
+  transition: transform .15s ease, box-shadow .15s ease, border-color .15s ease !important;
+}
+.tc-match-card.completed {
+  border-left-color: #4bdd91 !important;
+}
+.tc-match-card.tc-losers-card {
+  border-left-color: #ff5964 !important;
+}
+.tc-match-card:hover {
+  transform: translateY(-2px) !important;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.6) !important;
 }
 .tc-match-head {
-  padding: 9px 14px !important;
+  padding: 8px 12px !important;
   font-size: 11px !important;
 }
 .tc-slot {
-  padding: 12px 14px !important;
-  gap: 12px !important;
+  padding: 10px 12px !important;
+  gap: 10px !important;
 }
 .tc-slot .mrow-face {
-  width: 32px !important;
-  height: 32px !important;
-  font-size: 13px !important;
+  width: 30px !important;
+  height: 30px !important;
+  font-size: 12px !important;
 }
 .tc-slot-seed {
   font-size: 12px !important;
-  min-width: 24px !important;
+  min-width: 22px !important;
 }
 .tc-slot-name {
-  font: 800 17px 'Barlow Condensed' !important;
+  font: 800 16px 'Barlow Condensed' !important;
 }
 .tc-slot .team {
-  font-size: 11px !important;
+  font-size: 10px !important;
 }
 .tc-slot-score {
-  font: 900 18px 'Barlow Condensed' !important;
+  font: 900 17px 'Barlow Condensed' !important;
   min-width: 28px !important;
-  height: 32px !important;
+  height: 30px !important;
   display: grid !important;
   place-items: center !important;
   border-radius: 4px !important;
@@ -1650,6 +1712,25 @@ details[open] > .past-tourney-summary .past-chevron{transform:rotate(180deg);col
   padding: 12px 14px !important;
   font-size: 14px !important;
 }
+.pred-contender-grid {
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)) !important;
+  gap: 12px !important;
+}
+.pred-contender-card {
+  padding: 12px 14px !important;
+  border-radius: 9px !important;
+}
+.pred-clash-grid {
+  grid-template-columns: repeat(auto-fill, minmax(360px, 1fr)) !important;
+  gap: 14px !important;
+}
+.pred-clash-card {
+  min-height: 84px !important;
+  border-radius: 10px !important;
+}
+.clash-side {
+  padding: 12px 14px !important;
+}
 @media(max-width:900px){
   .topbar { padding: 8px 14px !important; }
   .page { padding: 20px 14px 60px !important; }
@@ -1664,9 +1745,6 @@ details[open] > .past-tourney-summary .past-chevron{transform:rotate(180deg);col
 </style>
 </head>
 <style>.cover-edit{position:absolute;right:12px;bottom:12px;border:1px solid #ffffff33;background:#111c;color:#fff;border-radius:4px;padding:6px 8px;font-size:10px;font-weight:800;cursor:pointer;opacity:.85}.cover-edit:hover{opacity:1;background:#401b21}</style>
-<style>.standings tr.cutoff-row td{border-top:2px dashed rgba(255,255,255,.5)!important}.standings tr.cutoff-row td:first-child:before{content:none!important}</style>
-<style>.standings tr.cutoff-row td{border-top:2px dashed #85838b!important}.standings tr.cutoff-row td:first-child:before{display:none!important}</style>
-<style>.standings tr.cutoff-row td{border-top:1px dashed #76747c!important}.standings tr.cutoff-row td:first-child{position:relative}.standings tr.cutoff-row td:first-child:before{content:'TOP CUT LINE';position:absolute;left:10px;top:-9px;background:var(--panel);color:#8e8c94;font-size:8px;font-weight:800;letter-spacing:.6px;padding:0 4px}</style>
 <style>.hunt{background:linear-gradient(90deg,#4a3a1a88,transparent)}.tag.hunt{background:#4a3918;color:#ffd276}</style>
 <style>.brand{letter-spacing:1px}.ball{background:linear-gradient(135deg,#ff5964 0 43%,#151519 44% 51%,#fff3ed 52% 100%);border-color:#fff3ed;box-shadow:0 0 0 2px #ed3945}.ball:before{content:'';position:absolute;width:11px;height:6px;background:#53a65e;border-radius:11px 1px 11px 1px;transform:rotate(-32deg);left:13px;top:-7px;box-shadow:7px 3px 0 -1px #42934d}.ball:after{background:#fff3ed;border-color:#17171b}</style>
 <style>.bracket-drag{cursor:grab;font-weight:800}.bracket-drag:active{cursor:grabbing}.bracket-drag:hover{color:#ff888e;text-decoration:underline}</style>
@@ -6480,7 +6558,7 @@ function topCutSection(t, preview){
     </div>`;
   }
 
-  function renderBracketCard(m){
+  function renderBracketCard(m, isLosers = false){
     let p1Done = m.isDone && m.winner === m.p1;
     let p2Done = m.isDone && m.winner === m.p2;
     let p1Lost = m.isDone && m.loser === m.p1;
@@ -6492,12 +6570,12 @@ function topCutSection(t, preview){
 
     let headerBadge = '';
     if(m.isDone){
-      headerBadge = isClickable ? `<span style="color:#4bdd91;font-weight:900">FINAL <span style="font-size:8px;color:var(--amber);opacity:0.8">✨</span></span>` : `<span style="color:#4bdd91;font-weight:900">FINAL</span>`;
+      headerBadge = isClickable ? `<span style="color:#4bdd91;font-weight:900">FINAL <span style="font-size:8px;color:var(--amber);opacity:0.8">✎</span></span>` : `<span style="color:#4bdd91;font-weight:900">FINAL</span>`;
     } else if(isClickable){
-      headerBadge = `<span style="color:var(--amber);font-weight:900">ENTER SCORE ✨</span>`;
+      headerBadge = `<span style="color:var(--amber);font-weight:900">ENTER SCORE ✎</span>`;
     }
 
-    return `<div class="tc-match-card ${m.isDone?'completed':''} ${isClickable?'clickable':''}" ${clickAttr}>
+    return `<div class="tc-match-card ${m.isDone?'completed':''} ${isLosers?'tc-losers-card':''} ${isClickable?'clickable':''}" ${clickAttr}>
       <div class="tc-match-head">
         <span>${esc(m.title)}</span>
         ${headerBadge}
@@ -6607,6 +6685,90 @@ function topCutSection(t, preview){
     `;
   }
 
+  let tcStageTab = window.tcStageTab || 'all';
+  let hasLosers = !!(model.lbRounds && model.lbRounds.length);
+
+  let switcherHtml = `
+    <div class="tc-stage-switcher" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:18px;padding:12px 18px;background:#14141a;border:1px solid #2b2b36;border-radius:10px">
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+        <button class="m-tab ${tcStageTab === 'all' ? 'active' : ''}" onclick="window.tcStageTab='all';render()">🌐 Full Bracket</button>
+        <button class="m-tab ${tcStageTab === 'wb' ? 'active' : ''}" onclick="window.tcStageTab='wb';render()">👑 Winners Bracket</button>
+        ${hasLosers ? `<button class="m-tab ${tcStageTab === 'lb' ? 'active' : ''}" onclick="window.tcStageTab='lb';render()">🔥 Losers Bracket</button>` : ''}
+        <button class="m-tab ${tcStageTab === 'gf' ? 'active' : ''}" onclick="window.tcStageTab='gf';render()">⚔️ Grand Finals</button>
+      </div>
+      <div style="font-size:12px;color:#8e8c95;font-weight:800">
+        ${model.isSingleElim ? 'Single Elimination Knockout' : 'Double Elimination Championship'}
+      </div>
+    </div>
+  `;
+
+  let showWb = (tcStageTab === 'all' || tcStageTab === 'wb');
+  let showLb = hasLosers && (tcStageTab === 'all' || tcStageTab === 'lb');
+  let showGfOnly = (tcStageTab === 'gf');
+
+  let bracketBodyHtml = '';
+  if(showGfOnly){
+    bracketBodyHtml = `
+      <div style="display:flex;flex-direction:column;align-items:center;gap:20px;padding:24px 0">
+        <div class="tc-section-header" style="text-align:center">
+          <h3><span style="color:#ffd166">👑</span> Grand Finals Championship</h3>
+          <span style="font-size:11px;font-weight:800;letter-spacing:.8px;color:#8e8c95;text-transform:uppercase">Title Decider Series</span>
+        </div>
+        <div style="width:min(380px, 100%)">
+          ${model.gfMatches.map(m=>renderBracketCard(m)).join('')}
+        </div>
+      </div>
+    `;
+  } else {
+    bracketBodyHtml = `
+      <div class="tc-bracket-scroll-pane">
+        ${showWb ? `
+          <div style="margin-bottom:${showLb ? '28px' : '0'}">
+            <div class="tc-section-header">
+              <h3><span style="color:#ffd166">🏆</span> ${model.lbRounds?.length ? 'Winners Bracket' : 'Championship Bracket'}</h3>
+              <span style="font-size:10px;font-weight:800;letter-spacing:.8px;color:#8e8c95;text-transform:uppercase">${model.lbRounds?.length ? 'Upper Bracket Path' : 'Knockout Stage'}</span>
+            </div>
+            <div class="tc-bracket-grid">
+              ${model.wbRounds.map(r=>`
+                <div class="tc-round-col">
+                  <div class="tc-round-head"><span>${esc(r.title)}</span></div>
+                  <div class="tc-round-matches">
+                    ${r.matches.map(m=>renderBracketCard(m)).join('')}
+                  </div>
+                </div>
+              `).join('')}
+              <div class="tc-round-col" style="border-left:1px dashed #3a3a46;padding-left:24px;width:290px">
+                <div class="tc-round-head"><span style="color:#ffd166">👑 ${model.lbRounds?.length ? 'Grand Finals' : 'Championship Finals'}</span></div>
+                <div class="tc-round-matches">
+                  ${model.gfMatches.map(m=>renderBracketCard(m)).join('')}
+                </div>
+              </div>
+            </div>
+          </div>
+        ` : ''}
+
+        ${showLb ? `
+          <div>
+            <div class="tc-section-header">
+              <h3><span style="color:#ff6b73">🔥</span> Losers Bracket</h3>
+              <span style="font-size:10px;font-weight:800;letter-spacing:.8px;color:#8e8c95;text-transform:uppercase">Lower Elimination Path</span>
+            </div>
+            <div class="tc-bracket-grid">
+              ${model.lbRounds.map(r=>`
+                <div class="tc-round-col">
+                  <div class="tc-round-head"><span>${esc(r.title)}</span></div>
+                  <div class="tc-round-matches">
+                    ${r.matches.map(m=>renderBracketCard(m, true)).join('')}
+                  </div>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+        ` : ''}
+      </div>
+    `;
+  }
+
   return `<div class="tc-container">
     <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:14px">
       <div style="display:flex;align-items:center;gap:10px">
@@ -6623,49 +6785,10 @@ function topCutSection(t, preview){
     </div>
 
     ${podiumHtml}
+    ${switcherHtml}
 
     <div class="card" style="padding:22px;background:#101015;border-color:#2e2e38;width:100%">
-      <div class="tc-bracket-scroll-pane">
-        <div style="margin-bottom:${model.lbRounds?.length ? '28px' : '0'}">
-          <div class="tc-section-header">
-            <h3><span style="color:#ffd166">🏆</span> ${model.lbRounds?.length ? 'Winners Bracket' : 'Championship Bracket'}</h3>
-            <span style="font-size:10px;font-weight:800;letter-spacing:.8px;color:#8e8c95;text-transform:uppercase">${model.lbRounds?.length ? 'Upper Bracket Path' : 'Knockout Stage'}</span>
-          </div>
-          <div class="tc-bracket-grid">
-            ${model.wbRounds.map(r=>`
-              <div class="tc-round-col">
-                <div class="tc-round-head"><span>${esc(r.title)}</span></div>
-                <div class="tc-round-matches">
-                  ${r.matches.map(m=>renderBracketCard(m)).join('')}
-                </div>
-              </div>
-            `).join('')}
-            <div class="tc-round-col" style="border-left:1px dashed #3a3a46;padding-left:24px;width:280px">
-              <div class="tc-round-head"><span style="color:#ffd166">👑 ${model.lbRounds?.length ? 'Grand Finals' : 'Championship Finals'}</span></div>
-              <div class="tc-round-matches">
-                ${model.gfMatches.map(m=>renderBracketCard(m)).join('')}
-              </div>
-            </div>
-          </div>
-        </div>
-        ${model.lbRounds?.length ? `
-        <div>
-          <div class="tc-section-header">
-            <h3><span style="color:#7ad1ff">🛡️</span> Losers Bracket</h3>
-            <span style="font-size:10px;font-weight:800;letter-spacing:.8px;color:#8e8c95;text-transform:uppercase">Lower Elimination Path</span>
-          </div>
-          <div class="tc-bracket-grid">
-            ${model.lbRounds.map(r=>`
-              <div class="tc-round-col">
-                <div class="tc-round-head"><span>${esc(r.title)}</span></div>
-                <div class="tc-round-matches">
-                  ${r.matches.map(m=>renderBracketCard(m)).join('')}
-                </div>
-              </div>
-            `).join('')}
-          </div>
-        </div>` : ''}
-      </div>
+      ${bracketBodyHtml}
     </div>
   </div>`;
 }
@@ -12048,6 +12171,7 @@ function standingTable(t, g){
   if(getStage1Format(t) === 'swiss'){
     let list = getSwissStand(t);
     let cut = advancePerGroup(t);
+    let { lossesToEliminate, isEliminationStyle } = getSwissThresholds(t);
     let sortedT = typeof sortedTournamentsChronological === 'function' ? sortedTournamentsChronological() : Object.values(tournamentData);
     let tIdx = t ? sortedT.findIndex(x => x.id === t.id || x.name === t.name) : -1;
     let isPastT = (t && t.status === 'COMPLETE' && tIdx >= 0);
@@ -12083,13 +12207,15 @@ function standingTable(t, g){
                 statusTag = i < cut ? '<span class="tag safe" style="background:#133e28;color:#4bdd91;border:1px solid #238048">ADVANCED</span>' : '<span class="tag out" style="background:#491a20;color:#fa8a90;border:1px solid #6b262f">ELIMINATED</span>';
               } else if(i < cut && x.status === 'clinched'){
                 statusTag = '<span class="tag safe" style="background:#133e28;color:#4bdd91;border:1px solid #238048">CLINCHED PLAYOFFS</span>';
-              } else if(x.status === 'eliminated' || (i >= cut && x.l >= lossesToEliminate)){
+              } else if(x.status === 'eliminated' || (i >= cut && (x.l >= lossesToEliminate || (isEliminationStyle && x.l >= lossesToEliminate)))){
                 statusTag = '<span class="tag out" style="background:#491a20;color:#fa8a90;border:1px solid #6b262f">ELIMINATED</span>';
               } else {
                 statusTag = i < cut ? '<span class="tag hunt" style="background:#3b2a14;color:#ffd166;border:1px solid #735324">IN CUT · ACTIVE</span>' : '<span class="tag hunt" style="background:#28231c;color:#e8ba60;border:1px solid #4a3e29">HUNT · ACTIVE</span>';
               }
 
-              let rowClass = (i < cut ? 'safe' : (x.status === 'eliminated' ? 'out' : ''));
+              let isSafe = (i < cut);
+              let isOut = (x.status === 'eliminated' || (i >= cut && x.l >= lossesToEliminate));
+              let rowClass = isSafe ? 'safe' : (isOut ? 'out' : '');
 
               return `
                 <tr class="${rowClass}">
@@ -16256,10 +16382,9 @@ function saveBracketPredictionPick(mId, choice){
   }
 }
 
-function setPredStageTab(tab){
-  try {
-    localStorage.setItem('draftdex-pred-stage-tab', tab);
-  } catch(e){}
+function setPredViewTab(tab){
+  window.predViewTab = tab;
+  try { localStorage.setItem('draftdex-pred-view-tab', tab); } catch(e){}
   render();
 }
 
@@ -16268,84 +16393,164 @@ function predictions(t=activeT()){
   let started = (t.matches || []).some(x => x.as !== '' && x.as != null);
   let groups = groupsOf(t);
   let groupsList = Object.keys(groups);
+  let isSwiss = getStage1Format(t) === 'swiss';
   setTimeout(() => renderPredictionLeaders(t), 0);
   let leaderboard = leaderboardShell(t);
 
   let isArchive = (t.status === 'COMPLETE');
-  let activeStage = 'group';
+  let isPlayoff = (t.phase === 'topcut' || !!t.bracketManagerData);
 
-  if(isArchive){
-    let savedStage = null;
-    try { savedStage = localStorage.getItem('draftdex-pred-stage-tab'); } catch(e){}
-    activeStage = (savedStage === 'topcut' || savedStage === 'group') ? savedStage : 'topcut';
-  } else {
-    // During an active in-season tournament, show Group pick'ems during group stage and Top Cut during playoffs
-    activeStage = (t.phase === 'topcut' || !!t.bracketManagerData) ? 'topcut' : 'group';
-  }
+  // Tab state: 'champion' | 'matches' | 'leaderboard'
+  let savedTab = null;
+  try { savedTab = localStorage.getItem('draftdex-pred-view-tab'); } catch(e){}
+  let predTab = window.predViewTab || savedTab || (isPlayoff ? 'matches' : 'champion');
+  window.predViewTab = predTab;
 
   let champQuestion = 'Who will be the ' + t.name + ' Champion?';
   let games = t.matches || [];
 
-  let stageTabs = isArchive ? `
-    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:16px;padding-bottom:12px;border-bottom:1px solid #23232d">
-      <div style="display:flex;gap:8px">
-        <button class="btn ${activeStage === 'topcut' ? '' : 'ghost'}" style="${activeStage === 'topcut' ? 'background:#ffd166;color:#121212;font-weight:900;border-color:#ffd166;' : 'color:#c0bec8;border-color:#343440;'}"
-          onclick="setPredStageTab('topcut')">
-          🏆 Top Cut Bracket
-        </button>
-        <button class="btn ${activeStage === 'group' ? '' : 'ghost'}" style="${activeStage === 'group' ? 'background:#ffd166;color:#121212;font-weight:900;border-color:#ffd166;' : 'color:#c0bec8;border-color:#343440;'}"
-          onclick="setPredStageTab('group')">
-          ⚔️ Group Stage Pick'ems
-        </button>
-      </div>
-      <div style="font-size:11px;color:#8e8c95">
-        ${activeStage === 'topcut' ? '20 PTS per bracket match · Double elimination' : '100 PTS Champ · 45 PTS Groups · 8 PTS Matches'}
-      </div>
-    </div>
-  ` : '';
+  // Match Pick'ems round and status filters
+  let predRound = window.predRoundTab || 'all';
+  let predStatus = window.predStatusTab || 'all';
 
-  let mainContent = '';
-  if(activeStage === 'topcut'){
-    mainContent = topCutPredictionBracket(t);
+  let roundList = [];
+  if(isSwiss){
+    roundList = Array.from(new Set(games.map(m => m.round || 'Round 1'))).sort((a,b) => {
+      let na = parseInt(a.replace(/\D/g, '')) || 0;
+      let nb = parseInt(b.replace(/\D/g, '')) || 0;
+      return na - nb;
+    });
   } else {
-    mainContent = `<div style="display:flex;flex-direction:column;gap:20px">
-      <!-- 1. Champion Contender Outright Picker (100 PTS) -->
-      ${renderChampionPredictionPicker(t, champQuestion, started)}
-
-      <!-- 2. Group Winner Outright Pickers (45 PTS each) -->
-      ${renderGroupWinnersPredictionPicker(t, groups, started)}
-
-      <!-- 3. Compact Pick'em Match Clash Grid (8 PTS each) -->
-      <section class="pred-section">
-        <div class="section-head" style="margin-bottom:12px">
-          <div>
-            <div class="eyebrow" style="color:var(--red);margin-bottom:2px">Group Stage Matchups · 8 PTS Each</div>
-            <h2>HEAD-TO-HEAD PICK'EMS</h2>
-          </div>
-          <span style="font-size:11px;color:#8e8c95">Tap a trainer to lock in your pick</span>
-        </div>
-        ${games.length ? `
-          <div class="pred-clash-grid">
-            ${games.map(m => compactMatchPredictionCard(t, m)).join('')}
-          </div>
-        ` : '<div class="card empty"><p class="sub">No fixtures scheduled yet.</p></div>'}
-      </section>
-    </div>`;
+    roundList = groupsList;
   }
 
-  let sideRail = `
-    <div style="display:flex;flex-direction:column;gap:16px">
-      ${leaderboard}
+  let filteredGames = games.filter(m => {
+    let isDone = (m.b === 'BYE' || m.a === 'BYE' || (m.as !== '' && m.as != null && m.bs !== '' && m.bs != null));
+    if(predStatus === 'pending' && isDone) return false;
+    if(predStatus === 'decided' && !isDone) return false;
+    if(predRound !== 'all'){
+      if(isSwiss && m.round !== predRound) return false;
+      if(!isSwiss && m.group !== predRound) return false;
+    }
+    return true;
+  });
+
+  let navBar = `
+    <div class="pred-controls-bar" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:22px;padding:14px 20px;background:#14141a;border:1px solid #2b2b36;border-radius:10px">
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+        <button class="m-tab ${predTab === 'champion' ? 'active' : ''}" onclick="setPredViewTab('champion')">
+          🏆 Champion & Awards
+        </button>
+        <button class="m-tab ${predTab === 'matches' ? 'active' : ''}" onclick="setPredViewTab('matches')">
+          ${isPlayoff ? '⚔️ Playoff Bracket Pick\'ems' : `⚔️ Match Pick'ems (${games.length})`}
+        </button>
+        <button class="m-tab ${predTab === 'leaderboard' ? 'active' : ''}" onclick="setPredViewTab('leaderboard')">
+          📊 Leaderboard & Scoring
+        </button>
+      </div>
+
+      <div style="font-size:12px;color:#8e8c95;display:flex;align-items:center;gap:12px;font-weight:800">
+        <span style="color:#ffd166">100 PTS Champ</span>
+        <span style="color:#4a4a58">|</span>
+        <span style="color:#c084fc">45 PTS Div</span>
+        <span style="color:#4a4a58">|</span>
+        <span style="color:#7df0aa">8 PTS Match</span>
+      </div>
     </div>
   `;
 
-  return `<div class="pred-layout">
-    <div style="min-width:0">
-      ${stageTabs}
-      ${mainContent}
+  let contentHtml = '';
+
+  if(predTab === 'champion'){
+    contentHtml = `
+      <div style="display:flex;flex-direction:column;gap:22px">
+        <!-- 1. Champion Contender Outright Picker (100 PTS) -->
+        ${renderChampionPredictionPicker(t, champQuestion, started)}
+
+        <!-- 2. Division / Group Winners Outright Pickers (45 PTS each) -->
+        ${!isSwiss && groupsList.length ? renderGroupWinnersPredictionPicker(t, groups, started) : ''}
+      </div>
+    `;
+  } else if(predTab === 'matches'){
+    if(isPlayoff){
+      contentHtml = topCutPredictionBracket(t);
+    } else {
+      contentHtml = `
+        <div style="display:flex;flex-direction:column;gap:18px">
+          <!-- Round & Status Filter Bar -->
+          <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;padding:12px 18px;background:#101015;border:1px solid #23232c;border-radius:8px">
+            <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+              <span style="font-size:11px;font-weight:800;color:#8e8c95;letter-spacing:.6px;text-transform:uppercase;margin-right:4px">${isSwiss ? 'Round:' : 'Group:'}</span>
+              <button class="m-tab ${predRound === 'all' ? 'active' : ''}" style="padding:6px 14px;font-size:12px" onclick="window.predRoundTab='all';render()">All</button>
+              ${roundList.map(r => `
+                <button class="m-tab ${predRound === r ? 'active' : ''}" style="padding:6px 14px;font-size:12px" onclick="window.predRoundTab='${r}';render()">${esc(r)}</button>
+              `).join('')}
+            </div>
+
+            <div style="display:flex;align-items:center;gap:6px">
+              <button class="m-tab ${predStatus === 'all' ? 'active' : ''}" style="padding:6px 12px;font-size:11px" onclick="window.predStatusTab='all';render()">All (${games.length})</button>
+              <button class="m-tab ${predStatus === 'pending' ? 'active' : ''}" style="padding:6px 12px;font-size:11px" onclick="window.predStatusTab='pending';render()">Open</button>
+              <button class="m-tab ${predStatus === 'decided' ? 'active' : ''}" style="padding:6px 12px;font-size:11px" onclick="window.predStatusTab='decided';render()">Decided</button>
+            </div>
+          </div>
+
+          <!-- Pick'em Match Clash Grid (8 PTS each) -->
+          <section class="pred-section">
+            <div class="section-head" style="margin-bottom:12px;display:flex;justify-content:space-between;align-items:center">
+              <div>
+                <div class="eyebrow" style="color:var(--red);margin-bottom:2px">8 PTS EACH · HEAD-TO-HEAD MATCHUPS</div>
+                <h2>${predRound === 'all' ? 'ALL FIXTURES' : esc(predRound.toUpperCase())}</h2>
+              </div>
+              <span style="font-size:11px;color:#8e8c95">Tap a trainer to lock in your pick</span>
+            </div>
+            ${filteredGames.length ? `
+              <div class="pred-clash-grid">
+                ${filteredGames.map(m => compactMatchPredictionCard(t, m)).join('')}
+              </div>
+            ` : '<div class="card empty"><p class="sub">No fixtures matching current filter.</p></div>'}
+          </section>
+        </div>
+      `;
+    }
+  } else if(predTab === 'leaderboard'){
+    contentHtml = `
+      <div style="display:grid;grid-template-columns:1fr 360px;gap:22px;align-items:start">
+        <div style="min-width:0">
+          ${leaderboard}
+        </div>
+        <div class="card" style="padding:22px;background:#14141a;border-color:#2a2a36">
+          <div class="eyebrow" style="color:var(--amber);margin-bottom:4px">PREDICTION SCORING</div>
+          <h3 style="font:800 22px 'Barlow Condensed';margin:0 0 14px;color:#f5f3f0">HOW POINTS WORK</h3>
+          <div style="display:flex;flex-direction:column;gap:12px;font-size:13px;color:#b6b4c0;line-height:1.4">
+            <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid #23232e">
+              <span><b>🏆 Tournament Champion</b></span>
+              <span class="badge-pill gold" style="font-weight:900">+100 PTS</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid #23232e">
+              <span><b>🥇 Division Winner</b></span>
+              <span class="badge-pill gold" style="font-weight:900">+45 PTS</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid #23232e">
+              <span><b>⚔️ Playoff Match Hit</b></span>
+              <span class="badge-pill gold" style="font-weight:900">+20 PTS</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0">
+              <span><b>⚡ Stage 1 Match Hit</b></span>
+              <span class="badge-pill gold" style="font-weight:900">+8 PTS</span>
+            </div>
+          </div>
+          <p class="sub" style="margin-top:16px;font-size:11px">Picks lock automatically when each fixture or tournament phase begins. Points update in real-time as match results are confirmed.</p>
+        </div>
+      </div>
+    `;
+  }
+
+  return `
+    <div class="pred-dashboard-layout" style="width:100%;max-width:100%">
+      ${navBar}
+      ${contentHtml}
     </div>
-    ${sideRail}
-  </div>`;
+  `;
 }
 /* ------------------------------------------------------------ 4. HALL OF FAME & LEAGUE RECORDS ENGINE ------------------------------------------------------------ */
 function getChronologicalMatches(){
