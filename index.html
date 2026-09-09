@@ -339,9 +339,9 @@
 .mon-chip.historic{border-left-color:#6366f1;background:linear-gradient(135deg,#191924,#13131c)}
 .mon-chip.historic img{filter:drop-shadow(0 2px 4px rgba(0,0,0,0.6))}
 /* ------------------------------------------------------------ Matchup of the Week / PRIMETIME Broadcast Graphic ------------------------------------------------------------ */
-.matchup-hero-card{position:relative;overflow:hidden;border-radius:10px;border:1px solid #4a2834;background:linear-gradient(135deg,#1f1116 0%,#13131a 50%,#121622 100%);display:flex;flex-direction:column;justify-content:space-between;min-height:220px;box-shadow:0 8px 24px rgba(0,0,0,0.55),0 0 16px rgba(230,57,70,0.18);transition:border-color .18s ease,box-shadow .18s ease}
+.matchup-hero-card{position:relative;overflow:hidden!important;border-radius:10px!important;contain:paint;isolation:isolate;transform:translateZ(0);background-clip:padding-box!important;-webkit-mask-image:-webkit-radial-gradient(white, black);border:1px solid #4a2834;background:linear-gradient(135deg,#1f1116 0%,#13131a 50%,#121622 100%);display:flex;flex-direction:column;justify-content:space-between;min-height:220px;box-shadow:0 8px 24px rgba(0,0,0,0.55),0 0 16px rgba(230,57,70,0.18);transition:border-color .18s ease,box-shadow .18s ease}
 .matchup-hero-card:hover{border-color:#6e3345;box-shadow:0 10px 28px rgba(0,0,0,0.65),0 0 22px rgba(230,57,70,0.26)}
-.matchup-hero-banner{background:linear-gradient(90deg,#5a1c25,#281d2f);padding:7px 14px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid rgba(255,255,255,0.08);position:relative;z-index:2}
+.matchup-hero-banner{background:linear-gradient(90deg,#5a1c25,#281d2f);padding:7px 14px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid rgba(255,255,255,0.08);position:relative;z-index:2;border-top-left-radius:9px;border-top-right-radius:9px;overflow:hidden}
 .matchup-hero-body{position:relative;display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:10px;padding:16px 14px;z-index:2}
 .matchup-team-col{display:flex;flex-direction:column;align-items:center;text-align:center;gap:4px;min-width:0}
 .matchup-record-big{font:900 32px/1 'Barlow Condensed';color:#f5f3f0;letter-spacing:1px;text-shadow:0 2px 8px rgba(0,0,0,0.8)}
@@ -352,7 +352,7 @@
 .matchup-nav-arrow:hover{background:rgba(239,48,56,0.4);border-color:var(--red);color:#fff;transform:translateY(-50%) scale(1.1)}
 .matchup-nav-arrow.left{left:6px}
 .matchup-nav-arrow.right{right:6px}
-.matchup-hero-foot{background:#0e0e14c0;border-top:1px solid #20202c;padding:6px 14px;display:flex;justify-content:center;align-items:center;position:relative;z-index:2}
+.matchup-hero-foot{background:#0e0e14c0;border-top:1px solid #20202c;padding:6px 14px;display:flex;justify-content:center;align-items:center;position:relative;z-index:2;border-bottom-left-radius:9px;border-bottom-right-radius:9px;overflow:hidden}
 /* ------------------------------------------------------------ Modern In-Season Hero & Showcase ------------------------------------------------------------ */
 .in-season-hero{display:grid;grid-template-columns:1.15fr 0.85fr;gap:18px;align-items:stretch}
 .tourney-hero-card{position:relative;overflow:hidden;display:flex;flex-direction:column;justify-content:space-between;padding:26px 24px;background:linear-gradient(135deg,#1b1216 0%,#15151c 60%,#11141c 100%);border:1px solid #4a2832;border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,0.55),0 0 16px rgba(239,48,56,0.12);min-height:430px;height:100%}
@@ -3970,8 +3970,8 @@ function matchCard(m,latest=false){
     : `background: linear-gradient(90deg, rgba(120,45,53,0.18) 0%, #120b0d 100%); border-bottom: 1px solid rgba(120,45,53,0.28);`;
 
   return `
-    <article class="card modern-match-card ${latest ? 'latest-highlight' : ''}" style="padding:0;${cardBg}border-radius:10px;overflow:hidden;position:relative">
-      <div style="padding:9px 14px;${headerBg}display:flex;justify-content:space-between;align-items:center;gap:8px">
+    <article class="card modern-match-card ${latest ? 'latest-highlight' : ''}" style="padding:0;${cardBg}border-radius:10px;overflow:hidden;position:relative;min-height:172px;display:flex;flex-direction:column;justify-content:space-between">
+      <div style="padding:11px 16px;${headerBg}display:flex;justify-content:space-between;align-items:center;gap:8px">
         <div style="display:flex;align-items:center;gap:7px;min-width:0;overflow:hidden">
           <span style="font-size:13px;color:${isTopCut ? '#d8b25e' : '#ba565f'};flex:none">${isTopCut ? '🏆' : '⚡'}</span>
           <span style="font:800 13px 'Barlow Condensed';color:${isTopCut ? '#d8b25e' : '#ba565f'};letter-spacing:.8px;text-transform:uppercase;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(labelText)}</span>
@@ -3982,38 +3982,38 @@ function matchCard(m,latest=false){
         </div>
       </div>
 
-      <div style="padding:10px 12px;background:${isTopCut ? '#090807' : '#0b090a'};display:flex;flex-direction:column;gap:6px">
+      <div style="padding:12px 14px;background:${isTopCut ? '#090807' : '#0b090a'};display:flex;flex-direction:column;gap:8px;flex:1;justify-content:center">
         <!-- Team 1 Row -->
-        <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:7px 10px;border-radius:6px;background:${p1Won ? (isTopCut ? 'linear-gradient(90deg, rgba(207,166,78,0.12), #141108)' : 'linear-gradient(90deg, rgba(120,45,53,0.18), #130a0d)') : 'transparent'};border:1px solid ${p1Won ? (isTopCut ? 'rgba(207,166,78,0.30)' : 'rgba(120,45,53,0.35)') : 'transparent'};transition:all .15s ease">
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 12px;min-height:50px;border-radius:7px;background:${p1Won ? (isTopCut ? 'linear-gradient(90deg, rgba(207,166,78,0.12), #141108)' : 'linear-gradient(90deg, rgba(120,45,53,0.18), #130a0d)') : 'transparent'};border:1px solid ${p1Won ? (isTopCut ? 'rgba(207,166,78,0.30)' : 'rgba(120,45,53,0.35)') : 'transparent'};transition:all .15s ease">
           <div style="display:flex;align-items:center;gap:10px;min-width:0">
-            <span class="avatar mini" style="background-image:${face1};background-size:cover;background-position:center;width:32px;height:32px;font-size:12px;border-radius:50%;border:2px solid ${p1Won ? (isTopCut ? '#cfa64e' : '#782d35') : '#23232c'};display:grid;place-items:center;flex:none;box-shadow:${p1Won ? (isTopCut ? '0 0 8px rgba(207,166,78,0.25)' : '0 0 8px rgba(120,45,53,0.25)') : 'none'}">${letter1}</span>
+            <span class="avatar mini" style="background-image:${face1};background-size:cover;background-position:center;width:36px;height:36px;font-size:13px;border-radius:50%;border:2px solid ${p1Won ? (isTopCut ? '#cfa64e' : '#782d35') : '#23232c'};display:grid;place-items:center;flex:none;box-shadow:${p1Won ? (isTopCut ? '0 0 8px rgba(207,166,78,0.25)' : '0 0 8px rgba(120,45,53,0.25)') : 'none'}">${letter1}</span>
             <div style="min-width:0">
               <div style="display:flex;align-items:center;gap:6px">
                 <span style="font:800 15px 'Barlow Condensed';letter-spacing:.3px;color:${p1Won ? '#ffffff' : '#9d9ba6'}">${playerLink(p1)}</span>
                 <span style="font-size:10px;font-weight:800;color:${isTopCut ? '#d8b25e' : '#ba565f'}">(${esc(rec1)})</span>
               </div>
-              <div style="font-size:10px;color:#7e7c88;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:140px">${esc(t1Name)}</div>
+              <div style="font-size:11px;color:#7e7c88;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:140px;margin-top:1px">${esc(t1Name)}</div>
             </div>
           </div>
-          <div style="font:800 22px 'Barlow Condensed';color:${p1Won ? (isTopCut ? '#d8b25e' : '#d46b74') : '#474652'};flex:none;min-width:24px;text-align:right;text-shadow:${p1Won ? (isTopCut ? '0 0 8px rgba(207,166,78,0.3)' : 'none') : 'none'}">${s1}</div>
+          <div style="font:800 24px 'Barlow Condensed';color:${p1Won ? (isTopCut ? '#d8b25e' : '#d46b74') : '#474652'};flex:none;min-width:26px;text-align:right;text-shadow:${p1Won ? (isTopCut ? '0 0 8px rgba(207,166,78,0.3)' : 'none') : 'none'}">${s1}</div>
         </div>
 
         <!-- Divider -->
-        <div style="height:1px;background:${isTopCut ? 'rgba(207,166,78,0.12)' : 'rgba(120,45,53,0.18)'};margin:0 4px"></div>
+        <div style="height:1px;background:${isTopCut ? 'rgba(207,166,78,0.12)' : 'rgba(120,45,53,0.18)'};margin:1px 4px"></div>
 
         <!-- Team 2 Row -->
-        <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:7px 10px;border-radius:6px;background:${p2Won ? (isTopCut ? 'linear-gradient(90deg, rgba(207,166,78,0.12), #141108)' : 'linear-gradient(90deg, rgba(120,45,53,0.18), #130a0d)') : 'transparent'};border:1px solid ${p2Won ? (isTopCut ? 'rgba(207,166,78,0.30)' : 'rgba(120,45,53,0.35)') : 'transparent'};transition:all .15s ease">
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 12px;min-height:50px;border-radius:7px;background:${p2Won ? (isTopCut ? 'linear-gradient(90deg, rgba(207,166,78,0.12), #141108)' : 'linear-gradient(90deg, rgba(120,45,53,0.18), #130a0d)') : 'transparent'};border:1px solid ${p2Won ? (isTopCut ? 'rgba(207,166,78,0.30)' : 'rgba(120,45,53,0.35)') : 'transparent'};transition:all .15s ease">
           <div style="display:flex;align-items:center;gap:10px;min-width:0">
-            <span class="avatar mini" style="background-image:${face2};background-size:cover;background-position:center;width:32px;height:32px;font-size:12px;border-radius:50%;border:2px solid ${p2Won ? (isTopCut ? '#cfa64e' : '#782d35') : '#23232c'};display:grid;place-items:center;flex:none;box-shadow:${p2Won ? (isTopCut ? '0 0 8px rgba(207,166,78,0.25)' : '0 0 8px rgba(120,45,53,0.25)') : 'none'}">${letter2}</span>
+            <span class="avatar mini" style="background-image:${face2};background-size:cover;background-position:center;width:36px;height:36px;font-size:13px;border-radius:50%;border:2px solid ${p2Won ? (isTopCut ? '#cfa64e' : '#782d35') : '#23232c'};display:grid;place-items:center;flex:none;box-shadow:${p2Won ? (isTopCut ? '0 0 8px rgba(207,166,78,0.25)' : '0 0 8px rgba(120,45,53,0.25)') : 'none'}">${letter2}</span>
             <div style="min-width:0">
               <div style="display:flex;align-items:center;gap:6px">
                 <span style="font:800 15px 'Barlow Condensed';letter-spacing:.3px;color:${p2Won ? '#ffffff' : '#9d9ba6'}">${playerLink(p2)}</span>
                 <span style="font-size:10px;font-weight:800;color:${isTopCut ? '#d8b25e' : '#ba565f'}">(${esc(rec2)})</span>
               </div>
-              <div style="font-size:10px;color:#7e7c88;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:140px">${esc(t2Name)}</div>
+              <div style="font-size:11px;color:#7e7c88;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:140px;margin-top:1px">${esc(t2Name)}</div>
             </div>
           </div>
-          <div style="font:800 22px 'Barlow Condensed';color:${p2Won ? (isTopCut ? '#d8b25e' : '#d46b74') : '#474652'};flex:none;min-width:24px;text-align:right;text-shadow:${p2Won ? (isTopCut ? '0 0 8px rgba(207,166,78,0.3)' : 'none') : 'none'}">${s2}</div>
+          <div style="font:800 24px 'Barlow Condensed';color:${p2Won ? (isTopCut ? '#d8b25e' : '#d46b74') : '#474652'};flex:none;min-width:26px;text-align:right;text-shadow:${p2Won ? (isTopCut ? '0 0 8px rgba(207,166,78,0.3)' : 'none') : 'none'}">${s2}</div>
         </div>
       </div>
     </article>
@@ -9223,17 +9223,17 @@ function matchupOfTheWeekCard(t){
     try { primetimeCover = localStorage.getItem('draftdex-primetime-cover') || ''; } catch(e){}
   }
 
-  let cardStyle = '';
-  if(primetimeCover){
-    cardStyle = `style="background-image:linear-gradient(135deg,${isTopCut ? 'rgba(46,20,24,0.88)' : 'rgba(32,12,18,0.88)'} 0%,${isTopCut ? 'rgba(24,14,22,0.92)' : 'rgba(18,12,18,0.92)'} 50%,rgba(13,13,18,0.94) 100%),url('${esc(primetimeCover)}');background-size:cover;background-position:center;border-color:${isTopCut ? '#5c3a1e' : '#3d1c24'};box-shadow:0 8px 32px ${isTopCut ? 'rgba(255,209,102,0.18)' : 'rgba(239,48,56,0.15)'}"`;
-  } else if(isTopCut){
-    cardStyle = `style="background:radial-gradient(ellipse at top right,#3d1b1a 0%,#1a1016 50%,#0d0d12 100%);border-color:#5c3a1e;box-shadow:0 8px 32px rgba(255,209,102,0.18)"`;
-  } else {
-    cardStyle = `style="background:linear-gradient(135deg,#240e16 0%,#140e14 50%,#0d0d12 100%);border-color:#3d1c24;box-shadow:0 8px 32px rgba(239,48,56,0.15)"`;
-  }
+  let cardBgBase = isTopCut
+    ? `background:radial-gradient(ellipse at top right,#3d1b1a 0%,#1a1016 50%,#0d0d12 100%);border-color:#5c3a1e;box-shadow:0 8px 32px rgba(255,209,102,0.18)`
+    : `background:linear-gradient(135deg,#240e16 0%,#140e14 50%,#0d0d12 100%);border-color:#3d1c24;box-shadow:0 8px 32px rgba(239,48,56,0.15)`;
 
-  return `<aside class="card matchup-hero-card" ${cardStyle} onmouseenter="pauseFeaturedAutoplay()" onmouseleave="resumeFeaturedAutoplay(${total})">
-    <div class="matchup-hero-banner" style="background:${isTopCut ? 'linear-gradient(90deg,rgba(255,209,102,0.15) 0%,rgba(0,0,0,0.5) 100%)' : 'rgba(0,0,0,0.45)'}">
+  let innerBackdrop = primetimeCover ? `
+    <div class="matchup-hero-backdrop" style="position:absolute;inset:0;background-image:linear-gradient(135deg,${isTopCut ? 'rgba(46,20,24,0.88)' : 'rgba(32,12,18,0.88)'} 0%,${isTopCut ? 'rgba(24,14,22,0.92)' : 'rgba(18,12,18,0.92)'} 50%,rgba(13,13,18,0.94) 100%),url('${esc(primetimeCover)}');background-size:cover;background-position:center;border-radius:inherit;overflow:hidden;pointer-events:none;z-index:0"></div>
+  ` : '';
+
+  return `<aside class="card matchup-hero-card" style="${cardBgBase};overflow:hidden!important;border-radius:10px!important;position:relative;isolation:isolate" onmouseenter="pauseFeaturedAutoplay()" onmouseleave="resumeFeaturedAutoplay(${total})">
+    ${innerBackdrop}
+    <div class="matchup-hero-banner" style="position:relative;z-index:2;border-top-left-radius:9px;border-top-right-radius:9px;overflow:hidden;background:${isTopCut ? 'linear-gradient(90deg,rgba(255,209,102,0.15) 0%,rgba(0,0,0,0.5) 100%)' : 'rgba(0,0,0,0.45)'}">
       <div style="display:flex;align-items:center;gap:6px">
         <span style="font-size:13px">${isPlayed ? '⚡' : (isTopCut ? '🏆' : '🔥')}</span>
         <span class="eyebrow" style="color:#ffd166;margin:0;letter-spacing:1px">${esc(item.group || 'PRIMETIME MATCHUP')}</span>
@@ -9291,7 +9291,7 @@ function matchupOfTheWeekCard(t){
       ` : ''}
     </div>
 
-    <div class="matchup-hero-foot" style="justify-content:center;padding:7px 14px">
+    <div class="matchup-hero-foot" style="position:relative;z-index:2;border-bottom-left-radius:9px;border-bottom-right-radius:9px;overflow:hidden;justify-content:center;padding:7px 14px">
       ${total > 1 ? `
         <div style="display:flex;gap:5px;align-items:center">
           ${Array.from({length: total}, (_, i) => `
@@ -9321,12 +9321,13 @@ function draftStageHeroCard(t){
   let coachStats = curPlayer ? getDraftCoachStats(t, curPlayer) : null;
   let curRoster = curPlayer ? (t.rosters?.[curPlayer] || roster[curPlayer] || []) : [];
 
-  let cardBgStyle = draftCover
-    ? `background-image:linear-gradient(180deg,rgba(6,6,10,0.68) 0%,rgba(6,6,10,0.04) 30%,rgba(6,6,10,0.12) 60%,rgba(6,6,10,0.96) 100%),url('${esc(draftCover)}');background-size:cover;background-position:center;border-color:#3d242c;position:relative;overflow:hidden;width:100%;aspect-ratio:16/9;display:flex;flex-direction:column;justify-content:space-between;min-height:0`
-    : `background:linear-gradient(135deg,#1f1318 0%,#13131c 65%);border-color:#3d242c;position:relative;overflow:hidden;width:100%;aspect-ratio:16/9;display:flex;flex-direction:column;justify-content:space-between;min-height:0`;
+  let innerDraftBackdrop = draftCover ? `
+    <div class="matchup-hero-backdrop" style="position:absolute;inset:0;background-image:linear-gradient(180deg,rgba(6,6,10,0.68) 0%,rgba(6,6,10,0.04) 30%,rgba(6,6,10,0.12) 60%,rgba(6,6,10,0.96) 100%),url('${esc(draftCover)}');background-size:cover;background-position:center;border-radius:inherit;overflow:hidden;pointer-events:none;z-index:0"></div>
+  ` : '';
 
   return `
-    <aside class="card matchup-hero-card" style="${cardBgStyle}">
+    <aside class="card matchup-hero-card" style="background:linear-gradient(135deg,#1f1318 0%,#13131c 65%);border-color:#3d242c;position:relative;overflow:hidden!important;border-radius:10px!important;isolation:isolate;width:100%;aspect-ratio:16/9;display:flex;flex-direction:column;justify-content:space-between;min-height:0">
+      ${innerDraftBackdrop}
       <!-- Top Actions (Edit cover) -->
       <div style="display:flex;justify-content:flex-end;align-items:center;padding:10px 12px;min-height:38px;position:relative;z-index:2">
         ${moderator ? `<button class="cover-edit" style="position:static!important;margin:0!important;padding:4px 10px;font-size:11px;background:rgba(8,8,14,0.75);border:1px solid rgba(255,255,255,0.25);border-radius:6px;backdrop-filter:blur(6px);box-shadow:0 4px 12px rgba(0,0,0,0.5)" onclick="event.stopPropagation();openDraftStageCoverEditor()">Edit cover</button>` : ''}
@@ -9539,7 +9540,7 @@ function Home(){
 
       <!-- Right Column: Primetime Matchups / Draft Spotlight + Metric Boxes Below It -->
       <div class="in-season-sidebar">
-        <div id="matchupHeroCardWrap" style="${isDraftPhase ? 'flex:1;display:flex;flex-direction:column;min-height:0' : ''}">
+        <div id="matchupHeroCardWrap" style="overflow:hidden;border-radius:10px;${isDraftPhase ? 'flex:1;display:flex;flex-direction:column;min-height:0' : ''}">
           ${isDraftPhase ? draftStageHeroCard(t) : matchupOfTheWeekCard(t)}
         </div>
 
@@ -10795,8 +10796,8 @@ function openPrimetimeCoverEditor(){
     title: 'Primetime Matchup Graphic',
     eyebrow: 'Broadcast Graphic & Banner',
     description: 'Frame your background artwork for the primetime broadcast card. Drag or use the sliders to crop and focus.',
-    aspectRatio: 1.85,
-    panelShapeName: 'Broadcast Banner (~1.85)',
+    aspectRatio: 2.4,
+    panelShapeName: 'Broadcast Banner (~2.4:1)',
     currentCover: currentCover,
     mockOverlay: 'primetime',
     onSave: function(croppedDataUrl){
@@ -11863,6 +11864,13 @@ function toggleMatchPlayerFilter(p){
   render();
 }
 
+window.collapsedGroups = window.collapsedGroups || {};
+function toggleGroupCollapse(key){
+  window.collapsedGroups = window.collapsedGroups || {};
+  window.collapsedGroups[key] = !window.collapsedGroups[key];
+  render();
+}
+
 function Matches(){
   let t = ongoingT();
   if(!t) return noTournament();
@@ -11986,20 +11994,27 @@ function Matches(){
           let filtered = sMatches.filter(filterMatch);
           let sReported = sMatches.filter(m => m.b === 'BYE' || m.a === 'BYE' || (m.as !== '' && m.as != null && m.bs !== '' && m.bs != null)).length;
           let isDone = sMatches.length > 0 && sReported === sMatches.length;
+          let isCollapsed = Boolean(window.collapsedGroups?.[sec]);
+          let arrowIcon = isCollapsed ? '&#9660;' : '&#9650;';
 
           return `
-            <section class="card round-list" style="margin-bottom:20px;padding:16px 18px;background:#141419;border-color:#2c2c36">
-              <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;border-bottom:1px solid #252530;padding-bottom:12px;margin-bottom:16px">
+            <section class="card round-list" style="margin-bottom:20px;padding:${isCollapsed ? '14px 18px' : '16px 18px'};background:#141419;border-color:#2c2c36;transition:all .15s ease">
+              <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;${isCollapsed ? 'border-bottom:none!important;margin-bottom:0!important;padding-bottom:0!important;' : 'border-bottom:1px solid #252530;padding-bottom:12px;margin-bottom:16px;'};cursor:pointer;user-select:none" onclick="toggleGroupCollapse('${jsArg(sec)}')">
                 <div style="display:flex;align-items:center;gap:10px">
                   <span style="font:900 22px 'Barlow Condensed';letter-spacing:.6px;color:#f5f3f0;text-transform:uppercase">${esc(sec)}</span>
                   <span class="tag ${isDone ? 'safe' : 'hunt'}">${sReported}/${sMatches.length} REPORTED</span>
                 </div>
-                <div style="font-size:11px;color:#8e8c95;font-weight:700">
-                  ${isDone ? (isSwiss ? '✨ Round Complete' : '✨ Group Stage Complete') : `${sMatches.length - sReported} matches remaining`}
+                <div style="display:flex;align-items:center;gap:12px">
+                  <span style="font-size:11px;color:#8e8c95;font-weight:700">
+                    ${isDone ? (isSwiss ? '✨ Round Complete' : '✨ Group Stage Complete') : `${sMatches.length - sReported} matches remaining`}
+                  </span>
+                  <button class="btn ghost btn-sm group-collapse-btn" style="padding:4px 8px!important;min-width:28px;height:28px;display:inline-flex;align-items:center;justify-content:center;font-size:11px;color:#c0bec8;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.14);border-radius:6px;cursor:pointer" onclick="event.stopPropagation();toggleGroupCollapse('${jsArg(sec)}')" title="${isCollapsed ? 'Extend / Open ' + esc(sec) : 'Minimize / Close ' + esc(sec)}">
+                    <span class="group-toggle-arrow">${arrowIcon}</span>
+                  </button>
                 </div>
               </div>
 
-              <div class="match-grid-modern">
+              <div class="match-grid-modern" style="${isCollapsed ? 'display:none!important;' : ''}">
                 ${filtered.map(m => renderMatchRow(m, (t.matches || []).indexOf(m), t)).join('') || '<div class="empty" style="grid-column:1/-1;padding:20px">No matches found matching the current filters.</div>'}
               </div>
             </section>
@@ -12025,15 +12040,22 @@ function matchesView(t=activeT(), editable=canManageTournament(t)){
         let rMatches = allMatches.filter(m => (m.round || 'Round 1') === r);
         let rReported = rMatches.filter(m => m.b === 'BYE' || m.a === 'BYE' || (m.as !== '' && m.as != null && m.bs !== '' && m.bs != null)).length;
         let isDone = rMatches.length > 0 && rReported === rMatches.length;
-        return `<section class="card round-list" style="margin-bottom:0;padding:16px 18px;background:#141419;border-color:#2c2c36">
-          <div style="display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #252530;padding-bottom:12px;margin-bottom:16px">
+        let isCollapsed = Boolean(window.collapsedGroups?.[r]);
+        let arrowIcon = isCollapsed ? '&#9660;' : '&#9650;';
+        return `<section class="card round-list" style="margin-bottom:0;padding:${isCollapsed ? '14px 18px' : '16px 18px'};background:#141419;border-color:#2c2c36;transition:all .15s ease">
+          <div style="display:flex;align-items:center;justify-content:space-between;${isCollapsed ? 'border-bottom:none!important;margin-bottom:0!important;padding-bottom:0!important;' : 'border-bottom:1px solid #252530;padding-bottom:12px;margin-bottom:16px;'};cursor:pointer;user-select:none" onclick="toggleGroupCollapse('${jsArg(r)}')">
             <div style="display:flex;align-items:center;gap:10px">
               <span style="font:900 20px 'Barlow Condensed';letter-spacing:.5px;color:#f5f3f0;text-transform:uppercase">${esc(r)}</span>
               <span class="tag ${isDone ? 'safe' : 'hunt'}">${rReported}/${rMatches.length} REPORTED</span>
             </div>
-            <span style="font-size:11px;color:#8e8c95;font-weight:700">${rMatches.length - rReported === 0 ? 'All Matches Complete' : `${rMatches.length - rReported} remaining`}</span>
+            <div style="display:flex;align-items:center;gap:12px">
+              <span style="font-size:11px;color:#8e8c95;font-weight:700">${rMatches.length - rReported === 0 ? 'All Matches Complete' : `${rMatches.length - rReported} remaining`}</span>
+              <button class="btn ghost btn-sm group-collapse-btn" style="padding:4px 8px!important;min-width:28px;height:28px;display:inline-flex;align-items:center;justify-content:center;font-size:11px;color:#c0bec8;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.14);border-radius:6px;cursor:pointer" onclick="event.stopPropagation();toggleGroupCollapse('${jsArg(r)}')" title="${isCollapsed ? 'Extend / Open round' : 'Minimize / Close round'}">
+                <span class="group-toggle-arrow">${arrowIcon}</span>
+              </button>
+            </div>
           </div>
-          <div class="match-grid-modern">
+          <div class="match-grid-modern" style="${isCollapsed ? 'display:none!important;' : ''}">
             ${rMatches.map(m => renderMatchRow(m, (t.matches || []).indexOf(m), t)).join('') || '<div class="empty" style="grid-column:1/-1">No matches scheduled.</div>'}
           </div>
         </section>`;
@@ -12046,15 +12068,22 @@ function matchesView(t=activeT(), editable=canManageTournament(t)){
       let gMatches = groupMatches(t, g);
       let gReported = gMatches.filter(m => m.as !== '' && m.as != null && m.bs !== '' && m.bs != null).length;
       let isDone = gMatches.length > 0 && gReported === gMatches.length;
-      return `<section class="card round-list" style="margin-bottom:0;padding:16px 18px;background:#141419;border-color:#2c2c36">
-        <div style="display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #252530;padding-bottom:12px;margin-bottom:16px">
+      let isCollapsed = Boolean(window.collapsedGroups?.[g]);
+      let arrowIcon = isCollapsed ? '&#9660;' : '&#9650;';
+      return `<section class="card round-list" style="margin-bottom:0;padding:${isCollapsed ? '14px 18px' : '16px 18px'};background:#141419;border-color:#2c2c36;transition:all .15s ease">
+        <div style="display:flex;align-items:center;justify-content:space-between;${isCollapsed ? 'border-bottom:none!important;margin-bottom:0!important;padding-bottom:0!important;' : 'border-bottom:1px solid #252530;padding-bottom:12px;margin-bottom:16px;'};cursor:pointer;user-select:none" onclick="toggleGroupCollapse('${jsArg(g)}')">
           <div style="display:flex;align-items:center;gap:10px">
             <span style="font:900 20px 'Barlow Condensed';letter-spacing:.5px;color:#f5f3f0;text-transform:uppercase">${esc(g)}</span>
             <span class="tag ${isDone ? 'safe' : 'hunt'}">${gReported}/${gMatches.length} REPORTED</span>
           </div>
-          <span style="font-size:11px;color:#8e8c95;font-weight:700">${gMatches.length - gReported === 0 ? 'All Matches Complete' : `${gMatches.length - gReported} remaining`}</span>
+          <div style="display:flex;align-items:center;gap:12px">
+            <span style="font-size:11px;color:#8e8c95;font-weight:700">${gMatches.length - gReported === 0 ? 'All Matches Complete' : `${gMatches.length - gReported} remaining`}</span>
+            <button class="btn ghost btn-sm group-collapse-btn" style="padding:4px 8px!important;min-width:28px;height:28px;display:inline-flex;align-items:center;justify-content:center;font-size:11px;color:#c0bec8;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.14);border-radius:6px;cursor:pointer" onclick="event.stopPropagation();toggleGroupCollapse('${jsArg(g)}')" title="${isCollapsed ? 'Extend / Open group' : 'Minimize / Close group'}">
+              <span class="group-toggle-arrow">${arrowIcon}</span>
+            </button>
+          </div>
         </div>
-        <div class="match-grid-modern">
+        <div class="match-grid-modern" style="${isCollapsed ? 'display:none!important;' : ''}">
           ${gMatches.map(m => renderMatchRow(m, (t.matches || []).indexOf(m), t)).join('') || '<div class="empty" style="grid-column:1/-1">No matches scheduled.</div>'}
         </div>
       </section>`;
