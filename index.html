@@ -1302,8 +1302,107 @@ details[open] > .past-tourney-summary .past-chevron{transform:rotate(180deg);col
   gap: 24px !important;
 }
 .hero-main {
-  padding: 36px !important;
-  min-height: 310px !important;
+  padding: 38px !important;
+  min-height: 380px !important;
+}
+/* In-Season Home Hero: Increased Verticality & Enhanced Panel Heights */
+.in-season-hero {
+  gap: 22px !important;
+}
+.tourney-hero-card {
+  min-height: 520px !important;
+  padding: 34px 30px !important;
+}
+.tourney-hero-title {
+  font: 800 52px/1.05 'Barlow Condensed' !important;
+  margin: 16px 0 4px 0 !important;
+}
+.tourney-hero-format {
+  font: 800 18px/1.2 'Barlow Condensed' !important;
+  margin: 0 0 16px 0 !important;
+}
+.in-season-sidebar {
+  gap: 16px !important;
+}
+.matchup-hero-card {
+  min-height: 235px !important;
+}
+.in-season-metrics-grid {
+  gap: 14px !important;
+}
+.pulse-stat-box {
+  min-height: 112px !important;
+  padding: 16px 18px !important;
+  border-radius: 9px !important;
+}
+.pulse-stat-label {
+  font-size: 11px !important;
+  letter-spacing: .9px !important;
+}
+.pulse-stat-val {
+  font: 800 24px/1.1 'Barlow Condensed' !important;
+  margin: 6px 0 4px !important;
+}
+.pulse-stat-sub {
+  font-size: 12px !important;
+}
+
+/* Revert Tournament Archive Page to Exact Pre-Scaling 1420px Layout */
+.page:has(.tournament-archive-page),
+.page.archive-page-mode {
+  max-width: 1420px !important;
+  margin: 0 auto !important;
+  padding: 34px 36px 70px !important;
+}
+.tournament-archive-page .page-head {
+  gap: 20px !important;
+  margin-bottom: 26px !important;
+}
+.tournament-archive-page .page-head h1 {
+  font: 800 47px/.9 'Barlow Condensed' !important;
+}
+.tournament-archive-page .archive {
+  display: grid !important;
+  grid-template-columns: repeat(2, 1fr) !important;
+  gap: 15px !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  margin: 0 !important;
+}
+.tournament-archive-page .archive-card {
+  width: 100% !important;
+  min-height: 185px !important;
+  padding: 21px !important;
+  border-radius: 8px !important;
+  font-size: 12px !important;
+  display: block !important;
+}
+.tournament-archive-page .archive-card h3 {
+  font: 800 25px 'Barlow Condensed' !important;
+  margin: 10px 0 6px !important;
+}
+.tournament-archive-page .archive-card p {
+  color: #aaa !important;
+  font-size: 12px !important;
+  margin: 0 !important;
+  line-height: normal !important;
+}
+.tournament-archive-page .archive-stats {
+  display: flex !important;
+  gap: 28px !important;
+  margin-top: 23px !important;
+  font-size: 10px !important;
+  color: #97959e !important;
+}
+.tournament-archive-page .archive-stats b {
+  display: block !important;
+  color: white !important;
+  font: 800 17px 'Barlow Condensed' !important;
+}
+@media(max-width:900px){
+  .tournament-archive-page .archive {
+    grid-template-columns: 1fr !important;
+  }
 }
 .profile-card .avatar {
   height: 68px !important;
@@ -1564,7 +1663,6 @@ details[open] > .past-tourney-summary .past-chevron{transform:rotate(180deg);col
 }
 </style>
 </head>
-<style>.archive{display:grid!important;grid-template-columns:repeat(2,minmax(0,590px))!important;gap:22px!important;max-width:1220px!important;margin:0!important}.archive-card{width:100%!important;min-height:235px!important;padding:24px 26px!important;border-radius:9px!important;background-size:cover!important;background-position:center!important;display:flex!important;flex-direction:column!important;justify-content:space-between!important}.archive-card h3{font:800 28px 'Barlow Condensed'!important;margin:10px 0 4px!important}.archive-card p{font-size:13px!important;line-height:1.45!important}.archive-stats{display:flex!important;gap:28px!important;margin-top:24px!important;font-size:11px!important}.archive-stats b{font:800 20px 'Barlow Condensed'!important}@media(max-width:800px){.archive{grid-template-columns:1fr!important}}</style>
 <style>.cover-edit{position:absolute;right:12px;bottom:12px;border:1px solid #ffffff33;background:#111c;color:#fff;border-radius:4px;padding:6px 8px;font-size:10px;font-weight:800;cursor:pointer;opacity:.85}.cover-edit:hover{opacity:1;background:#401b21}</style>
 <style>.standings tr.cutoff-row td{border-top:2px dashed rgba(255,255,255,.5)!important}.standings tr.cutoff-row td:first-child:before{content:none!important}</style>
 <style>.standings tr.cutoff-row td{border-top:2px dashed #85838b!important}.standings tr.cutoff-row td:first-child:before{display:none!important}</style>
@@ -9622,7 +9720,7 @@ function tournamentCard(t){
 
 function Tournaments(){
   let sorted = sortedTournamentsChronological();
-  return head('Tournaments','League archive',moderator?`<button class="btn" onclick="openCreator()">+ New tournament</button>`:'')+`<div class="archive">${sorted.map(t=>`<div style="position:relative">${tournamentCard(t)}${moderator?`<button class="cover-edit" onclick="event.stopPropagation();openCoverEditor('${t.id}')">Edit cover</button>`:''}</div>`).join('')}</div><p class="sub">Moderators can add a tournament cover image from the archive page.</p>`;
+  return `<div class="tournament-archive-page">` + head('Tournaments','League archive',moderator?`<button class="btn" onclick="openCreator()">+ New tournament</button>`:'')+`<div class="archive">${sorted.map(t=>`<div style="position:relative">${tournamentCard(t)}${moderator?`<button class="cover-edit" onclick="event.stopPropagation();openCoverEditor('${t.id}')">Edit cover</button>`:''}</div>`).join('')}</div><p class="sub">Moderators can add a tournament cover image from the archive page.</p></div>`;
 }
 
 
@@ -11475,6 +11573,31 @@ function resetGroupStageScores(){
   render();
 }
 
+function getSwissMatchRecord(t, p, roundStr){
+  if(!t || !p || p === 'BYE') return '';
+  let curR = parseInt(String(roundStr || '').replace(/\D+/g, '')) || 1;
+  let w = 0, l = 0;
+  (t.matches || []).forEach(m => {
+    let mR = parseInt(String(m.round || '').replace(/\D+/g, '')) || 1;
+    if(mR < curR){
+      let isBye = (m.b === 'BYE' || m.a === 'BYE');
+      let isRep = isBye || (m.as !== '' && m.as != null && m.bs !== '' && m.bs != null);
+      if(isRep){
+        if(m.a === p){
+          let as = isBye ? 2 : Number(m.as);
+          let bs = isBye ? 0 : Number(m.bs);
+          if(as > bs) w++; else if(bs > as) l++;
+        } else if(m.b === p){
+          let as = isBye ? 0 : Number(m.as);
+          let bs = isBye ? 2 : Number(m.bs);
+          if(bs > as) w++; else if(as > bs) l++;
+        }
+      }
+    }
+  });
+  return `(${w}-${l})`;
+}
+
 function renderMatchRow(m, i, t){
   let editable = canManageTournament(t) && t.status === 'ONGOING' && t.phase !== 'topcut';
   let a = m.a || 'TBD', b = m.b || 'TBD';
@@ -11509,6 +11632,10 @@ function renderMatchRow(m, i, t){
     headerBadge = `<span style="color:#ffd166;font-weight:800">AWAITING SCORE</span>`;
   }
 
+  let isSwissMatch = (getStage1Format(t) === 'swiss') && (t.phase !== 'topcut') && (m.group === 'Swiss Stage' || String(m.round || '').toLowerCase().includes('round'));
+  let aRec = (isSwissMatch && a !== 'BYE') ? `<span class="m-slot-swiss-rec" style="font-size:13px;font-weight:800;color:#ffd166;margin-left:6px">${getSwissMatchRecord(t, a, m.round)}</span>` : '';
+  let bRec = (isSwissMatch && b !== 'BYE') ? `<span class="m-slot-swiss-rec" style="font-size:13px;font-weight:800;color:#ffd166;margin-left:6px">${getSwissMatchRecord(t, b, m.round)}</span>` : '';
+
   let aNameHtml = (a === 'BYE') ? '<span style="color:#8e8c95;font-weight:700">BYE</span>' : playerLink(a);
   let bNameHtml = (b === 'BYE') ? '<span style="color:#8e8c95;font-weight:700">BYE</span>' : playerLink(b);
 
@@ -11522,7 +11649,7 @@ function renderMatchRow(m, i, t){
         <span class="m-slot-avatar" style="background-image:${aFace}">${aLetter}</span>
         <div class="m-slot-info">
           <div class="m-slot-name-row">
-            <span class="m-slot-name">${aNameHtml}</span>
+            <span class="m-slot-name">${aNameHtml}${aRec}</span>
           </div>
           <span class="m-slot-team">${aTeam}</span>
         </div>
@@ -11537,7 +11664,7 @@ function renderMatchRow(m, i, t){
         <span class="m-slot-avatar" style="background-image:${bFace}">${bLetter}</span>
         <div class="m-slot-info">
           <div class="m-slot-name-row">
-            <span class="m-slot-name">${bNameHtml}</span>
+            <span class="m-slot-name">${bNameHtml}${bRec}</span>
           </div>
           <span class="m-slot-team">${bTeam}</span>
         </div>
@@ -11653,28 +11780,6 @@ function Matches(){
   let playersList = t.players || [];
   let stageSubtitle = isSwiss ? (t.name + ` · Swiss stage fixtures (Round ${curRound} of ${totalRounds})`) : (t.name + ' · group stage fixtures');
 
-  let swissPoolBanner = (isSwiss && t.status === 'ONGOING') ? `
-    <div style="display:flex;align-items:center;gap:14px;padding:12px 16px;background:#14141c;border:1px solid #2d2d3c;border-radius:8px;margin-bottom:18px;flex-wrap:wrap;font-size:12px">
-      <span style="display:inline-flex;align-items:center;gap:6px;color:#4bdd91;font-weight:800">
-        <span style="width:8px;height:8px;border-radius:50%;background:#4bdd91;display:inline-block"></span>
-        CLINCHED PLAYOFFS (${clinchedList.length}):
-        <span style="font-weight:600;color:#c9f7db">${clinchedList.map(c => esc(c.p) + ' (' + c.w + '-' + c.l + ')').join(', ') || 'None yet'}</span>
-      </span>
-      <span style="color:#4a4a58">|</span>
-      <span style="display:inline-flex;align-items:center;gap:6px;color:#ffd166;font-weight:800">
-        <span style="width:8px;height:8px;border-radius:50%;background:#ffd166;display:inline-block"></span>
-        IN CONTENTION (${inContention.length}):
-        <span style="font-weight:600;color:#ffe8a8">${inContention.map(c => esc(c.p) + ' (' + c.w + '-' + c.l + ')').join(', ') || 'None'}</span>
-      </span>
-      <span style="color:#4a4a58">|</span>
-      <span style="display:inline-flex;align-items:center;gap:6px;color:#fa8a90;font-weight:800">
-        <span style="width:8px;height:8px;border-radius:50%;background:#fa8a90;display:inline-block"></span>
-        ELIMINATED (${elimList.length}):
-        <span style="font-weight:600;color:#ffd0d3">${elimList.map(c => esc(c.p) + ' (' + c.w + '-' + c.l + ')').join(', ') || 'None'}</span>
-      </span>
-    </div>
-  ` : '';
-
   return head('Matches', stageSubtitle, modActions) + `
     <div class="match-layout-modern">
       <div class="match-controls-bar">
@@ -11718,7 +11823,6 @@ function Matches(){
       </div>
 
       <div>
-        ${swissPoolBanner}
         ${visibleSections.map(sec => {
           let sMatches = isSwiss ? (t.matches || []).filter(m => (m.round || 'Round 1') === sec) : (t.matches || []).filter(m => (m.group || 'Group A') === sec);
           let filtered = sMatches.filter(filterMatch);
@@ -13066,7 +13170,12 @@ function render(){
     'Tournament Detail': typeof tournamentDetail==='function'?tournamentDetail:window.tournamentDetail
   };
   let handler = pages[current] || window[current] || (typeof window[current?.replace(/\s+/g,'')] === 'function' ? window[current.replace(/\s+/g,'')] : Home);
-  document.querySelector('#app').innerHTML=(typeof handler==='function'?handler():Home());
+  let appEl = document.querySelector('#app');
+  if(appEl){
+    if(current === 'Tournaments') appEl.classList.add('archive-page-mode');
+    else appEl.classList.remove('archive-page-mode');
+    appEl.innerHTML=(typeof handler==='function'?handler():Home());
+  }
   mountTopCutViewer();
 
   // Restore draft board tier columns scroll
