@@ -997,57 +997,58 @@ details[open] > .past-tourney-summary .past-chevron{transform:rotate(180deg);col
 .team-detail-roster-grid{
   display:grid;
   grid-template-columns:1fr 1fr;
-  gap:12px;
+  gap:20px;
 }
 @media (max-width: 768px){
-  .team-detail-roster-grid{grid-template-columns:1fr;gap:10px}
+  .team-detail-roster-grid{grid-template-columns:1fr;gap:14px}
   .team-detail-team-name{font-size:28px}
 }
 
 .team-detail-mon-row{
   background:linear-gradient(135deg,#151522 0%,#12121a 100%);
   border:1px solid #28283c;
-  border-radius:12px;
-  padding:14px 20px;
+  border-radius:14px;
+  padding:18px 24px;
   display:flex;
   align-items:center;
   justify-content:space-between;
-  gap:16px;
+  gap:20px;
   transition:transform .14s ease,border-color .14s ease,box-shadow .14s ease;
-  min-height:84px;
-  box-shadow:0 4px 16px rgba(0,0,0,0.35);
+  min-height:125px;
+  box-shadow:0 6px 20px rgba(0,0,0,0.35);
 }
 .team-detail-mon-row:hover{
   border-color:#5a2630;
   transform:translateY(-2px);
-  box-shadow:0 8px 22px rgba(0,0,0,0.5),0 0 14px rgba(239,48,56,0.12);
+  box-shadow:0 10px 28px rgba(0,0,0,0.5),0 0 16px rgba(239,48,56,0.15);
 }
 .team-detail-mon-left{
   display:flex;
   align-items:center;
-  gap:16px;
+  gap:20px;
   min-width:0;
   flex:1;
 }
 .team-detail-mon-sprite{
-  width:64px;
-  height:64px;
+  width:92px;
+  height:92px;
   object-fit:contain;
-  filter:drop-shadow(0 3px 8px rgba(0,0,0,0.6));
+  filter:drop-shadow(0 4px 12px rgba(0,0,0,0.65));
   flex:none;
   transition:transform .15s ease;
 }
 .team-detail-mon-row:hover .team-detail-mon-sprite{
-  transform:scale(1.15);
+  transform:scale(1.1);
 }
 .team-detail-mon-info{
   min-width:0;
   display:flex;
   flex-direction:column;
+  gap:2px;
 }
 .team-detail-mon-name{
-  font:800 20px/1.15 'Barlow Condensed';
-  letter-spacing:0.6px;
+  font:800 24px/1.15 'Barlow Condensed';
+  letter-spacing:0.8px;
   text-transform:uppercase;
   color:#f5f3f0;
   overflow:hidden;
@@ -1057,40 +1058,38 @@ details[open] > .past-tourney-summary .past-chevron{transform:rotate(180deg);col
 .team-detail-type-row{
   display:flex;
   align-items:center;
-  gap:6px;
-  margin-top:5px;
+  gap:8px;
+  margin-top:7px;
   flex-wrap:wrap;
 }
 .team-type-badge{
-  font-size:10px;
+  font-size:11px;
   font-weight:900;
-  letter-spacing:0.6px;
+  letter-spacing:0.8px;
   text-transform:uppercase;
-  padding:3px 8px;
-  border-radius:4px;
+  padding:4px 10px;
+  border-radius:5px;
   line-height:1.1;
 }
 .team-detail-mon-cost{
-  font:900 24px 'Barlow Condensed';
-  color:#c0beca;
+  font:900 32px/1 'Barlow Condensed';
+  color:#ffd166;
   flex:none;
-  min-width:32px;
+  min-width:36px;
   text-align:right;
 }
 
 .team-detail-empty-slot{
   background:rgba(18,18,26,0.5);
-  border:1px dashed #2e2e42;
-  border-radius:12px;
-  padding:14px 20px;
+  border:1.5px dashed #2e2e42;
+  border-radius:14px;
+  padding:18px 24px;
   display:flex;
   align-items:center;
   justify-content:space-between;
   color:#7e7c8c;
-  font:800 15px 'Barlow Condensed';
-  letter-spacing:0.8px;
-  text-transform:uppercase;
-  min-height:84px;
+  min-height:125px;
+  transition:border-color .15s ease;
 }
 
 
@@ -19455,17 +19454,23 @@ function TeamRosterDetailView(t, p){
                     </div>
                   </div>
                 </div>
-                <div class="team-detail-mon-cost" title="Draft Cost / Value">${esc(s.costDisplay)}</div>
+                <div style="text-align:right;flex:none">
+                  <div class="team-detail-mon-cost" title="Draft Cost / Value">${esc(s.costDisplay)}</div>
+                  <div style="font-size:10px;font-weight:800;letter-spacing:1px;color:#8e8c95;text-transform:uppercase;margin-top:2px">DRAFT PTS</div>
+                </div>
               </div>
             `;
           } else {
             return `
               <div class="team-detail-empty-slot">
-                <div style="display:flex;align-items:center;gap:14px">
-                  <span style="width:44px;height:44px;border-radius:50%;border:1px dashed #3a3a4e;display:grid;place-items:center;color:#555464;font-size:16px;flex:none">◓</span>
-                  <span style="font:800 16px 'Barlow Condensed';letter-spacing:0.6px;color:#7e7c8e">Slot ${s.slotNum} · Open</span>
+                <div style="display:flex;align-items:center;gap:18px">
+                  <span style="width:68px;height:68px;border-radius:50%;border:1.5px dashed #3e3e56;display:grid;place-items:center;color:#555468;font-size:24px;flex:none;background:rgba(255,255,255,0.02)">◓</span>
+                  <div>
+                    <span style="font:800 22px 'Barlow Condensed';letter-spacing:0.8px;color:#7e7c8e;text-transform:uppercase">Slot ${s.slotNum} · Open</span>
+                    <div style="font-size:12px;color:#555468;letter-spacing:0.5px;margin-top:3px">Unassigned Roster Pick</div>
+                  </div>
                 </div>
-                <span style="font:900 18px 'Barlow Condensed';color:#444352">—</span>
+                <span style="font:900 28px 'Barlow Condensed';color:#3e3d4c">—</span>
               </div>
             `;
           }
