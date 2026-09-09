@@ -3242,61 +3242,60 @@ function getSwissStand(t = activeT()){
 
   let { isEliminationStyle, winsToAdvance, lossesToEliminate, cut } = getSwissThresholds(t);
 
-  if(isEliminationStyle){
-    list.forEach(item => {
-      if(item.w >= winsToAdvance){
+  // 1. Initial sort by competitive performance and tiebreakers:
+  list.sort((a, b) => {
+    if(b.w !== a.w) return b.w - a.w;
+    if(a.l !== b.l) return a.l - b.l;
+    if(b.sos !== a.sos) return b.sos - a.sos;
+    if(b.diff !== a.diff) return b.diff - a.diff;
+    if(b.gw !== a.gw) return b.gw - a.gw;
+    if(a.results[b.p] !== undefined && b.results[a.p] !== undefined){
+      let diff = a.results[b.p] - b.results[a.p];
+      if(diff !== 0) return diff > 0 ? -1 : 1;
+    }
+    return a.p.localeCompare(b.p);
+  });
+
+  // 2. Check if Swiss stage is complete:
+  let totalSwissMatches = (t.matches || []).filter(m => m.group === 'Swiss Stage' || (m.round && m.round.toLowerCase().includes('round'))).length;
+  let repSwissMatches = (t.matches || []).filter(m => (m.group === 'Swiss Stage' || (m.round && m.round.toLowerCase().includes('round'))) && (m.b === 'BYE' || m.a === 'BYE' || (m.as !== '' && m.as != null && m.bs !== '' && m.bs != null))).length;
+  let isSwissComplete = (t.phase === 'topcut' || t.status === 'COMPLETE' || (totalSwissMatches > 0 && repSwissMatches >= totalSwissMatches && (t.swissRounds ? (t.matches || []).some(m => m.round === `Round ${t.swissRounds}`) : true)));
+
+  // 3. Assign status strictly respecting the top cut:
+  list.forEach((item, idx) => {
+    if(idx < cut){
+      // Within Top Cut
+      if(isSwissComplete){
         item.status = 'clinched';
-      } else if(item.l >= lossesToEliminate){
+      } else if(isEliminationStyle && item.w >= winsToAdvance){
+        item.status = 'clinched';
+      } else {
+        item.status = 'in_contention';
+      }
+    } else {
+      // Outside Top Cut - CAN NEVER BE CLINCHED!
+      if(isSwissComplete){
+        item.status = 'eliminated';
+      } else if(isEliminationStyle && item.l >= lossesToEliminate){
         item.status = 'eliminated';
       } else {
         item.status = 'in_contention';
       }
-    });
-
-    let clinchedCount = list.filter(x => x.status === 'clinched').length;
-    if(clinchedCount >= cut){
-      list.forEach(x => {
-        if(x.status === 'in_contention') x.status = 'eliminated';
-      });
-    } else {
-      let remainingCut = cut - clinchedCount;
-      let inContention = list.filter(x => x.status === 'in_contention');
-      if(inContention.length > 0 && inContention.length <= remainingCut){
-        inContention.forEach(x => {
-          x.status = 'clinched';
-        });
-      }
     }
-  } else {
-    list.forEach(item => {
-      item.status = (item.w >= winsToAdvance) ? 'clinched' : 'in_contention';
-    });
-  }
+  });
 
+  // 4. Stable sort grouping clinched on top, in contention next, eliminated last
   list.sort((a, b) => {
     let statusPriority = { clinched: 1, in_contention: 2, eliminated: 3 };
     let pa = statusPriority[a.status] || 2;
     let pb = statusPriority[b.status] || 2;
     if(pa !== pb) return pa - pb;
 
-    if(a.status === 'clinched'){
-      if(a.l !== b.l) return a.l - b.l;
-      if(b.sos !== a.sos) return b.sos - a.sos;
-      if(b.diff !== a.diff) return b.diff - a.diff;
-      if(b.gw !== a.gw) return b.gw - a.gw;
-    } else if(a.status === 'eliminated'){
-      if(b.w !== a.w) return b.w - a.w;
-      if(a.l !== b.l) return a.l - b.l;
-      if(b.sos !== a.sos) return b.sos - a.sos;
-      if(b.diff !== a.diff) return b.diff - a.diff;
-    } else {
-      if(b.w !== a.w) return b.w - a.w;
-      if(a.l !== b.l) return a.l - b.l;
-      if(b.sos !== a.sos) return b.sos - a.sos;
-      if(b.diff !== a.diff) return b.diff - a.diff;
-      if(b.gw !== a.gw) return b.gw - a.gw;
-    }
-
+    if(b.w !== a.w) return b.w - a.w;
+    if(a.l !== b.l) return a.l - b.l;
+    if(b.sos !== a.sos) return b.sos - a.sos;
+    if(b.diff !== a.diff) return b.diff - a.diff;
+    if(b.gw !== a.gw) return b.gw - a.gw;
     if(a.results[b.p] !== undefined && b.results[a.p] !== undefined){
       let diff = a.results[b.p] - b.results[a.p];
       if(diff !== 0) return diff > 0 ? -1 : 1;
@@ -12082,25 +12081,17 @@ function standingTable(t, g){
               let statusTag = '';
               if(t.phase === 'topcut' || t.status === 'COMPLETE'){
                 statusTag = i < cut ? '<span class="tag safe" style="background:#133e28;color:#4bdd91;border:1px solid #238048">ADVANCED</span>' : '<span class="tag out" style="background:#491a20;color:#fa8a90;border:1px solid #6b262f">ELIMINATED</span>';
-              } else if(x.status === 'clinched'){
+              } else if(i < cut && x.status === 'clinched'){
                 statusTag = '<span class="tag safe" style="background:#133e28;color:#4bdd91;border:1px solid #238048">CLINCHED PLAYOFFS</span>';
-              } else if(x.status === 'eliminated'){
+              } else if(x.status === 'eliminated' || (i >= cut && x.l >= lossesToEliminate)){
                 statusTag = '<span class="tag out" style="background:#491a20;color:#fa8a90;border:1px solid #6b262f">ELIMINATED</span>';
               } else {
                 statusTag = i < cut ? '<span class="tag hunt" style="background:#3b2a14;color:#ffd166;border:1px solid #735324">IN CUT · ACTIVE</span>' : '<span class="tag hunt" style="background:#28231c;color:#e8ba60;border:1px solid #4a3e29">HUNT · ACTIVE</span>';
               }
 
-              let rowClass = (x.status === 'clinched' ? 'safe' : (x.status === 'eliminated' ? 'out' : (i < cut ? 'safe' : '')));
-              let cutoffLineHtml = (i === cut && i > 0) ? `
-                <tr class="cutoff-divider-row">
-                  <td colspan="8" style="padding:6px 12px;background:rgba(239,48,56,0.12);border-top:1px dashed #ef3038;border-bottom:1px dashed #ef3038;text-align:center;font-size:10.5px;font-weight:800;letter-spacing:1px;color:#ff8189;text-transform:uppercase">
-                    ── PLAYOFF CUTOFF LINE (TOP ${cut} ADVANCE TO TOP CUT) ──
-                  </td>
-                </tr>
-              ` : '';
+              let rowClass = (i < cut ? 'safe' : (x.status === 'eliminated' ? 'out' : ''));
 
               return `
-                ${cutoffLineHtml}
                 <tr class="${rowClass}">
                   <td class="rank" style="text-align:center">${i + 1}</td>
                   <td class="player">
@@ -12170,7 +12161,7 @@ function standingTable(t, g){
             }
 
             return `
-              <tr class="${isCutoff ? 'cutoff-row' : ''} ${i < cut ? 'safe' : ''}">
+              <tr class="${i < cut ? 'safe' : ''}">
                 <td class="rank" style="text-align:center">${i + 1}</td>
                 <td class="player">
                   ${playerLink(p)}
