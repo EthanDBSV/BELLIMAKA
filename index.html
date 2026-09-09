@@ -275,6 +275,7 @@
 .pred-bracket-slot.is-advanced{background:linear-gradient(90deg,rgba(239,48,56,0.18),transparent);font-weight:800;color:#fff}
 .pred-bracket-slot.is-winner-hit{background:linear-gradient(90deg,rgba(75,221,145,0.22),transparent)!important;color:#7df0aa!important}
 .pred-bracket-slot.is-winner-miss{opacity:.5;text-decoration:line-through}
+@media(max-width:1040px){.pred-page-unified{grid-template-columns:1fr!important}}
 /* ------------------------------------------------------------ Draft board ------------------------------------------------------------ */
 .sheet-frame{width:100%;height:74vh;min-height:520px;border:0;border-radius:7px;background:#fff;display:block}
 .board-note{display:flex;gap:14px;align-items:center;justify-content:space-between;flex-wrap:wrap;padding:14px 18px;border-bottom:1px solid var(--line);font-size:12px;color:#b6b4bb}
@@ -1103,7 +1104,9 @@ details[open] > .past-tourney-summary .past-chevron{transform:rotate(180deg);col
 .odds-metric-val{font:800 24px 'Barlow Condensed';letter-spacing:.3px;color:#f5f3f0;margin:2px 0}
 .odds-metric-sub{font-size:11px;color:#8e8c95}
 
-.odds-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:12px}
+.odds-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+@media(max-width:1180px){.odds-grid{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:720px){.odds-grid{grid-template-columns:1fr}}
 .odds-contender-card{background:#141419;border:1px solid #2b2b36;border-radius:8px;padding:16px;display:flex;flex-direction:column;gap:12px;position:relative;transition:border-color .15s,transform .15s;cursor:pointer}
 .odds-contender-card:hover{border-color:#5c242c;transform:translateY(-2px);background:#171720}
 .odds-contender-card.tier-1{border-color:#e0ad2b;background:linear-gradient(145deg,#2a1f0a,#131318 60%);box-shadow:0 6px 20px rgba(224,173,43,0.12)}
@@ -6716,9 +6719,11 @@ function topCutSection(t, preview){
   if(showGfOnly){
     bracketBodyHtml = `
       <div style="display:flex;flex-direction:column;align-items:center;gap:20px;padding:24px 0">
-        <div class="tc-section-header" style="text-align:center">
-          <h3><span style="color:#ffd166">👑</span> Grand Finals Championship</h3>
-          <span style="font-size:11px;font-weight:800;letter-spacing:.8px;color:#8e8c95;text-transform:uppercase">Title Decider Series</span>
+        <div style="text-align:center;display:flex;flex-direction:column;align-items:center;gap:6px;border-bottom:1px solid #2b2b35;padding-bottom:12px;width:100%;max-width:440px;margin:0 auto">
+          <h3 style="font:800 22px 'Barlow Condensed';letter-spacing:.6px;margin:0;color:#f5f3f0;text-transform:uppercase;display:flex;align-items:center;gap:8px">
+            <span style="color:#ffd166">👑</span> Grand Finals Championship
+          </h3>
+          <span style="font-size:11px;font-weight:800;letter-spacing:1.2px;color:#8e8c95;text-transform:uppercase">Title Decider Series</span>
         </div>
         <div style="width:min(380px, 100%)">
           ${model.gfMatches.map(m=>renderBracketCard(m)).join('')}
@@ -16441,73 +16446,36 @@ function predictions(t=activeT()){
     return true;
   });
 
-  let navBar = `
-    <div class="pred-controls-bar" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:22px;padding:14px 20px;background:#14141a;border:1px solid #2b2b36;border-radius:10px">
-      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
-        <button class="m-tab ${predTab === 'champion' ? 'active' : ''}" onclick="setPredViewTab('champion')">
-          🏆 Champion & Awards
-        </button>
-        <button class="m-tab ${predTab === 'matches' ? 'active' : ''}" onclick="setPredViewTab('matches')">
-          ${isPlayoff ? '⚔️ Playoff Bracket Pick\'ems' : `⚔️ Match Pick'ems (${games.length})`}
-        </button>
-        <button class="m-tab ${predTab === 'leaderboard' ? 'active' : ''}" onclick="setPredViewTab('leaderboard')">
-          📊 Leaderboard & Scoring
-        </button>
-      </div>
-
-      <div style="font-size:12px;color:#8e8c95;display:flex;align-items:center;gap:12px;font-weight:800">
-        <span style="color:#ffd166">100 PTS Champ</span>
-        <span style="color:#4a4a58">|</span>
-        <span style="color:#c084fc">45 PTS Div</span>
-        <span style="color:#4a4a58">|</span>
-        <span style="color:#7df0aa">8 PTS Match</span>
-      </div>
-    </div>
-  `;
-
-  let contentHtml = '';
-
-  if(predTab === 'champion'){
-    contentHtml = `
-      <div style="display:flex;flex-direction:column;gap:22px">
-        <!-- 1. Champion Contender Outright Picker (100 PTS) -->
+  let contentHtml = `
+    <div class="pred-page-unified" style="display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:24px;align-items:start">
+      <!-- Main Column: All Pick'em Sections -->
+      <div style="display:flex;flex-direction:column;gap:26px;min-width:0">
+        <!-- 1. Champion Outright Picker (100 PTS) -->
         ${renderChampionPredictionPicker(t, champQuestion, started)}
 
-        <!-- 2. Division / Group Winners Outright Pickers (45 PTS each) -->
+        <!-- 2. Division / Group Leaders (45 PTS each) -->
         ${!isSwiss && groupsList.length ? renderGroupWinnersPredictionPicker(t, groups, started) : ''}
-      </div>
-    `;
-  } else if(predTab === 'matches'){
-    if(isPlayoff){
-      contentHtml = topCutPredictionBracket(t);
-    } else {
-      contentHtml = `
-        <div style="display:flex;flex-direction:column;gap:18px">
-          <!-- Round & Status Filter Bar -->
-          <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;padding:12px 18px;background:#101015;border:1px solid #23232c;border-radius:8px">
-            <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-              <span style="font-size:11px;font-weight:800;color:#8e8c95;letter-spacing:.6px;text-transform:uppercase;margin-right:4px">${isSwiss ? 'Round:' : 'Group:'}</span>
-              <button class="m-tab ${predRound === 'all' ? 'active' : ''}" style="padding:6px 14px;font-size:12px" onclick="window.predRoundTab='all';render()">All</button>
-              ${roundList.map(r => `
-                <button class="m-tab ${predRound === r ? 'active' : ''}" style="padding:6px 14px;font-size:12px" onclick="window.predRoundTab='${r}';render()">${esc(r)}</button>
-              `).join('')}
-            </div>
 
-            <div style="display:flex;align-items:center;gap:6px">
-              <button class="m-tab ${predStatus === 'all' ? 'active' : ''}" style="padding:6px 12px;font-size:11px" onclick="window.predStatusTab='all';render()">All (${games.length})</button>
-              <button class="m-tab ${predStatus === 'pending' ? 'active' : ''}" style="padding:6px 12px;font-size:11px" onclick="window.predStatusTab='pending';render()">Open</button>
-              <button class="m-tab ${predStatus === 'decided' ? 'active' : ''}" style="padding:6px 12px;font-size:11px" onclick="window.predStatusTab='decided';render()">Decided</button>
-            </div>
-          </div>
-
-          <!-- Pick'em Match Clash Grid (8 PTS each) -->
+        <!-- 3. Individual Match Pick'ems (or Playoff Bracket Pick'ems) -->
+        ${isPlayoff ? topCutPredictionBracket(t) : `
           <section class="pred-section">
-            <div class="section-head" style="margin-bottom:12px;display:flex;justify-content:space-between;align-items:center">
+            <div class="section-head" style="margin-bottom:12px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
               <div>
                 <div class="eyebrow" style="color:var(--red);margin-bottom:2px">8 PTS EACH · HEAD-TO-HEAD MATCHUPS</div>
-                <h2>${predRound === 'all' ? 'ALL FIXTURES' : esc(predRound.toUpperCase())}</h2>
+                <h2 style="margin:0;font:800 24px 'Barlow Condensed'">${predRound === 'all' ? 'MATCH PICK\'EMS' : esc(predRound.toUpperCase())}</h2>
               </div>
-              <span style="font-size:11px;color:#8e8c95">Tap a trainer to lock in your pick</span>
+              <!-- Round & Status Filter Bar -->
+              <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+                <span style="font-size:11px;font-weight:800;color:#8e8c95;letter-spacing:.6px;text-transform:uppercase;margin-right:2px">${isSwiss ? 'Round:' : 'Group:'}</span>
+                <button class="m-tab ${predRound === 'all' ? 'active' : ''}" style="padding:4px 10px;font-size:11px" onclick="window.predRoundTab='all';render()">All</button>
+                ${roundList.map(r => `
+                  <button class="m-tab ${predRound === r ? 'active' : ''}" style="padding:4px 10px;font-size:11px" onclick="window.predRoundTab='${r}';render()">${esc(r)}</button>
+                `).join('')}
+                <div style="width:1px;height:18px;background:#333;margin:0 4px"></div>
+                <button class="m-tab ${predStatus === 'all' ? 'active' : ''}" style="padding:4px 8px;font-size:10px" onclick="window.predStatusTab='all';render()">All (${games.length})</button>
+                <button class="m-tab ${predStatus === 'pending' ? 'active' : ''}" style="padding:4px 8px;font-size:10px" onclick="window.predStatusTab='pending';render()">Open</button>
+                <button class="m-tab ${predStatus === 'decided' ? 'active' : ''}" style="padding:4px 8px;font-size:10px" onclick="window.predStatusTab='decided';render()">Decided</button>
+              </div>
             </div>
             ${filteredGames.length ? `
               <div class="pred-clash-grid">
@@ -16515,45 +16483,41 @@ function predictions(t=activeT()){
               </div>
             ` : '<div class="card empty"><p class="sub">No fixtures matching current filter.</p></div>'}
           </section>
-        </div>
-      `;
-    }
-  } else if(predTab === 'leaderboard'){
-    contentHtml = `
-      <div style="display:grid;grid-template-columns:1fr 360px;gap:22px;align-items:start">
-        <div style="min-width:0">
-          ${leaderboard}
-        </div>
-        <div class="card" style="padding:22px;background:#14141a;border-color:#2a2a36">
+        `}
+      </div>
+
+      <!-- Right Sidebar: Leaderboard & Scoring -->
+      <div style="display:flex;flex-direction:column;gap:18px;min-width:0;position:sticky;top:84px">
+        ${leaderboard}
+        <div class="card" style="padding:18px;background:#14141a;border-color:#2a2a36">
           <div class="eyebrow" style="color:var(--amber);margin-bottom:4px">PREDICTION SCORING</div>
-          <h3 style="font:800 22px 'Barlow Condensed';margin:0 0 14px;color:#f5f3f0">HOW POINTS WORK</h3>
-          <div style="display:flex;flex-direction:column;gap:12px;font-size:13px;color:#b6b4c0;line-height:1.4">
-            <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid #23232e">
+          <h3 style="font:800 20px 'Barlow Condensed';margin:0 0 12px;color:#f5f3f0">HOW POINTS WORK</h3>
+          <div style="display:flex;flex-direction:column;gap:10px;font-size:12px;color:#b6b4c0;line-height:1.4">
+            <div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid #23232e">
               <span><b>🏆 Tournament Champion</b></span>
               <span class="badge-pill gold" style="font-weight:900">+100 PTS</span>
             </div>
-            <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid #23232e">
+            <div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid #23232e">
               <span><b>🥇 Division Winner</b></span>
               <span class="badge-pill gold" style="font-weight:900">+45 PTS</span>
             </div>
-            <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid #23232e">
+            <div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid #23232e">
               <span><b>⚔️ Playoff Match Hit</b></span>
               <span class="badge-pill gold" style="font-weight:900">+20 PTS</span>
             </div>
-            <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0">
+            <div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0">
               <span><b>⚡ Stage 1 Match Hit</b></span>
               <span class="badge-pill gold" style="font-weight:900">+8 PTS</span>
             </div>
           </div>
-          <p class="sub" style="margin-top:16px;font-size:11px">Picks lock automatically when each fixture or tournament phase begins. Points update in real-time as match results are confirmed.</p>
+          <p class="sub" style="margin-top:12px;font-size:11px">Picks lock automatically when each fixture or tournament phase begins.</p>
         </div>
       </div>
-    `;
-  }
+    </div>
+  `;
 
   return `
     <div class="pred-dashboard-layout" style="width:100%;max-width:100%">
-      ${navBar}
       ${contentHtml}
     </div>
   `;
@@ -19082,209 +19046,90 @@ function playoffOdds(){
     </div>
   `;
 
-  // Filter tabs
+  // Probability Graph / Betting Board (Single unified dashboard)
   html += `
-    <div class="tabs" style="margin-bottom:18px">
-      <button class="${playoffOddsTab==='title'?'active':''}" onclick="playoffOddsTab='title';render()">🏆 Championship Title Odds</button>
-      <button class="${playoffOddsTab==='topcut'?'active':''}" onclick="playoffOddsTab='topcut';render()">⚔️ Top Cut Probabilities</button>
-      <button class="${playoffOddsTab==='groups'?'active':''}" onclick="playoffOddsTab='groups';render()">📊 Group Breakdown & Remaining SOS</button>
+    <div class="odds-grid">
+      ${list.map((x, i) => {
+        let isDarkHorse = isOddsDarkHorse(x, i, list.length);
+        let tierCls = i === 0 ? 'tier-1' : (i < 3 ? 'tier-2' : (isDarkHorse ? 'tier-3' : ''));
+        let badgeTag = i === 0 ? '<span class="odds-badge-chip fav">👑 Favorite</span>' 
+          : (i < 3 ? '<span class="odds-badge-chip contender">⚡ Contender</span>' 
+          : (isDarkHorse ? '<span class="odds-badge-chip darkhorse">🔥 Dark Horse</span>' 
+          : '<span class="odds-badge-chip longshot">🎲 Longshot</span>'));
+        
+        let barPct = Math.min(100, Math.max(x.champPct > 0 ? 2 : 0, +x.champPct.toFixed(1)));
+        let barGradient = i === 0 ? 'linear-gradient(90deg,#ffd166,#ef3038)' 
+          : (i < 3 ? 'linear-gradient(90deg,#ff8e95,#ef3038)' 
+          : (isDarkHorse ? 'linear-gradient(90deg,#dca2f5,#a855f7)' : 'linear-gradient(90deg,#7ad1ff,#3b82f6)'));
+
+        let faceImg = (typeof profilePictures !== 'undefined' && profilePictures[x.player]) || (typeof teamCovers !== 'undefined' && teamCovers[x.player]) || '';
+        let faceArt = faceImg ? `url('${esc(faceImg)}')` : fallbackArt(x.player);
+        let faceLetter = faceImg ? '' : esc((x.player||'?')[0]);
+        let faceStyle = `style="background-image:${faceArt};background-size:cover;background-position:center;width:34px;height:34px;border-radius:50%;flex:none;display:grid;place-items:center;border:1px solid #ffffff22;font:800 13px 'Barlow Condensed'"`;
+
+        let statusTag = x.topCutPct === 100 ? '<span class="tag safe" style="font-size:8px;padding:2px 6px">CLINCHED</span>'
+          : (x.topCutPct === 0 ? '<span class="tag out" style="font-size:8px;padding:2px 6px">ELIMINATED</span>'
+          : '<span class="tag hunt" style="font-size:8px;padding:2px 6px">IN THE HUNT</span>');
+
+        let gd = (x.form.gw - x.form.gl);
+        let gdFormatted = (gd >= 0 ? '+' : '') + gd;
+
+        return `
+          <div class="odds-contender-card ${tierCls}" onclick="openProfile('${jsArg(x.player)}')">
+            <div class="odds-head-row">
+              <div class="odds-trainer-info">
+                <div class="m-slot-avatar" ${faceStyle}>${faceLetter}</div>
+                <div style="min-width:0">
+                  <div style="display:flex;align-items:center;gap:6px">
+                    <span style="font:800 16px 'Barlow Condensed';letter-spacing:.3px;color:#fff">${esc(x.player)}</span>
+                    ${x.ovrObj ? x.ovrObj.badgeHtml : `<span class="ovr-badge-pill ovr-silver">${x.ovr}</span>`}
+                  </div>
+                  <div style="font-size:10px;color:#8e8c95;text-transform:uppercase;font-weight:700;margin-top:1px">${esc(teamName(t, x.player))}</div>
+                </div>
+              </div>
+              <div style="text-align:right">
+                ${badgeTag}
+                <div style="font:800 15px 'Barlow Condensed';color:#ffd166;margin-top:3px">${x.moneyline} <span style="font-size:11px;color:#aaa">(${x.decimalOdds})</span></div>
+              </div>
+            </div>
+
+            <!-- Probability Visual Bar -->
+            <div class="odds-bar-container">
+              <div class="odds-bar-header">
+                <span class="odds-bar-title">Championship Title Equity</span>
+                <span class="odds-bar-pct">${x.champPct}%</span>
+              </div>
+              <div class="odds-bar-track">
+                <div class="odds-bar-fill" style="width:${barPct}%;background:${barGradient}"></div>
+              </div>
+            </div>
+
+            <!-- Key Scenario Metrics -->
+            <div class="odds-submetrics">
+              <div>
+                <div class="odds-submetric-val" style="color:${x.topCutPct>=80?'#4bdd91':x.topCutPct>=40?'#ffd166':'#ff8e95'}">${x.topCutPct}%</div>
+                <div class="odds-submetric-lbl">Top Cut</div>
+              </div>
+              <div>
+                <div class="odds-submetric-val" style="color:#f5f3f0">${x.finalsPct}%</div>
+                <div class="odds-submetric-lbl">Grand Finals</div>
+              </div>
+              <div>
+                <div class="odds-submetric-val" style="color:#aaa">${x.unplayedCount} left</div>
+                <div class="odds-submetric-lbl">${esc(x.group)}</div>
+              </div>
+            </div>
+
+            <!-- Coach Form & Clinch Status Strip -->
+            <div style="display:flex;align-items:center;justify-content:space-between;padding-top:8px;border-top:1px solid #20202a;font-size:11px;color:#8e8c95">
+              <span><b>Record:</b> <span style="color:#f5f3f0;font-weight:800">${x.form.w}-${x.form.l}</span> <small style="color:${gd>=0?'#4bdd91':'#ff8e95'}">(${gdFormatted} GD)</small></span>
+              ${statusTag}
+            </div>
+          </div>
+        `;
+      }).join('')}
     </div>
   `;
-
-  if(playoffOddsTab === 'title'){
-    // Probability Graph / Betting Board
-    html += `
-      <div class="odds-grid">
-        ${list.map((x, i) => {
-          let isDarkHorse = isOddsDarkHorse(x, i, list.length);
-          let tierCls = i === 0 ? 'tier-1' : (i < 3 ? 'tier-2' : (isDarkHorse ? 'tier-3' : ''));
-          let badgeTag = i === 0 ? '<span class="odds-badge-chip fav">👑 Favorite</span>' 
-            : (i < 3 ? '<span class="odds-badge-chip contender">⚡ Contender</span>' 
-            : (isDarkHorse ? '<span class="odds-badge-chip darkhorse">🔥 Dark Horse</span>' 
-            : '<span class="odds-badge-chip longshot">🎲 Longshot</span>'));
-          
-          let barPct = Math.min(100, Math.max(x.champPct > 0 ? 2 : 0, +x.champPct.toFixed(1)));
-          let barGradient = i === 0 ? 'linear-gradient(90deg,#ffd166,#ef3038)' 
-            : (i < 3 ? 'linear-gradient(90deg,#ff8e95,#ef3038)' 
-            : (isDarkHorse ? 'linear-gradient(90deg,#dca2f5,#a855f7)' : 'linear-gradient(90deg,#7ad1ff,#3b82f6)'));
-
-          let faceImg = (typeof profilePictures !== 'undefined' && profilePictures[x.player]) || (typeof teamCovers !== 'undefined' && teamCovers[x.player]) || '';
-          let faceArt = faceImg ? `url('${esc(faceImg)}')` : fallbackArt(x.player);
-          let faceLetter = faceImg ? '' : esc((x.player||'?')[0]);
-          let faceStyle = `style="background-image:${faceArt};background-size:cover;background-position:center;width:34px;height:34px;border-radius:50%;flex:none;display:grid;place-items:center;border:1px solid #ffffff22;font:800 13px 'Barlow Condensed'"`;
-
-          return `
-            <div class="odds-contender-card ${tierCls}" onclick="openProfile('${jsArg(x.player)}')">
-              <div class="odds-head-row">
-                <div class="odds-trainer-info">
-                  <div class="m-slot-avatar" ${faceStyle}>${faceLetter}</div>
-                  <div style="min-width:0">
-                    <div style="display:flex;align-items:center;gap:6px">
-                      <span style="font:800 16px 'Barlow Condensed';letter-spacing:.3px;color:#fff">${esc(x.player)}</span>
-                      ${x.ovrObj ? x.ovrObj.badgeHtml : `<span class="ovr-badge-pill ovr-silver">${x.ovr}</span>`}
-                    </div>
-                    <div style="font-size:10px;color:#8e8c95;text-transform:uppercase;font-weight:700;margin-top:1px">${esc(teamName(t, x.player))}</div>
-                  </div>
-                </div>
-                <div style="text-align:right">
-                  ${badgeTag}
-                  <div style="font:800 15px 'Barlow Condensed';color:#ffd166;margin-top:3px">${x.moneyline} <span style="font-size:11px;color:#aaa">(${x.decimalOdds})</span></div>
-                </div>
-              </div>
-
-              <!-- Probability Visual Bar -->
-              <div class="odds-bar-container">
-                <div class="odds-bar-header">
-                  <span class="odds-bar-title">Championship Title Equity</span>
-                  <span class="odds-bar-pct">${x.champPct}%</span>
-                </div>
-                <div class="odds-bar-track">
-                  <div class="odds-bar-fill" style="width:${barPct}%;background:${barGradient}"></div>
-                </div>
-              </div>
-
-              <!-- Key Scenario Metrics -->
-              <div class="odds-submetrics">
-                <div>
-                  <div class="odds-submetric-val" style="color:${x.topCutPct>=80?'#4bdd91':x.topCutPct>=40?'#ffd166':'#ff8e95'}">${x.topCutPct}%</div>
-                  <div class="odds-submetric-lbl">Top Cut</div>
-                </div>
-                <div>
-                  <div class="odds-submetric-val" style="color:#f5f3f0">${x.finalsPct}%</div>
-                  <div class="odds-submetric-lbl">Grand Finals</div>
-                </div>
-                <div>
-                  <div class="odds-submetric-val" style="color:#aaa">${x.unplayedCount} left</div>
-                  <div class="odds-submetric-lbl">${esc(x.group)}</div>
-                </div>
-              </div>
-            </div>
-          `;
-        }).join('')}
-      </div>
-    `;
-  } else if(playoffOddsTab === 'topcut'){
-    // Top Cut Probabilities Ranked Table
-    let sortedByTopCut = [...list].sort((a, b) => b.topCutPct - a.topCutPct || b.champPct - a.champPct);
-    html += `
-      <div class="card table-wrap">
-        <table class="standings">
-          <thead>
-            <tr>
-              <th>#</th>
-              <th>Trainer</th>
-              <th>Group</th>
-              <th>Matches Left</th>
-              <th>Top Cut Chance</th>
-              <th>Grand Finals</th>
-              <th>Title Odds</th>
-              <th>Top Cut Projection</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${sortedByTopCut.map((x, i) => {
-              let statusCls = x.topCutPct === 100 ? 'safe' : (x.topCutPct === 0 ? 'out' : 'hunt');
-              let statusTag = x.topCutPct === 100 ? '<span class="tag safe">CLINCHED</span>'
-                : (x.topCutPct === 0 ? '<span class="tag out">ELIMINATED</span>'
-                : '<span class="tag hunt">IN THE HUNT</span>');
-              let barColor = x.topCutPct >= 80 ? 'var(--green)' : (x.topCutPct <= 20 ? 'var(--red)' : 'var(--amber)');
-
-              let faceImg = (typeof profilePictures !== 'undefined' && profilePictures[x.player]) || (typeof teamCovers !== 'undefined' && teamCovers[x.player]) || '';
-              let faceArt = faceImg ? `url('${esc(faceImg)}')` : fallbackArt(x.player);
-              let faceLetter = faceImg ? '' : esc((x.player||'?')[0]);
-
-              return `
-                <tr class="${statusCls}">
-                  <td class="rank">${i + 1}</td>
-                  <td class="player">
-                    <div style="display:flex;align-items:center;gap:8px">
-                      <span class="m-player-chip-face" style="background-image:${faceArt};background-size:cover;background-position:center;width:24px;height:24px;border-radius:50%;font-size:10px;display:grid;place-items:center;flex:none;border:1px solid #ffffff1a">${faceLetter}</span>
-                      <div style="min-width:0">
-                        <div style="display:flex;align-items:center;gap:6px">
-                          ${playerLink(x.player)}
-                          ${x.ovrObj ? x.ovrObj.badgeHtml : ''}
-                        </div>
-                        <span class="team">${esc(teamName(t, x.player))} · Form: ${x.form.w}-${x.form.l} (${x.form.gw > x.form.gl ? '+' : ''}${x.form.gw - x.form.gl})</span>
-                      </div>
-                    </div>
-                  </td>
-                  <td><b>${esc(x.group)}</b></td>
-                  <td>${x.unplayedCount > 0 ? `${x.unplayedCount} unplayed <small style="color:#8e8c95">(${x.remainingOpponents.map(esc).join(', ')})</small>` : '<span style="color:#4bdd91">All Played</span>'}</td>
-                  <td><b>${x.topCutPct}%</b> ${statusTag}</td>
-                  <td>${x.finalsPct}%</td>
-                  <td><b style="color:var(--amber)">${x.champPct}%</b> <small style="color:#8e8c95">(${x.moneyline})</small></td>
-                  <td>
-                    <div class="progress" style="width:140px">
-                      <span style="width:${x.topCutPct}%;background:${barColor}"></span>
-                    </div>
-                  </td>
-                </tr>
-              `;
-            }).join('')}
-          </tbody>
-        </table>
-      </div>
-    `;
-  } else {
-    // Group Breakdowns & Remaining SOS
-    html += `
-      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(380px,1fr));gap:16px;align-items:start">
-        ${groupNames.map(g => {
-          let gInfo = groupStats[g];
-          let gPlayers = (groups[g] || []).map(p => sim[p]).filter(Boolean).sort((a, b) => b.topCutPct - a.topCutPct);
-          return `
-            <div class="card" style="padding:18px">
-              <div style="display:flex;justify-content:space-between;align-items:flex-start;border-bottom:1px solid #2d2d38;padding-bottom:12px;margin-bottom:14px">
-                <div>
-                  <div class="eyebrow">${esc(g)} · Top ${cut} Advance</div>
-                  <h3 style="font:800 22px 'Barlow Condensed';margin:2px 0 0">${esc(g)} Qualification Race</h3>
-                </div>
-                <div style="text-align:right;font-size:11px;color:#8e8c95">
-                  <div>Avg Strength: <b style="color:#f5f3f0">${gInfo.avgOvr} OVR</b></div>
-                  <div>Fixtures: <b>${gInfo.played}/${gInfo.total}</b> played</div>
-                </div>
-              </div>
-
-              <div class="table-wrap">
-                <table class="standings" style="min-width:100%">
-                  <thead>
-                    <tr>
-                      <th>Trainer</th>
-                      <th>OVR</th>
-                      <th>Group Form</th>
-                      <th>Top Cut %</th>
-                      <th>Remaining Opponents</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    ${gPlayers.map(x => {
-                      let gFaceImg = (typeof profilePictures !== 'undefined' && profilePictures[x.player]) || (typeof teamCovers !== 'undefined' && teamCovers[x.player]) || '';
-                      let gFaceArt = gFaceImg ? `url('${esc(gFaceImg)}')` : fallbackArt(x.player);
-                      let gFaceLetter = gFaceImg ? '' : esc((x.player||'?')[0]);
-                      return `
-                        <tr class="${x.topCutPct===100?'safe':x.topCutPct===0?'out':'hunt'}">
-                          <td class="player">
-                            <div style="display:flex;align-items:center;gap:7px">
-                              <span class="m-player-chip-face" style="background-image:${gFaceArt};background-size:cover;background-position:center;width:22px;height:22px;border-radius:50%;font-size:10px;display:grid;place-items:center;flex:none;border:1px solid #ffffff1a">${gFaceLetter}</span>
-                              ${playerLink(x.player)}
-                            </div>
-                          </td>
-                          <td>${x.ovrObj ? x.ovrObj.badgeHtml : x.ovr}</td>
-                          <td><b>${x.form.w}-${x.form.l}</b> <small style="color:#8e8c95">(${x.form.gw > x.form.gl ? '+' : ''}${x.form.gw - x.form.gl})</small></td>
-                          <td><b style="color:${x.topCutPct>=80?'#4bdd91':x.topCutPct>=40?'#ffd166':'#ff8e95'}">${x.topCutPct}%</b></td>
-                          <td style="font-size:11px">${x.remainingOpponents.length ? x.remainingOpponents.map(esc).join(', ') : '<span style="color:#4bdd91">Finished</span>'}</td>
-                        </tr>
-                      `;
-                    }).join('')}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          `;
-        }).join('')}
-      </div>
-    `;
-  }
 
   html += `
     <p class="sub" style="margin-top:20px;font-size:11px;color:#8e8c95;line-height:1.6">
@@ -21333,11 +21178,9 @@ function renderDraftBoardTierColumns(t){
                   </div>
                 </div>
 
-                ${!isDrafted ? `
-                  <span class="draft-mon-cost" style="background:${theme.badgeBg};border:1px solid ${theme.border};color:${theme.badgeText};font-weight:700">${tier.cost} PTS</span>
-                ` : `
+                ${isDrafted ? `
                   <span style="font-size:11px;color:#6b6a75;font-weight:700">Picked</span>
-                `}
+                ` : ''}
               </div>
             `;
           }).join('') || '<div style="padding:14px;font-size:11px;color:#6b6a75;text-align:center">No matches in this tier</div>'}
@@ -21952,10 +21795,11 @@ function renderOffseasonTierColumns(){
                     <div style="font-size:9px;color:#a09fa8">+ Add to plan</div>
                   </div>
                 </div>
-                <div style="display:flex;align-items:center;gap:6px">
-                  ${moderator ? `<button class="btn ghost btn-sm" style="padding:1px 5px!important;font-size:9px!important;color:#ffd166;border-color:#5a4218" title="Rename Pokémon on board" onclick="event.stopPropagation();openRenameOffseasonPokemonModal('${jsArg(mon)}', ${tier.cost}, '${jsArg(tier.name)}')">✏️</button>` : ''}
-                  <span class="draft-mon-cost" style="background:${theme.badgeBg};border:1px solid ${theme.border};color:${theme.badgeText};font-weight:700">${tier.cost} PTS</span>
-                </div>
+                ${moderator ? `
+                  <div style="display:flex;align-items:center;gap:6px">
+                    <button class="btn ghost btn-sm" style="padding:1px 5px!important;font-size:9px!important;color:#ffd166;border-color:#5a4218" title="Rename Pokémon on board" onclick="event.stopPropagation();openRenameOffseasonPokemonModal('${jsArg(mon)}', ${tier.cost}, '${jsArg(tier.name)}')">✏️</button>
+                  </div>
+                ` : ''}
               </div>
             `;
           }).join('') || '<div style="padding:14px;font-size:11px;color:#6b6a75;text-align:center">No matches in this tier</div>'}
