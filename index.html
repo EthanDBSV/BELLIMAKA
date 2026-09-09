@@ -1401,7 +1401,7 @@ details[open] > .past-tourney-summary .past-chevron{transform:rotate(180deg);col
   color: white !important;
   font: 800 17px 'Barlow Condensed' !important;
 }
-.cover-edit {
+.archive .cover-edit {
   position: absolute !important;
   right: 12px !important;
   bottom: 12px !important;
@@ -1416,7 +1416,7 @@ details[open] > .past-tourney-summary .past-chevron{transform:rotate(180deg);col
   opacity: .85 !important;
   z-index: 2 !important;
 }
-.cover-edit:hover {
+.archive .cover-edit:hover {
   opacity: 1 !important;
   background: #401b21 !important;
 }
@@ -3962,58 +3962,58 @@ function matchCard(m,latest=false){
   );
 
   let cardBg = isTopCut
-    ? `background: #0a0907; border: 1px solid ${latest ? '#ffd166' : 'rgba(255,209,102,0.32)'}; box-shadow: 0 4px 18px rgba(0,0,0,0.8)${latest ? ', 0 0 16px rgba(255,209,102,0.3)' : ''};`
-    : `background: #0c0809; border: 1px solid ${latest ? '#ef3038' : 'rgba(239,48,56,0.38)'}; box-shadow: 0 4px 18px rgba(0,0,0,0.8)${latest ? ', 0 0 16px rgba(239,48,56,0.35)' : ''};`;
+    ? `background: #0a0907; border: 1px solid ${latest ? '#cfa64e' : 'rgba(207,166,78,0.30)'}; box-shadow: 0 4px 18px rgba(0,0,0,0.8)${latest ? ', 0 0 12px rgba(207,166,78,0.2)' : ''};`
+    : `background: #0d0b0d; border: 1px solid ${latest ? '#782d35' : 'rgba(120,45,53,0.35)'}; box-shadow: 0 4px 18px rgba(0,0,0,0.8)${latest ? ', 0 0 12px rgba(120,45,53,0.2)' : ''};`;
 
   let headerBg = isTopCut
-    ? `background: linear-gradient(90deg, rgba(255,209,102,0.14) 0%, #110e08 100%); border-bottom: 1px solid rgba(255,209,102,0.24);`
-    : `background: linear-gradient(90deg, rgba(239,48,56,0.16) 0%, #140a0c 100%); border-bottom: 1px solid rgba(239,48,56,0.28);`;
+    ? `background: linear-gradient(90deg, rgba(207,166,78,0.12) 0%, #110e08 100%); border-bottom: 1px solid rgba(207,166,78,0.22);`
+    : `background: linear-gradient(90deg, rgba(120,45,53,0.18) 0%, #120b0d 100%); border-bottom: 1px solid rgba(120,45,53,0.28);`;
 
   return `
     <article class="card modern-match-card ${latest ? 'latest-highlight' : ''}" style="padding:0;${cardBg}border-radius:10px;overflow:hidden;position:relative">
       <div style="padding:9px 14px;${headerBg}display:flex;justify-content:space-between;align-items:center;gap:8px">
         <div style="display:flex;align-items:center;gap:7px;min-width:0;overflow:hidden">
-          <span style="font-size:13px;color:${isTopCut ? '#ffd166' : '#ef3038'};filter:drop-shadow(0 0 5px ${isTopCut ? 'rgba(255,209,102,0.5)' : 'rgba(239,48,56,0.5)'});flex:none">${isTopCut ? '🏆' : '⚡'}</span>
-          <span style="font:800 13px 'Barlow Condensed';color:${isTopCut ? '#ffd166' : '#ff4d56'};letter-spacing:.8px;text-transform:uppercase;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(labelText)}</span>
+          <span style="font-size:13px;color:${isTopCut ? '#d8b25e' : '#ba565f'};flex:none">${isTopCut ? '🏆' : '⚡'}</span>
+          <span style="font:800 13px 'Barlow Condensed';color:${isTopCut ? '#d8b25e' : '#ba565f'};letter-spacing:.8px;text-transform:uppercase;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(labelText)}</span>
         </div>
         <div style="display:flex;align-items:center;gap:6px;flex:none">
-          ${latest ? `<span style="background:${isTopCut ? '#ffd166' : '#ef3038'};color:${isTopCut ? '#111' : '#fff'};font-size:8px;font-weight:900;letter-spacing:1px;padding:2px 6px;border-radius:3px;text-transform:uppercase;box-shadow:0 0 8px ${isTopCut ? 'rgba(255,209,102,0.4)' : 'rgba(239,48,56,0.4)'}">LATEST</span>` : ''}
+          ${latest ? `<span style="background:${isTopCut ? '#cfa64e' : '#6a242c'};color:${isTopCut ? '#111' : '#f5f3f0'};font-size:8px;font-weight:900;letter-spacing:1px;padding:2px 6px;border-radius:3px;text-transform:uppercase;border:1px solid ${isTopCut ? '#cfa64e' : '#8e353f'}">LATEST</span>` : ''}
           <span style="background:${isPlayed ? '#122619' : '#1a1a22'};border:1px solid ${isPlayed ? '#22522e' : '#2d2d38'};font-size:8px;font-weight:900;letter-spacing:.8px;color:${isPlayed ? '#4ade80' : '#8e8c95'};padding:2px 6px;border-radius:3px;text-transform:uppercase">${isPlayed ? 'FINAL' : 'UPCOMING'}</span>
         </div>
       </div>
 
-      <div style="padding:10px 12px;background:${isTopCut ? '#090807' : '#0a0708'};display:flex;flex-direction:column;gap:6px">
+      <div style="padding:10px 12px;background:${isTopCut ? '#090807' : '#0b090a'};display:flex;flex-direction:column;gap:6px">
         <!-- Team 1 Row -->
-        <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:7px 10px;border-radius:6px;background:${p1Won ? (isTopCut ? 'linear-gradient(90deg, rgba(255,209,102,0.12), #141108)' : 'linear-gradient(90deg, rgba(239,48,56,0.14), #170a0d)') : 'transparent'};border:1px solid ${p1Won ? (isTopCut ? 'rgba(255,209,102,0.32)' : 'rgba(239,48,56,0.38)') : 'transparent'};transition:all .15s ease">
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:7px 10px;border-radius:6px;background:${p1Won ? (isTopCut ? 'linear-gradient(90deg, rgba(207,166,78,0.12), #141108)' : 'linear-gradient(90deg, rgba(120,45,53,0.18), #130a0d)') : 'transparent'};border:1px solid ${p1Won ? (isTopCut ? 'rgba(207,166,78,0.30)' : 'rgba(120,45,53,0.35)') : 'transparent'};transition:all .15s ease">
           <div style="display:flex;align-items:center;gap:10px;min-width:0">
-            <span class="avatar mini" style="background-image:${face1};background-size:cover;background-position:center;width:32px;height:32px;font-size:12px;border-radius:50%;border:2px solid ${p1Won ? (isTopCut ? '#ffd166' : '#ef3038') : '#23232c'};display:grid;place-items:center;flex:none;box-shadow:${p1Won ? (isTopCut ? '0 0 8px rgba(255,209,102,0.35)' : '0 0 8px rgba(239,48,56,0.35)') : 'none'}">${letter1}</span>
+            <span class="avatar mini" style="background-image:${face1};background-size:cover;background-position:center;width:32px;height:32px;font-size:12px;border-radius:50%;border:2px solid ${p1Won ? (isTopCut ? '#cfa64e' : '#782d35') : '#23232c'};display:grid;place-items:center;flex:none;box-shadow:${p1Won ? (isTopCut ? '0 0 8px rgba(207,166,78,0.25)' : '0 0 8px rgba(120,45,53,0.25)') : 'none'}">${letter1}</span>
             <div style="min-width:0">
               <div style="display:flex;align-items:center;gap:6px">
                 <span style="font:800 15px 'Barlow Condensed';letter-spacing:.3px;color:${p1Won ? '#ffffff' : '#9d9ba6'}">${playerLink(p1)}</span>
-                <span style="font-size:10px;font-weight:800;color:${isTopCut ? '#ffd166' : '#ff4d56'}">(${esc(rec1)})</span>
+                <span style="font-size:10px;font-weight:800;color:${isTopCut ? '#d8b25e' : '#ba565f'}">(${esc(rec1)})</span>
               </div>
               <div style="font-size:10px;color:#7e7c88;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:140px">${esc(t1Name)}</div>
             </div>
           </div>
-          <div style="font:800 22px 'Barlow Condensed';color:${p1Won ? (isTopCut ? '#ffd166' : '#ff4d56') : '#474652'};flex:none;min-width:24px;text-align:right;text-shadow:${p1Won ? (isTopCut ? '0 0 8px rgba(255,209,102,0.4)' : '0 0 8px rgba(239,48,56,0.4)') : 'none'}">${s1}</div>
+          <div style="font:800 22px 'Barlow Condensed';color:${p1Won ? (isTopCut ? '#d8b25e' : '#d46b74') : '#474652'};flex:none;min-width:24px;text-align:right;text-shadow:${p1Won ? (isTopCut ? '0 0 8px rgba(207,166,78,0.3)' : 'none') : 'none'}">${s1}</div>
         </div>
 
         <!-- Divider -->
-        <div style="height:1px;background:${isTopCut ? 'rgba(255,209,102,0.12)' : 'rgba(239,48,56,0.15)'};margin:0 4px"></div>
+        <div style="height:1px;background:${isTopCut ? 'rgba(207,166,78,0.12)' : 'rgba(120,45,53,0.18)'};margin:0 4px"></div>
 
         <!-- Team 2 Row -->
-        <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:7px 10px;border-radius:6px;background:${p2Won ? (isTopCut ? 'linear-gradient(90deg, rgba(255,209,102,0.12), #141108)' : 'linear-gradient(90deg, rgba(239,48,56,0.14), #170a0d)') : 'transparent'};border:1px solid ${p2Won ? (isTopCut ? 'rgba(255,209,102,0.32)' : 'rgba(239,48,56,0.38)') : 'transparent'};transition:all .15s ease">
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:7px 10px;border-radius:6px;background:${p2Won ? (isTopCut ? 'linear-gradient(90deg, rgba(207,166,78,0.12), #141108)' : 'linear-gradient(90deg, rgba(120,45,53,0.18), #130a0d)') : 'transparent'};border:1px solid ${p2Won ? (isTopCut ? 'rgba(207,166,78,0.30)' : 'rgba(120,45,53,0.35)') : 'transparent'};transition:all .15s ease">
           <div style="display:flex;align-items:center;gap:10px;min-width:0">
-            <span class="avatar mini" style="background-image:${face2};background-size:cover;background-position:center;width:32px;height:32px;font-size:12px;border-radius:50%;border:2px solid ${p2Won ? (isTopCut ? '#ffd166' : '#ef3038') : '#23232c'};display:grid;place-items:center;flex:none;box-shadow:${p2Won ? (isTopCut ? '0 0 8px rgba(255,209,102,0.35)' : '0 0 8px rgba(239,48,56,0.35)') : 'none'}">${letter2}</span>
+            <span class="avatar mini" style="background-image:${face2};background-size:cover;background-position:center;width:32px;height:32px;font-size:12px;border-radius:50%;border:2px solid ${p2Won ? (isTopCut ? '#cfa64e' : '#782d35') : '#23232c'};display:grid;place-items:center;flex:none;box-shadow:${p2Won ? (isTopCut ? '0 0 8px rgba(207,166,78,0.25)' : '0 0 8px rgba(120,45,53,0.25)') : 'none'}">${letter2}</span>
             <div style="min-width:0">
               <div style="display:flex;align-items:center;gap:6px">
                 <span style="font:800 15px 'Barlow Condensed';letter-spacing:.3px;color:${p2Won ? '#ffffff' : '#9d9ba6'}">${playerLink(p2)}</span>
-                <span style="font-size:10px;font-weight:800;color:${isTopCut ? '#ffd166' : '#ff4d56'}">(${esc(rec2)})</span>
+                <span style="font-size:10px;font-weight:800;color:${isTopCut ? '#d8b25e' : '#ba565f'}">(${esc(rec2)})</span>
               </div>
               <div style="font-size:10px;color:#7e7c88;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:140px">${esc(t2Name)}</div>
             </div>
           </div>
-          <div style="font:800 22px 'Barlow Condensed';color:${p2Won ? (isTopCut ? '#ffd166' : '#ff4d56') : '#474652'};flex:none;min-width:24px;text-align:right;text-shadow:${p2Won ? (isTopCut ? '0 0 8px rgba(255,209,102,0.4)' : '0 0 8px rgba(239,48,56,0.4)') : 'none'}">${s2}</div>
+          <div style="font:800 22px 'Barlow Condensed';color:${p2Won ? (isTopCut ? '#d8b25e' : '#d46b74') : '#474652'};flex:none;min-width:24px;text-align:right;text-shadow:${p2Won ? (isTopCut ? '0 0 8px rgba(207,166,78,0.3)' : 'none') : 'none'}">${s2}</div>
         </div>
       </div>
     </article>
@@ -8676,8 +8676,13 @@ function OffseasonHome(){
     <section class="hero">
       <div class="hero-main" ${heroBg} ${last ? `onclick="openTournament('${last.id}')"` : ''}>
         <span class="status"><i></i>${last ? `${last.season.toUpperCase()} ARCHIVE` : 'LEAGUE ARCHIVE'}</span>
-        <div class="hero-title">${last ? last.name.toUpperCase().replace(' ', '<br>') : 'THE LEAGUE ARCHIVE'}</div>
-        <div class="hero-info">${last ? `Reigning Champion: <b>${champ}</b> · ${last.regulation}` : 'Create a tournament to begin recording the league.'}</div>
+        <div class="hero-title" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${last ? esc(last.name.toUpperCase()) : 'THE LEAGUE ARCHIVE'}</div>
+        ${last ? `
+          <div class="tourney-hero-format" style="margin:8px 0 16px 0!important;display:flex;flex-direction:column;gap:3px">
+            <div>${esc(last.regulation ? last.regulation.toUpperCase() : '')}</div>
+            <div style="color:#ffd166">CHAMPION: ${esc(champ ? champ.toUpperCase() : 'TBD')}</div>
+          </div>
+        ` : '<div class="hero-info">Create a tournament to begin recording the league.</div>'}
         ${last ? `
           <div style="margin-top:16px;display:flex;gap:10px;flex-wrap:wrap">
             <button class="btn btn-sm" onclick="event.stopPropagation();openTournament('${last.id}')">View Tournament Details →</button>
@@ -9323,8 +9328,8 @@ function draftStageHeroCard(t){
   return `
     <aside class="card matchup-hero-card" style="${cardBgStyle}">
       <!-- Top Actions (Edit cover) -->
-      <div style="display:flex;justify-content:flex-end;align-items:center;padding:12px 14px;position:relative;z-index:2">
-        ${moderator ? `<button class="cover-edit" style="position:static;padding:4px 10px;font-size:11px;background:rgba(8,8,14,0.7);border:1px solid rgba(255,255,255,0.22);border-radius:6px;backdrop-filter:blur(6px);box-shadow:0 4px 12px rgba(0,0,0,0.5)" onclick="event.stopPropagation();openDraftStageCoverEditor()">Edit cover</button>` : ''}
+      <div style="display:flex;justify-content:flex-end;align-items:center;padding:10px 12px;min-height:38px;position:relative;z-index:2">
+        ${moderator ? `<button class="cover-edit" style="position:static!important;margin:0!important;padding:4px 10px;font-size:11px;background:rgba(8,8,14,0.75);border:1px solid rgba(255,255,255,0.25);border-radius:6px;backdrop-filter:blur(6px);box-shadow:0 4px 12px rgba(0,0,0,0.5)" onclick="event.stopPropagation();openDraftStageCoverEditor()">Edit cover</button>` : ''}
       </div>
 
       <!-- Integrated Lower-Third Dock -->
@@ -16470,14 +16475,18 @@ function predictions(t=activeT()){
     <div class="pred-page-unified" style="display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:24px;align-items:start">
       <!-- Main Column: All Pick'em Sections -->
       <div style="display:flex;flex-direction:column;gap:26px;min-width:0">
-        <!-- 1. Champion Outright Picker (100 PTS) -->
-        ${renderChampionPredictionPicker(t, champQuestion, started)}
+        ${isPlayoff ? `
+          <!-- Playoff Phase: Only the Top Cut Prediction Bracket appears -->
+          ${topCutPredictionBracket(t)}
+        ` : `
+          <!-- Group / Swiss Phase: Champion, Group Leaders & Match Pick'ems -->
+          <!-- 1. Champion Outright Picker (100 PTS) -->
+          ${renderChampionPredictionPicker(t, champQuestion, started)}
 
-        <!-- 2. Division / Group Leaders (45 PTS each) -->
-        ${!isSwiss && groupsList.length ? renderGroupWinnersPredictionPicker(t, groups, started) : ''}
+          <!-- 2. Division / Group Leaders (45 PTS each) -->
+          ${!isSwiss && groupsList.length ? renderGroupWinnersPredictionPicker(t, groups, started) : ''}
 
-        <!-- 3. Individual Match Pick'ems (or Playoff Bracket Pick'ems) -->
-        ${isPlayoff ? topCutPredictionBracket(t) : `
+          <!-- 3. Individual Match Pick'ems -->
           <section class="pred-section">
             <div class="section-head" style="margin-bottom:12px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
               <div>
