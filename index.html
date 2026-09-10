@@ -7426,20 +7426,28 @@ var supabaseInited=false;
 var draftRealtimeChannel=null;
 var draftPollTimer=null;
 
-function showDraftToast(msg){
+function showDraftToast(msg, iconMon = null){
   let existing = document.querySelector('#draftToast');
   if(!existing){
     existing = document.createElement('div');
     existing.id = 'draftToast';
-    existing.style.cssText = 'position:fixed;bottom:24px;right:24px;background:linear-gradient(135deg,#1c1c26,#12121a);color:#fff;padding:12px 18px;border-radius:8px;border:1px solid #4ade80;box-shadow:0 8px 24px rgba(0,0,0,0.6);font-size:13px;font-weight:700;z-index:99999;display:flex;align-items:center;gap:10px;animation:fadeIn .2s ease;transition:opacity .3s ease;';
+    existing.style.cssText = 'position:fixed;bottom:24px;right:24px;background:linear-gradient(135deg,#1c1c26,#12121a);color:#fff;padding:12px 18px;border-radius:10px;border:1.5px solid #4ade80;box-shadow:0 10px 28px rgba(0,0,0,0.75),0 0 16px rgba(74,222,128,0.25);font:700 14px/1.3 "Barlow Condensed",sans-serif;letter-spacing:.3px;z-index:999999;display:flex;align-items:center;gap:10px;transition:opacity .3s ease,transform .3s ease;pointer-events:none;max-width:calc(100vw - 32px);';
     document.body.appendChild(existing);
   }
-  existing.innerHTML = `<span>⚡</span> <span>${esc(msg)}</span>`;
+  let iconHtml = '<span style="font-size:16px">⚡</span>';
+  if(iconMon && typeof pokeSprite === 'function'){
+    iconHtml = `<img src="${esc(pokeSprite(iconMon))}" style="width:34px;height:34px;object-fit:contain;flex:none;filter:drop-shadow(0 3px 6px rgba(0,0,0,0.7))" alt="">`;
+  }
+  existing.innerHTML = `${iconHtml} <span style="font-size:15px;letter-spacing:.4px">${esc(msg)}</span>`;
   existing.style.opacity = '1';
+  existing.style.transform = 'translateY(0)';
   clearTimeout(window._draftToastTimer);
   window._draftToastTimer = setTimeout(() => {
-    if(existing) existing.style.opacity = '0';
-  }, 3500);
+    if(existing){
+      existing.style.opacity = '0';
+      existing.style.transform = 'translateY(8px)';
+    }
+  }, 4000);
 }
 
 var leagueStateChannel = null;
@@ -7739,7 +7747,18 @@ async function syncFromCloud(force = false){
                 if(typeof centerActiveDraftPickTile === 'function'){
                   setTimeout(centerActiveDraftPickTile, 50);
                 }
+
+                // Corner toast notification for incoming remote draft picks
+                if(window._initialDraftSyncDone && remotePicksCount > localPicksCount){
+                  let latest = remotePicks[remotePicksCount - 1];
+                  if(latest && latest.player && latest.pokemon){
+                    showDraftToast(`${latest.player} drafted ${latest.pokemon}!`, latest.pokemon);
+                  }
+                } else if(window._initialDraftSyncDone && !isRecentLocalAction && remotePicksCount < localPicksCount){
+                  showDraftToast('Draft pick was undone');
+                }
               }
+              window._initialDraftSyncDone = true;
             }
           }
         } catch(e){}
@@ -21131,6 +21150,7 @@ function makeDraftPick(tId, pokemonName, forcedPlayer = null){
   lastLocalUpdate = Date.now();
   persistLeague();
   render();
+  showDraftToast(`${targetPlayer} drafted ${pokemonName}!`, pokemonName);
 
   // Instant Realtime Broadcast to all online draft participants (< 100ms)
   if(draftRealtimeChannel){
@@ -21191,6 +21211,7 @@ function undoDraftPick(tId){
   window._lastLocalDraftActionTime = Date.now();
   persistLeague();
   render();
+  showDraftToast('Draft pick was undone');
 
   if(draftRealtimeChannel){
     try {
