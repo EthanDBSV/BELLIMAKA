@@ -2678,14 +2678,14 @@ function bracketMatch(a,an,b,bn,as='—',bs='—'){return `<div class="bracket-m
 function rosterList(p){return (roster[p]||[]).map((m,i)=>`<div class="edit-mon">${m}${moderator?`<button onclick="removeMon('${p}',${i})">Remove</button>`:''}</div>`).join('')}
 
 
-function openTournament(id){
+function openTournament(id, tab = 'Standings'){
   viewTournament=id;
-  detailTab='Standings';
+  detailTab=tab || 'Standings';
   current='Tournament Detail';
   try{
     localStorage.setItem('draftdex-active-tab','Tournament Detail');
     localStorage.setItem('draftdex-view-tournament',id);
-    localStorage.setItem('draftdex-detail-tab','Standings');
+    localStorage.setItem('draftdex-detail-tab',detailTab);
     history.replaceState(null,'','#'+encodeURIComponent('Tournament Detail'));
   }catch(e){}
   render();
@@ -4505,32 +4505,97 @@ function parseShowdownBattleLog(logText, meta = {}) {
 
 function getMatchKey(m, index) {
   if(!m) return '';
-  if(m.id != null && m.id !== '') return String(m.id);
   if(m.actualMatchId != null) return 'tc_' + m.actualMatchId;
-  let a = m.a || m.p1 || 'p1';
-  let b = m.b || m.p2 || 'p2';
-  let round = m.round || m.group || 'match';
-  return `${round}_${a}_${b}${index != null ? '_' + index : ''}`.replace(/\s+/g, '_');
+  if(m.isTopCut && m.id != null) return 'tc_' + m.id;
+
+  let grp = (m.group || '').trim().replace(/[^a-zA-Z0-9_-]/g, '_');
+  let round = (m.round || '').trim().replace(/[^a-zA-Z0-9_-]/g, '_');
+  let id = (m.id != null && m.id !== '') ? String(m.id).trim().replace(/[^a-zA-Z0-9_-]/g, '_') : '';
+  let a = (m.a || m.p1 || 'p1').trim().replace(/[^a-zA-Z0-9_-]/g, '_');
+  let b = (m.b || m.p2 || 'p2').trim().replace(/[^a-zA-Z0-9_-]/g, '_');
+
+  let parts = [];
+  if(grp) parts.push(`grp_${grp}`);
+  if(round) parts.push(`rd_${round}`);
+  if(id) parts.push(`id_${id}`);
+  parts.push(`${a}_vs_${b}`);
+  if(index != null && index >= 0) parts.push(`idx_${index}`);
+
+  return parts.join('_');
 }
 
 function findTournamentMatch(t, matchKey, index) {
   if(!t) return null;
+  if(matchKey == null) matchKey = '';
+  let mKeyStr = String(matchKey).trim();
+
+  // 1. Direct index lookup if explicitly provided
   if(index != null && Array.isArray(t.matches) && t.matches[index]){
     return { match: t.matches[index], isTopCut: false, index: index };
   }
-  if(Array.isArray(t.matches)){
-    for(let i = 0; i < t.matches.length; i++){
-      let m = t.matches[i];
-      let k = getMatchKey(m, i);
-      if(String(m.id) === String(matchKey) || k === matchKey || `${m.a}_vs_${m.b}` === matchKey || `${m.b}_vs_${m.a}` === matchKey){
-        return { match: m, isTopCut: false, index: i };
+
+  // 2. Embedded index in matchKey (e.g. "..._idx_9")
+  let idxMatch = mKeyStr.match(/_idx_(\d+)$/);
+  if(idxMatch && Array.isArray(t.matches)){
+    let extractedIdx = parseInt(idxMatch[1], 10);
+    let candidate = t.matches[extractedIdx];
+    if(candidate){
+      let candKeyWithIdx = getMatchKey(candidate, extractedIdx);
+      let candKeyWithoutIdx = getMatchKey(candidate);
+      if(candKeyWithIdx === mKeyStr || candKeyWithoutIdx === mKeyStr.replace(/_idx_\d+$/, '')){
+        return { match: candidate, isTopCut: false, index: extractedIdx };
+      }
+      let p1 = candidate.a || candidate.p1 || '';
+      let p2 = candidate.b || candidate.p2 || '';
+      let c1 = p1.replace(/[^a-zA-Z0-9_-]/g, '_');
+      let c2 = p2.replace(/[^a-zA-Z0-9_-]/g, '_');
+      if((c1 && c2) && (mKeyStr.includes(`${c1}_vs_${c2}`) || mKeyStr.includes(`${c2}_vs_${c1}`))){
+        return { match: candidate, isTopCut: false, index: extractedIdx };
       }
     }
   }
+
+  // 3. Search t.matches
+  if(Array.isArray(t.matches)){
+    // Pass A: Exact key match against getMatchKey(m, i) or getMatchKey(m)
+    for(let i = 0; i < t.matches.length; i++){
+      let m = t.matches[i];
+      if(getMatchKey(m, i) === mKeyStr || getMatchKey(m) === mKeyStr){
+        return { match: m, isTopCut: false, index: i };
+      }
+    }
+
+    // Pass B: Group + participant matching
+    for(let i = 0; i < t.matches.length; i++){
+      let m = t.matches[i];
+      let a = (m.a || m.p1 || '').trim().replace(/[^a-zA-Z0-9_-]/g, '_');
+      let b = (m.b || m.p2 || '').trim().replace(/[^a-zA-Z0-9_-]/g, '_');
+      let grp = (m.group || '').trim().replace(/[^a-zA-Z0-9_-]/g, '_');
+
+      let pMatch = (a && b) && (mKeyStr.includes(`${a}_vs_${b}`) || mKeyStr.includes(`${b}_vs_${a}`));
+      if(pMatch){
+        if(grp && mKeyStr.includes(`grp_${grp}`)){
+          return { match: m, isTopCut: false, index: i };
+        }
+        if(!mKeyStr.includes('grp_')){
+          return { match: m, isTopCut: false, index: i };
+        }
+      }
+    }
+
+    // Pass C: Legacy exact id match IF UNIQUE across t.matches
+    let matchesWithId = t.matches.filter(m => String(m.id) === mKeyStr);
+    if(matchesWithId.length === 1){
+      let matchObj = matchesWithId[0];
+      return { match: matchObj, isTopCut: false, index: t.matches.indexOf(matchObj) };
+    }
+  }
+
+  // 4. Bracket manager data matches
   if(t.bracketManagerData?.match){
     for(let m of t.bracketManagerData.match){
       let k = 'tc_' + m.id;
-      if(String(m.id) === String(matchKey) || k === matchKey){
+      if(String(m.id) === mKeyStr || k === mKeyStr){
         t.topCutReplays = t.topCutReplays || {};
         if(t.topCutReplays[m.id] && (!m.replays || m.replays.length === 0)){
           m.replays = t.topCutReplays[m.id];
@@ -4539,14 +4604,18 @@ function findTournamentMatch(t, matchKey, index) {
       }
     }
   }
+
+  // 5. t.topCutMatches
   if(Array.isArray(t.topCutMatches)){
     for(let i = 0; i < t.topCutMatches.length; i++){
       let m = t.topCutMatches[i];
-      if(String(m.id) === String(matchKey) || getMatchKey(m, i) === matchKey || `${m.a}_vs_${m.b}` === matchKey){
+      let k = 'tc_' + (m.actualMatchId || m.id);
+      if(String(m.id) === mKeyStr || k === mKeyStr || getMatchKey(m, i) === mKeyStr || `${m.a}_vs_${m.b}` === mKeyStr){
         return { match: m, isTopCut: true };
       }
     }
   }
+
   return null;
 }
 
@@ -5753,7 +5822,8 @@ function matchCard(m,latest=false){
   let p2Face = face2;
   let p2Letter = letter2;
   let label = labelText;
-  let mKey = getMatchKey(m);
+  let mIdx = (t && Array.isArray(t.matches)) ? t.matches.indexOf(m) : -1;
+  let mKey = getMatchKey(m, mIdx >= 0 ? mIdx : undefined);
   let hasReplays = Array.isArray(m.replays) && m.replays.length > 0;
 
   return `
@@ -6033,6 +6103,64 @@ function calculateTeamOfTheSeason(t) {
   };
 }
 
+function renderTeamOfTheSeasonCardsHtml(tots) {
+  if(!tots || !tots.team || tots.team.length === 0) return '';
+  return `
+    <div class="tots-grid">
+      ${tots.team.map(item => {
+        let mon = item.mon;
+        if(!mon) return '';
+        let types = (typeof getPokemonTypes === 'function' ? getPokemonTypes(mon.name) : []) || ['Normal'];
+        let pType = types[0] || 'Normal';
+        let theme = (typeof TYPE_THEMES !== 'undefined' && TYPE_THEMES[pType]) ? TYPE_THEMES[pType] : { bg: '#1c1c24', bgEnd: '#15151a', border: '#383847', glow: 'rgba(255,255,255,0.06)' };
+        let sprite = mon.sprite || (typeof resolvePokemonData === 'function' ? resolvePokemonData(mon.name)?.sprite : (typeof getPokemonSpriteUrl === 'function' ? getPokemonSpriteUrl(mon.name.toLowerCase()) : ''));
+
+        return `
+          <div class="tots-card" style="background:linear-gradient(180deg, ${theme.bg} 0%, rgba(18,18,24,0.96) 100%);border-color:${theme.border || '#2e2e3e'}">
+            <div style="display:flex;flex-direction:column;align-items:center;gap:3px;margin-bottom:6px">
+              <span style="font:800 10px 'Barlow Condensed';letter-spacing:.8px;text-transform:uppercase;padding:2px 8px;border-radius:4px;background:${item.badgeBg};color:${item.badgeColor};border:1px solid ${item.badgeBorder}">
+                ${item.icon} ${item.categoryTitle}
+              </span>
+              <span style="font-size:10px;font-weight:800;color:#8e8c95;text-transform:uppercase;letter-spacing:.5px">
+                ${item.roleTitle}
+              </span>
+            </div>
+
+            <div style="font:900 22px 'Barlow Condensed';color:#ffffff;letter-spacing:.5px;text-transform:uppercase;margin-top:2px">
+              ${esc(mon.name)}
+            </div>
+
+            <div style="width:100%;height:115px;display:flex;align-items:center;justify-content:center;margin:8px 0">
+              <img src="${sprite}" alt="${esc(mon.name)}" style="max-height:105px;max-width:115px;object-fit:contain;filter:drop-shadow(0 6px 12px ${theme.glow || 'rgba(0,0,0,0.5)'})" onerror="handleSpriteError(this)">
+            </div>
+
+            <div style="display:flex;align-items:center;justify-content:center;gap:4px;margin-bottom:8px">
+              ${typeof renderPokemonTypeBadges === 'function' ? renderPokemonTypeBadges(mon.name, 'font-size:9px;padding:1px 6px') : ''}
+            </div>
+
+            <div class="tots-hero-box">
+              <div style="font:900 28px 'Barlow Condensed';line-height:1;color:${item.badgeColor}">
+                ${item.statVal}
+              </div>
+              <div style="font-size:10px;font-weight:800;color:#94a3b8;text-transform:uppercase;letter-spacing:.5px;margin-top:3px">
+                ${item.statUnit}
+              </div>
+            </div>
+
+            <div style="font-size:11px;color:#8e8c95;margin-top:4px">
+              ${item.totalStatDisplay} · <b>${mon.games}</b> ${mon.games === 1 ? 'Game' : 'Games'}
+            </div>
+
+            <div style="margin-top:8px;font-size:11px;color:#8e8c95;width:100%;border-top:1px solid rgba(255,255,255,0.06);padding-top:8px">
+              Coach: <b style="color:#ffd166">${mon.coach ? playerLink(mon.coach) : '<span style="color:#666">—</span>'}</b>
+            </div>
+          </div>
+        `;
+      }).join('')}
+    </div>
+  `;
+}
+
 function renderTournamentAwardsTabHtml(t) {
   if(!t) return '<div class="card empty" style="padding:24px;text-align:center">No tournament selected.</div>';
   let tots = calculateTeamOfTheSeason(t);
@@ -6071,64 +6199,7 @@ function renderTournamentAwardsTabHtml(t) {
           </div>
         </div>
 
-        <div class="tots-grid">
-          ${tots.team.map(item => {
-            let mon = item.mon;
-            if(!mon) return '';
-            let types = (typeof getPokemonTypes === 'function' ? getPokemonTypes(mon.name) : []) || ['Normal'];
-            let pType = types[0] || 'Normal';
-            let theme = (typeof TYPE_THEMES !== 'undefined' && TYPE_THEMES[pType]) ? TYPE_THEMES[pType] : { bg: '#1c1c24', bgEnd: '#15151a', border: '#383847', glow: 'rgba(255,255,255,0.06)' };
-            let sprite = mon.sprite || (typeof resolvePokemonData === 'function' ? resolvePokemonData(mon.name)?.sprite : (typeof getPokemonSpriteUrl === 'function' ? getPokemonSpriteUrl(mon.name.toLowerCase()) : ''));
-
-            return `
-              <div class="tots-card" style="background:linear-gradient(180deg, ${theme.bg} 0%, rgba(18,18,24,0.96) 100%);border-color:${theme.border || '#2e2e3e'}">
-                <div style="display:flex;flex-direction:column;align-items:center;gap:3px;margin-bottom:6px">
-                  <span style="font:800 10px 'Barlow Condensed';letter-spacing:.8px;text-transform:uppercase;padding:2px 8px;border-radius:4px;background:${item.badgeBg};color:${item.badgeColor};border:1px solid ${item.badgeBorder}">
-                    ${item.icon} ${item.categoryTitle}
-                  </span>
-                  <span style="font-size:10px;font-weight:800;color:#8e8c95;text-transform:uppercase;letter-spacing:.5px">
-                    ${item.roleTitle}
-                  </span>
-                </div>
-
-                <div style="font:900 22px 'Barlow Condensed';color:#ffffff;letter-spacing:.5px;text-transform:uppercase;margin-top:2px">
-                  ${esc(mon.name)}
-                </div>
-
-                <div style="width:100%;height:115px;display:flex;align-items:center;justify-content:center;margin:8px 0">
-                  <img src="${sprite}" alt="${esc(mon.name)}" style="max-height:105px;max-width:115px;object-fit:contain;filter:drop-shadow(0 6px 12px ${theme.glow || 'rgba(0,0,0,0.5)'})" onerror="handleSpriteError(this)">
-                </div>
-
-                <div style="display:flex;align-items:center;justify-content:center;gap:4px;margin-bottom:8px">
-                  ${typeof renderPokemonTypeBadges === 'function' ? renderPokemonTypeBadges(mon.name, 'font-size:9px;padding:1px 6px') : ''}
-                </div>
-
-                <div class="tots-hero-box">
-                  <div style="font:900 28px 'Barlow Condensed';line-height:1;color:${item.badgeColor}">
-                    ${item.statVal}
-                  </div>
-                  <div style="font-size:10px;font-weight:800;color:#94a3b8;text-transform:uppercase;letter-spacing:.5px;margin-top:3px">
-                    ${item.statUnit}
-                  </div>
-                </div>
-
-                <div style="font-size:11px;color:#8e8c95;margin-top:4px">
-                  ${item.totalStatDisplay} · <b>${mon.games}</b> ${mon.games === 1 ? 'Game' : 'Games'}
-                </div>
-
-                <div style="margin-top:8px;font-size:11px;color:#8e8c95;width:100%;border-top:1px solid rgba(255,255,255,0.06);padding-top:8px">
-                  Coach: <b style="color:#ffd166">${mon.coach ? playerLink(mon.coach) : '<span style="color:#666">—</span>'}</b>
-                </div>
-
-                ${mon.moves && mon.moves.length > 0 ? `
-                  <div style="display:flex;flex-wrap:wrap;gap:2px;justify-content:center;margin-top:6px">
-                    ${mon.moves.slice(0, 4).map(mv => `<span class="move-pill" style="font-size:9px;padding:1px 4px">${esc(mv)}</span>`).join('')}
-                  </div>
-                ` : ''}
-              </div>
-            `;
-          }).join('')}
-        </div>
+        ${renderTeamOfTheSeasonCardsHtml(tots)}
       </div>
 
       <!-- Full Tournament Pokemon Leaderboard -->
@@ -10957,7 +11028,11 @@ function removeHistoryTeam(p,i){if(!confirm('Remove this historical team?'))retu
 function OffseasonHome(){
   let completedTournaments = Object.values(tournamentData).filter(t => t.status === 'COMPLETE').sort((a,b) => (Date.parse(b.start)||0) - (Date.parse(a.start)||0));
   let last = completedTournaments[0] || null;
-  let r = recapRankings().slice(0, 5);
+  let totsTourney = completedTournaments.find(t => {
+    let stats = calculateTeamOfTheSeason(t);
+    return !stats.empty && stats.team && stats.team.length > 0;
+  }) || last;
+  let tots = totsTourney ? calculateTeamOfTheSeason(totsTourney) : { empty: true, team: [] };
   let champ = last?.champion;
   let champFace = profilePictures[champ] ? `url('${esc(profilePictures[champ])}')` : (teamCovers[champ] ? `url('${esc(teamCovers[champ])}')` : fallbackArt(champ));
   let champLetter = (profilePictures[champ] || teamCovers[champ]) ? '' : esc(champ?.[0] || '—');
@@ -11092,69 +11167,34 @@ function OffseasonHome(){
       </aside>
     </section>
 
-    <!-- Player All-Time ELO & Legacy Leaderboard Section -->
+    <!-- Team of the Season Section (Offseason Feature) -->
     <section class="section">
       <div class="section-head">
         <div>
-          <h2>ALL-TIME ELO & LEGACY LEADERBOARD</h2>
-          <p class="sub" style="margin:2px 0 0;font-size:12px;color:#a09fa8">Career power rankings combining tournament titles, win efficiency, records held, and active form.</p>
+          <div class="eyebrow" style="color:#ffd166;display:flex;align-items:center;gap:6px">
+            <span>🏆</span> OFFICIAL AWARDS · ${esc(totsTourney?.season || totsTourney?.name || 'LAST SEASON')}
+          </div>
+          <h2 style="margin:2px 0 0">TEAM OF THE SEASON</h2>
+          <p class="sub" style="margin:2px 0 0;font-size:12px;color:#a09fa8">
+            ${totsTourney ? `Top performing Pokémon from <b>${esc(totsTourney.name)}</b> evaluated on a per-game average across tournament battle replays.` : 'Top performing Pokémon evaluated on a per-game average across tournament battle replays.'}
+          </p>
         </div>
         <div style="display:flex;align-items:center;gap:8px">
-          <button class="link" onclick="go('Standings')">FULL ALL-TIME STANDINGS →</button>
+          ${totsTourney ? `<button class="link" onclick="openTournament('${totsTourney.id}', 'Awards')">VIEW FULL AWARDS & STATS →</button>` : ''}
+          <button class="link" onclick="go('Standings')" style="margin-left:8px;color:#8e8c95">ALL-TIME STANDINGS →</button>
         </div>
       </div>
-      <div class="card table-wrap">
-        <table class="standings">
-          <thead>
-            <tr>
-              <th style="width:36px;text-align:center">#</th>
-              <th>Trainer / Team</th>
-              <th style="text-align:center;white-space:nowrap">All-Time Elo</th>
-              <th style="text-align:center;white-space:nowrap">OVR</th>
-              <th style="text-align:center;white-space:nowrap">Titles</th>
-              <th style="text-align:center;white-space:nowrap">Records Held</th>
-              <th style="text-align:center;white-space:nowrap">All-Time W-L</th>
-              <th style="text-align:center;white-space:nowrap">Win %</th>
-              <th style="text-align:center;white-space:nowrap">Top Cuts</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${r.map((x, i) => {
-              let p = x.p, ovrObj = x.ovrObj || calculatePlayerOVR(p);
-              let faceArt = profilePictures[p] ? `url('${esc(profilePictures[p])}')` : (teamCovers[p] ? `url('${esc(teamCovers[p])}')` : fallbackArt(p));
-              let faceLetter = (profilePictures[p] || teamCovers[p]) ? '' : esc((p || '?')[0]);
-              let rankMedal = i === 0 ? '👑' : (i === 1 ? '🥇' : (i === 2 ? '🥈' : (i + 1)));
-              return `<tr>
-                <td class="rank" style="text-align:center;font-size:${i < 3 ? '15px' : '13px'}">${rankMedal}</td>
-                <td class="player">
-                  <div style="display:flex;align-items:center;gap:9px">
-                    <span class="mrow-face" style="background-image:${faceArt};background-size:cover;background-position:center;width:30px;height:30px;font-size:12px;border-radius:50%;flex:none;display:grid;place-items:center;border:2px solid ${ovrObj.color}">${faceLetter}</span>
-                    <div style="min-width:0">
-                      <div style="font-size:13px;font-weight:800;line-height:1.2">${playerLink(p)}</div>
-                      <span class="team" style="margin-top:2px">${esc(profiles[p]?.team || '')}</span>
-                    </div>
-                  </div>
-                </td>
-                <td style="text-align:center;white-space:nowrap">
-                  ${(() => {
-                    let tier = x.tier || getLegacyTier(x.score, x.isRookie);
-                    return `
-                      <b style="font:800 16px 'Barlow Condensed';letter-spacing:.3px;color:${tier.color}">${x.score}</b>
-                      <span style="display:block;font-size:9px;color:${tier.color};font-weight:800;letter-spacing:.6px;opacity:0.9">${tier.name.toUpperCase()}</span>
-                    `;
-                  })()}
-                </td>
-                <td style="text-align:center">${ovrObj.badgeHtml}</td>
-                <td style="text-align:center">${x.champ > 0 ? `<b style="color:#ffd166;font:800 15px 'Barlow Condensed'">👑 ${x.champ}</b>` : '<span style="color:#6d6b75">0</span>'}</td>
-                <td style="text-align:center;white-space:nowrap">${(x.recordsHeldCount > 0) ? `<span class="badge-pill gold" style="font-weight:800" title="${esc(x.recordsHeld.join(' · '))}">🌟 ${x.recordsHeldCount} ${x.recordsHeldCount === 1 ? 'Record' : 'Records'}</span>` : '<span style="color:#6d6b75;font-size:11px">—</span>'}</td>
-                <td style="text-align:center;white-space:nowrap"><b>${esc(x.record)}</b></td>
-                <td style="text-align:center;white-space:nowrap;font-weight:700;color:${x.winPct >= 60 ? '#7df0aa' : (x.winPct <= 40 ? '#ff8e95' : 'inherit')}">${x.winPct}%</td>
-                <td style="text-align:center;white-space:nowrap">${x.tops > 0 ? `<b style="color:#c084fc">⚔️ ${x.tops}</b>` : '<span style="color:#6d6b75">0</span>'}</td>
-              </tr>`;
-            }).join('')}
-          </tbody>
-        </table>
-      </div>
+      ${(!tots || tots.empty || !tots.team || tots.team.length === 0) ? `
+        <div class="card empty" style="padding:36px 20px;text-align:center;background:#14141c;border:1px solid #282838;border-radius:12px">
+          <span style="font-size:36px">🏆</span>
+          <div class="card-title" style="margin-top:10px;font-size:18px">Team of the Season Awaiting Replays</div>
+          <p class="sub" style="max-width:440px;margin:8px auto 0">Upload battle replays to tournament matches to calculate and display the Team of the Season.</p>
+        </div>
+      ` : `
+        <div style="background:linear-gradient(135deg,#15151e 0%,#0f0f15 100%);border:1px solid #28283a;border-radius:14px;padding:24px;box-shadow:0 8px 32px rgba(0,0,0,0.4)">
+          ${renderTeamOfTheSeasonCardsHtml(tots)}
+        </div>
+      `}
     </section>
   `;
 }
@@ -17260,6 +17300,7 @@ function getPlayerMatchHistory(p){
 
       matches.push({
         id: m.id || `${t.id}-g-${idx}`,
+        matchKey: getMatchKey(m, idx),
         tournamentId: t.id,
         tournamentName: t.name,
         tournamentSeason: t.season,
@@ -17626,7 +17667,7 @@ function renderAccountMatchHistory(mine, matchHistory){
                         <span class="avatar mini" style="background-image:${oppFace};background-size:cover;background-position:center;width:30px;height:30px;font-size:11px;border-radius:50%;border:${oppAvatarBorder};display:grid;place-items:center;flex:none">${oppLetter}</span>
                       </div>
                     </div>
-                    ${renderReplayPillsHtml(m.rawMatch, tournamentData[m.tournamentId], m.id, canManageMatchReplays(tournamentData[m.tournamentId], m.rawMatch))}
+                    ${renderReplayPillsHtml(m.rawMatch, tournamentData[m.tournamentId], m.matchKey || getMatchKey(m.rawMatch), canManageMatchReplays(tournamentData[m.tournamentId], m.rawMatch))}
                   </div>
                 `;
               }).join('')}
