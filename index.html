@@ -1808,7 +1808,36 @@ details[open] > .past-tourney-summary .past-chevron{transform:rotate(180deg);col
 <style>.playerGroup{background:#fff!important;color:#111!important}</style>
 <style>.match-row.aligned{grid-template-columns:145px minmax(115px,1fr) 34px minmax(115px,1fr) 118px 78px auto}</style>
 <style>.col-swap-btn{background:#22222d;border:1px solid #3e3e52;border-radius:3px;color:#a4a2af;font-size:8px;line-height:1;padding:2px 4px;cursor:pointer;transition:all .15s ease}.col-swap-btn:hover{background:var(--red);color:#fff;border-color:var(--red)}.col-swap-group{display:inline-flex;align-items:center;gap:2px;margin-left:4px}</style>
-<style>#newMon{background:#fff!important;color:#111!important}#newMon::placeholder{color:#666}.hero-main:after{content:attr(data-season)!important}.player-link{border:0;background:none;color:#f5f3f0;padding:0;font:inherit;font-weight:800;cursor:pointer;text-align:left}.player-link:hover{color:#ff777d;text-decoration:underline}.match-row.aligned{grid-template-columns:145px minmax(115px,1fr) 34px minmax(115px,1fr) 118px 78px}.match-row.aligned .match-player{font-size:12px;min-width:0}.match-row.aligned .match-vs{text-align:center;color:#85838d;font-size:10px;font-weight:800}.bracket-match input{width:36px;background:#0f0f13;border:1px solid #474750;border-radius:3px;color:white;text-align:center;padding:3px}.bracket-grid-final{display:grid;grid-template-columns:repeat(4,210px);gap:42px;align-items:center;min-width:960px}.bracket-grid-final>div{display:grid;gap:38px}.bracket-grid-final>div:nth-child(2){padding-top:45px}.bracket-grid-final>div:nth-child(3){padding-top:115px}.bracket-grid-final>div:nth-child(4){padding-top:80px}.bracket-box{position:relative}.bracket-match-title{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.7px;color:var(--amber);margin:0 0 6px 2px}@media(max-width:560px){.match-row.aligned{grid-template-columns:75px 1fr 30px 1fr}.match-row.aligned .score-edit{grid-column:2/4}.match-row.aligned .save{grid-column:2/4}}</style>
+<style>#newMon{background:#fff!important;color:#111!important}#newMon::placeholder{color:#666}.hero-main:after{content:attr(data-season)!important}.player-link{border:0;background:none;color:#f5f3f0;padding:0;font:inherit;font-weight:800;cursor:pointer;text-align:left}.player-link:hover{color:#ff777d;text-decoration:underline}.match-row.aligned{grid-template-columns:145px minmax(115px,1fr) 34px minmax(115px,1fr) 118px 78px}.match-row.aligned .match-player{font-size:12px;min-width:0}.match-row.aligned .match-vs{text-align:center;color:#85838d;font-size:10px;font-weight:800}.bracket-match input{width:36px;background:#0f0f13;border:1px solid #474750;border-radius:3px;color:white;text-align:center;padding:3px}.bracket-grid-final{display:grid;grid-template-columns:repeat(4,210px);gap:42px;align-items:center;min-width:960px}.bracket-grid-final>div{display:grid;gap:38px}.bracket-grid-final>div:nth-child(2){padding-top:45px}.bracket-grid-final>div:nth-child(3){padding-top:115px}.bracket-grid-final>div:nth-child(4){padding-top:80px}.bracket-box{position:relative}.bracket-match-title{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.7px;color:var(--amber);margin:0 0 6px 2px}@media(max-width:560px){.match-row.aligned{grid-template-columns:75px 1fr 30px 1fr}.match-row.aligned .score-edit{grid-column:2/4}.match-row.aligned .save{grid-column:2/4}}
+/* --- Showdown Replay & Match Stats Engine --- */
+.m-replay-bar{display:flex;align-items:center;justify-content:space-between;gap:6px;flex-wrap:wrap;padding:7px 12px;background:rgba(0,0,0,0.28);border-top:1px solid rgba(255,255,255,0.06)}
+.replay-pills-group{display:flex;align-items:center;gap:5px;flex-wrap:wrap}
+.replay-pill{display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border-radius:4px;font:800 11px 'Barlow Condensed',sans-serif;letter-spacing:.4px;text-transform:uppercase;background:#181822;color:#c4c2cc;border:1px solid #323242;cursor:pointer;transition:all .15s ease;user-select:none}
+.replay-pill:hover{transform:translateY(-1px)}
+.replay-pill.game-pill{background:#0f1c2b;color:#7dd3fc;border-color:#1e3a5f}
+.replay-pill.game-pill:hover{background:#172d47;color:#fff;border-color:#38bdf8;box-shadow:0 0 10px rgba(56,189,248,0.3)}
+.replay-pill.stats-pill{background:#241a0e;color:#ffd166;border-color:#523e16}
+.replay-pill.stats-pill:hover{background:#382811;color:#fff;border-color:#ffd166;box-shadow:0 0 10px rgba(255,209,102,0.3)}
+.replay-add-btn{display:inline-flex;align-items:center;gap:3px;padding:2px 7px;border-radius:4px;font:800 10px 'Barlow Condensed',sans-serif;letter-spacing:.4px;text-transform:uppercase;background:rgba(255,255,255,0.04);color:#8e8c95;border:1px dashed #3a3a46;cursor:pointer;transition:all .15s ease}
+.replay-add-btn:hover{color:#fff;border-color:var(--red);background:rgba(255,89,100,0.12)}
+.replay-hub-modal{width:min(1080px,96vw);max-height:94vh;display:flex;flex-direction:column;background:#111116;border:1px solid #2f2f3d;border-radius:12px;overflow:hidden;box-shadow:0 25px 80px rgba(0,0,0,0.85)}
+.replay-tab-bar{display:flex;align-items:center;gap:4px;border-bottom:1px solid #262633;padding:0 18px;background:#16161e;overflow-x:auto}
+.replay-tab-btn{padding:8px 14px;font:800 13px 'Barlow Condensed',sans-serif;letter-spacing:.6px;text-transform:uppercase;border:none;background:transparent;color:#8e8c95;cursor:pointer;border-bottom:2px solid transparent;transition:all .15s ease;white-space:nowrap}
+.replay-tab-btn.active{color:#fff;border-bottom-color:var(--red);background:rgba(255,89,100,0.08)}
+.replay-tab-btn:hover:not(.active){color:#e2e0e8}
+.replay-mvp-card{background:linear-gradient(135deg,rgba(255,209,102,0.12),#14120f);border:1px solid rgba(255,209,102,0.35);border-radius:10px;padding:14px 18px;display:flex;align-items:center;gap:16px;box-shadow:0 4px 20px rgba(0,0,0,0.4),0 0 15px rgba(255,209,102,0.12)}
+.replay-table{width:100%;border-collapse:collapse;font-size:12px}
+.replay-table th{padding:9px 10px;text-align:left;font:800 10px 'Barlow Condensed',sans-serif;letter-spacing:.8px;text-transform:uppercase;color:#8e8c95;border-bottom:1px solid #282836;background:#14141b}
+.replay-table td{padding:8px 10px;border-bottom:1px solid #20202a;vertical-align:middle}
+.replay-table tr:hover td{background:rgba(255,255,255,0.02)}
+.tera-pill{display:inline-flex;align-items:center;gap:3px;padding:2px 6px;border-radius:3px;font:900 9px 'Barlow Condensed',sans-serif;letter-spacing:.5px;text-transform:uppercase;background:linear-gradient(135deg,#7928ca,#ff0080);color:#fff;box-shadow:0 0 6px rgba(255,0,128,0.4)}
+.status-pill-survived{display:inline-block;padding:2px 6px;border-radius:3px;font:800 9px 'Barlow Condensed',sans-serif;text-transform:uppercase;background:#143521;color:#4ade80;border:1px solid #25613c}
+.status-pill-fainted{display:inline-block;padding:2px 6px;border-radius:3px;font:800 9px 'Barlow Condensed',sans-serif;text-transform:uppercase;background:#3b171a;color:#ff8a90;border:1px solid #63252a}
+.move-pill{display:inline-block;background:#1f1f28;border:1px solid #32323e;border-radius:3px;padding:2px 5px;font-size:10px;color:#c4c2cb;margin:1px 2px}
+.replay-dropzone{border:2px dashed #3a3a4c;border-radius:10px;padding:28px 16px;text-align:center;background:#13131a;transition:all .2s ease;cursor:pointer}
+.replay-dropzone.dragover{border-color:var(--red);background:rgba(255,89,100,0.08)}
+@media(max-width:768px){.replay-hub-modal{width:98vw;max-height:98vh}.replay-mvp-card{flex-direction:column;text-align:center}}
+</style>
 <body><div class="shell"><header class="topbar"><div class="brand" onclick="go('Home')"><img src="bellimaka_logo.jpg" class="bellimaka-logo" alt="Bellimaka"><span style="letter-spacing:1px">BELLIMAKA</span></div><nav class="nav" id="nav"></nav><div id="topbarActions" style="display:flex;align-items:center;gap:8px;margin-left:auto"><button class="account" onclick="go('Account')"><span class="mode-dot"></span><span id="accountText">Sign in</span></button></div></header><main class="page" id="app"></main></div><div id="modal"></div>
 <script>
 function esc(s){return String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;')}
@@ -3964,6 +3993,1007 @@ function topScore(i){let t=ongoingT(),m=t.topCutMatches[i],a=document.querySelec
 
 function playerLink(p){return `<button class="player-link" onclick="openProfile('${jsArg(p)}')" onmouseenter="highlightMatches('${jsArg(p)}', true)" onmouseleave="highlightMatches('', false)">${esc(p)}</button>`}
 
+/* ==========================================================================
+   SHOWDOWN REPLAY & MATCH BOX SCORE ENGINE
+   ========================================================================== */
+
+function extractShowdownLogFromHtml(rawHtmlOrLog) {
+  if(!rawHtmlOrLog || typeof rawHtmlOrLog !== 'string') return '';
+  let str = rawHtmlOrLog.trim();
+  let tagRegex = new RegExp('<script\\s+type=["\']text\\/plain["\']\\s+class=["\']battle-log-data["\']>([\\s\\S]*?)<\\/scr' + 'ipt>', 'i');
+  let scriptMatch = str.match(tagRegex);
+  if(scriptMatch && scriptMatch[1]){
+    return scriptMatch[1].trim();
+  }
+  return str;
+}
+
+function buildShowdownReplayHtml(replay) {
+  let title = replay?.title || 'Pokémon Showdown Battle Replay';
+  let log = replay?.log || '';
+  let scOpen = '<' + 'script';
+  let scClose = '<' + '/script>';
+  return `<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>${esc(title)}</title>
+<style>
+html,body {font-family:Verdana, sans-serif;font-size:10pt;margin:0;padding:0;background:#0d0d12;color:#eee;}
+body{padding:10px 0;}
+.battle-log {font-family:Verdana, sans-serif;font-size:10pt;}
+.subtle {color:#60a5fa;}
+.battle-log-inline {border:1px solid #333;background:#15151c;color:#eee;max-width:680px;margin:0 auto 60px;padding-bottom:5px;}
+.replay-wrapper {max-width:1180px;margin:0 auto;padding:0 8px;}
+h1 {color:#f5f3f0;}
+</style>
+</head>
+<body>
+<div class="wrapper replay-wrapper">
+  <input type="hidden" name="replayid" value="${esc(replay?.id || 'battle-replay')}" />
+  <div class="battle"></div>
+  <div class="battle-log"></div>
+  <div class="replay-controls"></div>
+  <div class="replay-controls-2"></div>
+  <h1 style="font-weight:normal;text-align:center;font-size:16px;margin:12px 0 6px">
+    <strong>${esc(title)}</strong>
+  </h1>
+  ${scOpen} type="text/plain" class="battle-log-data">${log}${scClose}
+</div>
+${scOpen} src="https://play.pokemonshowdown.com/js/replay-embed.js">${scClose}
+</body>
+</html>`;
+}
+
+function parseShowdownBattleLog(logText, meta = {}) {
+  if(!logText || typeof logText !== 'string') return null;
+  let lines = logText.split('\n');
+
+  let result = {
+    id: meta.id || '',
+    game: meta.game || 1,
+    format: meta.format || '',
+    player1: '',
+    player2: '',
+    winner: '',
+    totalTurns: 0,
+    pokemon: {},
+    teamPreview: { p1: [], p2: [] },
+    mvp: null
+  };
+
+  let activeSlots = {};
+  let lastAttackerSlot = null;
+  let lastMove = null;
+  let currentTurn = 0;
+
+  for(let rawLine of lines){
+    let line = rawLine.trim();
+    if(!line.startsWith('|')) continue;
+    let parts = line.split('|');
+    let cmd = parts[1];
+
+    if(cmd === 'player'){
+      let side = parts[2];
+      let name = parts[3];
+      if(side === 'p1') result.player1 = name;
+      if(side === 'p2') result.player2 = name;
+    } else if(cmd === 'tier'){
+      result.format = parts[2] || result.format;
+    } else if(cmd === 'uhtml' && parts[2] === 'bestof'){
+      let m = parts[3]?.match(/Game\s+(\d+)/i);
+      if(m) result.game = parseInt(m[1]);
+    } else if(cmd === 'poke'){
+      let side = parts[2];
+      let monName = (parts[3] || '').split(',')[0].trim();
+      if(side && monName && result.teamPreview[side]){
+        if(!result.teamPreview[side].includes(monName)) result.teamPreview[side].push(monName);
+      }
+    } else if(cmd === 'turn'){
+      currentTurn = parseInt(parts[2]) || currentTurn + 1;
+      result.totalTurns = Math.max(result.totalTurns, currentTurn);
+    } else if(cmd === 'win'){
+      result.winner = parts[2] || '';
+    } else if(cmd === 'switch' || cmd === 'drag'){
+      let slot = (parts[2] || '').split(':')[0].trim();
+      let side = slot.slice(0, 2);
+      let monName = (parts[3] || '').split(',')[0].trim();
+      
+      let hpParts = (parts[4] || '').split('/');
+      let curHp = parseFloat(hpParts[0]) || 100;
+      let maxHp = parseFloat(hpParts[1]) || 100;
+
+      activeSlots[slot] = { side, name: monName, curHp, maxHp };
+      let key = `${side}_${monName}`;
+      if(!result.pokemon[key]){
+        result.pokemon[key] = {
+          side,
+          coach: side === 'p1' ? result.player1 : result.player2,
+          name: monName,
+          kills: 0,
+          killedMons: [],
+          damageDealt: 0,
+          damageTaken: 0,
+          hpHealed: 0,
+          tera: null,
+          fainted: false,
+          faintTurn: null,
+          moves: [],
+          brought: true
+        };
+      }
+    } else if(cmd === '-terastallize'){
+      let slot = (parts[2] || '').split(':')[0].trim();
+      let type = (parts[3] || '').trim();
+      if(activeSlots[slot]){
+        let key = `${activeSlots[slot].side}_${activeSlots[slot].name}`;
+        if(result.pokemon[key]) result.pokemon[key].tera = type;
+      }
+    } else if(cmd === 'move'){
+      let slot = (parts[2] || '').split(':')[0].trim();
+      let moveName = (parts[3] || '').trim();
+      lastAttackerSlot = slot;
+      lastMove = moveName;
+      if(activeSlots[slot]){
+        let key = `${activeSlots[slot].side}_${activeSlots[slot].name}`;
+        if(result.pokemon[key] && !result.pokemon[key].moves.includes(moveName)){
+          result.pokemon[key].moves.push(moveName);
+        }
+      }
+    } else if(cmd === '-damage'){
+      let slot = (parts[2] || '').split(':')[0].trim();
+      let hpRaw = parts[3] || '';
+      let fromClause = parts[4] || '';
+
+      if(activeSlots[slot]){
+        let target = activeSlots[slot];
+        let targetKey = `${target.side}_${target.name}`;
+        let prevHp = target.curHp;
+        let newHp = 0;
+        if(hpRaw.includes('fnt')){
+          newHp = 0;
+        } else if(hpRaw.includes('/')){
+          let sp = hpRaw.split('/');
+          newHp = parseFloat(sp[0]) || 0;
+          target.maxHp = parseFloat(sp[1]) || target.maxHp;
+        }
+        let diff = Math.max(0, prevHp - newHp);
+        target.curHp = newHp;
+
+        if(result.pokemon[targetKey]){
+          result.pokemon[targetKey].damageTaken += diff;
+        }
+
+        if(lastAttackerSlot && activeSlots[lastAttackerSlot]){
+          let attacker = activeSlots[lastAttackerSlot];
+          if(attacker.side !== target.side && !fromClause.includes('Recoil') && !fromClause.includes('item:')){
+            let attKey = `${attacker.side}_${attacker.name}`;
+            if(result.pokemon[attKey]){
+              result.pokemon[attKey].damageDealt += diff;
+            }
+          }
+        }
+      }
+    } else if(cmd === '-heal'){
+      let slot = (parts[2] || '').split(':')[0].trim();
+      let hpRaw = parts[3] || '';
+      if(activeSlots[slot]){
+        let target = activeSlots[slot];
+        let targetKey = `${target.side}_${target.name}`;
+        let prevHp = target.curHp;
+        let newHp = prevHp;
+        if(hpRaw.includes('/')){
+          let sp = hpRaw.split('/');
+          newHp = parseFloat(sp[0]) || prevHp;
+        }
+        let gained = Math.max(0, newHp - prevHp);
+        target.curHp = newHp;
+        if(result.pokemon[targetKey]){
+          result.pokemon[targetKey].hpHealed += gained;
+        }
+      }
+    } else if(cmd === 'faint'){
+      let slot = (parts[2] || '').split(':')[0].trim();
+      if(activeSlots[slot]){
+        let target = activeSlots[slot];
+        let targetKey = `${target.side}_${target.name}`;
+        if(result.pokemon[targetKey]){
+          result.pokemon[targetKey].fainted = true;
+          result.pokemon[targetKey].faintTurn = currentTurn;
+        }
+
+        if(lastAttackerSlot && activeSlots[lastAttackerSlot]){
+          let attacker = activeSlots[lastAttackerSlot];
+          let attKey = `${attacker.side}_${attacker.name}`;
+          if(result.pokemon[attKey]){
+            if(attacker.side !== target.side || (lastMove === 'Final Gambit' && attacker.name !== target.name)){
+              result.pokemon[attKey].kills++;
+              result.pokemon[attKey].killedMons.push(target.name);
+            }
+          }
+        }
+      }
+    }
+  }
+
+  let coach1 = meta.coach1 || (meta.match?.a || meta.match?.p1);
+  let coach2 = meta.coach2 || (meta.match?.b || meta.match?.p2);
+
+  for(let key in result.pokemon){
+    let p = result.pokemon[key];
+    if(p.side === 'p1'){
+      p.coach = coach1 || result.player1 || 'Player 1';
+    } else {
+      p.coach = coach2 || result.player2 || 'Player 2';
+    }
+    if(typeof resolvePokemonData === 'function'){
+      let r = resolvePokemonData(p.name);
+      p.sprite = r?.sprite || (typeof getPokemonSpriteUrl === 'function' ? getPokemonSpriteUrl(p.name.toLowerCase().replace(/[^a-z0-9]/g, '')) : '');
+    } else if(typeof getPokemonSpriteUrl === 'function'){
+      p.sprite = getPokemonSpriteUrl(p.name.toLowerCase().replace(/[^a-z0-9]/g, ''));
+    } else {
+      p.sprite = `https://play.pokemonshowdown.com/sprites/home/${encodeURIComponent(p.name.toLowerCase().replace(/[^a-z0-9]/g, ''))}.png`;
+    }
+  }
+
+  let bestScore = -1;
+  let mvpMon = null;
+  for(let key in result.pokemon){
+    let p = result.pokemon[key];
+    let score = (p.kills * 100) + Math.round(p.damageDealt) + (p.fainted ? 0 : 50) + Math.round(p.hpHealed * 0.5);
+    p.impactScore = score;
+    if(score > bestScore){
+      bestScore = score;
+      mvpMon = p;
+    }
+  }
+  result.mvp = mvpMon;
+
+  return result;
+}
+
+function getMatchKey(m, index) {
+  if(!m) return '';
+  if(m.id != null && m.id !== '') return String(m.id);
+  if(m.actualMatchId != null) return 'tc_' + m.actualMatchId;
+  let a = m.a || m.p1 || 'p1';
+  let b = m.b || m.p2 || 'p2';
+  let round = m.round || m.group || 'match';
+  return `${round}_${a}_${b}${index != null ? '_' + index : ''}`.replace(/\s+/g, '_');
+}
+
+function findTournamentMatch(t, matchKey, index) {
+  if(!t) return null;
+  if(index != null && Array.isArray(t.matches) && t.matches[index]){
+    return { match: t.matches[index], isTopCut: false, index: index };
+  }
+  if(Array.isArray(t.matches)){
+    for(let i = 0; i < t.matches.length; i++){
+      let m = t.matches[i];
+      let k = getMatchKey(m, i);
+      if(String(m.id) === String(matchKey) || k === matchKey || `${m.a}_vs_${m.b}` === matchKey || `${m.b}_vs_${m.a}` === matchKey){
+        return { match: m, isTopCut: false, index: i };
+      }
+    }
+  }
+  if(t.bracketManagerData?.match){
+    for(let m of t.bracketManagerData.match){
+      let k = 'tc_' + m.id;
+      if(String(m.id) === String(matchKey) || k === matchKey){
+        t.topCutReplays = t.topCutReplays || {};
+        if(t.topCutReplays[m.id] && (!m.replays || m.replays.length === 0)){
+          m.replays = t.topCutReplays[m.id];
+        }
+        return { match: m, isTopCut: true, tcMatchId: m.id };
+      }
+    }
+  }
+  if(Array.isArray(t.topCutMatches)){
+    for(let i = 0; i < t.topCutMatches.length; i++){
+      let m = t.topCutMatches[i];
+      if(String(m.id) === String(matchKey) || getMatchKey(m, i) === matchKey || `${m.a}_vs_${m.b}` === matchKey){
+        return { match: m, isTopCut: true };
+      }
+    }
+  }
+  return null;
+}
+
+function renderReplayPillsHtml(m, t, matchKey, canManage, isCompact = false) {
+  if(!m) return '';
+  let replays = Array.isArray(m.replays) ? m.replays : [];
+  let hasReplays = replays.length > 0;
+  let tId = t?.id || m.tournamentId || activeT()?.id || '';
+
+  if(!hasReplays && !canManage) return '';
+
+  let pills = replays.map(r => {
+    let gNum = r.game || 1;
+    return `<button class="replay-pill game-pill" onclick="event.stopPropagation();openMatchReplayHubModal('${tId}','${jsArg(matchKey)}',${gNum},'watch')" title="Watch Game ${gNum} Replay">
+      🎮 G${gNum}
+    </button>`;
+  }).join('');
+
+  let boxScorePill = hasReplays ? `
+    <button class="replay-pill stats-pill" onclick="event.stopPropagation();openMatchReplayHubModal('${tId}','${jsArg(matchKey)}',${replays[0]?.game || 1},'stats')" title="View Box Score & Match Stats">
+      📊 Box Score
+    </button>
+  ` : '';
+
+  let addBtn = canManage ? `
+    <button class="replay-add-btn" onclick="event.stopPropagation();openAddReplayModal('${tId}','${jsArg(matchKey)}',${replays.length + 1})" title="Attach or Upload Replay">
+      + Replay
+    </button>
+  ` : '';
+
+  if(isCompact){
+    if(!hasReplays && !canManage) return '';
+    return `<div class="m-bracket-replays" style="display:flex;align-items:center;justify-content:flex-end;gap:4px;padding:4px 8px;background:rgba(0,0,0,0.3);border-top:1px solid rgba(255,255,255,0.06);margin-top:2px">
+      ${pills}
+      ${boxScorePill}
+      ${addBtn}
+    </div>`;
+  }
+
+  if(!hasReplays && canManage){
+    return `<div class="m-replay-bar" style="padding:4px 12px;background:transparent;border-top:none;justify-content:flex-end">
+      ${addBtn}
+    </div>`;
+  }
+
+  return `<div class="m-replay-bar">
+    <div class="replay-pills-group">
+      ${pills}
+      ${boxScorePill}
+    </div>
+    ${addBtn}
+  </div>`;
+}
+
+function openMatchReplayHubModal(tournamentId, matchKey, activeGameNum = 1, activeTab = 'watch') {
+  let t = (tournamentId && tournamentData[tournamentId]) || activeT() || ongoingT();
+  let mInfo = findTournamentMatch(t, matchKey);
+  if(!mInfo || !mInfo.match) return;
+  let m = mInfo.match;
+  let replays = Array.isArray(m.replays) ? m.replays : [];
+
+  if(replays.length === 0){
+    openAddReplayModal(t?.id, matchKey, 1);
+    return;
+  }
+
+  let activeReplay = replays.find(r => r.game === activeGameNum) || replays[0];
+  if(!activeReplay) return;
+  activeGameNum = activeReplay.game || 1;
+
+  let p1 = m.a || m.p1 || 'Player 1';
+  let p2 = m.b || m.p2 || 'Player 2';
+  let s1 = m.as ?? m.s1 ?? '-';
+  let s2 = m.bs ?? m.s2 ?? '-';
+  let isPlayed = (s1 !== '-' && s2 !== '-' && s1 !== '' && s2 !== '');
+  let stageLabel = m.label || m.roundTitle || m.round || m.group || 'Match Replay';
+  let canManage = typeof canManageTournament === 'function' ? canManageTournament(t) : false;
+
+  let stats = activeReplay.stats;
+  if(!stats && activeReplay.log){
+    stats = parseShowdownBattleLog(activeReplay.log, { id: activeReplay.id, game: activeGameNum, match: m, coach1: p1, coach2: p2 });
+    activeReplay.stats = stats;
+  }
+
+  let gamePillsHtml = replays.map(r => {
+    let isActive = r.game === activeGameNum;
+    return `<button class="replay-tab-btn ${isActive ? 'active' : ''}" style="font-size:12px;padding:6px 14px;border-radius:6px;background:${isActive ? 'rgba(56,189,248,0.15)' : 'transparent'};border:1px solid ${isActive ? '#38bdf8' : '#2d2d3c'};color:${isActive ? '#38bdf8' : '#8e8c95'}" onclick="openMatchReplayHubModal('${t?.id}','${jsArg(matchKey)}',${r.game},'${activeTab}')">
+      🎮 Game ${r.game}
+    </button>`;
+  }).join('');
+
+  if(canManage && replays.length < 3){
+    gamePillsHtml += `<button class="btn ghost btn-sm" style="font-size:11px;padding:4px 10px;margin-left:6px" onclick="openAddReplayModal('${t?.id}','${jsArg(matchKey)}',${replays.length + 1})">+ Add Game</button>`;
+  }
+
+  let tabButtonsHtml = `
+    <button class="replay-tab-btn ${activeTab === 'watch' ? 'active' : ''}" onclick="openMatchReplayHubModal('${t?.id}','${jsArg(matchKey)}',${activeGameNum},'watch')">
+      🎬 Watch Replay
+    </button>
+    <button class="replay-tab-btn ${activeTab === 'stats' ? 'active' : ''}" onclick="openMatchReplayHubModal('${t?.id}','${jsArg(matchKey)}',${activeGameNum},'stats')">
+      📊 Box Score & Stats
+    </button>
+    <button class="replay-tab-btn ${activeTab === 'log' ? 'active' : ''}" onclick="openMatchReplayHubModal('${t?.id}','${jsArg(matchKey)}',${activeGameNum},'log')">
+      📜 Battle Log
+    </button>
+  `;
+
+  let contentHtml = '';
+
+  if(activeTab === 'watch'){
+    let replayHtmlDoc = buildShowdownReplayHtml(activeReplay);
+    contentHtml = `
+      <div style="padding:16px;display:flex;flex-direction:column;gap:12px">
+        <div style="position:relative;width:100%;height:620px;border-radius:8px;overflow:hidden;background:#000;box-shadow:0 8px 30px rgba(0,0,0,0.6);border:1px solid #2a2a38">
+          <iframe id="replayEmbedFrame" style="width:100%;height:100%;border:0" sandbox="allow-scripts allow-same-origin" srcdoc="${esc(replayHtmlDoc)}"></iframe>
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;padding:8px 4px">
+          <div style="font-size:11px;color:#8e8c95">
+            Format: <b style="color:#c8c6d2">${esc(stats?.format || activeReplay.format || 'Pokémon Showdown')}</b> · 
+            Turns: <b style="color:#ffd166">${stats?.totalTurns || '?'}</b> · 
+            Winner: <b style="color:#4ade80">${esc(stats?.winner || activeReplay.winner || 'Undetermined')}</b>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px">
+            <button class="btn btn-sm" onclick="downloadReplayHtmlFile('${t?.id}','${jsArg(matchKey)}',${activeGameNum})">
+              ⬇ Download Replay (.html)
+            </button>
+            ${canManage ? `
+              <button class="btn ghost btn-sm" style="color:#ff8a90;border-color:#522227" onclick="if(confirm('Delete Game ${activeGameNum} replay?')){deleteReplayFromMatch('${t?.id}','${jsArg(matchKey)}',${activeGameNum});}">
+                🗑 Delete Game ${activeGameNum}
+              </button>
+            ` : ''}
+          </div>
+        </div>
+      </div>
+    `;
+  } else if(activeTab === 'stats'){
+    contentHtml = renderMatchStatsBoxScoreHtml(stats, p1, p2, t, matchKey, activeGameNum);
+  } else if(activeTab === 'log'){
+    contentHtml = renderMatchBattleLogHtml(activeReplay.log);
+  }
+
+  document.querySelector('#modal').innerHTML = `
+    <div class="modal-wrap" onclick="if(event.target===this)closeModal()">
+      <div class="modal replay-hub-modal" style="padding:0">
+        <div style="padding:16px 20px;background:linear-gradient(90deg, #181822, #101016);border-bottom:1px solid #2a2a38;display:flex;justify-content:space-between;align-items:center;gap:12px">
+          <div>
+            <div class="eyebrow" style="color:var(--red);margin-bottom:2px">
+              ${esc(t?.name || 'Bellimaka League')} · ${esc(stageLabel)} · Game ${activeGameNum}
+            </div>
+            <h2 style="font:800 24px 'Barlow Condensed';margin:0;letter-spacing:.5px">
+              ${esc(p1)} <span style="color:#ff5964;font-size:18px;margin:0 4px">vs</span> ${esc(p2)}
+              ${isPlayed ? `<span style="margin-left:8px;font-size:20px;color:var(--amber)">(${s1} - ${s2})</span>` : ''}
+            </h2>
+          </div>
+          <div style="display:flex;align-items:center;gap:10px">
+            <button class="btn ghost btn-sm" style="padding:4px 10px;font-size:11px" onclick="downloadReplayHtmlFile('${t?.id}','${jsArg(matchKey)}',${activeGameNum})">
+              ⬇ Download .html
+            </button>
+            <button class="close" onclick="closeModal()">×</button>
+          </div>
+        </div>
+
+        <div style="background:#13131a;border-bottom:1px solid #232330;display:flex;justify-content:space-between;align-items:center;padding:8px 20px;flex-wrap:wrap;gap:10px">
+          <div style="display:flex;align-items:center;gap:6px">
+            ${gamePillsHtml}
+          </div>
+          <div class="replay-tab-bar" style="border:none;padding:0;background:transparent">
+            ${tabButtonsHtml}
+          </div>
+        </div>
+
+        <div style="overflow-y:auto;flex:1;max-height:calc(94vh - 150px)">
+          ${contentHtml}
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function renderMatchStatsBoxScoreHtml(stats, p1, p2, t, matchKey, gameNum) {
+  if(!stats || !stats.pokemon) {
+    return `<div class="card empty" style="padding:32px;text-align:center">Battle statistics could not be loaded for Game ${gameNum}.</div>`;
+  }
+
+  let p1Mons = Object.values(stats.pokemon).filter(x => x.side === 'p1');
+  let p2Mons = Object.values(stats.pokemon).filter(x => x.side === 'p2');
+
+  let p1Kills = p1Mons.reduce((s, m) => s + (m.kills || 0), 0);
+  let p2Kills = p2Mons.reduce((s, m) => s + (m.kills || 0), 0);
+  let p1Dmg = p1Mons.reduce((s, m) => s + (m.damageDealt || 0), 0);
+  let p2Dmg = p2Mons.reduce((s, m) => s + (m.damageDealt || 0), 0);
+  let p1Heal = p1Mons.reduce((s, m) => s + (m.hpHealed || 0), 0);
+  let p2Heal = p2Mons.reduce((s, m) => s + (m.hpHealed || 0), 0);
+
+  let p1Coach = p1 || stats.player1 || 'Player 1';
+  let p2Coach = p2 || stats.player2 || 'Player 2';
+  let mvp = stats.mvp;
+
+  function renderTableForSide(coachName, mons, side) {
+    let previewAll = stats.teamPreview?.[side] || [];
+    let benched = previewAll.filter(name => !mons.some(m => m.name.toLowerCase() === name.toLowerCase()));
+
+    return `
+      <div style="background:#121218;border:1px solid #262633;border-radius:10px;overflow:hidden">
+        <div style="padding:10px 16px;background:#171720;border-bottom:1px solid #262633;display:flex;justify-content:space-between;align-items:center">
+          <span style="font:800 16px 'Barlow Condensed';color:#f5f3f0;letter-spacing:.5px">${esc(coachName)}'s Squad</span>
+          <span style="font-size:11px;color:#8e8c95">${mons.length} Brought · ${benched.length} Benched</span>
+        </div>
+        <div style="overflow-x:auto">
+          <table class="replay-table">
+            <thead>
+              <tr>
+                <th style="width:40px"></th>
+                <th>Pokémon</th>
+                <th style="text-align:center">Status</th>
+                <th style="text-align:center">KOs</th>
+                <th style="text-align:right">Dmg Dealt</th>
+                <th style="text-align:right">Dmg Taken</th>
+                <th style="text-align:right">Healed</th>
+                <th>Moves Recorded</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${mons.map(m => {
+                let sprite = m.sprite || (typeof resolvePokemonData === 'function' ? resolvePokemonData(m.name)?.sprite : (typeof getPokemonSpriteUrl === 'function' ? getPokemonSpriteUrl(m.name.toLowerCase()) : ''));
+                return `
+                  <tr>
+                    <td style="text-align:center;padding:4px">
+                      <img src="${sprite}" alt="${esc(m.name)}" style="width:34px;height:34px;object-fit:contain" onerror="handleSpriteError(this)">
+                    </td>
+                    <td>
+                      <div style="font:800 14px 'Barlow Condensed';color:#ffffff;display:flex;align-items:center;gap:6px">
+                        ${esc(m.name)}
+                        ${m.tera ? `<span class="tera-pill">💎 ${esc(m.tera)}</span>` : ''}
+                      </div>
+                      ${m.killedMons && m.killedMons.length > 0 ? `
+                        <div style="font-size:10px;color:#ffd166;margin-top:2px">
+                          KO'd: ${m.killedMons.map(k => esc(k)).join(', ')}
+                        </div>
+                      ` : ''}
+                    </td>
+                    <td style="text-align:center">
+                      ${m.fainted ? `<span class="status-pill-fainted">Fainted (T${m.faintTurn || '?'})</span>` : `<span class="status-pill-survived">Survived</span>`}
+                    </td>
+                    <td style="text-align:center;font:800 16px 'Barlow Condensed';color:${m.kills > 0 ? '#ffd166' : '#7e7c88'}">
+                      ${m.kills > 0 ? `⚔️ ${m.kills}` : '0'}
+                    </td>
+                    <td style="text-align:right;font-weight:700;color:#ff8a90">${Math.round(m.damageDealt)} HP</td>
+                    <td style="text-align:right;color:#8e8c95">${Math.round(m.damageTaken)} HP</td>
+                    <td style="text-align:right;color:#4ade80">${Math.round(m.hpHealed)} HP</td>
+                    <td>
+                      <div style="display:flex;flex-wrap:wrap;gap:2px">
+                        ${(m.moves || []).map(mv => `<span class="move-pill">${esc(mv)}</span>`).join('') || '<span style="color:#666">—</span>'}
+                      </div>
+                    </td>
+                  </tr>
+                `;
+              }).join('')}
+            </tbody>
+          </table>
+        </div>
+        ${benched.length > 0 ? `
+          <div style="padding:8px 16px;background:rgba(0,0,0,0.25);border-top:1px solid #20202c;display:flex;align-items:center;gap:8px;font-size:11px;color:#8e8c95">
+            <span style="font-weight:800;text-transform:uppercase;font-size:10px;color:#777">Benched:</span>
+            <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+              ${benched.map(bName => {
+                let bSprite = typeof resolvePokemonData === 'function' ? resolvePokemonData(bName)?.sprite : (typeof getPokemonSpriteUrl === 'function' ? getPokemonSpriteUrl(bName.toLowerCase()) : '');
+                return `
+                  <span style="display:inline-flex;align-items:center;gap:4px;background:#181822;border:1px solid #2e2e3e;border-radius:4px;padding:2px 6px;color:#bbb">
+                    <img src="${bSprite}" alt="${esc(bName)}" style="width:18px;height:18px;object-fit:contain" onerror="handleSpriteError(this)">
+                    ${esc(bName)}
+                  </span>
+                `;
+              }).join('')}
+            </div>
+          </div>
+        ` : ''}
+      </div>
+    `;
+  }
+
+  return `
+    <div style="padding:18px 20px;display:flex;flex-direction:column;gap:18px">
+      ${mvp ? `
+        <div class="replay-mvp-card">
+          <div style="position:relative;flex:none;text-align:center">
+            <img src="${mvp.sprite}" alt="${esc(mvp.name)}" style="width:72px;height:72px;object-fit:contain;filter:drop-shadow(0 0 10px rgba(255,209,102,0.4))" onerror="handleSpriteError(this)">
+            <span style="position:absolute;bottom:-4px;left:50%;transform:translateX(-50%);background:#ffd166;color:#111;font:900 9px 'Barlow Condensed';padding:1px 6px;border-radius:3px;letter-spacing:1px">MVP</span>
+          </div>
+          <div style="flex:1;min-width:0">
+            <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+              <span style="font:900 24px 'Barlow Condensed';color:#ffffff;letter-spacing:.4px">${esc(mvp.name)}</span>
+              ${mvp.tera ? `<span class="tera-pill">💎 Tera ${esc(mvp.tera)}</span>` : ''}
+              <span style="font-size:11px;color:#8e8c95">Coach: <b style="color:#ffd166">${esc(mvp.coach)}</b></span>
+            </div>
+            <div style="display:flex;gap:18px;margin-top:8px;flex-wrap:wrap;font-size:11px">
+              <div><span style="color:#8e8c95">KOs:</span> <b style="color:#ffd166;font-size:14px">${mvp.kills}</b></div>
+              <div><span style="color:#8e8c95">Damage Dealt:</span> <b style="color:#ff8a90;font-size:14px">${Math.round(mvp.damageDealt)} HP</b></div>
+              <div><span style="color:#8e8c95">Damage Taken:</span> <b style="color:#f5f3f0;font-size:14px">${Math.round(mvp.damageTaken)} HP</b></div>
+              <div><span style="color:#8e8c95">Status:</span> ${mvp.fainted ? '<b style="color:#ff8a90">Fainted</b>' : '<b style="color:#4ade80">Survived</b>'}</div>
+              <div><span style="color:#8e8c95">Impact Score:</span> <b style="color:#38bdf8;font-size:14px">${mvp.impactScore}</b></div>
+            </div>
+            ${mvp.moves && mvp.moves.length > 0 ? `
+              <div style="margin-top:8px;display:flex;gap:4px;flex-wrap:wrap;align-items:center">
+                <span style="font-size:10px;color:#888;font-weight:700">Moves:</span>
+                ${mvp.moves.map(m => `<span class="move-pill">${esc(m)}</span>`).join('')}
+              </div>
+            ` : ''}
+          </div>
+        </div>
+      ` : ''}
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        <div style="background:#13131b;border:1px solid #272736;border-radius:8px;padding:12px 16px">
+          <div style="font:800 16px 'Barlow Condensed';color:#f5f3f0;margin-bottom:8px">${esc(p1Coach)}</div>
+          <div style="display:flex;justify-content:space-between;font-size:11px;color:#8e8c95;padding:4px 0;border-bottom:1px solid #1f1f2a">
+            <span>Total KOs</span> <b style="color:#ffd166;font-size:13px">${p1Kills}</b>
+          </div>
+          <div style="display:flex;justify-content:space-between;font-size:11px;color:#8e8c95;padding:4px 0;border-bottom:1px solid #1f1f2a">
+            <span>Total Damage Dealt</span> <b style="color:#ff8a90;font-size:13px">${Math.round(p1Dmg)} HP</b>
+          </div>
+          <div style="display:flex;justify-content:space-between;font-size:11px;color:#8e8c95;padding:4px 0">
+            <span>Total HP Healed</span> <b style="color:#4ade80;font-size:13px">${Math.round(p1Heal)} HP</b>
+          </div>
+        </div>
+        <div style="background:#13131b;border:1px solid #272736;border-radius:8px;padding:12px 16px">
+          <div style="font:800 16px 'Barlow Condensed';color:#f5f3f0;margin-bottom:8px">${esc(p2Coach)}</div>
+          <div style="display:flex;justify-content:space-between;font-size:11px;color:#8e8c95;padding:4px 0;border-bottom:1px solid #1f1f2a">
+            <span>Total KOs</span> <b style="color:#ffd166;font-size:13px">${p2Kills}</b>
+          </div>
+          <div style="display:flex;justify-content:space-between;font-size:11px;color:#8e8c95;padding:4px 0;border-bottom:1px solid #1f1f2a">
+            <span>Total Damage Dealt</span> <b style="color:#ff8a90;font-size:13px">${Math.round(p2Dmg)} HP</b>
+          </div>
+          <div style="display:flex;justify-content:space-between;font-size:11px;color:#8e8c95;padding:4px 0">
+            <span>Total HP Healed</span> <b style="color:#4ade80;font-size:13px">${Math.round(p2Heal)} HP</b>
+          </div>
+        </div>
+      </div>
+
+      ${renderTableForSide(p1Coach, p1Mons, 'p1')}
+      ${renderTableForSide(p2Coach, p2Mons, 'p2')}
+    </div>
+  `;
+}
+
+function renderMatchBattleLogHtml(rawLog) {
+  if(!rawLog) return '<div class="card empty" style="padding:24px;text-align:center">No battle log data recorded.</div>';
+  let lines = rawLog.split('\n');
+  let formattedRows = [];
+  let curTurn = 0;
+
+  for(let rawLine of lines){
+    let line = rawLine.trim();
+    if(!line.startsWith('|')) continue;
+    let parts = line.split('|');
+    let cmd = parts[1];
+
+    if(cmd === 'turn'){
+      curTurn = parseInt(parts[2]) || curTurn + 1;
+      formattedRows.push(`
+        <div style="margin:12px 0 6px;padding:4px 8px;background:rgba(255,209,102,0.1);border-left:3px solid var(--amber);font:900 13px 'Barlow Condensed';color:var(--amber);letter-spacing:1px;text-transform:uppercase">
+          Turn ${curTurn}
+        </div>
+      `);
+    } else if(cmd === 'move'){
+      let slot = (parts[2] || '').split(':')[0].trim();
+      let mon = (parts[2] || '').split(':')[1]?.trim() || slot;
+      let move = parts[3] || '';
+      let target = (parts[4] || '').split(':')[1]?.trim() || '';
+      formattedRows.push(`
+        <div style="padding:3px 8px;font-size:12px;display:flex;align-items:center;gap:6px">
+          <span style="color:#7dd3fc;font-weight:800">${esc(mon)}</span>
+          <span style="color:#8e8c95">used</span>
+          <span class="move-pill" style="font-weight:800;color:#fff">${esc(move)}</span>
+          ${target ? `<span style="color:#8e8c95">on</span> <span style="color:#ffd166">${esc(target)}</span>` : ''}
+        </div>
+      `);
+    } else if(cmd === '-damage'){
+      let mon = (parts[2] || '').split(':')[1]?.trim() || parts[2];
+      let hp = parts[3] || '';
+      let from = parts[4] || '';
+      formattedRows.push(`
+        <div style="padding:2px 8px 2px 24px;font-size:11px;color:#ff8a90">
+          💢 <b>${esc(mon)}</b> lost health (${esc(hp)})${from ? ` [${esc(from)}]` : ''}
+        </div>
+      `);
+    } else if(cmd === '-heal'){
+      let mon = (parts[2] || '').split(':')[1]?.trim() || parts[2];
+      let hp = parts[3] || '';
+      let from = parts[4] || '';
+      formattedRows.push(`
+        <div style="padding:2px 8px 2px 24px;font-size:11px;color:#4ade80">
+          💚 <b>${esc(mon)}</b> restored HP (${esc(hp)})${from ? ` [${esc(from)}]` : ''}
+        </div>
+      `);
+    } else if(cmd === 'faint'){
+      let mon = (parts[2] || '').split(':')[1]?.trim() || parts[2];
+      formattedRows.push(`
+        <div style="padding:3px 8px 3px 24px;font-size:11px;color:#ff5964;font-weight:800">
+          💀 <b>${esc(mon)}</b> fainted!
+        </div>
+      `);
+    } else if(cmd === '-terastallize'){
+      let mon = (parts[2] || '').split(':')[1]?.trim() || parts[2];
+      let type = parts[3] || '';
+      formattedRows.push(`
+        <div style="padding:3px 8px 3px 24px;font-size:11px;color:#c084fc;font-weight:800">
+          💎 <b>${esc(mon)}</b> Terastallized into the <b>${esc(type)}</b> type!
+        </div>
+      `);
+    } else if(cmd === 'switch' || cmd === 'drag'){
+      let mon = (parts[3] || '').split(',')[0].trim();
+      let slot = (parts[2] || '').split(':')[0].trim();
+      let side = slot.slice(0, 2);
+      formattedRows.push(`
+        <div style="padding:2px 8px;font-size:11px;color:#a4a2af">
+          🔄 <b>${side.toUpperCase()}</b> sent out <b>${esc(mon)}</b>!
+        </div>
+      `);
+    } else if(cmd === 'win'){
+      formattedRows.push(`
+        <div style="margin:16px 0;padding:10px 14px;background:rgba(74,222,128,0.15);border:1px solid #4ade80;border-radius:6px;font:900 16px 'Barlow Condensed';color:#4ade80;text-align:center;letter-spacing:1px">
+          🏆 ${esc(parts[2])} WON THE BATTLE!
+        </div>
+      `);
+    }
+  }
+
+  return `
+    <div style="padding:16px 20px;font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace">
+      <div style="background:#0c0c11;border:1px solid #23232e;border-radius:8px;padding:14px;max-height:560px;overflow-y:auto">
+        ${formattedRows.join('')}
+      </div>
+    </div>
+  `;
+}
+
+var _stagedReplayData = null;
+
+function processRawReplayInput(text, tournamentId, matchKey) {
+  let log = extractShowdownLogFromHtml(text);
+  if(!log || !log.startsWith('|')){
+    let preview = document.querySelector('#addReplayPreviewBox');
+    if(preview){
+      preview.style.display = 'block';
+      preview.innerHTML = `<div style="color:#ff8a90;font-size:12px">⚠️ Could not detect a valid Showdown battle log. Make sure you upload or paste a Showdown replay file (.html) or battle log starting with '|'.</div>`;
+    }
+    let saveBtn = document.querySelector('#addReplaySaveBtn');
+    if(saveBtn){
+      saveBtn.style.opacity = '0.5';
+      saveBtn.style.pointerEvents = 'none';
+    }
+    _stagedReplayData = null;
+    return;
+  }
+
+  let t = (tournamentId && tournamentData[tournamentId]) || activeT() || ongoingT();
+  let mInfo = findTournamentMatch(t, matchKey);
+  let m = mInfo?.match;
+  let p1 = m?.a || m?.p1 || '';
+  let p2 = m?.b || m?.p2 || '';
+
+  let stats = parseShowdownBattleLog(log, { match: m, coach1: p1, coach2: p2 });
+  _stagedReplayData = {
+    log: log,
+    stats: stats,
+    format: stats.format || t?.name || '',
+    winner: stats.winner,
+    totalTurns: stats.totalTurns
+  };
+
+  let preview = document.querySelector('#addReplayPreviewBox');
+  if(preview){
+    preview.style.display = 'block';
+    let mvp = stats.mvp;
+    preview.innerHTML = `
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
+        <span style="font-size:18px">✅</span>
+        <div>
+          <div style="font:800 14px 'Barlow Condensed';color:#4ade80">REPLAY VERIFIED & PARSED</div>
+          <div style="font-size:11px;color:#8e8c95">${esc(stats.format || 'Battle')} · ${stats.totalTurns} Turns · Winner: <b style="color:#f5f3f0">${esc(stats.winner || 'Unknown')}</b></div>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:11px;background:#14141b;padding:8px;border-radius:6px;border:1px solid #282834">
+        <div>
+          <span style="color:#8e8c95">Player 1:</span> <b style="color:#f5f3f0">${esc(stats.player1 || 'p1')}</b>
+          <div style="font-size:10px;color:#aaa;margin-top:2px">${(stats.teamPreview?.p1 || []).join(', ') || '4 Mons'}</div>
+        </div>
+        <div>
+          <span style="color:#8e8c95">Player 2:</span> <b style="color:#f5f3f0">${esc(stats.player2 || 'p2')}</b>
+          <div style="font-size:10px;color:#aaa;margin-top:2px">${(stats.teamPreview?.p2 || []).join(', ') || '4 Mons'}</div>
+        </div>
+      </div>
+      ${mvp ? `
+        <div style="margin-top:8px;font-size:11px;color:#ffd166;display:flex;align-items:center;gap:6px">
+          <span>🌟</span> <span>Calculated Match MVP: <b>${esc(mvp.name)}</b> (${mvp.kills} KOs, ${Math.round(mvp.damageDealt)} Dmg)</span>
+        </div>
+      ` : ''}
+    `;
+  }
+
+  let saveBtn = document.querySelector('#addReplaySaveBtn');
+  if(saveBtn){
+    saveBtn.style.opacity = '1';
+    saveBtn.style.pointerEvents = 'auto';
+  }
+}
+
+function onReplayTextPasted(val, tournamentId, matchKey) {
+  if(!val || !val.trim()) {
+    let preview = document.querySelector('#addReplayPreviewBox');
+    if(preview) preview.style.display = 'none';
+    let saveBtn = document.querySelector('#addReplaySaveBtn');
+    if(saveBtn){
+      saveBtn.style.opacity = '0.5';
+      saveBtn.style.pointerEvents = 'none';
+    }
+    _stagedReplayData = null;
+    return;
+  }
+  processRawReplayInput(val, tournamentId, matchKey);
+}
+
+function handleReplayFileDrop(event, tournamentId, matchKey) {
+  let file = event.dataTransfer?.files?.[0];
+  if(!file) return;
+  let reader = new FileReader();
+  reader.onload = e => {
+    let text = e.target.result;
+    let inputEl = document.querySelector('#addReplayTextInput');
+    if(inputEl) inputEl.value = text.slice(0, 500) + '... (File Loaded)';
+    processRawReplayInput(text, tournamentId, matchKey);
+  };
+  reader.readAsText(file);
+}
+
+function handleReplayFileInput(event, tournamentId, matchKey) {
+  let file = event.target?.files?.[0];
+  if(!file) return;
+  let reader = new FileReader();
+  reader.onload = e => {
+    let text = e.target.result;
+    let inputEl = document.querySelector('#addReplayTextInput');
+    if(inputEl) inputEl.value = text.slice(0, 500) + '... (File Loaded)';
+    processRawReplayInput(text, tournamentId, matchKey);
+  };
+  reader.readAsText(file);
+}
+
+function confirmSaveReplay(tournamentId, matchKey) {
+  if(!_stagedReplayData) return;
+  let gameRadio = document.querySelector('input[name="addReplayGameNum"]:checked');
+  let gameNum = gameRadio ? parseInt(gameRadio.value) : 1;
+  saveReplayToMatch(tournamentId, matchKey, gameNum, _stagedReplayData);
+  _stagedReplayData = null;
+}
+
+function saveReplayToMatch(tournamentId, matchKey, gameNum, replayData) {
+  let t = (tournamentId && tournamentData[tournamentId]) || activeT() || ongoingT();
+  let mInfo = findTournamentMatch(t, matchKey);
+  if(!mInfo || !mInfo.match) {
+    alert('Match could not be found.');
+    return;
+  }
+  let m = mInfo.match;
+  m.replays = Array.isArray(m.replays) ? m.replays : [];
+
+  m.replays = m.replays.filter(r => r.game !== gameNum);
+
+  m.replays.push({
+    id: replayData.id || `replay_${Date.now()}_g${gameNum}`,
+    game: gameNum,
+    title: replayData.title || `Game ${gameNum}: ${m.a || m.p1} vs ${m.b || m.p2}`,
+    format: replayData.format || t.name || '',
+    date: replayData.date || new Date().toISOString().split('T')[0],
+    log: replayData.log,
+    stats: replayData.stats
+  });
+
+  m.replays.sort((a,b) => a.game - b.game);
+
+  if(mInfo.isTopCut && mInfo.tcMatchId != null){
+    t.topCutReplays = t.topCutReplays || {};
+    t.topCutReplays[mInfo.tcMatchId] = m.replays;
+  }
+
+  persistLeague();
+
+  if(typeof showDraftToast === 'function'){
+    showDraftToast(`🎮 Saved Game ${gameNum} Replay & Stats!`);
+  }
+
+  openMatchReplayHubModal(t.id, matchKey, gameNum, 'watch');
+  render();
+}
+
+function deleteReplayFromMatch(tournamentId, matchKey, gameNum) {
+  let t = (tournamentId && tournamentData[tournamentId]) || activeT() || ongoingT();
+  let mInfo = findTournamentMatch(t, matchKey);
+  if(!mInfo || !mInfo.match) return;
+  let m = mInfo.match;
+  if(Array.isArray(m.replays)){
+    m.replays = m.replays.filter(r => r.game !== gameNum);
+  }
+  if(mInfo.isTopCut && mInfo.tcMatchId != null && t.topCutReplays){
+    t.topCutReplays[mInfo.tcMatchId] = m.replays;
+  }
+  persistLeague();
+  if(typeof showDraftToast === 'function'){
+    showDraftToast(`🗑 Deleted Game ${gameNum} Replay.`);
+  }
+  if(m.replays?.length > 0){
+    openMatchReplayHubModal(t.id, matchKey, m.replays[0].game, 'watch');
+  } else {
+    closeModal();
+  }
+  render();
+}
+
+function downloadReplayHtmlFile(tournamentId, matchKey, gameNum) {
+  let t = (tournamentId && tournamentData[tournamentId]) || activeT() || ongoingT();
+  let mInfo = findTournamentMatch(t, matchKey);
+  if(!mInfo || !mInfo.match) return;
+  let replay = mInfo.match.replays?.find(r => r.game === gameNum) || mInfo.match.replays?.[0];
+  if(!replay) return;
+  let html = buildShowdownReplayHtml(replay);
+  let blob = new Blob([html], { type: 'text/html' });
+  let url = URL.createObjectURL(blob);
+  let a = document.createElement('a');
+  let cleanTitle = (replay.title || `Replay_G${replay.game}`).replace(/[^a-zA-Z0-9_\-]/g, '_');
+  a.download = `${cleanTitle}.html`;
+  a.href = url;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 5000);
+}
+
+function openAddReplayModal(tournamentId, matchKey, defaultGame = 1) {
+  let t = (tournamentId && tournamentData[tournamentId]) || activeT() || ongoingT();
+  let mInfo = findTournamentMatch(t, matchKey);
+  if(!mInfo || !mInfo.match) return;
+  let m = mInfo.match;
+  let p1 = m.a || m.p1 || 'Player 1';
+  let p2 = m.b || m.p2 || 'Player 2';
+  let replays = Array.isArray(m.replays) ? m.replays : [];
+
+  document.querySelector('#modal').innerHTML = `
+    <div class="modal-wrap" onclick="if(event.target===this)closeModal()">
+      <div class="modal" style="max-width:580px;background:#13131a;border:1px solid #2d2d3c;border-radius:12px;padding:24px">
+        <div class="modal-head">
+          <div>
+            <div class="eyebrow" style="color:var(--red)">Replay Manager · ${esc(t?.name || '')}</div>
+            <h2 style="font:800 24px 'Barlow Condensed';margin:2px 0 0">${esc(p1)} vs ${esc(p2)}</h2>
+          </div>
+          <button class="close" onclick="closeModal()">×</button>
+        </div>
+
+        <div style="margin-top:16px;display:flex;gap:12px;align-items:center;flex-wrap:wrap">
+          <label style="font:800 12px 'Barlow Condensed';letter-spacing:.5px;color:#aaa">Select Game Number:</label>
+          <div style="display:flex;gap:8px">
+            ${[1, 2, 3].map(g => `
+              <label style="display:inline-flex;align-items:center;gap:5px;font-size:12px;color:#eee;cursor:pointer">
+                <input type="radio" name="addReplayGameNum" value="${g}" ${g === defaultGame ? 'checked' : ''}>
+                Game ${g} ${replays.some(r => r.game === g) ? '<span style="color:#ff8a90;font-size:10px">(overwrites)</span>' : ''}
+              </label>
+            `).join('')}
+          </div>
+        </div>
+
+        <div id="replayDropZone" class="replay-dropzone" style="margin-top:16px" ondragover="event.preventDefault();this.classList.add('dragover')" ondragleave="this.classList.remove('dragover')" ondrop="event.preventDefault();this.classList.remove('dragover');handleReplayFileDrop(event,'${t?.id}','${jsArg(matchKey)}')">
+          <div style="font-size:32px;margin-bottom:8px">📁</div>
+          <div style="font:800 15px 'Barlow Condensed';color:#f5f3f0;letter-spacing:.4px">DRAG & DROP SHOWDOWN REPLAY (.HTML) HERE</div>
+          <div style="font-size:11px;color:#8e8c95;margin-top:4px">or click below to browse your computer</div>
+          <label class="btn ghost btn-sm" style="display:inline-block;margin-top:12px;cursor:pointer">
+            Browse File
+            <input type="file" accept=".html,.txt" style="display:none" onchange="handleReplayFileInput(event,'${t?.id}','${jsArg(matchKey)}')">
+          </label>
+        </div>
+
+        <div class="field" style="margin-top:16px">
+          <label style="font:800 11px 'Barlow Condensed';letter-spacing:.5px;color:#8e8c95;text-transform:uppercase">Or Paste Showdown Battle Log / HTML Text</label>
+          <textarea id="addReplayTextInput" rows="4" placeholder="Paste full Showdown replay HTML or raw |j|☆battle log text here..." style="font-family:monospace;font-size:11px" oninput="onReplayTextPasted(this.value, '${t?.id}', '${jsArg(matchKey)}')"></textarea>
+        </div>
+
+        <div id="addReplayPreviewBox" style="display:none;margin-top:16px;background:#0d0d12;border:1px solid #282836;border-radius:8px;padding:12px"></div>
+
+        <div class="creator-actions" style="margin-top:20px;display:flex;justify-content:flex-end;gap:10px">
+          <button class="btn ghost" onclick="closeModal()">Cancel</button>
+          <button id="addReplaySaveBtn" class="btn" style="opacity:0.5;pointer-events:none" onclick="confirmSaveReplay('${t?.id}','${jsArg(matchKey)}')">
+            Save Replay
+          </button>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
 function matchCard(m,latest=false){
   let p1 = m.a || m.p1;
   let p2 = m.b || m.p2;
@@ -4122,6 +5152,7 @@ function matchCard(m,latest=false){
           <div style="font:800 24px 'Barlow Condensed';color:${p2Won ? theme.winScoreColor : '#474652'};flex:none;min-width:26px;text-align:right;text-shadow:${p2Won ? `0 0 8px ${theme.winScoreColor}40` : 'none'}">${s2}</div>
         </div>
       </div>
+      ${renderReplayPillsHtml(m, t, getMatchKey(m), typeof canManageTournament === 'function' ? canManageTournament(t) : false)}
     </article>
   `;
 }
@@ -6724,6 +7755,7 @@ function topCutSection(t, preview){
       </div>
       ${renderMatchSlot(m.p1, m.p1Seed, m.s1, p1Done, p1Lost, m.originP1)}
       ${renderMatchSlot(m.p2, m.p2Seed, m.s2, p2Done, p2Lost, m.originP2)}
+      ${renderReplayPillsHtml(m, t, getMatchKey(m), isModEditable, true)}
     </div>`;
   }
 
@@ -12090,6 +13122,7 @@ function renderMatchRow(m, i, t){
         `}
       </div>
     </div>
+    ${renderReplayPillsHtml(m, t, getMatchKey(m, i), editable)}
     ${editable ? `
       <div class="m-card-foot">
         ${m.custom ? `<button class="btn ghost btn-sm" style="color:#ff969c;padding:3px 8px;font-size:10px" onclick="removeCustom(${i})">Remove</button>` : ''}
@@ -15503,6 +16536,7 @@ function renderAccountMatchHistory(mine, matchHistory){
                         <span class="avatar mini" style="background-image:${oppFace};background-size:cover;background-position:center;width:30px;height:30px;font-size:11px;border-radius:50%;border:${oppAvatarBorder};display:grid;place-items:center;flex:none">${oppLetter}</span>
                       </div>
                     </div>
+                    ${renderReplayPillsHtml(m.rawMatch, tournamentData[m.tournamentId], m.id, false)}
                   </div>
                 `;
               }).join('')}
