@@ -1810,7 +1810,17 @@ details[open] > .past-tourney-summary .past-chevron{transform:rotate(180deg);col
 <style>.col-swap-btn{background:#22222d;border:1px solid #3e3e52;border-radius:3px;color:#a4a2af;font-size:8px;line-height:1;padding:2px 4px;cursor:pointer;transition:all .15s ease}.col-swap-btn:hover{background:var(--red);color:#fff;border-color:var(--red)}.col-swap-group{display:inline-flex;align-items:center;gap:2px;margin-left:4px}</style>
 <style>#newMon{background:#fff!important;color:#111!important}#newMon::placeholder{color:#666}.hero-main:after{content:attr(data-season)!important}.player-link{border:0;background:none;color:#f5f3f0;padding:0;font:inherit;font-weight:800;cursor:pointer;text-align:left}.player-link:hover{color:#ff777d;text-decoration:underline}.match-row.aligned{grid-template-columns:145px minmax(115px,1fr) 34px minmax(115px,1fr) 118px 78px}.match-row.aligned .match-player{font-size:12px;min-width:0}.match-row.aligned .match-vs{text-align:center;color:#85838d;font-size:10px;font-weight:800}.bracket-match input{width:36px;background:#0f0f13;border:1px solid #474750;border-radius:3px;color:white;text-align:center;padding:3px}.bracket-grid-final{display:grid;grid-template-columns:repeat(4,210px);gap:42px;align-items:center;min-width:960px}.bracket-grid-final>div{display:grid;gap:38px}.bracket-grid-final>div:nth-child(2){padding-top:45px}.bracket-grid-final>div:nth-child(3){padding-top:115px}.bracket-grid-final>div:nth-child(4){padding-top:80px}.bracket-box{position:relative}.bracket-match-title{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.7px;color:var(--amber);margin:0 0 6px 2px}@media(max-width:560px){.match-row.aligned{grid-template-columns:75px 1fr 30px 1fr}.match-row.aligned .score-edit{grid-column:2/4}.match-row.aligned .save{grid-column:2/4}}
 /* --- Showdown Replay & Match Stats Engine --- */
-.m-replay-bar{display:flex;align-items:center;justify-content:space-between;gap:6px;flex-wrap:wrap;padding:7px 12px;background:rgba(0,0,0,0.28);border-top:1px solid rgba(255,255,255,0.06)}
+.m-replay-bar{display:flex;align-items:center;justify-content:space-between;gap:6px;padding:4px 10px;background:rgba(0,0,0,0.22);border-top:1px solid rgba(255,255,255,0.04)}
+.m-replay-bar.empty-replays{padding:3px 8px;background:transparent;border-top:none;justify-content:flex-end}
+.replay-yt-group{display:inline-flex;align-items:center;gap:4px}
+.replay-yt-btn{display:inline-flex;align-items:center;justify-content:center;gap:4px;height:20px;padding:0 7px;border-radius:4px;font:800 11px 'Barlow Condensed',sans-serif;letter-spacing:.3px;background:#1e1e27;color:#9c9aa8;border:1px solid #303040;cursor:pointer;transition:all .15s ease;user-select:none;line-height:1}
+.replay-yt-btn:hover{background:#282836;color:#fff;border-color:#4a4a62;transform:translateY(-1px);box-shadow:0 2px 8px rgba(0,0,0,0.4)}
+.replay-yt-btn svg{flex-shrink:0;color:inherit}
+.replay-yt-btn.stats-btn{padding:0 6px}
+.replay-mini-add-btn{display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:4px;background:#161620;color:#7b7987;border:1px solid #2a2a38;cursor:pointer;transition:all .15s ease;flex-shrink:0;padding:0}
+.replay-mini-add-btn:hover{background:rgba(239,48,56,0.16);color:#ff8a90;border-color:rgba(239,48,56,0.5);transform:translateY(-1px)}
+.replay-mini-add-btn.no-replays{background:rgba(255,255,255,0.03);border-color:#2e2e3e;color:#8c8a98}
+.replay-mini-add-btn.no-replays:hover{background:rgba(239,48,56,0.2);border-color:var(--red);color:#fff}
 .replay-pills-group{display:flex;align-items:center;gap:5px;flex-wrap:wrap}
 .replay-pill{display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border-radius:4px;font:800 11px 'Barlow Condensed',sans-serif;letter-spacing:.4px;text-transform:uppercase;background:#181822;color:#c4c2cc;border:1px solid #323242;cursor:pointer;transition:all .15s ease;user-select:none}
 .replay-pill:hover{transform:translateY(-1px)}
@@ -4530,7 +4540,7 @@ function canManageMatchReplays(t, m) {
 
 function handleMatchCardReplayClick(e, tId, matchKey, hasReplays) {
   if(!e || !e.target) return;
-  if(e.target.closest('input, button, select, a, .player-link, .replay-pill, .replay-add-btn')) return;
+  if(e.target.closest('input, button, select, a, .player-link, .replay-pill, .replay-add-btn, .replay-yt-btn, .replay-mini-add-btn')) return;
   if(hasReplays) {
     openMatchReplayHubModal(tId, matchKey, 1, 'watch');
   } else {
@@ -4540,54 +4550,60 @@ function handleMatchCardReplayClick(e, tId, matchKey, hasReplays) {
 
 function renderReplayPillsHtml(m, t, matchKey, canManage, isCompact = false) {
   if(!m) return '';
-  let replays = Array.isArray(m.replays) ? m.replays : [];
+  let replays = (Array.isArray(m.replays) && m.replays.length)
+    ? m.replays
+    : ((t?.topCutReplays && (t.topCutReplays[matchKey] || t.topCutReplays[m.id] || t.topCutReplays[m.actualMatchId])) || []);
   let hasReplays = replays.length > 0;
   let tId = t?.id || m.tournamentId || activeT()?.id || '';
   if(canManage == null) canManage = canManageMatchReplays(t, m);
 
   if(!hasReplays && !canManage) return '';
 
-  let pills = replays.map(r => {
+  let isUnscored = (m.as === '' || m.as == null || m.bs === '' || m.bs == null);
+  let addBtnTitle = hasReplays
+    ? 'Add next game replay'
+    : (isUnscored ? 'Upload Showdown replay to verify & auto-report score' : 'Attach Pokémon Showdown Replay');
+
+  let addBtn = canManage ? `
+    <button class="replay-mini-add-btn ${!hasReplays ? 'no-replays' : ''}" onclick="event.stopPropagation();openAddReplayModal('${tId}','${jsArg(matchKey)}',${replays.length + 1})" title="${esc(addBtnTitle)}" aria-label="Add replay">
+      <svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+    </button>
+  ` : '';
+
+  if(!hasReplays){
+    if(isCompact){
+      return `<div class="m-bracket-replays compact-empty" style="display:flex;align-items:center;justify-content:flex-end;padding:2px 6px">${addBtn}</div>`;
+    }
+    return `<div class="m-replay-bar empty-replays">${addBtn}</div>`;
+  }
+
+  let playButtons = replays.map(r => {
     let gNum = r.game || 1;
-    return `<button class="replay-pill game-pill" onclick="event.stopPropagation();openMatchReplayHubModal('${tId}','${jsArg(matchKey)}',${gNum},'watch')" title="Watch Game ${gNum} Replay">
-      🎮 G${gNum}
+    let label = replays.length > 1 ? `${gNum}` : '';
+    return `<button class="replay-yt-btn" onclick="event.stopPropagation();openMatchReplayHubModal('${tId}','${jsArg(matchKey)}',${gNum},'watch')" title="Watch Game ${gNum} Replay">
+      <svg viewBox="0 0 24 24" width="9" height="9" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+      ${label ? `<span class="yt-gnum">${label}</span>` : ''}
     </button>`;
   }).join('');
 
-  let boxScorePill = hasReplays ? `
-    <button class="replay-pill stats-pill" onclick="event.stopPropagation();openMatchReplayHubModal('${tId}','${jsArg(matchKey)}',${replays[0]?.game || 1},'stats')" title="View Box Score & Match Stats">
-      📊 Box Score
+  let boxScoreBtn = `
+    <button class="replay-yt-btn stats-btn" onclick="event.stopPropagation();openMatchReplayHubModal('${tId}','${jsArg(matchKey)}',${replays[0]?.game || 1},'stats')" title="View Box Score & Match Stats">
+      <svg viewBox="0 0 24 24" width="9" height="9" fill="currentColor"><path d="M5 9.2h3V19H5zM10.6 5h2.8v14h-2.8zm5.6 8H19v6h-2.8z"/></svg>
     </button>
-  ` : '';
-
-  let isUnscored = (m.as === '' || m.as == null || m.bs === '' || m.bs == null);
-  let addBtnText = hasReplays ? '＋ Replay' : (isUnscored ? '＋ Add Replay & Report' : '＋ Add Replay');
-  let addBtnTitle = hasReplays ? 'Add next game replay' : (isUnscored ? 'Upload Showdown replay to verify & auto-report score' : 'Attach Pokémon Showdown Replay');
-  let addBtn = canManage ? `
-    <button class="replay-add-btn ${!hasReplays ? 'no-replays' : ''}" onclick="event.stopPropagation();openAddReplayModal('${tId}','${jsArg(matchKey)}',${replays.length + 1})" title="${esc(addBtnTitle)}">
-      ${addBtnText}
-    </button>
-  ` : '';
+  `;
 
   if(isCompact){
-    if(!hasReplays && !canManage) return '';
-    return `<div class="m-bracket-replays" style="display:flex;align-items:center;justify-content:flex-end;gap:4px;padding:4px 8px;background:rgba(0,0,0,0.3);border-top:1px solid rgba(255,255,255,0.06);margin-top:2px">
-      ${pills}
-      ${boxScorePill}
-      ${addBtn}
-    </div>`;
-  }
-
-  if(!hasReplays && canManage){
-    return `<div class="m-replay-bar empty-replays" style="padding:4px 12px;background:transparent;border-top:none;justify-content:flex-end">
+    return `<div class="m-bracket-replays" style="display:flex;align-items:center;justify-content:flex-end;gap:3px;padding:2px 6px;background:rgba(0,0,0,0.25);border-top:1px solid rgba(255,255,255,0.04);margin-top:2px">
+      ${playButtons}
+      ${boxScoreBtn}
       ${addBtn}
     </div>`;
   }
 
   return `<div class="m-replay-bar">
-    <div class="replay-pills-group">
-      ${pills}
-      ${boxScorePill}
+    <div class="replay-yt-group">
+      ${playButtons}
+      ${boxScoreBtn}
     </div>
     ${addBtn}
   </div>`;
@@ -5033,6 +5049,97 @@ function renderMatchBattleLogHtml(rawLog) {
   `;
 }
 
+function validateReplayShowdownParticipants(t, m, stats, isMod = false) {
+  if(isMod) {
+    return { valid: true, isMod: true, reason: 'Staff permissions active' };
+  }
+  if(!m || !stats) {
+    return { valid: false, reason: 'Match or battle log data missing' };
+  }
+
+  let coachA = m.a || m.p1 || '';
+  let coachB = m.b || m.p2 || '';
+
+  if(!coachA || !coachB || coachA === 'BYE' || coachB === 'BYE') {
+    return { valid: false, reason: 'Invalid match coaches' };
+  }
+
+  let norm = s => String(s || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+
+  let getCoachValidShowdownUsers = coach => {
+    let list = [];
+    let prof = profiles[coach];
+    if(prof?.showdownUser) {
+      list.push(...prof.showdownUser.split(',').map(norm).filter(Boolean));
+    }
+    if(Array.isArray(prof?.showdownUsernames)) {
+      list.push(...prof.showdownUsernames.map(norm).filter(Boolean));
+    }
+    let cNorm = norm(coach);
+    if(cNorm) list.push(cNorm);
+    if(typeof accountForPlayer === 'function') {
+      let acc = norm(accountForPlayer(coach));
+      if(acc) list.push(acc);
+    }
+    return Array.from(new Set(list));
+  };
+
+  let validA = getCoachValidShowdownUsers(coachA);
+  let validB = getCoachValidShowdownUsers(coachB);
+
+  let sd1 = norm(stats.player1);
+  let sd2 = norm(stats.player2);
+
+  if(!sd1 || !sd2) {
+    return { valid: false, reason: 'Could not extract player usernames from Showdown battle log.' };
+  }
+
+  let matchesUser = (sdUser, validList) => {
+    if(!sdUser || !validList.length) return false;
+    return validList.includes(sdUser) || validList.some(u => sdUser === u || sdUser.includes(u) || u.includes(sdUser));
+  };
+
+  let normalMatch = matchesUser(sd1, validA) && matchesUser(sd2, validB);
+  let invertedMatch = matchesUser(sd1, validB) && matchesUser(sd2, validA);
+
+  if(normalMatch || invertedMatch) {
+    return {
+      valid: true,
+      inverted: invertedMatch,
+      coach1: normalMatch ? coachA : coachB,
+      coach2: normalMatch ? coachB : coachA,
+      coachA: coachA,
+      coachB: coachB,
+      sd1: stats.player1,
+      sd2: stats.player2
+    };
+  }
+
+  // Verification failed
+  let hasAUser = Boolean(profiles[coachA]?.showdownUser || (profiles[coachA]?.showdownUsernames && profiles[coachA].showdownUsernames.length));
+  let hasBUser = Boolean(profiles[coachB]?.showdownUser || (profiles[coachB]?.showdownUsernames && profiles[coachB].showdownUsernames.length));
+
+  let missingCoach = [];
+  if(!hasAUser && !matchesUser(sd1, validA) && !matchesUser(sd2, validA)) missingCoach.push(coachA);
+  if(!hasBUser && !matchesUser(sd1, validB) && !matchesUser(sd2, validB)) missingCoach.push(coachB);
+
+  let reason = '';
+  if(missingCoach.length > 0) {
+    reason = `Showdown Username Required: ${missingCoach.join(' and ')} must have a Pokémon Showdown username linked to their profile to verify and report match replays. Please click '✎' on their profile card to link it, or ask a tournament director/moderator to assist.`;
+  } else {
+    reason = `Showdown battle players ('${stats.player1}' vs '${stats.player2}') do not match scheduled tournament participants ('${coachA}' vs '${coachB}'). Only matches played between the scheduled coaches can be submitted.`;
+  }
+
+  return {
+    valid: false,
+    reason: reason,
+    coachA: coachA,
+    coachB: coachB,
+    sd1: stats.player1,
+    sd2: stats.player2
+  };
+}
+
 var _stagedReplayData = null;
 
 function processRawReplayInput(text, tournamentId, matchKey) {
@@ -5045,7 +5152,7 @@ function processRawReplayInput(text, tournamentId, matchKey) {
     }
     let saveBtn = document.querySelector('#addReplaySaveBtn');
     if(saveBtn){
-      saveBtn.style.opacity = '0.5';
+      saveBtn.style.opacity = '0.4';
       saveBtn.style.pointerEvents = 'none';
     }
     _stagedReplayData = null;
@@ -5059,6 +5166,38 @@ function processRawReplayInput(text, tournamentId, matchKey) {
   let p2 = m?.b || m?.p2 || '';
 
   let stats = parseShowdownBattleLog(log, { match: m, coach1: p1, coach2: p2 });
+
+  // Strict verification check for participants
+  let isMod = Boolean(moderator || canManageTournament(t));
+  let valCheck = validateReplayShowdownParticipants(t, m, stats, isMod);
+
+  if(!valCheck.valid){
+    let preview = document.querySelector('#addReplayPreviewBox');
+    if(preview){
+      preview.style.display = 'block';
+      preview.innerHTML = `
+        <div style="background:rgba(239,48,56,0.12);border:1px solid #ef3038;border-radius:8px;padding:12px;margin-bottom:8px">
+          <div style="display:flex;align-items:center;gap:8px;font:900 13px 'Barlow Condensed';color:#ff8a90;letter-spacing:.5px;text-transform:uppercase">
+            <span>⛔</span> STRICT VERIFICATION FAILED: PARTICIPANTS DO NOT MATCH
+          </div>
+          <div style="font-size:12px;color:#fecdd3;margin-top:6px;line-height:1.5">
+            ${esc(valCheck.reason)}
+          </div>
+          <div style="font-size:11px;color:#a4a2af;margin-top:8px;padding-top:6px;border-top:1px solid rgba(255,255,255,0.08)">
+            Replay Players: <b style="color:#eee">${esc(stats.player1)}</b> vs <b style="color:#eee">${esc(stats.player2)}</b> &nbsp;·&nbsp; Scheduled Match: <b style="color:#eee">${esc(p1)}</b> vs <b style="color:#eee">${esc(p2)}</b>
+          </div>
+        </div>
+      `;
+    }
+    let saveBtn = document.querySelector('#addReplaySaveBtn');
+    if(saveBtn){
+      saveBtn.style.opacity = '0.35';
+      saveBtn.style.pointerEvents = 'none';
+    }
+    _stagedReplayData = null;
+    return;
+  }
+
   _stagedReplayData = {
     log: log,
     stats: stats,
@@ -5088,7 +5227,18 @@ function processRawReplayInput(text, tournamentId, matchKey) {
   if(preview){
     preview.style.display = 'block';
     let mvp = stats.mvp;
+    let staffBanner = valCheck.isMod ? `
+      <div style="background:rgba(255,209,102,0.1);border:1px solid rgba(255,209,102,0.3);border-radius:6px;padding:6px 10px;margin-bottom:10px;font-size:11px;color:#ffd166;display:flex;align-items:center;gap:6px">
+        <span>🛡️</span> <b>Tournament Staff Override:</b> Username matching check bypassed.
+      </div>
+    ` : `
+      <div style="background:rgba(74,222,128,0.1);border:1px solid rgba(74,222,128,0.3);border-radius:6px;padding:6px 10px;margin-bottom:10px;font-size:11px;color:#4ade80;display:flex;align-items:center;gap:6px">
+        <span>✅</span> <b>Strict Verification Passed:</b> Showdown players match tournament participants (${esc(p1)} vs ${esc(p2)}).
+      </div>
+    `;
+
     preview.innerHTML = `
+      ${staffBanner}
       <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
         <span style="font-size:18px">✅</span>
         <div>
@@ -5193,6 +5343,15 @@ function handleReplayFileInput(event, tournamentId, matchKey) {
 
 function confirmSaveReplay(tournamentId, matchKey) {
   if(!_stagedReplayData) return;
+  let t = (tournamentId && tournamentData[tournamentId]) || activeT() || ongoingT();
+  let mInfo = findTournamentMatch(t, matchKey);
+  let m = mInfo?.match;
+  let isMod = Boolean(moderator || canManageTournament(t));
+  let valCheck = validateReplayShowdownParticipants(t, m, _stagedReplayData.stats, isMod);
+  if(!valCheck.valid){
+    alert('Strict Replay Verification Failed:\n\n' + valCheck.reason);
+    return;
+  }
   let gameRadio = document.querySelector('input[name="addReplayGameNum"]:checked');
   let gameNum = gameRadio ? parseInt(gameRadio.value) : 1;
   let finalizeCheckbox = document.querySelector('#finalizeAsSingleGame');
@@ -5209,6 +5368,16 @@ function saveReplayToMatch(tournamentId, matchKey, gameNum, replayData, finalize
     return;
   }
   let m = mInfo.match;
+
+  let isMod = Boolean(moderator || canManageTournament(t));
+  if(!isMod && replayData.stats){
+    let valCheck = validateReplayShowdownParticipants(t, m, replayData.stats, false);
+    if(!valCheck.valid){
+      alert('Strict Replay Verification Failed: ' + valCheck.reason);
+      return;
+    }
+  }
+
   m.replays = Array.isArray(m.replays) ? m.replays : [];
 
   m.replays = m.replays.filter(r => r.game !== gameNum);
@@ -5359,6 +5528,9 @@ function openAddReplayModal(tournamentId, matchKey, defaultGame = 1) {
   let p1 = m.a || m.p1 || 'Player 1';
   let p2 = m.b || m.p2 || 'Player 2';
   let replays = Array.isArray(m.replays) ? m.replays : [];
+  let isMod = Boolean(moderator || canManageTournament(t));
+  let p1HasSd = Boolean(profiles[p1]?.showdownUser || (profiles[p1]?.showdownUsernames && profiles[p1].showdownUsernames.length));
+  let p2HasSd = Boolean(profiles[p2]?.showdownUser || (profiles[p2]?.showdownUsernames && profiles[p2].showdownUsernames.length));
 
   document.querySelector('#modal').innerHTML = `
     <div class="modal-wrap" onclick="if(event.target===this)closeModal()">
@@ -5371,13 +5543,20 @@ function openAddReplayModal(tournamentId, matchKey, defaultGame = 1) {
           <button class="close" onclick="closeModal()">×</button>
         </div>
 
-        <div style="background:rgba(56,189,248,0.08);border:1px solid rgba(56,189,248,0.25);border-radius:8px;padding:8px 12px;margin-top:12px;font-size:11px;color:#94a3b8;display:flex;align-items:flex-start;gap:8px">
-          <span style="font-size:14px;line-height:1">⚡</span>
+        <div style="background:${isMod ? 'rgba(255,209,102,0.08)' : 'rgba(56,189,248,0.08)'};border:1px solid ${isMod ? 'rgba(255,209,102,0.25)' : 'rgba(56,189,248,0.25)'};border-radius:8px;padding:9px 12px;margin-top:12px;font-size:11px;color:#cbd5e1;display:flex;align-items:flex-start;gap:8px">
+          <span style="font-size:14px;line-height:1">${isMod ? '🛡️' : '⚔️'}</span>
           <div>
-            <b style="color:#7dd3fc">Verifiable Score Reporting:</b>
-            Uploading a Showdown battle replay automatically proves game outcomes. Once the series is complete (or if single game is checked), the score is automatically verified and inserted into tournament standings!
+            <b style="color:${isMod ? '#ffd166' : '#7dd3fc'}">${isMod ? 'Staff Mode (Override Active)' : 'Strict Verifiable Score Reporting'}:</b>
+            ${isMod
+              ? 'As a tournament director/moderator, staff override is active. You can attach any replay on behalf of players.'
+              : `Strict verification is enforced. The uploaded Showdown replay must be an actual battle between <b>${esc(p1)}</b> and <b>${esc(p2)}</b> matching their registered Showdown usernames to verify and report match scores.`}
           </div>
         </div>
+        ${(!isMod && (!p1HasSd || !p2HasSd)) ? `
+          <div style="background:rgba(245,158,11,0.1);border:1px solid rgba(245,158,11,0.3);border-radius:6px;padding:7px 11px;margin-top:8px;font-size:11px;color:#fcd34d">
+            ⚠️ Note: ${[!p1HasSd ? p1 : null, !p2HasSd ? p2 : null].filter(Boolean).join(' and ')} ${(!p1HasSd && !p2HasSd) ? 'do not have Showdown usernames' : 'does not have a Showdown username'} linked on their profile yet. Make sure it is registered on the profile card (via ✎) so battle logs can be verified!
+          </div>
+        ` : ''}
 
         <div style="margin-top:16px;display:flex;gap:12px;align-items:center;flex-wrap:wrap">
           <label style="font:800 12px 'Barlow Condensed';letter-spacing:.5px;color:#aaa">Select Game Number:</label>
@@ -13520,6 +13699,8 @@ function renderMatchRow(m, i, t){
   let bNameHtml = (b === 'BYE') ? '<span style="color:#8e8c95;font-weight:700">BYE</span>' : playerLink(b);
 
   let matchKey = getMatchKey(m, i);
+  let replays = Array.isArray(m.replays) ? m.replays : [];
+  let hasReplays = replays.length > 0;
   let canReplay = canManageMatchReplays(t, m);
   let isCardClickable = hasReplays || canReplay;
   let cardTitle = hasReplays ? 'Click to watch match replays & box score' : (canReplay ? (reported ? 'Click to add battle replay' : 'Click to add battle replay & auto-report score') : '');
