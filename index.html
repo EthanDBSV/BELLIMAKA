@@ -4319,9 +4319,10 @@ function parseShowdownBattleLog(logText, meta = {}) {
         }
         let diff = Math.max(0, prevHp - newHp);
         target.curHp = newHp;
+        let pctDiff = target.maxHp > 0 ? (diff / target.maxHp) * 100 : diff;
 
         if(result.pokemon[targetKey]){
-          result.pokemon[targetKey].damageTaken += diff;
+          result.pokemon[targetKey].damageTaken += pctDiff;
         }
 
         if(lastAttackerSlot && activeSlots[lastAttackerSlot]){
@@ -4329,7 +4330,7 @@ function parseShowdownBattleLog(logText, meta = {}) {
           if(attacker.side !== target.side && !fromClause.includes('Recoil') && !fromClause.includes('item:')){
             let attKey = `${attacker.side}_${attacker.name}`;
             if(result.pokemon[attKey]){
-              result.pokemon[attKey].damageDealt += diff;
+              result.pokemon[attKey].damageDealt += pctDiff;
             }
           }
         }
@@ -4345,11 +4346,13 @@ function parseShowdownBattleLog(logText, meta = {}) {
         if(hpRaw.includes('/')){
           let sp = hpRaw.split('/');
           newHp = parseFloat(sp[0]) || prevHp;
+          target.maxHp = parseFloat(sp[1]) || target.maxHp;
         }
         let gained = Math.max(0, newHp - prevHp);
         target.curHp = newHp;
+        let gainedPct = target.maxHp > 0 ? (gained / target.maxHp) * 100 : gained;
         if(result.pokemon[targetKey]){
-          result.pokemon[targetKey].hpHealed += gained;
+          result.pokemon[targetKey].hpHealed += gainedPct;
         }
       }
     } else if(cmd === 'faint'){
@@ -4453,6 +4456,7 @@ function parseShowdownBattleLog(logText, meta = {}) {
     }
   }
   result.mvp = mvpMon;
+  result.version = 2;
 
   return result;
 }
@@ -4634,7 +4638,7 @@ function openMatchReplayHubModal(tournamentId, matchKey, activeGameNum = 1, acti
   let canManage = canManageMatchReplays(t, m);
 
   let stats = activeReplay.stats;
-  if((!stats || !stats.sideAttribution) && activeReplay.log){
+  if((!stats || !stats.sideAttribution || stats.version !== 2) && activeReplay.log){
     stats = parseShowdownBattleLog(activeReplay.log, { id: activeReplay.id, game: activeGameNum, match: m, coach1: p1, coach2: p2, manualSwapped: activeReplay.swapped });
     activeReplay.stats = stats;
   }
@@ -4816,9 +4820,9 @@ function renderMatchStatsBoxScoreHtml(stats, p1, p2, t, matchKey, gameNum) {
                 <th>Pokémon</th>
                 <th style="text-align:center">Status</th>
                 <th style="text-align:center">KOs</th>
-                <th style="text-align:right">Dmg Dealt</th>
-                <th style="text-align:right">Dmg Taken</th>
-                <th style="text-align:right">Healed</th>
+                <th style="text-align:right" title="Total percentage of enemy HP depleted (100% = 1 full knockout)">Dmg Dealt</th>
+                <th style="text-align:right" title="Total percentage of own HP lost (100% = full health bar; >100% if healed during match)">Dmg Taken</th>
+                <th style="text-align:right" title="Total percentage of own HP restored from abilities, items, or terrain">Healed</th>
                 <th>Moves Recorded</th>
               </tr>
             </thead>
@@ -4847,9 +4851,9 @@ function renderMatchStatsBoxScoreHtml(stats, p1, p2, t, matchKey, gameNum) {
                     <td style="text-align:center;font:800 16px 'Barlow Condensed';color:${m.kills > 0 ? '#ffd166' : '#7e7c88'}">
                       ${m.kills > 0 ? `⚔️ ${m.kills}` : '0'}
                     </td>
-                    <td style="text-align:right;font-weight:700;color:#ff8a90">${Math.round(m.damageDealt)} HP</td>
-                    <td style="text-align:right;color:#8e8c95">${Math.round(m.damageTaken)} HP</td>
-                    <td style="text-align:right;color:#4ade80">${Math.round(m.hpHealed)} HP</td>
+                    <td style="text-align:right;font-weight:700;color:#ff8a90">${Math.round(m.damageDealt)}%</td>
+                    <td style="text-align:right;color:#8e8c95">${Math.round(m.damageTaken)}%</td>
+                    <td style="text-align:right;color:#4ade80">${Math.round(m.hpHealed)}%</td>
                     <td>
                       <div style="display:flex;flex-wrap:wrap;gap:2px">
                         ${(m.moves || []).map(mv => `<span class="move-pill">${esc(mv)}</span>`).join('') || '<span style="color:#666">—</span>'}
@@ -4909,8 +4913,8 @@ function renderMatchStatsBoxScoreHtml(stats, p1, p2, t, matchKey, gameNum) {
             </div>
             <div style="display:flex;gap:18px;margin-top:8px;flex-wrap:wrap;font-size:11px">
               <div><span style="color:#8e8c95">KOs:</span> <b style="color:#ffd166;font-size:14px">${mvp.kills}</b></div>
-              <div><span style="color:#8e8c95">Damage Dealt:</span> <b style="color:#ff8a90;font-size:14px">${Math.round(mvp.damageDealt)} HP</b></div>
-              <div><span style="color:#8e8c95">Damage Taken:</span> <b style="color:#f5f3f0;font-size:14px">${Math.round(mvp.damageTaken)} HP</b></div>
+              <div><span style="color:#8e8c95">Damage Dealt:</span> <b style="color:#ff8a90;font-size:14px">${Math.round(mvp.damageDealt)}%</b></div>
+              <div><span style="color:#8e8c95">Damage Taken:</span> <b style="color:#f5f3f0;font-size:14px">${Math.round(mvp.damageTaken)}%</b></div>
               <div><span style="color:#8e8c95">Status:</span> ${mvp.fainted ? '<b style="color:#ff8a90">Fainted</b>' : '<b style="color:#4ade80">Survived</b>'}</div>
               <div><span style="color:#8e8c95">Impact Score:</span> <b style="color:#38bdf8;font-size:14px">${mvp.impactScore}</b></div>
             </div>
@@ -4931,10 +4935,10 @@ function renderMatchStatsBoxScoreHtml(stats, p1, p2, t, matchKey, gameNum) {
             <span>Total KOs</span> <b style="color:#ffd166;font-size:13px">${p1Kills}</b>
           </div>
           <div style="display:flex;justify-content:space-between;font-size:11px;color:#8e8c95;padding:4px 0;border-bottom:1px solid #1f1f2a">
-            <span>Total Damage Dealt</span> <b style="color:#ff8a90;font-size:13px">${Math.round(p1Dmg)} HP</b>
+            <span>Total Damage Dealt</span> <b style="color:#ff8a90;font-size:13px">${Math.round(p1Dmg)}%</b>
           </div>
           <div style="display:flex;justify-content:space-between;font-size:11px;color:#8e8c95;padding:4px 0">
-            <span>Total HP Healed</span> <b style="color:#4ade80;font-size:13px">${Math.round(p1Heal)} HP</b>
+            <span>Total HP Healed</span> <b style="color:#4ade80;font-size:13px">${Math.round(p1Heal)}%</b>
           </div>
         </div>
         <div style="background:#13131b;border:1px solid #272736;border-radius:8px;padding:12px 16px">
@@ -4943,16 +4947,26 @@ function renderMatchStatsBoxScoreHtml(stats, p1, p2, t, matchKey, gameNum) {
             <span>Total KOs</span> <b style="color:#ffd166;font-size:13px">${p2Kills}</b>
           </div>
           <div style="display:flex;justify-content:space-between;font-size:11px;color:#8e8c95;padding:4px 0;border-bottom:1px solid #1f1f2a">
-            <span>Total Damage Dealt</span> <b style="color:#ff8a90;font-size:13px">${Math.round(p2Dmg)} HP</b>
+            <span>Total Damage Dealt</span> <b style="color:#ff8a90;font-size:13px">${Math.round(p2Dmg)}%</b>
           </div>
           <div style="display:flex;justify-content:space-between;font-size:11px;color:#8e8c95;padding:4px 0">
-            <span>Total HP Healed</span> <b style="color:#4ade80;font-size:13px">${Math.round(p2Heal)} HP</b>
+            <span>Total HP Healed</span> <b style="color:#4ade80;font-size:13px">${Math.round(p2Heal)}%</b>
           </div>
         </div>
       </div>
 
       ${renderTableForSide(coachA, coachAMons, sideAKey)}
       ${renderTableForSide(coachB, coachBMons, sideBKey)}
+
+      <div style="padding:10px 14px;background:rgba(56,189,248,0.06);border:1px solid rgba(56,189,248,0.18);border-radius:8px;font-size:11px;color:#94a3b8;display:flex;align-items:flex-start;gap:8px">
+        <span style="font-size:14px;line-height:1">ℹ️</span>
+        <div>
+          <b style="color:#7dd3fc">Understanding Damage & HP (%):</b>
+          Showdown battle replays record and display health in <b>% HP</b> (where 100% = 1 full health bar).
+          A Pokémon that faints without healing takes exactly <b>100%</b> damage.
+          Pokémon that restore HP during battle (e.g. Grassy Terrain, Leftovers, healing moves) can take over 100% total damage before fainting.
+        </div>
+      </div>
     </div>
   `;
 }
@@ -5287,7 +5301,7 @@ function processRawReplayInput(text, tournamentId, matchKey) {
 
       ${mvp ? `
         <div style="margin-top:8px;font-size:11px;color:#ffd166;display:flex;align-items:center;gap:6px">
-          <span>🌟</span> <span>Calculated Match MVP: <b>${esc(mvp.name)}</b> (${mvp.kills} KOs, ${Math.round(mvp.damageDealt)} Dmg) · Coach: <b>${esc(mvp.coach)}</b></span>
+          <span>🌟</span> <span>Calculated Match MVP: <b>${esc(mvp.name)}</b> (${mvp.kills} KOs, ${Math.round(mvp.damageDealt)}% Dmg) · Coach: <b>${esc(mvp.coach)}</b></span>
         </div>
       ` : ''}
     `;
