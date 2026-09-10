@@ -5818,9 +5818,10 @@ function shouldApply(incoming){
 
   let incomingRev = typeof incoming.rev === 'number' ? incoming.rev : 0;
   let incomingTime = typeof incoming.updatedAt === 'number' ? incoming.updatedAt : (Date.parse(incoming.updated_at) || 0);
+  let hasLocalData = Object.keys(tournamentData).length > 0;
 
-  // 1. If local client has no pending unpushed edits in flight, ALWAYS accept cloud truth!
-  if(syncTimer === null){
+  // 1. Initial boot with no local tournaments loaded yet: always accept cloud state
+  if(!hasLocalData || !lastLocalUpdate){
     knownRev = Math.max(knownRev, incomingRev);
     lastLocalUpdate = Math.max(lastLocalUpdate, incomingTime || Date.now());
     try {
@@ -5830,17 +5831,21 @@ function shouldApply(incoming){
     return true;
   }
 
-  // 2. Protect draft progress: if incoming cloud draft has different or more picks, ALWAYS accept!
+  // 2. Protect draft progress: if incoming cloud draft has different/more picks or status diff, accept!
   if(incoming.tournaments && typeof incoming.tournaments === 'object'){
     let hasDraftDiff = false;
     for(let tId in incoming.tournaments){
       let incT = incoming.tournaments[tId];
       let locT = tournamentData[tId];
-      let incPicks = incT?.draftData?.picks?.length || 0;
-      let locPicks = locT?.draftData?.picks?.length || 0;
-      if(incPicks !== locPicks){
-        hasDraftDiff = true;
-        break;
+      let incD = incT?.draftData || incT?.draft;
+      let locD = locT?.draftData || locT?.draft;
+      if(incD && locD){
+        let incPicks = incD.picks?.length || 0;
+        let locPicks = locD.picks?.length || 0;
+        if(incPicks !== locPicks || incD.status !== locD.status){
+          hasDraftDiff = true;
+          break;
+        }
       }
     }
     if(hasDraftDiff){
@@ -5854,8 +5859,23 @@ function shouldApply(incoming){
     }
   }
 
-  // 3. If incoming timestamp is strictly newer or revision is higher, accept
-  if(!lastLocalUpdate || (incomingTime && incomingTime > lastLocalUpdate) || incomingRev > knownRev){
+  // 3. If local client has no pending unpushed edits in flight: accept ONLY if cloud revision or timestamp is newer!
+  if(syncTimer === null){
+    if(incomingRev > knownRev || (incomingTime && incomingTime > lastLocalUpdate)){
+      knownRev = Math.max(knownRev, incomingRev);
+      lastLocalUpdate = Math.max(lastLocalUpdate, incomingTime || Date.now());
+      try {
+        localStorage.setItem('draftdex-rev', String(knownRev));
+        localStorage.setItem('draftdex-updated-at', String(lastLocalUpdate));
+      } catch(e){}
+      return true;
+    }
+    // Cloud state is identical to or older than local state — prevent unnecessary DOM rebuilds and localStorage writes!
+    return false;
+  }
+
+  // 4. If local save is actively in debounce flight: accept ONLY if incoming timestamp is strictly newer or revision is higher
+  if((incomingTime && incomingTime > lastLocalUpdate) || incomingRev > knownRev){
     knownRev = Math.max(knownRev, incomingRev);
     lastLocalUpdate = Math.max(lastLocalUpdate, incomingTime || Date.now());
     try {
@@ -5865,7 +5885,7 @@ function shouldApply(incoming){
     return true;
   }
 
-  // 4. Stale packet while local save is actively in debounce flight
+  // 5. Stale packet while local save is actively in debounce flight
   return false;
 }
 function sortedTournamentsChronological(){
@@ -7463,7 +7483,10 @@ function setupDraftRealtime(){
     return;
   }
 
-  // Active Draft Room polling: every 2.5s for Cloudflare (unlimited bandwidth!)
+  // Active Draft Room polling: 2.5s for desktop, 3.5s for mobile (conserves battery, radio power & mobile CPU)
+  let isMobileDevice = ('ontouchstart' in window) || (window.innerWidth <= 768) || /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+  let pollInterval = bType === 'cloudflare' ? (isMobileDevice ? 3500 : 2500) : 4000;
+
   if(!draftPollTimer){
     draftPollTimer = setInterval(() => {
       if(current === 'Draft' && !document.hidden && !isSandboxMode()){
@@ -7474,7 +7497,7 @@ function setupDraftRealtime(){
           draftPollTimer = null;
         }
       }
-    }, bType === 'cloudflare' ? 2500 : 4000);
+    }, pollInterval);
   }
 
   if(bType === 'cloudflare') return; // Cloudflare uses ultra-fast edge polling with zero egress charges
@@ -7609,6 +7632,7 @@ function applyRemoteDraftControl(payload){
 }
 
 var isSyncingFromCloud = false;
+var lastFullStateSyncTime = 0;
 async function syncFromCloud(force = false){
   let bType = getBackendType();
   if(isSandboxMode() || bType === 'local' || isSyncingFromCloud) return;
@@ -7622,7 +7646,7 @@ async function syncFromCloud(force = false){
 
     if(bType === 'cloudflare'){
       let cfUrl = getCloudflareUrl();
-      // If viewing active draft, quickly check lightweight /api/draft endpoint
+      // If viewing active draft, quickly check lightweight /api/draft endpoint (~2KB vs ~600KB)
       if(isDraftActive && curT.id && current === 'Draft'){
         try {
           let dRes = await fetch(`${cfUrl}/api/draft?tournamentId=${encodeURIComponent(curT.id)}`);
@@ -7635,7 +7659,11 @@ async function syncFromCloud(force = false){
               if(remotePicksCount !== localPicksCount || dJson.draft.status !== localD?.status){
                 curT.draft = dJson.draft;
                 if(dJson.roster) roster = dJson.roster;
-                persistLeague();
+                // Keep local storage updated without triggering redundant flushSync cloud POST
+                try {
+                  localStorage.setItem('draftdex-tournaments', JSON.stringify(tournamentData));
+                  localStorage.setItem('draftdex-rosters', JSON.stringify(roster));
+                } catch(e){}
                 render();
                 if(typeof centerActiveDraftPickTile === 'function'){
                   setTimeout(centerActiveDraftPickTile, 50);
@@ -7644,10 +7672,19 @@ async function syncFromCloud(force = false){
             }
           }
         } catch(e){}
+
+        // Lightweight draft heartbeat completed:
+        // Do NOT download the heavy 600KB /api/state database every 2.5s-3.5s tick!
+        // Only fall through to full state check on force=true, or once every 45 seconds fallback.
+        let now = Date.now();
+        if(!force && (now - lastFullStateSyncTime < 45000)){
+          return;
+        }
       }
 
-      // Fetch full state from Cloudflare
+      // Fetch full state from Cloudflare (initial boot, forced sync, non-draft views, or 45s fallback)
       let res = await fetch(`${cfUrl}/api/state`);
+      lastFullStateSyncTime = Date.now();
       if(res.ok){
         let incoming = await res.json();
         if(incoming && shouldApply(incoming)){
