@@ -4524,6 +4524,97 @@ function getMatchKey(m, index) {
   return parts.join('_');
 }
 
+function enrichTopCutMatch(matchObj, t, tcId, key) {
+  if(!matchObj || !t) return matchObj;
+  matchObj.isTopCut = true;
+  if(tcId != null) {
+    matchObj.actualMatchId = tcId;
+  }
+
+  let isKnown = p => (typeof isKnownPlayer === 'function' ? isKnownPlayer(p) : (p && !String(p).startsWith('Seed #') && !String(p).startsWith('Winner') && !String(p).startsWith('Loser') && p !== 'BYE' && p !== 'TBD'));
+
+  // 1. Resolve opponent IDs from bracketManagerData participants
+  let bmd = t.bracketManagerData;
+  if(bmd?.participant && Array.isArray(bmd.participant)){
+    let nameOf = id => {
+      if(id == null) return null;
+      let p = bmd.participant.find(x => x.id === id);
+      return p?.name || null;
+    };
+    let op1Name = nameOf(matchObj.opponent1?.id);
+    let op2Name = nameOf(matchObj.opponent2?.id);
+    if(op1Name && (!matchObj.p1 || !isKnown(matchObj.p1))) matchObj.p1 = op1Name;
+    if(op2Name && (!matchObj.p2 || !isKnown(matchObj.p2))) matchObj.p2 = op2Name;
+  }
+
+  // 2. Cross-reference with getTournamentTopCutModel(t)
+  if(!matchObj.p1 || !matchObj.p2 || !isKnown(matchObj.p1) || !isKnown(matchObj.p2) || !matchObj.title){
+    if(typeof getTournamentTopCutModel === 'function'){
+      let model = getTournamentTopCutModel(t);
+      if(model){
+        let allMatches = [
+          ...(model.wbRounds || []).flatMap(r => r.matches || []),
+          ...(model.lbRounds || []).flatMap(r => r.matches || []),
+          ...(model.gfMatches || [])
+        ];
+        let found = allMatches.find(m =>
+          (tcId != null && (m.actualMatchId === tcId || String(m.actualMatchId) === String(tcId))) ||
+          (m.id && (m.id === key || ('tc_' + m.id) === key || String(m.id) === String(tcId)))
+        );
+        if(found){
+          if((!matchObj.p1 || !isKnown(matchObj.p1)) && found.p1 && isKnown(found.p1)) matchObj.p1 = found.p1;
+          if((!matchObj.p2 || !isKnown(matchObj.p2)) && found.p2 && isKnown(found.p2)) matchObj.p2 = found.p2;
+          if(!matchObj.title && found.title) matchObj.title = found.title;
+          if(matchObj.s1 == null && found.s1 != null) matchObj.s1 = found.s1;
+          if(matchObj.s2 == null && found.s2 != null) matchObj.s2 = found.s2;
+          if(matchObj.winner == null && found.winner) matchObj.winner = found.winner;
+          if(matchObj.loser == null && found.loser) matchObj.loser = found.loser;
+        }
+      }
+    }
+  }
+
+  // 3. Check topCutCache results if needed
+  if((!matchObj.p1 || !matchObj.p2 || !isKnown(matchObj.p1) || !isKnown(matchObj.p2)) && t.topCutCache?.results?.length){
+    for(let res of t.topCutCache.results){
+      if(res.p1 && res.p2 && isKnown(res.p1) && isKnown(res.p2)){
+        if(key && (key.includes(res.p1) || key.includes(res.p2) || String(res.id) === String(tcId))){
+          if(!matchObj.p1) matchObj.p1 = res.p1;
+          if(!matchObj.p2) matchObj.p2 = res.p2;
+          if(!matchObj.title && res.title) matchObj.title = res.title;
+          break;
+        }
+      }
+    }
+  }
+
+  // 4. Ensure aliases a and b are set for compatibility
+  if(matchObj.p1 && !matchObj.a) matchObj.a = matchObj.p1;
+  if(matchObj.p2 && !matchObj.b) matchObj.b = matchObj.p2;
+  if(matchObj.a && !matchObj.p1) matchObj.p1 = matchObj.a;
+  if(matchObj.b && !matchObj.p2) matchObj.p2 = matchObj.b;
+
+  // 5. Ensure scores as and bs exist
+  if(matchObj.s1 != null && matchObj.as == null) matchObj.as = matchObj.s1;
+  if(matchObj.s2 != null && matchObj.bs == null) matchObj.bs = matchObj.s2;
+  if(matchObj.as != null && matchObj.s1 == null) matchObj.s1 = matchObj.as;
+  if(matchObj.bs != null && matchObj.s2 == null) matchObj.s2 = matchObj.bs;
+
+  // 6. Ensure replays array is linked from t.topCutReplays
+  if(t.topCutReplays){
+    let reps = (tcId != null ? t.topCutReplays[tcId] : null) ||
+               (tcId != null ? t.topCutReplays['tc_' + tcId] : null) ||
+               (key ? t.topCutReplays[key] : null) ||
+               (matchObj.id != null ? t.topCutReplays[matchObj.id] : null) ||
+               (matchObj.id != null ? t.topCutReplays['tc_' + matchObj.id] : null);
+    if(reps && (!matchObj.replays || matchObj.replays.length === 0)){
+      matchObj.replays = reps;
+    }
+  }
+
+  return matchObj;
+}
+
 function findTournamentMatch(t, matchKey, index) {
   if(!t) return null;
   if(matchKey == null) matchKey = '';
@@ -4596,11 +4687,43 @@ function findTournamentMatch(t, matchKey, index) {
     for(let m of t.bracketManagerData.match){
       let k = 'tc_' + m.id;
       if(String(m.id) === mKeyStr || k === mKeyStr){
-        t.topCutReplays = t.topCutReplays || {};
-        if(t.topCutReplays[m.id] && (!m.replays || m.replays.length === 0)){
-          m.replays = t.topCutReplays[m.id];
-        }
+        enrichTopCutMatch(m, t, m.id, mKeyStr);
         return { match: m, isTopCut: true, tcMatchId: m.id };
+      }
+    }
+  }
+
+  // 4b. Top cut model matches (by actualMatchId, id, or participants)
+  if(typeof getTournamentTopCutModel === 'function'){
+    let tcModel = getTournamentTopCutModel(t);
+    if(tcModel){
+      let allBracketMatches = [
+        ...(tcModel.wbRounds || []).flatMap(r => r.matches || []),
+        ...(tcModel.lbRounds || []).flatMap(r => r.matches || []),
+        ...(tcModel.gfMatches || [])
+      ];
+      for(let bm of allBracketMatches){
+        let kActual = bm.actualMatchId != null ? ('tc_' + bm.actualMatchId) : null;
+        let kId = bm.id ? ('tc_' + bm.id) : null;
+        let rawIdStr = bm.actualMatchId != null ? String(bm.actualMatchId) : null;
+        let bmIdStr = bm.id ? String(bm.id) : null;
+
+        let p1Clean = (bm.p1 || '').trim().replace(/[^a-zA-Z0-9_-]/g, '_');
+        let p2Clean = (bm.p2 || '').trim().replace(/[^a-zA-Z0-9_-]/g, '_');
+        let isKnown = p => (typeof isKnownPlayer === 'function' ? isKnownPlayer(p) : (p && !String(p).startsWith('Seed #') && !String(p).startsWith('Winner') && !String(p).startsWith('Loser') && p !== 'BYE' && p !== 'TBD'));
+        let pMatch = (p1Clean && p2Clean && isKnown(bm.p1) && isKnown(bm.p2)) &&
+          (mKeyStr.includes(`${p1Clean}_vs_${p2Clean}`) || mKeyStr.includes(`${p2Clean}_vs_${p1Clean}`));
+
+        if(
+          mKeyStr === kActual ||
+          mKeyStr === kId ||
+          mKeyStr === rawIdStr ||
+          mKeyStr === bmIdStr ||
+          (mKeyStr.startsWith('tc_') && pMatch)
+        ){
+          enrichTopCutMatch(bm, t, bm.actualMatchId, mKeyStr);
+          return { match: bm, isTopCut: true, tcMatchId: bm.actualMatchId || bm.id };
+        }
       }
     }
   }
@@ -4611,7 +4734,8 @@ function findTournamentMatch(t, matchKey, index) {
       let m = t.topCutMatches[i];
       let k = 'tc_' + (m.actualMatchId || m.id);
       if(String(m.id) === mKeyStr || k === mKeyStr || getMatchKey(m, i) === mKeyStr || `${m.a}_vs_${m.b}` === mKeyStr){
-        return { match: m, isTopCut: true };
+        enrichTopCutMatch(m, t, m.actualMatchId || m.id, mKeyStr);
+        return { match: m, isTopCut: true, tcMatchId: m.actualMatchId || m.id };
       }
     }
   }
@@ -4869,6 +4993,7 @@ function toggleReplaySideSwap(tournamentId, matchKey, gameNum) {
   });
   if(mInfo.isTopCut && mInfo.tcMatchId != null && t.topCutReplays){
     t.topCutReplays[mInfo.tcMatchId] = m.replays;
+    t.topCutReplays['tc_' + mInfo.tcMatchId] = m.replays;
   }
   persistLeague();
   openMatchReplayHubModal(t.id, matchKey, gameNum, 'stats');
@@ -5509,6 +5634,7 @@ function saveReplayToMatch(tournamentId, matchKey, gameNum, replayData, finalize
   if(mInfo.isTopCut && mInfo.tcMatchId != null){
     t.topCutReplays = t.topCutReplays || {};
     t.topCutReplays[mInfo.tcMatchId] = m.replays;
+    t.topCutReplays['tc_' + mInfo.tcMatchId] = m.replays;
   }
 
   // Automatic Verifiable Score Insertion
@@ -5596,6 +5722,7 @@ function deleteReplayFromMatch(tournamentId, matchKey, gameNum) {
   }
   if(mInfo.isTopCut && mInfo.tcMatchId != null && t.topCutReplays){
     t.topCutReplays[mInfo.tcMatchId] = m.replays;
+    t.topCutReplays['tc_' + mInfo.tcMatchId] = m.replays;
   }
   persistLeague();
   if(typeof showDraftToast === 'function'){
@@ -5906,11 +6033,17 @@ function calculateTeamOfTheSeason(t) {
   });
 
   if(t.topCutReplays) {
+    let seenReplayIds = new Set();
     Object.keys(t.topCutReplays).forEach(tcKey => {
       let rList = t.topCutReplays[tcKey];
       if(Array.isArray(rList)) {
+        let tcMatch = findTournamentMatch(t, tcKey)?.match || null;
         rList.forEach(r => {
-          allReplays.push({ replay: r, match: null, isTopCut: true });
+          let repId = r.id || `${tcKey}_g${r.game}`;
+          if(!seenReplayIds.has(repId)){
+            seenReplayIds.add(repId);
+            allReplays.push({ replay: r, match: tcMatch, isTopCut: true });
+          }
         });
       }
     });
@@ -8253,12 +8386,26 @@ function findStageMatch(bmd, groupNum, roundNum, matchNum){
   let winner = isDone ? (m.opponent1?.result === 'win' || (s1 > s2) ? p1 : p2) : null;
   let loser = isDone ? (winner === p1 ? p2 : p1) : null;
 
+  if(p1) { m.p1 = p1; m.a = p1; }
+  if(p2) { m.p2 = p2; m.b = p2; }
+  m.isTopCut = true;
+  m.actualMatchId = m.id;
+  if(s1 != null) { m.s1 = s1; m.as = s1; }
+  if(s2 != null) { m.s2 = s2; m.bs = s2; }
+  if(isDone) { m.isDone = isDone; m.winner = winner; m.loser = loser; }
+
   return {
     id: m.id,
     p1,
     p2,
+    a: p1,
+    b: p2,
     s1,
     s2,
+    as: s1,
+    bs: s2,
+    isTopCut: true,
+    actualMatchId: m.id,
     isDone,
     winner,
     loser,
@@ -8291,11 +8438,22 @@ function getTournamentTopCutModel(t){
     else if(bmd) matchObj.p1 = null;
     if(sm.p2 != null) matchObj.p2 = sm.p2;
     else if(bmd) matchObj.p2 = null;
+    matchObj.a = matchObj.p1;
+    matchObj.b = matchObj.p2;
+    matchObj.isTopCut = true;
     matchObj.s1 = sm.s1;
     matchObj.s2 = sm.s2;
+    matchObj.as = sm.s1;
+    matchObj.bs = sm.s2;
     matchObj.isDone = sm.isDone;
     matchObj.winner = sm.winner;
     matchObj.loser = sm.loser;
+    if(t?.topCutReplays){
+      let reps = t.topCutReplays[sm.id] || t.topCutReplays['tc_' + sm.id];
+      if(reps && (!matchObj.replays || matchObj.replays.length === 0)){
+        matchObj.replays = reps;
+      }
+    }
   }
 
   let stage2 = t.stage2Format || (bmd?.stage?.[0]?.type === 'single_elimination' ? 'single_elimination' : 'double_elimination');
@@ -8597,6 +8755,17 @@ function getTournamentTopCutModel(t){
   }
 
   let allBracketMatches = [...wbRounds.flatMap(r=>r.matches), ...lbRounds.flatMap(r=>r.matches), ...gfMatches];
+  allBracketMatches.forEach(bm => {
+    bm.isTopCut = true;
+    if(bm.p1 && !bm.a) bm.a = bm.p1;
+    if(bm.p2 && !bm.b) bm.b = bm.p2;
+    if(t?.topCutReplays && bm.actualMatchId != null){
+      let reps = t.topCutReplays[bm.actualMatchId] || t.topCutReplays['tc_' + bm.actualMatchId];
+      if(reps && (!bm.replays || bm.replays.length === 0)){
+        bm.replays = reps;
+      }
+    }
+  });
   let completedList = allBracketMatches.filter(m => m.isDone && isKnownPlayer(m.p1) && isKnownPlayer(m.p2) && m.s1 != null && m.s2 != null);
 
   if(!completedList.length && t.topCutCache?.results?.length){
@@ -17348,6 +17517,7 @@ function getPlayerMatchHistory(p){
 
       matches.push({
         id: m.id || `${t.id}-tc-${idx}`,
+        matchKey: (typeof getMatchKey === 'function' ? getMatchKey(m) : null) || ('tc_' + (m.actualMatchId || m.id || idx)),
         tournamentId: t.id,
         tournamentName: t.name,
         tournamentSeason: t.season,
