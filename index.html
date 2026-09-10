@@ -4104,6 +4104,97 @@ ${scOpen} src="https://play.pokemonshowdown.com/js/replay-embed.js">${scClose}
 </html>`;
 }
 
+function resolveReplayCoachAttribution(params) {
+  let { coach1, coach2, p1Name, p2Name, p1Mons = [], p2Mons = [], tournament, manualSwapped } = params;
+  if(manualSwapped) {
+    return {
+      p1Coach: coach2 || 'Player 2',
+      p2Coach: coach1 || 'Player 1',
+      swapped: true,
+      reason: 'manual_override'
+    };
+  }
+
+  let c1 = String(coach1 || '').trim();
+  let c2 = String(coach2 || '').trim();
+  let p1 = String(p1Name || '').trim();
+  let p2 = String(p2Name || '').trim();
+
+  let norm = s => String(s || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+
+  let p1Norm = norm(p1);
+  let p2Norm = norm(p2);
+  let c1Norm = norm(c1);
+  let c2Norm = norm(c2);
+
+  let getSdUsers = c => {
+    let q = profiles[c];
+    if(!q) return [];
+    let list = [];
+    if(q.showdownUser) list.push(...q.showdownUser.split(',').map(norm).filter(Boolean));
+    if(Array.isArray(q.showdownUsernames)) list.push(...q.showdownUsernames.map(norm).filter(Boolean));
+    return list;
+  };
+
+  let c1SdUsers = getSdUsers(c1);
+  let c2SdUsers = getSdUsers(c2);
+
+  let normalPoints = 0;
+  let invertedPoints = 0;
+
+  // 1. Showdown username match (Highest confidence: +100)
+  if(c1SdUsers.length && (c1SdUsers.includes(p1Norm) || c1SdUsers.some(u => p1Norm.includes(u) || u.includes(p1Norm)))) normalPoints += 100;
+  if(c2SdUsers.length && (c2SdUsers.includes(p2Norm) || c2SdUsers.some(u => p2Norm.includes(u) || u.includes(p2Norm)))) normalPoints += 100;
+  if(c1SdUsers.length && (c1SdUsers.includes(p2Norm) || c1SdUsers.some(u => p2Norm.includes(u) || u.includes(p2Norm)))) invertedPoints += 100;
+  if(c2SdUsers.length && (c2SdUsers.includes(p1Norm) || c2SdUsers.some(u => p1Norm.includes(u) || u.includes(p1Norm)))) invertedPoints += 100;
+
+  // 2. Direct name or account matching (+50)
+  let c1Acc = norm(typeof accountForPlayer === 'function' ? accountForPlayer(c1) : '');
+  let c2Acc = norm(typeof accountForPlayer === 'function' ? accountForPlayer(c2) : '');
+
+  let matchesName = (sdNorm, coachNorm, accNorm) => {
+    if(!sdNorm) return false;
+    if(coachNorm && (sdNorm === coachNorm || sdNorm.includes(coachNorm) || coachNorm.includes(sdNorm))) return true;
+    if(accNorm && (sdNorm === accNorm || sdNorm.includes(accNorm) || accNorm.includes(sdNorm))) return true;
+    return false;
+  };
+
+  if(matchesName(p1Norm, c1Norm, c1Acc)) normalPoints += 50;
+  if(matchesName(p2Norm, c2Norm, c2Acc)) normalPoints += 50;
+  if(matchesName(p1Norm, c2Norm, c2Acc)) invertedPoints += 50;
+  if(matchesName(p2Norm, c1Norm, c1Acc)) invertedPoints += 50;
+
+  // 3. Drafted Roster Overlap Matching (+20 per Pokémon)
+  let tRosters = tournament?.rosters || roster || {};
+  let c1Roster = (tRosters[c1] || roster[c1] || []).map(norm);
+  let c2Roster = (tRosters[c2] || roster[c2] || []).map(norm);
+
+  let countRosterOverlap = (mons, coachRoster) => {
+    if(!coachRoster || !coachRoster.length || !mons || !mons.length) return 0;
+    return mons.filter(m => {
+      let mNorm = norm(m);
+      return coachRoster.some(r => mNorm.includes(r) || r.includes(mNorm));
+    }).length;
+  };
+
+  let p1InC1 = countRosterOverlap(p1Mons, c1Roster);
+  let p1InC2 = countRosterOverlap(p1Mons, c2Roster);
+  let p2InC1 = countRosterOverlap(p2Mons, c1Roster);
+  let p2InC2 = countRosterOverlap(p2Mons, c2Roster);
+
+  normalPoints += (p1InC1 + p2InC2) * 20;
+  invertedPoints += (p1InC2 + p2InC1) * 20;
+
+  let isInverted = invertedPoints > normalPoints;
+  return {
+    p1Coach: isInverted ? (c2 || 'Player 2') : (c1 || 'Player 1'),
+    p2Coach: isInverted ? (c1 || 'Player 1') : (c2 || 'Player 2'),
+    swapped: isInverted,
+    normalPoints,
+    invertedPoints
+  };
+}
+
 function parseShowdownBattleLog(logText, meta = {}) {
   if(!logText || typeof logText !== 'string') return null;
   let lines = logText.split('\n');
@@ -4277,13 +4368,58 @@ function parseShowdownBattleLog(logText, meta = {}) {
 
   let coach1 = meta.coach1 || (meta.match?.a || meta.match?.p1);
   let coach2 = meta.coach2 || (meta.match?.b || meta.match?.p2);
+  let t = meta.tournament || (meta.match?.tournamentId && tournamentData[meta.match.tournamentId]) || activeT() || ongoingT();
+
+  let p1MonsPreview = (result.teamPreview?.p1 || []).slice();
+  let p2MonsPreview = (result.teamPreview?.p2 || []).slice();
+
+  for(let k in result.pokemon){
+    let mon = result.pokemon[k];
+    if(mon.side === 'p1' && !p1MonsPreview.includes(mon.name)) p1MonsPreview.push(mon.name);
+    if(mon.side === 'p2' && !p2MonsPreview.includes(mon.name)) p2MonsPreview.push(mon.name);
+  }
+
+  let attr = resolveReplayCoachAttribution({
+    coach1: coach1,
+    coach2: coach2,
+    p1Name: result.player1,
+    p2Name: result.player2,
+    p1Mons: p1MonsPreview,
+    p2Mons: p2MonsPreview,
+    tournament: t,
+    manualSwapped: meta.manualSwapped ?? (meta.match?.replays?.find(r => r.game === (meta.game || 1))?.swapped ?? false)
+  });
+
+  result.sideAttribution = attr;
+  result.coachP1 = attr.p1Coach;
+  result.coachP2 = attr.p2Coach;
+  result.swapped = attr.swapped;
+
+  // Resolve winner coach
+  if(result.winner){
+    let norm = s => String(s || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+    let wNorm = norm(result.winner);
+    let p1Norm = norm(result.player1);
+    let p2Norm = norm(result.player2);
+    if(wNorm === p1Norm){
+      result.winnerCoach = attr.p1Coach;
+    } else if(wNorm === p2Norm){
+      result.winnerCoach = attr.p2Coach;
+    } else {
+      let c1Norm = norm(attr.p1Coach);
+      let c2Norm = norm(attr.p2Coach);
+      if(wNorm.includes(c1Norm) || c1Norm.includes(wNorm)) result.winnerCoach = attr.p1Coach;
+      else if(wNorm.includes(c2Norm) || c2Norm.includes(wNorm)) result.winnerCoach = attr.p2Coach;
+      else result.winnerCoach = attr.p1Coach;
+    }
+  }
 
   for(let key in result.pokemon){
     let p = result.pokemon[key];
     if(p.side === 'p1'){
-      p.coach = coach1 || result.player1 || 'Player 1';
+      p.coach = attr.p1Coach || 'Player 1';
     } else {
-      p.coach = coach2 || result.player2 || 'Player 2';
+      p.coach = attr.p2Coach || 'Player 2';
     }
     if(typeof resolvePokemonData === 'function'){
       let r = resolvePokemonData(p.name);
@@ -4359,7 +4495,37 @@ function findTournamentMatch(t, matchKey, index) {
 }
 
 function canManageMatchReplays(t, m) {
-  return true;
+  if(moderator) return true;
+  if(canManageTournament(t)) return true;
+  if(!m) return false;
+
+  let me = typeof myPlayer === 'function' ? myPlayer() : null;
+  let p1 = m.a || m.p1;
+  let p2 = m.b || m.p2;
+
+  if(me){
+    let cleanMe = String(me).toLowerCase().trim();
+    if(p1 && String(p1).toLowerCase().trim() === cleanMe) return true;
+    if(p2 && String(p2).toLowerCase().trim() === cleanMe) return true;
+  }
+
+  let curUser = window.currentAccount?.username || sessionUser?.user_metadata?.username || sessionUser?.email?.split('@')[0] || '';
+  if(curUser){
+    let cleanUser = String(curUser).toLowerCase().trim();
+    if(typeof accountForPlayer === 'function'){
+      let acc1 = (accountForPlayer(p1) || '').toLowerCase().trim();
+      let acc2 = (accountForPlayer(p2) || '').toLowerCase().trim();
+      if(acc1 && (acc1 === cleanUser || acc1.split('@')[0] === cleanUser)) return true;
+      if(acc2 && (acc2 === cleanUser || acc2.split('@')[0] === cleanUser)) return true;
+    }
+  }
+
+  // If no user account system is active at all (e.g. testing mode)
+  if(!sessionUser && !window.currentAccount && !Object.keys(accountLinks || {}).length){
+    return true;
+  }
+
+  return false;
 }
 
 function handleMatchCardReplayClick(e, tId, matchKey, hasReplays) {
@@ -4394,9 +4560,11 @@ function renderReplayPillsHtml(m, t, matchKey, canManage, isCompact = false) {
     </button>
   ` : '';
 
-  let addBtnText = hasReplays ? '＋ Replay' : '＋ Add Replay';
+  let isUnscored = (m.as === '' || m.as == null || m.bs === '' || m.bs == null);
+  let addBtnText = hasReplays ? '＋ Replay' : (isUnscored ? '＋ Add Replay & Report' : '＋ Add Replay');
+  let addBtnTitle = hasReplays ? 'Add next game replay' : (isUnscored ? 'Upload Showdown replay to verify & auto-report score' : 'Attach Pokémon Showdown Replay');
   let addBtn = canManage ? `
-    <button class="replay-add-btn ${!hasReplays ? 'no-replays' : ''}" onclick="event.stopPropagation();openAddReplayModal('${tId}','${jsArg(matchKey)}',${replays.length + 1})" title="${hasReplays ? 'Add next game replay' : 'Attach Pokémon Showdown Replay'}">
+    <button class="replay-add-btn ${!hasReplays ? 'no-replays' : ''}" onclick="event.stopPropagation();openAddReplayModal('${tId}','${jsArg(matchKey)}',${replays.length + 1})" title="${esc(addBtnTitle)}">
       ${addBtnText}
     </button>
   ` : '';
@@ -4450,8 +4618,8 @@ function openMatchReplayHubModal(tournamentId, matchKey, activeGameNum = 1, acti
   let canManage = canManageMatchReplays(t, m);
 
   let stats = activeReplay.stats;
-  if(!stats && activeReplay.log){
-    stats = parseShowdownBattleLog(activeReplay.log, { id: activeReplay.id, game: activeGameNum, match: m, coach1: p1, coach2: p2 });
+  if((!stats || !stats.sideAttribution) && activeReplay.log){
+    stats = parseShowdownBattleLog(activeReplay.log, { id: activeReplay.id, game: activeGameNum, match: m, coach1: p1, coach2: p2, manualSwapped: activeReplay.swapped });
     activeReplay.stats = stats;
   }
 
@@ -4550,24 +4718,69 @@ function openMatchReplayHubModal(tournamentId, matchKey, activeGameNum = 1, acti
   `;
 }
 
+function toggleReplaySideSwap(tournamentId, matchKey, gameNum) {
+  let t = (tournamentId && tournamentData[tournamentId]) || activeT() || ongoingT();
+  let mInfo = findTournamentMatch(t, matchKey);
+  if(!mInfo || !mInfo.match) return;
+  let m = mInfo.match;
+  let replay = m.replays?.find(r => r.game === gameNum);
+  if(!replay) return;
+  replay.swapped = !replay.swapped;
+  let p1 = m.a || m.p1 || 'Player 1';
+  let p2 = m.b || m.p2 || 'Player 2';
+  replay.stats = parseShowdownBattleLog(replay.log, {
+    id: replay.id,
+    game: gameNum,
+    match: m,
+    coach1: p1,
+    coach2: p2,
+    manualSwapped: replay.swapped
+  });
+  if(mInfo.isTopCut && mInfo.tcMatchId != null && t.topCutReplays){
+    t.topCutReplays[mInfo.tcMatchId] = m.replays;
+  }
+  persistLeague();
+  openMatchReplayHubModal(t.id, matchKey, gameNum, 'stats');
+  if(typeof showDraftToast === 'function'){
+    showDraftToast(`⇄ Swapped coach sides for Game ${gameNum}!`);
+  }
+}
+
 function renderMatchStatsBoxScoreHtml(stats, p1, p2, t, matchKey, gameNum) {
   if(!stats || !stats.pokemon) {
     return `<div class="card empty" style="padding:32px;text-align:center">Battle statistics could not be loaded for Game ${gameNum}.</div>`;
   }
 
-  let p1Mons = Object.values(stats.pokemon).filter(x => x.side === 'p1');
-  let p2Mons = Object.values(stats.pokemon).filter(x => x.side === 'p2');
+  let coachA = p1 || stats.coachP1 || 'Player 1';
+  let coachB = p2 || stats.coachP2 || 'Player 2';
 
-  let p1Kills = p1Mons.reduce((s, m) => s + (m.kills || 0), 0);
-  let p2Kills = p2Mons.reduce((s, m) => s + (m.kills || 0), 0);
-  let p1Dmg = p1Mons.reduce((s, m) => s + (m.damageDealt || 0), 0);
-  let p2Dmg = p2Mons.reduce((s, m) => s + (m.damageDealt || 0), 0);
-  let p1Heal = p1Mons.reduce((s, m) => s + (m.hpHealed || 0), 0);
-  let p2Heal = p2Mons.reduce((s, m) => s + (m.hpHealed || 0), 0);
+  let coachAMons = Object.values(stats.pokemon).filter(x => x.coach === coachA);
+  let coachBMons = Object.values(stats.pokemon).filter(x => x.coach === coachB);
 
-  let p1Coach = p1 || stats.player1 || 'Player 1';
-  let p2Coach = p2 || stats.player2 || 'Player 2';
+  // Fallback if coach names differ from raw names
+  if(!coachAMons.length && !coachBMons.length){
+    if(stats.sideAttribution?.swapped){
+      coachAMons = Object.values(stats.pokemon).filter(x => x.side === 'p2');
+      coachBMons = Object.values(stats.pokemon).filter(x => x.side === 'p1');
+    } else {
+      coachAMons = Object.values(stats.pokemon).filter(x => x.side === 'p1');
+      coachBMons = Object.values(stats.pokemon).filter(x => x.side === 'p2');
+    }
+  }
+
+  let p1Kills = coachAMons.reduce((s, m) => s + (m.kills || 0), 0);
+  let p2Kills = coachBMons.reduce((s, m) => s + (m.kills || 0), 0);
+  let p1Dmg = coachAMons.reduce((s, m) => s + (m.damageDealt || 0), 0);
+  let p2Dmg = coachBMons.reduce((s, m) => s + (m.damageDealt || 0), 0);
+  let p1Heal = coachAMons.reduce((s, m) => s + (m.hpHealed || 0), 0);
+  let p2Heal = coachBMons.reduce((s, m) => s + (m.hpHealed || 0), 0);
+
   let mvp = stats.mvp;
+  let mInfo = findTournamentMatch(t, matchKey);
+  let canManage = canManageMatchReplays(t, mInfo?.match);
+
+  let sideAKey = stats.sideAttribution?.swapped ? 'p2' : 'p1';
+  let sideBKey = stats.sideAttribution?.swapped ? 'p1' : 'p2';
 
   function renderTableForSide(coachName, mons, side) {
     let previewAll = stats.teamPreview?.[side] || [];
@@ -4654,6 +4867,18 @@ function renderMatchStatsBoxScoreHtml(stats, p1, p2, t, matchKey, gameNum) {
 
   return `
     <div style="padding:18px 20px;display:flex;flex-direction:column;gap:18px">
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:4px 8px;background:rgba(0,0,0,0.25);border-radius:6px;border:1px solid #242434">
+        <div style="font-size:11px;color:#8e8c95">
+          Side Attribution: <b style="color:#7dd3fc">${esc(stats.coachP1 || 'P1')}</b> (Showdown P1: ${esc(stats.player1 || 'p1')}) vs <b style="color:#ffd166">${esc(stats.coachP2 || 'P2')}</b> (Showdown P2: ${esc(stats.player2 || 'p2')})
+          ${stats.swapped ? '<span style="color:#a78bfa;margin-left:6px;font-size:10px;font-weight:700">[Inverted Sides Auto-Detected]</span>' : ''}
+        </div>
+        ${canManage ? `
+          <button class="btn ghost btn-sm" style="font-size:11px;padding:3px 10px;border-color:#38bdf840;color:#38bdf8" onclick="toggleReplaySideSwap('${t?.id}','${jsArg(matchKey)}',${gameNum})" title="Click to manually swap which coach is assigned to which Showdown player side">
+            ⇄ Swap Coach Sides
+          </button>
+        ` : ''}
+      </div>
+
       ${mvp ? `
         <div class="replay-mvp-card">
           <div style="position:relative;flex:none;text-align:center">
@@ -4685,7 +4910,7 @@ function renderMatchStatsBoxScoreHtml(stats, p1, p2, t, matchKey, gameNum) {
 
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
         <div style="background:#13131b;border:1px solid #272736;border-radius:8px;padding:12px 16px">
-          <div style="font:800 16px 'Barlow Condensed';color:#f5f3f0;margin-bottom:8px">${esc(p1Coach)}</div>
+          <div style="font:800 16px 'Barlow Condensed';color:#f5f3f0;margin-bottom:8px">${esc(coachA)}</div>
           <div style="display:flex;justify-content:space-between;font-size:11px;color:#8e8c95;padding:4px 0;border-bottom:1px solid #1f1f2a">
             <span>Total KOs</span> <b style="color:#ffd166;font-size:13px">${p1Kills}</b>
           </div>
@@ -4697,7 +4922,7 @@ function renderMatchStatsBoxScoreHtml(stats, p1, p2, t, matchKey, gameNum) {
           </div>
         </div>
         <div style="background:#13131b;border:1px solid #272736;border-radius:8px;padding:12px 16px">
-          <div style="font:800 16px 'Barlow Condensed';color:#f5f3f0;margin-bottom:8px">${esc(p2Coach)}</div>
+          <div style="font:800 16px 'Barlow Condensed';color:#f5f3f0;margin-bottom:8px">${esc(coachB)}</div>
           <div style="display:flex;justify-content:space-between;font-size:11px;color:#8e8c95;padding:4px 0;border-bottom:1px solid #1f1f2a">
             <span>Total KOs</span> <b style="color:#ffd166;font-size:13px">${p2Kills}</b>
           </div>
@@ -4710,8 +4935,8 @@ function renderMatchStatsBoxScoreHtml(stats, p1, p2, t, matchKey, gameNum) {
         </div>
       </div>
 
-      ${renderTableForSide(p1Coach, p1Mons, 'p1')}
-      ${renderTableForSide(p2Coach, p2Mons, 'p2')}
+      ${renderTableForSide(coachA, coachAMons, sideAKey)}
+      ${renderTableForSide(coachB, coachBMons, sideBKey)}
     </div>
   `;
 }
@@ -4839,8 +5064,25 @@ function processRawReplayInput(text, tournamentId, matchKey) {
     stats: stats,
     format: stats.format || t?.name || '',
     winner: stats.winner,
+    winnerCoach: stats.winnerCoach,
     totalTurns: stats.totalTurns
   };
+
+  let gameRadio = document.querySelector('input[name="addReplayGameNum"]:checked');
+  let selectedGameNum = gameRadio ? parseInt(gameRadio.value) : 1;
+
+  let existingAWins = 0;
+  let existingBWins = 0;
+  (m?.replays || []).filter(r => r.game !== selectedGameNum).forEach(r => {
+    let w = r.winnerCoach || r.stats?.winnerCoach;
+    if(w === p1) existingAWins++;
+    else if(w === p2) existingBWins++;
+  });
+
+  if(stats.winnerCoach === p1) existingAWins++;
+  else if(stats.winnerCoach === p2) existingBWins++;
+
+  let isUnscored = (m?.as === '' || m?.as == null || m?.bs === '' || m?.bs == null);
 
   let preview = document.querySelector('#addReplayPreviewBox');
   if(preview){
@@ -4851,22 +5093,51 @@ function processRawReplayInput(text, tournamentId, matchKey) {
         <span style="font-size:18px">✅</span>
         <div>
           <div style="font:800 14px 'Barlow Condensed';color:#4ade80">REPLAY VERIFIED & PARSED</div>
-          <div style="font-size:11px;color:#8e8c95">${esc(stats.format || 'Battle')} · ${stats.totalTurns} Turns · Winner: <b style="color:#f5f3f0">${esc(stats.winner || 'Unknown')}</b></div>
+          <div style="font-size:11px;color:#8e8c95">${esc(stats.format || 'Battle')} · ${stats.totalTurns} Turns · Replay Winner: <b style="color:#f5f3f0">${esc(stats.winner || 'Unknown')}</b></div>
         </div>
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:11px;background:#14141b;padding:8px;border-radius:6px;border:1px solid #282834">
         <div>
-          <span style="color:#8e8c95">Player 1:</span> <b style="color:#f5f3f0">${esc(stats.player1 || 'p1')}</b>
+          <span style="color:#8e8c95">Showdown P1:</span> <b style="color:#7dd3fc">${esc(stats.player1 || 'p1')}</b> <span style="font-size:10px;color:#aaa">(${esc(stats.coachP1 || 'Coach')})</span>
           <div style="font-size:10px;color:#aaa;margin-top:2px">${(stats.teamPreview?.p1 || []).join(', ') || '4 Mons'}</div>
         </div>
         <div>
-          <span style="color:#8e8c95">Player 2:</span> <b style="color:#f5f3f0">${esc(stats.player2 || 'p2')}</b>
+          <span style="color:#8e8c95">Showdown P2:</span> <b style="color:#ffd166">${esc(stats.player2 || 'p2')}</b> <span style="font-size:10px;color:#aaa">(${esc(stats.coachP2 || 'Coach')})</span>
           <div style="font-size:10px;color:#aaa;margin-top:2px">${(stats.teamPreview?.p2 || []).join(', ') || '4 Mons'}</div>
         </div>
       </div>
+
+      <div style="margin-top:10px;padding:8px 12px;background:#151a26;border:1px solid #2d3b55;border-radius:6px">
+        <div style="font:800 12px 'Barlow Condensed';color:#7dd3fc;letter-spacing:.5px;display:flex;align-items:center;gap:6px">
+          <span>⚡ VERIFIABLE RESULT</span>
+        </div>
+        <div style="font-size:11px;color:#cbd5e1;margin-top:3px">
+          Game ${selectedGameNum} Winner: <b style="color:#4ade80">${esc(stats.winnerCoach || stats.winner || 'Undetermined')}</b>
+        </div>
+        ${isUnscored ? `
+          <div style="font-size:11px;color:#cbd5e1;margin-top:2px">
+            Series Tally: <b style="color:#ffd166">${esc(p1)} (${existingAWins}) - (${existingBWins}) ${esc(p2)}</b>
+            ${(existingAWins >= 2 || existingBWins >= 2)
+              ? '<span style="color:#4ade80;font-weight:800;margin-left:6px">✓ Match Complete! Score will be automatically inserted into standings.</span>'
+              : '<span style="color:#8e8c95;margin-left:6px">· Upload next game to complete series.</span>'
+            }
+          </div>
+          <div style="margin-top:6px;padding-top:6px;border-top:1px solid rgba(255,255,255,0.06)">
+            <label style="display:inline-flex;align-items:center;gap:6px;font-size:11px;color:#ffd166;cursor:pointer">
+              <input type="checkbox" id="finalizeAsSingleGame" style="accent-color:#ffd166">
+              Finalize match score now with this game (${existingAWins} - ${existingBWins} Single Game / Bo1)
+            </label>
+          </div>
+        ` : `
+          <div style="font-size:11px;color:#8e8c95;margin-top:2px">
+            Match score already reported as <b>(${m.as ?? '-'} - ${m.bs ?? '-'})</b>. Replay will attach as verifiable proof.
+          </div>
+        `}
+      </div>
+
       ${mvp ? `
         <div style="margin-top:8px;font-size:11px;color:#ffd166;display:flex;align-items:center;gap:6px">
-          <span>🌟</span> <span>Calculated Match MVP: <b>${esc(mvp.name)}</b> (${mvp.kills} KOs, ${Math.round(mvp.damageDealt)} Dmg)</span>
+          <span>🌟</span> <span>Calculated Match MVP: <b>${esc(mvp.name)}</b> (${mvp.kills} KOs, ${Math.round(mvp.damageDealt)} Dmg) · Coach: <b>${esc(mvp.coach)}</b></span>
         </div>
       ` : ''}
     `;
@@ -4924,11 +5195,13 @@ function confirmSaveReplay(tournamentId, matchKey) {
   if(!_stagedReplayData) return;
   let gameRadio = document.querySelector('input[name="addReplayGameNum"]:checked');
   let gameNum = gameRadio ? parseInt(gameRadio.value) : 1;
-  saveReplayToMatch(tournamentId, matchKey, gameNum, _stagedReplayData);
+  let finalizeCheckbox = document.querySelector('#finalizeAsSingleGame');
+  let finalizeNow = finalizeCheckbox ? finalizeCheckbox.checked : false;
+  saveReplayToMatch(tournamentId, matchKey, gameNum, _stagedReplayData, finalizeNow);
   _stagedReplayData = null;
 }
 
-function saveReplayToMatch(tournamentId, matchKey, gameNum, replayData) {
+function saveReplayToMatch(tournamentId, matchKey, gameNum, replayData, finalizeNow = false) {
   let t = (tournamentId && tournamentData[tournamentId]) || activeT() || ongoingT();
   let mInfo = findTournamentMatch(t, matchKey);
   if(!mInfo || !mInfo.match) {
@@ -4940,6 +5213,8 @@ function saveReplayToMatch(tournamentId, matchKey, gameNum, replayData) {
 
   m.replays = m.replays.filter(r => r.game !== gameNum);
 
+  let winnerCoach = replayData.winnerCoach || replayData.stats?.winnerCoach || '';
+
   m.replays.push({
     id: replayData.id || `replay_${Date.now()}_g${gameNum}`,
     game: gameNum,
@@ -4947,7 +5222,9 @@ function saveReplayToMatch(tournamentId, matchKey, gameNum, replayData) {
     format: replayData.format || t.name || '',
     date: replayData.date || new Date().toISOString().split('T')[0],
     log: replayData.log,
-    stats: replayData.stats
+    stats: replayData.stats,
+    winnerCoach: winnerCoach,
+    swapped: replayData.stats?.swapped || false
   });
 
   m.replays.sort((a,b) => a.game - b.game);
@@ -4957,12 +5234,77 @@ function saveReplayToMatch(tournamentId, matchKey, gameNum, replayData) {
     t.topCutReplays[mInfo.tcMatchId] = m.replays;
   }
 
-  persistLeague();
+  // Automatic Verifiable Score Insertion
+  let isUnscored = (m.as === '' || m.as == null || m.bs === '' || m.bs == null);
+  let p1Name = m.a || m.p1;
+  let p2Name = m.b || m.p2;
 
-  if(typeof showDraftToast === 'function'){
-    showDraftToast(`🎮 Saved Game ${gameNum} Replay & Stats!`);
+  let aWins = 0;
+  let bWins = 0;
+  m.replays.forEach(r => {
+    let w = r.winnerCoach || r.stats?.winnerCoach;
+    if(w === p1Name) aWins++;
+    else if(w === p2Name) bWins++;
+  });
+
+  let shouldAutoComplete = false;
+  if(isUnscored){
+    if(finalizeNow && (aWins > 0 || bWins > 0)){
+      shouldAutoComplete = true;
+    } else if(aWins >= 2 || bWins >= 2 || (aWins + bWins >= 3)){
+      shouldAutoComplete = true;
+    }
   }
 
+  if(shouldAutoComplete){
+    m.as = aWins;
+    m.bs = bWins;
+    m.completedAt = Date.now();
+    m.date = new Date(m.completedAt).toLocaleString([], {month:'short',day:'numeric',hour:'numeric',minute:'2-digit'});
+    m.autoReportedByReplay = true;
+
+    if(mInfo.isTopCut && mInfo.tcMatchId != null){
+      m.s1 = aWins;
+      m.s2 = bWins;
+      try {
+        let h = hydrateTopCutManager(t);
+        if(h){
+          h.manager.update.match({
+            id: mInfo.tcMatchId,
+            opponent1: { score: aWins, result: aWins > bWins ? 'win' : 'loss' },
+            opponent2: { score: bWins, result: bWins > aWins ? 'win' : 'loss' }
+          });
+          t.bracketManagerData = JSON.parse(JSON.stringify(h.storage.data));
+          if(typeof refreshTopCutCache === 'function') refreshTopCutCache(t);
+        }
+      } catch(tcErr) {
+        console.warn('Auto top cut bracket update note:', tcErr);
+      }
+    }
+
+    if(typeof rebuildAllPlayerStats === 'function') rebuildAllPlayerStats();
+
+    if(typeof showDraftToast === 'function'){
+      showDraftToast(`🏆 Match score (${aWins} - ${bWins}) automatically verified & reported via Showdown replay!`);
+    }
+  } else if(isUnscored){
+    let leader = aWins > bWins ? p1Name : (bWins > aWins ? p2Name : null);
+    let leadScore = Math.max(aWins, bWins);
+    let trailScore = Math.min(aWins, bWins);
+    if(typeof showDraftToast === 'function'){
+      if(leader){
+        showDraftToast(`🎮 Game ${gameNum} saved! (${leader} leads ${leadScore}-${trailScore}). Upload Game 2 to auto-finalize.`);
+      } else {
+        showDraftToast(`🎮 Game ${gameNum} saved! (Series tied 1-1). Upload Game 3 to auto-finalize.`);
+      }
+    }
+  } else {
+    if(typeof showDraftToast === 'function'){
+      showDraftToast(`🎮 Saved Game ${gameNum} Replay & Stats!`);
+    }
+  }
+
+  persistLeague();
   openMatchReplayHubModal(t.id, matchKey, gameNum, 'watch');
   render();
 }
@@ -5027,6 +5369,14 @@ function openAddReplayModal(tournamentId, matchKey, defaultGame = 1) {
             <h2 style="font:800 24px 'Barlow Condensed';margin:2px 0 0">${esc(p1)} vs ${esc(p2)}</h2>
           </div>
           <button class="close" onclick="closeModal()">×</button>
+        </div>
+
+        <div style="background:rgba(56,189,248,0.08);border:1px solid rgba(56,189,248,0.25);border-radius:8px;padding:8px 12px;margin-top:12px;font-size:11px;color:#94a3b8;display:flex;align-items:flex-start;gap:8px">
+          <span style="font-size:14px;line-height:1">⚡</span>
+          <div>
+            <b style="color:#7dd3fc">Verifiable Score Reporting:</b>
+            Uploading a Showdown battle replay automatically proves game outcomes. Once the series is complete (or if single game is checked), the score is automatically verified and inserted into tournament standings!
+          </div>
         </div>
 
         <div style="margin-top:16px;display:flex;gap:12px;align-items:center;flex-wrap:wrap">
@@ -5596,6 +5946,7 @@ function editProfile(p, returnToProfile = false){
     <div class="modal-head"><div><div class="eyebrow">Player profile</div><h2>Edit ${esc(p)}</h2></div><button class="close" onclick="closeModal()">×</button></div>
     <div class="field"><label>Player name</label><input id="editPlayerName" value="${esc(p)}" placeholder="Player name"></div>
     <div class="field"><label>Default team name</label><input id="editDefaultTeam" value="${esc(q.team)}" placeholder="e.g. Celestial Garchomps"></div>
+    <div class="field"><label>Pokémon Showdown Username(s)</label><input id="editShowdownUsername" value="${esc(q.showdownUser || '')}" placeholder="e.g. EthanDBSV (or comma-separated alts)"></div>
     <div class="card" style="padding:14px;margin-top:14px;background:#111116;border-color:#32323a">
       <div class="eyebrow">Profile art</div>
       <p class="sub" style="margin:7px 0 12px">Use the player photo on profile pages and the team cover on team cards.</p>
@@ -5622,6 +5973,7 @@ function saveProfile(p, returnToProfile = false){
   ensureProfile(p);
   let newName = document.querySelector('#editPlayerName')?.value.trim();
   let teamVal = document.querySelector('#editDefaultTeam')?.value.trim();
+  let sdVal = document.querySelector('#editShowdownUsername')?.value.trim();
   if(!newName){
     alert('Player name cannot be empty.');
     return;
@@ -5636,6 +5988,7 @@ function saveProfile(p, returnToProfile = false){
     currentKey = newName;
   }
   profiles[currentKey].team = teamVal || 'No default team';
+  profiles[currentKey].showdownUser = sdVal || '';
   rebuildAllPlayerStats();
   persistLeague();
   if(returnToProfile){
@@ -13168,9 +13521,10 @@ function renderMatchRow(m, i, t){
 
   let matchKey = getMatchKey(m, i);
   let canReplay = canManageMatchReplays(t, m);
-  let hasReplays = Array.isArray(m.replays) && m.replays.length > 0;
+  let isCardClickable = hasReplays || canReplay;
+  let cardTitle = hasReplays ? 'Click to watch match replays & box score' : (canReplay ? (reported ? 'Click to add battle replay' : 'Click to add battle replay & auto-report score') : '');
 
-  return `<article class="m-card ${reported ? 'reported' : ''}" data-players="${esc(a)}|${esc(b)}" onclick="handleMatchCardReplayClick(event, '${t.id}', '${jsArg(matchKey)}', ${hasReplays})" style="${reported ? 'cursor:pointer;' : ''}" title="${reported ? (hasReplays ? 'Click to watch match replays & box score' : 'Click to add battle replay') : ''}">
+  return `<article class="m-card ${reported ? 'reported' : ''}" data-players="${esc(a)}|${esc(b)}" onclick="handleMatchCardReplayClick(event, '${t.id}', '${jsArg(matchKey)}', ${hasReplays})" style="${isCardClickable ? 'cursor:pointer;' : ''}" title="${esc(cardTitle)}">
     <div class="m-card-head">
       <span>${esc(label)}</span>
       ${headerBadge}
@@ -15670,9 +16024,25 @@ function toggleProfileBadges(p){
   }
 }
 
+function promptSetShowdownUsername(p) {
+  let q = ensureProfile(p);
+  let current = q.showdownUser || '';
+  let val = prompt(`Enter Pokémon Showdown username for ${p}:\n(Used for replay team attribution & verifiable match scoring)`, current);
+  if(val === null) return;
+  q.showdownUser = val.trim();
+  persistLeague();
+  openProfile(p);
+  if(typeof showDraftToast === 'function'){
+    showDraftToast(`⚔️ Saved Showdown username for ${p}: "${q.showdownUser}"`);
+  }
+  render();
+}
+
 /* --- the profile modal --- */
 function openProfile(p){
   let q=ensureProfile(p),acct=accountForPlayer(p),career=playerCareerStats(p);
+  let sdUser=q.showdownUser||'';
+  let canEditShowdown=moderator||(sessionUser&&(sessionUser===accountForPlayer(p)||(typeof myPlayer==='function'&&myPlayer()===p)))||(typeof myPlayer==='function'&&myPlayer()===p);
   let faceArt=profilePictures[p]?`url('${esc(profilePictures[p])}')`:(teamCovers[p]?`url('${esc(teamCovers[p])}')`:fallbackArt(p));
   let faceLetter=(profilePictures[p]||teamCovers[p])?'':esc((p||'?')[0]);
   let team=profiles[p]?.team&&profiles[p].team!=='No default team'?profiles[p].team:'No default team';
@@ -15701,6 +16071,22 @@ function openProfile(p){
           <div style="display:flex;flex-direction:column;gap:5px;align-items:center;margin-top:2px">
             <span style="font-size:11px;font-weight:700;color:#c0bec8;background:#101014cc;border:1px solid #ffffff18;padding:3px 9px;border-radius:4px;max-width:210px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(team)}</span>
             ${acct?`<span class="link-badge">★ ${esc(acct)}</span>`:`<span class="link-badge none">No account linked</span>`}
+            <div style="display:flex;align-items:center;gap:6px;margin-top:2px">
+              ${sdUser ? `
+                <span class="link-badge" style="background:#131d2e;border-color:#38bdf855;color:#7dd3fc;display:inline-flex;align-items:center;gap:5px;font-size:11px">
+                  ⚔️ Showdown: <b style="color:#ffffff">${esc(sdUser)}</b>
+                </span>
+              ` : `
+                <span class="link-badge none" style="font-size:10px;color:#7e7c88">
+                  ⚔️ No Showdown username
+                </span>
+              `}
+              ${canEditShowdown ? `
+                <button class="btn ghost btn-sm" style="padding:2px 7px;font-size:11px;height:22px;line-height:1;border-color:#38bdf840;color:#38bdf8" onclick="promptSetShowdownUsername('${jsArg(p)}')" title="Set Pokémon Showdown Username">
+                  ✎
+                </button>
+              ` : ''}
+            </div>
           </div>
         </div>
 
