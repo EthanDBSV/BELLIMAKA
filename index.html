@@ -5834,6 +5834,7 @@ function shouldApply(incoming){
   // 2. Protect draft progress: if incoming cloud draft has different/more picks or status diff, accept!
   if(incoming.tournaments && typeof incoming.tournaments === 'object'){
     let hasDraftDiff = false;
+    let isRecentLocalAction = (Date.now() - (window._lastLocalDraftActionTime || 0)) < 7000;
     for(let tId in incoming.tournaments){
       let incT = incoming.tournaments[tId];
       let locT = tournamentData[tId];
@@ -5842,7 +5843,9 @@ function shouldApply(incoming){
       if(incD && locD){
         let incPicks = incD.picks?.length || 0;
         let locPicks = locD.picks?.length || 0;
-        if(incPicks !== locPicks || incD.status !== locD.status){
+        if(isRecentLocalAction && incPicks < locPicks){
+          // Local client recently drafted; do not let stale cloud edge overwrite newer local draft state!
+        } else if(incPicks !== locPicks || incD.status !== locD.status){
           hasDraftDiff = true;
           break;
         }
@@ -7453,11 +7456,30 @@ function setupLeagueStateRealtime(){
   // Realtime WebSockets are strictly isolated to active live draft sessions via setupDraftRealtime().
 }
 
+var draftWakeLock = null;
+async function requestDraftWakeLock(){
+  try {
+    if('wakeLock' in navigator && !draftWakeLock && current === 'Draft'){
+      draftWakeLock = await navigator.wakeLock.request('screen');
+      draftWakeLock.addEventListener('release', () => {
+        draftWakeLock = null;
+      });
+    }
+  } catch(e){}
+}
+function releaseDraftWakeLock(){
+  if(draftWakeLock){
+    try { draftWakeLock.release(); } catch(e){}
+    draftWakeLock = null;
+  }
+}
+
 function teardownDraftRealtime(){
   if(draftPollTimer){
     clearInterval(draftPollTimer);
     draftPollTimer = null;
   }
+  releaseDraftWakeLock();
   if(supabaseClient){
     if(draftRealtimeChannel){
       try { supabaseClient.removeChannel(draftRealtimeChannel); } catch(e){}
@@ -7477,25 +7499,25 @@ function setupDraftRealtime(){
   let isDraftActive = (t && t.phase === 'draft');
   let isViewingDraft = (current === 'Draft');
 
-  // ONLY connect WebSocket and background poll if tournament is in active draft phase AND user is looking at Draft Room in a visible tab!
-  if(!isDraftActive || !isViewingDraft || document.hidden){
+  // ONLY tear down if tournament is not in active draft phase OR user navigated away from Draft Room
+  if(!isDraftActive || !isViewingDraft){
     teardownDraftRealtime();
     return;
   }
+
+  // Prevent mobile screen from sleeping while coach is watching live draft
+  requestDraftWakeLock();
 
   // Active Draft Room polling: 2s interval with ultra-lightweight fast-path (0.4ms execution, zero DOM rebuilds)
   let pollInterval = bType === 'cloudflare' ? 2000 : 4000;
 
   if(!draftPollTimer){
     draftPollTimer = setInterval(() => {
-      if(current === 'Draft' && !document.hidden && !isSandboxMode()){
-        syncFromCloud(false);
-      } else {
-        if(draftPollTimer){
-          clearInterval(draftPollTimer);
-          draftPollTimer = null;
-        }
+      if(current !== 'Draft' || isSandboxMode()){
+        teardownDraftRealtime();
+        return;
       }
+      syncFromCloud(false);
     }, pollInterval);
   }
 
@@ -7632,10 +7654,14 @@ function applyRemoteDraftControl(payload){
 
 var isSyncingFromCloud = false;
 var lastFullStateSyncTime = 0;
+var lastSyncStartTime = 0;
 async function syncFromCloud(force = false){
   let bType = getBackendType();
-  if(isSandboxMode() || bType === 'local' || isSyncingFromCloud) return;
+  if(isSandboxMode() || bType === 'local') return;
+  // Guard against hung fetch on flaky mobile connections (max 5s lock)
+  if(isSyncingFromCloud && (Date.now() - lastSyncStartTime < 5000)) return;
   isSyncingFromCloud = true;
+  lastSyncStartTime = Date.now();
   try {
     let localUpdatedAt = Number(localStorage.getItem('draftdex-updated-at') || 0);
     let localRev = Number(localStorage.getItem('draftdex-rev') || 0) || knownRev || 0;
@@ -7648,7 +7674,11 @@ async function syncFromCloud(force = false){
       // If viewing active draft, quickly check lightweight /api/draft endpoint (~2KB vs ~600KB)
       if(isDraftActive && curT.id && current === 'Draft'){
         try {
-          let dRes = await fetch(`${cfUrl}/api/draft?tournamentId=${encodeURIComponent(curT.id)}&_t=${Date.now()}`, { cache: 'no-store' });
+          let timeoutSignal = (typeof AbortSignal !== 'undefined' && AbortSignal.timeout) ? AbortSignal.timeout(4000) : undefined;
+          let dRes = await fetch(`${cfUrl}/api/draft?tournamentId=${encodeURIComponent(curT.id)}&_t=${Date.now()}`, {
+            cache: 'no-store',
+            signal: timeoutSignal
+          });
           if(dRes.ok){
             let dJson = await dRes.json();
             if(dJson && dJson.draft && Array.isArray(dJson.draft.picks)){
@@ -7657,29 +7687,47 @@ async function syncFromCloud(force = false){
               let localPicks = localD?.picks || [];
               let remotePicksCount = remotePicks.length;
               let localPicksCount = localPicks.length;
-              if(remotePicksCount !== localPicksCount || dJson.draft.status !== localD?.status || dJson.draft.currentPickIndex !== localD?.currentPickIndex){
+
+              let isRecentLocalAction = (Date.now() - (window._lastLocalDraftActionTime || 0)) < 7000;
+
+              // PC Lagback Guard: if coach on this device made a local draft action in last 7s,
+              // ignore stale edge responses that haven't received our latest pick yet!
+              if(isRecentLocalAction && remotePicksCount < localPicksCount){
+                return;
+              }
+
+              let hasPickDiff = remotePicksCount > localPicksCount || (!isRecentLocalAction && remotePicksCount !== localPicksCount);
+              let hasStatusDiff = dJson.draft.status !== localD?.status;
+              let hasOrderDiff = JSON.stringify(dJson.draft.order || []) !== JSON.stringify(localD?.order || []);
+
+              if(hasPickDiff || hasStatusDiff || hasOrderDiff){
                 // Update BOTH curT.draftData and curT.draft so ensureTournamentDraft sees new state immediately
                 curT.draftData = dJson.draft;
                 curT.draft = dJson.draft;
 
-                // Sync rosters for all coaches from the received draft picks
-                if(!curT.rosters) curT.rosters = {};
+                // Sync rosters for all coaches cleanly from the received draft picks
+                let freshRosters = {};
+                (curT.players || []).forEach(p => { freshRosters[p] = []; });
                 remotePicks.forEach(pk => {
                   if(pk && pk.player && pk.pokemon){
-                    if(!curT.rosters[pk.player]) curT.rosters[pk.player] = [];
-                    if(!curT.rosters[pk.player].includes(pk.pokemon)){
-                      curT.rosters[pk.player].push(pk.pokemon);
-                    }
-                    if(typeof roster !== 'undefined'){
-                      if(!roster[pk.player]) roster[pk.player] = [];
-                      if(!roster[pk.player].includes(pk.pokemon)){
-                        roster[pk.player].push(pk.pokemon);
-                      }
+                    if(!freshRosters[pk.player]) freshRosters[pk.player] = [];
+                    if(!freshRosters[pk.player].includes(pk.pokemon)){
+                      freshRosters[pk.player].push(pk.pokemon);
                     }
                   }
                 });
+                curT.rosters = freshRosters;
+
                 if(dJson.roster && typeof dJson.roster === 'object'){
-                  Object.assign(roster, dJson.roster);
+                  if(typeof roster !== 'undefined'){
+                    for(let p in dJson.roster){
+                      roster[p] = [...(dJson.roster[p] || [])];
+                    }
+                  }
+                } else if(typeof roster !== 'undefined'){
+                  for(let p in freshRosters){
+                    roster[p] = [...freshRosters[p]];
+                  }
                 }
 
                 // Keep local storage updated without triggering redundant flushSync cloud POST
@@ -7809,14 +7857,21 @@ function handleAppForeground(forced = false){
 document.addEventListener('visibilitychange', () => {
   if(document.visibilityState === 'visible'){
     handleAppForeground(false);
+    if(current === 'Draft') requestDraftWakeLock();
   } else {
-    teardownDraftRealtime();
+    // Only tear down draft polling if user navigated away from Draft tab (do not kill timer on mobile screen dims!)
+    if(current !== 'Draft'){
+      teardownDraftRealtime();
+    }
     teardownLeagueStateRealtime();
   }
 });
 window.addEventListener('pageshow', () => handleAppForeground(false));
 window.addEventListener('focus', () => handleAppForeground(false));
 window.addEventListener('online', () => handleAppForeground(true));
+window.addEventListener('pointerdown', () => {
+  if(current === 'Draft' && !draftPollTimer) setupDraftRealtime();
+}, { passive: true });
 
 var backendInited = false;
 async function initBackend(){
@@ -20090,16 +20145,21 @@ var draftPendingImport = null;
 function ensureTournamentDraft(t){
   if(!t) return null;
   if(!t.draftData){
-    t.draftData = {
-      status: 'pending',
-      pointBudget: 100,
-      maxRosterSize: 10,
-      order: [...(t.players || [])],
-      currentPickIndex: 0,
-      board: [],
-      picks: []
-    };
+    if(t.draft && typeof t.draft === 'object'){
+      t.draftData = t.draft;
+    } else {
+      t.draftData = {
+        status: 'pending',
+        pointBudget: 100,
+        maxRosterSize: 10,
+        order: [...(t.players || [])],
+        currentPickIndex: 0,
+        board: [],
+        picks: []
+      };
+    }
   }
+  t.draft = t.draftData;
   if(!t.draftData.order || !t.draftData.order.length){
     t.draftData.order = [...(t.players || [])];
   }
@@ -20754,9 +20814,14 @@ function randomizeDraftOrder(tId){
 function saveDraftOrder(tId){
   let t = tournamentData[tId] || activeT();
   if(!t || !canManageTournament(t)) return;
+  window._lastLocalDraftActionTime = Date.now();
   persistLeague();
   closeModal();
   render();
+  if(!isSandboxMode() && backendReady()){
+    clearTimeout(syncTimer);
+    flushSync();
+  }
 }
 
 function openRenameBoardPokemonModal(tId, oldMonName, cost, tierName){
@@ -20973,24 +21038,6 @@ function openDraftConfirmationModal(tId, monName, cost, tierName){
 }
 
 
-function pushDraftActionToCloud(tId, draftObj, rosterObj){
-  let bType = getBackendType();
-  if(bType === 'cloudflare' && !isSandboxMode()){
-    try {
-      let cfUrl = getCloudflareUrl();
-      fetch(`${cfUrl}/api/draft`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          tournamentId: tId,
-          draftData: draftObj,
-          roster: rosterObj || (typeof roster !== 'undefined' ? roster : {})
-        })
-      }).catch(()=>{});
-    } catch(e){}
-  }
-}
-
 function makeDraftPick(tId, pokemonName, forcedPlayer = null){
   let t = tournamentData[tId] || ongoingT() || activeT();
   if(!t) return;
@@ -21079,13 +21126,11 @@ function makeDraftPick(tId, pokemonName, forcedPlayer = null){
     d.status = 'completed';
   }
 
+  window._lastLocalDraftActionTime = Date.now();
   knownRev = (knownRev || 0) + 1;
   lastLocalUpdate = Date.now();
   persistLeague();
   render();
-
-  // Instant lightweight push directly to /api/draft
-  pushDraftActionToCloud(t.id, d, t.rosters);
 
   // Instant Realtime Broadcast to all online draft participants (< 100ms)
   if(draftRealtimeChannel){
@@ -21143,9 +21188,9 @@ function undoDraftPick(tId){
     }
   }
 
+  window._lastLocalDraftActionTime = Date.now();
   persistLeague();
   render();
-  pushDraftActionToCloud(t.id, t.draftData, t.rosters);
 
   if(draftRealtimeChannel){
     try {
@@ -21167,9 +21212,9 @@ function startDraft(tId){
   if(!t || !canManageTournament(t)) return;
   let d = ensureTournamentDraft(t);
   d.status = 'active';
+  window._lastLocalDraftActionTime = Date.now();
   persistLeague();
   render();
-  pushDraftActionToCloud(t.id, d, t.rosters);
 
   if(draftRealtimeChannel){
     try {
@@ -21191,9 +21236,9 @@ function pauseDraft(tId){
   if(!t || !canManageTournament(t)) return;
   let d = ensureTournamentDraft(t);
   d.status = 'paused';
+  window._lastLocalDraftActionTime = Date.now();
   persistLeague();
   render();
-  pushDraftActionToCloud(t.id, d, t.rosters);
 
   if(draftRealtimeChannel){
     try {
@@ -21215,9 +21260,9 @@ function resumeDraft(tId){
   if(!t || !canManageTournament(t)) return;
   let d = ensureTournamentDraft(t);
   d.status = 'active';
+  window._lastLocalDraftActionTime = Date.now();
   persistLeague();
   render();
-  pushDraftActionToCloud(t.id, d, t.rosters);
 
   if(draftRealtimeChannel){
     try {
