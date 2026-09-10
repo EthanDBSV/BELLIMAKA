@@ -1855,6 +1855,12 @@ details[open] > .past-tourney-summary .past-chevron{transform:rotate(180deg);col
 .replay-dropzone{border:2px dashed #3a3a4c;border-radius:10px;padding:28px 16px;text-align:center;background:#13131a;transition:all .2s ease;cursor:pointer}
 .replay-dropzone.dragover{border-color:var(--red);background:rgba(255,89,100,0.08)}
 @media(max-width:768px){.replay-hub-modal{width:98vw;max-height:98vh}.replay-mvp-card{flex-direction:column;text-align:center}}
+.tots-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px;align-items:stretch}
+.tots-card{border-radius:14px;padding:22px 16px 18px;display:flex;flex-direction:column;align-items:center;text-align:center;position:relative;overflow:hidden;transition:all .2s ease;box-shadow:0 8px 24px rgba(0,0,0,0.35)}
+.tots-card:hover{transform:translateY(-4px);box-shadow:0 14px 36px rgba(0,0,0,0.55)}
+.tots-hero-box{width:100%;border-radius:10px;padding:12px 8px;margin:12px 0 10px;display:flex;flex-direction:column;align-items:center;justify-content:center;background:rgba(0,0,0,0.38);border:1px solid rgba(255,255,255,0.08)}
+@media(max-width:960px){.tots-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:560px){.tots-grid{grid-template-columns:1fr}}
 </style>
 <body><div class="shell"><header class="topbar"><div class="brand" onclick="go('Home')"><img src="bellimaka_logo.jpg" class="bellimaka-logo" alt="Bellimaka"><span style="letter-spacing:1px">BELLIMAKA</span></div><nav class="nav" id="nav"></nav><div id="topbarActions" style="display:flex;align-items:center;gap:8px;margin-left:auto"><button class="account" onclick="go('Account')"><span class="mode-dot"></span><span id="accountText">Sign in</span></button></div></header><main class="page" id="app"></main></div><div id="modal"></div>
 <script>
@@ -4855,9 +4861,9 @@ function renderMatchStatsBoxScoreHtml(stats, p1, p2, t, matchKey, gameNum) {
                 <th>Pokémon</th>
                 <th style="text-align:center">Status</th>
                 <th style="text-align:center">KOs</th>
-                <th style="text-align:right">Dmg Dealt</th>
-                <th style="text-align:right">Dmg Taken</th>
-                <th style="text-align:right">Healed</th>
+                <th style="text-align:center">Dmg Dealt</th>
+                <th style="text-align:center">Dmg Taken</th>
+                <th style="text-align:center">Healed</th>
                 <th>Moves Recorded</th>
               </tr>
             </thead>
@@ -4882,12 +4888,12 @@ function renderMatchStatsBoxScoreHtml(stats, p1, p2, t, matchKey, gameNum) {
                     <td style="text-align:center">
                       ${m.fainted ? `<span class="status-pill-fainted">Fainted (T${m.faintTurn || '?'})</span>` : `<span class="status-pill-survived">Survived</span>`}
                     </td>
-                    <td style="text-align:center;font:800 16px 'Barlow Condensed';color:${m.kills > 0 ? '#ffd166' : '#7e7c88'}">
+                    <td style="text-align:center;font:800 15px 'Barlow Condensed';color:${m.kills > 0 ? '#ffd166' : '#646270'}">
                       ${m.kills}
                     </td>
-                    <td style="text-align:right;font-weight:700;color:#ff8a90">${Math.round(m.damageDealt)}</td>
-                    <td style="text-align:right;color:#8e8c95">${Math.round(m.damageTaken)}</td>
-                    <td style="text-align:right;color:#4ade80">${Math.round(m.hpHealed)}</td>
+                    <td style="text-align:center;font:800 15px 'Barlow Condensed';color:${m.damageDealt > 0 ? '#ff8a90' : '#646270'}">${Math.round(m.damageDealt)}</td>
+                    <td style="text-align:center;font:800 15px 'Barlow Condensed';color:${m.damageTaken > 0 ? '#cbd5e1' : '#646270'}">${Math.round(m.damageTaken)}</td>
+                    <td style="text-align:center;font:800 15px 'Barlow Condensed';color:${m.hpHealed > 0 ? '#4ade80' : '#646270'}">${Math.round(m.hpHealed)}</td>
                     <td>
                       <div style="display:flex;flex-wrap:wrap;gap:2px">
                         ${(m.moves || []).map(mv => `<span class="move-pill">${esc(mv)}</span>`).join('') || '<span style="color:#666">—</span>'}
@@ -4940,12 +4946,12 @@ function renderMatchStatsBoxScoreHtml(stats, p1, p2, t, matchKey, gameNum) {
               <span style="font:900 24px 'Barlow Condensed';color:#ffffff;letter-spacing:.4px">${esc(mvp.name)}</span>
               <span style="font-size:11px;color:#8e8c95">Coach: <b style="color:#ffd166">${esc(mvp.coach)}</b></span>
             </div>
-            <div style="display:flex;gap:18px;margin-top:8px;flex-wrap:wrap;font-size:11px">
-              <div><span style="color:#8e8c95">KOs:</span> <b style="color:#ffd166;font-size:14px">${mvp.kills}</b></div>
-              <div><span style="color:#8e8c95">Damage Dealt:</span> <b style="color:#ff8a90;font-size:14px">${Math.round(mvp.damageDealt)}</b></div>
-              <div><span style="color:#8e8c95">Damage Taken:</span> <b style="color:#f5f3f0;font-size:14px">${Math.round(mvp.damageTaken)}</b></div>
-              <div><span style="color:#8e8c95">Status:</span> ${mvp.fainted ? '<b style="color:#ff8a90">Fainted</b>' : '<b style="color:#4ade80">Survived</b>'}</div>
-              <div><span style="color:#8e8c95">Impact Score:</span> <b style="color:#38bdf8;font-size:14px">${mvp.impactScore}</b></div>
+            <div style="display:flex;align-items:baseline;gap:18px;margin-top:8px;flex-wrap:wrap;font-size:11px">
+              <div style="display:inline-flex;align-items:baseline;gap:5px"><span style="color:#8e8c95">KOs:</span> <b style="color:#ffd166;font-size:14px">${mvp.kills}</b></div>
+              <div style="display:inline-flex;align-items:baseline;gap:5px"><span style="color:#8e8c95">Damage Dealt:</span> <b style="color:#ff8a90;font-size:14px">${Math.round(mvp.damageDealt)}</b></div>
+              <div style="display:inline-flex;align-items:baseline;gap:5px"><span style="color:#8e8c95">Damage Taken:</span> <b style="color:#f5f3f0;font-size:14px">${Math.round(mvp.damageTaken)}</b></div>
+              <div style="display:inline-flex;align-items:baseline;gap:5px"><span style="color:#8e8c95">Status:</span> ${mvp.fainted ? '<b style="color:#ff8a90;font-size:14px">Fainted</b>' : '<b style="color:#4ade80;font-size:14px">Survived</b>'}</div>
+              <div style="display:inline-flex;align-items:baseline;gap:5px"><span style="color:#8e8c95">Impact Score:</span> <b style="color:#38bdf8;font-size:14px">${mvp.impactScore}</b></div>
             </div>
             ${mvp.moves && mvp.moves.length > 0 ? `
               <div style="margin-top:8px;display:flex;gap:4px;flex-wrap:wrap;align-items:center">
@@ -5806,6 +5812,406 @@ function matchCard(m,latest=false){
 
 
 
+
+/* ------------------------------------------------------------
+   TOURNAMENT TEAM OF THE SEASON & AWARDS ENGINE
+   Calculates the 4 star Pokémon per tournament on a per-game basis:
+   1. Most Damage Dealt / Game (Damage Leader)
+   2. Most KOs / Game (Top Finisher)
+   3. Most Damage Taken / Game (Iron Wall)
+   4. Most Damage Healed / Game (Master Healer)
+   ------------------------------------------------------------ */
+
+function calculateTeamOfTheSeason(t) {
+  if(!t) return { empty: true, totalGames: 0, pokemonCount: 0, pokemonStats: [], team: [] };
+
+  // 1. Gather all replays across tournament matches & top cut
+  let allReplays = [];
+  (t.matches || []).forEach(m => {
+    if(Array.isArray(m.replays)) {
+      m.replays.forEach(r => {
+        allReplays.push({ replay: r, match: m });
+      });
+    }
+  });
+
+  if(t.topCutReplays) {
+    Object.keys(t.topCutReplays).forEach(tcKey => {
+      let rList = t.topCutReplays[tcKey];
+      if(Array.isArray(rList)) {
+        rList.forEach(r => {
+          allReplays.push({ replay: r, match: null, isTopCut: true });
+        });
+      }
+    });
+  }
+
+  if(allReplays.length === 0) {
+    return { empty: true, totalGames: 0, pokemonCount: 0, pokemonStats: [], team: [] };
+  }
+
+  // 2. Aggregate stats per Pokemon
+  let monMap = new Map();
+
+  allReplays.forEach(({ replay, match }) => {
+    let stats = replay.stats;
+    if(!stats || stats.version !== 3) {
+      stats = parseShowdownBattleLog(replay.log, {
+        id: replay.id,
+        game: replay.game,
+        match: match,
+        coach1: match?.a || match?.p1,
+        coach2: match?.b || match?.p2,
+        manualSwapped: replay.swapped
+      });
+    }
+    let pList = Array.isArray(stats.pokemon) ? stats.pokemon : (stats.pokemon ? Object.values(stats.pokemon) : []);
+    if(!pList || pList.length === 0) return;
+
+    pList.forEach(p => {
+      if(!p.name) return;
+      let cleanName = p.name.trim();
+      let key = cleanName.toLowerCase();
+      if(!monMap.has(key)) {
+        monMap.set(key, {
+          name: cleanName,
+          coach: p.coach || '',
+          sprite: p.sprite || (typeof resolvePokemonData === 'function' ? resolvePokemonData(cleanName)?.sprite : getPokemonSpriteUrl(cleanName.toLowerCase())),
+          games: 0,
+          totalKills: 0,
+          totalDamageDealt: 0,
+          totalDamageTaken: 0,
+          totalHpHealed: 0,
+          impactScoreTotal: 0,
+          moves: new Set()
+        });
+      }
+      let entry = monMap.get(key);
+      entry.games += 1;
+      entry.totalKills += (p.kills || 0);
+      entry.totalDamageDealt += (p.damageDealt || 0);
+      entry.totalDamageTaken += (p.damageTaken || 0);
+      entry.totalHpHealed += (p.hpHealed || 0);
+      entry.impactScoreTotal += (p.impactScore || 0);
+      if(!entry.coach && p.coach) entry.coach = p.coach;
+      (p.moves || []).forEach(mv => entry.moves.add(mv));
+    });
+  });
+
+  // Verify coach assignments from tournament rosters if missing
+  if(t.rosters) {
+    Object.keys(t.rosters).forEach(coachName => {
+      let rList = t.rosters[coachName] || [];
+      rList.forEach(rMon => {
+        let key = String(rMon).toLowerCase().trim();
+        if(monMap.has(key)) {
+          let entry = monMap.get(key);
+          if(!entry.coach) entry.coach = coachName;
+        }
+      });
+    });
+  }
+
+  let list = Array.from(monMap.values()).map(m => {
+    let games = Math.max(1, m.games);
+    return {
+      ...m,
+      moves: Array.from(m.moves),
+      killsPerGame: m.totalKills / games,
+      damageDealtPerGame: m.totalDamageDealt / games,
+      damageTakenPerGame: m.totalDamageTaken / games,
+      healedPerGame: m.totalHpHealed / games,
+      avgImpactScore: m.impactScoreTotal / games
+    };
+  });
+
+  if(list.length === 0) {
+    return { empty: true, totalGames: allReplays.length, pokemonCount: 0, pokemonStats: [], team: [] };
+  }
+
+  // 3. Award the 4 categories with deduplication (each Pokemon gets 1 role max)
+  let selectedNames = new Set();
+
+  function pickWinner(sorter) {
+    let candidates = list.filter(m => !selectedNames.has(m.name.toLowerCase()));
+    if(candidates.length === 0) candidates = list;
+    candidates.sort(sorter);
+    let picked = candidates[0];
+    if(picked) selectedNames.add(picked.name.toLowerCase());
+    return picked;
+  }
+
+  // 1. Most Damage Dealt / Game
+  let bestDamage = pickWinner((a, b) => {
+    if(b.damageDealtPerGame !== a.damageDealtPerGame) return b.damageDealtPerGame - a.damageDealtPerGame;
+    if(b.games !== a.games) return b.games - a.games;
+    return b.totalDamageDealt - a.totalDamageDealt;
+  });
+
+  // 2. Most KOs / Game
+  let bestKills = pickWinner((a, b) => {
+    if(b.killsPerGame !== a.killsPerGame) return b.killsPerGame - a.killsPerGame;
+    if(b.games !== a.games) return b.games - a.games;
+    return b.totalKills - a.totalKills;
+  });
+
+  // 3. Most Damage Taken / Game
+  let bestDamageTaken = pickWinner((a, b) => {
+    if(b.damageTakenPerGame !== a.damageTakenPerGame) return b.damageTakenPerGame - a.damageTakenPerGame;
+    if(b.games !== a.games) return b.games - a.games;
+    return b.totalDamageTaken - a.totalDamageTaken;
+  });
+
+  // 4. Most Damage Healed / Game
+  let bestHealed = pickWinner((a, b) => {
+    if(b.healedPerGame !== a.healedPerGame) return b.healedPerGame - a.healedPerGame;
+    if(b.games !== a.games) return b.games - a.games;
+    return b.totalHpHealed - a.totalHpHealed;
+  });
+
+  let team = [
+    {
+      roleKey: 'damage',
+      categoryTitle: 'Most Damage',
+      roleTitle: 'Damage Leader',
+      icon: '💥',
+      badgeColor: '#ff8a90',
+      badgeBg: 'rgba(255,138,144,0.12)',
+      badgeBorder: 'rgba(255,138,144,0.3)',
+      mon: bestDamage,
+      statVal: bestDamage ? (bestDamage.damageDealtPerGame % 1 === 0 ? bestDamage.damageDealtPerGame.toFixed(0) : bestDamage.damageDealtPerGame.toFixed(1)) : '0',
+      statUnit: 'Dmg / Game',
+      totalStatDisplay: `${Math.round(bestDamage?.totalDamageDealt || 0)} Total Dmg`
+    },
+    {
+      roleKey: 'kills',
+      categoryTitle: 'Most KOs',
+      roleTitle: 'Top Finisher',
+      icon: '⚔️',
+      badgeColor: '#ffd166',
+      badgeBg: 'rgba(255,209,102,0.12)',
+      badgeBorder: 'rgba(255,209,102,0.3)',
+      mon: bestKills,
+      statVal: bestKills ? (bestKills.killsPerGame % 1 === 0 ? bestKills.killsPerGame.toFixed(0) : bestKills.killsPerGame.toFixed(1)) : '0',
+      statUnit: 'KOs / Game',
+      totalStatDisplay: `${bestKills?.totalKills || 0} Total KOs`
+    },
+    {
+      roleKey: 'taken',
+      categoryTitle: 'Most Dmg Taken',
+      roleTitle: 'Iron Wall',
+      icon: '🛡️',
+      badgeColor: '#7dd3fc',
+      badgeBg: 'rgba(125,211,252,0.12)',
+      badgeBorder: 'rgba(125,211,252,0.3)',
+      mon: bestDamageTaken,
+      statVal: bestDamageTaken ? (bestDamageTaken.damageTakenPerGame % 1 === 0 ? bestDamageTaken.damageTakenPerGame.toFixed(0) : bestDamageTaken.damageTakenPerGame.toFixed(1)) : '0',
+      statUnit: 'Dmg Taken / Game',
+      totalStatDisplay: `${Math.round(bestDamageTaken?.totalDamageTaken || 0)} Total Taken`
+    },
+    {
+      roleKey: 'healed',
+      categoryTitle: 'Most Healed',
+      roleTitle: 'Master Healer',
+      icon: '💚',
+      badgeColor: '#4ade80',
+      badgeBg: 'rgba(74,222,128,0.12)',
+      badgeBorder: 'rgba(74,222,128,0.3)',
+      mon: bestHealed,
+      statVal: bestHealed ? (bestHealed.healedPerGame % 1 === 0 ? bestHealed.healedPerGame.toFixed(0) : bestHealed.healedPerGame.toFixed(1)) : '0',
+      statUnit: 'Healed / Game',
+      totalStatDisplay: `${Math.round(bestHealed?.totalHpHealed || 0)} Total Healed`
+    }
+  ];
+
+  return {
+    empty: false,
+    totalGames: allReplays.length,
+    pokemonCount: list.length,
+    pokemonStats: list.sort((a, b) => b.damageDealtPerGame - a.damageDealtPerGame),
+    team
+  };
+}
+
+function renderTournamentAwardsTabHtml(t) {
+  if(!t) return '<div class="card empty" style="padding:24px;text-align:center">No tournament selected.</div>';
+  let tots = calculateTeamOfTheSeason(t);
+
+  if(tots.empty || !tots.team || tots.team.length === 0){
+    return `
+      <div class="card empty" style="padding:48px 24px;text-align:center;max-width:600px;margin:30px auto;background:#14141c;border:1px solid #282838;border-radius:14px;box-shadow:0 8px 30px rgba(0,0,0,0.5)">
+        <div style="font-size:44px;margin-bottom:12px">🏆</div>
+        <div style="font:900 24px 'Barlow Condensed';color:#f5f3f0;letter-spacing:.5px">Team of the Season Awaiting Replays</div>
+        <p class="sub" style="margin:8px auto 16px;font-size:12px;color:#94a3b8;line-height:1.55;max-width:440px">
+          The <b>Team of the Season</b> is calculated directly from tournament battle replays on a <b>per-game average</b>. As match replays are recorded for <b>${esc(t.name)}</b>, the 4 top-performing Pokémon (Most Damage, Most KOs, Most Dmg Taken, and Most Healed) will be awarded here!
+        </p>
+      </div>
+    `;
+  }
+
+  return `
+    <div style="display:flex;flex-direction:column;gap:24px;margin-top:4px">
+      <div style="background:linear-gradient(135deg,#15151e 0%,#0f0f15 100%);border:1px solid #28283a;border-radius:14px;padding:24px;box-shadow:0 8px 32px rgba(0,0,0,0.4)">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:12px;margin-bottom:20px">
+          <div>
+            <div class="eyebrow" style="color:#ffd166;display:flex;align-items:center;gap:6px">
+              <span>🏆</span> OFFICIAL AWARDS & HONORS · ${esc(t.season || '')}
+            </div>
+            <h2 style="margin:4px 0 0;font:900 28px 'Barlow Condensed';color:#f5f3f0;letter-spacing:.5px">
+              Team of the Season
+            </h2>
+            <p class="sub" style="margin:4px 0 0;font-size:12px;color:#94a3b8;max-width:640px">
+              Selected on a <b>per-game basis</b> across all official battle replays to evaluate true competitive game impact regardless of tournament length.
+            </p>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px">
+            <span style="font-size:11px;color:#8e8c95;background:#181824;padding:4px 12px;border-radius:20px;border:1px solid #2e2e42">
+              <b>${tots.totalGames}</b> ${tots.totalGames === 1 ? 'Game' : 'Games'} Evaluated
+            </span>
+          </div>
+        </div>
+
+        <div class="tots-grid">
+          ${tots.team.map(item => {
+            let mon = item.mon;
+            if(!mon) return '';
+            let types = (typeof getPokemonTypes === 'function' ? getPokemonTypes(mon.name) : []) || ['Normal'];
+            let pType = types[0] || 'Normal';
+            let theme = (typeof TYPE_THEMES !== 'undefined' && TYPE_THEMES[pType]) ? TYPE_THEMES[pType] : { bg: '#1c1c24', bgEnd: '#15151a', border: '#383847', glow: 'rgba(255,255,255,0.06)' };
+            let sprite = mon.sprite || (typeof resolvePokemonData === 'function' ? resolvePokemonData(mon.name)?.sprite : (typeof getPokemonSpriteUrl === 'function' ? getPokemonSpriteUrl(mon.name.toLowerCase()) : ''));
+
+            return `
+              <div class="tots-card" style="background:linear-gradient(180deg, ${theme.bg} 0%, rgba(18,18,24,0.96) 100%);border-color:${theme.border || '#2e2e3e'}">
+                <div style="display:flex;flex-direction:column;align-items:center;gap:3px;margin-bottom:6px">
+                  <span style="font:800 10px 'Barlow Condensed';letter-spacing:.8px;text-transform:uppercase;padding:2px 8px;border-radius:4px;background:${item.badgeBg};color:${item.badgeColor};border:1px solid ${item.badgeBorder}">
+                    ${item.icon} ${item.categoryTitle}
+                  </span>
+                  <span style="font-size:10px;font-weight:800;color:#8e8c95;text-transform:uppercase;letter-spacing:.5px">
+                    ${item.roleTitle}
+                  </span>
+                </div>
+
+                <div style="font:900 22px 'Barlow Condensed';color:#ffffff;letter-spacing:.5px;text-transform:uppercase;margin-top:2px">
+                  ${esc(mon.name)}
+                </div>
+
+                <div style="width:100%;height:115px;display:flex;align-items:center;justify-content:center;margin:8px 0">
+                  <img src="${sprite}" alt="${esc(mon.name)}" style="max-height:105px;max-width:115px;object-fit:contain;filter:drop-shadow(0 6px 12px ${theme.glow || 'rgba(0,0,0,0.5)'})" onerror="handleSpriteError(this)">
+                </div>
+
+                <div style="display:flex;align-items:center;justify-content:center;gap:4px;margin-bottom:8px">
+                  ${typeof renderPokemonTypeBadges === 'function' ? renderPokemonTypeBadges(mon.name, 'font-size:9px;padding:1px 6px') : ''}
+                </div>
+
+                <div class="tots-hero-box">
+                  <div style="font:900 28px 'Barlow Condensed';line-height:1;color:${item.badgeColor}">
+                    ${item.statVal}
+                  </div>
+                  <div style="font-size:10px;font-weight:800;color:#94a3b8;text-transform:uppercase;letter-spacing:.5px;margin-top:3px">
+                    ${item.statUnit}
+                  </div>
+                </div>
+
+                <div style="font-size:11px;color:#8e8c95;margin-top:4px">
+                  ${item.totalStatDisplay} · <b>${mon.games}</b> ${mon.games === 1 ? 'Game' : 'Games'}
+                </div>
+
+                <div style="margin-top:8px;font-size:11px;color:#8e8c95;width:100%;border-top:1px solid rgba(255,255,255,0.06);padding-top:8px">
+                  Coach: <b style="color:#ffd166">${mon.coach ? playerLink(mon.coach) : '<span style="color:#666">—</span>'}</b>
+                </div>
+
+                ${mon.moves && mon.moves.length > 0 ? `
+                  <div style="display:flex;flex-wrap:wrap;gap:2px;justify-content:center;margin-top:6px">
+                    ${mon.moves.slice(0, 4).map(mv => `<span class="move-pill" style="font-size:9px;padding:1px 4px">${esc(mv)}</span>`).join('')}
+                  </div>
+                ` : ''}
+              </div>
+            `;
+          }).join('')}
+        </div>
+      </div>
+
+      <!-- Full Tournament Pokemon Leaderboard -->
+      <div class="card table-wrap" style="max-width:100%">
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:14px 18px 10px;border-bottom:1px solid #282834">
+          <div>
+            <span style="font:800 18px 'Barlow Condensed';color:#f5f3f0;letter-spacing:.4px">Tournament Pokémon Stats</span>
+            <div style="font-size:11px;color:#8e8c95;margin-top:2px">All Pokémon brought into battle during ${esc(t.name)}, sorted by damage output</div>
+          </div>
+          <span style="font-size:11px;color:#8e8c95"><b>${tots.pokemonStats.length}</b> Pokémon Recorded</span>
+        </div>
+        <div style="overflow-x:auto">
+          <table class="replay-table">
+            <thead>
+              <tr>
+                <th style="width:36px;text-align:center">#</th>
+                <th style="width:36px"></th>
+                <th>Pokémon</th>
+                <th>Coach</th>
+                <th style="text-align:center">Games</th>
+                <th style="text-align:center">KOs / G</th>
+                <th style="text-align:center">Total KOs</th>
+                <th style="text-align:center">Dmg / G</th>
+                <th style="text-align:center">Total Dmg</th>
+                <th style="text-align:center">Taken / G</th>
+                <th style="text-align:center">Healed / G</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${tots.pokemonStats.map((p, idx) => {
+                let pSprite = p.sprite || (typeof resolvePokemonData === 'function' ? resolvePokemonData(p.name)?.sprite : (typeof getPokemonSpriteUrl === 'function' ? getPokemonSpriteUrl(p.name.toLowerCase()) : ''));
+                return `
+                  <tr>
+                    <td style="text-align:center;font-weight:700;color:#8e8c95">${idx + 1}</td>
+                    <td style="text-align:center;padding:4px">
+                      <img src="${pSprite}" alt="${esc(p.name)}" style="width:28px;height:28px;object-fit:contain" onerror="handleSpriteError(this)">
+                    </td>
+                    <td>
+                      <div style="font:800 14px 'Barlow Condensed';color:#fff;display:flex;align-items:center;gap:6px">
+                        ${esc(p.name)}
+                      </div>
+                    </td>
+                    <td><b style="color:#ffd166;font-size:12px">${p.coach ? playerLink(p.coach) : '—'}</b></td>
+                    <td style="text-align:center;font:800 14px 'Barlow Condensed';color:#f5f3f0">${p.games}</td>
+                    <td style="text-align:center;font:800 15px 'Barlow Condensed';color:${p.killsPerGame > 0 ? '#ffd166' : '#646270'}">${p.killsPerGame.toFixed(1)}</td>
+                    <td style="text-align:center;font:800 15px 'Barlow Condensed';color:${p.totalKills > 0 ? '#ffd166' : '#646270'}">${p.totalKills}</td>
+                    <td style="text-align:center;font:800 15px 'Barlow Condensed';color:${p.damageDealtPerGame > 0 ? '#ff8a90' : '#646270'}">${Math.round(p.damageDealtPerGame)}</td>
+                    <td style="text-align:center;font:800 15px 'Barlow Condensed';color:${p.totalDamageDealt > 0 ? '#ff8a90' : '#646270'}">${Math.round(p.totalDamageDealt)}</td>
+                    <td style="text-align:center;font:800 15px 'Barlow Condensed';color:${p.damageTakenPerGame > 0 ? '#cbd5e1' : '#646270'}">${Math.round(p.damageTakenPerGame)}</td>
+                    <td style="text-align:center;font:800 15px 'Barlow Condensed';color:${p.healedPerGame > 0 ? '#4ade80' : '#646270'}">${Math.round(p.healedPerGame)}</td>
+                  </tr>
+                `;
+              }).join('')}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function renderTournamentAwardsStandingsBannerHtml(t) {
+  if(!t) return '';
+  let tots = calculateTeamOfTheSeason(t);
+  if(tots.empty || !tots.team || tots.team.length === 0) return '';
+
+  return `
+    <div style="margin-top:20px;padding:16px 20px;background:linear-gradient(135deg,#181824 0%,#121218 100%);border:1px solid #2d2d3e;border-radius:10px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;box-shadow:0 4px 18px rgba(0,0,0,0.3)">
+      <div style="display:flex;align-items:center;gap:12px">
+        <span style="font-size:28px">🏆</span>
+        <div>
+          <div style="font:800 16px 'Barlow Condensed';color:#f5f3f0;letter-spacing:.3px">Team of the Season Available</div>
+          <div style="font-size:11px;color:#8e8c95;margin-top:2px">
+            Leaders: <b>${tots.team.filter(x => x.mon).map(x => esc(x.mon.name)).join(', ')}</b> (calculated per-game across ${tots.totalGames} ${tots.totalGames === 1 ? 'game' : 'games'})
+          </div>
+        </div>
+      </div>
+      <button class="btn ghost btn-sm" style="border-color:#ffd16640;color:#ffd166;display:inline-flex;align-items:center;gap:6px" onclick="detailTab='Awards';try{localStorage.setItem('draftdex-detail-tab','Awards')}catch(e){};render()">
+        <span>🏆 View Awards Tab</span> <span>→</span>
+      </button>
+    </div>
+  `;
+}
 
 function TopCut(){
   let t=ongoingT();
@@ -14778,12 +15184,12 @@ function Standings(){
   ) : '';
 
   if(isSwiss){
-    return head('Standings', t.name + ' · Swiss System Stage', controls) + `<div class="card table-wrap" style="max-width:100%">${standingTable(t, 'Swiss Stage')}</div><p class="sub">Swiss ranking order: <b>Match Wins (W-L) → Buchholz Strength of Schedule (BUCH) → Game Differential (DIFF) → Game Wins (GW) → Head-to-Head</b>.</p>` + tournamentRatingProgressionSection(t);
+    return head('Standings', t.name + ' · Swiss System Stage', controls) + `<div class="card table-wrap" style="max-width:100%">${standingTable(t, 'Swiss Stage')}</div><p class="sub">Swiss ranking order: <b>Match Wins (W-L) → Buchholz Strength of Schedule (BUCH) → Game Differential (DIFF) → Game Wins (GW) → Head-to-Head</b>.</p>` + renderTournamentAwardsStandingsBannerHtml(t) + tournamentRatingProgressionSection(t);
   }
 
   let criteria = getStandingsCriteria(t);
   let orderDesc = criteria.map(c => `${STANDING_METRICS[c]?.name || c.toUpperCase()} (${STANDING_METRICS[c]?.label || c.toUpperCase()})`).join(' → ');
-  return head('Standings', t.name + ' · group stage', controls) + `<div style="display:grid;grid-template-columns:repeat(${groups.length > 1 ? 2 : 1},minmax(0,1fr));gap:15px">${groups.map(g => `<div class="card table-wrap">${standingTable(t, g)}</div>`).join('')}</div>` + tournamentRatingProgressionSection(t);
+  return head('Standings', t.name + ' · group stage', controls) + `<div style="display:grid;grid-template-columns:repeat(${groups.length > 1 ? 2 : 1},minmax(0,1fr));gap:15px">${groups.map(g => `<div class="card table-wrap">${standingTable(t, g)}</div>`).join('')}</div>` + renderTournamentAwardsStandingsBannerHtml(t) + tournamentRatingProgressionSection(t);
 }
 
 function matchPlayerName(p){return `<button class="player-link match-hover-name" onclick="openProfile('${jsArg(p)}')" onmouseenter="highlightMatches('${jsArg(p)}',true)" onmouseleave="highlightMatches('',false)">${esc(p)}</button>`}
@@ -20941,8 +21347,8 @@ function tournamentDetail(){
   let hasDraft = Boolean(t.hasDraft || t.draftData?.picks?.length || t.draftData?.board?.length);
   let isDraftOngoing = (t.status === 'ONGOING' && t.phase === 'draft');
   let availableTabs = hasDraft 
-    ? ['Standings', 'Draft', stage1TabName, 'Top Cut', 'Predictions'] 
-    : ['Standings', stage1TabName, 'Top Cut', 'Predictions'];
+    ? ['Standings', 'Draft', stage1TabName, 'Top Cut', 'Awards', 'Predictions'] 
+    : ['Standings', stage1TabName, 'Top Cut', 'Awards', 'Predictions'];
 
   if(!availableTabs.includes(detailTab)){
     if(detailTab === 'Group Stage' && isSwiss) detailTab = 'Swiss Stage';
@@ -20951,9 +21357,10 @@ function tournamentDetail(){
   }
 
   let content=detailTab==='Draft'?DraftRostersView(t)
-    :detailTab==='Standings'?(isDraftOngoing ? renderDraftLockedStandings(t, true) : (isSwiss ? `<div class="card table-wrap" style="max-width:100%">${standingTable(t,'Swiss Stage')}</div>` : `<div style="display:grid;grid-template-columns:repeat(${groups.length>1?2:1},minmax(0,1fr));gap:16px;align-items:start">${groups.map(g=>`<div class="card table-wrap" style="align-self:start">${standingTable(t,g)}</div>`).join('')}</div>`) + tournamentRatingProgressionSection(t))
+    :detailTab==='Standings'?(isDraftOngoing ? renderDraftLockedStandings(t, true) : (isSwiss ? `<div class="card table-wrap" style="max-width:100%">${standingTable(t,'Swiss Stage')}</div>` : `<div style="display:grid;grid-template-columns:repeat(${groups.length>1?2:1},minmax(0,1fr));gap:16px;align-items:start">${groups.map(g=>`<div class="card table-wrap" style="align-self:start">${standingTable(t,g)}</div>`).join('')}</div>`) + renderTournamentAwardsStandingsBannerHtml(t) + tournamentRatingProgressionSection(t))
     :detailTab===stage1TabName?(isDraftOngoing ? renderDraftLockedMatches(t, true) : matchesView(t,false))
     :detailTab==='Top Cut'?(isDraftOngoing ? renderDraftLockedTopCut(t, true) : topCutSection(t,!t.bracketManagerData))
+    :detailTab==='Awards'?renderTournamentAwardsTabHtml(t)
     :detailTab==='Predictions'?(isDraftOngoing ? renderDraftLockedPredictions(t, true) : predictions(t))
     :predictions(t);
   let canManage = canManageTournament(t);
