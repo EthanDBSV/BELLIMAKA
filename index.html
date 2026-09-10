@@ -1818,9 +1818,17 @@ details[open] > .past-tourney-summary .past-chevron{transform:rotate(180deg);col
 .replay-pill.game-pill:hover{background:#172d47;color:#fff;border-color:#38bdf8;box-shadow:0 0 10px rgba(56,189,248,0.3)}
 .replay-pill.stats-pill{background:#241a0e;color:#ffd166;border-color:#523e16}
 .replay-pill.stats-pill:hover{background:#382811;color:#fff;border-color:#ffd166;box-shadow:0 0 10px rgba(255,209,102,0.3)}
-.replay-add-btn{display:inline-flex;align-items:center;gap:3px;padding:2px 7px;border-radius:4px;font:800 10px 'Barlow Condensed',sans-serif;letter-spacing:.4px;text-transform:uppercase;background:rgba(255,255,255,0.04);color:#8e8c95;border:1px dashed #3a3a46;cursor:pointer;transition:all .15s ease}
-.replay-add-btn:hover{color:#fff;border-color:var(--red);background:rgba(255,89,100,0.12)}
-.replay-hub-modal{width:min(1080px,96vw);max-height:94vh;display:flex;flex-direction:column;background:#111116;border:1px solid #2f2f3d;border-radius:12px;overflow:hidden;box-shadow:0 25px 80px rgba(0,0,0,0.85)}
+.replay-add-btn{display:inline-flex;align-items:center;gap:4px;padding:3px 9px;border-radius:4px;font:800 10px 'Barlow Condensed',sans-serif;letter-spacing:.4px;text-transform:uppercase;background:rgba(255,255,255,0.05);color:#a09fa8;border:1px dashed #3a3a46;cursor:pointer;transition:all .15s ease;white-space:nowrap}
+.replay-add-btn:hover{color:#fff;border-color:var(--red);background:rgba(239,48,56,0.18);box-shadow:0 0 10px rgba(239,48,56,0.35);transform:translateY(-1px)}
+.replay-add-btn.no-replays{background:rgba(239,48,56,0.06);border-color:rgba(239,48,56,0.28);color:#ff969c}
+.replay-add-btn.no-replays:hover{background:rgba(239,48,56,0.22);border-color:var(--red);color:#fff}
+.replay-hub-modal{width:min(1080px,96vw);max-height:94vh;display:flex;flex-direction:column;background:#111116;border:1px solid #2f2f3d;border-radius:12px;overflow:hidden;box-shadow:0 25px 80px rgba(0,0,0,0.85);scrollbar-width:thin;scrollbar-color:#383848 #0e0e14}
+.replay-hub-modal *{scrollbar-width:thin;scrollbar-color:#383848 #0e0e14}
+.replay-hub-modal ::-webkit-scrollbar{width:8px;height:8px}
+.replay-hub-modal ::-webkit-scrollbar-track{background:#0e0e14;border-radius:4px}
+.replay-hub-modal ::-webkit-scrollbar-thumb{background:#333342;border-radius:4px;border:2px solid #0e0e14}
+.replay-hub-modal ::-webkit-scrollbar-thumb:hover{background:#505064}
+.replay-hub-modal ::-webkit-scrollbar-corner{background:#0e0e14}
 .replay-tab-bar{display:flex;align-items:center;gap:4px;border-bottom:1px solid #262633;padding:0 18px;background:#16161e;overflow-x:auto}
 .replay-tab-btn{padding:8px 14px;font:800 13px 'Barlow Condensed',sans-serif;letter-spacing:.6px;text-transform:uppercase;border:none;background:transparent;color:#8e8c95;cursor:pointer;border-bottom:2px solid transparent;transition:all .15s ease;white-space:nowrap}
 .replay-tab-btn.active{color:#fff;border-bottom-color:var(--red);background:rgba(255,89,100,0.08)}
@@ -4019,13 +4027,64 @@ function buildShowdownReplayHtml(replay) {
 <meta charset="utf-8">
 <title>${esc(title)}</title>
 <style>
-html,body {font-family:Verdana, sans-serif;font-size:10pt;margin:0;padding:0;background:#0d0d12;color:#eee;}
-body{padding:10px 0;}
-.battle-log {font-family:Verdana, sans-serif;font-size:10pt;}
-.subtle {color:#60a5fa;}
-.battle-log-inline {border:1px solid #333;background:#15151c;color:#eee;max-width:680px;margin:0 auto 60px;padding-bottom:5px;}
-.replay-wrapper {max-width:1180px;margin:0 auto;padding:0 8px;}
-h1 {color:#f5f3f0;}
+html,body {
+  font-family: Verdana, sans-serif;
+  font-size: 10pt;
+  margin: 0;
+  padding: 0;
+  background: #0d0d12;
+  color: #eee;
+  color-scheme: dark;
+  overflow-x: hidden;
+  max-width: 100vw;
+}
+body { padding: 10px 0; }
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #383848 #0e0e14;
+  box-sizing: border-box;
+}
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: #0e0e14;
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb {
+  background: #333342;
+  border-radius: 4px;
+  border: 2px solid #0e0e14;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #505064;
+}
+::-webkit-scrollbar-corner {
+  background: #0e0e14;
+}
+.battle-log {
+  font-family: Verdana, sans-serif;
+  font-size: 10pt;
+  scrollbar-width: thin;
+  scrollbar-color: #383848 #0e0e14;
+}
+.subtle { color: #60a5fa; }
+.battle-log-inline {
+  border: 1px solid #333;
+  background: #15151c;
+  color: #eee;
+  max-width: 680px;
+  margin: 0 auto 60px;
+  padding-bottom: 5px;
+}
+.replay-wrapper {
+  max-width: 100%;
+  margin: 0 auto;
+  padding: 0 8px;
+  overflow-x: hidden;
+}
+h1 { color: #f5f3f0; }
 </style>
 </head>
 <body>
@@ -4299,11 +4358,26 @@ function findTournamentMatch(t, matchKey, index) {
   return null;
 }
 
+function canManageMatchReplays(t, m) {
+  return true;
+}
+
+function handleMatchCardReplayClick(e, tId, matchKey, hasReplays) {
+  if(!e || !e.target) return;
+  if(e.target.closest('input, button, select, a, .player-link, .replay-pill, .replay-add-btn')) return;
+  if(hasReplays) {
+    openMatchReplayHubModal(tId, matchKey, 1, 'watch');
+  } else {
+    openAddReplayModal(tId, matchKey, 1);
+  }
+}
+
 function renderReplayPillsHtml(m, t, matchKey, canManage, isCompact = false) {
   if(!m) return '';
   let replays = Array.isArray(m.replays) ? m.replays : [];
   let hasReplays = replays.length > 0;
   let tId = t?.id || m.tournamentId || activeT()?.id || '';
+  if(canManage == null) canManage = canManageMatchReplays(t, m);
 
   if(!hasReplays && !canManage) return '';
 
@@ -4320,9 +4394,10 @@ function renderReplayPillsHtml(m, t, matchKey, canManage, isCompact = false) {
     </button>
   ` : '';
 
+  let addBtnText = hasReplays ? '＋ Replay' : '＋ Add Replay';
   let addBtn = canManage ? `
-    <button class="replay-add-btn" onclick="event.stopPropagation();openAddReplayModal('${tId}','${jsArg(matchKey)}',${replays.length + 1})" title="Attach or Upload Replay">
-      + Replay
+    <button class="replay-add-btn ${!hasReplays ? 'no-replays' : ''}" onclick="event.stopPropagation();openAddReplayModal('${tId}','${jsArg(matchKey)}',${replays.length + 1})" title="${hasReplays ? 'Add next game replay' : 'Attach Pokémon Showdown Replay'}">
+      ${addBtnText}
     </button>
   ` : '';
 
@@ -4336,7 +4411,7 @@ function renderReplayPillsHtml(m, t, matchKey, canManage, isCompact = false) {
   }
 
   if(!hasReplays && canManage){
-    return `<div class="m-replay-bar" style="padding:4px 12px;background:transparent;border-top:none;justify-content:flex-end">
+    return `<div class="m-replay-bar empty-replays" style="padding:4px 12px;background:transparent;border-top:none;justify-content:flex-end">
       ${addBtn}
     </div>`;
   }
@@ -4372,7 +4447,7 @@ function openMatchReplayHubModal(tournamentId, matchKey, activeGameNum = 1, acti
   let s2 = m.bs ?? m.s2 ?? '-';
   let isPlayed = (s1 !== '-' && s2 !== '-' && s1 !== '' && s2 !== '');
   let stageLabel = m.label || m.roundTitle || m.round || m.group || 'Match Replay';
-  let canManage = typeof canManageTournament === 'function' ? canManageTournament(t) : false;
+  let canManage = canManageMatchReplays(t, m);
 
   let stats = activeReplay.stats;
   if(!stats && activeReplay.log){
@@ -4410,7 +4485,7 @@ function openMatchReplayHubModal(tournamentId, matchKey, activeGameNum = 1, acti
     contentHtml = `
       <div style="padding:16px;display:flex;flex-direction:column;gap:12px">
         <div style="position:relative;width:100%;height:620px;border-radius:8px;overflow:hidden;background:#000;box-shadow:0 8px 30px rgba(0,0,0,0.6);border:1px solid #2a2a38">
-          <iframe id="replayEmbedFrame" style="width:100%;height:100%;border:0" sandbox="allow-scripts allow-same-origin" srcdoc="${esc(replayHtmlDoc)}"></iframe>
+          <iframe id="replayEmbedFrame" style="width:100%;height:100%;border:0;color-scheme:dark;background:#0d0d12" sandbox="allow-scripts allow-same-origin" srcdoc="${esc(replayHtmlDoc)}"></iframe>
         </div>
         <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;padding:8px 4px">
           <div style="font-size:11px;color:#8e8c95">
@@ -5105,24 +5180,31 @@ function matchCard(m,latest=false){
     };
   }
 
+  let p1Face = face1;
+  let p1Letter = letter1;
+  let p2Face = face2;
+  let p2Letter = letter2;
+  let label = labelText;
+  let mKey = getMatchKey(m);
+  let hasReplays = Array.isArray(m.replays) && m.replays.length > 0;
+
   return `
-    <article class="card modern-match-card ${latest ? 'latest-highlight' : ''}" style="padding:0;${theme.cardBg}border-radius:10px;overflow:hidden;position:relative;min-height:172px;display:flex;flex-direction:column;justify-content:space-between">
+    <article class="card modern-match-card ${latest ? 'latest-highlight' : ''}" onclick="handleMatchCardReplayClick(event, '${t.id}', '${jsArg(mKey)}', ${hasReplays})" style="padding:0;${theme.cardBg}border-radius:10px;overflow:hidden;position:relative;min-height:172px;display:flex;flex-direction:column;justify-content:space-between;cursor:pointer" title="${hasReplays ? 'Click to watch match replays & box score' : 'Click to add battle replay'}">
       <div style="padding:11px 16px;${theme.headerBg}display:flex;justify-content:space-between;align-items:center;gap:8px">
-        <div style="display:flex;align-items:center;gap:7px;min-width:0;overflow:hidden">
-          <span style="font-size:13px;color:${theme.headerColor};flex:none">${theme.icon}</span>
-          <span style="font:800 13px 'Barlow Condensed';color:${theme.headerColor};letter-spacing:.8px;text-transform:uppercase;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(labelText)}</span>
-        </div>
-        <div style="display:flex;align-items:center;gap:6px;flex:none">
-          ${latest ? `<span style="background:${theme.latestBg};color:${theme.latestColor};font-size:8px;font-weight:900;letter-spacing:1px;padding:2px 6px;border-radius:3px;text-transform:uppercase;border:1px solid ${theme.latestBorder}">LATEST</span>` : ''}
-          <span style="background:${isPlayed ? '#122619' : '#1a1a22'};border:1px solid ${isPlayed ? '#22522e' : '#2d2d38'};font-size:8px;font-weight:900;letter-spacing:.8px;color:${isPlayed ? '#4ade80' : '#8e8c95'};padding:2px 6px;border-radius:3px;text-transform:uppercase">${isPlayed ? 'FINAL' : 'UPCOMING'}</span>
+        <span style="font:800 11px 'Barlow Condensed';letter-spacing:1px;text-transform:uppercase;color:${theme.headerColor};display:flex;align-items:center;gap:6px">
+          <span>${theme.icon}</span> <span>${esc(label)}</span>
+        </span>
+        <div style="display:flex;align-items:center;gap:6px">
+          ${latest ? `<span style="background:${theme.latestBg};color:${theme.latestColor};font:900 9px 'Barlow Condensed';padding:2px 6px;border-radius:3px;letter-spacing:.8px;text-transform:uppercase;box-shadow:0 0 8px ${theme.latestBorder}80">LATEST</span>` : ''}
+          <span style="font-size:10px;color:#858390;font-weight:700">${m.date ? esc(m.date) : 'FINAL'}</span>
         </div>
       </div>
 
-      <div style="padding:12px 14px;background:${theme.innerBg};display:flex;flex-direction:column;gap:8px;flex:1;justify-content:center">
-        <!-- Team 1 Row -->
-        <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 12px;min-height:50px;border-radius:7px;background:${p1Won ? theme.winBg : 'transparent'};border:1px solid ${p1Won ? theme.winBorder : 'transparent'};transition:all .15s ease">
+      <div style="padding:14px 16px;display:flex;flex-direction:column;gap:8px;background:${theme.innerBg}">
+        <!-- Team 1 -->
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:7px 10px;border-radius:6px;background:${p1Won ? theme.winBg : 'transparent'};border:1px solid ${p1Won ? theme.winBorder : 'transparent'};transition:all .15s ease">
           <div style="display:flex;align-items:center;gap:10px;min-width:0">
-            <span class="avatar mini" style="background-image:${face1};background-size:cover;background-position:center;width:36px;height:36px;font-size:13px;border-radius:50%;border:2px solid ${p1Won ? theme.winAvatarBorder : '#23232c'};display:grid;place-items:center;flex:none;box-shadow:${p1Won ? theme.winGlow : 'none'}">${letter1}</span>
+            <span class="avatar mini" style="background-image:${p1Face};background-size:cover;background-position:center;width:30px;height:30px;font-size:11px;border-radius:50%;border:${p1Won ? `2px solid ${theme.winAvatarBorder}` : '1px solid #33333f'};display:grid;place-items:center;box-shadow:${p1Won ? theme.winGlow : 'none'};flex:none">${p1Letter}</span>
             <div style="min-width:0">
               <div style="display:flex;align-items:center;gap:6px">
                 <span style="font:800 15px 'Barlow Condensed';letter-spacing:.3px;color:${p1Won ? '#ffffff' : '#9d9ba6'}">${playerLink(p1)}</span>
@@ -5134,13 +5216,12 @@ function matchCard(m,latest=false){
           <div style="font:800 24px 'Barlow Condensed';color:${p1Won ? theme.winScoreColor : '#474652'};flex:none;min-width:26px;text-align:right;text-shadow:${p1Won ? `0 0 8px ${theme.winScoreColor}40` : 'none'}">${s1}</div>
         </div>
 
-        <!-- Divider -->
-        <div style="height:1px;background:${theme.divider};margin:1px 4px"></div>
+        <div style="height:1px;background:${theme.divider};margin:0 4px"></div>
 
-        <!-- Team 2 Row -->
-        <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 12px;min-height:50px;border-radius:7px;background:${p2Won ? theme.winBg : 'transparent'};border:1px solid ${p2Won ? theme.winBorder : 'transparent'};transition:all .15s ease">
+        <!-- Team 2 -->
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:7px 10px;border-radius:6px;background:${p2Won ? theme.winBg : 'transparent'};border:1px solid ${p2Won ? theme.winBorder : 'transparent'};transition:all .15s ease">
           <div style="display:flex;align-items:center;gap:10px;min-width:0">
-            <span class="avatar mini" style="background-image:${face2};background-size:cover;background-position:center;width:36px;height:36px;font-size:13px;border-radius:50%;border:2px solid ${p2Won ? theme.winAvatarBorder : '#23232c'};display:grid;place-items:center;flex:none;box-shadow:${p2Won ? theme.winGlow : 'none'}">${letter2}</span>
+            <span class="avatar mini" style="background-image:${p2Face};background-size:cover;background-position:center;width:30px;height:30px;font-size:11px;border-radius:50%;border:${p2Won ? `2px solid ${theme.winAvatarBorder}` : '1px solid #33333f'};display:grid;place-items:center;box-shadow:${p2Won ? theme.winGlow : 'none'};flex:none">${p2Letter}</span>
             <div style="min-width:0">
               <div style="display:flex;align-items:center;gap:6px">
                 <span style="font:800 15px 'Barlow Condensed';letter-spacing:.3px;color:${p2Won ? '#ffffff' : '#9d9ba6'}">${playerLink(p2)}</span>
@@ -5152,11 +5233,10 @@ function matchCard(m,latest=false){
           <div style="font:800 24px 'Barlow Condensed';color:${p2Won ? theme.winScoreColor : '#474652'};flex:none;min-width:26px;text-align:right;text-shadow:${p2Won ? `0 0 8px ${theme.winScoreColor}40` : 'none'}">${s2}</div>
         </div>
       </div>
-      ${renderReplayPillsHtml(m, t, getMatchKey(m), typeof canManageTournament === 'function' ? canManageTournament(t) : false)}
+      ${renderReplayPillsHtml(m, t, mKey, canManageMatchReplays(t, m))}
     </article>
   `;
 }
-
 
 
 
@@ -7755,7 +7835,7 @@ function topCutSection(t, preview){
       </div>
       ${renderMatchSlot(m.p1, m.p1Seed, m.s1, p1Done, p1Lost, m.originP1)}
       ${renderMatchSlot(m.p2, m.p2Seed, m.s2, p2Done, p2Lost, m.originP2)}
-      ${renderReplayPillsHtml(m, t, getMatchKey(m), isModEditable, true)}
+      ${renderReplayPillsHtml(m, t, getMatchKey(m), canManageMatchReplays(t, m), true)}
     </div>`;
   }
 
@@ -13086,7 +13166,11 @@ function renderMatchRow(m, i, t){
   let aNameHtml = (a === 'BYE') ? '<span style="color:#8e8c95;font-weight:700">BYE</span>' : playerLink(a);
   let bNameHtml = (b === 'BYE') ? '<span style="color:#8e8c95;font-weight:700">BYE</span>' : playerLink(b);
 
-  return `<article class="m-card ${reported ? 'reported' : ''}" data-players="${esc(a)}|${esc(b)}">
+  let matchKey = getMatchKey(m, i);
+  let canReplay = canManageMatchReplays(t, m);
+  let hasReplays = Array.isArray(m.replays) && m.replays.length > 0;
+
+  return `<article class="m-card ${reported ? 'reported' : ''}" data-players="${esc(a)}|${esc(b)}" onclick="handleMatchCardReplayClick(event, '${t.id}', '${jsArg(matchKey)}', ${hasReplays})" style="${reported ? 'cursor:pointer;' : ''}" title="${reported ? (hasReplays ? 'Click to watch match replays & box score' : 'Click to add battle replay') : ''}">
     <div class="m-card-head">
       <span>${esc(label)}</span>
       ${headerBadge}
@@ -13122,7 +13206,7 @@ function renderMatchRow(m, i, t){
         `}
       </div>
     </div>
-    ${renderReplayPillsHtml(m, t, getMatchKey(m, i), editable)}
+    ${renderReplayPillsHtml(m, t, matchKey, canReplay)}
     ${editable ? `
       <div class="m-card-foot">
         ${m.custom ? `<button class="btn ghost btn-sm" style="color:#ff969c;padding:3px 8px;font-size:10px" onclick="removeCustom(${i})">Remove</button>` : ''}
@@ -16536,7 +16620,7 @@ function renderAccountMatchHistory(mine, matchHistory){
                         <span class="avatar mini" style="background-image:${oppFace};background-size:cover;background-position:center;width:30px;height:30px;font-size:11px;border-radius:50%;border:${oppAvatarBorder};display:grid;place-items:center;flex:none">${oppLetter}</span>
                       </div>
                     </div>
-                    ${renderReplayPillsHtml(m.rawMatch, tournamentData[m.tournamentId], m.id, false)}
+                    ${renderReplayPillsHtml(m.rawMatch, tournamentData[m.tournamentId], m.id, canManageMatchReplays(tournamentData[m.tournamentId], m.rawMatch))}
                   </div>
                 `;
               }).join('')}
