@@ -6695,55 +6695,139 @@ function calculateTeamOfTheSeason(t) {
   };
 }
 
-function renderMajorAwardsCardsHtml(major, t) {
+function renderMajorAwardsCardsHtml(major, t, isCompact = false) {
   if(!major) return '';
   let items = [
     {
       key: 'finalsMvp',
       categoryTitle: 'Grand Finals MVP',
-      roleTitle: 'Championship Series Impact',
+      roleTitle: 'Grand Finals MVP',
       icon: '\uD83C\uDFC6',
       badgeColor: '#f59e0b',
       badgeBg: 'rgba(245,158,11,0.16)',
       badgeBorder: 'rgba(245,158,11,0.4)',
       mon: major.finalsMvp,
       statVal: major.finalsMvp ? String(Math.round(major.finalsMvp.avgImpact)) : 'TBD',
-      statUnit: major.finalsMvp ? 'GF Avg Impact' : 'Grand Finals',
-      subMetric: major.finalsMvp ? `${major.finalsMvp.games} Finals ${major.finalsMvp.games === 1 ? 'Game' : 'Games'}` : 'Decided in Grand Finals (Champion Team)'
+      statUnit: major.finalsMvp ? 'GF Avg Impact / Game' : 'Grand Finals',
+      subMetric: major.finalsMvp ? `${major.finalsMvp.games} Finals ${major.finalsMvp.games === 1 ? 'Game' : 'Games'} (incl. Reset)` : 'Decided in Grand Finals (Champion Team)'
     },
     {
       key: 'mvp',
-      categoryTitle: 'Regular Season MVP',
-      roleTitle: 'Season-Long Match Impact',
+      categoryTitle: 'Season MVP',
+      roleTitle: 'Regular Season MVP',
       icon: '\u2B50',
       badgeColor: '#ffd166',
       badgeBg: 'rgba(255,209,102,0.16)',
       badgeBorder: 'rgba(255,209,102,0.4)',
       mon: major.mvp,
       statVal: major.mvp ? `${major.mvp.regMatchMvps || major.mvp.matchMvps || 0} MVPs` : '\u2014',
-      statUnit: 'Reg Match MVPs',
-      subMetric: major.mvp ? `${major.mvp.regGames || major.mvp.games} Games \u2022 ${Math.round(major.mvp.regAvgImpactScore || major.mvp.avgImpactScore)} Avg Impact` : 'Min 3 Appearances'
+      statUnit: 'Regular Season MVPs',
+      subMetric: major.mvp ? `${major.mvp.regGames || major.mvp.games} Reg Games \u2022 ${Math.round(major.mvp.regAvgImpactScore || major.mvp.avgImpactScore)} Avg Impact \u2022 ${major.mvp.regKills || major.mvp.totalKills} KOs` : 'Min 3 Appearances'
     }
   ];
 
+  if(isCompact) {
+    return `
+      <div class="award-major-grid">
+        ${items.map(item => {
+          let mon = item.mon;
+          if(!mon) {
+            return `
+              <div class="award-major-card" style="background:linear-gradient(135deg,#171720 0%,#101015 100%);border:1px dashed #2e2e3e;opacity:0.75">
+                <div style="width:58px;height:58px;border-radius:50%;background:rgba(0,0,0,0.4);border:2px dashed #444;display:flex;align-items:center;justify-content:center;flex-shrink:0">
+                  <span style="font-size:24px;opacity:0.4">${item.icon}</span>
+                </div>
+                <div style="min-width:0;flex:1">
+                  <span style="font:800 10px 'Barlow Condensed';letter-spacing:.8px;text-transform:uppercase;padding:2px 7px;border-radius:4px;background:${item.badgeBg};color:${item.badgeColor};border:1px solid ${item.badgeBorder}">
+                    ${item.icon} ${item.categoryTitle}
+                  </span>
+                  <div style="font:900 18px 'Barlow Condensed';color:#8e8c95;letter-spacing:.5px;text-transform:uppercase;margin-top:3px">
+                    Awaiting Decision
+                  </div>
+                  <div style="font-size:11px;color:#6b697b">${item.subMetric}</div>
+                </div>
+              </div>
+            `;
+          }
+
+          let types = (typeof getPokemonTypes === 'function' ? getPokemonTypes(mon.name) : []) || ['Normal'];
+          let pType = types[0] || 'Normal';
+          let theme = (typeof TYPE_THEMES !== 'undefined' && TYPE_THEMES[pType]) ? TYPE_THEMES[pType] : { bg: '#1c1c24', border: '#383847', glow: 'rgba(255,255,255,0.06)' };
+          let sprite = mon.sprite || (typeof resolvePokemonData === 'function' ? resolvePokemonData(mon.name)?.sprite : (typeof getPokemonSpriteUrl === 'function' ? getPokemonSpriteUrl(mon.name.toLowerCase()) : ''));
+
+          return `
+            <div class="award-major-card" style="background:linear-gradient(135deg, ${theme.bg} 0%, #15131a 55%, #101015 100%);border:1px solid ${item.badgeBorder}">
+              <div style="width:58px;height:58px;border-radius:50%;background:rgba(0,0,0,0.45);border:2px solid ${item.badgeColor};box-shadow:0 0 16px ${theme.glow || 'rgba(0,0,0,0.4)'};display:flex;align-items:center;justify-content:center;flex-shrink:0">
+                <img src="${sprite}" alt="${esc(mon.name)}" style="width:50px;height:50px;object-fit:contain;filter:drop-shadow(0 4px 6px rgba(0,0,0,0.6))" onerror="handleSpriteError(this)">
+              </div>
+              <div style="min-width:0;flex:1">
+                <div style="display:flex;align-items:center;gap:6px">
+                  <span style="font:800 10px 'Barlow Condensed';letter-spacing:.8px;text-transform:uppercase;padding:2px 7px;border-radius:4px;background:${item.badgeBg};color:${item.badgeColor};border:1px solid ${item.badgeBorder}">
+                    ${item.icon} ${item.categoryTitle}
+                  </span>
+                </div>
+                <div style="font:900 20px 'Barlow Condensed';color:#fff;letter-spacing:.5px;text-transform:uppercase;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">
+                  ${esc(mon.name)}
+                </div>
+                <div style="font-size:11px;color:#94a3b8;display:flex;align-items:center;gap:6px">
+                  ${typeof renderPokemonTypeBadges === 'function' ? renderPokemonTypeBadges(mon.name, 'font-size:8px;padding:0px 5px') : ''}
+                  <span>Coach: <b style="color:#ffd166">${mon.coach ? playerLink(mon.coach) : '<span style="color:#666">\u2014</span>'}</b></span>
+                </div>
+              </div>
+              <div style="text-align:right;flex-shrink:0;background:rgba(0,0,0,0.35);border:1px solid rgba(255,255,255,0.06);padding:6px 12px;border-radius:8px">
+                <div style="font:900 24px 'Barlow Condensed';color:${item.badgeColor};line-height:1">
+                  ${item.statVal}
+                </div>
+                <div style="font-size:9px;font-weight:800;color:#94a3b8;text-transform:uppercase;letter-spacing:.5px;margin-top:2px">
+                  ${item.statUnit}
+                </div>
+                <div style="font-size:10px;color:#6b7280;margin-top:2px">
+                  ${item.subMetric}
+                </div>
+              </div>
+            </div>
+          `;
+        }).join('')}
+      </div>
+    `;
+  }
+
+  // BIG CARD STYLE FOR MAJOR AWARDS
   return `
-    <div class="award-major-grid">
+    <div class="tots-grid" style="grid-template-columns:repeat(auto-fit, minmax(280px, 1fr))">
       ${items.map(item => {
         let mon = item.mon;
         if(!mon) {
           return `
-            <div class="award-major-card" style="background:linear-gradient(135deg,#171720 0%,#101015 100%);border:1px dashed #2e2e3e;opacity:0.75">
-              <div style="width:58px;height:58px;border-radius:50%;background:rgba(0,0,0,0.4);border:2px dashed #444;display:flex;align-items:center;justify-content:center;flex-shrink:0">
-                <span style="font-size:24px;opacity:0.4">${item.icon}</span>
-              </div>
-              <div style="min-width:0;flex:1">
-                <span style="font:800 10px 'Barlow Condensed';letter-spacing:.8px;text-transform:uppercase;padding:2px 7px;border-radius:4px;background:${item.badgeBg};color:${item.badgeColor};border:1px solid ${item.badgeBorder}">
+            <div class="tots-card" style="background:linear-gradient(180deg,#171720 0%,rgba(18,18,24,0.96) 100%);border-color:#2e2e3e">
+              <div style="display:flex;flex-direction:column;align-items:center;gap:3px;margin-bottom:6px">
+                <span style="font:800 10px 'Barlow Condensed';letter-spacing:.8px;text-transform:uppercase;padding:2px 8px;border-radius:4px;background:${item.badgeBg};color:${item.badgeColor};border:1px solid ${item.badgeBorder}">
                   ${item.icon} ${item.categoryTitle}
                 </span>
-                <div style="font:900 18px 'Barlow Condensed';color:#8e8c95;letter-spacing:.5px;text-transform:uppercase;margin-top:3px">
-                  Awaiting Decision
+                <span style="font-size:10px;font-weight:800;color:#8e8c95;text-transform:uppercase;letter-spacing:.5px">
+                  ${item.roleTitle}
+                </span>
+              </div>
+              <div style="font:900 22px 'Barlow Condensed';color:#8e8c95;letter-spacing:.5px;text-transform:uppercase;margin-top:2px">
+                Awaiting Decision
+              </div>
+              <div style="width:100%;height:115px;display:flex;align-items:center;justify-content:center;margin:8px 0;opacity:0.4">
+                <span style="font-size:48px">${item.icon}</span>
+              </div>
+              <div style="font-size:11px;color:#6b697b;margin-bottom:8px">\u2014</div>
+              <div class="tots-hero-box">
+                <div style="font:900 24px 'Barlow Condensed';line-height:1;color:#8e8c95">
+                  ${item.statVal}
                 </div>
-                <div style="font-size:11px;color:#6b697b">${item.subMetric}</div>
+                <div style="font-size:10px;font-weight:800;color:#6b697b;text-transform:uppercase;letter-spacing:.5px;margin-top:3px">
+                  ${item.statUnit}
+                </div>
+              </div>
+              <div style="font-size:11px;color:#6b697b;margin-top:4px">
+                ${item.subMetric}
+              </div>
+              <div style="margin-top:8px;font-size:11px;color:#6b697b;width:100%;border-top:1px solid rgba(255,255,255,0.06);padding-top:8px">
+                Coach: \u2014
               </div>
             </div>
           `;
@@ -6755,34 +6839,43 @@ function renderMajorAwardsCardsHtml(major, t) {
         let sprite = mon.sprite || (typeof resolvePokemonData === 'function' ? resolvePokemonData(mon.name)?.sprite : (typeof getPokemonSpriteUrl === 'function' ? getPokemonSpriteUrl(mon.name.toLowerCase()) : ''));
 
         return `
-          <div class="award-major-card" style="background:linear-gradient(135deg, ${theme.bg} 0%, #15131a 55%, #101015 100%);border:1px solid ${item.badgeBorder}">
-            <div style="width:58px;height:58px;border-radius:50%;background:rgba(0,0,0,0.45);border:2px solid ${item.badgeColor};box-shadow:0 0 16px ${theme.glow || 'rgba(0,0,0,0.4)'};display:flex;align-items:center;justify-content:center;flex-shrink:0">
-              <img src="${sprite}" alt="${esc(mon.name)}" style="width:50px;height:50px;object-fit:contain;filter:drop-shadow(0 4px 6px rgba(0,0,0,0.6))" onerror="handleSpriteError(this)">
+          <div class="tots-card" style="background:linear-gradient(180deg, ${theme.bg} 0%, rgba(18,18,24,0.96) 100%);border-color:${theme.border || '#2e2e3e'}">
+            <div style="display:flex;flex-direction:column;align-items:center;gap:3px;margin-bottom:6px">
+              <span style="font:800 10px 'Barlow Condensed';letter-spacing:.8px;text-transform:uppercase;padding:2px 8px;border-radius:4px;background:${item.badgeBg};color:${item.badgeColor};border:1px solid ${item.badgeBorder}">
+                ${item.icon} ${item.categoryTitle}
+              </span>
+              <span style="font-size:10px;font-weight:800;color:#8e8c95;text-transform:uppercase;letter-spacing:.5px">
+                ${item.roleTitle}
+              </span>
             </div>
-            <div style="min-width:0;flex:1">
-              <div style="display:flex;align-items:center;gap:6px">
-                <span style="font:800 10px 'Barlow Condensed';letter-spacing:.8px;text-transform:uppercase;padding:2px 7px;border-radius:4px;background:${item.badgeBg};color:${item.badgeColor};border:1px solid ${item.badgeBorder}">
-                  ${item.icon} ${item.categoryTitle}
-                </span>
-              </div>
-              <div style="font:900 20px 'Barlow Condensed';color:#fff;letter-spacing:.5px;text-transform:uppercase;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">
-                ${esc(mon.name)}
-              </div>
-              <div style="font-size:11px;color:#94a3b8;display:flex;align-items:center;gap:6px">
-                ${typeof renderPokemonTypeBadges === 'function' ? renderPokemonTypeBadges(mon.name, 'font-size:8px;padding:0px 5px') : ''}
-                <span>Coach: <b style="color:#ffd166">${mon.coach ? playerLink(mon.coach) : '<span style="color:#666">\u2014</span>'}</b></span>
-              </div>
+
+            <div style="font:900 22px 'Barlow Condensed';color:#ffffff;letter-spacing:.5px;text-transform:uppercase;margin-top:2px">
+              ${esc(mon.name)}
             </div>
-            <div style="text-align:right;flex-shrink:0;background:rgba(0,0,0,0.35);border:1px solid rgba(255,255,255,0.06);padding:6px 12px;border-radius:8px">
-              <div style="font:900 24px 'Barlow Condensed';color:${item.badgeColor};line-height:1">
+
+            <div style="width:100%;height:115px;display:flex;align-items:center;justify-content:center;margin:8px 0">
+              <img src="${sprite}" alt="${esc(mon.name)}" style="max-height:105px;max-width:115px;object-fit:contain;filter:drop-shadow(0 6px 12px ${theme.glow || 'rgba(0,0,0,0.5)'})" onerror="handleSpriteError(this)">
+            </div>
+
+            <div style="display:flex;align-items:center;justify-content:center;gap:4px;margin-bottom:8px">
+              ${typeof renderPokemonTypeBadges === 'function' ? renderPokemonTypeBadges(mon.name, 'font-size:9px;padding:1px 6px') : ''}
+            </div>
+
+            <div class="tots-hero-box">
+              <div style="font:900 28px 'Barlow Condensed';line-height:1;color:${item.badgeColor}">
                 ${item.statVal}
               </div>
-              <div style="font-size:9px;font-weight:800;color:#94a3b8;text-transform:uppercase;letter-spacing:.5px;margin-top:2px">
+              <div style="font-size:10px;font-weight:800;color:#94a3b8;text-transform:uppercase;letter-spacing:.5px;margin-top:3px">
                 ${item.statUnit}
               </div>
-              <div style="font-size:10px;color:#6b7280;margin-top:2px">
-                ${item.subMetric}
-              </div>
+            </div>
+
+            <div style="font-size:11px;color:#8e8c95;margin-top:4px">
+              ${item.subMetric}
+            </div>
+
+            <div style="margin-top:8px;font-size:11px;color:#8e8c95;width:100%;border-top:1px solid rgba(255,255,255,0.06);padding-top:8px">
+              Coach: <b style="color:#ffd166">${mon.coach ? playerLink(mon.coach) : '<span style="color:#666">\u2014</span>'}</b>
             </div>
           </div>
         `;
@@ -6791,11 +6884,67 @@ function renderMajorAwardsCardsHtml(major, t) {
   `;
 }
 
-function renderTeamOfTheSeasonCardsHtml(totsOrList) {
+function renderTeamOfTheSeasonCardsHtml(totsOrList, isCompact = false) {
   let list = Array.isArray(totsOrList) ? totsOrList : (totsOrList?.firstTeam || totsOrList?.team || []);
   if(!list || list.length === 0) return '';
+
+  if(isCompact) {
+    return `
+      <div class="award-compact-grid">
+        ${list.map(item => {
+          let mon = item.mon;
+          if(!mon) return '';
+          let types = (typeof getPokemonTypes === 'function' ? getPokemonTypes(mon.name) : []) || ['Normal'];
+          let pType = types[0] || 'Normal';
+          let theme = (typeof TYPE_THEMES !== 'undefined' && TYPE_THEMES[pType]) ? TYPE_THEMES[pType] : { bg: '#1c1c24', border: '#383847', glow: 'rgba(255,255,255,0.06)' };
+          let sprite = mon.sprite || (typeof resolvePokemonData === 'function' ? resolvePokemonData(mon.name)?.sprite : (typeof getPokemonSpriteUrl === 'function' ? getPokemonSpriteUrl(mon.name.toLowerCase()) : ''));
+
+          return `
+            <div class="award-compact-card" style="background:linear-gradient(135deg, ${theme.bg} 0%, #15151e 100%);border:1px solid ${theme.border || '#2e2e3e'}">
+              <div style="display:flex;align-items:center;justify-content:space-between;width:100%;gap:4px;flex-wrap:wrap">
+                <span class="award-role-badge">
+                  ${item.roleKey === 'dps' ? SVG_SWORD_GREY : SVG_SHIELD_GREY} ${item.roleTitle} ${item.slotNum || ''}
+                </span>
+                <div style="display:flex;align-items:center;gap:3px;flex-wrap:wrap">
+                  ${(item.tags || []).map(t => `<span class="award-leader-tag ${t.cls}">${t.icon} ${t.label}</span>`).join('')}
+                </div>
+              </div>
+
+              <div style="display:flex;align-items:center;gap:12px;width:100%;margin-top:10px">
+                <div style="width:62px;height:62px;flex-shrink:0;border-radius:8px;background:rgba(0,0,0,0.4);border:1px solid rgba(255,255,255,0.06);display:flex;align-items:center;justify-content:center">
+                  <img src="${sprite}" alt="${esc(mon.name)}" style="max-height:54px;max-width:54px;object-fit:contain;filter:drop-shadow(0 4px 6px ${theme.glow || 'rgba(0,0,0,0.5)'})" onerror="handleSpriteError(this)">
+                </div>
+                <div style="min-width:0;flex:1">
+                  <div style="font:900 17px 'Barlow Condensed';color:#fff;letter-spacing:.4px;text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">
+                    ${esc(mon.name)}
+                  </div>
+                  <div style="display:flex;align-items:center;gap:6px;font-size:11px;color:#94a3b8;margin-top:1px">
+                    ${typeof renderPokemonTypeBadges === 'function' ? renderPokemonTypeBadges(mon.name, 'font-size:8px;padding:0px 5px') : ''}
+                    <span>Coach: <b style="color:#ffd166">${mon.coach ? playerLink(mon.coach) : '<span style="color:#666">\u2014</span>'}</b></span>
+                  </div>
+                  <div style="margin-top:4px;display:flex;align-items:baseline;gap:6px;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.05);padding:2px 6px;border-radius:5px;width:fit-content">
+                    <div style="font:900 18px 'Barlow Condensed';color:${item.heroColor || '#ffd166'};line-height:1">
+                      ${item.statVal}
+                    </div>
+                    <div style="font-size:9px;font-weight:700;color:#94a3b8">
+                      ${item.statUnit}
+                    </div>
+                  </div>
+                  <div style="font-size:10px;color:#6b7280;margin-top:3px">
+                    ${item.statBreakdown || ''} \u2022 <b>${mon.games}</b> ${mon.games === 1 ? 'game' : 'games'}
+                  </div>
+                </div>
+              </div>
+            </div>
+          `;
+        }).join('')}
+      </div>
+    `;
+  }
+
+  // BIG CARD STYLE (Original grand style, adjusted for DPS & Tank, tags, and metrics)
   return `
-    <div class="award-compact-grid">
+    <div class="tots-grid">
       ${list.map(item => {
         let mon = item.mon;
         if(!mon) return '';
@@ -6805,40 +6954,50 @@ function renderTeamOfTheSeasonCardsHtml(totsOrList) {
         let sprite = mon.sprite || (typeof resolvePokemonData === 'function' ? resolvePokemonData(mon.name)?.sprite : (typeof getPokemonSpriteUrl === 'function' ? getPokemonSpriteUrl(mon.name.toLowerCase()) : ''));
 
         return `
-          <div class="award-compact-card" style="background:linear-gradient(135deg, ${theme.bg} 0%, #15151e 100%);border:1px solid ${theme.border || '#2e2e3e'}">
-            <div style="display:flex;align-items:center;justify-content:space-between;width:100%;gap:4px;flex-wrap:wrap">
-              <span class="award-role-badge">
-                ${item.roleKey === 'dps' ? SVG_SWORD_GREY : SVG_SHIELD_GREY} ${item.roleTitle} ${item.slotNum || ''}
-              </span>
-              <div style="display:flex;align-items:center;gap:3px;flex-wrap:wrap">
+          <div class="tots-card" style="background:linear-gradient(180deg, ${theme.bg} 0%, rgba(18,18,24,0.96) 100%);border-color:${theme.border || '#2e2e3e'}">
+            <!-- Header: Role Pill & Leader Tags -->
+            <div style="display:flex;flex-direction:column;align-items:center;gap:4px;margin-bottom:6px;width:100%">
+              <div style="display:flex;align-items:center;gap:4px;flex-wrap:wrap;justify-content:center">
+                <span class="award-role-badge">
+                  ${item.roleKey === 'dps' ? SVG_SWORD_GREY : SVG_SHIELD_GREY} ${item.roleTitle} ${item.slotNum || ''}
+                </span>
                 ${(item.tags || []).map(t => `<span class="award-leader-tag ${t.cls}">${t.icon} ${t.label}</span>`).join('')}
               </div>
             </div>
 
-            <div style="display:flex;align-items:center;gap:12px;width:100%;margin-top:10px">
-              <div style="width:62px;height:62px;flex-shrink:0;border-radius:8px;background:rgba(0,0,0,0.4);border:1px solid rgba(255,255,255,0.06);display:flex;align-items:center;justify-content:center">
-                <img src="${sprite}" alt="${esc(mon.name)}" style="max-height:54px;max-width:54px;object-fit:contain;filter:drop-shadow(0 4px 6px ${theme.glow || 'rgba(0,0,0,0.5)'})" onerror="handleSpriteError(this)">
+            <!-- Pokémon Name -->
+            <div style="font:900 22px 'Barlow Condensed';color:#ffffff;letter-spacing:.5px;text-transform:uppercase;margin-top:2px">
+              ${esc(mon.name)}
+            </div>
+
+            <!-- Big Centered Sprite -->
+            <div style="width:100%;height:115px;display:flex;align-items:center;justify-content:center;margin:8px 0">
+              <img src="${sprite}" alt="${esc(mon.name)}" style="max-height:105px;max-width:115px;object-fit:contain;filter:drop-shadow(0 6px 12px ${theme.glow || 'rgba(0,0,0,0.5)'})" onerror="handleSpriteError(this)">
+            </div>
+
+            <!-- Type Badges -->
+            <div style="display:flex;align-items:center;justify-content:center;gap:4px;margin-bottom:8px">
+              ${typeof renderPokemonTypeBadges === 'function' ? renderPokemonTypeBadges(mon.name, 'font-size:9px;padding:1px 6px') : ''}
+            </div>
+
+            <!-- Hero Stat Box -->
+            <div class="tots-hero-box">
+              <div style="font:900 28px 'Barlow Condensed';line-height:1;color:${item.heroColor || '#ffd166'}">
+                ${item.statVal}
               </div>
-              <div style="min-width:0;flex:1">
-                <div style="font:900 17px 'Barlow Condensed';color:#fff;letter-spacing:.4px;text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">
-                  ${esc(mon.name)}
-                </div>
-                <div style="display:flex;align-items:center;gap:6px;font-size:11px;color:#94a3b8;margin-top:1px">
-                  ${typeof renderPokemonTypeBadges === 'function' ? renderPokemonTypeBadges(mon.name, 'font-size:8px;padding:0px 5px') : ''}
-                  <span>Coach: <b style="color:#ffd166">${mon.coach ? playerLink(mon.coach) : '<span style="color:#666">\u2014</span>'}</b></span>
-                </div>
-                <div style="margin-top:4px;display:flex;align-items:baseline;gap:6px;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.05);padding:2px 6px;border-radius:5px;width:fit-content">
-                  <div style="font:900 18px 'Barlow Condensed';color:${item.heroColor || '#ffd166'};line-height:1">
-                    ${item.statVal}
-                  </div>
-                  <div style="font-size:9px;font-weight:700;color:#94a3b8">
-                    ${item.statUnit}
-                  </div>
-                </div>
-                <div style="font-size:10px;color:#6b7280;margin-top:3px">
-                  ${item.statBreakdown || ''} \u2022 <b>${mon.games}</b> ${mon.games === 1 ? 'game' : 'games'}
-                </div>
+              <div style="font-size:10px;font-weight:800;color:#94a3b8;text-transform:uppercase;letter-spacing:.5px;margin-top:3px">
+                ${item.statUnit}
               </div>
+            </div>
+
+            <!-- Breakdown & Games -->
+            <div style="font-size:11px;color:#8e8c95;margin-top:4px">
+              ${item.statBreakdown || ''} \u2022 <b>${mon.games}</b> ${mon.games === 1 ? 'Game' : 'Games'}
+            </div>
+
+            <!-- Coach Footer -->
+            <div style="margin-top:8px;font-size:11px;color:#8e8c95;width:100%;border-top:1px solid rgba(255,255,255,0.06);padding-top:8px">
+              Coach: <b style="color:#ffd166">${mon.coach ? playerLink(mon.coach) : '<span style="color:#666">\u2014</span>'}</b>
             </div>
           </div>
         `;
@@ -6847,13 +7006,13 @@ function renderTeamOfTheSeasonCardsHtml(totsOrList) {
   `;
 }
 
-function renderTeamOfTheSeasonTierSectionHtml(teamList, tierNum, title, sub, color, icon) {
+function renderTeamOfTheSeasonTierSectionHtml(teamList, tierNum, title, sub, color, icon, isCompact = false) {
   if(!teamList || teamList.length === 0) return '';
   let borderColor = tierNum === 1 ? 'rgba(255,209,102,0.35)' : (tierNum === 2 ? 'rgba(203,213,225,0.3)' : 'rgba(240,168,117,0.3)');
   let shadowGlow = tierNum === 1 ? 'box-shadow:0 6px 24px rgba(0,0,0,0.4),0 0 20px rgba(255,209,102,0.08)' : 'box-shadow:0 6px 24px rgba(0,0,0,0.4)';
   return `
-    <div style="background:linear-gradient(135deg,#15151e 0%,#0f0f15 100%);border:1px solid ${borderColor};border-radius:12px;padding:16px 18px;margin-bottom:14px;${shadowGlow}">
-      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:12px">
+    <div style="background:linear-gradient(135deg,#15151e 0%,#0f0f15 100%);border:1px solid ${borderColor};border-radius:12px;padding:18px 20px;margin-bottom:16px;${shadowGlow}">
+      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:14px">
         <div style="display:flex;align-items:center;gap:8px">
           <span style="font-size:16px">${icon}</span>
           <span style="font:900 18px 'Barlow Condensed';color:${color};letter-spacing:.6px;text-transform:uppercase">${esc(title)}</span>
@@ -6863,7 +7022,7 @@ function renderTeamOfTheSeasonTierSectionHtml(teamList, tierNum, title, sub, col
           4 Pok\u00E9mon Selections (2 DPS \u2022 2 TANK)
         </div>
       </div>
-      ${renderTeamOfTheSeasonCardsHtml(teamList)}
+      ${renderTeamOfTheSeasonCardsHtml(teamList, isCompact)}
     </div>
   `;
 }
@@ -6899,13 +7058,14 @@ function renderTournamentAwardsTabHtml(t) {
   let showCards = (tots.firstTeam && tots.firstTeam.length > 0) || (tots.majorAwards && tots.majorAwards.mvp);
   let major = tots.majorAwards || {};
   let curTab = window.awardsTierTab || '1';
+  let isAll = (curTab === 'all');
 
   return `
-    <div style="max-width:1200px;margin:0 auto;display:flex;flex-direction:column;gap:12px">
+    <div style="max-width:1200px;margin:0 auto;display:flex;flex-direction:column;gap:16px">
       ${showCards ? `
         <!-- Major Season Awards Section (Finals MVP & Season MVP) -->
-        <div style="background:linear-gradient(135deg,rgba(255,209,102,0.12) 0%,#15151e 60%,#0f0f15 100%);border:1px solid rgba(255,209,102,0.3);border-radius:14px;padding:18px 22px;box-shadow:0 8px 32px rgba(0,0,0,0.5),0 0 24px rgba(255,209,102,0.06)">
-          <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:14px">
+        <div style="background:linear-gradient(135deg,rgba(255,209,102,0.12) 0%,#15151e 60%,#0f0f15 100%);border:1px solid rgba(255,209,102,0.3);border-radius:14px;padding:20px 24px;box-shadow:0 8px 32px rgba(0,0,0,0.5),0 0 24px rgba(255,209,102,0.06)">
+          <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:16px">
             <div>
               <div style="font:800 11px 'Barlow Condensed';letter-spacing:1.2px;color:#ffd166;text-transform:uppercase;display:flex;align-items:center;gap:6px">
                 <span>\uD83C\uDFC6</span> PREMIER HONORS \u2022 ${esc(t.season || t.name)}
@@ -6922,7 +7082,7 @@ function renderTournamentAwardsTabHtml(t) {
             </span>
           </div>
 
-          ${renderMajorAwardsCardsHtml(major, t)}
+          ${renderMajorAwardsCardsHtml(major, t, isAll)}
         </div>
 
         <!-- Tier Switcher -->
@@ -6937,7 +7097,7 @@ function renderTournamentAwardsTabHtml(t) {
             <button class="m-tab ${curTab === '3' ? 'active' : ''}" onclick="window.awardsTierTab='3';render()" style="${curTab === '3' ? 'background:linear-gradient(135deg,rgba(240,168,117,0.25),rgba(180,83,9,0.25));border-color:#f0a875;color:#f0a875;font-weight:800' : ''}">
               \uD83E\uDD49 3rd Team
             </button>
-            <button class="m-tab ${curTab === 'all' ? 'active' : ''}" onclick="window.awardsTierTab='all';render()">
+            <button class="m-tab ${curTab === 'all' ? 'active' : ''}" onclick="window.awardsTierTab='all';render()" style="${curTab === 'all' ? 'background:linear-gradient(135deg,rgba(239,68,68,0.25),rgba(185,28,28,0.25));border-color:#ef4444;color:#fca5a5;font-weight:800' : ''}">
               \uD83C\uDF10 All Teams
             </button>
           </div>
@@ -6948,10 +7108,16 @@ function renderTournamentAwardsTabHtml(t) {
           </div>
         </div>
 
-        <!-- Selected Tier / All Tiers -->
-        ${(curTab === '1' || curTab === 'all') ? renderTeamOfTheSeasonTierSectionHtml(tots.firstTeam, 1, 'First Team All-Tournament', 'Top tournament-wide DPS & Tank performers', '#ffd166', '\uD83E\uDD47') : ''}
-        ${(curTab === '2' || curTab === 'all') ? renderTeamOfTheSeasonTierSectionHtml(tots.secondTeam, 2, 'Second Team All-Tournament', 'Second-tier DPS & Tank performers', '#cbd5e1', '\uD83E\uDD48') : ''}
-        ${(curTab === '3' || curTab === 'all') ? renderTeamOfTheSeasonTierSectionHtml(tots.thirdTeam, 3, 'Third Team All-Tournament', 'Third-tier DPS & Tank performers', '#f0a875', '\uD83E\uDD49') : ''}
+        <!-- Selected Tier (Bigger Card Style) / All Tiers (Compact Smaller Card Style) -->
+        ${!isAll ? `
+          ${curTab === '1' ? renderTeamOfTheSeasonTierSectionHtml(tots.firstTeam, 1, 'First Team All-Tournament', 'Top tournament-wide DPS & Tank performers', '#ffd166', '\uD83E\uDD47', false) : ''}
+          ${curTab === '2' ? renderTeamOfTheSeasonTierSectionHtml(tots.secondTeam, 2, 'Second Team All-Tournament', 'Second-tier DPS & Tank performers', '#cbd5e1', '\uD83E\uDD48', false) : ''}
+          ${curTab === '3' ? renderTeamOfTheSeasonTierSectionHtml(tots.thirdTeam, 3, 'Third Team All-Tournament', 'Third-tier DPS & Tank performers', '#f0a875', '\uD83E\uDD49', false) : ''}
+        ` : `
+          ${renderTeamOfTheSeasonTierSectionHtml(tots.firstTeam, 1, 'First Team All-Tournament', 'Top tournament-wide DPS & Tank performers', '#ffd166', '\uD83E\uDD47', true)}
+          ${renderTeamOfTheSeasonTierSectionHtml(tots.secondTeam, 2, 'Second Team All-Tournament', 'Second-tier DPS & Tank performers', '#cbd5e1', '\uD83E\uDD48', true)}
+          ${renderTeamOfTheSeasonTierSectionHtml(tots.thirdTeam, 3, 'Third Team All-Tournament', 'Third-tier DPS & Tank performers', '#f0a875', '\uD83E\uDD49', true)}
+        `}
       ` : `
         <div class="card empty" style="padding:32px 20px;text-align:center;max-width:680px;margin:10px auto 4px;background:#14141c;border:1px solid #282838;border-radius:12px">
           <div style="font-size:36px;margin-bottom:8px">\uD83C\uDFC6</div>
