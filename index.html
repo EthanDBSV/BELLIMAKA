@@ -6133,11 +6133,12 @@ function calculateTeamOfTheSeason(t) {
   }
 
   // 3. Award the 4 categories with deduplication (each Pokemon gets 1 role max)
+  // Must have appeared in at least 3 games (games >= 3) to qualify for Team of the Season
   let selectedNames = new Set();
 
   function pickWinner(sorter) {
-    let candidates = list.filter(m => !selectedNames.has(m.name.toLowerCase()));
-    if(candidates.length === 0) candidates = list;
+    let candidates = list.filter(m => (m.games || 0) >= 3 && !selectedNames.has(m.name.toLowerCase()));
+    if(candidates.length === 0) return null;
     candidates.sort(sorter);
     let picked = candidates[0];
     if(picked) selectedNames.add(picked.name.toLowerCase());
@@ -6184,7 +6185,7 @@ function calculateTeamOfTheSeason(t) {
       mon: bestDamage,
       statVal: bestDamage ? (bestDamage.damageDealtPerGame % 1 === 0 ? bestDamage.damageDealtPerGame.toFixed(0) : bestDamage.damageDealtPerGame.toFixed(1)) : '0',
       statUnit: 'Dmg / Game',
-      totalStatDisplay: `${Math.round(bestDamage?.totalDamageDealt || 0)} Total Dmg`
+      totalStatDisplay: bestDamage ? `${Math.round(bestDamage.totalDamageDealt)} Total Dmg` : '0 Total Dmg'
     },
     {
       roleKey: 'kills',
@@ -6197,7 +6198,7 @@ function calculateTeamOfTheSeason(t) {
       mon: bestKills,
       statVal: bestKills ? (bestKills.killsPerGame % 1 === 0 ? bestKills.killsPerGame.toFixed(0) : bestKills.killsPerGame.toFixed(1)) : '0',
       statUnit: 'KOs / Game',
-      totalStatDisplay: `${bestKills?.totalKills || 0} Total KOs`
+      totalStatDisplay: bestKills ? `${bestKills.totalKills} Total KOs` : '0 Total KOs'
     },
     {
       roleKey: 'taken',
@@ -6210,7 +6211,7 @@ function calculateTeamOfTheSeason(t) {
       mon: bestDamageTaken,
       statVal: bestDamageTaken ? (bestDamageTaken.damageTakenPerGame % 1 === 0 ? bestDamageTaken.damageTakenPerGame.toFixed(0) : bestDamageTaken.damageTakenPerGame.toFixed(1)) : '0',
       statUnit: 'Dmg Taken / Game',
-      totalStatDisplay: `${Math.round(bestDamageTaken?.totalDamageTaken || 0)} Total Taken`
+      totalStatDisplay: bestDamageTaken ? `${Math.round(bestDamageTaken.totalDamageTaken)} Total Taken` : '0 Total Taken'
     },
     {
       roleKey: 'healed',
@@ -6223,15 +6224,22 @@ function calculateTeamOfTheSeason(t) {
       mon: bestHealed,
       statVal: bestHealed ? (bestHealed.healedPerGame % 1 === 0 ? bestHealed.healedPerGame.toFixed(0) : bestHealed.healedPerGame.toFixed(1)) : '0',
       statUnit: 'Healed / Game',
-      totalStatDisplay: `${Math.round(bestHealed?.totalHpHealed || 0)} Total Healed`
+      totalStatDisplay: bestHealed ? `${Math.round(bestHealed.totalHpHealed)} Total Healed` : '0 Total Healed'
     }
-  ];
+  ].filter(item => item.mon !== null);
+
+  // Top 10 Pokemon sorted by average MVP (Impact) Score per game
+  let sortedByMvp = [...list].sort((a, b) => {
+    if(b.avgImpactScore !== a.avgImpactScore) return b.avgImpactScore - a.avgImpactScore;
+    return b.impactScoreTotal - a.impactScoreTotal;
+  });
+  let top10Pokemon = sortedByMvp.slice(0, 10);
 
   return {
-    empty: false,
+    empty: team.length === 0,
     totalGames: allReplays.length,
     pokemonCount: list.length,
-    pokemonStats: list.sort((a, b) => b.damageDealtPerGame - a.damageDealtPerGame),
+    pokemonStats: top10Pokemon,
     team
   };
 }
@@ -6298,51 +6306,64 @@ function renderTournamentAwardsTabHtml(t) {
   if(!t) return '<div class="card empty" style="padding:24px;text-align:center">No tournament selected.</div>';
   let tots = calculateTeamOfTheSeason(t);
 
-  if(tots.empty || !tots.team || tots.team.length === 0){
+  if(tots.totalGames === 0){
     return `
       <div class="card empty" style="padding:48px 24px;text-align:center;max-width:600px;margin:30px auto;background:#14141c;border:1px solid #282838;border-radius:14px;box-shadow:0 8px 30px rgba(0,0,0,0.5)">
         <div style="font-size:44px;margin-bottom:12px">🏆</div>
         <div style="font:900 24px 'Barlow Condensed';color:#f5f3f0;letter-spacing:.5px">Team of the Season Awaiting Replays</div>
         <p class="sub" style="margin:8px auto 16px;font-size:12px;color:#94a3b8;line-height:1.55;max-width:440px">
-          The <b>Team of the Season</b> is calculated directly from tournament battle replays on a <b>per-game average</b>. As match replays are recorded for <b>${esc(t.name)}</b>, the 4 top-performing Pokémon (Most Damage, Most KOs, Most Dmg Taken, and Most Healed) will be awarded here!
+          The <b>Team of the Season</b> is calculated directly from tournament battle replays on a <b>per-game average</b> (minimum 3 games played to qualify). As match replays are recorded for <b>${esc(t.name)}</b>, the 4 top-performing Pokémon (Most Damage, Most KOs, Most Dmg Taken, and Most Healed) will be awarded here!
         </p>
       </div>
     `;
   }
 
+  let showCards = (tots.team && tots.team.length > 0);
+
   return `
     <div style="display:flex;flex-direction:column;gap:24px;margin-top:4px">
-      <div style="background:linear-gradient(135deg,#15151e 0%,#0f0f15 100%);border:1px solid #28283a;border-radius:14px;padding:24px;box-shadow:0 8px 32px rgba(0,0,0,0.4)">
-        <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:12px;margin-bottom:20px">
-          <div>
-            <div class="eyebrow" style="color:#ffd166;display:flex;align-items:center;gap:6px">
-              <span>🏆</span> OFFICIAL AWARDS & HONORS · ${esc(t.season || '')}
+      ${showCards ? `
+        <div style="background:linear-gradient(135deg,#15151e 0%,#0f0f15 100%);border:1px solid #28283a;border-radius:14px;padding:24px;box-shadow:0 8px 32px rgba(0,0,0,0.4)">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:12px;margin-bottom:20px">
+            <div>
+              <div class="eyebrow" style="color:#ffd166;display:flex;align-items:center;gap:6px">
+                <span>🏆</span> OFFICIAL AWARDS & HONORS · ${esc(t.season || '')}
+              </div>
+              <h2 style="margin:4px 0 0;font:900 28px 'Barlow Condensed';color:#f5f3f0;letter-spacing:.5px">
+                Team of the Season
+              </h2>
+              <p class="sub" style="margin:4px 0 0;font-size:12px;color:#94a3b8;max-width:640px">
+                Selected on a <b>per-game basis</b> (minimum 3 games played to qualify) across all official battle replays to evaluate true competitive game impact.
+              </p>
             </div>
-            <h2 style="margin:4px 0 0;font:900 28px 'Barlow Condensed';color:#f5f3f0;letter-spacing:.5px">
-              Team of the Season
-            </h2>
-            <p class="sub" style="margin:4px 0 0;font-size:12px;color:#94a3b8;max-width:640px">
-              Selected on a <b>per-game basis</b> across all official battle replays to evaluate true competitive game impact regardless of tournament length.
-            </p>
+            <div style="display:flex;align-items:center;gap:8px">
+              <span style="font-size:11px;color:#8e8c95;background:#181824;padding:4px 12px;border-radius:20px;border:1px solid #2e2e42">
+                <b>${tots.totalGames}</b> ${tots.totalGames === 1 ? 'Game' : 'Games'} Evaluated
+              </span>
+            </div>
           </div>
-          <div style="display:flex;align-items:center;gap:8px">
-            <span style="font-size:11px;color:#8e8c95;background:#181824;padding:4px 12px;border-radius:20px;border:1px solid #2e2e42">
-              <b>${tots.totalGames}</b> ${tots.totalGames === 1 ? 'Game' : 'Games'} Evaluated
-            </span>
-          </div>
-        </div>
 
-        ${renderTeamOfTheSeasonCardsHtml(tots)}
-      </div>
+          ${renderTeamOfTheSeasonCardsHtml(tots)}
+        </div>
+      ` : `
+        <div class="card empty" style="padding:32px 20px;text-align:center;max-width:680px;margin:10px auto 4px;background:#14141c;border:1px solid #282838;border-radius:12px">
+          <div style="font-size:36px;margin-bottom:8px">🏆</div>
+          <div style="font:900 22px 'Barlow Condensed';color:#f5f3f0;letter-spacing:.4px">Team of the Season In Progress</div>
+          <p class="sub" style="margin:6px auto 10px;font-size:12px;color:#94a3b8;max-width:520px;line-height:1.5">
+            A minimum of <b>3 game appearances</b> is required to qualify for official Team of the Season honors. As coaches play more tournament games, awards will unlock automatically!
+          </p>
+          <div style="font-size:11px;color:#ffd166;font-weight:700">Currently ${tots.totalGames} ${tots.totalGames === 1 ? 'game' : 'games'} recorded · Top 10 MVP leaders shown below</div>
+        </div>
+      `}
 
       <!-- Full Tournament Pokemon Leaderboard -->
       <div class="card table-wrap" style="max-width:100%">
         <div style="display:flex;justify-content:space-between;align-items:center;padding:14px 18px 10px;border-bottom:1px solid #282834">
           <div>
-            <span style="font:800 18px 'Barlow Condensed';color:#f5f3f0;letter-spacing:.4px">Tournament Pokémon Stats</span>
-            <div style="font-size:11px;color:#8e8c95;margin-top:2px">All Pokémon brought into battle during ${esc(t.name)}, sorted by damage output</div>
+            <span style="font:800 18px 'Barlow Condensed';color:#f5f3f0;letter-spacing:.4px">Tournament Pokémon Stats · Top 10 Leaders</span>
+            <div style="font-size:11px;color:#8e8c95;margin-top:2px">Top 10 Pokémon by MVP score during ${esc(t.name)}</div>
           </div>
-          <span style="font-size:11px;color:#8e8c95"><b>${tots.pokemonStats.length}</b> Pokémon Recorded</span>
+          <span style="font-size:11px;color:#8e8c95">Showing Top <b>${tots.pokemonStats.length}</b> of <b>${tots.pokemonCount}</b> Pokémon</span>
         </div>
         <div style="overflow-x:auto">
           <table class="replay-table">
@@ -6353,6 +6374,7 @@ function renderTournamentAwardsTabHtml(t) {
                 <th>Pokémon</th>
                 <th>Coach</th>
                 <th style="text-align:center">Games</th>
+                <th style="text-align:center;color:#ffd166">MVP / G</th>
                 <th style="text-align:center">KOs / G</th>
                 <th style="text-align:center">Total KOs</th>
                 <th style="text-align:center">Dmg / G</th>
@@ -6377,6 +6399,7 @@ function renderTournamentAwardsTabHtml(t) {
                     </td>
                     <td><b style="color:#ffd166;font-size:12px">${p.coach ? playerLink(p.coach) : '—'}</b></td>
                     <td style="text-align:center;font:800 14px 'Barlow Condensed';color:#f5f3f0">${p.games}</td>
+                    <td style="text-align:center;font:800 15px 'Barlow Condensed';color:#ffd166">${Math.round(p.avgImpactScore)}</td>
                     <td style="text-align:center;font:800 15px 'Barlow Condensed';color:${p.killsPerGame > 0 ? '#ffd166' : '#646270'}">${p.killsPerGame.toFixed(1)}</td>
                     <td style="text-align:center;font:800 15px 'Barlow Condensed';color:${p.totalKills > 0 ? '#ffd166' : '#646270'}">${p.totalKills}</td>
                     <td style="text-align:center;font:800 15px 'Barlow Condensed';color:${p.damageDealtPerGame > 0 ? '#ff8a90' : '#646270'}">${Math.round(p.damageDealtPerGame)}</td>
@@ -8106,7 +8129,21 @@ function shouldApply(incoming){
   let incomingTime = typeof incoming.updatedAt === 'number' ? incoming.updatedAt : (Date.parse(incoming.updated_at) || 0);
   let hasLocalData = Object.keys(tournamentData).length > 0;
 
-  // 1. Initial boot with no local tournaments loaded yet: always accept cloud state
+  // 1. Initial boot or session startup sync: always accept authoritative cloud state if valid
+  if(!window._initialCloudSyncCompleted){
+    window._initialCloudSyncCompleted = true;
+    if(incomingRev >= knownRev || !hasLocalData || !lastLocalUpdate || (incomingTime && incomingTime >= (lastLocalUpdate - 2000))){
+      knownRev = Math.max(knownRev, incomingRev);
+      lastLocalUpdate = Math.max(lastLocalUpdate, incomingTime || Date.now());
+      try {
+        localStorage.setItem('draftdex-rev', String(knownRev));
+        localStorage.setItem('draftdex-updated-at', String(lastLocalUpdate));
+      } catch(e){}
+      return true;
+    }
+  }
+
+  // 1b. Boot with no local tournaments loaded yet: always accept cloud state
   if(!hasLocalData || !lastLocalUpdate){
     knownRev = Math.max(knownRev, incomingRev);
     lastLocalUpdate = Math.max(lastLocalUpdate, incomingTime || Date.now());
@@ -9651,6 +9688,65 @@ async function pushMediaToCloud(){
 }
 const pushMediaToSupabase = pushMediaToCloud;
 
+function safeSaveTournamentsToLocalStorage(data) {
+  if(!data || typeof data !== 'object') return;
+  try {
+    let serialized = JSON.stringify(data);
+    if(serialized.length <= 3500000) {
+      try {
+        localStorage.setItem('draftdex-tournaments', serialized);
+        return;
+      } catch(qErr) {
+        // QuotaExceededError: fall through to lightweight cache
+      }
+    }
+
+    let lightweight = {};
+    for(let tId in data) {
+      let t = data[tId];
+      if(!t) continue;
+      let tClone = { ...t };
+
+      if(tClone.topCutReplays) {
+        let cleanTc = {};
+        for(let k in tClone.topCutReplays) {
+          if(/^\d+$/.test(k) && tClone.topCutReplays['tc_' + k]) continue;
+          cleanTc[k] = (tClone.topCutReplays[k] || []).map(r => ({ ...r, log: '' }));
+        }
+        tClone.topCutReplays = cleanTc;
+      }
+
+      if(Array.isArray(tClone.matches)) {
+        tClone.matches = tClone.matches.map(m => {
+          if(!m.replays || !Array.isArray(m.replays)) return m;
+          return {
+            ...m,
+            replays: m.replays.map(r => ({ ...r, log: '' }))
+          };
+        });
+      }
+
+      if(tClone.bracketManagerData?.match && Array.isArray(tClone.bracketManagerData.match)) {
+        tClone.bracketManagerData = {
+          ...tClone.bracketManagerData,
+          match: tClone.bracketManagerData.match.map(bm => {
+            if(!bm.replays) return bm;
+            let bmClone = { ...bm };
+            delete bmClone.replays;
+            return bmClone;
+          })
+        };
+      }
+
+      lightweight[tId] = tClone;
+    }
+
+    localStorage.setItem('draftdex-tournaments', JSON.stringify(lightweight));
+  } catch(e) {
+    console.warn('Draftdex: safeSaveTournamentsToLocalStorage note:', e);
+  }
+}
+
 function applySharedState(data){
   if(!data || !data.tournaments) return;
 
@@ -9723,8 +9819,8 @@ function applySharedState(data){
   for(let i=0; i<10; i++) try{ localStorage.removeItem('draftdex-primetime-slot-'+i); }catch(e){}
   cut = data.cut || cut;
   boardLink = data.boardLink || boardLink;
+  safeSaveTournamentsToLocalStorage(tournamentData);
   try{
-    localStorage.setItem('draftdex-tournaments', JSON.stringify(tournamentData));
     localStorage.setItem('draftdex-profiles', JSON.stringify(profiles));
     localStorage.setItem('draftdex-rosters', JSON.stringify(roster));
     localStorage.setItem('draftdex-history', JSON.stringify(teamHistory));
@@ -10096,7 +10192,7 @@ async function syncFromCloud(force = false){
       }
 
       // Fetch full state from Cloudflare (initial boot, forced sync, non-draft views, or 45s fallback)
-      let res = await fetch(`${cfUrl}/api/state`);
+      let res = await fetch(`${cfUrl}/api/state?id=main&_t=${Date.now()}`, { cache: 'no-store' });
       lastFullStateSyncTime = Date.now();
       if(res.ok){
         let incoming = await res.json();
@@ -10349,10 +10445,10 @@ function persistLeague(){
   knownRev = (knownRev || 0) + 1;
   lastLocalUpdate = Date.now();
   if(typeof invalidateLeagueCache === 'function') invalidateLeagueCache();
+  safeSaveTournamentsToLocalStorage(tournamentData);
   try{
     localStorage.setItem('draftdex-rev', String(knownRev));
     localStorage.setItem('draftdex-updated-at', String(lastLocalUpdate));
-    localStorage.setItem('draftdex-tournaments', JSON.stringify(tournamentData));
     localStorage.setItem('draftdex-profiles', JSON.stringify(profiles));
     localStorage.setItem('draftdex-rosters', JSON.stringify(roster));
     localStorage.setItem('draftdex-history', JSON.stringify(teamHistory));
