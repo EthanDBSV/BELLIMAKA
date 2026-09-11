@@ -6634,6 +6634,18 @@ function renderTeamOfTheSeasonCardsHtml(tots) {
 
 function renderTournamentAwardsTabHtml(t) {
   if(!t) return '<div class="card empty" style="padding:24px;text-align:center">No tournament selected.</div>';
+  let isFinished = String(t.status || '').toUpperCase() === 'COMPLETE' || t.phase === 'complete' || t.phase === 'completed';
+  if(!isFinished){
+    return `
+      <div class="card empty" style="padding:48px 24px;text-align:center;max-width:600px;margin:30px auto;background:#14141c;border:1px solid #282838;border-radius:14px;box-shadow:0 8px 30px rgba(0,0,0,0.5)">
+        <div style="font-size:44px;margin-bottom:12px">🔒</div>
+        <div style="font:900 24px 'Barlow Condensed';color:#f5f3f0;letter-spacing:.5px">Awards Locked During Season</div>
+        <p class="sub" style="margin:8px auto 16px;font-size:12px;color:#94a3b8;line-height:1.55;max-width:440px">
+          Official tournament awards and Team of the Season honors will unlock once <b>${esc(t.name)}</b> is completed and a champion is crowned!
+        </p>
+      </div>
+    `;
+  }
   let tots = calculateTeamOfTheSeason(t);
 
   if(tots.totalGames === 0){
@@ -11843,7 +11855,6 @@ function OffseasonHome(){
         </div>
         <div style="display:flex;align-items:center;gap:8px">
           ${totsTourney ? `<button class="link" onclick="openTournament('${totsTourney.id}', 'Awards')">VIEW FULL AWARDS & STATS →</button>` : ''}
-          <button class="link" onclick="go('Standings')" style="margin-left:8px;color:#8e8c95">ALL-TIME STANDINGS →</button>
         </div>
       </div>
       ${(!tots || tots.empty || !tots.team || tots.team.length === 0) ? `
@@ -17395,24 +17406,35 @@ function openProfile(p){
         <div style="display:flex;flex-direction:column;align-items:center;text-align:center">
           <div class="avatar" style="background-image:${faceArt};background-size:cover;background-position:center;width:80px;height:80px;font-size:34px;border-radius:50%;border:3px solid ${ovrCard.color};box-shadow:0 6px 20px rgba(0,0,0,0.6);display:grid;place-items:center">${faceLetter}</div>
           <div class="profile-name" style="margin:12px 0 3px;font:800 28px 'Barlow Condensed';letter-spacing:.4px">${esc(p)}</div>
-          <div style="display:flex;flex-direction:column;gap:5px;align-items:center;margin-top:2px">
-            <span style="font-size:11px;font-weight:700;color:#c0bec8;background:#101014cc;border:1px solid #ffffff18;padding:3px 9px;border-radius:4px;max-width:210px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(team)}</span>
-            ${acct?`<span class="link-badge">★ ${esc(acct)}</span>`:`<span class="link-badge none">No account linked</span>`}
-            <div style="display:flex;align-items:center;gap:6px;margin-top:2px">
+          <div style="display:flex;flex-direction:column;gap:6px;align-items:center;margin-top:6px">
+            <span style="font-size:11.5px;font-weight:700;color:#e2e8f0;background:rgba(12,12,18,0.75);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,0.12);padding:4px 14px;border-radius:999px;max-width:230px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;box-shadow:0 2px 8px rgba(0,0,0,0.25);display:inline-flex;align-items:center;gap:6px">
+              <span style="opacity:0.7;font-size:11px">🛡️</span> ${esc(team)}
+            </span>
+            ${acct ? `
+              <span style="display:inline-flex;align-items:center;gap:6px;font-size:10.5px;font-weight:700;color:#6ee7b7;background:rgba(16,185,129,0.14);backdrop-filter:blur(8px);border:1px solid rgba(16,185,129,0.35);padding:3px 12px;border-radius:999px;box-shadow:0 2px 8px rgba(0,0,0,0.2)">
+                <span style="color:#10b981;font-size:9px">●</span> Linked: <b style="color:#ffffff;font-weight:800">${esc(acct)}</b>
+              </span>
+            ` : `
+              <span style="display:inline-flex;align-items:center;gap:6px;font-size:10.5px;font-weight:600;color:#94a3b8;background:rgba(12,12,18,0.72);backdrop-filter:blur(8px);border:1px solid rgba(255,255,255,0.1);padding:3px 12px;border-radius:999px;box-shadow:0 2px 8px rgba(0,0,0,0.2)">
+                <span style="opacity:0.4;font-size:9px">○</span> No account linked
+              </span>
+            `}
+            <div style="display:inline-flex;align-items:center;gap:6px;margin-top:1px">
               ${sdUser ? `
-                <span class="link-badge" style="background:#131d2e;border-color:#38bdf855;color:#7dd3fc;display:inline-flex;align-items:center;gap:5px;font-size:11px">
-                  ⚔️ Showdown: <b style="color:#ffffff">${esc(sdUser)}</b>
+                <span style="display:inline-flex;align-items:center;gap:6px;font-size:10.5px;font-weight:600;color:#7dd3fc;background:rgba(56,189,248,0.12);backdrop-filter:blur(8px);border:1px solid rgba(56,189,248,0.32);padding:3px 12px;border-radius:999px;box-shadow:0 2px 8px rgba(0,0,0,0.2)">
+                  <span style="font-size:11px">⚔️</span> Showdown: <b style="color:#ffffff;font-weight:800">${esc(sdUser)}</b>
+                  ${canEditShowdown ? `
+                    <button onclick="promptSetShowdownUsername('${jsArg(p)}')" style="background:rgba(56,189,248,0.2);border:1px solid rgba(56,189,248,0.45);border-radius:50%;width:18px;height:18px;display:inline-flex;align-items:center;justify-content:center;color:#38bdf8;font-size:10px;cursor:pointer;margin-left:3px;padding:0;transition:all .15s" title="Edit Showdown Username" onmouseover="this.style.background='rgba(56,189,248,0.45)'" onmouseout="this.style.background='rgba(56,189,248,0.2)'">✎</button>
+                  ` : ''}
                 </span>
               ` : `
-                <span class="link-badge none" style="font-size:10px;color:#7e7c88">
-                  ⚔️ No Showdown username
+                <span style="display:inline-flex;align-items:center;gap:6px;font-size:10.5px;font-weight:600;color:#94a3b8;background:rgba(12,12,18,0.72);backdrop-filter:blur(8px);border:1px solid rgba(255,255,255,0.1);padding:3px 12px;border-radius:999px;box-shadow:0 2px 8px rgba(0,0,0,0.2)">
+                  <span style="font-size:11px">⚔️</span> No Showdown username
+                  ${canEditShowdown ? `
+                    <button onclick="promptSetShowdownUsername('${jsArg(p)}')" style="background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.16);border-radius:50%;width:18px;height:18px;display:inline-flex;align-items:center;justify-content:center;color:#c0bec8;font-size:10px;cursor:pointer;margin-left:3px;padding:0;transition:all .15s" title="Set Showdown Username" onmouseover="this.style.background='rgba(255,255,255,0.2)'" onmouseout="this.style.background='rgba(255,255,255,0.08)'">✎</button>
+                  ` : ''}
                 </span>
               `}
-              ${canEditShowdown ? `
-                <button class="btn ghost btn-sm" style="padding:2px 7px;font-size:11px;height:22px;line-height:1;border-color:#38bdf840;color:#38bdf8" onclick="promptSetShowdownUsername('${jsArg(p)}')" title="Set Pokémon Showdown Username">
-                  ✎
-                </button>
-              ` : ''}
             </div>
           </div>
         </div>
@@ -22055,13 +22077,19 @@ function tournamentDetail(){
   let groups=Object.keys(groupsOf(t));
   let hasDraft = Boolean(t.hasDraft || t.draftData?.picks?.length || t.draftData?.board?.length);
   let isDraftOngoing = (t.status === 'ONGOING' && t.phase === 'draft');
+  let isFinished = String(t.status || '').toUpperCase() === 'COMPLETE' || t.phase === 'complete' || t.phase === 'completed';
   let availableTabs = hasDraft 
-    ? ['Standings', 'Draft', 'Teams', stage1TabName, 'Top Cut', 'Awards', 'Predictions'] 
-    : ['Standings', 'Teams', stage1TabName, 'Top Cut', 'Awards', 'Predictions'];
+    ? (isFinished 
+        ? ['Standings', 'Draft', 'Teams', stage1TabName, 'Top Cut', 'Awards', 'Predictions'] 
+        : ['Standings', 'Draft', 'Teams', stage1TabName, 'Top Cut', 'Predictions'])
+    : (isFinished 
+        ? ['Standings', 'Teams', stage1TabName, 'Top Cut', 'Awards', 'Predictions'] 
+        : ['Standings', 'Teams', stage1TabName, 'Top Cut', 'Predictions']);
 
   if(!availableTabs.includes(detailTab)){
     if(detailTab === 'Group Stage' && isSwiss) detailTab = 'Swiss Stage';
     else if(detailTab === 'Swiss Stage' && !isSwiss) detailTab = 'Group Stage';
+    else if(detailTab === 'Awards' && !isFinished) detailTab = isDraftOngoing ? 'Draft' : 'Standings';
     else detailTab = isDraftOngoing ? 'Draft' : 'Standings';
   }
 
@@ -22127,6 +22155,7 @@ function openTournamentEdit(id){
       <button class="btn ghost" style="text-align:left;justify-content:flex-start;padding:10px 14px" ${locked?'disabled style="opacity:.5;cursor:not-allowed"':`onclick="openGroupPlacementEditor()"`}>👥 Arrange & Draw Groups${locked?' (Locked in Top Cut)':''}</button>
       <button class="btn ghost" style="text-align:left;justify-content:flex-start;padding:10px 14px" onclick="openSettings()">📊 Edit Qualification Cutoff</button>
       <button class="btn ghost" style="text-align:left;justify-content:flex-start;padding:10px 14px" onclick="openTiebreakerEditor('${jsArg(t.id)}')">⚖️ Edit Tiebreakers & Column Order</button>
+      <button class="btn ghost" style="text-align:left;justify-content:flex-start;padding:10px 14px" onclick="openTournamentPointCostsEditor('${jsArg(t.id)}')">💰 Edit Pokémon Point Costs</button>
       ${canEditDraft ? `
         <button class="btn ghost" style="text-align:left;justify-content:flex-start;padding:10px 14px" onclick="openDraftBoardImporter('${jsArg(t.id)}')">📥 Import / Edit Draft Board</button>
         <button class="btn ghost" style="text-align:left;justify-content:flex-start;padding:10px 14px" onclick="openDraftOrderEditor('${jsArg(t.id)}')">🔀 Edit Draft Snake Order</button>
@@ -22355,12 +22384,13 @@ function TeamRosterDetailView(t, p){
       let monName = typeof mon === 'string' ? mon : (mon.pokemon || mon.name || '');
       let sprite = pokeSprite(monName);
       let cost = findPokemonCostOnBoard(t, monName);
-      let costDisplay = (cost > 0) ? String(cost) : (hasBudget ? '0' : '—');
+      let costDisplay = String(cost);
       let monStat = (typeof findPokemonStatsInMap === 'function') ? findPokemonStatsInMap(monStatsMap, monName) : null;
       slots.push({
         filled: true,
         monName,
         sprite,
+        cost,
         costDisplay,
         slotNum: i + 1,
         stat: monStat
@@ -22374,9 +22404,14 @@ function TeamRosterDetailView(t, p){
   }
 
   let actions = canManageTournament(t) ? `
-    <button class="btn ghost btn-sm" onclick="openTeamCoverEditor('${jsArg(p)}')">
-      📷 Edit Cover
-    </button>
+    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+      <button class="btn ghost btn-sm" onclick="openTournamentPointCostsEditor('${jsArg(t.id)}')">
+        💰 Edit Point Costs
+      </button>
+      <button class="btn ghost btn-sm" onclick="openTeamCoverEditor('${jsArg(p)}')">
+        📷 Edit Cover
+      </button>
+    </div>
   ` : '';
 
   return `
@@ -22457,7 +22492,13 @@ function TeamRosterDetailView(t, p){
                   </div>
                 </div>
                 <div style="text-align:right;flex:none">
-                  <div class="team-detail-mon-cost" title="Draft Cost / Value">${esc(s.costDisplay)}</div>
+                  ${canManageTournament(t) ? `
+                    <div class="team-detail-mon-cost" onclick="promptEditPokemonCost('${jsArg(t.id)}', '${jsArg(s.monName)}', ${s.cost})" title="Click to edit draft points" style="cursor:pointer;transition:all .15s" onmouseover="this.style.color='#ffd166';this.style.transform='scale(1.08)'" onmouseout="this.style.color='';this.style.transform=''">
+                      ${esc(s.costDisplay)} <span style="font-size:10px;opacity:0.6;margin-left:2px">✎</span>
+                    </div>
+                  ` : `
+                    <div class="team-detail-mon-cost" title="Draft Cost / Value">${esc(s.costDisplay)}</div>
+                  `}
                   <div style="font-size:10px;font-weight:800;letter-spacing:1px;color:#8e8c95;text-transform:uppercase;margin-top:2px">DRAFT PTS</div>
                 </div>
               </div>
@@ -22567,8 +22608,7 @@ function renderTournamentTeamsTabHtml(t){
 }
 
 function Teams(){
-  let sortedT = typeof sortedTournamentsChronological === 'function' ? sortedTournamentsChronological() : Object.values(tournamentData);
-  let t = ongoingT() || (sortedT && sortedT.length ? sortedT[sortedT.length - 1] : null) || activeT();
+  let t = ongoingT();
   if(!t) return noTournament();
 
   let activeCoach = window.selectedTeamRosterCoach;
@@ -23174,7 +23214,15 @@ function getDraftCoachStats(t, p){
 }
 
 function findPokemonCostOnBoard(t, pokemonName){
+  if(!t || !pokemonName) return 0;
+  let cleanTarget = (pokemonName || '').toLowerCase().trim();
+  if(t.pokemonPoints && typeof t.pokemonPoints[cleanTarget] === 'number'){
+    return t.pokemonPoints[cleanTarget];
+  }
   let d = ensureTournamentDraft(t);
+  if(d?.customCosts && typeof d.customCosts[cleanTarget] === 'number'){
+    return d.customCosts[cleanTarget];
+  }
   if(!d || !d.board) return 0;
   if(!d._monCostMap){
     let map = {};
@@ -23185,8 +23233,153 @@ function findPokemonCostOnBoard(t, pokemonName){
     });
     d._monCostMap = map;
   }
-  let cleanTarget = (pokemonName || '').toLowerCase().trim();
   return d._monCostMap[cleanTarget] ?? 0;
+}
+
+function setPokemonPointCost(t, pokemonName, cost){
+  if(!t || !pokemonName) return;
+  t.pokemonPoints = t.pokemonPoints || {};
+  let key = pokemonName.toLowerCase().trim();
+  if(cost === null || cost === '' || isNaN(cost) || Number(cost) < 0){
+    delete t.pokemonPoints[key];
+  } else {
+    t.pokemonPoints[key] = Math.max(0, parseInt(cost, 10));
+  }
+  let d = ensureTournamentDraft(t);
+  if(d){
+    delete d._monCostMap;
+    if(Array.isArray(d.picks)){
+      d.picks.forEach(pk => {
+        if(pk.pokemon && pk.pokemon.toLowerCase().trim() === key){
+          pk.cost = (typeof t.pokemonPoints[key] === 'number') ? t.pokemonPoints[key] : (findPokemonCostOnBoard(t, pk.pokemon) || 0);
+        }
+      });
+    }
+  }
+}
+
+function promptEditPokemonCost(targetId, pokemonName, currentCost){
+  let t = (targetId ? (tournamentData[targetId] || (typeof targetId === 'object' ? targetId : null)) : null) || activeT();
+  if(!t || !canManageTournament(t) || !pokemonName) return;
+  let cur = (typeof currentCost === 'number' && !isNaN(currentCost)) ? currentCost : findPokemonCostOnBoard(t, pokemonName);
+  let val = prompt(`Enter draft point cost for ${pokemonName} in ${t.name}:`, cur != null ? cur : 0);
+  if(val === null) return;
+  val = val.trim();
+  let num = parseInt(val, 10);
+  if(isNaN(num) || num < 0){
+    alert('Please enter a valid non-negative number.');
+    return;
+  }
+  setPokemonPointCost(t, pokemonName, num);
+  persistLeague();
+  if(typeof showDraftToast === 'function'){
+    showDraftToast(`💰 Set ${pokemonName} cost to ${num} pts in ${t.name}`);
+  }
+  render();
+}
+
+function openTournamentPointCostsEditor(targetId){
+  let t = (targetId ? (tournamentData[targetId] || (typeof targetId === 'object' ? targetId : null)) : null) || activeT();
+  if(!t || !canManageTournament(t)) return;
+  window.editingTournamentId = t.id;
+
+  let monSet = new Map();
+  let d = ensureTournamentDraft(t);
+  (t.players || []).forEach(p => {
+    let list = (t.rosters && t.rosters[p]) ? t.rosters[p] : [];
+    list.forEach(m => {
+      let mName = typeof m === 'string' ? m : (m.pokemon || m.name || '');
+      if(!mName) return;
+      let k = mName.trim();
+      if(!monSet.has(k)) monSet.set(k, { name: k, coaches: new Set() });
+      monSet.get(k).coaches.add(p);
+    });
+  });
+  if(Array.isArray(d?.picks)){
+    d.picks.forEach(pk => {
+      if(!pk.pokemon) return;
+      let k = pk.pokemon.trim();
+      if(!monSet.has(k)) monSet.set(k, { name: k, coaches: new Set() });
+      if(pk.player) monSet.get(k).coaches.add(pk.player);
+    });
+  }
+  if(Array.isArray(d?.board)){
+    d.board.forEach(tier => {
+      (tier.pokemon || []).forEach(m => {
+        if(!m) return;
+        let k = m.trim();
+        if(!monSet.has(k)) monSet.set(k, { name: k, coaches: new Set() });
+      });
+    });
+  }
+
+  let monList = Array.from(monSet.values()).sort((a,b) => a.name.localeCompare(b.name));
+
+  let rows = monList.map((item) => {
+    let cost = findPokemonCostOnBoard(t, item.name);
+    let coachList = Array.from(item.coaches);
+    let coachStr = coachList.length ? coachList.map(c => esc(c)).join(', ') : 'Free Agent / Board';
+    return `
+      <div class="point-cost-row" data-mon-name="${esc(item.name.toLowerCase())}" style="display:grid;grid-template-columns:36px 1fr 110px 90px;gap:12px;align-items:center;padding:8px 12px;background:#14141c;border:1px solid #282834;border-radius:8px;margin-bottom:6px">
+        <img src="${esc(pokeSprite(item.name))}" style="width:32px;height:32px;object-fit:contain" loading="lazy" onerror="handleSpriteError(this)">
+        <div style="min-width:0">
+          <div style="font:800 14px 'Barlow Condensed';color:#f5f3f0;letter-spacing:.3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(item.name)}</div>
+          <div style="font-size:10px;color:#8e8c95;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${coachStr}</div>
+        </div>
+        <div style="font-size:11px;color:#ffd166;font-weight:700;text-align:right">
+          Current: <b>${cost} pts</b>
+        </div>
+        <div>
+          <input type="number" min="0" max="999" class="mon-point-input" data-mon="${esc(item.name)}" value="${cost}" style="width:100%;padding:4px 8px;font-size:12px;font-weight:800;background:#0d0d12;border:1px solid #3d3d52;border-radius:5px;color:#ffffff;text-align:center">
+        </div>
+      </div>
+    `;
+  }).join('');
+
+  document.querySelector('#modal').innerHTML = `
+    <div class="modal-wrap">
+      <div class="modal" style="max-width:640px;max-height:85vh;display:flex;flex-direction:column">
+        <div class="modal-head" style="flex:none">
+          <div>
+            <div class="eyebrow" style="color:var(--amber)">TOURNAMENT ROSTER & DRAFT COSTS</div>
+            <h2>Edit Point Costs · ${esc(t.name)}</h2>
+          </div>
+          <button class="close" onclick="closeModal()">×</button>
+        </div>
+        <p class="sub" style="margin:4px 0 12px;font-size:12px;color:#9d9ba6;flex:none">
+          Set custom point costs for Pokémon in <b>${esc(t.name)}</b>. These costs directly update teamsheet statistics, team budgets, and draft leaderboards.
+        </p>
+        <div style="flex:none;margin-bottom:10px">
+          <input type="text" placeholder="Filter Pokémon or coach..." oninput="let q=this.value.toLowerCase();document.querySelectorAll('.point-cost-row').forEach(r=>{r.style.display=r.innerText.toLowerCase().includes(q)?'grid':'none'})" style="width:100%;padding:8px 12px;font-size:12px;background:#101014;border:1px solid #3a3a48;border-radius:6px;color:#fff">
+        </div>
+        <div style="flex:1;overflow-y:auto;padding-right:4px;min-height:220px">
+          ${rows || '<p class="sub">No Pokémon found in this tournament.</p>'}
+        </div>
+        <div class="creator-actions" style="margin-top:14px;flex:none;display:flex;justify-content:space-between;align-items:center">
+          <button class="btn ghost" onclick="closeModal()">Cancel</button>
+          <button class="btn" onclick="saveTournamentPointCosts('${jsArg(t.id)}')">Save All Point Costs</button>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function saveTournamentPointCosts(targetId){
+  let t = (targetId ? (tournamentData[targetId] || (typeof targetId === 'object' ? targetId : null)) : null) || activeT();
+  if(!t || !canManageTournament(t)) return;
+  document.querySelectorAll('.mon-point-input').forEach(inp => {
+    let mon = inp.dataset.mon;
+    let val = parseInt(inp.value.trim(), 10);
+    if(mon && !isNaN(val) && val >= 0){
+      setPokemonPointCost(t, mon, val);
+    }
+  });
+  persistLeague();
+  closeModal();
+  if(typeof showDraftToast === 'function'){
+    showDraftToast(`💰 Point costs saved successfully for ${t.name}!`);
+  }
+  render();
 }
 
 function parseDraftBoardData(rawText){
@@ -25381,7 +25574,11 @@ try {
   if(getSpriteStylePreference() === 'gen5'){
     document.body.classList.add('sprite-pixelated');
   }
+  let _qp = new URLSearchParams(window.location.search);
+  if(_qp.get('mod') === '1') moderator = true;
   render();
+  if(_qp.get('profile')) openProfile(_qp.get('profile'));
+  if(_qp.get('pointEditor')) openTournamentPointCostsEditor(_qp.get('pointEditor'));
 } catch(e) {
   console.error('Initial render failed:', e);
   let app = document.querySelector('#app');
