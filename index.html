@@ -2688,6 +2688,7 @@ function rosterList(p){return (roster[p]||[]).map((m,i)=>`<div class="edit-mon">
 function openTournament(id, tab = 'Standings'){
   viewTournament=id;
   detailTab=tab || 'Standings';
+  window.selectedTeamRosterCoach = null;
   current='Tournament Detail';
   try{
     localStorage.setItem('draftdex-active-tab','Tournament Detail');
@@ -6161,17 +6162,29 @@ function calculateTeamOfTheSeason(t) {
   });
 
   let finalsMvp = null;
-  if(gfMonMap.size > 0) {
-    let gfList = Array.from(gfMonMap.values()).map(m => ({
-      ...m,
-      avgImpact: m.totalImpact / Math.max(1, m.games)
-    }));
-    gfList.sort((a, b) => {
+  let minGfGames = Math.max(1, Math.ceil(gfReplays.length * 0.5));
+  let champ = (t.topCutCache?.champion || t.champion || '').trim();
+  if(champ.toUpperCase() === 'TBD') champ = '';
+  let champRoster = (champ && t.rosters && t.rosters[champ]) ? t.rosters[champ] : [];
+  let champMonNames = new Set(champRoster.map(x => (typeof x === 'string' ? x : (x.pokemon || x.name || '')).trim().toLowerCase()));
+
+  if(gfMonMap.size > 0 && champ) {
+    let gfList = Array.from(gfMonMap.values()).map(m => {
+      let isChampTeam = (m.coach && m.coach.trim().toLowerCase() === champ.toLowerCase()) || champMonNames.has(m.name.trim().toLowerCase());
+      if(!m.coach && isChampTeam) m.coach = champ;
+      return {
+        ...m,
+        avgImpact: m.totalImpact / Math.max(1, m.games),
+        isChampTeam: Boolean(isChampTeam)
+      };
+    });
+    let qualified = gfList.filter(m => m.isChampTeam && m.games >= minGfGames);
+    qualified.sort((a, b) => {
       if(b.avgImpact !== a.avgImpact) return b.avgImpact - a.avgImpact;
       if(b.games !== a.games) return b.games - a.games;
       return b.totalImpact - a.totalImpact;
     });
-    finalsMvp = gfList[0] || null;
+    finalsMvp = qualified[0] || null;
   }
 
   // 3. Aggregate stats across all replays
@@ -6440,7 +6453,7 @@ function renderMajorAwardsCardsHtml(major, t) {
       isFinalsMvp: true,
       statVal: major.finalsMvp ? String(Math.round(major.finalsMvp.avgImpact)) : 'TBD',
       statUnit: major.finalsMvp ? 'GF Avg MVP / Game' : 'Grand Finals',
-      totalStatDisplay: major.finalsMvp ? `${major.finalsMvp.games} Finals Games (incl. Reset)` : 'Decided in Grand Finals'
+      totalStatDisplay: major.finalsMvp ? `${major.finalsMvp.games} Finals Games (incl. Reset)` : 'Decided in Grand Finals (Min 50% GF Games · Winner)'
     },
     {
       key: 'offensive',
@@ -6824,26 +6837,7 @@ function findPokemonStatsInMap(map, name) {
 }
 
 function renderTournamentAwardsStandingsBannerHtml(t) {
-  if(!t) return '';
-  let tots = calculateTeamOfTheSeason(t);
-  if(tots.empty || !tots.team || tots.team.length === 0) return '';
-
-  return `
-    <div style="margin-top:20px;padding:16px 20px;background:linear-gradient(135deg,#181824 0%,#121218 100%);border:1px solid #2d2d3e;border-radius:10px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;box-shadow:0 4px 18px rgba(0,0,0,0.3)">
-      <div style="display:flex;align-items:center;gap:12px">
-        <span style="font-size:28px">🏆</span>
-        <div>
-          <div style="font:800 16px 'Barlow Condensed';color:#f5f3f0;letter-spacing:.3px">Team of the Season Available</div>
-          <div style="font-size:11px;color:#8e8c95;margin-top:2px">
-            Leaders: <b>${tots.team.filter(x => x.mon).map(x => esc(x.mon.name)).join(', ')}</b> (calculated per-game across ${tots.totalGames} ${tots.totalGames === 1 ? 'game' : 'games'})
-          </div>
-        </div>
-      </div>
-      <button class="btn ghost btn-sm" style="border-color:#ffd16640;color:#ffd166;display:inline-flex;align-items:center;gap:6px" onclick="detailTab='Awards';try{localStorage.setItem('draftdex-detail-tab','Awards')}catch(e){};render()">
-        <span>🏆 View Awards Tab</span> <span>→</span>
-      </button>
-    </div>
-  `;
+  return '';
 }
 
 function TopCut(){
@@ -22062,8 +22056,8 @@ function tournamentDetail(){
   let hasDraft = Boolean(t.hasDraft || t.draftData?.picks?.length || t.draftData?.board?.length);
   let isDraftOngoing = (t.status === 'ONGOING' && t.phase === 'draft');
   let availableTabs = hasDraft 
-    ? ['Standings', 'Draft', stage1TabName, 'Top Cut', 'Awards', 'Predictions'] 
-    : ['Standings', stage1TabName, 'Top Cut', 'Awards', 'Predictions'];
+    ? ['Standings', 'Draft', 'Teams', stage1TabName, 'Top Cut', 'Awards', 'Predictions'] 
+    : ['Standings', 'Teams', stage1TabName, 'Top Cut', 'Awards', 'Predictions'];
 
   if(!availableTabs.includes(detailTab)){
     if(detailTab === 'Group Stage' && isSwiss) detailTab = 'Swiss Stage';
@@ -22072,7 +22066,8 @@ function tournamentDetail(){
   }
 
   let content=detailTab==='Draft'?DraftRostersView(t)
-    :detailTab==='Standings'?(isDraftOngoing ? renderDraftLockedStandings(t, true) : (isSwiss ? `<div class="card table-wrap" style="max-width:100%">${standingTable(t,'Swiss Stage')}</div>` : `<div style="display:grid;grid-template-columns:repeat(${groups.length>1?2:1},minmax(0,1fr));gap:16px;align-items:start">${groups.map(g=>`<div class="card table-wrap" style="align-self:start">${standingTable(t,g)}</div>`).join('')}</div>`) + renderTournamentAwardsStandingsBannerHtml(t) + tournamentRatingProgressionSection(t))
+    :detailTab==='Teams'?renderTournamentTeamsTabHtml(t)
+    :detailTab==='Standings'?(isDraftOngoing ? renderDraftLockedStandings(t, true) : (isSwiss ? `<div class="card table-wrap" style="max-width:100%">${standingTable(t,'Swiss Stage')}</div>` : `<div style="display:grid;grid-template-columns:repeat(${groups.length>1?2:1},minmax(0,1fr));gap:16px;align-items:start">${groups.map(g=>`<div class="card table-wrap" style="align-self:start">${standingTable(t,g)}</div>`).join('')}</div>`) + tournamentRatingProgressionSection(t))
     :detailTab===stage1TabName?(isDraftOngoing ? renderDraftLockedMatches(t, true) : matchesView(t,false))
     :detailTab==='Top Cut'?(isDraftOngoing ? renderDraftLockedTopCut(t, true) : topCutSection(t,!t.bracketManagerData))
     :detailTab==='Awards'?renderTournamentAwardsTabHtml(t)
@@ -22104,7 +22099,7 @@ function tournamentDetail(){
       ${moderator ? ` <button class="btn ghost" style="color:#ff9ba1" onclick="deleteTournament('${jsArg(t.id)}')">Delete</button>` : ''}
     </div>
   </div>
-  <div class="tabs">${availableTabs.map(x=>`<button class="${detailTab===x?'active':''}" onclick="detailTab='${x}';try{localStorage.setItem('draftdex-detail-tab','${x}')}catch(e){};render()">${x}</button>`).join('')}</div>`;
+  <div class="tabs">${availableTabs.map(x=>`<button class="${detailTab===x?'active':''}" onclick="if('${x}'!=='Teams')window.selectedTeamRosterCoach=null;detailTab='${x}';try{localStorage.setItem('draftdex-detail-tab','${x}')}catch(e){};render()">${x}</button>`).join('')}</div>`;
 
   return headerHtml + `<div>${content}</div>`;
 }
@@ -22487,28 +22482,11 @@ function TeamRosterDetailView(t, p){
   `;
 }
 
-function Teams(){
-  let sortedT = typeof sortedTournamentsChronological === 'function' ? sortedTournamentsChronological() : Object.values(tournamentData);
-  let t = (viewTournament && tournamentData[viewTournament]) || ongoingT() || (sortedT && sortedT.length ? sortedT[sortedT.length - 1] : null) || activeT();
-  if(!t) return noTournament();
-  viewTournament = t.id; /* keep the editor on this tournament */
-
-  let activeCoach = window.selectedTeamRosterCoach;
-  if(activeCoach && t.players.includes(activeCoach)){
-    return TeamRosterDetailView(t, activeCoach);
+function renderTeamsGridHtml(t){
+  if(!t || !t.players || t.players.length === 0){
+    return `<div class="card empty" style="padding:24px;text-align:center">No coaches found for this tournament.</div>`;
   }
-
-  let actions = canManageTournament(t) ? `<button class="btn ghost" onclick="openTournamentPlayers('${jsArg(t.id)}')">Edit tournament teams</button>` : '';
-  if(Object.keys(tournamentData).length > 1){
-    let pickerHtml = `
-      <select style="background:#181822;color:#f5f3f0;border:1px solid #363648;border-radius:6px;padding:6px 12px;font-size:12px;font-weight:700;cursor:pointer" onchange="viewTournament=this.value;window.selectedTeamRosterCoach=null;render()">
-        ${sortedT.slice().reverse().map(xt => `<option value="${esc(xt.id)}"${xt.id === t.id ? ' selected' : ''}>${esc(xt.name)} (${esc(xt.season)})</option>`).join('')}
-      </select>
-    `;
-    actions = pickerHtml + (actions ? ` ${actions}` : '');
-  }
-
-  return head('Teams', t.name + ' · Rosters', actions) + `
+  return `
     <div class="teams-showcase-grid">
       ${t.players.map(p => {
         let tName = teamName(t, p);
@@ -22577,6 +22555,30 @@ function Teams(){
       }).join('')}
     </div>
   `;
+}
+
+function renderTournamentTeamsTabHtml(t){
+  if(!t) return '<div class="card empty" style="padding:24px;text-align:center">No tournament selected.</div>';
+  let activeCoach = window.selectedTeamRosterCoach;
+  if(activeCoach && t.players && t.players.includes(activeCoach)){
+    return TeamRosterDetailView(t, activeCoach);
+  }
+  return renderTeamsGridHtml(t);
+}
+
+function Teams(){
+  let sortedT = typeof sortedTournamentsChronological === 'function' ? sortedTournamentsChronological() : Object.values(tournamentData);
+  let t = ongoingT() || (sortedT && sortedT.length ? sortedT[sortedT.length - 1] : null) || activeT();
+  if(!t) return noTournament();
+
+  let activeCoach = window.selectedTeamRosterCoach;
+  if(activeCoach && t.players && t.players.includes(activeCoach)){
+    return TeamRosterDetailView(t, activeCoach);
+  }
+
+  let actions = canManageTournament(t) ? `<button class="btn ghost" onclick="openTournamentPlayers('${jsArg(t.id)}')">Edit tournament teams</button>` : '';
+
+  return head('Teams', t.name + ' · Rosters', actions) + renderTeamsGridHtml(t);
 }
 function openTournamentPlayers(targetId){
   let sorted = typeof sortedTournamentsChronological === 'function' ? sortedTournamentsChronological() : Object.values(tournamentData);
