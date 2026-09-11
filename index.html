@@ -1922,7 +1922,7 @@ const GEN5_ONLY_MEGAS = new Set([
   'floette-mega', 'meganium-mega', 'feraligatr-mega', 'emboar-mega', 'chesnaught-mega',
   'delphox-mega', 'greninja-mega', 'clefable-mega', 'victreebel-mega', 'starmie-mega',
   'dragonite-mega', 'skarmory-mega', 'chimecho-mega', 'froslass-mega', 'excadrill-mega',
-  'chandelure-mega', 'hawlucha-mega'
+  'chandelure-mega', 'hawlucha-mega', 'baxcalibur-mega', 'absol-megaz', 'garchomp-megaz', 'lucario-megaz'
 ]);
 
 function getPokemonSpriteUrl(slug) {
@@ -2022,7 +2022,7 @@ function resolvePokemonData(rawInput) {
   let cacheKey = `${getSpriteStylePreference()}:${raw}`;
   if(_spriteDataCache.has(cacheKey)) return _spriteDataCache.get(cacheKey);
   let res = _resolvePokemonDataUncached(raw);
-  if(res && res.slug && !res.sprite){
+  if(res && res.slug){
     res.sprite = getPokemonSpriteUrl(res.slug);
   }
   _spriteDataCache.set(cacheKey, res);
