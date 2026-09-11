@@ -1,4 +1,4 @@
-﻿<!doctype html>
+<!doctype html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
@@ -1970,89 +1970,59 @@ function toggleSpriteStylePreference() {
 function handleSpriteError(img){
   if(!img) return;
   let src = img.src || '';
+  if(src.endsWith('iconNotFound.png') || src.includes('iconNotFound.png')){
+    img.onerror = null;
+    return;
+  }
   let stage = +(img.dataset.fallbackStage || 0);
 
-  // Prevent infinite loops
-  if(stage >= 6){
-    img.src = 'https://play.pokemonshowdown.com/sprites/dex/substitute.png';
+  // Stop endless cycling immediately: maximum 2 fallback attempts, then iconNotFound.png
+  if(stage >= 2){
+    img.onerror = null;
+    img.dataset.fallbackStage = 'done';
+    img.src = 'iconNotFound.png';
     return;
   }
 
-  // Stage 1: Fallback from /sprites/home/ to /sprites/gen5/ keeping exact slug intact
-  // (Crucial for fan/custom Megas like Mega Floette, Mega Feraligatr, Mega Delphox, etc.)
+  // Stage 1: Fallback from /sprites/home/ to /sprites/gen5/
   if(src.includes('/sprites/home/')){
     img.dataset.fallbackStage = String(stage + 1);
     img.src = src.replace('/sprites/home/', '/sprites/gen5/');
     return;
   }
 
-  // Stage 2: Fallback from /sprites/gen5/ to animated GIF /sprites/ani/${slug}.gif
-  // (Crucial for custom Megas that only exist as animated GIFs, like Mega Staraptor, Mega Raichu X/Y, Mega Malamar, etc.)
+  // Stage 2: Fallback from /sprites/gen5/ to animated GIF /sprites/ani/
   if(src.includes('/sprites/gen5/')){
     img.dataset.fallbackStage = String(stage + 1);
     img.src = src.replace('/sprites/gen5/', '/sprites/ani/').replace(/\.png$/i, '.gif');
     return;
   }
 
-  // Stage 3: Fallback from /sprites/ani/ to Showdown /sprites/dex/${slug}.png
-  if(src.includes('/sprites/ani/')){
+  // Form slug fallback (e.g. raichu-mega-y or raichu-megay to base raichu)
+  if(/-mega-?[xyz]?\.(png|gif)$/i.test(src)){
     img.dataset.fallbackStage = String(stage + 1);
-    img.src = src.replace('/sprites/ani/', '/sprites/dex/').replace(/\.gif$/i, '.png');
-    return;
+    let baseSrc = src.replace(/-mega-?[xyz]?\.(png|gif)$/i, '.png').replace('/sprites/ani/', '/sprites/gen5/').replace('/sprites/dex/', '/sprites/gen5/');
+    if(baseSrc !== src){
+      img.src = baseSrc;
+      return;
+    }
   }
 
-  // Stage 4: If all repositories failed for this form slug, fall back to base Pokémon or base form
-  if(/-m-mega\.(png|gif)$/i.test(src)){
-    img.dataset.fallbackStage = String(stage + 1);
-    img.src = src.replace(/-m-mega\.(png|gif)$/i, '.png').replace('/sprites/dex/', '/sprites/gen5/');
-    return;
-  }
-  if(/-f-mega\.(png|gif)$/i.test(src)){
-    img.dataset.fallbackStage = String(stage + 1);
-    img.src = src.replace(/-f-mega\.(png|gif)$/i, '-f.png').replace('/sprites/dex/', '/sprites/gen5/');
-    return;
-  }
-  if(/-mega[xyz]?\.(png|gif)$/i.test(src)){
-    img.dataset.fallbackStage = String(stage + 1);
-    img.src = src.replace(/-mega[xyz]?\.(png|gif)$/i, '.png').replace('/sprites/dex/', '/sprites/gen5/');
-    return;
-  }
-  if(/-gmax\.(png|gif)$/i.test(src)){
-    img.dataset.fallbackStage = String(stage + 1);
-    img.src = src.replace(/-gmax\.(png|gif)$/i, '.png').replace('/sprites/dex/', '/sprites/gen5/');
-    return;
-  }
-  if(/-totem\.(png|gif)$/i.test(src)){
-    img.dataset.fallbackStage = String(stage + 1);
-    img.src = src.replace(/-totem\.(png|gif)$/i, '.png').replace('/sprites/dex/', '/sprites/gen5/');
-    return;
-  }
-  if(src.includes('lycanroc-midday')){
-    img.dataset.fallbackStage = String(stage + 1);
-    img.src = src.replace('lycanroc-midday', 'lycanroc');
-    return;
-  }
-
-  // Stage 5: If base Pokémon failed in gen5, try dex
-  if(src.includes('/sprites/gen5/')){
-    img.dataset.fallbackStage = String(stage + 1);
-    img.src = src.replace('/sprites/gen5/', '/sprites/dex/').replace(/\.gif$/i, '.png');
-    return;
-  }
-
-  // Final fallback to substitute doll
-  img.dataset.fallbackStage = '6';
-  img.src = 'https://play.pokemonshowdown.com/sprites/dex/substitute.png';
+  // Final fallback to iconNotFound.png Pokéball asset
+  img.onerror = null;
+  img.dataset.fallbackStage = 'done';
+  img.src = 'iconNotFound.png';
 }
+
 
 const _spriteDataCache = new Map();
 function resolvePokemonData(rawInput) {
   let raw = String(rawInput || '').trim();
-  if(!raw) return { name: '', slug: '', sprite: 'https://play.pokemonshowdown.com/sprites/dex/substitute.png' };
+  if(!raw) return { name: '', slug: '', sprite: 'iconNotFound.png' };
   let cacheKey = `${getSpriteStylePreference()}:${raw}`;
   if(_spriteDataCache.has(cacheKey)) return _spriteDataCache.get(cacheKey);
   let res = _resolvePokemonDataUncached(raw);
-  if(res && res.slug){
+  if(res && res.slug && !res.sprite){
     res.sprite = getPokemonSpriteUrl(res.slug);
   }
   _spriteDataCache.set(cacheKey, res);
@@ -2087,6 +2057,9 @@ function _resolvePokemonDataUncached(raw) {
   s = s.replace(/\bthundy\b/g, 'thundurus');
   s = s.replace(/\btorny\b/g, 'tornadus');
   s = s.replace(/\benam\b/g, 'enamorus');
+
+  // Normalize forms like "raichu-mega-y" -> "raichu-megay"
+  s = s.replace(/^([a-z0-9]+)-mega-([xyz])$/i, '$1-mega$2');
 
   // Dedicated Gender-Dimorphic & Mega-Gender Resolution (Meowstic, Indeedee, Basculegion, Oinkologne, Nidoran, Pyroar, etc.)
   const genderDimorphicSpecies = [
@@ -2210,10 +2183,25 @@ function _resolvePokemonDataUncached(raw) {
     'delphox-mega': { slug: 'delphox-mega', name: 'Mega Delphox' },
     'mega greninja': { slug: 'greninja-mega', name: 'Mega Greninja' },
     'greninja-mega': { slug: 'greninja-mega', name: 'Mega Greninja' },
-    'mega raichu x': { slug: 'raichu-megax', name: 'Mega Raichu X' },
-    'raichu-megax': { slug: 'raichu-megax', name: 'Mega Raichu X' },
-    'mega raichu y': { slug: 'raichu-megay', name: 'Mega Raichu Y' },
-    'raichu-megay': { slug: 'raichu-megay', name: 'Mega Raichu Y' },
+    'mega raichu x': { slug: 'raichu-megax', name: 'Mega Raichu X', sprite: 'https://play.pokemonshowdown.com/sprites/ani/raichu-megax.gif' },
+    'raichu-megax': { slug: 'raichu-megax', name: 'Mega Raichu X', sprite: 'https://play.pokemonshowdown.com/sprites/ani/raichu-megax.gif' },
+    'raichu mega x': { slug: 'raichu-megax', name: 'Mega Raichu X', sprite: 'https://play.pokemonshowdown.com/sprites/ani/raichu-megax.gif' },
+    'raichu-mega-x': { slug: 'raichu-megax', name: 'Mega Raichu X', sprite: 'https://play.pokemonshowdown.com/sprites/ani/raichu-megax.gif' },
+    'mega-raichu-x': { slug: 'raichu-megax', name: 'Mega Raichu X', sprite: 'https://play.pokemonshowdown.com/sprites/ani/raichu-megax.gif' },
+    'mega raichu y': { slug: 'raichu-megay', name: 'Mega Raichu Y', sprite: 'https://play.pokemonshowdown.com/sprites/ani/raichu-megay.gif' },
+    'raichu-megay': { slug: 'raichu-megay', name: 'Mega Raichu Y', sprite: 'https://play.pokemonshowdown.com/sprites/ani/raichu-megay.gif' },
+    'raichu mega y': { slug: 'raichu-megay', name: 'Mega Raichu Y', sprite: 'https://play.pokemonshowdown.com/sprites/ani/raichu-megay.gif' },
+    'raichu-mega-y': { slug: 'raichu-megay', name: 'Mega Raichu Y', sprite: 'https://play.pokemonshowdown.com/sprites/ani/raichu-megay.gif' },
+    'mega-raichu-y': { slug: 'raichu-megay', name: 'Mega Raichu Y', sprite: 'https://play.pokemonshowdown.com/sprites/ani/raichu-megay.gif' },
+    'mega staraptor': { slug: 'staraptor-mega', name: 'Mega Staraptor', sprite: 'https://play.pokemonshowdown.com/sprites/ani/staraptor-mega.gif' },
+    'staraptor-mega': { slug: 'staraptor-mega', name: 'Mega Staraptor', sprite: 'https://play.pokemonshowdown.com/sprites/ani/staraptor-mega.gif' },
+    'staraptor mega': { slug: 'staraptor-mega', name: 'Mega Staraptor', sprite: 'https://play.pokemonshowdown.com/sprites/ani/staraptor-mega.gif' },
+    'mega malamar': { slug: 'malamar-mega', name: 'Mega Malamar', sprite: 'https://play.pokemonshowdown.com/sprites/ani/malamar-mega.gif' },
+    'malamar-mega': { slug: 'malamar-mega', name: 'Mega Malamar', sprite: 'https://play.pokemonshowdown.com/sprites/ani/malamar-mega.gif' },
+    'mega dragalge': { slug: 'dragalge-mega', name: 'Mega Dragalge', sprite: 'https://play.pokemonshowdown.com/sprites/ani/dragalge-mega.gif' },
+    'dragalge-mega': { slug: 'dragalge-mega', name: 'Mega Dragalge', sprite: 'https://play.pokemonshowdown.com/sprites/ani/dragalge-mega.gif' },
+    'mega scrafty': { slug: 'scrafty-mega', name: 'Mega Scrafty', sprite: 'https://play.pokemonshowdown.com/sprites/ani/scrafty-mega.gif' },
+    'scrafty-mega': { slug: 'scrafty-mega', name: 'Mega Scrafty', sprite: 'https://play.pokemonshowdown.com/sprites/ani/scrafty-mega.gif' },
     'mega clefable': { slug: 'clefable-mega', name: 'Mega Clefable' },
     'clefable-mega': { slug: 'clefable-mega', name: 'Mega Clefable' },
     'mega victreebel': { slug: 'victreebel-mega', name: 'Mega Victreebel' },
@@ -2282,7 +2270,7 @@ function _resolvePokemonDataUncached(raw) {
 
   if(directMap[s]){
     let res = directMap[s];
-    return { name: res.name, slug: res.slug, sprite: `https://play.pokemonshowdown.com/sprites/gen5/${res.slug}.png` };
+    return { name: res.name, slug: res.slug, sprite: res.sprite || getPokemonSpriteUrl(res.slug) };
   }
 
   // Rotom forms
@@ -23287,14 +23275,15 @@ function copyTeam(){
 function teamKeydown(e){if(e.key==='Enter'){e.preventDefault();addTeamMon()}}
 
 function openDraftFromPlanner(monName, cost){
-  let t = ongoingT() || activeT();
-  if(!t){
-    alert(`To draft ${monName}, select an active tournament with a draft.`);
+  let t = ongoingT();
+  let isLiveDraft = t && t.status === 'ONGOING' && t.phase === 'draft' && t.draftData?.status !== 'completed';
+  if(!isLiveDraft){
+    openOffseasonMonDetailModal(monName, cost);
     return;
   }
   let d = ensureTournamentDraft(t);
   if(!d){
-    alert(`No draft found for ${t.name}.`);
+    openOffseasonMonDetailModal(monName, cost);
     return;
   }
 
@@ -23470,6 +23459,19 @@ function getDraftCurrentTurn(t){
   if(!d) return null;
   let totalPicks = getDraftTotalPicks(t);
   let picks = d.picks || [];
+
+  if(!t || t.status === 'COMPLETE' || t.phase === 'complete' || t.phase !== 'draft' || d.status === 'completed'){
+    return {
+      isComplete: true,
+      status: 'completed',
+      totalPicks,
+      currentPickNumber: totalPicks,
+      currentRound: Math.ceil(totalPicks / Math.max(1, getDraftOrderList(t).length)),
+      player: null,
+      pickIdx: totalPicks,
+      upcoming: []
+    };
+  }
 
   // Find the first unpicked slot in snake draft order
   let currentPickIdx = 0;
@@ -24414,11 +24416,17 @@ function saveRenamedBoardPokemon(tId, oldMonName, cost, tierName){
 }
 
 function openDraftConfirmationModal(tId, monName, cost, tierName){
-  let t = tournamentData[tId] || activeT();
-  if(!t) return;
+  let t = tournamentData[tId] || ongoingT() || activeT();
+  if(!t || t.status === 'COMPLETE' || t.phase !== 'draft'){
+    openOffseasonMonDetailModal(monName, cost);
+    return;
+  }
   let d = ensureTournamentDraft(t);
   let turn = getDraftCurrentTurn(t);
-  if(!turn || turn.isComplete) return;
+  if(!turn || turn.isComplete || !turn.player){
+    openOffseasonMonDetailModal(monName, cost);
+    return;
+  }
 
   let pickingCoach = turn.player;
   let coachStats = getDraftCoachStats(t, pickingCoach);
@@ -24447,13 +24455,19 @@ function openDraftConfirmationModal(tId, monName, cost, tierName){
           </div>
           <div style="display:flex;align-items:center;justify-content:center;gap:8px">
             <h2 style="margin:10px 0 4px;font:800 24px 'Barlow Condensed';letter-spacing:.5px;${moderator ? 'cursor:pointer;display:inline-flex;align-items:center;gap:6px' : ''}" 
-                ${moderator ? `onclick="openRenameBoardPokemonModal('${jsArg(t.id)}', '${jsArg(monName)}', ${cost}, '${jsArg(tierName)}')"` : ''}
-                title="${moderator ? 'Click to rename this Pokémon on the draft board' : ''}">
+                ${moderator ? `onclick="openEditBoardPokemonModal('${jsArg(t.id)}', '${jsArg(monName)}', ${cost}, '${jsArg(tierName)}')"` : ''}
+                title="${moderator ? 'Click to edit or move this Pokémon on the draft board' : ''}">
               ${esc(monName)}
-              ${moderator ? `<span style="font-size:13px;color:#ffd166;opacity:.85" title="Rename Pokémon">✏️</span>` : ''}
+              ${moderator ? `<span style="font-size:13px;color:#ffd166;opacity:.85" title="Edit Pokémon">✏️</span>` : ''}
             </h2>
           </div>
-          ${moderator ? `<div style="font-size:10px;color:#ffd166;margin-bottom:6px;cursor:pointer;opacity:.8" onclick="openRenameBoardPokemonModal('${jsArg(t.id)}', '${jsArg(monName)}', ${cost}, '${jsArg(tierName)}')">Moderator: Click name to rename ✏️</div>` : ''}
+          ${moderator ? `
+            <div style="margin-bottom:10px">
+              <button class="btn ghost btn-sm" style="font-size:11px!important;color:#ffd166;border-color:#5a4218;padding:3px 10px!important" onclick="openEditBoardPokemonModal('${jsArg(t.id)}', '${jsArg(monName)}', ${cost}, '${jsArg(tierName)}')">
+                ✏️ Edit Pokémon / Move Tier
+              </button>
+            </div>
+          ` : ''}
           <div style="display:flex;justify-content:center;align-items:center;gap:8px;margin-bottom:16px">
             <span class="tag" style="background:#22222c;color:#a09fa8">${esc(tierName)}</span>
             <span class="tag" style="background:#3d2c12;color:#ffd166;font-weight:800;border:1px solid #6b4d1b">${cost} Points</span>
@@ -25016,9 +25030,14 @@ function renderDraftBoardTierColumns(t){
     let availCount = tier.pokemon.filter(m => !draftedSet.has(m.toLowerCase().trim())).length;
     return `
       <div class="draft-tier-col">
-        <div class="draft-tier-head">
-          <span style="color:#ffd166">${esc(tier.name)}</span>
-          <span class="tag" style="background:#2d2210;color:#ffd166;font-size:10px;border:1px solid #5a4218">${availCount}/${tier.pokemon.length} Available</span>
+        <div class="draft-tier-head" style="display:flex;align-items:center;justify-content:space-between">
+          <div style="display:flex;align-items:center;gap:6px">
+            <span style="color:#ffd166">${esc(tier.name)}</span>
+            <span class="tag" style="background:#2d2210;color:#ffd166;font-size:10px;border:1px solid #5a4218">${availCount}/${tier.pokemon.length} Available</span>
+          </div>
+          ${moderator ? `
+            <button class="btn ghost btn-sm" style="padding:1px 6px!important;font-size:11px!important;line-height:1;color:#ffd166;border-color:#5a4218" title="Add Pokémon to ${esc(tier.name)}" onclick="openAddBoardPokemonModal(${tier.cost})">+</button>
+          ` : ''}
         </div>
 
         <div class="draft-tier-items">
@@ -25042,6 +25061,12 @@ function renderDraftBoardTierColumns(t){
                     ` : ''}
                   </div>
                 </div>
+
+                ${moderator ? `
+                  <div style="display:flex;align-items:center;gap:6px">
+                    <button class="btn ghost btn-sm" style="padding:1px 5px!important;font-size:9px!important;color:#ffd166;border-color:#5a4218" title="Edit / Move Tier" onclick="event.stopPropagation();openEditBoardPokemonModal('${jsArg(t.id)}', '${jsArg(mon)}', ${tier.cost}, '${jsArg(tier.name)}')">✏️</button>
+                  </div>
+                ` : ''}
 
                 ${isDrafted ? `
                   <span style="font-size:11px;color:#6b6a75;font-weight:700">Picked</span>
@@ -25154,6 +25179,11 @@ function DraftBoardView(t){
           </div>
 
           <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+            ${canManageTournament(t) ? `
+              <button class="btn btn-sm" style="font-size:11px;font-weight:800;background:linear-gradient(135deg,#ffd166,#f59e0b);color:#111;border:0;padding:6px 12px" onclick="openAddBoardPokemonModal(null)">
+                + Add Pokémon to Board
+              </button>
+            ` : ''}
             <label style="display:flex;align-items:center;gap:6px;font-size:11px;color:#c0bfca;cursor:pointer;user-select:none">
               <input type="checkbox" ${draftBoardAvailOnly ? 'checked' : ''} onchange="draftBoardAvailOnly=this.checked;handleDraftBoardFilterChange()" style="accent-color:var(--red)">
               Available (${totalAvailable}/${totalMons})
@@ -25641,9 +25671,14 @@ function renderOffseasonTierColumns(){
   return filteredBoard.map(tier => {
     return `
       <div class="draft-tier-col">
-        <div class="draft-tier-head">
-          <span style="color:#ffd166">${esc(tier.name)}</span>
-          <span class="tag" style="background:#2d2210;color:#ffd166;font-size:10px;border:1px solid #5a4218">${tier.pokemon.length} Pokémon</span>
+        <div class="draft-tier-head" style="display:flex;align-items:center;justify-content:space-between">
+          <div style="display:flex;align-items:center;gap:6px">
+            <span style="color:#ffd166">${esc(tier.name)}</span>
+            <span class="tag" style="background:#2d2210;color:#ffd166;font-size:10px;border:1px solid #5a4218">${tier.pokemon.length} Pokémon</span>
+          </div>
+          ${moderator ? `
+            <button class="btn ghost btn-sm" style="padding:1px 6px!important;font-size:11px!important;line-height:1;color:#ffd166;border-color:#5a4218" title="Add Pokémon to ${esc(tier.name)}" onclick="openAddBoardPokemonModal(${tier.cost})">+</button>
+          ` : ''}
         </div>
 
         <div class="draft-tier-items">
@@ -25662,7 +25697,7 @@ function renderOffseasonTierColumns(){
                 </div>
                 ${moderator ? `
                   <div style="display:flex;align-items:center;gap:6px">
-                    <button class="btn ghost btn-sm" style="padding:1px 5px!important;font-size:9px!important;color:#ffd166;border-color:#5a4218" title="Rename Pokémon on board" onclick="event.stopPropagation();openRenameOffseasonPokemonModal('${jsArg(mon)}', ${tier.cost}, '${jsArg(tier.name)}')">✏️</button>
+                    <button class="btn ghost btn-sm" style="padding:1px 5px!important;font-size:9px!important;color:#ffd166;border-color:#5a4218" title="Edit / Move Tier" onclick="event.stopPropagation();openEditBoardPokemonModal(null, '${jsArg(mon)}', ${tier.cost}, '${jsArg(tier.name)}')">✏️</button>
                   </div>
                 ` : ''}
               </div>
@@ -25883,6 +25918,11 @@ function OffseasonDraftView(){
           </div>
 
           <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+            ${moderator ? `
+              <button class="btn btn-sm" style="font-size:11px;font-weight:800;background:linear-gradient(135deg,#ffd166,#f59e0b);color:#111;border:0;padding:6px 12px" onclick="openAddBoardPokemonModal(null)">
+                + Add Pokémon to Board
+              </button>
+            ` : ''}
             <select onchange="draftBoardTierFilter=this.value;renderOffseasonBoardColumns()" style="padding:6px 10px;background:#181822;border:1px solid #363648;border-radius:6px;color:#f5f3f0;font-size:11px">
               <option value="all">All Tiers (${board.length})</option>
               ${Array.from(new Set(board.map(tier => tier.cost))).sort((a,b)=>b-a).map(cost => `<option value="${cost}" ${draftBoardTierFilter === String(cost) ? 'selected' : ''}>≤ ${cost} pts</option>`).join('')}
@@ -25950,6 +25990,9 @@ try {
   render();
   if(_qp.get('profile')) openProfile(_qp.get('profile'));
   if(_qp.get('pointEditor')) openTournamentPointCostsEditor(_qp.get('pointEditor'));
+  if(_qp.get('editBoardMon')) openEditBoardPokemonModal(_qp.get('tourney')||null, _qp.get('editBoardMon'), +_qp.get('cost')||18, _qp.get('tier')||'');
+  if(_qp.get('addBoardMon')) openAddBoardPokemonModal(+_qp.get('cost')||null);
+  if(_qp.get('offseasonMon')) openOffseasonMonDetailModal(_qp.get('offseasonMon'), +_qp.get('cost')||18);
 } catch(e) {
   console.error('Initial render failed:', e);
   let app = document.querySelector('#app');
@@ -25957,6 +26000,455 @@ try {
     app.innerHTML = `<div class="card empty" style="border-color:#ff4b54;margin:24px"><div class="card-title" style="color:#ff4b54">Render Error</div><p class="sub">${esc(e.message || String(e))}</p></div>`;
   }
 }
+
+
+// Draft Board Tier Editor, Adder, and Offseason Planner Updates
+
+function removeTeamMonByName(name){
+  let team = activeTeam();
+  if(!team) return;
+  let idx = team.picks.findIndex(p => p.name.toLowerCase().trim() === (name||'').toLowerCase().trim());
+  if(idx >= 0){
+    team.picks.splice(idx, 1);
+    builderStatus = '';
+    writeTeams();
+    refreshBuilder();
+    if(typeof showDraftToast === 'function') showDraftToast(`Removed ${name} from your team plan`);
+  }
+}
+
+function openOffseasonMonDetailModal(monName, cost){
+  let actualCost = cost;
+  let tierName = `${cost} Points`;
+  let board = getOffseasonDraftBoard();
+  let foundTier = board.find(tier => (tier.pokemon || []).some(m => m.toLowerCase().trim() === (monName||'').toLowerCase().trim()));
+  if(foundTier){
+    actualCost = foundTier.cost;
+    tierName = foundTier.name || `${foundTier.cost} Points`;
+  }
+  let spriteUrl = pokeSprite(monName);
+
+  document.querySelector('#modal').innerHTML = `
+    <div class="modal-wrap">
+      <div class="modal" style="max-width:440px;text-align:center">
+        <div class="modal-head" style="justify-content:flex-end">
+          <button class="close" onclick="closeModal()">×</button>
+        </div>
+
+        <div style="margin-top:-10px">
+          <div style="background:radial-gradient(circle,rgba(239,48,56,0.20) 0%,rgba(0,0,0,0.25) 60%,transparent 75%);padding:16px;border-radius:16px;display:inline-block;margin-bottom:4px">
+            <img src="${esc(spriteUrl)}" alt="${esc(monName)}" style="width:145px;height:145px;object-fit:contain;filter:drop-shadow(0 8px 18px rgba(0,0,0,0.7));image-rendering:pixelated" onerror="handleSpriteError(this)">
+          </div>
+
+          <h2 style="margin:8px 0 4px;font:800 24px 'Barlow Condensed';letter-spacing:.5px">
+            ${esc(monName)}
+          </h2>
+
+          <div style="display:flex;justify-content:center;align-items:center;gap:6px;margin-bottom:12px">
+            ${typeof renderPokemonTypeBadges === 'function' ? renderPokemonTypeBadges(monName, 'font-size:9px;padding:1px 6px') : ''}
+          </div>
+
+          <div style="display:flex;justify-content:center;align-items:center;gap:8px;margin-bottom:16px">
+            <span class="tag" style="background:#22222c;color:#a09fa8">${esc(tierName)}</span>
+            <span class="tag" style="background:#3d2c12;color:#ffd166;font-weight:800;border:1px solid #6b4d1b">${actualCost} Points</span>
+          </div>
+
+          <div class="card" style="padding:12px 14px;background:#14141c;border-color:#2a2a3a;text-align:left;margin-bottom:16px">
+            <div style="font-size:10px;font-weight:800;color:#ffd166;text-transform:uppercase;letter-spacing:.6px">Private Team Planner</div>
+            <div style="font-size:12px;color:#94a3b8;margin-top:4px;line-height:1.4">
+              Saved in your private team plan. During the offseason, there is no active draft clock. You can test roster combinations against the budget.
+            </div>
+          </div>
+
+          <div style="display:flex;flex-direction:column;gap:8px">
+            ${moderator ? `
+              <button class="btn" style="background:linear-gradient(135deg,#ffd166,#f59e0b);color:#111;font-weight:800;border:0" onclick="openEditBoardPokemonModal(null, '${jsArg(monName)}', ${actualCost}, '${jsArg(tierName)}')">
+                ✏️ Edit on Draft Board / Move Tier
+              </button>
+            ` : ''}
+            <button class="btn ghost" style="color:#ff8e95;border-color:#5a242c" onclick="removeTeamMonByName('${jsArg(monName)}');closeModal()">
+              🗑️ Remove from My Team Plan
+            </button>
+            <button class="btn ghost" onclick="closeModal()">Close</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function openEditBoardPokemonModal(tId, oldMonName, currentCost, currentTierName){
+  if(!moderator) return;
+  let t = tId ? (tournamentData[tId] || null) : null;
+  let board = t ? (t.draftData?.board || []) : getOffseasonDraftBoard();
+  
+  let tierOptions = Array.from(new Set(board.map(t => Number(t.cost)))).sort((a,b) => b - a);
+  if(!tierOptions.includes(currentCost) && !isNaN(currentCost)) tierOptions.push(currentCost);
+  tierOptions.sort((a,b) => b - a);
+
+  let resolved = resolvePokemonData(oldMonName);
+  let spriteUrl = resolved.sprite;
+
+  document.querySelector('#modal').innerHTML = `
+    <div class="modal-wrap">
+      <div class="modal" style="max-width:450px">
+        <div class="modal-head">
+          <div>
+            <div class="eyebrow" style="color:var(--red)">Moderator Tool</div>
+            <h2 style="font:800 24px 'Barlow Condensed'">Edit Board Pokémon</h2>
+          </div>
+          <button class="close" onclick="closeModal()">×</button>
+        </div>
+
+        <p class="sub" style="margin-top:4px;font-size:12px">
+          Move this Pokémon to a different point tier, rename it, or remove it from the draft board.
+        </p>
+
+        <!-- Name Input -->
+        <div class="field" style="margin-top:14px">
+          <label style="font-size:11px;font-weight:800;color:#e0dee6">Pokémon Name</label>
+          <input id="editMonNameInput" type="text" value="${esc(oldMonName)}" placeholder="e.g. Raichu-Mega-Y, Garchomp..." oninput="updateEditBoardPreview(this.value)" style="background:#13131a;border:1px solid #3d3d4e;color:#f5f3f0;border-radius:6px;padding:10px 12px;font-weight:800;font-size:14px">
+        </div>
+
+        <!-- Tier Selection -->
+        <div class="field" style="margin-top:12px">
+          <label style="font-size:11px;font-weight:800;color:#e0dee6">Draft Tier / Points</label>
+          <select id="editMonTierSelect" onchange="handleEditTierSelectChange(this.value)" style="background:#13131a;border:1px solid #3d3d4e;color:#ffd166;border-radius:6px;padding:10px 12px;font-weight:800;font-size:13px;width:100%">
+            ${tierOptions.map(c => `
+              <option value="${c}" ${c === currentCost ? 'selected' : ''}>${c} Points Tier (${c} pts)</option>
+            `).join('')}
+            <option value="custom">✏️ Custom Point Value...</option>
+          </select>
+          <div id="customCostWrap" style="display:none;margin-top:8px">
+            <input id="editMonCustomCostInput" type="number" min="0" max="99" placeholder="Enter custom points (e.g. 15)" value="${currentCost}" oninput="updateEditBoardCostPreview(this.value)" style="background:#13131a;border:1px solid #3d3d4e;color:#ffd166;border-radius:6px;padding:8px 12px;font-weight:800;font-size:13px;width:100%">
+          </div>
+        </div>
+
+        <!-- Live Preview -->
+        <div id="editMonPreviewBox" style="display:flex;align-items:center;gap:12px;margin:14px 0;padding:12px 14px;background:#14141c;border:1px solid #282836;border-radius:8px">
+          <img id="editMonPreviewSprite" src="${esc(spriteUrl)}" style="width:48px;height:48px;object-fit:contain" onerror="handleSpriteError(this)">
+          <div style="min-width:0;flex:1">
+            <div id="editMonPreviewName" style="font:800 16px 'Barlow Condensed';color:#f5f3f0;text-transform:uppercase">${esc(oldMonName)}</div>
+            <div id="editMonPreviewBadges" style="margin-top:3px;display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+              ${typeof renderPokemonTypeBadges === 'function' ? renderPokemonTypeBadges(oldMonName, 'font-size:8px;padding:0px 5px') : ''}
+              <span id="editMonPreviewCostTag" class="tag" style="background:#2d2210;color:#ffd166;font-size:10px;border:1px solid #5a4218">${currentCost} Points</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Action Buttons -->
+        <div class="creator-actions" style="margin-top:18px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
+          <button class="btn ghost" style="color:#ff8e95;border-color:#5a242c" onclick="deleteBoardPokemon('${jsArg(tId || '')}', '${jsArg(oldMonName)}', ${currentCost})">
+            🗑️ Remove from Board
+          </button>
+          <div style="display:flex;align-items:center;gap:8px">
+            <button class="btn ghost" onclick="closeModal()">Cancel</button>
+            <button class="btn" onclick="saveEditedBoardPokemon('${jsArg(tId || '')}', '${jsArg(oldMonName)}', ${currentCost})">
+              💾 Save Changes
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function handleEditTierSelectChange(val){
+  let customWrap = document.getElementById('customCostWrap');
+  if(customWrap){
+    customWrap.style.display = (val === 'custom') ? 'block' : 'none';
+  }
+  let costTag = document.getElementById('editMonPreviewCostTag');
+  if(costTag){
+    let c = (val === 'custom') ? (document.getElementById('editMonCustomCostInput')?.value || '—') : val;
+    costTag.textContent = `${c} Points`;
+  }
+}
+
+function updateEditBoardCostPreview(val){
+  let costTag = document.getElementById('editMonPreviewCostTag');
+  if(costTag){
+    costTag.textContent = `${val || 0} Points`;
+  }
+}
+
+function updateEditBoardPreview(val){
+  let clean = formatPokemonDisplayName(val) || val || '—';
+  let nameEl = document.getElementById('editMonPreviewName');
+  let spriteEl = document.getElementById('editMonPreviewSprite');
+  let badgesEl = document.getElementById('editMonPreviewBadges');
+  if(nameEl) nameEl.textContent = clean;
+  if(spriteEl){
+    spriteEl.src = pokeSprite(clean);
+    spriteEl.dataset.fallbackStage = '0';
+  }
+  if(badgesEl && typeof renderPokemonTypeBadges === 'function'){
+    let costTag = document.getElementById('editMonPreviewCostTag');
+    badgesEl.innerHTML = `${renderPokemonTypeBadges(clean, 'font-size:8px;padding:0px 5px')} <span id="editMonPreviewCostTag" class="tag" style="background:#2d2210;color:#ffd166;font-size:10px;border:1px solid #5a4218">${costTag ? costTag.textContent : ''}</span>`;
+  }
+}
+
+function saveEditedBoardPokemon(tId, oldMonName, originalCost){
+  if(!moderator) return;
+  let newNameRaw = document.getElementById('editMonNameInput')?.value?.trim();
+  if(!newNameRaw){
+    alert('Please enter a valid Pokémon name.');
+    return;
+  }
+  let newName = formatPokemonDisplayName(newNameRaw) || newNameRaw;
+  let oldClean = oldMonName.toLowerCase().trim();
+  let newClean = newName.toLowerCase().trim();
+
+  let sel = document.getElementById('editMonTierSelect')?.value;
+  let newCost = (sel === 'custom') ? Number(document.getElementById('editMonCustomCostInput')?.value) : Number(sel);
+  if(isNaN(newCost) || newCost < 0){
+    alert('Please select or enter a valid point value.');
+    return;
+  }
+
+  let t = tId ? (tournamentData[tId] || null) : null;
+  let board = t ? (t.draftData?.board || []) : getOffseasonDraftBoard();
+
+  // 1. Remove old entry from current tier
+  board.forEach(tier => {
+    tier.pokemon = (tier.pokemon || []).filter(m => m.toLowerCase().trim() !== oldClean);
+  });
+
+  // 2. Insert into target tier
+  let targetTier = board.find(tier => tier.cost === newCost);
+  if(targetTier){
+    targetTier.pokemon = (targetTier.pokemon || []).filter(m => m.toLowerCase().trim() !== newClean);
+    targetTier.pokemon.push(newName);
+    targetTier.pokemon.sort((a,b) => a.localeCompare(b));
+  } else {
+    board.push({
+      id: `tier_${newCost}`,
+      name: `${newCost} Points`,
+      cost: newCost,
+      pokemon: [newName]
+    });
+    board.sort((a,b) => b.cost - a.cost);
+  }
+
+  // 3. If renamed, propagate to tournament/global rosters
+  if(oldClean !== newClean){
+    if(t && t.rosters){
+      Object.keys(t.rosters).forEach(coach => {
+        t.rosters[coach] = (t.rosters[coach] || []).map(m => m.toLowerCase().trim() === oldClean ? newName : m);
+      });
+    }
+    if(typeof roster !== 'undefined'){
+      Object.keys(roster).forEach(coach => {
+        roster[coach] = (roster[coach] || []).map(m => m.toLowerCase().trim() === oldClean ? newName : m);
+      });
+    }
+  }
+
+  // 4. Save and sync
+  if(!t){
+    offseasonDraftBoard = board;
+    try { localStorage.setItem('draftdex-offseason-board', JSON.stringify(offseasonDraftBoard)); } catch(e){}
+  }
+  persistLeague();
+  closeModal();
+  render();
+  if(typeof showDraftToast === 'function'){
+    showDraftToast(`Updated ${newName} (${newCost} pts)`);
+  }
+}
+
+function deleteBoardPokemon(tId, monName, cost){
+  if(!moderator) return;
+  if(!confirm(`Remove "${monName}" from the draft board completely?`)) return;
+  let t = tId ? (tournamentData[tId] || null) : null;
+  let board = t ? (t.draftData?.board || []) : getOffseasonDraftBoard();
+  let clean = monName.toLowerCase().trim();
+
+  board.forEach(tier => {
+    tier.pokemon = (tier.pokemon || []).filter(m => m.toLowerCase().trim() !== clean);
+  });
+
+  if(!t){
+    offseasonDraftBoard = board;
+    try { localStorage.setItem('draftdex-offseason-board', JSON.stringify(offseasonDraftBoard)); } catch(e){}
+  }
+  persistLeague();
+  closeModal();
+  render();
+  if(typeof showDraftToast === 'function'){
+    showDraftToast(`Removed "${monName}" from draft board`);
+  }
+}
+
+function openAddBoardPokemonModal(defaultCost = null){
+  if(!moderator) return;
+  let t = ongoingT();
+  let isOffseason = (!t || t.status !== 'ONGOING');
+  let board = isOffseason ? getOffseasonDraftBoard() : (t?.draftData?.board || []);
+  let tierOptions = Array.from(new Set(board.map(t => Number(t.cost)))).sort((a,b) => b - a);
+  let selCost = (defaultCost !== null && !isNaN(defaultCost)) ? Number(defaultCost) : (tierOptions[0] || 20);
+
+  document.querySelector('#modal').innerHTML = `
+    <div class="modal-wrap">
+      <div class="modal" style="max-width:450px">
+        <div class="modal-head">
+          <div>
+            <div class="eyebrow" style="color:var(--red)">Moderator Tool</div>
+            <h2 style="font:800 24px 'Barlow Condensed'">Add Pokémon to Draft Board</h2>
+          </div>
+          <button class="close" onclick="closeModal()">×</button>
+        </div>
+
+        <p class="sub" style="margin-top:4px;font-size:12px">
+          Add a Pokémon to the draft board and assign its point cost tier.
+        </p>
+
+        <!-- Name Input -->
+        <div class="field" style="margin-top:14px">
+          <label style="font-size:11px;font-weight:800;color:#e0dee6">Pokémon Name</label>
+          <input id="addMonNameInput" type="text" placeholder="e.g. Iron Boulder, Mega Flygon, Baxcalibur..." oninput="updateAddBoardPreview(this.value)" style="background:#13131a;border:1px solid #3d3d4e;color:#f5f3f0;border-radius:6px;padding:10px 12px;font-weight:800;font-size:14px">
+        </div>
+
+        <!-- Tier Selection -->
+        <div class="field" style="margin-top:12px">
+          <label style="font-size:11px;font-weight:800;color:#e0dee6">Assign Point Tier</label>
+          <select id="addMonTierSelect" onchange="handleAddTierSelectChange(this.value)" style="background:#13131a;border:1px solid #3d3d4e;color:#ffd166;border-radius:6px;padding:10px 12px;font-weight:800;font-size:13px;width:100%">
+            ${tierOptions.map(c => `
+              <option value="${c}" ${c === selCost ? 'selected' : ''}>${c} Points Tier (${c} pts)</option>
+            `).join('')}
+            <option value="custom">✏️ Custom Point Value...</option>
+          </select>
+          <div id="addCustomCostWrap" style="display:none;margin-top:8px">
+            <input id="addMonCustomCostInput" type="number" min="0" max="99" placeholder="Enter custom points (e.g. 15)" value="${selCost}" oninput="updateAddBoardCostPreview(this.value)" style="background:#13131a;border:1px solid #3d3d4e;color:#ffd166;border-radius:6px;padding:8px 12px;font-weight:800;font-size:13px;width:100%">
+          </div>
+        </div>
+
+        <!-- Live Preview -->
+        <div id="addMonPreviewBox" style="display:flex;align-items:center;gap:12px;margin:14px 0;padding:12px 14px;background:#14141c;border:1px solid #282836;border-radius:8px">
+          <img id="addMonPreviewSprite" src="iconNotFound.png" style="width:48px;height:48px;object-fit:contain" onerror="handleSpriteError(this)">
+          <div style="min-width:0;flex:1">
+            <div id="addMonPreviewName" style="font:800 16px 'Barlow Condensed';color:#f5f3f0;text-transform:uppercase">Type a Pokémon name...</div>
+            <div id="addMonPreviewBadges" style="margin-top:3px;display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+              <span id="addMonPreviewCostTag" class="tag" style="background:#2d2210;color:#ffd166;font-size:10px;border:1px solid #5a4218">${selCost} Points</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Action Buttons -->
+        <div class="creator-actions" style="margin-top:18px;display:flex;align-items:center;justify-content:flex-end;gap:8px">
+          <button class="btn ghost" onclick="closeModal()">Cancel</button>
+          <button class="btn" onclick="saveNewBoardPokemon()">➕ Add to Draft Board</button>
+        </div>
+      </div>
+    </div>
+  `;
+  setTimeout(() => document.getElementById('addMonNameInput')?.focus(), 50);
+}
+
+function handleAddTierSelectChange(val){
+  let customWrap = document.getElementById('addCustomCostWrap');
+  if(customWrap){
+    customWrap.style.display = (val === 'custom') ? 'block' : 'none';
+  }
+  let costTag = document.getElementById('addMonPreviewCostTag');
+  if(costTag){
+    let c = (val === 'custom') ? (document.getElementById('addMonCustomCostInput')?.value || '—') : val;
+    costTag.textContent = `${c} Points`;
+  }
+}
+
+function updateAddBoardCostPreview(val){
+  let costTag = document.getElementById('addMonPreviewCostTag');
+  if(costTag){
+    costTag.textContent = `${val || 0} Points`;
+  }
+}
+
+function updateAddBoardPreview(val){
+  let raw = (val || '').trim();
+  let clean = formatPokemonDisplayName(raw) || raw || 'Type a Pokémon name...';
+  let nameEl = document.getElementById('addMonPreviewName');
+  let spriteEl = document.getElementById('addMonPreviewSprite');
+  let badgesEl = document.getElementById('addMonPreviewBadges');
+  if(nameEl) nameEl.textContent = clean;
+  if(spriteEl){
+    spriteEl.src = raw ? pokeSprite(clean) : 'iconNotFound.png';
+    spriteEl.dataset.fallbackStage = '0';
+  }
+  if(badgesEl && typeof renderPokemonTypeBadges === 'function'){
+    let costTag = document.getElementById('addMonPreviewCostTag');
+    badgesEl.innerHTML = `${raw ? renderPokemonTypeBadges(clean, 'font-size:8px;padding:0px 5px') : ''} <span id="addMonPreviewCostTag" class="tag" style="background:#2d2210;color:#ffd166;font-size:10px;border:1px solid #5a4218">${costTag ? costTag.textContent : ''}</span>`;
+  }
+}
+
+function saveNewBoardPokemon(){
+  if(!moderator) return;
+  let rawName = document.getElementById('addMonNameInput')?.value?.trim();
+  if(!rawName){
+    alert('Please enter a Pokémon name.');
+    return;
+  }
+  let monName = formatPokemonDisplayName(rawName) || rawName;
+  let clean = monName.toLowerCase().trim();
+
+  let sel = document.getElementById('addMonTierSelect')?.value;
+  let cost = (sel === 'custom') ? Number(document.getElementById('addMonCustomCostInput')?.value) : Number(sel);
+  if(isNaN(cost) || cost < 0){
+    alert('Please select or enter a valid point value.');
+    return;
+  }
+
+  let t = ongoingT();
+  let isOffseason = (!t || t.status !== 'ONGOING');
+  let board = isOffseason ? getOffseasonDraftBoard() : (t?.draftData?.board || []);
+
+  // Check if already exists in a tier
+  let existingTier = board.find(tier => (tier.pokemon || []).some(m => m.toLowerCase().trim() === clean));
+  if(existingTier){
+    if(!confirm(`"${monName}" is already on the board in the ${existingTier.name || existingTier.cost + ' Points'} tier. Move it to the ${cost} Points tier?`)){
+      return;
+    }
+    existingTier.pokemon = existingTier.pokemon.filter(m => m.toLowerCase().trim() !== clean);
+  }
+
+  // Find or create target tier
+  let targetTier = board.find(tier => tier.cost === cost);
+  if(targetTier){
+    if(!targetTier.pokemon.some(m => m.toLowerCase().trim() === clean)){
+      targetTier.pokemon.push(monName);
+      targetTier.pokemon.sort((a,b) => a.localeCompare(b));
+    }
+  } else {
+    board.push({
+      id: `tier_${cost}`,
+      name: `${cost} Points`,
+      cost: cost,
+      pokemon: [monName]
+    });
+    board.sort((a,b) => b.cost - a.cost);
+  }
+
+  if(isOffseason){
+    offseasonDraftBoard = board;
+    try { localStorage.setItem('draftdex-offseason-board', JSON.stringify(offseasonDraftBoard)); } catch(e){}
+  }
+  persistLeague();
+  closeModal();
+  render();
+  if(typeof showDraftToast === 'function'){
+    showDraftToast(`Added "${monName}" to the ${cost} Points tier!`);
+  }
+}
+
+// Backwards compatibility aliases
+function openRenameBoardPokemonModal(tId, oldMonName, cost, tierName){
+  return openEditBoardPokemonModal(tId, oldMonName, cost, tierName);
+}
+function openRenameOffseasonPokemonModal(oldMonName, cost, tierName){
+  return openEditBoardPokemonModal(null, oldMonName, cost, tierName);
+}
+
+
 </script>
 
 </body></html>
