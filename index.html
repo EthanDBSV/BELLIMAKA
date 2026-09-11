@@ -2650,6 +2650,7 @@ try {
   if(_qp.get('tourney')) viewTournament = _qp.get('tourney');
   if(_qp.get('detailTab')) detailTab = _qp.get('detailTab');
   if(_qp.get('coach')) window.selectedTeamRosterCoach = _qp.get('coach');
+  if(_qp.get('awardsTier')) window.awardsTierTab = _qp.get('awardsTier');
 } catch(e) {}
 function toggleMatchFilter(v){let i=matchFilterPlayers.indexOf(v);if(i>=0)matchFilterPlayers.splice(i,1);else matchFilterPlayers.push(v);render()}
 function clearMatchFilters(){matchFilterPlayers=[];render()}
@@ -4247,6 +4248,120 @@ function getPokemonEstimatedMaxHp(name, rawMax) {
   return base + bonus;
 }
 
+function normalizeBattleFormToDraftForm(name) {
+  if (!name) return '';
+  let str = String(name).trim();
+  let lower = str.toLowerCase();
+
+  // Protect forms that are explicitly drafted separately (Megas, regional variants, distinct genders)
+  let isMega = lower.includes('-mega') || lower.startsWith('mega ') || lower.startsWith('mega-');
+  if (isMega) return str;
+
+  // In-battle transformation forms that Showdown switches to via |detailschange| or |-formechange|
+  // Mimikyu Disguise -> Busted
+  if (/^mimikyu-busted-totem/i.test(lower) || lower === 'mimikyubustedtotem') return 'Mimikyu-Totem';
+  if (/^mimikyu-busted/i.test(lower) || lower === 'mimikyubusted') return 'Mimikyu';
+
+  // Maushold Family of Three / Four
+  if (/^maushold-(three|four|[34])/i.test(lower) || lower === 'mausholdfour' || lower === 'mausholdthree') return 'Maushold';
+
+  // Dudunsparce Two / Three Segment
+  if (/^dudunsparce-(three-segment|two-segment|three|[23])/i.test(lower) || lower.startsWith('dudunsparcethree') || lower.startsWith('dudunsparcetwo')) return 'Dudunsparce';
+
+  // Sinistea / Polteageist Antique
+  if (/^sinistea-(antique|authentic)/i.test(lower) || lower === 'sinisteaantique' || lower === 'sinisteaauthentic') return 'Sinistea';
+  if (/^polteageist-(antique|authentic)/i.test(lower) || lower === 'polteageistantique' || lower === 'polteageistauthentic') return 'Polteageist';
+
+  // Poltchageist / Sinistcha Artisan / Masterpiece
+  if (/^poltchageist-(artisan|unremarkable)/i.test(lower) || lower === 'poltchageistartisan' || lower === 'poltchageistunremarkable') return 'Poltchageist';
+  if (/^sinistcha-(masterpiece|unremarkable)/i.test(lower) || lower === 'sinistchamasterpiece' || lower === 'sinistchaunremarkable') return 'Sinistcha';
+
+  // Tatsugiri forms (Curly, Droopy, Stretchy)
+  if (/^tatsugiri-(curly|droopy|stretchy)/i.test(lower) || lower === 'tatsugiricurly' || lower === 'tatsugiridroopy' || lower === 'tatsugiristretchy') return 'Tatsugiri';
+
+  // Gastrodon / Shellos East / West
+  if (/^gastrodon-(east|west)/i.test(lower) || lower === 'gastrodoneast' || lower === 'gastrodonwest') return 'Gastrodon';
+  if (/^shellos-(east|west)/i.test(lower) || lower === 'shelloseast' || lower === 'shelloswest') return 'Shellos';
+
+  // Squawkabilly colors
+  if (/^squawkabilly-(blue|yellow|white|green)/i.test(lower) || lower.startsWith('squawkabilly')) return 'Squawkabilly';
+
+  // Eiscue Ice Face -> Noice Face
+  if (/^eiscue-noice/i.test(lower) || lower === 'eiscuenoice') return 'Eiscue';
+
+  // Palafin Zero -> Hero
+  if (/^palafin-hero/i.test(lower) || lower === 'palafinhero') return 'Palafin';
+
+  // Cramorant Gulping / Gorging
+  if (/^cramorant-(gulping|gorging)/i.test(lower) || lower === 'cramorantgulping' || lower === 'cramorantgorging') return 'Cramorant';
+
+  // Morpeko Full Belly -> Hangry
+  if (/^morpeko-hangry/i.test(lower) || lower === 'morpekohangry') return 'Morpeko';
+
+  // Wishiwashi Solo -> School
+  if (/^wishiwashi-school/i.test(lower) || lower === 'wishiwashischool') return 'Wishiwashi';
+
+  // Darmanitan Standard -> Zen (both Unovan and Galarian)
+  if (/^darmanitan-galar-zen/i.test(lower) || lower === 'darmanitangalarzen') return 'Darmanitan-Galar';
+  if (/^darmanitan-zen/i.test(lower) || lower === 'darmanitanzen') return 'Darmanitan';
+
+  // Aegislash Shield <-> Blade
+  if (/^aegislash-(blade|shield)/i.test(lower) || lower === 'aegislashblade' || lower === 'aegislashshield') return 'Aegislash';
+
+  // Minior Shields Down / Meteor / Colors
+  if (/^minior-(meteor|red|orange|yellow|green|blue|indigo|violet)/i.test(lower) || lower.startsWith('minior')) return 'Minior';
+
+  // Meloetta Aria <-> Pirouette
+  if (/^meloetta-pirouette/i.test(lower) || lower === 'meloettapirouette') return 'Meloetta';
+
+  // Castform Forecast forms
+  if (/^castform-(sunny|rainy|snowy)/i.test(lower) || lower === 'castformsunny' || lower === 'castformrainy' || lower === 'castformsnowy') return 'Castform';
+
+  // Cherrim Sunshine
+  if (/^cherrim-sunshine/i.test(lower) || lower === 'cherrimsunshine') return 'Cherrim';
+
+  // Terapagos Terastal / Stellar
+  if (/^terapagos-(terastal|stellar)/i.test(lower) || lower === 'terapagosterastal' || lower === 'terapagosstellar') return 'Terapagos';
+
+  // Ogerpon Tera forms (Showdown gives them in-battle -Tera suffixes; map back to the drafted mask form)
+  if (/^ogerpon-teal-tera/i.test(lower) || lower === 'ogerpontealtera') return 'Ogerpon';
+  if (/^ogerpon-wellspring-tera/i.test(lower) || lower === 'ogerponwellspringtera') return 'Ogerpon-Wellspring';
+  if (/^ogerpon-hearthflame-tera/i.test(lower) || lower === 'ogerponhearthflametera') return 'Ogerpon-Hearthflame';
+  if (/^ogerpon-cornerstone-tera/i.test(lower) || lower === 'ogerponcornerstonetera') return 'Ogerpon-Cornerstone';
+  if (/^ogerpon-.*?-tera/i.test(lower)) return str.replace(/-tera$/i, '');
+
+  // Koraidon Apex / Miraidon Ultimate
+  if (/^koraidon-apex/i.test(lower) || lower === 'koraidonapex') return 'Koraidon';
+  if (/^miraidon-ultimate/i.test(lower) || lower === 'miraidonultimate') return 'Miraidon';
+
+  // Xerneas Neutral
+  if (/^xerneas-neutral/i.test(lower) || lower === 'xerneasneutral') return 'Xerneas';
+
+  // Greninja-Ash
+  if (/^greninja-ash/i.test(lower) || lower === 'greninjaash') return 'Greninja';
+
+  // Zygarde-Complete
+  if (/^zygarde-complete$/i.test(str)) return 'Zygarde';
+
+  // Keldeo-Resolute
+  if (/^keldeo-resolute/i.test(lower) || lower === 'keldeoresolute') return 'Keldeo';
+
+  // Zarude-Dada
+  if (/^zarude-dada/i.test(lower) || lower === 'zarudedada') return 'Zarude';
+
+  // Magearna-Original
+  if (/^magearna-original/i.test(lower) || lower === 'magearnaoriginal') return 'Magearna';
+
+  // Cap / Cosmetic Pikachu
+  if (/^pikachu-(original|hoenn|sinnoh|unova|kalos|alola|partner|world|cap)/i.test(lower)) return 'Pikachu';
+
+  // Vivillon / Alcremie cosmetic variants
+  if (/^vivillon-/i.test(lower)) return 'Vivillon';
+  if (/^alcremie-/i.test(lower)) return 'Alcremie';
+
+  return str;
+}
+
 function parseShowdownBattleLog(logText, meta = {}) {
   if(!logText || typeof logText !== 'string') return null;
   let lines = logText.split('\n');
@@ -4313,13 +4428,14 @@ function parseShowdownBattleLog(logText, meta = {}) {
       let maxHpRaw = parseFloat(hpParts[1]) || 100;
 
       let isMegaForm = monName.toLowerCase().includes('-mega') || monName.toLowerCase().startsWith('mega ') || monName.toLowerCase().startsWith('mega-');
+      let canonicalDraftName = !isMegaForm ? normalizeBattleFormToDraftForm(monName) : monName;
 
       if(!result.pokemon[monId]){
-        let estMax = getPokemonEstimatedMaxHp(monName, maxHpRaw);
+        let estMax = getPokemonEstimatedMaxHp(canonicalDraftName, maxHpRaw);
         let curHp = maxHpRaw > 100 ? curHpRaw : Math.round(estMax * (curHpRaw / 100));
-        let resolved = (typeof resolvePokemonData === 'function') ? resolvePokemonData(monName) : null;
-        let displayName = isMegaForm ? (resolved?.name || monName) : monName;
-        let baseSpecies = isMegaForm ? monName.replace(/-mega(-[xy])?/i, '') : monName;
+        let resolved = (typeof resolvePokemonData === 'function') ? resolvePokemonData(canonicalDraftName) : null;
+        let displayName = isMegaForm ? (resolved?.name || monName) : (resolved?.name || canonicalDraftName);
+        let baseSpecies = isMegaForm ? monName.replace(/-mega(-[xy])?/i, '') : canonicalDraftName;
 
         result.pokemon[monId] = {
           side,
@@ -4383,8 +4499,12 @@ function parseShowdownBattleLog(logText, meta = {}) {
               pObj.baseSpecies = newSpecies.replace(/-mega(-[xy])?/i, '');
             }
           } else {
-            let resolved = (typeof resolvePokemonData === 'function') ? resolvePokemonData(newSpecies) : null;
-            if(resolved?.name) pObj.name = resolved.name;
+            let normalized = normalizeBattleFormToDraftForm(newSpecies);
+            let isBattleOnlyForm = (normalized.toLowerCase() !== newSpecies.toLowerCase());
+            if(!isBattleOnlyForm){
+              let resolved = (typeof resolvePokemonData === 'function') ? resolvePokemonData(newSpecies) : null;
+              if(resolved?.name) pObj.name = resolved.name;
+            }
           }
           if(activeSlots[slot]){
             activeSlots[slot].name = pObj.name;
@@ -4626,6 +4746,9 @@ function parseShowdownBattleLog(logText, meta = {}) {
 
   for(let key in result.pokemon){
     let p = result.pokemon[key];
+    if(p.name && !p.isMega){
+      p.name = normalizeBattleFormToDraftForm(p.name);
+    }
     p.coach = p.side === 'p1' ? (attr.p1Coach || 'Player 1') : (attr.p2Coach || 'Player 2');
 
     // Cross-reference with drafted coach roster if not already mega evolved in battle
@@ -4676,7 +4799,7 @@ function parseShowdownBattleLog(logText, meta = {}) {
     }
   }
   result.mvp = mvpMon;
-  result.version = 4;
+  result.version = 5;
 
   return result;
 }
@@ -5051,7 +5174,7 @@ function openMatchReplayHubModal(tournamentId, matchKey, activeGameNum = 1, acti
   let canManage = canManageMatchReplays(t, m);
 
   let stats = activeReplay.stats;
-  if((!stats || !stats.sideAttribution || stats.version !== 4) && activeReplay.log){
+  if((!stats || !stats.sideAttribution || !stats.version || stats.version < 5) && activeReplay.log){
     stats = parseShowdownBattleLog(activeReplay.log, { id: activeReplay.id, game: activeGameNum, match: m, coach1: p1, coach2: p2, manualSwapped: activeReplay.swapped });
     activeReplay.stats = stats;
   }
@@ -6323,7 +6446,7 @@ function calculateTeamOfTheSeason(t) {
   let gfMonMap = new Map();
   gfReplays.forEach(r => {
     let stats = r.stats;
-    if(!stats || stats.version !== 4) {
+    if(!stats || !stats.version || stats.version < 5) {
       stats = parseShowdownBattleLog(r.log, {
         id: r.id,
         game: r.game,
@@ -6333,7 +6456,7 @@ function calculateTeamOfTheSeason(t) {
     let pList = Array.isArray(stats?.pokemon) ? stats.pokemon : (stats?.pokemon ? Object.values(stats.pokemon) : []);
     pList.forEach(p => {
       if(!p.name) return;
-      let cleanName = p.name.trim();
+      let cleanName = normalizeBattleFormToDraftForm(p.name.trim());
       let key = cleanName.toLowerCase();
       if(!gfMonMap.has(key)) {
         gfMonMap.set(key, {
@@ -6389,7 +6512,7 @@ function calculateTeamOfTheSeason(t) {
   let monMap = new Map();
   allReplays.forEach(({ replay, match, isTopCut }) => {
     let stats = replay.stats;
-    if(!stats || stats.version !== 4) {
+    if(!stats || !stats.version || stats.version < 5) {
       stats = parseShowdownBattleLog(replay.log, {
         id: replay.id,
         game: replay.game,
@@ -6403,7 +6526,7 @@ function calculateTeamOfTheSeason(t) {
     if(!pList || pList.length === 0) return;
 
     // Identify game MVP from stats or highest impactScore in this game
-    let gameMvpName = stats?.mvp?.name ? stats.mvp.name.trim().toLowerCase() : null;
+    let gameMvpName = stats?.mvp?.name ? normalizeBattleFormToDraftForm(stats.mvp.name.trim()).toLowerCase() : null;
     if(!gameMvpName) {
       let topMon = null;
       let topScore = -1;
@@ -6413,12 +6536,12 @@ function calculateTeamOfTheSeason(t) {
           topMon = p;
         }
       });
-      if(topMon && topMon.name) gameMvpName = topMon.name.trim().toLowerCase();
+      if(topMon && topMon.name) gameMvpName = normalizeBattleFormToDraftForm(topMon.name.trim()).toLowerCase();
     }
 
     pList.forEach(p => {
       if(!p.name) return;
-      let cleanName = p.name.trim();
+      let cleanName = normalizeBattleFormToDraftForm(p.name.trim());
       let key = cleanName.toLowerCase();
       if(!monMap.has(key)) {
         monMap.set(key, {
@@ -7127,7 +7250,7 @@ function renderTopCutMvpBannerHtml(tots, t) {
 
 function getTournamentPokemonStatsMap(t) {
   if(!t) return {};
-  if(t._cachedMonStatsMap && t._cachedMonStatsTime && (Date.now() - t._cachedMonStatsTime < 30000)) {
+  if(t._cachedMonStatsVersion === 5 && t._cachedMonStatsMap && t._cachedMonStatsTime && (Date.now() - t._cachedMonStatsTime < 30000)) {
     return t._cachedMonStatsMap;
   }
 
@@ -7158,7 +7281,7 @@ function getTournamentPokemonStatsMap(t) {
   let map = {};
   allReplays.forEach(({ replay, match }) => {
     let stats = replay.stats;
-    if(!stats || stats.version !== 4) {
+    if(!stats || !stats.version || stats.version < 5) {
       stats = parseShowdownBattleLog(replay.log, {
         id: replay.id,
         game: replay.game,
@@ -7171,8 +7294,10 @@ function getTournamentPokemonStatsMap(t) {
     let pList = Array.isArray(stats?.pokemon) ? stats.pokemon : (stats?.pokemon ? Object.values(stats.pokemon) : []);
     pList.forEach(p => {
       if(!p.name) return;
-      let clean = p.name.trim();
+      let rawClean = p.name.trim();
+      let clean = normalizeBattleFormToDraftForm(rawClean);
       let kClean = clean.toLowerCase().replace(/[^a-z0-9]/g, '');
+      let kRaw = rawClean.toLowerCase().replace(/[^a-z0-9]/g, '');
       let alt = clean.toLowerCase()
         .replace(/\s*(rapid strike|rapid-strike|single strike|single-strike)/g, '')
         .replace(/^bloodmoon\s+(.*)/, '$1-bloodmoon')
@@ -7185,7 +7310,7 @@ function getTournamentPokemonStatsMap(t) {
       let kSlug = resolved?.slug ? resolved.slug.toLowerCase().replace(/[^a-z0-9]/g, '') : '';
       let kResName = resolved?.name ? resolved.name.toLowerCase().replace(/[^a-z0-9]/g, '') : '';
 
-      let statObj = map[kClean] || (alt ? map[alt] : null) || (kSlug ? map[kSlug] : null) || (kResName ? map[kResName] : null);
+      let statObj = map[kClean] || (alt ? map[alt] : null) || (kSlug ? map[kSlug] : null) || (kResName ? map[kResName] : null) || (kRaw ? map[kRaw] : null);
       if(!statObj) {
         statObj = {
           name: resolved?.name || clean,
@@ -7206,6 +7331,7 @@ function getTournamentPokemonStatsMap(t) {
       statObj.impact += (p.impactScore || 0);
 
       map[kClean] = statObj;
+      if(kRaw) map[kRaw] = statObj;
       if(alt) map[alt] = statObj;
       if(kSlug) map[kSlug] = statObj;
       if(kResName) map[kResName] = statObj;
@@ -7224,15 +7350,19 @@ function getTournamentPokemonStatsMap(t) {
   });
 
   t._cachedMonStatsMap = map;
+  t._cachedMonStatsVersion = 5;
   t._cachedMonStatsTime = Date.now();
   return map;
 }
 
 function findPokemonStatsInMap(map, name) {
   if(!map || !name) return null;
-  let cleanName = String(name).trim();
+  let cleanName = normalizeBattleFormToDraftForm(String(name).trim());
   let k1 = cleanName.toLowerCase().replace(/[^a-z0-9]/g, '');
   if(map[k1]) return map[k1];
+
+  let rawClean = String(name).trim().toLowerCase().replace(/[^a-z0-9]/g, '');
+  if(map[rawClean]) return map[rawClean];
 
   let alt = cleanName.toLowerCase()
     .replace(/\s*(rapid strike|rapid-strike|single strike|single-strike)/g, '')
@@ -7255,6 +7385,26 @@ function findPokemonStatsInMap(map, name) {
     if(map[kResName]) return map[kResName];
     if(map[resolved.name]) return map[resolved.name];
   }
+
+  // Fallbacks for legacy/unparsed battle and cosmetic form keys
+  if(map[k1 + 'busted']) return map[k1 + 'busted'];
+  if(map[k1 + 'four']) return map[k1 + 'four'];
+  if(map[k1 + 'three']) return map[k1 + 'three'];
+  if(map[k1 + 'hero']) return map[k1 + 'hero'];
+  if(map[k1 + 'noice']) return map[k1 + 'noice'];
+  if(map[k1 + 'school']) return map[k1 + 'school'];
+  if(map[k1 + 'zen']) return map[k1 + 'zen'];
+  if(map[k1 + 'blade']) return map[k1 + 'blade'];
+  if(map[k1 + 'meteor']) return map[k1 + 'meteor'];
+  if(map[k1 + 'pirouette']) return map[k1 + 'pirouette'];
+  if(map[k1 + 'sunshine']) return map[k1 + 'sunshine'];
+  if(map[k1 + 'east']) return map[k1 + 'east'];
+  if(map[k1 + 'west']) return map[k1 + 'west'];
+  if(map[k1 + 'curly']) return map[k1 + 'curly'];
+  if(map[k1 + 'droopy']) return map[k1 + 'droopy'];
+  if(map[k1 + 'stretchy']) return map[k1 + 'stretchy'];
+  if(map[k1 + 'artisan']) return map[k1 + 'artisan'];
+  if(map[k1 + 'masterpiece']) return map[k1 + 'masterpiece'];
 
   return null;
 }
