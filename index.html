@@ -90,11 +90,17 @@
 .tc-podium-card.runner:hover{box-shadow:0 10px 28px rgba(160,165,190,0.25),inset 0 1px 0 rgba(220,225,245,0.3)}
 .tc-podium-card.third{border-color:#ad6f3b;background:linear-gradient(135deg,#2d1c14 0%,#1c1414 55%,#121218 100%);box-shadow:0 6px 20px rgba(180,110,60,0.14),inset 0 1px 0 rgba(240,160,100,0.18)}
 .tc-podium-card.third:hover{box-shadow:0 10px 28px rgba(180,110,60,0.25),inset 0 1px 0 rgba(240,160,100,0.3)}
+.tc-podium-card.finals-mvp{border-color:#f59e0b;background:linear-gradient(135deg,#36200a 0%,#1c1514 55%,#121218 100%);box-shadow:0 6px 24px rgba(245,158,11,0.22),inset 0 1px 0 rgba(255,215,120,0.2)}
+.tc-podium-card.finals-mvp:hover{box-shadow:0 10px 32px rgba(245,158,11,0.35),inset 0 1px 0 rgba(255,215,120,0.35)}
+.tc-podium-card.season-mvp{border-color:#ffd166;background:linear-gradient(135deg,#32260c 0%,#1a1614 55%,#121218 100%);box-shadow:0 6px 24px rgba(255,209,102,0.22),inset 0 1px 0 rgba(255,230,140,0.2)}
+.tc-podium-card.season-mvp:hover{box-shadow:0 10px 32px rgba(255,209,102,0.35),inset 0 1px 0 rgba(255,230,140,0.35)}
 
 .tc-podium-badge{display:inline-flex;align-items:center;gap:5px;font:800 10px 'Barlow Condensed';letter-spacing:.8px;text-transform:uppercase;padding:3px 8px;border-radius:4px;margin-bottom:12px;width:fit-content}
 .tc-podium-badge.champ-badge{background:#3d2b0c;color:#ffd166;border:1px solid #7a5818;box-shadow:0 2px 6px rgba(255,209,102,0.2)}
 .tc-podium-badge.runner-badge{background:#252836;color:#d8daea;border:1px solid #4d526e}
 .tc-podium-badge.third-badge{background:#331d14;color:#f0a875;border:1px solid #6b3f28}
+.tc-podium-badge.finals-mvp-badge{background:#3d2508;color:#f59e0b;border:1px solid #854d0e;box-shadow:0 2px 6px rgba(245,158,11,0.2)}
+.tc-podium-badge.season-mvp-badge{background:#3d2e08;color:#ffd166;border:1px solid #8c6812;box-shadow:0 2px 6px rgba(255,209,102,0.2)}
 
 .tc-podium-content{display:flex;align-items:center;gap:12px}
 .tc-podium-avatar-wrap{position:relative;flex:none}
@@ -6275,14 +6281,14 @@ function getGrandFinalReplays(t) {
 }
 
 function calculateTeamOfTheSeason(t) {
-  if(!t) return { empty: true, totalGames: 0, pokemonCount: 0, majorAwards: null, team: [] };
+  if(!t) return { empty: true, totalGames: 0, pokemonCount: 0, seasonMvp: null, finalsMvp: null, majorAwards: null, firstTeam: [], secondTeam: [], thirdTeam: [], team: [] };
 
   // 1. Gather all replays across tournament matches & top cut
   let allReplays = [];
   (t.matches || []).forEach(m => {
     if(Array.isArray(m.replays)) {
       m.replays.forEach(r => {
-        allReplays.push({ replay: r, match: m });
+        allReplays.push({ replay: r, match: m, isTopCut: false });
       });
     }
   });
@@ -6305,7 +6311,7 @@ function calculateTeamOfTheSeason(t) {
   }
 
   if(allReplays.length === 0) {
-    return { empty: true, totalGames: 0, pokemonCount: 0, majorAwards: null, team: [] };
+    return { empty: true, totalGames: 0, pokemonCount: 0, seasonMvp: null, finalsMvp: null, majorAwards: null, firstTeam: [], secondTeam: [], thirdTeam: [], team: [] };
   }
 
   // 2. Finals MVP calculation from Grand Finals games (including bracket reset if played)
@@ -6355,9 +6361,13 @@ function calculateTeamOfTheSeason(t) {
   if(gfMonMap.size > 0 && champ) {
     let gfList = Array.from(gfMonMap.values()).map(m => {
       let isChampTeam = (m.coach && m.coach.trim().toLowerCase() === champ.toLowerCase()) || champMonNames.has(m.name.trim().toLowerCase());
-      if(!m.coach && isChampTeam) m.coach = champ;
+      let coachName = m.coach;
+      if(isChampTeam || !coachName || coachName.toLowerCase().startsWith('player ')) {
+        coachName = champ;
+      }
       return {
         ...m,
+        coach: coachName,
         avgImpact: m.totalImpact / Math.max(1, m.games),
         isChampTeam: Boolean(isChampTeam)
       };
@@ -6371,9 +6381,9 @@ function calculateTeamOfTheSeason(t) {
     finalsMvp = qualified[0] || null;
   }
 
-  // 3. Aggregate stats across all replays
+  // 3. Aggregate stats across all replays, tracking Match MVPs and regular vs top cut
   let monMap = new Map();
-  allReplays.forEach(({ replay, match }) => {
+  allReplays.forEach(({ replay, match, isTopCut }) => {
     let stats = replay.stats;
     if(!stats || stats.version !== 4) {
       stats = parseShowdownBattleLog(replay.log, {
@@ -6388,6 +6398,20 @@ function calculateTeamOfTheSeason(t) {
     let pList = Array.isArray(stats?.pokemon) ? stats.pokemon : (stats?.pokemon ? Object.values(stats.pokemon) : []);
     if(!pList || pList.length === 0) return;
 
+    // Identify game MVP from stats or highest impactScore in this game
+    let gameMvpName = stats?.mvp?.name ? stats.mvp.name.trim().toLowerCase() : null;
+    if(!gameMvpName) {
+      let topMon = null;
+      let topScore = -1;
+      pList.forEach(p => {
+        if((p.impactScore || 0) > topScore) {
+          topScore = p.impactScore || 0;
+          topMon = p;
+        }
+      });
+      if(topMon && topMon.name) gameMvpName = topMon.name.trim().toLowerCase();
+    }
+
     pList.forEach(p => {
       if(!p.name) return;
       let cleanName = p.name.trim();
@@ -6398,16 +6422,37 @@ function calculateTeamOfTheSeason(t) {
           coach: p.coach || '',
           sprite: p.sprite || (typeof resolvePokemonData === 'function' ? resolvePokemonData(cleanName)?.sprite : getPokemonSpriteUrl(cleanName.toLowerCase())),
           games: 0,
+          regGames: 0,
+          tcGames: 0,
+          matchMvps: 0,
+          regMatchMvps: 0,
           totalKills: 0,
+          regKills: 0,
           totalDamageDealt: 0,
+          regDamageDealt: 0,
           totalDamageTaken: 0,
           totalHpHealed: 0,
           impactScoreTotal: 0,
+          regImpactScoreTotal: 0,
           moves: new Set()
         });
       }
       let entry = monMap.get(key);
       entry.games += 1;
+      if(isTopCut) {
+        entry.tcGames += 1;
+      } else {
+        entry.regGames += 1;
+        entry.regKills += (p.kills || 0);
+        entry.regDamageDealt += (p.damageDealt || 0);
+        entry.regImpactScoreTotal += (p.impactScore || 0);
+      }
+
+      if(key === gameMvpName) {
+        entry.matchMvps += 1;
+        if(!isTopCut) entry.regMatchMvps += 1;
+      }
+
       entry.totalKills += (p.kills || 0);
       entry.totalDamageDealt += (p.damageDealt || 0);
       entry.totalDamageTaken += (p.damageTaken || 0);
@@ -6426,7 +6471,7 @@ function calculateTeamOfTheSeason(t) {
         let key = String(rMon).toLowerCase().trim();
         if(monMap.has(key)) {
           let entry = monMap.get(key);
-          if(!entry.coach) entry.coach = coachName;
+          if(!entry.coach || entry.coach.toLowerCase().startsWith('player ')) entry.coach = coachName;
         }
       });
     });
@@ -6434,6 +6479,7 @@ function calculateTeamOfTheSeason(t) {
 
   let list = Array.from(monMap.values()).map(m => {
     let games = Math.max(1, m.games);
+    let regG = Math.max(1, m.regGames || m.games);
     let kpg = m.totalKills / games;
     let dpg = m.totalDamageDealt / games;
     let tpg = m.totalDamageTaken / games;
@@ -6446,70 +6492,56 @@ function calculateTeamOfTheSeason(t) {
       damageTakenPerGame: tpg,
       healedPerGame: hpg,
       avgImpactScore: m.impactScoreTotal / games,
-      offensiveRating: (kpg * 100) + dpg,
-      defensiveRating: tpg + (hpg * 1.5)
+      regAvgImpactScore: m.regImpactScoreTotal / regG
     };
   });
 
   if(list.length === 0) {
-    return { empty: true, totalGames: allReplays.length, pokemonCount: 0, majorAwards: null, team: [] };
+    return { empty: true, totalGames: allReplays.length, pokemonCount: 0, seasonMvp: null, finalsMvp: null, majorAwards: null, firstTeam: [], secondTeam: [], thirdTeam: [], team: [] };
   }
 
-  // 4. Calculate Major Season Awards (Minimum 3 appearances to qualify)
-  let eligibleMajor = list.filter(m => (m.games || 0) >= 3);
-  let selectedMajorNames = new Set();
+  // 4. Regular Season MVP (Evaluated primarily on regular season Match MVPs won)
+  // Minimum 3 appearances to qualify
+  let eligibleSeasonMvp = list.filter(m => (m.regGames || m.games || 0) >= 3);
+  if(eligibleSeasonMvp.length === 0) eligibleSeasonMvp = [...list];
 
-  function pickMajorAward(sorter) {
-    let candidates = eligibleMajor.filter(m => !selectedMajorNames.has(m.name.toLowerCase()));
-    if(candidates.length === 0) candidates = [...eligibleMajor];
-    if(candidates.length === 0) return null;
-    candidates.sort(sorter);
-    let picked = candidates[0];
-    if(picked) selectedMajorNames.add(picked.name.toLowerCase());
-    return picked;
-  }
-
-  // Regular Season MVP (highest average impact score)
-  let seasonMvp = pickMajorAward((a, b) => {
+  eligibleSeasonMvp.sort((a, b) => {
+    let aRegMvps = a.regMatchMvps || 0;
+    let bRegMvps = b.regMatchMvps || 0;
+    if(bRegMvps !== aRegMvps) return bRegMvps - aRegMvps;
+    let aTotMvps = a.matchMvps || 0;
+    let bTotMvps = b.matchMvps || 0;
+    if(bTotMvps !== aTotMvps) return bTotMvps - aTotMvps;
+    let aRegImpact = a.regImpactScoreTotal || a.impactScoreTotal || 0;
+    let bRegImpact = b.regImpactScoreTotal || b.impactScoreTotal || 0;
+    if(bRegImpact !== aRegImpact) return bRegImpact - aRegImpact;
     if(b.avgImpactScore !== a.avgImpactScore) return b.avgImpactScore - a.avgImpactScore;
-    if(b.games !== a.games) return b.games - a.games;
-    return b.impactScoreTotal - a.impactScoreTotal;
+    return (b.regKills || b.totalKills) - (a.regKills || a.totalKills);
   });
+  let seasonMvp = eligibleSeasonMvp[0] || null;
 
-  // Offensive Mon of the Season (highest offensive rating: KOs/G & Dmg/G)
-  let offensiveMon = pickMajorAward((a, b) => {
-    if(b.offensiveRating !== a.offensiveRating) return b.offensiveRating - a.offensiveRating;
-    if(b.killsPerGame !== a.killsPerGame) return b.killsPerGame - a.killsPerGame;
-    return b.damageDealtPerGame - a.damageDealtPerGame;
-  });
-
-  // Defensive Mon of the Season (highest defensive rating: Taken/G & Healed/G)
-  let defensiveMon = pickMajorAward((a, b) => {
-    if(b.defensiveRating !== a.defensiveRating) return b.defensiveRating - a.defensiveRating;
-    if(b.damageTakenPerGame !== a.damageTakenPerGame) return b.damageTakenPerGame - a.damageTakenPerGame;
-    return b.healedPerGame - a.healedPerGame;
-  });
-
-  // Verify coach for finals MVP if missing
-  if(finalsMvp && !finalsMvp.coach) {
-    let fullEntry = monMap.get(finalsMvp.name.toLowerCase());
-    if(fullEntry && fullEntry.coach) finalsMvp.coach = fullEntry.coach;
+  // Verify coach for finals MVP if missing or placeholder
+  if(finalsMvp) {
+    if(!finalsMvp.coach || finalsMvp.coach.toLowerCase().startsWith('player ')) {
+      let fullEntry = monMap.get(finalsMvp.name.toLowerCase());
+      if(fullEntry && fullEntry.coach && !fullEntry.coach.toLowerCase().startsWith('player ')) finalsMvp.coach = fullEntry.coach;
+      else if(champ) finalsMvp.coach = champ;
+    }
   }
 
   let majorAwards = {
     mvp: seasonMvp,
-    finalsMvp: finalsMvp,
-    offensiveMon: offensiveMon,
-    defensiveMon: defensiveMon
+    finalsMvp: finalsMvp
   };
 
-  // 5. Team of the Season (Minimum 3 appearances, deduplicated across the 4 roles)
+  // 5. Teams of the Season: First Team, Second Team, Third Team
+  // Minimum 3 appearances, deduplicated across all 12 slots
   let eligibleTots = list.filter(m => (m.games || 0) >= 3);
+  if(eligibleTots.length === 0) eligibleTots = [...list];
   let selectedTotsNames = new Set();
 
-  function pickTots(sorter) {
+  function pickTotsMon(sorter) {
     let candidates = eligibleTots.filter(m => !selectedTotsNames.has(m.name.toLowerCase()));
-    if(candidates.length === 0) candidates = [...eligibleTots];
     if(candidates.length === 0) return null;
     candidates.sort(sorter);
     let picked = candidates[0];
@@ -6517,114 +6549,117 @@ function calculateTeamOfTheSeason(t) {
     return picked;
   }
 
-  // 1. Most Damage Dealt / Game
-  let bestDamage = pickTots((a, b) => {
+  let sortDamage = (a, b) => {
     if(b.damageDealtPerGame !== a.damageDealtPerGame) return b.damageDealtPerGame - a.damageDealtPerGame;
     if(b.games !== a.games) return b.games - a.games;
     return b.totalDamageDealt - a.totalDamageDealt;
-  });
+  };
 
-  // 2. Most KOs / Game
-  let bestKills = pickTots((a, b) => {
+  let sortKills = (a, b) => {
     if(b.killsPerGame !== a.killsPerGame) return b.killsPerGame - a.killsPerGame;
     if(b.games !== a.games) return b.games - a.games;
     return b.totalKills - a.totalKills;
-  });
+  };
 
-  // 3. Most Damage Taken / Game
-  let bestDamageTaken = pickTots((a, b) => {
+  let sortTaken = (a, b) => {
     if(b.damageTakenPerGame !== a.damageTakenPerGame) return b.damageTakenPerGame - a.damageTakenPerGame;
     if(b.games !== a.games) return b.games - a.games;
     return b.totalDamageTaken - a.totalDamageTaken;
-  });
+  };
 
-  // 4. Most Damage Healed / Game
-  let bestHealed = pickTots((a, b) => {
+  let sortHealed = (a, b) => {
     if(b.healedPerGame !== a.healedPerGame) return b.healedPerGame - a.healedPerGame;
     if(b.games !== a.games) return b.games - a.games;
     return b.totalHpHealed - a.totalHpHealed;
-  });
+  };
 
-  let team = [
-    {
-      roleKey: 'damage',
-      categoryTitle: 'Most Damage',
-      roleTitle: 'Damage Leader',
-      icon: '💥',
-      badgeColor: '#ff8a90',
-      badgeBg: 'rgba(255,138,144,0.12)',
-      badgeBorder: 'rgba(255,138,144,0.3)',
-      mon: bestDamage,
-      statVal: bestDamage ? (bestDamage.damageDealtPerGame % 1 === 0 ? bestDamage.damageDealtPerGame.toFixed(0) : bestDamage.damageDealtPerGame.toFixed(1)) : '0',
-      statUnit: 'Dmg / Game',
-      totalStatDisplay: bestDamage ? `${Math.round(bestDamage.totalDamageDealt)} Total Dmg` : '0 Total Dmg'
-    },
-    {
-      roleKey: 'kills',
-      categoryTitle: 'Most KOs',
-      roleTitle: 'Top Finisher',
-      icon: '⚔️',
-      badgeColor: '#ffd166',
-      badgeBg: 'rgba(255,209,102,0.12)',
-      badgeBorder: 'rgba(255,209,102,0.3)',
-      mon: bestKills,
-      statVal: bestKills ? (bestKills.killsPerGame % 1 === 0 ? bestKills.killsPerGame.toFixed(0) : bestKills.killsPerGame.toFixed(1)) : '0',
-      statUnit: 'KOs / Game',
-      totalStatDisplay: bestKills ? `${bestKills.totalKills} Total KOs` : '0 Total KOs'
-    },
-    {
-      roleKey: 'taken',
-      categoryTitle: 'Most Dmg Taken',
-      roleTitle: 'Iron Wall',
-      icon: '🛡️',
-      badgeColor: '#7dd3fc',
-      badgeBg: 'rgba(125,211,252,0.12)',
-      badgeBorder: 'rgba(125,211,252,0.3)',
-      mon: bestDamageTaken,
-      statVal: bestDamageTaken ? (bestDamageTaken.damageTakenPerGame % 1 === 0 ? bestDamageTaken.damageTakenPerGame.toFixed(0) : bestDamageTaken.damageTakenPerGame.toFixed(1)) : '0',
-      statUnit: 'Dmg Taken / Game',
-      totalStatDisplay: bestDamageTaken ? `${Math.round(bestDamageTaken.totalDamageTaken)} Total Taken` : '0 Total Taken'
-    },
-    {
-      roleKey: 'healed',
-      categoryTitle: 'Most Healed',
-      roleTitle: 'Master Healer',
-      icon: '💚',
-      badgeColor: '#4ade80',
-      badgeBg: 'rgba(74,222,128,0.12)',
-      badgeBorder: 'rgba(74,222,128,0.3)',
-      mon: bestHealed,
-      statVal: bestHealed ? (bestHealed.healedPerGame % 1 === 0 ? bestHealed.healedPerGame.toFixed(0) : bestHealed.healedPerGame.toFixed(1)) : '0',
-      statUnit: 'Healed / Game',
-      totalStatDisplay: bestHealed ? `${Math.round(bestHealed.totalHpHealed)} Total Healed` : '0 Total Healed'
-    }
-  ].filter(item => item.mon !== null);
+  function buildTeamTier(tierNum, tierTitle, tierColor, roleSuffix) {
+    let dmgMon = pickTotsMon(sortDamage);
+    let koMon = pickTotsMon(sortKills);
+    let takenMon = pickTotsMon(sortTaken);
+    let healMon = pickTotsMon(sortHealed);
+
+    return [
+      {
+        roleKey: 'damage',
+        categoryTitle: 'Most Damage',
+        roleTitle: tierNum === 1 ? 'Damage Leader' : `${roleSuffix} Damage`,
+        icon: '💥',
+        tierNum,
+        badgeColor: tierNum === 1 ? '#ff8a90' : (tierNum === 2 ? '#fca5a5' : '#fda4af'),
+        badgeBg: 'rgba(255,138,144,0.12)',
+        badgeBorder: 'rgba(255,138,144,0.3)',
+        mon: dmgMon,
+        statVal: dmgMon ? (dmgMon.damageDealtPerGame % 1 === 0 ? dmgMon.damageDealtPerGame.toFixed(0) : dmgMon.damageDealtPerGame.toFixed(1)) : '0',
+        statUnit: 'Dmg / Game',
+        totalStatDisplay: dmgMon ? `${Math.round(dmgMon.totalDamageDealt)} Total Dmg` : '0 Total Dmg'
+      },
+      {
+        roleKey: 'kills',
+        categoryTitle: 'Most KOs',
+        roleTitle: tierNum === 1 ? 'Top Finisher' : `${roleSuffix} Finisher`,
+        icon: '⚔️',
+        tierNum,
+        badgeColor: tierNum === 1 ? '#ffd166' : (tierNum === 2 ? '#e2e8f0' : '#f0a875'),
+        badgeBg: 'rgba(255,209,102,0.12)',
+        badgeBorder: 'rgba(255,209,102,0.3)',
+        mon: koMon,
+        statVal: koMon ? (koMon.killsPerGame % 1 === 0 ? koMon.killsPerGame.toFixed(0) : koMon.killsPerGame.toFixed(1)) : '0',
+        statUnit: 'KOs / Game',
+        totalStatDisplay: koMon ? `${koMon.totalKills} Total KOs` : '0 Total KOs'
+      },
+      {
+        roleKey: 'taken',
+        categoryTitle: 'Most Dmg Taken',
+        roleTitle: tierNum === 1 ? 'Iron Wall' : `${roleSuffix} Iron Wall`,
+        icon: '🛡️',
+        tierNum,
+        badgeColor: tierNum === 1 ? '#7dd3fc' : (tierNum === 2 ? '#93c5fd' : '#bae6fd'),
+        badgeBg: 'rgba(125,211,252,0.12)',
+        badgeBorder: 'rgba(125,211,252,0.3)',
+        mon: takenMon,
+        statVal: takenMon ? (takenMon.damageTakenPerGame % 1 === 0 ? takenMon.damageTakenPerGame.toFixed(0) : takenMon.damageTakenPerGame.toFixed(1)) : '0',
+        statUnit: 'Dmg Taken / Game',
+        totalStatDisplay: takenMon ? `${Math.round(takenMon.totalDamageTaken)} Total Taken` : '0 Total Taken'
+      },
+      {
+        roleKey: 'healed',
+        categoryTitle: 'Most Healed',
+        roleTitle: tierNum === 1 ? 'Master Healer' : `${roleSuffix} Healer`,
+        icon: '💚',
+        tierNum,
+        badgeColor: tierNum === 1 ? '#4ade80' : (tierNum === 2 ? '#86efac' : '#bbf7d0'),
+        badgeBg: 'rgba(74,222,128,0.12)',
+        badgeBorder: 'rgba(74,222,128,0.3)',
+        mon: healMon,
+        statVal: healMon ? (healMon.healedPerGame % 1 === 0 ? healMon.healedPerGame.toFixed(0) : healMon.healedPerGame.toFixed(1)) : '0',
+        statUnit: 'Healed / Game',
+        totalStatDisplay: healMon ? `${Math.round(healMon.totalHpHealed)} Total Healed` : '0 Total Healed'
+      }
+    ].filter(item => item.mon !== null);
+  }
+
+  let firstTeam = buildTeamTier(1, 'First Team', '#ffd166', '1st Team');
+  let secondTeam = buildTeamTier(2, 'Second Team', '#cbd5e1', '2nd Team');
+  let thirdTeam = buildTeamTier(3, 'Third Team', '#f0a875', '3rd Team');
 
   return {
-    empty: team.length === 0 && (!seasonMvp),
+    empty: firstTeam.length === 0 && (!seasonMvp),
     totalGames: allReplays.length,
     pokemonCount: list.length,
+    seasonMvp,
+    finalsMvp,
     majorAwards,
-    team
+    firstTeam,
+    secondTeam,
+    thirdTeam,
+    team: firstTeam
   };
 }
 
 function renderMajorAwardsCardsHtml(major, t) {
   if(!major) return '';
   let items = [
-    {
-      key: 'mvp',
-      categoryTitle: 'Season MVP',
-      roleTitle: 'Regular Season MVP',
-      icon: '👑',
-      badgeColor: '#ffd166',
-      badgeBg: 'rgba(255,209,102,0.14)',
-      badgeBorder: 'rgba(255,209,102,0.35)',
-      mon: major.mvp,
-      statVal: major.mvp ? String(Math.round(major.mvp.avgImpactScore)) : '—',
-      statUnit: 'Avg MVP / Game',
-      totalStatDisplay: major.mvp ? `${major.mvp.games} Games · ${major.mvp.totalKills} KOs (${major.mvp.killsPerGame.toFixed(1)}/g)` : 'Min 3 Appearances'
-    },
     {
       key: 'finalsMvp',
       categoryTitle: 'Finals MVP',
@@ -6636,39 +6671,26 @@ function renderMajorAwardsCardsHtml(major, t) {
       mon: major.finalsMvp,
       isFinalsMvp: true,
       statVal: major.finalsMvp ? String(Math.round(major.finalsMvp.avgImpact)) : 'TBD',
-      statUnit: major.finalsMvp ? 'GF Avg MVP / Game' : 'Grand Finals',
-      totalStatDisplay: major.finalsMvp ? `${major.finalsMvp.games} Finals Games (incl. Reset)` : 'Decided in Grand Finals (Min 50% GF Games · Winner)'
+      statUnit: major.finalsMvp ? 'GF Avg Impact / Game' : 'Grand Finals',
+      totalStatDisplay: major.finalsMvp ? `${major.finalsMvp.games} Finals Games (incl. Reset)` : 'Decided in Grand Finals (Champion Team)'
     },
     {
-      key: 'offensive',
-      categoryTitle: 'Offensive Mon',
-      roleTitle: 'Offensive Star of Season',
-      icon: '⚔️',
-      badgeColor: '#ff8a90',
-      badgeBg: 'rgba(255,138,144,0.14)',
-      badgeBorder: 'rgba(255,138,144,0.35)',
-      mon: major.offensiveMon,
-      statVal: major.offensiveMon ? `${Math.round(major.offensiveMon.damageDealtPerGame)}` : '—',
-      statUnit: major.offensiveMon ? `Dmg/G · ${major.offensiveMon.killsPerGame.toFixed(1)} KOs/G` : 'Offensive Impact',
-      totalStatDisplay: major.offensiveMon ? `${major.offensiveMon.totalKills} KOs · ${Math.round(major.offensiveMon.totalDamageDealt)} Dmg` : 'Min 3 Appearances'
-    },
-    {
-      key: 'defensive',
-      categoryTitle: 'Defensive Mon',
-      roleTitle: 'Defensive Star of Season',
-      icon: '🛡️',
-      badgeColor: '#7dd3fc',
-      badgeBg: 'rgba(125,211,252,0.14)',
-      badgeBorder: 'rgba(125,211,252,0.35)',
-      mon: major.defensiveMon,
-      statVal: major.defensiveMon ? `${Math.round(major.defensiveMon.damageTakenPerGame)}` : '—',
-      statUnit: major.defensiveMon ? `Taken/G ${major.defensiveMon.healedPerGame > 0 ? `· ${Math.round(major.defensiveMon.healedPerGame)} Heal/G` : ''}` : 'Defensive Impact',
-      totalStatDisplay: major.defensiveMon ? `${Math.round(major.defensiveMon.totalDamageTaken)} Taken ${major.defensiveMon.totalHpHealed > 0 ? `· ${Math.round(major.defensiveMon.totalHpHealed)} Healed` : ''}` : 'Min 3 Appearances'
+      key: 'mvp',
+      categoryTitle: 'Season MVP',
+      roleTitle: 'Regular Season MVP',
+      icon: '⭐',
+      badgeColor: '#ffd166',
+      badgeBg: 'rgba(255,209,102,0.14)',
+      badgeBorder: 'rgba(255,209,102,0.35)',
+      mon: major.mvp,
+      statVal: major.mvp ? `${major.mvp.regMatchMvps || major.mvp.matchMvps || 0} MVPs` : '—',
+      statUnit: 'Regular Season MVPs',
+      totalStatDisplay: major.mvp ? `${major.mvp.regGames || major.mvp.games} Reg Games · ${Math.round(major.mvp.regAvgImpactScore || major.mvp.avgImpactScore)} Avg Impact · ${major.mvp.regKills || major.mvp.totalKills} KOs` : 'Min 3 Appearances'
     }
   ];
 
   return `
-    <div class="tots-grid">
+    <div class="tots-grid" style="grid-template-columns:repeat(auto-fit, minmax(280px, 1fr))">
       ${items.map(item => {
         let mon = item.mon;
         if(!mon) {
@@ -6686,7 +6708,7 @@ function renderMajorAwardsCardsHtml(major, t) {
                 Awaiting Replays
               </div>
               <div style="width:100%;height:115px;display:flex;align-items:center;justify-content:center;margin:8px 0;opacity:0.4">
-                <span style="font-size:48px">🏆</span>
+                <span style="font-size:48px">${item.icon}</span>
               </div>
               <div style="font-size:11px;color:#6b697b;margin-bottom:8px">—</div>
               <div class="tots-hero-box">
@@ -6758,11 +6780,12 @@ function renderMajorAwardsCardsHtml(major, t) {
   `;
 }
 
-function renderTeamOfTheSeasonCardsHtml(tots) {
-  if(!tots || !tots.team || tots.team.length === 0) return '';
+function renderTeamOfTheSeasonCardsHtml(totsOrList) {
+  let list = Array.isArray(totsOrList) ? totsOrList : (totsOrList?.firstTeam || totsOrList?.team || []);
+  if(!list || list.length === 0) return '';
   return `
     <div class="tots-grid">
-      ${tots.team.map(item => {
+      ${list.map(item => {
         let mon = item.mon;
         if(!mon) return '';
         let types = (typeof getPokemonTypes === 'function' ? getPokemonTypes(mon.name) : []) || ['Normal'];
@@ -6816,6 +6839,28 @@ function renderTeamOfTheSeasonCardsHtml(tots) {
   `;
 }
 
+function renderTeamOfTheSeasonTierSectionHtml(teamList, tierNum, title, sub, color, icon) {
+  if(!teamList || teamList.length === 0) return '';
+  return `
+    <div style="background:linear-gradient(135deg,#15151e 0%,#0f0f15 100%);border:1px solid #28283a;border-radius:14px;padding:24px;box-shadow:0 8px 32px rgba(0,0,0,0.4)">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:12px;margin-bottom:20px">
+        <div>
+          <div class="eyebrow" style="color:${color};display:flex;align-items:center;gap:6px">
+            <span>${icon}</span> ${esc(title.toUpperCase())}
+          </div>
+          <h2 style="margin:4px 0 0;font:900 28px 'Barlow Condensed';color:#f5f3f0;letter-spacing:.5px">
+            ${esc(title)}
+          </h2>
+          <p class="sub" style="margin:4px 0 0;font-size:12px;color:#94a3b8;max-width:640px">
+            ${esc(sub)}
+          </p>
+        </div>
+      </div>
+      ${renderTeamOfTheSeasonCardsHtml(teamList)}
+    </div>
+  `;
+}
+
 function renderTournamentAwardsTabHtml(t) {
   if(!t) return '<div class="card empty" style="padding:24px;text-align:center">No tournament selected.</div>';
   let isFinished = String(t.status || '').toUpperCase() === 'COMPLETE' || t.phase === 'complete' || t.phase === 'completed';
@@ -6844,13 +6889,13 @@ function renderTournamentAwardsTabHtml(t) {
     `;
   }
 
-  let showCards = (tots.team && tots.team.length > 0) || (tots.majorAwards && tots.majorAwards.mvp);
+  let showCards = (tots.firstTeam && tots.firstTeam.length > 0) || (tots.majorAwards && tots.majorAwards.mvp);
   let major = tots.majorAwards || {};
 
   return `
     <div style="display:flex;flex-direction:column;gap:28px;margin-top:4px">
       ${showCards ? `
-        <!-- Major Season Awards Section -->
+        <!-- Major Season Awards Section (Finals MVP & Season MVP) -->
         <div style="background:linear-gradient(135deg,#15151e 0%,#0f0f15 100%);border:1px solid #28283a;border-radius:14px;padding:24px;box-shadow:0 8px 32px rgba(0,0,0,0.4)">
           <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:12px;margin-bottom:20px">
             <div>
@@ -6861,7 +6906,7 @@ function renderTournamentAwardsTabHtml(t) {
                 Major Season Awards
               </h2>
               <p class="sub" style="margin:4px 0 0;font-size:12px;color:#94a3b8;max-width:640px">
-                Minimum 3 appearances
+                Grand Finals MVP & Regular Season MVP honors
               </p>
             </div>
             <div style="display:flex;align-items:center;gap:8px">
@@ -6874,24 +6919,14 @@ function renderTournamentAwardsTabHtml(t) {
           ${renderMajorAwardsCardsHtml(major, t)}
         </div>
 
-        <!-- Team of the Season Section -->
-        <div style="background:linear-gradient(135deg,#15151e 0%,#0f0f15 100%);border:1px solid #28283a;border-radius:14px;padding:24px;box-shadow:0 8px 32px rgba(0,0,0,0.4)">
-          <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:12px;margin-bottom:20px">
-            <div>
-              <div class="eyebrow" style="color:#ffd166;display:flex;align-items:center;gap:6px">
-                <span>⭐</span> ALL-TOURNAMENT SELECTION · ${esc(t.season || t.name)}
-              </div>
-              <h2 style="margin:4px 0 0;font:900 28px 'Barlow Condensed';color:#f5f3f0;letter-spacing:.5px">
-                Team of the Season
-              </h2>
-              <p class="sub" style="margin:4px 0 0;font-size:12px;color:#94a3b8;max-width:640px">
-                Minimum 3 appearances
-              </p>
-            </div>
-          </div>
+        <!-- First Team -->
+        ${renderTeamOfTheSeasonTierSectionHtml(tots.firstTeam, 1, 'First Team All-Tournament', '1st place per-game leaders in Damage, KOs, Damage Taken, and Healing', '#ffd166', '🥇')}
 
-          ${renderTeamOfTheSeasonCardsHtml(tots)}
-        </div>
+        <!-- Second Team -->
+        ${renderTeamOfTheSeasonTierSectionHtml(tots.secondTeam, 2, 'Second Team All-Tournament', '2nd place per-game leaders in Damage, KOs, Damage Taken, and Healing', '#cbd5e1', '🥈')}
+
+        <!-- Third Team -->
+        ${renderTeamOfTheSeasonTierSectionHtml(tots.thirdTeam, 3, 'Third Team All-Tournament', '3rd place per-game leaders in Damage, KOs, Damage Taken, and Healing', '#f0a875', '🥉')}
       ` : `
         <div class="card empty" style="padding:32px 20px;text-align:center;max-width:680px;margin:10px auto 4px;background:#14141c;border:1px solid #282838;border-radius:12px">
           <div style="font-size:36px;margin-bottom:8px">🏆</div>
@@ -6900,6 +6935,113 @@ function renderTournamentAwardsTabHtml(t) {
             Minimum 3 appearances required to qualify for official season honors. As coaches play more tournament games, awards will unlock automatically!
           </p>
           <div style="font-size:11px;color:#ffd166;font-weight:700">Currently ${tots.totalGames} ${tots.totalGames === 1 ? 'game' : 'games'} recorded</div>
+        </div>
+      `}
+    </div>
+  `;
+}
+
+function renderTopCutMvpBannerHtml(tots, t) {
+  if(!tots || (!tots.finalsMvp && !tots.seasonMvp)) return '';
+
+  let fMvp = tots.finalsMvp;
+  let sMvp = tots.seasonMvp;
+
+  return `
+    <div class="tc-podium" style="grid-template-columns:repeat(auto-fit, minmax(320px, 1fr));gap:16px;margin-bottom:20px">
+      <!-- 1. Finals MVP Card -->
+      ${fMvp ? (() => {
+        let fTypes = (typeof getPokemonTypes === 'function' ? getPokemonTypes(fMvp.name) : []) || ['Normal'];
+        let fType = fTypes[0] || 'Normal';
+        let fTheme = (typeof TYPE_THEMES !== 'undefined' && TYPE_THEMES[fType]) ? TYPE_THEMES[fType] : { bg: '#241a10', border: '#f59e0b', glow: 'rgba(245,158,11,0.2)' };
+        let fSprite = fMvp.sprite || (typeof resolvePokemonData === 'function' ? resolvePokemonData(fMvp.name)?.sprite : (typeof getPokemonSpriteUrl === 'function' ? getPokemonSpriteUrl(fMvp.name.toLowerCase()) : ''));
+
+        return `
+          <div class="tc-podium-card finals-mvp" style="background:linear-gradient(135deg, ${fTheme.bg} 0%, #15131a 55%, #101015 100%)">
+            <div class="tc-podium-badge finals-mvp-badge">🏆 GRAND FINALS MVP</div>
+            <div class="tc-podium-content">
+              <div class="tc-podium-avatar-wrap">
+                <div style="width:58px;height:58px;border-radius:50%;background:rgba(0,0,0,0.4);border:2px solid #f59e0b;box-shadow:0 0 16px rgba(245,158,11,0.35);display:flex;align-items:center;justify-content:center;overflow:hidden">
+                  <img src="${fSprite}" alt="${esc(fMvp.name)}" style="width:52px;height:52px;object-fit:contain;filter:drop-shadow(0 4px 8px rgba(0,0,0,0.6))" onerror="handleSpriteError(this)">
+                </div>
+                <span class="tc-podium-medal-icon">🏆</span>
+              </div>
+              <div style="min-width:0;flex:1">
+                <div class="tc-podium-name">${esc(fMvp.name)}</div>
+                <div class="tc-podium-subtitle" style="color:#f59e0b">
+                  ${Math.round(fMvp.avgImpact)} GF Avg Impact · ${fMvp.games} Finals ${fMvp.games === 1 ? 'Game' : 'Games'}
+                </div>
+                <div class="tc-podium-team">Coach: <b style="color:#ffd166">${fMvp.coach ? playerLink(fMvp.coach) : '—'}</b></div>
+              </div>
+              <div class="tc-podium-ovr-wrap">
+                <div style="font:900 24px 'Barlow Condensed';color:#f59e0b;line-height:1">${fMvp.totalKills}</div>
+                <span class="tc-podium-ovr-label">GF KOs</span>
+              </div>
+            </div>
+          </div>
+        `;
+      })() : `
+        <div class="tc-podium-card finals-mvp" style="opacity:0.75">
+          <div class="tc-podium-badge finals-mvp-badge">🏆 GRAND FINALS MVP</div>
+          <div class="tc-podium-content">
+            <div class="tc-podium-avatar-wrap">
+              <div style="width:58px;height:58px;border-radius:50%;background:rgba(0,0,0,0.4);border:2px dashed #f59e0b;display:flex;align-items:center;justify-content:center">
+                <span style="font-size:24px;opacity:0.5">🏆</span>
+              </div>
+            </div>
+            <div style="min-width:0;flex:1">
+              <div class="tc-podium-name" style="color:#8e8c95">Awaiting Grand Finals</div>
+              <div class="tc-podium-subtitle" style="color:#646270">Decided in championship series</div>
+            </div>
+          </div>
+        </div>
+      `}
+
+      <!-- 2. Regular Season MVP Card -->
+      ${sMvp ? (() => {
+        let sTypes = (typeof getPokemonTypes === 'function' ? getPokemonTypes(sMvp.name) : []) || ['Normal'];
+        let sType = sTypes[0] || 'Normal';
+        let sTheme = (typeof TYPE_THEMES !== 'undefined' && TYPE_THEMES[sType]) ? TYPE_THEMES[sType] : { bg: '#28200f', border: '#ffd166', glow: 'rgba(255,209,102,0.2)' };
+        let sSprite = sMvp.sprite || (typeof resolvePokemonData === 'function' ? resolvePokemonData(sMvp.name)?.sprite : (typeof getPokemonSpriteUrl === 'function' ? getPokemonSpriteUrl(sMvp.name.toLowerCase()) : ''));
+
+        return `
+          <div class="tc-podium-card season-mvp" style="background:linear-gradient(135deg, ${sTheme.bg} 0%, #171512 55%, #101015 100%)">
+            <div class="tc-podium-badge season-mvp-badge">⭐ REGULAR SEASON MVP</div>
+            <div class="tc-podium-content">
+              <div class="tc-podium-avatar-wrap">
+                <div style="width:58px;height:58px;border-radius:50%;background:rgba(0,0,0,0.4);border:2px solid #ffd166;box-shadow:0 0 16px rgba(255,209,102,0.35);display:flex;align-items:center;justify-content:center;overflow:hidden">
+                  <img src="${sSprite}" alt="${esc(sMvp.name)}" style="width:52px;height:52px;object-fit:contain;filter:drop-shadow(0 4px 8px rgba(0,0,0,0.6))" onerror="handleSpriteError(this)">
+                </div>
+                <span class="tc-podium-medal-icon">⭐</span>
+              </div>
+              <div style="min-width:0;flex:1">
+                <div class="tc-podium-name">${esc(sMvp.name)}</div>
+                <div class="tc-podium-subtitle" style="color:#ffd166">
+                  ${sMvp.regMatchMvps || sMvp.matchMvps || 0} Match MVPs · ${sMvp.regGames || sMvp.games} Reg Games
+                </div>
+                <div class="tc-podium-team">Coach: <b style="color:#ffd166">${sMvp.coach ? playerLink(sMvp.coach) : '—'}</b></div>
+              </div>
+              <div class="tc-podium-ovr-wrap">
+                <div style="font:900 24px 'Barlow Condensed';color:#ffd166;line-height:1">${Math.round(sMvp.regAvgImpactScore || sMvp.avgImpactScore)}</div>
+                <span class="tc-podium-ovr-label">Avg Impact</span>
+              </div>
+            </div>
+          </div>
+        `;
+      })() : `
+        <div class="tc-podium-card season-mvp" style="opacity:0.75">
+          <div class="tc-podium-badge season-mvp-badge">⭐ REGULAR SEASON MVP</div>
+          <div class="tc-podium-content">
+            <div class="tc-podium-avatar-wrap">
+              <div style="width:58px;height:58px;border-radius:50%;background:rgba(0,0,0,0.4);border:2px dashed #ffd166;display:flex;align-items:center;justify-content:center">
+                <span style="font-size:24px;opacity:0.5">⭐</span>
+              </div>
+            </div>
+            <div style="min-width:0;flex:1">
+              <div class="tc-podium-name" style="color:#8e8c95">Awaiting Regular Season</div>
+              <div class="tc-podium-subtitle" style="color:#646270">Min 3 regular season appearances</div>
+            </div>
+          </div>
         </div>
       `}
     </div>
@@ -9691,105 +9833,9 @@ function topCutSection(t, preview){
     </div>`;
   }
 
-  let podiumHtml = '';
-  if(model.champion || t.champion){
-    let champName = model.champion || t.champion;
-    let runnerName = model.runnerUp;
-    let thirdName = model.thirdPlace;
-
-    let champOvr = (isPastT && typeof getHistoricalPlayerOVR === 'function')
-      ? getHistoricalPlayerOVR(champName, tIdx, 'complete', sortedT)
-      : calculatePlayerOVR(champName);
-    let runnerOvr = runnerName ? ((isPastT && typeof getHistoricalPlayerOVR === 'function')
-      ? getHistoricalPlayerOVR(runnerName, tIdx, 'complete', sortedT)
-      : calculatePlayerOVR(runnerName)) : null;
-    let thirdOvr = thirdName ? ((isPastT && typeof getHistoricalPlayerOVR === 'function')
-      ? getHistoricalPlayerOVR(thirdName, tIdx, 'complete', sortedT)
-      : calculatePlayerOVR(thirdName)) : null;
-
-    let champFace = profilePictures[champName] ? `url('${esc(profilePictures[champName])}')` : (teamCovers[champName] ? `url('${esc(teamCovers[champName])}')` : fallbackArt(champName));
-    let champLetter = (profilePictures[champName] || teamCovers[champName]) ? '' : esc((champName || '?')[0]);
-    let champTeam = teamName(t, champName);
-    let champRec = tournamentRecord(t, champName);
-
-    let runnerFace = runnerName ? (profilePictures[runnerName] ? `url('${esc(profilePictures[runnerName])}')` : (teamCovers[runnerName] ? `url('${esc(teamCovers[runnerName])}')` : fallbackArt(runnerName))) : '';
-    let runnerLetter = runnerName ? ((profilePictures[runnerName] || teamCovers[runnerName]) ? '' : esc((runnerName || '?')[0])) : '';
-    let runnerTeam = runnerName ? teamName(t, runnerName) : '';
-    let runnerRec = runnerName ? tournamentRecord(t, runnerName) : '';
-
-    let thirdFace = thirdName ? (profilePictures[thirdName] ? `url('${esc(profilePictures[thirdName])}')` : (teamCovers[thirdName] ? `url('${esc(teamCovers[thirdName])}')` : fallbackArt(thirdName))) : '';
-    let thirdLetter = thirdName ? ((profilePictures[thirdName] || teamCovers[thirdName]) ? '' : esc((thirdName || '?')[0])) : '';
-    let thirdTeam = thirdName ? teamName(t, thirdName) : '';
-    let thirdRec = thirdName ? tournamentRecord(t, thirdName) : '';
-
-    podiumHtml = `
-      <div class="tc-podium">
-        <!-- 1. Champion Card -->
-        <div class="tc-podium-card champ" onclick="openProfile('${jsArg(champName)}')">
-          <div class="tc-podium-badge champ-badge">👑 1ST PLACE · CHAMPION</div>
-          <div class="tc-podium-content">
-            <div class="tc-podium-avatar-wrap">
-              <span class="avatar mini tc-podium-avatar champ-ring" style="background-image:${champFace}">${champLetter}</span>
-              <span class="tc-podium-medal-icon">👑</span>
-            </div>
-            <div style="min-width:0;flex:1">
-              <div class="tc-podium-name">${playerLink(champName)}</div>
-              <div class="tc-podium-subtitle" style="color:#ffd166">🏆 ${esc(t.name)} Champion</div>
-              <div class="tc-podium-team">${esc(champTeam)}${champRec ? ` · <b>${esc(champRec)}</b>` : ''}</div>
-            </div>
-            <div class="tc-podium-ovr-wrap">
-              ${champOvr.badgeHtml}
-              <span class="tc-podium-ovr-label">OVR</span>
-            </div>
-          </div>
-        </div>
-
-        <!-- 2. Runner-Up Card -->
-        ${runnerName ? `
-          <div class="tc-podium-card runner" onclick="openProfile('${jsArg(runnerName)}')">
-            <div class="tc-podium-badge runner-badge">🥈 2ND PLACE · RUNNER-UP</div>
-            <div class="tc-podium-content">
-              <div class="tc-podium-avatar-wrap">
-                <span class="avatar mini tc-podium-avatar runner-ring" style="background-image:${runnerFace}">${runnerLetter}</span>
-                <span class="tc-podium-medal-icon">🥈</span>
-              </div>
-              <div style="min-width:0;flex:1">
-                <div class="tc-podium-name">${playerLink(runnerName)}</div>
-                <div class="tc-podium-subtitle" style="color:#c8c8d8">Grand Finalist</div>
-                <div class="tc-podium-team">${esc(runnerTeam)}${runnerRec ? ` · <b>${esc(runnerRec)}</b>` : ''}</div>
-              </div>
-              <div class="tc-podium-ovr-wrap">
-                ${runnerOvr.badgeHtml}
-                <span class="tc-podium-ovr-label">OVR</span>
-              </div>
-            </div>
-          </div>
-        ` : ''}
-
-        <!-- 3. Third Place Card -->
-        ${thirdName ? `
-          <div class="tc-podium-card third" onclick="openProfile('${jsArg(thirdName)}')">
-            <div class="tc-podium-badge third-badge">🥉 3RD PLACE · BRONZE</div>
-            <div class="tc-podium-content">
-              <div class="tc-podium-avatar-wrap">
-                <span class="avatar mini tc-podium-avatar third-ring" style="background-image:${thirdFace}">${thirdLetter}</span>
-                <span class="tc-podium-medal-icon">🥉</span>
-              </div>
-              <div style="min-width:0;flex:1">
-                <div class="tc-podium-name">${playerLink(thirdName)}</div>
-                <div class="tc-podium-subtitle" style="color:#d4986a">Losers Finalist</div>
-                <div class="tc-podium-team">${esc(thirdTeam)}${thirdRec ? ` · <b>${esc(thirdRec)}</b>` : ''}</div>
-              </div>
-              <div class="tc-podium-ovr-wrap">
-                ${thirdOvr.badgeHtml}
-                <span class="tc-podium-ovr-label">OVR</span>
-              </div>
-            </div>
-          </div>
-        ` : ''}
-      </div>
-    `;
-  }
+  // Calculate MVP awards banner for Top Cut (Finals MVP & Season MVP)
+  let tots = calculateTeamOfTheSeason(t);
+  let mvpBannerHtml = renderTopCutMvpBannerHtml(tots, t);
 
   let tcStageTab = window.tcStageTab || 'all';
   let hasLosers = !!(model.lbRounds && model.lbRounds.length);
@@ -9877,11 +9923,18 @@ function topCutSection(t, preview){
     `;
   }
 
+  let champName = model.champion || t.champion;
+
   return `<div class="tc-container">
     <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:14px">
-      <div style="display:flex;align-items:center;gap:10px">
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
         <div style="font:900 24px 'Barlow Condensed';letter-spacing:.6px;color:#f5f3f0;text-transform:uppercase">${esc(t.name)} Playoffs</div>
         ${statusBadge}
+        ${champName ? `
+          <span style="font:800 12px 'Barlow Condensed';letter-spacing:1px;text-transform:uppercase;color:#ffd166;background:linear-gradient(135deg,rgba(255,209,102,0.16),rgba(217,119,6,0.16));padding:4px 10px;border-radius:6px;border:1px solid rgba(255,209,102,0.35);display:inline-flex;align-items:center;gap:5px">
+            👑 CHAMPION: <b>${playerLink(champName)}</b>
+          </span>
+        ` : ''}
       </div>
       ${isModEditable ? `
         <div style="display:flex;align-items:center;flex-wrap:wrap;gap:8px">
@@ -9892,7 +9945,7 @@ function topCutSection(t, preview){
       ` : ''}
     </div>
 
-    ${podiumHtml}
+    ${mvpBannerHtml}
     ${switcherHtml}
 
     <div class="card" style="padding:22px;background:#101015;border-color:#2e2e38;width:100%">
