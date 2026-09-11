@@ -4252,7 +4252,7 @@ function parseShowdownBattleLog(logText, meta = {}) {
     pokemon: {},
     teamPreview: { p1: [], p2: [] },
     mvp: null,
-    version: 3
+    version: 4
   };
 
   let activeSlots = {};
@@ -4288,22 +4288,37 @@ function parseShowdownBattleLog(logText, meta = {}) {
     } else if(cmd === 'win'){
       result.winner = parts[2] || '';
     } else if(cmd === 'switch' || cmd === 'drag'){
-      let slot = (parts[2] || '').split(':')[0].trim();
+      let rawIdent = (parts[2] || '').trim();
+      let colonIdx = rawIdent.indexOf(':');
+      let slot = colonIdx !== -1 ? rawIdent.slice(0, colonIdx).trim() : rawIdent;
       let side = slot.slice(0, 2);
-      let monName = (parts[3] || '').split(',')[0].trim();
+      let nickname = colonIdx !== -1 ? rawIdent.slice(colonIdx + 1).trim() : '';
+      let detailsStr = (parts[3] || '').trim();
+      let monName = detailsStr.split(',')[0].trim();
+      if(!nickname) nickname = monName;
+      let monId = `${side}:${nickname}`;
       
       let hpParts = (parts[4] || '').split('/');
       let curHpRaw = parseFloat(hpParts[0]) || 100;
       let maxHpRaw = parseFloat(hpParts[1]) || 100;
 
-      let key = `${side}_${monName}`;
-      if(!result.pokemon[key]){
+      let isMegaForm = monName.toLowerCase().includes('-mega') || monName.toLowerCase().startsWith('mega ') || monName.toLowerCase().startsWith('mega-');
+
+      if(!result.pokemon[monId]){
         let estMax = getPokemonEstimatedMaxHp(monName, maxHpRaw);
         let curHp = maxHpRaw > 100 ? curHpRaw : Math.round(estMax * (curHpRaw / 100));
-        result.pokemon[key] = {
+        let resolved = (typeof resolvePokemonData === 'function') ? resolvePokemonData(monName) : null;
+        let displayName = isMegaForm ? (resolved?.name || monName) : monName;
+        let baseSpecies = isMegaForm ? monName.replace(/-mega(-[xy])?/i, '') : monName;
+
+        result.pokemon[monId] = {
           side,
           coach: side === 'p1' ? result.player1 : result.player2,
-          name: monName,
+          name: displayName,
+          species: monName,
+          baseSpecies: baseSpecies,
+          nickname: nickname,
+          monId: monId,
           kills: 0,
           killedMons: [],
           maxHp: estMax,
@@ -4315,19 +4330,134 @@ function parseShowdownBattleLog(logText, meta = {}) {
           fainted: false,
           faintTurn: null,
           moves: [],
-          brought: true
+          brought: true,
+          isMega: isMegaForm
         };
       }
 
-      let pObj = result.pokemon[key];
+      let pObj = result.pokemon[monId];
+      if(isMegaForm && !pObj.isMega){
+        pObj.isMega = true;
+        pObj.species = monName;
+        let resolved = (typeof resolvePokemonData === 'function') ? resolvePokemonData(monName) : null;
+        if(resolved?.name) pObj.name = resolved.name;
+      }
       let curHp = maxHpRaw > 100 ? curHpRaw : Math.round(pObj.maxHp * (curHpRaw / 100));
-      activeSlots[slot] = { side, name: monName, key, curHp, maxHp: pObj.maxHp, isRaw: maxHpRaw > 100 };
+      pObj.curHp = curHp;
+      activeSlots[slot] = { side, name: pObj.name, species: pObj.species, monId, key: monId, pObj, curHp, maxHp: pObj.maxHp, isRaw: maxHpRaw > 100 };
+    } else if(cmd === 'detailschange'){
+      let isSilent = line.includes('[silent]') || parts.some(p => p.includes('[silent]'));
+      if(!isSilent){
+        let rawIdent = (parts[2] || '').trim();
+        let colonIdx = rawIdent.indexOf(':');
+        let slot = colonIdx !== -1 ? rawIdent.slice(0, colonIdx).trim() : rawIdent;
+        let side = slot.slice(0, 2);
+        let nickname = colonIdx !== -1 ? rawIdent.slice(colonIdx + 1).trim() : '';
+        let monId = `${side}:${nickname}`;
+        let newDetails = (parts[3] || '').trim();
+        let newSpecies = newDetails.split(',')[0].trim();
+
+        let pObj = activeSlots[slot]?.pObj || result.pokemon[monId];
+        if(!pObj && activeSlots[slot]?.key){
+          pObj = result.pokemon[activeSlots[slot].key];
+        }
+
+        if(pObj && newSpecies){
+          pObj.species = newSpecies;
+          let isMegaForm = newSpecies.toLowerCase().includes('-mega') || newSpecies.toLowerCase().startsWith('mega ') || newSpecies.toLowerCase().startsWith('mega-');
+          if(isMegaForm){
+            pObj.isMega = true;
+            let resolved = (typeof resolvePokemonData === 'function') ? resolvePokemonData(newSpecies) : null;
+            pObj.name = resolved?.name || newSpecies;
+            if(!pObj.baseSpecies || pObj.baseSpecies.toLowerCase().includes('-mega')){
+              pObj.baseSpecies = newSpecies.replace(/-mega(-[xy])?/i, '');
+            }
+          } else {
+            let resolved = (typeof resolvePokemonData === 'function') ? resolvePokemonData(newSpecies) : null;
+            if(resolved?.name) pObj.name = resolved.name;
+          }
+          if(activeSlots[slot]){
+            activeSlots[slot].name = pObj.name;
+            activeSlots[slot].species = newSpecies;
+          }
+        }
+      }
+    } else if(cmd === '-mega'){
+      let rawIdent = (parts[2] || '').trim();
+      let colonIdx = rawIdent.indexOf(':');
+      let slot = colonIdx !== -1 ? rawIdent.slice(0, colonIdx).trim() : rawIdent;
+      let side = slot.slice(0, 2);
+      let nickname = colonIdx !== -1 ? rawIdent.slice(colonIdx + 1).trim() : '';
+      let monId = `${side}:${nickname}`;
+      let baseSpecies = (parts[3] || '').trim();
+      let megaItem = (parts[4] || '').trim();
+
+      let pObj = activeSlots[slot]?.pObj || result.pokemon[monId];
+      if(!pObj && activeSlots[slot]?.key){
+        pObj = result.pokemon[activeSlots[slot].key];
+      }
+
+      if(pObj){
+        pObj.isMega = true;
+        pObj.megaStone = megaItem;
+        if(baseSpecies) pObj.baseSpecies = baseSpecies;
+
+        let baseName = baseSpecies || pObj.baseSpecies || pObj.name.replace(/^Mega\s+/i, '');
+        let lowerItem = megaItem.toLowerCase();
+        if(lowerItem.includes('charizardite x') || lowerItem.includes('mewtwonite x')){
+          let fName = baseName + '-Mega-X';
+          pObj.species = fName;
+          let resolved = (typeof resolvePokemonData === 'function') ? resolvePokemonData(fName) : null;
+          pObj.name = resolved?.name || `Mega ${baseName} X`;
+        } else if(lowerItem.includes('charizardite y') || lowerItem.includes('mewtwonite y')){
+          let fName = baseName + '-Mega-Y';
+          pObj.species = fName;
+          let resolved = (typeof resolvePokemonData === 'function') ? resolvePokemonData(fName) : null;
+          pObj.name = resolved?.name || `Mega ${baseName} Y`;
+        } else if(!pObj.name.toLowerCase().startsWith('mega ')){
+          let fName = baseName + '-Mega';
+          pObj.species = fName;
+          let resolved = (typeof resolvePokemonData === 'function') ? resolvePokemonData(fName) : null;
+          pObj.name = resolved?.name || `Mega ${baseName}`;
+        }
+
+        if(activeSlots[slot]){
+          activeSlots[slot].name = pObj.name;
+          activeSlots[slot].species = pObj.species;
+        }
+      }
+    } else if(cmd === '-formechange'){
+      let rawIdent = (parts[2] || '').trim();
+      let colonIdx = rawIdent.indexOf(':');
+      let slot = colonIdx !== -1 ? rawIdent.slice(0, colonIdx).trim() : rawIdent;
+      let side = slot.slice(0, 2);
+      let nickname = colonIdx !== -1 ? rawIdent.slice(colonIdx + 1).trim() : '';
+      let monId = `${side}:${nickname}`;
+      let newSpecies = (parts[3] || '').trim();
+
+      let pObj = activeSlots[slot]?.pObj || result.pokemon[monId];
+      if(!pObj && activeSlots[slot]?.key){
+        pObj = result.pokemon[activeSlots[slot].key];
+      }
+
+      if(pObj && newSpecies){
+        if(newSpecies.toLowerCase().includes('-mega') || newSpecies.toLowerCase().startsWith('mega ')){
+          pObj.isMega = true;
+          pObj.species = newSpecies;
+          let resolved = (typeof resolvePokemonData === 'function') ? resolvePokemonData(newSpecies) : null;
+          pObj.name = resolved?.name || newSpecies;
+          if(activeSlots[slot]){
+            activeSlots[slot].name = pObj.name;
+            activeSlots[slot].species = newSpecies;
+          }
+        }
+      }
     } else if(cmd === '-terastallize'){
       let slot = (parts[2] || '').split(':')[0].trim();
       let type = (parts[3] || '').trim();
       if(activeSlots[slot]){
-        let key = `${activeSlots[slot].side}_${activeSlots[slot].name}`;
-        if(result.pokemon[key]) result.pokemon[key].tera = type;
+        let pObj = activeSlots[slot].pObj || result.pokemon[activeSlots[slot].key];
+        if(pObj) pObj.tera = type;
       }
     } else if(cmd === 'move'){
       let slot = (parts[2] || '').split(':')[0].trim();
@@ -4335,9 +4465,9 @@ function parseShowdownBattleLog(logText, meta = {}) {
       lastAttackerSlot = slot;
       lastMove = moveName;
       if(activeSlots[slot]){
-        let key = `${activeSlots[slot].side}_${activeSlots[slot].name}`;
-        if(result.pokemon[key] && !result.pokemon[key].moves.includes(moveName)){
-          result.pokemon[key].moves.push(moveName);
+        let pObj = activeSlots[slot].pObj || result.pokemon[activeSlots[slot].key];
+        if(pObj && !pObj.moves.includes(moveName)){
+          pObj.moves.push(moveName);
         }
       }
     } else if(cmd === '-damage'){
@@ -4347,7 +4477,7 @@ function parseShowdownBattleLog(logText, meta = {}) {
 
       if(activeSlots[slot]){
         let target = activeSlots[slot];
-        let pObj = result.pokemon[target.key];
+        let pObj = target.pObj || result.pokemon[target.key];
         let prevHp = target.curHp;
         let newHp = 0;
 
@@ -4368,13 +4498,14 @@ function parseShowdownBattleLog(logText, meta = {}) {
         let diff = Math.max(0, Math.round(prevHp - newHp));
         target.curHp = newHp;
         if(pObj){
+          pObj.curHp = newHp;
           pObj.damageTaken += diff;
         }
 
         if(lastAttackerSlot && activeSlots[lastAttackerSlot]){
           let attacker = activeSlots[lastAttackerSlot];
           if(attacker.side !== target.side && !fromClause.includes('Recoil') && !fromClause.includes('item:')){
-            let attObj = result.pokemon[attacker.key];
+            let attObj = attacker.pObj || result.pokemon[attacker.key];
             if(attObj){
               attObj.damageDealt += diff;
             }
@@ -4386,7 +4517,7 @@ function parseShowdownBattleLog(logText, meta = {}) {
       let hpRaw = parts[3] || '';
       if(activeSlots[slot]){
         let target = activeSlots[slot];
-        let pObj = result.pokemon[target.key];
+        let pObj = target.pObj || result.pokemon[target.key];
         let prevHp = target.curHp;
         let newHp = prevHp;
         if(hpRaw.includes('/')){
@@ -4402,6 +4533,7 @@ function parseShowdownBattleLog(logText, meta = {}) {
         let gained = Math.max(0, Math.round(newHp - prevHp));
         target.curHp = newHp;
         if(pObj){
+          pObj.curHp = newHp;
           pObj.hpHealed += gained;
         }
       }
@@ -4409,19 +4541,21 @@ function parseShowdownBattleLog(logText, meta = {}) {
       let slot = (parts[2] || '').split(':')[0].trim();
       if(activeSlots[slot]){
         let target = activeSlots[slot];
-        let pObj = result.pokemon[target.key];
+        let pObj = target.pObj || result.pokemon[target.key];
         if(pObj){
           pObj.fainted = true;
           pObj.faintTurn = currentTurn;
+          pObj.curHp = 0;
         }
+        target.curHp = 0;
 
         if(lastAttackerSlot && activeSlots[lastAttackerSlot]){
           let attacker = activeSlots[lastAttackerSlot];
-          let attObj = result.pokemon[attacker.key];
+          let attObj = attacker.pObj || result.pokemon[attacker.key];
           if(attObj){
             if(attacker.side !== target.side || (lastMove === 'Final Gambit' && attacker.name !== target.name)){
               attObj.kills++;
-              attObj.killedMons.push(target.name);
+              attObj.killedMons.push(pObj ? pObj.name : target.name);
             }
           }
         }
@@ -4477,13 +4611,39 @@ function parseShowdownBattleLog(logText, meta = {}) {
     }
   }
 
+  let c1Roster = (t?.rosters?.[attr.p1Coach] || []).slice();
+  let c2Roster = (t?.rosters?.[attr.p2Coach] || []).slice();
+
   for(let key in result.pokemon){
     let p = result.pokemon[key];
-    if(p.side === 'p1'){
-      p.coach = attr.p1Coach || 'Player 1';
-    } else {
-      p.coach = attr.p2Coach || 'Player 2';
+    p.coach = p.side === 'p1' ? (attr.p1Coach || 'Player 1') : (attr.p2Coach || 'Player 2');
+
+    // Cross-reference with drafted coach roster if not already mega evolved in battle
+    let coachRoster = p.side === 'p1' ? c1Roster : c2Roster;
+    if(!p.isMega && coachRoster.length > 0){
+      let norm = s => String(s || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+      let baseNorm = norm(p.baseSpecies || p.name);
+
+      let megaInRoster = coachRoster.filter(rMon => {
+        let rStr = typeof rMon === 'string' ? rMon : (rMon.pokemon || rMon.name || '');
+        let rNorm = norm(rStr);
+        return rNorm.startsWith('mega') && (rNorm.includes(baseNorm) || baseNorm.includes(rNorm.replace(/^mega/, '')));
+      });
+      let hasBaseInRoster = coachRoster.some(rMon => {
+        let rStr = typeof rMon === 'string' ? rMon : (rMon.pokemon || rMon.name || '');
+        let rNorm = norm(rStr);
+        return !rNorm.startsWith('mega') && rNorm === baseNorm;
+      });
+
+      if(megaInRoster.length === 1 && !hasBaseInRoster){
+        let candidateName = typeof megaInRoster[0] === 'string' ? megaInRoster[0] : (megaInRoster[0].pokemon || megaInRoster[0].name);
+        let resolved = (typeof resolvePokemonData === 'function') ? resolvePokemonData(candidateName) : null;
+        p.name = resolved?.name || candidateName;
+        p.isMega = true;
+        if(resolved?.slug) p.species = resolved.slug;
+      }
     }
+
     if(typeof resolvePokemonData === 'function'){
       let r = resolvePokemonData(p.name);
       p.sprite = r?.sprite || (typeof getPokemonSpriteUrl === 'function' ? getPokemonSpriteUrl(p.name.toLowerCase().replace(/[^a-z0-9]/g, '')) : '');
@@ -4506,7 +4666,7 @@ function parseShowdownBattleLog(logText, meta = {}) {
     }
   }
   result.mvp = mvpMon;
-  result.version = 3;
+  result.version = 4;
 
   return result;
 }
@@ -4881,7 +5041,7 @@ function openMatchReplayHubModal(tournamentId, matchKey, activeGameNum = 1, acti
   let canManage = canManageMatchReplays(t, m);
 
   let stats = activeReplay.stats;
-  if((!stats || !stats.sideAttribution || stats.version !== 3) && activeReplay.log){
+  if((!stats || !stats.sideAttribution || stats.version !== 4) && activeReplay.log){
     stats = parseShowdownBattleLog(activeReplay.log, { id: activeReplay.id, game: activeGameNum, match: m, coach1: p1, coach2: p2, manualSwapped: activeReplay.swapped });
     activeReplay.stats = stats;
   }
@@ -5043,12 +5203,28 @@ function renderMatchStatsBoxScoreHtml(stats, p1, p2, t, matchKey, gameNum) {
   let mInfo = findTournamentMatch(t, matchKey);
   let canManage = canManageMatchReplays(t, mInfo?.match);
 
-  let sideAKey = stats.sideAttribution?.swapped ? 'p2' : 'p1';
-  let sideBKey = stats.sideAttribution?.swapped ? 'p1' : 'p2';
+  let sideAKey = (coachAMons[0]?.side) || (stats.coachP1 === coachA ? 'p1' : (stats.coachP2 === coachA ? 'p2' : (stats.sideAttribution?.swapped ? 'p2' : 'p1')));
+  let sideBKey = (coachBMons[0]?.side) || (stats.coachP2 === coachB ? 'p2' : (stats.coachP1 === coachB ? 'p1' : (stats.sideAttribution?.swapped ? 'p1' : 'p2')));
 
   function renderTableForSide(coachName, mons, side) {
     let previewAll = stats.teamPreview?.[side] || [];
-    let benched = previewAll.filter(name => !mons.some(m => m.name.toLowerCase() === name.toLowerCase()));
+    let benched = previewAll.filter(previewMon => {
+      let pClean = String(previewMon || '').toLowerCase().trim();
+      let pNorm = pClean.replace(/[^a-z0-9]/g, '');
+      return !mons.some(m => {
+        let mName = String(m.name || '').toLowerCase().trim();
+        let mBase = String(m.baseSpecies || '').toLowerCase().trim();
+        let mSpecies = String(m.species || '').toLowerCase().trim();
+        let mn = mName.replace(/[^a-z0-9]/g, '');
+        let bn = mBase.replace(/[^a-z0-9]/g, '');
+        let sn = mSpecies.replace(/[^a-z0-9]/g, '');
+        if(pClean === mName || pClean === mBase || pClean === mSpecies) return true;
+        if(pNorm === mn || pNorm === bn || pNorm === sn) return true;
+        if(mn.includes(pNorm) || pNorm.includes(mn)) return true;
+        if(sn.includes(pNorm) || pNorm.includes(sn)) return true;
+        return false;
+      });
+    });
 
     return `
       <div style="background:#121218;border:1px solid #262633;border-radius:10px;overflow:hidden">
@@ -5112,11 +5288,19 @@ function renderMatchStatsBoxScoreHtml(stats, p1, p2, t, matchKey, gameNum) {
             <span style="font-weight:800;text-transform:uppercase;font-size:10px;color:#777">Benched:</span>
             <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
               ${benched.map(bName => {
-                let bSprite = typeof resolvePokemonData === 'function' ? resolvePokemonData(bName)?.sprite : (typeof getPokemonSpriteUrl === 'function' ? getPokemonSpriteUrl(bName.toLowerCase()) : '');
+                let coachRoster = t?.rosters?.[coachName] || [];
+                let rosterMatch = coachRoster.find(r => {
+                  let rStr = typeof r === 'string' ? r : (r.pokemon || r.name || '');
+                  let rNorm = rStr.toLowerCase().replace(/[^a-z0-9]/g, '');
+                  let bNorm = bName.toLowerCase().replace(/[^a-z0-9]/g, '');
+                  return rNorm === bNorm || rNorm.includes(bNorm) || bNorm.includes(rNorm);
+                });
+                let displayBName = rosterMatch ? (typeof rosterMatch === 'string' ? rosterMatch : (rosterMatch.pokemon || rosterMatch.name)) : bName;
+                let bSprite = typeof resolvePokemonData === 'function' ? resolvePokemonData(displayBName)?.sprite : (typeof getPokemonSpriteUrl === 'function' ? getPokemonSpriteUrl(displayBName.toLowerCase()) : '');
                 return `
                   <span style="display:inline-flex;align-items:center;gap:4px;background:#181822;border:1px solid #2e2e3e;border-radius:4px;padding:2px 6px;color:#bbb">
-                    <img src="${bSprite}" alt="${esc(bName)}" style="width:18px;height:18px;object-fit:contain" onerror="handleSpriteError(this)">
-                    ${esc(bName)}
+                    <img src="${bSprite}" alt="${esc(displayBName)}" style="width:18px;height:18px;object-fit:contain" onerror="handleSpriteError(this)">
+                    ${esc(displayBName)}
                   </span>
                 `;
               }).join('')}
@@ -6129,7 +6313,7 @@ function calculateTeamOfTheSeason(t) {
   let gfMonMap = new Map();
   gfReplays.forEach(r => {
     let stats = r.stats;
-    if(!stats || stats.version !== 3) {
+    if(!stats || stats.version !== 4) {
       stats = parseShowdownBattleLog(r.log, {
         id: r.id,
         game: r.game,
@@ -6191,7 +6375,7 @@ function calculateTeamOfTheSeason(t) {
   let monMap = new Map();
   allReplays.forEach(({ replay, match }) => {
     let stats = replay.stats;
-    if(!stats || stats.version !== 3) {
+    if(!stats || stats.version !== 4) {
       stats = parseShowdownBattleLog(replay.log, {
         id: replay.id,
         game: replay.game,
@@ -6755,7 +6939,7 @@ function getTournamentPokemonStatsMap(t) {
   let map = {};
   allReplays.forEach(({ replay, match }) => {
     let stats = replay.stats;
-    if(!stats || stats.version !== 3) {
+    if(!stats || stats.version !== 4) {
       stats = parseShowdownBattleLog(replay.log, {
         id: replay.id,
         game: replay.game,
@@ -6780,11 +6964,12 @@ function getTournamentPokemonStatsMap(t) {
         .replace(/[^a-z0-9]/g, '');
       let resolved = (typeof resolvePokemonData === 'function') ? resolvePokemonData(clean) : null;
       let kSlug = resolved?.slug ? resolved.slug.toLowerCase().replace(/[^a-z0-9]/g, '') : '';
+      let kResName = resolved?.name ? resolved.name.toLowerCase().replace(/[^a-z0-9]/g, '') : '';
 
-      let statObj = map[kClean] || (alt ? map[alt] : null) || (kSlug ? map[kSlug] : null);
+      let statObj = map[kClean] || (alt ? map[alt] : null) || (kSlug ? map[kSlug] : null) || (kResName ? map[kResName] : null);
       if(!statObj) {
         statObj = {
-          name: clean,
+          name: resolved?.name || clean,
           games: 0,
           kills: 0,
           dmg: 0,
@@ -6804,7 +6989,9 @@ function getTournamentPokemonStatsMap(t) {
       map[kClean] = statObj;
       if(alt) map[alt] = statObj;
       if(kSlug) map[kSlug] = statObj;
+      if(kResName) map[kResName] = statObj;
       if(resolved?.slug) map[resolved.slug] = statObj;
+      if(resolved?.name) map[resolved.name] = statObj;
     });
   });
 
@@ -6843,6 +7030,11 @@ function findPokemonStatsInMap(map, name) {
     let kSlug = resolved.slug.toLowerCase().replace(/[^a-z0-9]/g, '');
     if(map[kSlug]) return map[kSlug];
     if(map[resolved.slug]) return map[resolved.slug];
+  }
+  if(resolved && resolved.name) {
+    let kResName = resolved.name.toLowerCase().replace(/[^a-z0-9]/g, '');
+    if(map[kResName]) return map[kResName];
+    if(map[resolved.name]) return map[resolved.name];
   }
 
   return null;
