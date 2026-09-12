@@ -19232,25 +19232,45 @@ function getMatchTimestamp(m, t, defaultIdx) {
   return base + (typeof defaultIdx === 'number' ? defaultIdx : 0);
 }
 
-function getTopCutStageRank(m) {
-  let title = String(m?.stage || m?.title || m?.roundTitle || m?.label || '').toLowerCase();
+function getTopCutStageRank(m, t) {
+  let title = String(m?.stage || m?.title || m?.roundTitle || m?.label || '').toLowerCase().trim();
   if(title.includes('bracket reset')) return 100;
   if(title.includes('grand final') || title.includes('championship final')) return 90;
+  if(title.includes('final') && !title.includes('semi') && !title.includes('quarter') && !title.includes('round') && !title.includes('winner') && !title.includes('loser') && !title.includes('wb') && !title.includes('lb')) return 85;
   if(title.includes('bronze') || title.includes('3rd place')) return 82;
   if(title.includes('losers final') || title.includes('loser final') || title.includes('lb final')) return 80;
   if(title.includes('winners final') || title.includes('winner final') || title.includes('wb final')) return 75;
-  if(title.includes('final') && !title.includes('semi') && !title.includes('quarter') && !title.includes('round')) return 85;
-
   if(title.includes('losers semi') || title.includes('loser semi') || title.includes('lb semi')) return 70;
-  if(title.includes('winners semi') || title.includes('winner semi') || title.includes('wb semi') || title.includes('semifinal') || title.includes('semi-final')) return 65;
+
+  let is4Player = false;
+  let tourney = t || (m?.tournamentId && typeof tournamentData !== 'undefined' ? tournamentData[m.tournamentId] : null);
+  if(tourney) {
+    if(tourney.bracketManagerData?.match && tourney.bracketManagerData.match.length <= 7) is4Player = true;
+    else if(tourney.topCutCache?.results && tourney.topCutCache.results.length <= 7) is4Player = true;
+    else if(tourney.topCutCache?.participants && tourney.topCutCache.participants.length <= 4) is4Player = true;
+  }
+
+  // In a 4-player double elimination bracket:
+  // WB Semifinals is Round 1 (rank 55). Losers drop to Losers Round 1 (Round 2, rank 65).
+  if(is4Player) {
+    if(title.includes('losers round 1') || title.includes('loser round 1') || title.includes('lb r1') || title.includes('lb round 1')) return 65;
+    if(title.includes('winners semi') || title.includes('winner semi') || title.includes('wb semi') || title.includes('semifinal')) return 55;
+  }
 
   let lrMatch = title.match(/losers?\s+round\s*(\d+)/i) || title.match(/lb\s*r(?:ound)?\s*(\d+)/i);
-  if(lrMatch) return 55 + parseInt(lrMatch[1], 10);
+  if(lrMatch) {
+    let rNum = parseInt(lrMatch[1], 10);
+    if(rNum === 1) return 50;
+    if(rNum === 2) return 65;
+    return 65 + rNum;
+  }
+
+  if(title.includes('winners semi') || title.includes('winner semi') || title.includes('wb semi') || title.includes('semifinal') || title.includes('semi-final')) return 55;
 
   let wrMatch = title.match(/winners?\s+round\s*(\d+)/i) || title.match(/wb\s*r(?:ound)?\s*(\d+)/i);
-  if(wrMatch) return 50 + parseInt(wrMatch[1], 10);
+  if(wrMatch) return 40 + parseInt(wrMatch[1], 10);
 
-  if(title.includes('quarterfinal') || title.includes('quarter-final') || title.includes('quarter final') || title.includes('qf')) return 50;
+  if(title.includes('quarterfinal') || title.includes('quarter-final') || title.includes('quarter final') || title.includes('qf')) return 45;
 
   return 40;
 }
@@ -19294,14 +19314,18 @@ function compareTournamentMatches(a, b) {
 
   // 3. Both are Top Cut matches in the same tournament
   if(a.isTopCut && b.isTopCut){
-    let rA = getTopCutStageRank(a);
-    let rB = getTopCutStageRank(b);
-    if(rA !== rB) return rB - rA; // Higher stage first (Bracket Reset > Grand Final > Winners Final...)
-
-    // If stage rank is tied, check timestamps descending
+    // If distinct timestamps are recorded, sort by timestamp descending (newest played match first)
     let tA = a.timestamp || 0;
     let tB = b.timestamp || 0;
-    if(tA && tB && tA !== tB) return tB - tA;
+    if(tA && tB && tA !== tB){
+      return tB - tA;
+    }
+
+    let ta = typeof tournamentData !== 'undefined' ? tournamentData[a.tournamentId] : null;
+    let tb = typeof tournamentData !== 'undefined' ? tournamentData[b.tournamentId] : null;
+    let rA = getTopCutStageRank(a, ta);
+    let rB = getTopCutStageRank(b, tb);
+    if(rA !== rB) return rB - rA; // Higher stage first (Bracket Reset > Grand Final > Losers Final > Winners Final...)
 
     let idxA = typeof a.fixtureIndex === 'number' ? a.fixtureIndex : 0;
     let idxB = typeof b.fixtureIndex === 'number' ? b.fixtureIndex : 0;
