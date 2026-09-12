@@ -6396,6 +6396,47 @@ function matchCard(m,latest=false){
    4. Most Damage Healed / Game (Master Healer)
    ------------------------------------------------------------ */
 
+function isCoachMatch(c1, c2, t) {
+  if(!c1 || !c2) return false;
+  let s1 = String(c1).trim().toLowerCase();
+  let s2 = String(c2).trim().toLowerCase();
+  if(!s1 || !s2) return false;
+  if(s1 === s2) return true;
+  let n1 = s1.replace(/[^a-z0-9]/g, '');
+  let n2 = s2.replace(/[^a-z0-9]/g, '');
+  if(n1 && n2 && (n1 === n2 || (n1.length >= 3 && n2.length >= 3 && (n1.includes(n2) || n2.includes(n1))))) return true;
+
+  // Check profiles if available
+  if(typeof profiles !== 'undefined' && profiles) {
+    let getAliases = (name) => {
+      let list = [name.toLowerCase(), name.toLowerCase().replace(/[^a-z0-9]/g, '')];
+      let p = profiles[name] || Object.values(profiles).find(x => x && (x.name?.toLowerCase() === name.toLowerCase() || x.trainer?.toLowerCase() === name.toLowerCase()));
+      if(p) {
+        if(p.name) list.push(p.name.toLowerCase(), p.name.toLowerCase().replace(/[^a-z0-9]/g, ''));
+        if(p.trainer) list.push(p.trainer.toLowerCase(), p.trainer.toLowerCase().replace(/[^a-z0-9]/g, ''));
+        if(p.showdownUser) list.push(...p.showdownUser.split(',').map(u => u.trim().toLowerCase().replace(/[^a-z0-9]/g, '')).filter(Boolean));
+        if(Array.isArray(p.showdownUsernames)) list.push(...p.showdownUsernames.map(u => String(u).trim().toLowerCase().replace(/[^a-z0-9]/g, '')).filter(Boolean));
+      }
+      return Array.from(new Set(list.filter(Boolean)));
+    };
+    let a1 = getAliases(c1);
+    let a2 = getAliases(c2);
+    if(a1.some(x => a2.some(y => x === y || (x.length >= 3 && y.length >= 3 && (x.includes(y) || y.includes(x)))))) {
+      return true;
+    }
+  }
+
+  // Check tournament rosters keys
+  if(t?.rosters) {
+    let rKeys = Object.keys(t.rosters);
+    let k1 = rKeys.find(k => k.toLowerCase() === s1 || k.toLowerCase().replace(/[^a-z0-9]/g, '') === n1);
+    let k2 = rKeys.find(k => k.toLowerCase() === s2 || k.toLowerCase().replace(/[^a-z0-9]/g, '') === n2);
+    if(k1 && k2 && k1 === k2) return true;
+  }
+
+  return false;
+}
+
 function getGrandFinalReplays(t) {
   if(!t) return [];
   let gfReps = [];
@@ -6410,39 +6451,101 @@ function getGrandFinalReplays(t) {
     }
   }
 
+  let isGfTitle = (str) => {
+    if(!str || typeof str !== 'string') return false;
+    let s = str.toLowerCase();
+    if(s.includes('3rd') || s.includes('third') || s.includes('bronze')) return false;
+    return /grand\s*final|bracket\s*reset|championship\s*final|\bfinals?\b/i.test(s);
+  };
+
   // Method 1: Cross-reference with getTournamentTopCutModel
   if(typeof getTournamentTopCutModel === 'function') {
-    let model = getTournamentTopCutModel(t);
-    if(model && Array.isArray(model.gfMatches) && model.gfMatches.length > 0) {
-      let finalsOnly = model.gfMatches.filter(m => {
-        let title = (m.title || '').toLowerCase();
-        return !title.includes('3rd') && !title.includes('third');
-      });
-      finalsOnly.forEach(m => {
-        let keys = [
-          m.id,
-          'tc_' + m.id,
-          m.actualMatchId != null ? String(m.actualMatchId) : null,
-          m.actualMatchId != null ? 'tc_' + m.actualMatchId : null
-        ].filter(Boolean);
-
-        for(let k of keys) {
-          let list = t.topCutReplays?.[k];
-          if(Array.isArray(list) && list.length > 0) {
-            list.forEach(r => addReplay(r));
-            break;
+    try {
+      let model = getTournamentTopCutModel(t);
+      if(model && Array.isArray(model.gfMatches) && model.gfMatches.length > 0) {
+        let finalsOnly = model.gfMatches.filter(m => {
+          let title = (m.title || '').toLowerCase();
+          return !title.includes('3rd') && !title.includes('third') && !title.includes('bronze');
+        });
+        finalsOnly.forEach(m => {
+          if(Array.isArray(m.replays) && m.replays.length > 0) {
+            m.replays.forEach(r => addReplay(r));
           }
-        }
-      });
+          let keys = [
+            m.id,
+            'tc_' + m.id,
+            m.actualMatchId != null ? String(m.actualMatchId) : null,
+            m.actualMatchId != null ? 'tc_' + m.actualMatchId : null,
+            m.matchId != null ? String(m.matchId) : null,
+            m.matchId != null ? 'tc_' + m.matchId : null
+          ].filter(Boolean);
+
+          for(let k of keys) {
+            let list = t.topCutReplays?.[k];
+            if(Array.isArray(list) && list.length > 0) {
+              list.forEach(r => addReplay(r));
+            }
+          }
+
+          if(t.topCutReplays && (m.p1 || m.a) && (m.p2 || m.b)) {
+            let p1 = m.p1 || m.a;
+            let p2 = m.p2 || m.b;
+            Object.values(t.topCutReplays).forEach(list => {
+              if(Array.isArray(list) && list.length > 0) {
+                let r0 = list[0];
+                if(r0 && ((isCoachMatch(r0.p1, p1, t) && isCoachMatch(r0.p2, p2, t)) || (isCoachMatch(r0.p1, p2, t) && isCoachMatch(r0.p2, p1, t)))) {
+                  list.forEach(r => addReplay(r));
+                }
+              }
+            });
+          }
+        });
+      }
+    } catch(e) {
+      console.warn('Error in getGrandFinalReplays (topCutModel):', e);
     }
   }
 
-  // Method 2: Fallback to bracketManagerData
-  if(gfReps.length === 0 && t.bracketManagerData?.match) {
-    let bmdMatches = t.bracketManagerData.match;
+  // Method 2: Fallback to topCutCache results
+  if(t.topCutCache?.results && Array.isArray(t.topCutCache.results)) {
+    let gfResults = t.topCutCache.results.filter(res => isGfTitle(res.title));
+    gfResults.forEach(res => {
+      let keys = [
+        res.matchId != null ? String(res.matchId) : null,
+        res.matchId != null ? 'tc_' + res.matchId : null,
+        res.id != null ? String(res.id) : null,
+        res.id != null ? 'tc_' + res.id : null
+      ].filter(Boolean);
+
+      for(let k of keys) {
+        let list = t.topCutReplays?.[k];
+        if(Array.isArray(list) && list.length > 0) {
+          list.forEach(r => addReplay(r));
+        }
+      }
+
+      if(t.topCutReplays && res.p1 && res.p2) {
+        Object.values(t.topCutReplays).forEach(list => {
+          if(Array.isArray(list) && list.length > 0) {
+            let r0 = list[0];
+            if(r0 && ((isCoachMatch(r0.p1, res.p1, t) && isCoachMatch(r0.p2, res.p2, t)) || (isCoachMatch(r0.p1, res.p2, t) && isCoachMatch(r0.p2, res.p1, t)))) {
+              list.forEach(r => addReplay(r));
+            }
+          }
+        });
+      }
+    });
+  }
+
+  // Method 3: Fallback to bracketManagerData
+  if(t.bracketManagerData?.match && Array.isArray(t.bracketManagerData.match)) {
+    let bmd = t.bracketManagerData;
+    let bmdMatches = bmd.match;
+    let finalGroup = (bmd.group || []).find(g => g.number === 3);
+    let finalGroupId = finalGroup ? finalGroup.id : null;
     let gfMatches = bmdMatches.filter(m =>
-      (m.group_id === 2) ||
-      (m.title && /grand\s*final|championship\s*final/i.test(m.title))
+      (finalGroupId != null && m.group_id === finalGroupId) ||
+      isGfTitle(m.title)
     );
     gfMatches.forEach(m => {
       let keys = [m.id, 'tc_' + m.id, String(m.id)];
@@ -6450,7 +6553,37 @@ function getGrandFinalReplays(t) {
         let list = t.topCutReplays?.[k];
         if(Array.isArray(list) && list.length > 0) {
           list.forEach(r => addReplay(r));
-          break;
+        }
+      }
+    });
+  }
+
+  // Method 4: Scan topCutReplays keys and metadata directly
+  if(t.topCutReplays && typeof t.topCutReplays === 'object') {
+    Object.keys(t.topCutReplays).forEach(k => {
+      let list = t.topCutReplays[k];
+      if(!Array.isArray(list) || list.length === 0) return;
+      let isGfKey = /^(tc_)?(gf\d*|grand_?finals?|bracket_?reset|finals?)$/i.test(k);
+      let matchObj = (typeof findTournamentMatch === 'function') ? findTournamentMatch(t, k)?.match : null;
+      let isGfMatch = matchObj && isGfTitle(matchObj.title || matchObj.round || matchObj.stage);
+      if(isGfKey || isGfMatch) {
+        list.forEach(r => addReplay(r));
+      } else {
+        list.forEach(r => {
+          if(r && (isGfTitle(r.title) || isGfTitle(r.matchTitle) || isGfTitle(r.round) || isGfTitle(r.stage))) {
+            addReplay(r);
+          }
+        });
+      }
+    });
+  }
+
+  // Method 5: Check t.matches
+  if(Array.isArray(t.matches)) {
+    t.matches.forEach(m => {
+      if(isGfTitle(m.title) || isGfTitle(m.round) || isGfTitle(m.stage) || isGfTitle(m.group)) {
+        if(Array.isArray(m.replays)) {
+          m.replays.forEach(r => addReplay(r));
         }
       }
     });
@@ -6477,7 +6610,7 @@ function calculateTeamOfTheSeason(t) {
     Object.keys(t.topCutReplays).forEach(tcKey => {
       let rList = t.topCutReplays[tcKey];
       if(Array.isArray(rList)) {
-        let tcMatch = findTournamentMatch(t, tcKey)?.match || null;
+        let tcMatch = (typeof findTournamentMatch === 'function') ? findTournamentMatch(t, tcKey)?.match : null;
         rList.forEach(r => {
           let repId = r.id || `${tcKey}_g${r.game}`;
           if(!seenReplayIds.has(repId)){
@@ -6495,26 +6628,50 @@ function calculateTeamOfTheSeason(t) {
 
   // 2. Finals MVP calculation from Grand Finals games (including bracket reset if played)
   let gfReplays = getGrandFinalReplays(t);
+
+  // Fallback: If gfReplays didn't capture matches, check allReplays for titles matching finals
+  if(gfReplays.length === 0 && allReplays.length > 0) {
+    allReplays.forEach(({ replay, match }) => {
+      let title = replay?.matchTitle || replay?.title || match?.title || match?.round || match?.stage || '';
+      if(/grand\s*final|bracket\s*reset|championship\s*final/i.test(title) && !/3rd|third|bronze/i.test(title)) {
+        let repId = replay.id || `${replay.game}_${replay.date || ''}_${replay.winner || ''}`;
+        if(!gfReplays.some(x => (x.id || `${x.game}_${x.date || ''}_${x.winner || ''}`) === repId)) {
+          gfReplays.push(replay);
+        }
+      }
+    });
+  }
+
   let gfMonMap = new Map();
   gfReplays.forEach(r => {
     let stats = r.stats;
-    if(!stats || !stats.version || stats.version < 5) {
-      stats = parseShowdownBattleLog(r.log, {
+    let hasValidStats = stats && stats.pokemon && (Array.isArray(stats.pokemon) ? stats.pokemon.length > 0 : Object.keys(stats.pokemon).length > 0);
+    if((!hasValidStats || !stats.version || stats.version < 5) && r.log && typeof r.log === 'string' && r.log.includes('|')) {
+      let parsed = parseShowdownBattleLog(r.log, {
         id: r.id,
         game: r.game,
         manualSwapped: r.swapped
       });
+      if(parsed && parsed.pokemon && (Array.isArray(parsed.pokemon) ? parsed.pokemon.length > 0 : Object.keys(parsed.pokemon).length > 0)) {
+        stats = parsed;
+      }
     }
     let pList = Array.isArray(stats?.pokemon) ? stats.pokemon : (stats?.pokemon ? Object.values(stats.pokemon) : []);
     pList.forEach(p => {
       if(!p.name) return;
       let cleanName = normalizeBattleFormToDraftForm(p.name.trim());
       let key = cleanName.toLowerCase();
+      let kills = p.kills || 0;
+      let damageDealt = p.damageDealt || 0;
+      let hpHealed = p.hpHealed || 0;
+      let fainted = Boolean(p.fainted);
+      let impact = p.impactScore != null ? p.impactScore : ((kills * 150) + Math.round(damageDealt) + (fainted ? 0 : 75) + Math.round(hpHealed * 0.5));
+
       if(!gfMonMap.has(key)) {
         gfMonMap.set(key, {
           name: cleanName,
           coach: p.coach || '',
-          sprite: p.sprite || (typeof resolvePokemonData === 'function' ? resolvePokemonData(cleanName)?.sprite : getPokemonSpriteUrl(cleanName.toLowerCase())),
+          sprite: p.sprite || (typeof resolvePokemonData === 'function' ? resolvePokemonData(cleanName)?.sprite : (typeof getPokemonSpriteUrl === 'function' ? getPokemonSpriteUrl(cleanName.toLowerCase()) : '')),
           games: 0,
           totalImpact: 0,
           totalKills: 0,
@@ -6523,26 +6680,48 @@ function calculateTeamOfTheSeason(t) {
       }
       let entry = gfMonMap.get(key);
       entry.games += 1;
-      entry.totalImpact += (p.impactScore || 0);
-      entry.totalKills += (p.kills || 0);
-      entry.totalDamageDealt += (p.damageDealt || 0);
+      entry.totalImpact += impact;
+      entry.totalKills += kills;
+      entry.totalDamageDealt += damageDealt;
       if(!entry.coach && p.coach) entry.coach = p.coach;
     });
   });
 
   let finalsMvp = null;
   let minGfGames = Math.max(1, Math.ceil(gfReplays.length * 0.5));
-  let champ = (t.topCutCache?.champion || t.champion || '').trim();
+  let champ = (t.topCutCache?.champion || t.champion || (typeof getTournamentTopCutModel === 'function' ? getTournamentTopCutModel(t)?.champion : '') || '').trim();
   if(champ.toUpperCase() === 'TBD') champ = '';
-  let champRoster = (champ && t.rosters && t.rosters[champ]) ? t.rosters[champ] : [];
+
+  // If champion not explicitly recorded, deduce from gfReplays wins
+  if(!champ && gfReplays.length > 0) {
+    let winCounts = {};
+    gfReplays.forEach(r => {
+      let w = r.winner || r.stats?.winner || '';
+      if(w) winCounts[w] = (winCounts[w] || 0) + 1;
+    });
+    let sortedW = Object.keys(winCounts).sort((a,b) => winCounts[b] - winCounts[a]);
+    if(sortedW.length > 0 && winCounts[sortedW[0]] > 0) {
+      champ = sortedW[0];
+    }
+  }
+
+  let champRoster = [];
+  if(champ && t.rosters) {
+    if(t.rosters[champ]) {
+      champRoster = t.rosters[champ];
+    } else {
+      let matchedKey = Object.keys(t.rosters).find(k => isCoachMatch(k, champ, t));
+      if(matchedKey) champRoster = t.rosters[matchedKey];
+    }
+  }
   let champMonNames = new Set(champRoster.map(x => (typeof x === 'string' ? x : (x.pokemon || x.name || '')).trim().toLowerCase()));
 
-  if(gfMonMap.size > 0 && champ) {
+  if(gfMonMap.size > 0) {
     let gfList = Array.from(gfMonMap.values()).map(m => {
-      let isChampTeam = (m.coach && m.coach.trim().toLowerCase() === champ.toLowerCase()) || champMonNames.has(m.name.trim().toLowerCase());
+      let isChampTeam = (champ && m.coach && isCoachMatch(m.coach, champ, t)) || champMonNames.has(m.name.trim().toLowerCase());
       let coachName = m.coach;
       if(isChampTeam || !coachName || coachName.toLowerCase().startsWith('player ')) {
-        coachName = champ;
+        coachName = champ || coachName;
       }
       return {
         ...m,
@@ -6551,7 +6730,19 @@ function calculateTeamOfTheSeason(t) {
         isChampTeam: Boolean(isChampTeam)
       };
     });
-    let qualified = gfList.filter(m => m.isChampTeam && m.games >= minGfGames);
+
+    let qualified = [];
+    if(champ) {
+      qualified = gfList.filter(m => m.isChampTeam && m.games >= minGfGames);
+      if(qualified.length === 0) qualified = gfList.filter(m => m.isChampTeam);
+    }
+    if(qualified.length === 0) {
+      qualified = gfList.filter(m => m.games >= minGfGames);
+    }
+    if(qualified.length === 0) {
+      qualified = [...gfList];
+    }
+
     qualified.sort((a, b) => {
       if(b.avgImpact !== a.avgImpact) return b.avgImpact - a.avgImpact;
       if(b.games !== a.games) return b.games - a.games;
@@ -6564,8 +6755,9 @@ function calculateTeamOfTheSeason(t) {
   let monMap = new Map();
   allReplays.forEach(({ replay, match, isTopCut }) => {
     let stats = replay.stats;
-    if(!stats || !stats.version || stats.version < 5) {
-      stats = parseShowdownBattleLog(replay.log, {
+    let hasValidStats = stats && stats.pokemon && (Array.isArray(stats.pokemon) ? stats.pokemon.length > 0 : Object.keys(stats.pokemon).length > 0);
+    if((!hasValidStats || !stats.version || stats.version < 5) && replay.log && typeof replay.log === 'string' && replay.log.includes('|')) {
+      let parsed = parseShowdownBattleLog(replay.log, {
         id: replay.id,
         game: replay.game,
         match: match,
@@ -6573,6 +6765,9 @@ function calculateTeamOfTheSeason(t) {
         coach2: match?.b || match?.p2,
         manualSwapped: replay.swapped
       });
+      if(parsed && parsed.pokemon && (Array.isArray(parsed.pokemon) ? parsed.pokemon.length > 0 : Object.keys(parsed.pokemon).length > 0)) {
+        stats = parsed;
+      }
     }
     let pList = Array.isArray(stats?.pokemon) ? stats.pokemon : (stats?.pokemon ? Object.values(stats.pokemon) : []);
     if(!pList || pList.length === 0) return;
@@ -6583,8 +6778,13 @@ function calculateTeamOfTheSeason(t) {
       let topMon = null;
       let topScore = -1;
       pList.forEach(p => {
-        if((p.impactScore || 0) > topScore) {
-          topScore = p.impactScore || 0;
+        let kills = p.kills || 0;
+        let damageDealt = p.damageDealt || 0;
+        let hpHealed = p.hpHealed || 0;
+        let fainted = Boolean(p.fainted);
+        let curScore = p.impactScore != null ? p.impactScore : ((kills * 150) + Math.round(damageDealt) + (fainted ? 0 : 75) + Math.round(hpHealed * 0.5));
+        if(curScore > topScore) {
+          topScore = curScore;
           topMon = p;
         }
       });
@@ -6595,11 +6795,18 @@ function calculateTeamOfTheSeason(t) {
       if(!p.name) return;
       let cleanName = normalizeBattleFormToDraftForm(p.name.trim());
       let key = cleanName.toLowerCase();
+      let kills = p.kills || 0;
+      let damageDealt = p.damageDealt || 0;
+      let damageTaken = p.damageTaken || 0;
+      let hpHealed = p.hpHealed || 0;
+      let fainted = Boolean(p.fainted);
+      let curImpact = p.impactScore != null ? p.impactScore : ((kills * 150) + Math.round(damageDealt) + (fainted ? 0 : 75) + Math.round(hpHealed * 0.5));
+
       if(!monMap.has(key)) {
         monMap.set(key, {
           name: cleanName,
           coach: p.coach || '',
-          sprite: p.sprite || (typeof resolvePokemonData === 'function' ? resolvePokemonData(cleanName)?.sprite : getPokemonSpriteUrl(cleanName.toLowerCase())),
+          sprite: p.sprite || (typeof resolvePokemonData === 'function' ? resolvePokemonData(cleanName)?.sprite : (typeof getPokemonSpriteUrl === 'function' ? getPokemonSpriteUrl(cleanName.toLowerCase()) : '')),
           games: 0,
           regGames: 0,
           tcGames: 0,
@@ -6622,9 +6829,9 @@ function calculateTeamOfTheSeason(t) {
         entry.tcGames += 1;
       } else {
         entry.regGames += 1;
-        entry.regKills += (p.kills || 0);
-        entry.regDamageDealt += (p.damageDealt || 0);
-        entry.regImpactScoreTotal += (p.impactScore || 0);
+        entry.regKills += kills;
+        entry.regDamageDealt += damageDealt;
+        entry.regImpactScoreTotal += curImpact;
       }
 
       if(key === gameMvpName) {
@@ -6632,11 +6839,11 @@ function calculateTeamOfTheSeason(t) {
         if(!isTopCut) entry.regMatchMvps += 1;
       }
 
-      entry.totalKills += (p.kills || 0);
-      entry.totalDamageDealt += (p.damageDealt || 0);
-      entry.totalDamageTaken += (p.damageTaken || 0);
-      entry.totalHpHealed += (p.hpHealed || 0);
-      entry.impactScoreTotal += (p.impactScore || 0);
+      entry.totalKills += kills;
+      entry.totalDamageDealt += damageDealt;
+      entry.totalDamageTaken += damageTaken;
+      entry.totalHpHealed += hpHealed;
+      entry.impactScoreTotal += curImpact;
       if(!entry.coach && p.coach) entry.coach = p.coach;
       (p.moves || []).forEach(mv => entry.moves.add(mv));
     });
@@ -6716,6 +6923,11 @@ function calculateTeamOfTheSeason(t) {
   // 5. Teams of the Season: First Team, Second Team, Third Team
   // 2 DPS slots and 2 Tank slots per tier, deduplicated across all 12 slots (minimum 3 appearances)
   let eligibleTots = list.filter(m => (m.games || 0) >= 3);
+  // If we don't have enough 3+ game candidates to fill all tiers (up to 12 slots), supplement with remaining candidates
+  if(eligibleTots.length < 12 && list.length > eligibleTots.length) {
+    let lowerGameMons = list.filter(m => (m.games || 0) < 3).sort((a, b) => (b.games || 0) - (a.games || 0));
+    eligibleTots = [...eligibleTots, ...lowerGameMons];
+  }
   if(eligibleTots.length === 0) eligibleTots = [...list];
 
   // Identify tournament leaders for individual honor tags
@@ -6863,16 +7075,16 @@ function renderMajorAwardsCardsHtml(major, t, isCompact = false) {
   let items = [
     {
       key: 'finalsMvp',
-      categoryTitle: 'Grand Finals MVP',
-      roleTitle: 'Grand Finals MVP',
+      categoryTitle: 'Finals MVP',
+      roleTitle: 'Finals MVP',
       icon: '\uD83C\uDFC6',
       badgeColor: '#f59e0b',
       badgeBg: 'rgba(245,158,11,0.16)',
       badgeBorder: 'rgba(245,158,11,0.4)',
       mon: major.finalsMvp,
       statVal: major.finalsMvp ? String(Math.round(major.finalsMvp.avgImpact)) : 'TBD',
-      statUnit: major.finalsMvp ? 'GF Avg Impact / Game' : 'Grand Finals',
-      subMetric: major.finalsMvp ? `${major.finalsMvp.games} Finals ${major.finalsMvp.games === 1 ? 'Game' : 'Games'} (incl. Reset)` : 'Decided in Grand Finals (Champion Team)'
+      statUnit: major.finalsMvp ? 'Finals Avg Impact / Game' : 'Finals',
+      subMetric: major.finalsMvp ? `${major.finalsMvp.games} Finals ${major.finalsMvp.games === 1 ? 'Game' : 'Games'} (incl. Reset)` : 'Decided in Finals (Champion Team)'
     },
     {
       key: 'mvp',
@@ -7218,7 +7430,7 @@ function renderTournamentAwardsTabHtml(t) {
     `;
   }
 
-  let showCards = (tots.firstTeam && tots.firstTeam.length > 0) || (tots.majorAwards && tots.majorAwards.mvp);
+  let showCards = (tots.firstTeam && tots.firstTeam.length > 0) || (tots.majorAwards && (tots.majorAwards.mvp || tots.majorAwards.finalsMvp)) || (tots.pokemonCount > 0);
   let major = tots.majorAwards || {};
   let curTab = window.awardsTierTab || '1';
   let isAll = (curTab === 'all');
@@ -7333,8 +7545,9 @@ function getTournamentPokemonStatsMap(t) {
   let map = {};
   allReplays.forEach(({ replay, match }) => {
     let stats = replay.stats;
-    if(!stats || !stats.version || stats.version < 5) {
-      stats = parseShowdownBattleLog(replay.log, {
+    let hasValidStats = stats && stats.pokemon && (Array.isArray(stats.pokemon) ? stats.pokemon.length > 0 : Object.keys(stats.pokemon).length > 0);
+    if((!hasValidStats || !stats.version || stats.version < 5) && replay.log && typeof replay.log === 'string' && replay.log.includes('|')) {
+      let parsed = parseShowdownBattleLog(replay.log, {
         id: replay.id,
         game: replay.game,
         match: match,
@@ -7342,6 +7555,9 @@ function getTournamentPokemonStatsMap(t) {
         coach2: match?.b || match?.p2,
         manualSwapped: replay.swapped
       });
+      if(parsed && parsed.pokemon && (Array.isArray(parsed.pokemon) ? parsed.pokemon.length > 0 : Object.keys(parsed.pokemon).length > 0)) {
+        stats = parsed;
+      }
     }
     let pList = Array.isArray(stats?.pokemon) ? stats.pokemon : (stats?.pokemon ? Object.values(stats.pokemon) : []);
     pList.forEach(p => {
