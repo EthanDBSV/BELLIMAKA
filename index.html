@@ -3332,6 +3332,188 @@ function saveBracket(){let t=activeT();t.bracket=[['bm1a','bm1b'],['bm2a','bm2b'
 
 
 
+/* ==========================================================================
+   INDEXEDDB PERSISTENCE ENGINE (Large Data & Replay Storage)
+   ========================================================================== */
+window._replayLogCache = window._replayLogCache || {};
+
+const DRAFTDEX_IDB_NAME = 'BellimakaDB';
+const DRAFTDEX_IDB_VER = 1;
+const DRAFTDEX_STORE = 'app_state';
+
+function openDraftdexDB() {
+  return new Promise((resolve) => {
+    if(typeof window === 'undefined' || !window.indexedDB) return resolve(null);
+    try {
+      let req = window.indexedDB.open(DRAFTDEX_IDB_NAME, DRAFTDEX_IDB_VER);
+      req.onupgradeneeded = (e) => {
+        let db = e.target.result;
+        if(!db.objectStoreNames.contains(DRAFTDEX_STORE)) {
+          db.createObjectStore(DRAFTDEX_STORE);
+        }
+      };
+      req.onsuccess = () => resolve(req.result);
+      req.onerror = () => resolve(null);
+    } catch(e) {
+      resolve(null);
+    }
+  });
+}
+
+async function idbGet(key) {
+  try {
+    let db = await openDraftdexDB();
+    if(!db) return null;
+    return new Promise((resolve) => {
+      let tx = db.transaction(DRAFTDEX_STORE, 'readonly');
+      let store = tx.objectStore(DRAFTDEX_STORE);
+      let req = store.get(key);
+      req.onsuccess = () => resolve(req.result != null ? req.result : null);
+      req.onerror = () => resolve(null);
+    });
+  } catch(e) {
+    return null;
+  }
+}
+
+async function idbSet(key, val) {
+  try {
+    let db = await openDraftdexDB();
+    if(!db) return false;
+    return new Promise((resolve) => {
+      let tx = db.transaction(DRAFTDEX_STORE, 'readwrite');
+      let store = tx.objectStore(DRAFTDEX_STORE);
+      let req = store.put(val, key);
+      req.onsuccess = () => resolve(true);
+      req.onerror = () => resolve(false);
+    });
+  } catch(e) {
+    return false;
+  }
+}
+
+function extractAllReplayLogs(tourneys) {
+  let logMap = {};
+  if(!tourneys || typeof tourneys !== 'object') return logMap;
+  Object.values(tourneys).forEach(t => {
+    if(!t) return;
+    let tName = t.name || t.id || '';
+    if(Array.isArray(t.matches)) {
+      t.matches.forEach(m => {
+        if(m && Array.isArray(m.replays)) {
+          m.replays.forEach(r => {
+            if(r && r.log && typeof r.log === 'string' && r.log.length > 20) {
+              if(r.id) logMap[r.id] = r.log;
+              let p1 = m.a || m.p1 || '';
+              let p2 = m.b || m.p2 || '';
+              let g = r.game || 1;
+              if(p1 && p2) {
+                logMap[`${t.id}_${p1}_${p2}_g${g}`] = r.log;
+                logMap[`${t.id}_${p2}_${p1}_g${g}`] = r.log;
+                logMap[`${tName}_${p1}_${p2}_g${g}`] = r.log;
+                logMap[`${tName}_${p2}_${p1}_g${g}`] = r.log;
+              }
+            }
+          });
+        }
+      });
+    }
+    if(t.topCutReplays && typeof t.topCutReplays === 'object') {
+      Object.entries(t.topCutReplays).forEach(([k, list]) => {
+        if(Array.isArray(list)) {
+          list.forEach(r => {
+            if(r && r.log && typeof r.log === 'string' && r.log.length > 20) {
+              if(r.id) logMap[r.id] = r.log;
+              logMap[`${t.id}_tc_${k}_g${r.game || 1}`] = r.log;
+              logMap[`${tName}_tc_${k}_g${r.game || 1}`] = r.log;
+            }
+          });
+        }
+      });
+    }
+  });
+  return logMap;
+}
+
+async function saveTournamentLogsToIndexedDB(tourneys) {
+  if(!tourneys || typeof tourneys !== 'object') return;
+  try {
+    idbSet('tournaments_full', tourneys);
+    let newLogs = extractAllReplayLogs(tourneys);
+    let count = Object.keys(newLogs).length;
+    if(count > 0) {
+      Object.assign(window._replayLogCache, newLogs);
+      let existingLogs = (await idbGet('replay_logs')) || {};
+      let merged = Object.assign({}, existingLogs, newLogs);
+      idbSet('replay_logs', merged);
+    }
+  } catch(e) {
+    console.warn('Draftdex: saveTournamentLogsToIndexedDB note:', e);
+  }
+}
+
+async function hydrateTournamentsFromIndexedDB() {
+  try {
+    let dbLogs = await idbGet('replay_logs');
+    if(dbLogs && typeof dbLogs === 'object') {
+      Object.assign(window._replayLogCache, dbLogs);
+    }
+    let fullTourneys = await idbGet('tournaments_full');
+    if(fullTourneys && typeof fullTourneys === 'object') {
+      let restoredCount = 0;
+      Object.keys(fullTourneys).forEach(tId => {
+        let fullT = fullTourneys[tId];
+        let locT = tournamentData[tId];
+        if(!locT) return;
+
+        if(Array.isArray(fullT.matches) && Array.isArray(locT.matches)) {
+          locT.matches.forEach((lm, idx) => {
+            let fm = fullT.matches[idx];
+            if(fm && Array.isArray(fm.replays) && Array.isArray(lm.replays)) {
+              lm.replays.forEach(lr => {
+                if(!lr.log || lr.log.length < 20) {
+                  let fr = fm.replays.find(r => r.game === lr.game || (r.id && r.id === lr.id));
+                  if(fr && fr.log && fr.log.length > 20) {
+                    lr.log = fr.log;
+                    if(!lr.stats && fr.stats) lr.stats = fr.stats;
+                    restoredCount++;
+                  }
+                }
+              });
+            }
+          });
+        }
+
+        if(fullT.topCutReplays && locT.topCutReplays) {
+          Object.keys(fullT.topCutReplays).forEach(k => {
+            let fList = fullT.topCutReplays[k];
+            let lList = locT.topCutReplays[k];
+            if(Array.isArray(fList) && Array.isArray(lList)) {
+              lList.forEach(lr => {
+                if(!lr.log || lr.log.length < 20) {
+                  let fr = fList.find(r => r.game === lr.game || (r.id && r.id === lr.id));
+                  if(fr && fr.log && fr.log.length > 20) {
+                    lr.log = fr.log;
+                    if(!lr.stats && fr.stats) lr.stats = fr.stats;
+                    restoredCount++;
+                  }
+                }
+              });
+            }
+          });
+        }
+      });
+      if(restoredCount > 0) {
+        console.log(`Draftdex: Restored ${restoredCount} replay logs from IndexedDB`);
+        rebuildAllPlayerStats();
+        if(typeof render === 'function') render();
+      }
+    }
+  } catch(e) {
+    console.warn('Draftdex: hydrateTournamentsFromIndexedDB note:', e);
+  }
+}
+
 try{
   let savedLeague=(typeof window !== 'undefined' && window.__SEED_STATE__?.tournaments) ? window.__SEED_STATE__.tournaments : JSON.parse(localStorage.getItem('draftdex-tournaments')||'null');
   if(savedLeague){
@@ -3377,6 +3559,9 @@ try{
   if(savedAccountLinks&&typeof accountLinks!=='undefined')Object.assign(accountLinks,savedAccountLinks);
   migrateAllBrackets();
   rebuildAllPlayerStats();
+  if(typeof window !== 'undefined' && window.indexedDB){
+    setTimeout(hydrateTournamentsFromIndexedDB, 0);
+  }
 }catch(e){}
 addEventListener('beforeunload',()=>{clearTimeout(syncTimer);flushSync()});
 /* Group-stage and flexible-cut upgrades */
@@ -5190,6 +5375,87 @@ function renderReplayPillsHtml(m, t, matchKey, canManage, isCompact = false) {
   </div>`;
 }
 
+async function ensureReplayLog(tournamentId, matchKey, gameNum = 1) {
+  let t = (tournamentId && tournamentData[tournamentId]) || activeT() || ongoingT();
+  let mInfo = findTournamentMatch(t, matchKey);
+  if(!mInfo || !mInfo.match) return null;
+  let m = mInfo.match;
+  let replays = Array.isArray(m.replays) ? m.replays : (
+    (t?.topCutReplays && (
+      t.topCutReplays[matchKey] ||
+      (mInfo.tcMatchId != null && (t.topCutReplays[mInfo.tcMatchId] || t.topCutReplays['tc_' + mInfo.tcMatchId])) ||
+      (m.id != null && (t.topCutReplays[m.id] || t.topCutReplays['tc_' + m.id]))
+    )) || []
+  );
+  let replay = replays.find(r => r.game === gameNum) || replays[0];
+  if(!replay) return null;
+
+  if(replay.log && typeof replay.log === 'string' && replay.log.trim().length > 20) {
+    return replay.log;
+  }
+
+  let repId = replay.id || '';
+  let p1 = m.a || m.p1 || '';
+  let p2 = m.b || m.p2 || '';
+  let g = replay.game || gameNum || 1;
+  let key1 = `${t?.id}_${p1}_${p2}_g${g}`;
+  let key2 = `${t?.id}_${p2}_${p1}_g${g}`;
+  let key3 = `${t?.name}_${p1}_${p2}_g${g}`;
+
+  // 1. Check in-memory cache
+  if(repId && window._replayLogCache?.[repId]) {
+    replay.log = window._replayLogCache[repId];
+    return replay.log;
+  }
+  if(window._replayLogCache?.[key1]) {
+    replay.log = window._replayLogCache[key1];
+    return replay.log;
+  }
+
+  // 2. Check IndexedDB
+  try {
+    let dbLogs = await idbGet('replay_logs');
+    if(dbLogs && typeof dbLogs === 'object') {
+      let matched = (repId && dbLogs[repId]) || dbLogs[key1] || dbLogs[key2] || dbLogs[key3];
+      if(matched && matched.length > 20) {
+        replay.log = matched;
+        if(window._replayLogCache) window._replayLogCache[repId || key1] = matched;
+        return matched;
+      }
+    }
+  } catch(e){}
+
+  // 3. Fetch authoritative cloud state
+  try {
+    let cfUrl = typeof getCloudflareUrl === 'function' ? getCloudflareUrl() : '';
+    if(cfUrl) {
+      let res = await fetch(`${cfUrl}/api/state?id=main&_t=${Date.now()}`);
+      if(res.ok) {
+        let cloudState = await res.json();
+        if(cloudState && cloudState.tournaments) {
+          let cloudT = cloudState.tournaments[t?.id];
+          if(cloudT) {
+            let cloudMInfo = findTournamentMatch(cloudT, matchKey);
+            let cReplays = cloudMInfo?.match?.replays || (cloudT.topCutReplays && cloudT.topCutReplays[matchKey]) || [];
+            let cReplay = cReplays.find(r => r.game === g || (repId && r.id === repId)) || cReplays[0];
+            if(cReplay && cReplay.log && cReplay.log.length > 20) {
+              replay.log = cReplay.log;
+              if(!replay.stats && cReplay.stats) replay.stats = cReplay.stats;
+              if(window._replayLogCache) window._replayLogCache[repId || key1] = replay.log;
+              saveTournamentLogsToIndexedDB(cloudState.tournaments);
+              return replay.log;
+            }
+          }
+        }
+      }
+    }
+  } catch(e) {
+    console.warn('Draftdex: ensureReplayLog cloud fetch error:', e);
+  }
+
+  return null;
+}
+
 function openMatchReplayHubModal(tournamentId, matchKey, activeGameNum = 1, activeTab = 'watch') {
   let t = (tournamentId && tournamentData[tournamentId]) || activeT() || ongoingT();
   let mInfo = findTournamentMatch(t, matchKey);
@@ -5225,8 +5491,10 @@ function openMatchReplayHubModal(tournamentId, matchKey, activeGameNum = 1, acti
   let stageLabel = m.label || m.roundTitle || m.round || m.group || 'Match Replay';
   let canManage = canManageMatchReplays(t, m);
 
+  let isLogMissing = (!activeReplay.log || typeof activeReplay.log !== 'string' || activeReplay.log.trim().length < 20);
+
   let stats = activeReplay.stats;
-  if((!stats || !stats.sideAttribution || !stats.version || stats.version < 5) && activeReplay.log){
+  if(!isLogMissing && (!stats || !stats.sideAttribution || !stats.version || stats.version < 5)){
     stats = parseShowdownBattleLog(activeReplay.log, { id: activeReplay.id, game: activeGameNum, match: m, coach1: p1, coach2: p2, manualSwapped: activeReplay.swapped });
     activeReplay.stats = stats;
   }
@@ -5257,35 +5525,104 @@ function openMatchReplayHubModal(tournamentId, matchKey, activeGameNum = 1, acti
   let contentHtml = '';
 
   if(activeTab === 'watch'){
-    let replayHtmlDoc = buildShowdownReplayHtml(activeReplay);
-    contentHtml = `
-      <div style="padding:16px;display:flex;flex-direction:column;gap:12px">
-        <div style="position:relative;width:100%;height:620px;border-radius:8px;overflow:hidden;background:#000;box-shadow:0 8px 30px rgba(0,0,0,0.6);border:1px solid #2a2a38">
-          <iframe id="replayEmbedFrame" style="width:100%;height:100%;border:0;color-scheme:dark;background:#0d0d12" sandbox="allow-scripts allow-same-origin" srcdoc="${esc(replayHtmlDoc)}"></iframe>
-        </div>
-        <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;padding:8px 4px">
-          <div style="font-size:11px;color:#8e8c95">
-            Format: <b style="color:#c8c6d2">${esc(stats?.format || activeReplay.format || 'Pokémon Showdown')}</b> · 
-            Turns: <b style="color:#ffd166">${stats?.totalTurns || '?'}</b> · 
-            Winner: <b style="color:#4ade80">${esc(stats?.winner || activeReplay.winner || 'Undetermined')}</b>
+    if(isLogMissing){
+      contentHtml = `
+        <div style="padding:16px;display:flex;flex-direction:column;gap:12px">
+          <div id="replayEmbedLoading" style="position:relative;width:100%;height:620px;border-radius:8px;overflow:hidden;background:#0d0d12;box-shadow:0 8px 30px rgba(0,0,0,0.6);border:1px solid #2a2a38;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;color:#eee">
+            <div style="width:40px;height:40px;border:3px solid #2d2d3c;border-top-color:#ef3038;border-radius:50%;animation:spin 1s linear infinite"></div>
+            <div style="font:800 20px 'Barlow Condensed';letter-spacing:1px">LOADING SHOWDOWN REPLAY...</div>
+            <div style="font-size:12px;color:#8e8c95">Retrieving Game ${activeGameNum} battle data from storage...</div>
           </div>
-          <div style="display:flex;align-items:center;gap:8px">
-            <button class="btn btn-sm" onclick="downloadReplayHtmlFile('${t?.id}','${jsArg(matchKey)}',${activeGameNum})">
-              ⬇ Download Replay (.html)
-            </button>
-            ${canManage ? `
-              <button class="btn ghost btn-sm" style="color:#ff8a90;border-color:#522227" onclick="if(confirm('Delete Game ${activeGameNum} replay?')){deleteReplayFromMatch('${t?.id}','${jsArg(matchKey)}',${activeGameNum});}">
-                🗑 Delete Game ${activeGameNum}
+        </div>
+      `;
+      setTimeout(async () => {
+        let loadedLog = await ensureReplayLog(t?.id, matchKey, activeGameNum);
+        if(loadedLog) {
+          activeReplay.log = loadedLog;
+          activeReplay.stats = parseShowdownBattleLog(loadedLog, { id: activeReplay.id, game: activeGameNum, match: m, coach1: p1, coach2: p2, manualSwapped: activeReplay.swapped });
+          if(document.querySelector('#replayEmbedLoading')) {
+            openMatchReplayHubModal(t?.id, matchKey, activeGameNum, activeTab);
+          }
+        } else {
+          let el = document.querySelector('#replayEmbedLoading');
+          if(el) {
+            el.innerHTML = `
+              <div style="font-size:32px">⚠️</div>
+              <div style="font:800 18px 'Barlow Condensed';color:#ff8a90">Replay Log Not Available</div>
+              <div style="font-size:12px;color:#8e8c95;max-width:360px;text-align:center">The Showdown battle log for Game ${activeGameNum} could not be loaded. You can re-upload or paste the log via the Replay Manager.</div>
+            `;
+          }
+        }
+      }, 30);
+    } else {
+      let replayHtmlDoc = buildShowdownReplayHtml(activeReplay);
+      contentHtml = `
+        <div style="padding:16px;display:flex;flex-direction:column;gap:12px">
+          <div style="position:relative;width:100%;height:620px;border-radius:8px;overflow:hidden;background:#000;box-shadow:0 8px 30px rgba(0,0,0,0.6);border:1px solid #2a2a38">
+            <iframe id="replayEmbedFrame" style="width:100%;height:100%;border:0;color-scheme:dark;background:#0d0d12" sandbox="allow-scripts allow-same-origin" srcdoc="${esc(replayHtmlDoc)}"></iframe>
+          </div>
+          <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;padding:8px 4px">
+            <div style="font-size:11px;color:#8e8c95">
+              Format: <b style="color:#c8c6d2">${esc(stats?.format || activeReplay.format || 'Pokémon Showdown')}</b> · 
+              Turns: <b style="color:#ffd166">${stats?.totalTurns || '?'}</b> · 
+              Winner: <b style="color:#4ade80">${esc(stats?.winner || activeReplay.winner || 'Undetermined')}</b>
+            </div>
+            <div style="display:flex;align-items:center;gap:8px">
+              <button class="btn btn-sm" onclick="downloadReplayHtmlFile('${t?.id}','${jsArg(matchKey)}',${activeGameNum})">
+                ⬇ Download Replay (.html)
               </button>
-            ` : ''}
+              ${canManage ? `
+                <button class="btn ghost btn-sm" style="color:#ff8a90;border-color:#522227" onclick="if(confirm('Delete Game ${activeGameNum} replay?')){deleteReplayFromMatch('${t?.id}','${jsArg(matchKey)}',${activeGameNum});}">
+                  🗑 Delete Game ${activeGameNum}
+                </button>
+              ` : ''}
+            </div>
           </div>
         </div>
-      </div>
-    `;
+      `;
+    }
   } else if(activeTab === 'stats'){
-    contentHtml = renderMatchStatsBoxScoreHtml(stats, p1, p2, t, matchKey, activeGameNum);
+    if(isLogMissing){
+      contentHtml = `
+        <div id="replayStatsLoading" style="padding:40px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;color:#eee">
+          <div style="width:36px;height:36px;border:3px solid #2d2d3c;border-top-color:#38bdf8;border-radius:50%;animation:spin 1s linear infinite"></div>
+          <div style="font:800 18px 'Barlow Condensed';letter-spacing:1px">CALCULATING BOX SCORE & MATCH STATS...</div>
+          <div style="font-size:12px;color:#8e8c95">Retrieving Showdown battle data...</div>
+        </div>
+      `;
+      setTimeout(async () => {
+        let loadedLog = await ensureReplayLog(t?.id, matchKey, activeGameNum);
+        if(loadedLog) {
+          activeReplay.log = loadedLog;
+          activeReplay.stats = parseShowdownBattleLog(loadedLog, { id: activeReplay.id, game: activeGameNum, match: m, coach1: p1, coach2: p2, manualSwapped: activeReplay.swapped });
+          if(document.querySelector('#replayStatsLoading')) {
+            openMatchReplayHubModal(t?.id, matchKey, activeGameNum, activeTab);
+          }
+        }
+      }, 30);
+    } else {
+      contentHtml = renderMatchStatsBoxScoreHtml(stats, p1, p2, t, matchKey, activeGameNum);
+    }
   } else if(activeTab === 'log'){
-    contentHtml = renderMatchBattleLogHtml(activeReplay.log);
+    if(isLogMissing){
+      contentHtml = `
+        <div id="replayLogTabLoading" style="padding:40px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;color:#eee">
+          <div style="width:36px;height:36px;border:3px solid #2d2d3c;border-top-color:#ffd166;border-radius:50%;animation:spin 1s linear infinite"></div>
+          <div style="font:800 18px 'Barlow Condensed';letter-spacing:1px">LOADING BATTLE LOG...</div>
+        </div>
+      `;
+      setTimeout(async () => {
+        let loadedLog = await ensureReplayLog(t?.id, matchKey, activeGameNum);
+        if(loadedLog) {
+          activeReplay.log = loadedLog;
+          if(document.querySelector('#replayLogTabLoading')) {
+            openMatchReplayHubModal(t?.id, matchKey, activeGameNum, activeTab);
+          }
+        }
+      }, 30);
+    } else {
+      contentHtml = renderMatchBattleLogHtml(activeReplay.log);
+    }
   }
 
   document.querySelector('#modal').innerHTML = `
@@ -6113,12 +6450,16 @@ function deleteReplayFromMatch(tournamentId, matchKey, gameNum) {
   render();
 }
 
-function downloadReplayHtmlFile(tournamentId, matchKey, gameNum) {
+async function downloadReplayHtmlFile(tournamentId, matchKey, gameNum) {
   let t = (tournamentId && tournamentData[tournamentId]) || activeT() || ongoingT();
   let mInfo = findTournamentMatch(t, matchKey);
   if(!mInfo || !mInfo.match) return;
   let replay = mInfo.match.replays?.find(r => r.game === gameNum) || mInfo.match.replays?.[0];
   if(!replay) return;
+  if(!replay.log || typeof replay.log !== 'string' || replay.log.trim().length < 20) {
+    let loadedLog = await ensureReplayLog(tournamentId, matchKey, gameNum);
+    if(loadedLog) replay.log = loadedLog;
+  }
   let html = buildShowdownReplayHtml(replay);
   let blob = new Blob([html], { type: 'text/html' });
   let url = URL.createObjectURL(blob);
@@ -9370,6 +9711,25 @@ function shouldApply(incoming){
   let incomingTime = typeof incoming.updatedAt === 'number' ? incoming.updatedAt : (Date.parse(incoming.updated_at) || 0);
   let hasLocalData = Object.keys(tournamentData).length > 0;
 
+  // 0. Safety rule: If local client is missing replay logs but cloud has them, ALWAYS apply!
+  if(incoming.tournaments && typeof incoming.tournaments === 'object'){
+    let localMissingLogs = Object.values(tournamentData).some(t =>
+      (Array.isArray(t?.matches) && t.matches.some(m => Array.isArray(m.replays) && m.replays.some(r => !r.log || r.log.length < 20))) ||
+      (t?.topCutReplays && Object.values(t.topCutReplays).some(list => Array.isArray(list) && list.some(r => !r.log || r.log.length < 20)))
+    );
+    if(localMissingLogs){
+      let cloudHasLogs = Object.values(incoming.tournaments).some(t =>
+        (Array.isArray(t?.matches) && t.matches.some(m => Array.isArray(m.replays) && m.replays.some(r => r.log && r.log.length > 20))) ||
+        (t?.topCutReplays && Object.values(t.topCutReplays).some(list => Array.isArray(list) && list.some(r => r.log && r.log.length > 20)))
+      );
+      if(cloudHasLogs){
+        knownRev = Math.max(knownRev, incomingRev);
+        lastLocalUpdate = Math.max(lastLocalUpdate, incomingTime || Date.now());
+        return true;
+      }
+    }
+  }
+
   // 1. Initial boot or session startup sync: always accept authoritative cloud state if valid
   if(!window._initialCloudSyncCompleted){
     window._initialCloudSyncCompleted = true;
@@ -10874,6 +11234,10 @@ const pushMediaToSupabase = pushMediaToCloud;
 function safeSaveTournamentsToLocalStorage(data) {
   if(!data || typeof data !== 'object') return;
   try {
+    saveTournamentLogsToIndexedDB(data);
+  } catch(idbErr){}
+
+  try {
     let serialized = JSON.stringify(data);
     if(serialized.length <= 3500000) {
       try {
@@ -10888,7 +11252,8 @@ function safeSaveTournamentsToLocalStorage(data) {
     for(let tId in data) {
       let t = data[tId];
       if(!t) continue;
-      let tClone = { ...t };
+      // Deep clone so in-memory tournamentData is NEVER mutated or stripped!
+      let tClone = JSON.parse(JSON.stringify(t));
 
       if(tClone.topCutReplays) {
         let cleanTc = {};
@@ -10924,7 +11289,11 @@ function safeSaveTournamentsToLocalStorage(data) {
       lightweight[tId] = tClone;
     }
 
-    localStorage.setItem('draftdex-tournaments', JSON.stringify(lightweight));
+    try {
+      localStorage.setItem('draftdex-tournaments', JSON.stringify(lightweight));
+    } catch(qErr2) {
+      console.warn('Draftdex: localStorage quota exceeded even for lightweight tournaments');
+    }
   } catch(e) {
     console.warn('Draftdex: safeSaveTournamentsToLocalStorage note:', e);
   }
@@ -10955,6 +11324,43 @@ function applySharedState(data){
               incT.rosters[coach] = Array.from(new Set([...(incT.rosters[coach] || []), ...(locT.rosters[coach] || [])]));
             });
           }
+        }
+      }
+
+      // Preserve local replay logs if incoming tournament happens to have empty logs
+      if(locT && incT){
+        if(Array.isArray(incT.matches) && Array.isArray(locT.matches)){
+          incT.matches.forEach((im, idx) => {
+            let lm = locT.matches[idx];
+            if(im && lm && Array.isArray(im.replays) && Array.isArray(lm.replays)){
+              im.replays.forEach(ir => {
+                if(!ir.log || ir.log.length < 20){
+                  let lr = lm.replays.find(r => r.game === ir.game || (r.id && r.id === ir.id));
+                  if(lr && lr.log && lr.log.length > 20){
+                    ir.log = lr.log;
+                    if(!ir.stats && lr.stats) ir.stats = lr.stats;
+                  }
+                }
+              });
+            }
+          });
+        }
+        if(incT.topCutReplays && locT.topCutReplays){
+          Object.keys(incT.topCutReplays).forEach(k => {
+            let iList = incT.topCutReplays[k];
+            let lList = locT.topCutReplays[k];
+            if(Array.isArray(iList) && Array.isArray(lList)){
+              iList.forEach(ir => {
+                if(!ir.log || ir.log.length < 20){
+                  let lr = lList.find(r => r.game === ir.game || (r.id && r.id === ir.id));
+                  if(lr && lr.log && lr.log.length > 20){
+                    ir.log = lr.log;
+                    if(!ir.stats && lr.stats) ir.stats = lr.stats;
+                  }
+                }
+              });
+            }
+          });
         }
       }
     });
@@ -11212,7 +11618,7 @@ function applyRemoteDraftPick(payload){
   try {
     localStorage.setItem('draftdex-rev', String(knownRev));
     localStorage.setItem('draftdex-updated-at', String(lastLocalUpdate));
-    localStorage.setItem('draftdex-tournaments', JSON.stringify(tournamentData));
+    safeSaveTournamentsToLocalStorage(tournamentData);
     localStorage.setItem('draftdex-rosters', JSON.stringify(roster));
   } catch(e){}
 
@@ -11254,7 +11660,7 @@ function applyRemoteDraftControl(payload){
   }
 
   try {
-    localStorage.setItem('draftdex-tournaments', JSON.stringify(tournamentData));
+    safeSaveTournamentsToLocalStorage(tournamentData);
     localStorage.setItem('draftdex-rosters', JSON.stringify(roster));
   } catch(e){}
 
@@ -11342,7 +11748,7 @@ async function syncFromCloud(force = false){
 
                 // Keep local storage updated without triggering redundant flushSync cloud POST
                 try {
-                  localStorage.setItem('draftdex-tournaments', JSON.stringify(tournamentData));
+                  safeSaveTournamentsToLocalStorage(tournamentData);
                   localStorage.setItem('draftdex-rosters', JSON.stringify(roster));
                 } catch(e){}
                 render();
@@ -11589,6 +11995,47 @@ async function flushSync(){
     delete clone.backgroundImage;
     delete clone.recapPanelImage;
     cleanTournaments[tId] = clone;
+  });
+
+  // Safety guard: ensure cleanTournaments never pushes stripped empty logs to cloud
+  Object.entries(cleanTournaments).forEach(([tId, t]) => {
+    let tName = t.name || tId;
+    if(Array.isArray(t.matches)){
+      t.matches.forEach(m => {
+        if(Array.isArray(m.replays)){
+          m.replays.forEach(r => {
+            if(!r.log || typeof r.log !== 'string' || r.log.length < 20){
+              let p1 = m.a || m.p1 || '';
+              let p2 = m.b || m.p2 || '';
+              let g = r.game || 1;
+              let cached = (r.id && window._replayLogCache?.[r.id]) ||
+                window._replayLogCache?.[`${tId}_${p1}_${p2}_g${g}`] ||
+                window._replayLogCache?.[`${tId}_${p2}_${p1}_g${g}`] ||
+                window._replayLogCache?.[`${tName}_${p1}_${p2}_g${g}`];
+              if(cached && cached.length > 20) {
+                r.log = cached;
+              }
+            }
+          });
+        }
+      });
+    }
+    if(t.topCutReplays && typeof t.topCutReplays === 'object'){
+      Object.entries(t.topCutReplays).forEach(([k, list]) => {
+        if(Array.isArray(list)){
+          list.forEach(r => {
+            if(!r.log || typeof r.log !== 'string' || r.log.length < 20){
+              let cached = (r.id && window._replayLogCache?.[r.id]) ||
+                window._replayLogCache?.[`${tId}_tc_${k}_g${r.game || 1}`] ||
+                window._replayLogCache?.[`${tName}_tc_${k}_g${r.game || 1}`];
+              if(cached && cached.length > 20) {
+                r.log = cached;
+              }
+            }
+          });
+        }
+      });
+    }
   });
 
   let payload = {
