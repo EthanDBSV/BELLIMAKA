@@ -1962,8 +1962,9 @@ function getPokemonOfficialArtUrl(monName) {
   let slug = resolved?.slug || '';
   if(!slug) return 'iconNotFound.png';
 
+  // Official Zukan artwork for Mega Scovillain (https://zukan.pokemon.co.jp/#item0952-1)
   if(slug === 'scovillain-mega') {
-    return 'mega-scovillain-art.png';
+    return 'https://zukan.pokemon.co.jp/zukan-api/up/images/index/9e1405829b309d320a4e524eb452996c.png';
   }
 
   if(OFFICIAL_MEGA_ART_IDS[slug]){
@@ -1987,10 +1988,13 @@ function getPokemonPartySpriteUrl(monName) {
   let resolved = resolvePokemonData(monName);
   let slug = resolved?.slug || '';
   if(!slug) return 'iconNotFound.png';
-  if(ANIMATED_ONLY_SPRITES.has(slug)){
-    return 'https://play.pokemonshowdown.com/sprites/ani/' + slug + '.gif';
+  
+  // Compact base party pixel sprite for draft board rows (e.g. Scovillain for Mega Scovillain)
+  let baseSlug = slug.replace(/-mega[xyz]?$/i, '');
+  if(ANIMATED_ONLY_SPRITES.has(baseSlug)){
+    return 'https://play.pokemonshowdown.com/sprites/ani/' + baseSlug + '.gif';
   }
-  return 'https://play.pokemonshowdown.com/sprites/gen5/' + slug + '.png';
+  return 'https://play.pokemonshowdown.com/sprites/gen5/' + baseSlug + '.png';
 }
 
 function getPokemonSpriteUrl(slug) {
@@ -2051,9 +2055,13 @@ function handleSpriteError(img){
     return;
   }
 
-  // Fallback from official-artwork to Showdown dex
-  if(src.includes('official-artwork') || src.includes('mega-scovillain-art.png')){
+  // Fallback from official-artwork or Zukan CDN to local file or Showdown dex
+  if(src.includes('official-artwork') || src.includes('zukan.pokemon.co.jp') || src.includes('mega-scovillain-art.png')){
     img.dataset.fallbackStage = String(stage + 1);
+    if(src.includes('zukan.pokemon.co.jp') && !src.includes('mega-scovillain-art.png')){
+      img.src = 'mega-scovillain-art.png';
+      return;
+    }
     let slug = img.dataset.slug || (typeof resolvePokemonData === 'function' ? resolvePokemonData(img.alt || '').slug : '');
     if(slug){
       img.src = 'https://play.pokemonshowdown.com/sprites/dex/' + slug + '.png';
