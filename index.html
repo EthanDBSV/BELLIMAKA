@@ -1689,6 +1689,11 @@ details[open] > .past-tourney-summary .past-chevron{transform:rotate(180deg);col
 .tc-round-col {
   width: 290px !important;
   gap: 16px !important;
+  box-sizing: border-box !important;
+  flex-shrink: 0 !important;
+}
+.tc-round-col.tc-gf-col {
+  width: 315px !important;
 }
 .tc-round-matches {
   gap: 16px !important;
@@ -1703,6 +1708,9 @@ details[open] > .past-tourney-summary .past-chevron{transform:rotate(180deg);col
   font-size: 22px !important;
 }
 .tc-match-card {
+  width: 290px !important;
+  max-width: 290px !important;
+  box-sizing: border-box !important;
   background: #14141d !important;
   border: 1px solid #2e2e3c !important;
   border-left: 4px solid #a855f7 !important; /* Upper / Winners Bracket: Purple */
@@ -1752,9 +1760,16 @@ details[open] > .past-tourney-summary .past-chevron{transform:rotate(180deg);col
 }
 .tc-slot-name {
   font: 800 16px 'Barlow Condensed' !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
 }
 .tc-slot .team {
   font-size: 10px !important;
+  display: block !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
 }
 .tc-slot-score {
   font: 900 17px 'Barlow Condensed' !important;
@@ -10114,7 +10129,7 @@ function topCutSection(t, preview){
                   </div>
                 </div>
               `).join('')}
-              <div class="tc-round-col" style="border-left:1px dashed #3a3a46;padding-left:24px;width:290px">
+              <div class="tc-round-col tc-gf-col" style="border-left:1px dashed #3a3a46;padding-left:24px;width:315px;box-sizing:border-box">
                 <div class="tc-round-head"><span style="color:#ffd166">👑 ${model.lbRounds?.length ? 'Grand Finals' : 'Championship Finals'}</span></div>
                 <div class="tc-round-matches">
                   ${model.gfMatches.map(m=>renderBracketCard(m, false, true)).join('')}
@@ -19950,7 +19965,7 @@ function topCutPredictionBracket(t){
             `).join('')}
 
             <!-- Grand Finals Column -->
-            <div class="tc-round-col" style="border-left:1px dashed #3a3a46;padding-left:24px;width:280px">
+            <div class="tc-round-col tc-gf-col" style="border-left:1px dashed #3a3a46;padding-left:24px;width:315px;box-sizing:border-box">
               <div class="tc-round-head"><span style="color:#ffd166">👑 Grand Finals</span></div>
               <div class="tc-round-matches">
                 <div class="tc-match-card tc-gf-card ${predMap[gfId]?.isDone ? 'completed is-past' : ''}" style="border-color:#5c3510;box-shadow:0 0 16px rgba(243,194,69,0.2)">
