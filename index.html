@@ -1877,9 +1877,9 @@ details[open] > .past-tourney-summary .past-chevron{transform:rotate(180deg);col
 .replay-dropzone.dragover{border-color:var(--red);background:rgba(255,89,100,0.08)}
 @media(max-width:768px){.replay-hub-modal{width:98vw;max-height:98vh}.replay-mvp-card{flex-direction:column;text-align:center}}
 .tots-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px;align-items:stretch}
-.tots-card{border-radius:14px;padding:22px 16px 18px;display:flex;flex-direction:column;align-items:center;text-align:center;position:relative;overflow:hidden;transition:all .2s ease;box-shadow:0 8px 24px rgba(0,0,0,0.35)}
+.tots-card{border-radius:14px;padding:22px 16px 18px;display:flex;flex-direction:column;align-items:center;text-align:center;position:relative;overflow:hidden;transition:all .2s ease;box-shadow:0 8px 24px rgba(0,0,0,0.35);height:100%}
 .tots-card:hover{transform:translateY(-4px);box-shadow:0 14px 36px rgba(0,0,0,0.55)}
-.tots-hero-box{width:100%;border-radius:10px;padding:12px 8px;margin:12px 0 10px;display:flex;flex-direction:column;align-items:center;justify-content:center;background:rgba(0,0,0,0.38);border:1px solid rgba(255,255,255,0.08)}
+.tots-hero-box{width:100%;border-radius:10px;padding:12px 8px;margin:12px 0 10px;display:flex;flex-direction:column;align-items:center;justify-content:center;background:rgba(0,0,0,0.38);border:1px solid rgba(255,255,255,0.08);margin-top:auto}
 .award-role-badge{display:inline-flex;align-items:center;gap:3px;padding:2px 8px;border-radius:4px;font:800 11px 'Barlow Condensed',sans-serif;letter-spacing:.6px;text-transform:uppercase;background:rgba(156,163,175,0.12);border:1px solid rgba(156,163,175,0.3);color:#d1d5db}
 .award-leader-tag{display:inline-flex;align-items:center;gap:4px;padding:2px 7px;border-radius:4px;font:800 10px 'Barlow Condensed',sans-serif;letter-spacing:.6px;text-transform:uppercase;line-height:1.2}
 .award-leader-tag.tag-dmg{background:rgba(239,68,68,0.16);border:1px solid rgba(239,68,68,0.5);color:#fca5a5;box-shadow:0 0 8px rgba(239,68,68,0.15)}
@@ -2666,6 +2666,7 @@ try {
   if(_qp.get('detailTab')) detailTab = _qp.get('detailTab');
   if(_qp.get('coach')) window.selectedTeamRosterCoach = _qp.get('coach');
   if(_qp.get('awardsTier')) window.awardsTierTab = _qp.get('awardsTier');
+  if(_qp.get('guide')) setTimeout(() => { if(typeof openAwardsRatingGuideModal === 'function') openAwardsRatingGuideModal(); }, 1200);
 } catch(e) {}
 function toggleMatchFilter(v){let i=matchFilterPlayers.indexOf(v);if(i>=0)matchFilterPlayers.splice(i,1);else matchFilterPlayers.push(v);render()}
 function clearMatchFilters(){matchFilterPlayers=[];render()}
@@ -7703,8 +7704,8 @@ function renderTeamOfTheSeasonCardsHtml(totsOrList, isCompact = false) {
 
         return `
           <div class="tots-card" style="background:linear-gradient(180deg, ${theme.bg} 0%, rgba(18,18,24,0.96) 100%);border-color:${theme.border || '#2e2e3e'}">
-            <!-- Header: Role Pill & Leader Tags -->
-            <div style="display:flex;flex-direction:column;align-items:center;gap:4px;margin-bottom:6px;width:100%">
+            <!-- Header: Role Pill & Leader Tags with fixed min-height for row-wide symmetry -->
+            <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:50px;margin-bottom:6px;width:100%">
               <div style="display:flex;align-items:center;gap:4px;flex-wrap:wrap;justify-content:center">
                 <span class="award-role-badge">
                   ${item.roleKey === 'dps' ? SVG_SWORD_GREY : SVG_SHIELD_GREY} ${item.roleTitle} ${item.slotNum || ''}
@@ -7713,8 +7714,8 @@ function renderTeamOfTheSeasonCardsHtml(totsOrList, isCompact = false) {
               </div>
             </div>
 
-            <!-- Pokémon Name -->
-            <div style="font:900 22px 'Barlow Condensed';color:#ffffff;letter-spacing:.5px;text-transform:uppercase;margin-top:2px">
+            <!-- Pokémon Name with min-height -->
+            <div style="font:900 22px 'Barlow Condensed';color:#ffffff;letter-spacing:.5px;text-transform:uppercase;min-height:28px;display:flex;align-items:center;justify-content:center;margin-top:2px">
               ${esc(mon.name)}
             </div>
 
@@ -7723,13 +7724,13 @@ function renderTeamOfTheSeasonCardsHtml(totsOrList, isCompact = false) {
               <img src="${sprite}" alt="${esc(mon.name)}" style="max-height:105px;max-width:115px;object-fit:contain;filter:drop-shadow(0 6px 12px ${theme.glow || 'rgba(0,0,0,0.5)'})" onerror="handleSpriteError(this)">
             </div>
 
-            <!-- Type Badges -->
-            <div style="display:flex;align-items:center;justify-content:center;gap:4px;margin-bottom:8px">
+            <!-- Type Badges with min-height -->
+            <div style="display:flex;align-items:center;justify-content:center;gap:4px;min-height:22px;margin-bottom:8px">
               ${typeof renderPokemonTypeBadges === 'function' ? renderPokemonTypeBadges(mon.name, 'font-size:9px;padding:1px 6px') : ''}
             </div>
 
-            <!-- Hero Stat Box -->
-            <div class="tots-hero-box">
+            <!-- Hero Stat Box with margin-top: auto to perfectly align bottom across cards -->
+            <div class="tots-hero-box" style="margin-top:auto">
               <div style="font:900 28px 'Barlow Condensed';line-height:1;color:${item.heroColor || '#ffd166'}">
                 ${item.statVal}
               </div>
@@ -7739,7 +7740,7 @@ function renderTeamOfTheSeasonCardsHtml(totsOrList, isCompact = false) {
             </div>
 
             <!-- Breakdown & Games -->
-            <div style="font-size:11px;color:#8e8c95;margin-top:4px">
+            <div style="font-size:11px;color:#8e8c95;margin-top:6px;min-height:16px;display:flex;align-items:center;justify-content:center">
               ${item.statBreakdown || ''} \u2022 <b>${mon.games}</b> ${mon.games === 1 ? 'Game' : 'Games'}
             </div>
 
@@ -7771,6 +7772,215 @@ function renderTeamOfTheSeasonTierSectionHtml(teamList, tierNum, title, sub, col
         </div>
       </div>
       ${renderTeamOfTheSeasonCardsHtml(teamList, isCompact)}
+    </div>
+  `;
+}
+
+function openAwardsRatingGuideModal() {
+  document.querySelector('#modal').innerHTML = `
+    <div class="modal-wrap" onclick="if(event.target===this)closeModal()">
+      <div class="modal" style="max-width:880px;width:95vw;max-height:92vh;display:flex;flex-direction:column;padding:0;background:#111118;border:1px solid #2e2e42;border-radius:14px;box-shadow:0 16px 48px rgba(0,0,0,0.8);overflow:hidden">
+        <!-- Modal Header -->
+        <div style="padding:18px 24px;background:linear-gradient(90deg, #181824, #12121b);border-bottom:1px solid #28283c;display:flex;justify-content:space-between;align-items:center">
+          <div>
+            <div style="color:#ffd166;font:800 11px 'Barlow Condensed',sans-serif;letter-spacing:1.2px;text-transform:uppercase;display:flex;align-items:center;gap:6px">
+              <span>\uD83D\uDCD0</span> Official Tournament Rules &amp; Formulas
+            </div>
+            <h2 style="font:900 24px 'Barlow Condensed',sans-serif;margin:3px 0 0;letter-spacing:.6px;color:#ffffff">
+              Awards &amp; Rating Calculation Guide
+            </h2>
+          </div>
+          <button class="close" onclick="closeModal()" style="font-size:24px;background:none;border:none;color:#94a3b8;cursor:pointer;line-height:1;padding:4px 8px;border-radius:6px" onmouseover="this.style.color='#fff'" onmouseout="this.style.color='#94a3b8'">\u00D7</button>
+        </div>
+
+        <!-- Modal Body Scrollable -->
+        <div style="overflow-y:auto;flex:1;padding:22px 24px;display:flex;flex-direction:column;gap:18px;line-height:1.55;font-size:13px;color:#cbd5e1">
+
+          <!-- Intro Box -->
+          <div style="background:rgba(255,209,102,0.06);border:1px solid rgba(255,209,102,0.22);border-radius:10px;padding:12px 16px;display:flex;align-items:flex-start;gap:12px">
+            <span style="font-size:20px;line-height:1.2">\u2139\uFE0F</span>
+            <div style="font-size:12px;color:#e2e8f0">
+              All premier honors and All-Tournament Team selections are computed directly from verified battle replays.
+              To ensure fairness and statistical significance, a minimum of <b>3 tournament battle appearances</b> is required to qualify for Season MVP and All-Tournament Teams.
+            </div>
+          </div>
+
+          <!-- Section 1: Regular Season MVP -->
+          <div style="background:#151520;border:1px solid #28283a;border-radius:12px;padding:18px 20px">
+            <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:10px">
+              <div style="display:flex;align-items:center;gap:8px">
+                <span style="font-size:18px">\uD83C\uDFC6</span>
+                <span style="font:900 18px 'Barlow Condensed',sans-serif;letter-spacing:.5px;color:#ffd166;text-transform:uppercase">Regular Season MVP</span>
+              </div>
+              <span style="font:800 10px 'Barlow Condensed',sans-serif;letter-spacing:.6px;text-transform:uppercase;padding:2px 8px;border-radius:4px;background:rgba(255,209,102,0.12);color:#ffd166;border:1px solid rgba(255,209,102,0.3)">
+                Regular Season Games Only
+              </span>
+            </div>
+            <p style="margin:0 0 10px;color:#94a3b8;font-size:12px">
+              Honors the most valuable player/Pok&eacute;mon throughout the regular season. Postseason and top cut replays are excluded to preserve regular season integrity.
+            </p>
+            <div style="background:#0e0e14;border:1px solid #232332;border-radius:8px;padding:12px 14px;margin-bottom:10px">
+              <div style="font-size:10px;font-weight:800;color:#94a3b8;text-transform:uppercase;letter-spacing:.8px;margin-bottom:6px">
+                Selection Criteria &amp; Tiebreakers
+              </div>
+              <ol style="margin:0;padding-left:20px;font-size:12px;color:#e2e8f0;display:flex;flex-direction:column;gap:3px">
+                <li><b>Primary:</b> Most <b>Regular Season Match MVP Awards</b> won (highest single-game Impact Score on the winning team).</li>
+                <li><b>1st Tiebreaker:</b> Total Overall Match MVPs won.</li>
+                <li><b>2nd Tiebreaker:</b> Total Regular Season Impact Score.</li>
+                <li><b>3rd Tiebreaker:</b> Regular Season Average Impact per Game.</li>
+                <li><b>4th Tiebreaker:</b> Total Regular Season KOs.</li>
+              </ol>
+            </div>
+            <div style="background:#1a1824;border:1px solid rgba(255,209,102,0.25);border-radius:8px;padding:12px 14px">
+              <div style="font:800 11px 'Barlow Condensed',sans-serif;letter-spacing:.8px;text-transform:uppercase;color:#ffd166;margin-bottom:6px">
+                \u26A1 Single-Game Impact Score Equation (Used for Match MVPs)
+              </div>
+              <div style="font-family:'Courier New',monospace;font-size:13px;font-weight:700;color:#ffffff;background:#0d0d12;padding:8px 12px;border-radius:6px;border:1px solid #2b2b3d;margin-bottom:8px">
+                Impact Score = (KOs \u00D7 150) + Damage Dealt + (Survived \u00D7 75) + (HP Healed \u00D7 0.5)
+              </div>
+              <div style="font-size:11px;color:#94a3b8;display:grid;grid-template-columns:repeat(auto-fit, minmax(180px, 1fr));gap:6px">
+                <div>\u2022 <b>KOs \u00D7 150:</b> Decisive elimination reward.</div>
+                <div>\u2022 <b>Damage Dealt:</b> 1:1 points for HP damage.</div>
+                <div>\u2022 <b>Survived \u00D7 75:</b> +75 survival bonus.</div>
+                <div>\u2022 <b>HP Healed \u00D7 0.5:</b> 50% credit for recovery.</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Section 2: Finals MVP -->
+          <div style="background:#151520;border:1px solid #28283a;border-radius:12px;padding:18px 20px">
+            <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:10px">
+              <div style="display:flex;align-items:center;gap:8px">
+                <span style="font-size:18px">\uD83D\uDC51</span>
+                <span style="font:900 18px 'Barlow Condensed',sans-serif;letter-spacing:.5px;color:#38bdf8;text-transform:uppercase">Finals MVP</span>
+              </div>
+              <span style="font:800 10px 'Barlow Condensed',sans-serif;letter-spacing:.6px;text-transform:uppercase;padding:2px 8px;border-radius:4px;background:rgba(56,189,248,0.12);color:#7dd3fc;border:1px solid rgba(56,189,248,0.3)">
+                Grand Finals Only \u2022 Champion Team
+              </span>
+            </div>
+            <p style="margin:0 0 10px;color:#94a3b8;font-size:12px">
+              Crowns the single most dominant Pok&eacute;mon in the <b>Championship Grand Finals</b> series (including any Bracket Reset match). Only Pok&eacute;mon on the winning championship team who participated in at least 1 Grand Finals game are eligible.
+            </p>
+            <div style="background:#121b24;border:1px solid rgba(56,189,248,0.25);border-radius:8px;padding:12px 14px">
+              <div style="font:800 11px 'Barlow Condensed',sans-serif;letter-spacing:.8px;text-transform:uppercase;color:#7dd3fc;margin-bottom:6px">
+                \uD83D\uDCCA Finals MVP Rating Equation
+              </div>
+              <div style="font-family:'Courier New',monospace;font-size:13px;font-weight:700;color:#ffffff;background:#0b1117;padding:8px 12px;border-radius:6px;border:1px solid #1e3245;margin-bottom:8px">
+                Finals Rating = (Total Grand Finals Impact Score) / (Grand Finals Games Brought)
+              </div>
+              <div style="font-size:11px;color:#94a3b8">
+                <b>Tiebreakers:</b> Total Grand Finals Impact Score \u2192 Total Grand Finals KOs \u2192 Regular Season Impact Score.
+              </div>
+            </div>
+          </div>
+
+          <!-- Section 3: DPS Rating -->
+          <div style="background:#151520;border:1px solid #28283a;border-radius:12px;padding:18px 20px">
+            <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:10px">
+              <div style="display:flex;align-items:center;gap:8px">
+                <span style="font-size:18px">\u2694\uFE0F</span>
+                <span style="font:900 18px 'Barlow Condensed',sans-serif;letter-spacing:.5px;color:#f87171;text-transform:uppercase">DPS Rating (All-Tournament DPS)</span>
+              </div>
+              <span style="font:800 10px 'Barlow Condensed',sans-serif;letter-spacing:.6px;text-transform:uppercase;padding:2px 8px;border-radius:4px;background:rgba(248,113,113,0.12);color:#fca5a5;border:1px solid rgba(248,113,113,0.3)">
+                2 DPS per Team Tier
+              </span>
+            </div>
+            <p style="margin:0 0 10px;color:#94a3b8;font-size:12px">
+              Ranks premier offensive sweepers, wallbreakers, and cleanup attackers based on per-game offensive efficiency across all tournament battles (minimum 3 appearances).
+            </p>
+            <div style="background:#201416;border:1px solid rgba(248,113,113,0.25);border-radius:8px;padding:12px 14px">
+              <div style="font:800 11px 'Barlow Condensed',sans-serif;letter-spacing:.8px;text-transform:uppercase;color:#fca5a5;margin-bottom:6px">
+                \u2694\uFE0F DPS Rating Equation
+              </div>
+              <div style="font-family:'Courier New',monospace;font-size:13px;font-weight:700;color:#ffffff;background:#110a0c;padding:8px 12px;border-radius:6px;border:1px solid #3c1e22;margin-bottom:8px">
+                DPS Rating = (KOs per Game \u00D7 100) + (Damage Dealt per Game)
+              </div>
+              <div style="font-size:11px;color:#94a3b8;line-height:1.5">
+                \u2022 <b>KOs/Game \u00D7 100:</b> Heavily rewards securing knockouts (e.g., 1.5 KOs/g adds +150 rating points).<br>
+                \u2022 <b>Damage Dealt/Game:</b> Rewards raw offensive output and sustained board pressure.
+              </div>
+            </div>
+          </div>
+
+          <!-- Section 4: Effective Tank Rating -->
+          <div style="background:#151520;border:1px solid #28283a;border-radius:12px;padding:18px 20px">
+            <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:10px">
+              <div style="display:flex;align-items:center;gap:8px">
+                <span style="font-size:18px">\uD83D\uDEE1\uFE0F</span>
+                <span style="font:900 18px 'Barlow Condensed',sans-serif;letter-spacing:.5px;color:#4ade80;text-transform:uppercase">Effective Tank Rating (All-Tournament Tank)</span>
+              </div>
+              <span style="font:800 10px 'Barlow Condensed',sans-serif;letter-spacing:.6px;text-transform:uppercase;padding:2px 8px;border-radius:4px;background:rgba(74,222,128,0.12);color:#86efac;border:1px solid rgba(74,222,128,0.3)">
+                2 Tanks per Team Tier
+              </span>
+            </div>
+            <p style="margin:0 0 10px;color:#94a3b8;font-size:12px">
+              Evaluates defensive backbones, bulky pivots, and recovery tanks. Designed specifically to reward genuine defensive anchors that survive and help their team win, preventing "fodder" Pok&eacute;mon on losing teams from monopolizing tank selections simply by fainting every game.
+            </p>
+            <div style="background:#121e17;border:1px solid rgba(74,222,128,0.25);border-radius:8px;padding:12px 14px">
+              <div style="font:800 11px 'Barlow Condensed',sans-serif;letter-spacing:.8px;text-transform:uppercase;color:#86efac;margin-bottom:6px">
+                \uD83D\uDEE1\uFE0F Effective Tank Rating Equation
+              </div>
+              <div style="font-family:'Courier New',monospace;font-size:13px;font-weight:700;color:#ffffff;background:#0a120e;padding:8px 12px;border-radius:6px;border:1px solid #1a3826;margin-bottom:8px">
+                Tank Rating = (Damage Taken/g + 1.5 \u00D7 Healed/g) \u00D7 (0.55 + 0.35 \u00D7 Win Rate + 0.45 \u00D7 Survival Rate)
+              </div>
+              <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(220px, 1fr));gap:8px;font-size:11px;color:#cbd5e1;margin-top:10px">
+                <div style="background:#0e1611;padding:8px 10px;border-radius:6px;border:1px solid #1d2e22">
+                  <b style="color:#86efac">Base Soaking:</b> (Taken/g + 1.5 \u00D7 Healed/g)<br>
+                  <span style="color:#94a3b8">Measures incoming damage absorbed, with a 1.5\u00D7 boost for self-recovery and sustain.</span>
+                </div>
+                <div style="background:#0e1611;padding:8px 10px;border-radius:6px;border:1px solid #1d2e22">
+                  <b style="color:#86efac">Base Floor (0.55):</b><br>
+                  <span style="color:#94a3b8">Ensures heavy damage sponges on tough teams still retain at least 55% credit for hits absorbed.</span>
+                </div>
+                <div style="background:#0e1611;padding:8px 10px;border-radius:6px;border:1px solid #1d2e22">
+                  <b style="color:#86efac">Win Rate (+0.35 \u00D7 Win%):</b><br>
+                  <span style="color:#94a3b8">Rewards tanks whose resilience translates directly into team victories.</span>
+                </div>
+                <div style="background:#0e1611;padding:8px 10px;border-radius:6px;border:1px solid #1d2e22">
+                  <b style="color:#86efac">Survival Rate (+0.45 \u00D7 Surv%):</b><br>
+                  <span style="color:#94a3b8">Surv% = (Games - Faints) / Games. Differentiates stalwart walls from sacrificial pawns.</span>
+                </div>
+              </div>
+              <div style="margin-top:8px;font-size:11px;color:#86efac;font-style:italic">
+                * The efficiency multiplier scales from 0.55 (0% win, 0% survive) up to 1.35 (100% win, 100% survive).
+              </div>
+            </div>
+          </div>
+
+          <!-- Section 5: Honor Badges -->
+          <div style="background:#151520;border:1px solid #28283a;border-radius:12px;padding:18px 20px">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+              <span style="font-size:18px">\uD83C\uDF96\uFE0F</span>
+              <span style="font:900 18px 'Barlow Condensed',sans-serif;letter-spacing:.5px;color:#ffd166;text-transform:uppercase">Tournament Statistical Leader Badges</span>
+            </div>
+            <p style="margin:0 0 10px;color:#94a3b8;font-size:12px">
+              Honor badges displayed on Pok&eacute;mon cards indicate that the Pok&eacute;mon led the entire tournament in a statistical category:
+            </p>
+            <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(180px, 1fr));gap:8px;font-size:12px">
+              <div style="background:#1f1315;border:1px solid rgba(239,68,68,0.4);border-radius:6px;padding:8px 10px;color:#fca5a5">
+                <b>\uD83D\uDD25 MOST DAMAGE:</b> Led the tournament in total damage dealt.
+              </div>
+              <div style="background:#1f1a10;border:1px solid rgba(245,158,11,0.4);border-radius:6px;padding:8px 10px;color:#fde047">
+                <b>\uD83C\uDFAF MOST KOS:</b> Led the tournament in total knockouts secured.
+              </div>
+              <div style="background:#111a24;border:1px solid rgba(59,130,246,0.4);border-radius:6px;padding:8px 10px;color:#93c5fd">
+                <b>\uD83D\uDEE1\uFE0F MOST DMG TAKEN:</b> Led the tournament in total raw damage absorbed.
+              </div>
+              <div style="background:#101e14;border:1px solid rgba(34,197,94,0.4);border-radius:6px;padding:8px 10px;color:#86efac">
+                <b>\uD83D\uDC9A MOST HEALED:</b> Led the tournament in total hit points restored.
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- Footer -->
+        <div style="padding:12px 24px;background:#14141d;border-top:1px solid #28283c;display:flex;justify-content:flex-end">
+          <button class="btn ghost btn-sm" onclick="closeModal()" style="padding:6px 18px;font-family:'Barlow Condensed',sans-serif;font-size:13px;font-weight:700;letter-spacing:.5px;text-transform:uppercase">
+            Close Guide
+          </button>
+        </div>
+      </div>
     </div>
   `;
 }
@@ -7825,9 +8035,14 @@ function renderTournamentAwardsTabHtml(t) {
                 Evaluated from ${tots.totalGames} battle ${tots.totalGames === 1 ? 'game' : 'games'} across the regular season and playoffs (minimum 3 appearances)
               </p>
             </div>
-            <span style="font-size:11px;color:#8e8c95;background:#181824;padding:4px 12px;border-radius:20px;border:1px solid #2e2e42">
-              <b>${tots.totalGames}</b> Battle Replays Evaluated
-            </span>
+            <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+              <button type="button" class="btn btn-sm ghost" onclick="openAwardsRatingGuideModal()" style="display:inline-flex;align-items:center;gap:6px;font-family:'Barlow Condensed',sans-serif;font-size:12px;font-weight:800;letter-spacing:.6px;text-transform:uppercase;color:#ffd166;background:rgba(255,209,102,0.12);border:1px solid rgba(255,209,102,0.35);padding:4px 12px;border-radius:20px;cursor:pointer;transition:all .2s ease" onmouseover="this.style.background='rgba(255,209,102,0.22)'" onmouseout="this.style.background='rgba(255,209,102,0.12)'">
+                <span>📐</span> Rating Guide &amp; Equations
+              </button>
+              <span style="font-size:11px;color:#8e8c95;background:#181824;padding:4px 12px;border-radius:20px;border:1px solid #2e2e42">
+                <b>${tots.totalGames}</b> Battle Replays Evaluated
+              </span>
+            </div>
           </div>
 
           ${renderMajorAwardsCardsHtml(major, t, isAll)}
