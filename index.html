@@ -24265,7 +24265,7 @@ function renderDraftImportPreviewHtml(parsed){
         <div style="background:#181822;border:1px solid #2d2d3c;border-radius:6px;padding:8px">
           <div style="display:flex;justify-content:space-between;align-items:center;padding-bottom:6px;border-bottom:1px solid #282834;font:800 12px 'Barlow Condensed'">
             <span style="color:#ffd166">${esc(tier.name)}</span>
-            <span class="tag" style="background:#2f2310;color:#ffd166;padding:1px 6px;font-size:10px">${tier.cost} pts</span>
+            ${(tier.name && (tier.name.includes(String(tier.cost)) || /\bpts?\b/i.test(tier.name) || /\bpoints?\b/i.test(tier.name))) ? `<span class="tag" style="background:#22222c;color:#a09fa8;padding:1px 6px;font-size:10px">${tier.pokemon.length} mon${tier.pokemon.length === 1 ? '' : 's'}</span>` : `<span class="tag" style="background:#2f2310;color:#ffd166;padding:1px 6px;font-size:10px">${tier.cost} pts</span>`}
           </div>
           <div style="font-size:11px;color:#c0bfca;margin-top:6px;max-height:120px;overflow-y:auto;display:flex;flex-direction:column;gap:3px">
             ${tier.pokemon.map(m => `
@@ -24595,6 +24595,34 @@ function saveDraftOrder(tId){
   }
 }
 
+function renderTierAndCostBadges(tierName, cost){
+  let costBadge = `<span class="tag" style="background:#3d2c12;color:#ffd166;font-weight:800;border:1px solid #6b4d1b">${cost} Points</span>`;
+  if(!tierName) return costBadge;
+
+  let raw = String(tierName).trim();
+  let cleanTier = raw.replace(/\s*\(\s*\d+\s*(?:points?|pts?)?\s*\)/i, '').trim();
+  let norm = cleanTier.toLowerCase().replace(/points?|pts?|tier/g, '').trim();
+  if(!norm || norm === String(cost)){
+    return costBadge;
+  }
+
+  return `
+    <span class="tag" style="background:#22222c;color:#a09fa8">${esc(cleanTier)}</span>
+    ${costBadge}
+  `;
+}
+
+function formatTierSubtitle(cost, tierName){
+  if(!tierName) return `${cost} Points`;
+  let raw = String(tierName).trim();
+  let cleanTier = raw.replace(/\s*\(\s*\d+\s*(?:points?|pts?)?\s*\)/i, '').trim();
+  let norm = cleanTier.toLowerCase().replace(/points?|pts?|tier/g, '').trim();
+  if(!norm || norm === String(cost)){
+    return `${cost} Points`;
+  }
+  return `${esc(cleanTier)} · ${cost} Points`;
+}
+
 function openRenameBoardPokemonModal(tId, oldMonName, cost, tierName){
   let t = tournamentData[tId] || ongoingT() || activeT();
   if(!t || !canManageTournament(t)) return;
@@ -24621,7 +24649,7 @@ function openRenameBoardPokemonModal(tId, oldMonName, cost, tierName){
           <img id="renamePreviewSprite" src="${esc(pokeSprite(oldMonName))}" style="width:48px;height:48px;object-fit:contain" onerror="handleSpriteError(this)">
           <div style="min-width:0">
             <div id="renamePreviewName" style="font:800 16px 'Barlow Condensed';color:#f5f3f0">${esc(oldMonName)}</div>
-            <span class="tag" style="background:#2d2210;color:#ffd166;font-size:10px;border:1px solid #5a4218">${cost} pts · ${esc(tierName)}</span>
+            <span class="tag" style="background:#2d2210;color:#ffd166;font-size:10px;border:1px solid #5a4218">${formatTierSubtitle(cost, tierName)}</span>
           </div>
         </div>
 
@@ -24771,8 +24799,7 @@ function openDraftConfirmationModal(tId, monName, cost, tierName){
             </div>
           ` : ''}
           <div style="display:flex;justify-content:center;align-items:center;gap:8px;margin-bottom:16px">
-            <span class="tag" style="background:#22222c;color:#a09fa8">${esc(tierName)}</span>
-            <span class="tag" style="background:#3d2c12;color:#ffd166;font-weight:800;border:1px solid #6b4d1b">${cost} Points</span>
+            ${renderTierAndCostBadges(tierName, cost)}
           </div>
 
           <div class="card" style="padding:14px;background:#14141c;border-color:#2a2a3a;text-align:left;margin-bottom:14px">
@@ -26044,7 +26071,7 @@ function openRenameOffseasonPokemonModal(oldMonName, cost, tierName){
           <img id="offseasonRenamePreviewSprite" src="${esc(pokeSprite(oldMonName))}" style="width:48px;height:48px;object-fit:contain" onerror="handleSpriteError(this)">
           <div style="min-width:0">
             <div id="offseasonRenamePreviewName" style="font:800 16px 'Barlow Condensed';color:#f5f3f0">${esc(oldMonName)}</div>
-            <span class="tag" style="background:#2d2210;color:#ffd166;font-size:10px;border:1px solid #5a4218">${cost} pts · ${esc(tierName)}</span>
+            <span class="tag" style="background:#2d2210;color:#ffd166;font-size:10px;border:1px solid #5a4218">${formatTierSubtitle(cost, tierName)}</span>
           </div>
         </div>
 
@@ -26330,6 +26357,12 @@ function openOffseasonMonDetailModal(monName, cost){
   let tierName = `${cost} Points`;
   let board = getOffseasonDraftBoard();
   let foundTier = board.find(tier => (tier.pokemon || []).some(m => m.toLowerCase().trim() === (monName||'').toLowerCase().trim()));
+  if(!foundTier){
+    let curT = (typeof ongoingT === 'function' ? ongoingT() : null) || (typeof activeT === 'function' ? activeT() : null);
+    if(curT?.draftData?.board?.length){
+      foundTier = curT.draftData.board.find(tier => (tier.pokemon || []).some(m => m.toLowerCase().trim() === (monName||'').toLowerCase().trim()));
+    }
+  }
   if(foundTier){
     actualCost = foundTier.cost;
     tierName = foundTier.name || `${foundTier.cost} Points`;
@@ -26357,8 +26390,7 @@ function openOffseasonMonDetailModal(monName, cost){
           </div>
 
           <div style="display:flex;justify-content:center;align-items:center;gap:8px;margin-bottom:16px">
-            <span class="tag" style="background:#22222c;color:#a09fa8">${esc(tierName)}</span>
-            <span class="tag" style="background:#3d2c12;color:#ffd166;font-weight:800;border:1px solid #6b4d1b">${actualCost} Points</span>
+            ${renderTierAndCostBadges(tierName, actualCost)}
           </div>
 
           <div class="card" style="padding:12px 14px;background:#14141c;border-color:#2a2a3a;text-align:left;margin-bottom:16px">
@@ -26423,7 +26455,7 @@ function openEditBoardPokemonModal(tId, oldMonName, currentCost, currentTierName
           <label style="font-size:11px;font-weight:800;color:#e0dee6">Draft Tier / Points</label>
           <select id="editMonTierSelect" onchange="handleEditTierSelectChange(this.value)" style="background:#13131a;border:1px solid #3d3d4e;color:#ffd166;border-radius:6px;padding:10px 12px;font-weight:800;font-size:13px;width:100%">
             ${tierOptions.map(c => `
-              <option value="${c}" ${c === currentCost ? 'selected' : ''}>${c} Points Tier (${c} pts)</option>
+              <option value="${c}" ${c === currentCost ? 'selected' : ''}>${c} Points Tier</option>
             `).join('')}
             <option value="custom">✏️ Custom Point Value...</option>
           </select>
