@@ -5107,7 +5107,31 @@ function renderReplayPillsHtml(m, t, matchKey, canManage, isCompact = false) {
   if(!m) return '';
   let replays = (Array.isArray(m.replays) && m.replays.length)
     ? m.replays
-    : ((t?.topCutReplays && (t.topCutReplays[matchKey] || t.topCutReplays[m.id] || t.topCutReplays[m.actualMatchId])) || []);
+    : ((t?.topCutReplays && (
+        t.topCutReplays[matchKey] ||
+        t.topCutReplays[m.id] ||
+        t.topCutReplays['tc_' + m.id] ||
+        t.topCutReplays[m.actualMatchId] ||
+        t.topCutReplays['tc_' + m.actualMatchId] ||
+        t.topCutReplays[m.matchId] ||
+        t.topCutReplays['tc_' + m.matchId]
+      )) || []);
+
+  if(!replays.length && t?.topCutReplays && (m.p1 || m.a) && (m.p2 || m.b)){
+    let p1 = m.p1 || m.a;
+    let p2 = m.p2 || m.b;
+    for(let k in t.topCutReplays){
+      let list = t.topCutReplays[k];
+      if(Array.isArray(list) && list.length){
+        let r0 = list[0];
+        if(r0 && ((r0.p1 === p1 && r0.p2 === p2) || (r0.p1 === p2 && r0.p2 === p1))){
+          replays = list;
+          break;
+        }
+      }
+    }
+  }
+
   let hasReplays = replays.length > 0;
   let tId = t?.id || m.tournamentId || activeT()?.id || '';
   if(canManage == null) canManage = canManageMatchReplays(t, m);
@@ -5148,9 +5172,11 @@ function renderReplayPillsHtml(m, t, matchKey, canManage, isCompact = false) {
   `;
 
   if(isCompact){
-    return `<div class="m-bracket-replays" style="display:flex;align-items:center;justify-content:flex-end;gap:3px;padding:2px 6px;background:rgba(0,0,0,0.25);border-top:1px solid rgba(255,255,255,0.04);margin-top:2px">
-      ${playButtons}
-      ${boxScoreBtn}
+    return `<div class="m-bracket-replays" style="display:flex;align-items:center;justify-content:space-between;gap:3px;padding:2px 6px;background:rgba(0,0,0,0.25);border-top:1px solid rgba(255,255,255,0.04);margin-top:2px">
+      <div class="replay-yt-group" style="display:inline-flex;align-items:center;gap:3px">
+        ${playButtons}
+        ${boxScoreBtn}
+      </div>
       ${addBtn}
     </div>`;
   }
@@ -5169,7 +5195,18 @@ function openMatchReplayHubModal(tournamentId, matchKey, activeGameNum = 1, acti
   let mInfo = findTournamentMatch(t, matchKey);
   if(!mInfo || !mInfo.match) return;
   let m = mInfo.match;
-  let replays = Array.isArray(m.replays) ? m.replays : [];
+  let replays = (Array.isArray(m.replays) && m.replays.length) ? m.replays : (
+    (t?.topCutReplays && (
+      t.topCutReplays[matchKey] ||
+      (mInfo.tcMatchId != null && (t.topCutReplays[mInfo.tcMatchId] || t.topCutReplays['tc_' + mInfo.tcMatchId])) ||
+      (m.id != null && (t.topCutReplays[m.id] || t.topCutReplays['tc_' + m.id])) ||
+      (m.actualMatchId != null && (t.topCutReplays[m.actualMatchId] || t.topCutReplays['tc_' + m.actualMatchId])) ||
+      (m.matchId != null && (t.topCutReplays[m.matchId] || t.topCutReplays['tc_' + m.matchId]))
+    )) || []
+  );
+  if((!m.replays || !m.replays.length) && replays.length){
+    m.replays = replays;
+  }
 
   if(replays.length === 0){
     openAddReplayModal(t?.id, matchKey, 1);
@@ -18458,6 +18495,67 @@ async function forceCloudSync(){
 window.accountTab = window.accountTab || 'matches';
 window.accountMatchFilter = window.accountMatchFilter || 'all';
 
+function getMatchTimestamp(m, t, defaultIdx) {
+  if(!m) return 0;
+  if(typeof m.completedAt === 'number' && !isNaN(m.completedAt) && m.completedAt > 0){
+    return m.completedAt;
+  }
+  if(m.completedAt && !isNaN(Number(m.completedAt))){
+    return Number(m.completedAt);
+  }
+
+  if(Array.isArray(m.replays) && m.replays.length){
+    for(let r of m.replays){
+      if(r.id && typeof r.id === 'string'){
+        let mId = r.id.match(/replay_(\d{12,14})/);
+        if(mId) return parseInt(mId[1], 10);
+      }
+      if(r.date){
+        let p = Date.parse(r.date);
+        if(!isNaN(p) && p > 0) return p;
+      }
+    }
+  }
+
+  let tcId = m.actualMatchId ?? m.matchId ?? m.id;
+  if(t?.topCutMatchTimestamps && tcId != null && t.topCutMatchTimestamps[tcId]){
+    return t.topCutMatchTimestamps[tcId];
+  }
+
+  if(m.date && typeof m.date === 'string' && m.date !== 'TBD' && m.date !== 'League Fixture' && m.date !== 'Playoffs'){
+    let raw = m.date.trim();
+    let direct = Date.parse(raw);
+    if(!isNaN(direct) && direct > 0) return direct;
+
+    let yr = (t?.start ? new Date(t.start).getFullYear() : (t?.season ? parseInt(String(t.season).match(/\d{4}/)?.[0] || '2026', 10) : new Date().getFullYear()));
+    let withYear = raw.replace(/^([a-zA-Z]+ \d+)(, )?/, `$1, ${yr} `);
+    let parsedWithYear = Date.parse(withYear);
+    if(!isNaN(parsedWithYear) && parsedWithYear > 0) return parsedWithYear;
+
+    let match = raw.match(/^([a-zA-Z]{3,9})\s+(\d{1,2}),?\s*(\d{1,2}):(\d{2})\s*(AM|PM)?/i);
+    if(match){
+      let monthNames = ['jan','feb','mar','apr','may','jun','jul','aug','sep','oct','nov','dec'];
+      let monIdx = monthNames.indexOf(match[1].toLowerCase().slice(0, 3));
+      if(monIdx !== -1){
+        let day = parseInt(match[2], 10);
+        let hour = parseInt(match[3], 10);
+        let min = parseInt(match[4], 10);
+        let ampm = (match[5] || '').toUpperCase();
+        if(ampm === 'PM' && hour < 12) hour += 12;
+        if(ampm === 'AM' && hour === 12) hour = 0;
+        return new Date(yr, monIdx, day, hour, min, 0).getTime();
+      }
+    }
+  }
+
+  let base = 0;
+  if(t?.start){
+    let p = Date.parse(t.start);
+    if(!isNaN(p) && p > 0) base = p;
+  }
+  return base + (typeof defaultIdx === 'number' ? defaultIdx : 0);
+}
+
 function getPlayerMatchHistory(p){
   if(!p) return [];
   let matches = [];
@@ -18482,6 +18580,8 @@ function getPlayerMatchHistory(p){
       let topCutFlag = (m.isTopCut === true) || Boolean(m.group && m.group.toLowerCase().includes('playoff'));
       let stageName = m.label || (topCutFlag ? (m.round || 'Playoffs') : (m.group ? (String(m.group).toLowerCase().startsWith('group') ? m.group : `Group ${m.group}`) : 'Group Stage'));
 
+      let timestamp = getMatchTimestamp(m, t, idx);
+
       matches.push({
         id: m.id || `${t.id}-g-${idx}`,
         matchKey: getMatchKey(m, idx),
@@ -18491,6 +18591,7 @@ function getPlayerMatchHistory(p){
         stage: stageName,
         isTopCut: topCutFlag,
         date: m.date || t.start || 'League Fixture',
+        timestamp,
         isPlayed,
         opponent,
         opponentTeam: (typeof teamName === 'function' ? teamName(t, opponent) : null) || profiles[opponent]?.team || 'Team',
@@ -18505,13 +18606,17 @@ function getPlayerMatchHistory(p){
 
     // 2. Top Cut / Bracket Matches
     let topCutMatches = [];
+    let tcModel = (typeof getTournamentTopCutModel === 'function') ? getTournamentTopCutModel(t) : null;
+    let allBracketMatches = tcModel ? [
+      ...(tcModel.wbRounds || []).flatMap(r => r.matches || []),
+      ...(tcModel.lbRounds || []).flatMap(r => r.matches || []),
+      ...(tcModel.gfMatches || [])
+    ] : [];
+
     if(t.topCutCache?.results?.length){
       topCutMatches = t.topCutCache.results;
-    } else if(typeof getTournamentTopCutModel === 'function'){
-      let mod = getTournamentTopCutModel(t);
-      if(mod && mod.completedList){
-        topCutMatches = mod.completedList;
-      }
+    } else if(tcModel && tcModel.completedList){
+      topCutMatches = tcModel.completedList;
     }
 
     topCutMatches.forEach((m, idx) => {
@@ -18530,15 +18635,96 @@ function getPlayerMatchHistory(p){
       let won = isPlayed && (myScore > oppScore);
       let lost = isPlayed && (oppScore > myScore);
 
+      let tcId = (m.actualMatchId != null ? m.actualMatchId : (m.matchId != null ? m.matchId : (m.id != null ? m.id : null)));
+
+      let matchingBm = null;
+      if(allBracketMatches.length){
+        matchingBm = allBracketMatches.find(b =>
+          (tcId != null && (b.actualMatchId === tcId || b.id === tcId || String(b.actualMatchId) === String(tcId) || String(b.id) === String(tcId))) ||
+          ((b.p1 === p1 && b.p2 === p2) || (b.p1 === p2 && b.p2 === p1))
+        );
+        if(matchingBm && tcId == null){
+          tcId = matchingBm.actualMatchId != null ? matchingBm.actualMatchId : matchingBm.id;
+        }
+      }
+
+      let tcReplays = (Array.isArray(m.replays) && m.replays.length) ? m.replays : null;
+      if(!tcReplays && t.topCutReplays){
+        tcReplays = (tcId != null ? (t.topCutReplays[tcId] || t.topCutReplays['tc_' + tcId]) : null) ||
+                    (m.id != null ? (t.topCutReplays[m.id] || t.topCutReplays['tc_' + m.id]) : null);
+      }
+      if(!tcReplays && matchingBm?.replays?.length){
+        tcReplays = matchingBm.replays;
+      }
+      if(!tcReplays && t.topCutReplays){
+        for(let k in t.topCutReplays){
+          let rList = t.topCutReplays[k];
+          if(Array.isArray(rList) && rList.length){
+            let r0 = rList[0];
+            if(r0 && ((r0.p1 === p1 && r0.p2 === p2) || (r0.p1 === p2 && r0.p2 === p1))){
+              tcReplays = rList;
+              break;
+            }
+          }
+        }
+      }
+
+      let matchKey = (tcId != null) ? ('tc_' + tcId) : ((m.id != null) ? ('tc_' + m.id) : ('tc_' + p1 + '_vs_' + p2));
+
+      let rawMatch = {
+        ...m,
+        isTopCut: true,
+        actualMatchId: tcId,
+        matchId: tcId,
+        id: tcId != null ? tcId : (m.id || idx),
+        p1,
+        p2,
+        a: p1,
+        b: p2,
+        as: s1,
+        bs: s2,
+        replays: tcReplays || []
+      };
+
+      let completedAt = m.completedAt || (t.topCutMatchTimestamps && tcId != null ? t.topCutMatchTimestamps[tcId] : null);
+      if(!completedAt && tcReplays && tcReplays.length){
+        for(let r of tcReplays){
+          if(r.id && typeof r.id === 'string'){
+            let matchTime = r.id.match(/replay_(\d{12,14})/);
+            if(matchTime){ completedAt = parseInt(matchTime[1], 10); break; }
+          }
+          if(r.date){
+            let parsed = Date.parse(r.date);
+            if(!isNaN(parsed) && parsed > 0){ completedAt = parsed; break; }
+          }
+        }
+      }
+      if(completedAt && !rawMatch.completedAt){
+        rawMatch.completedAt = completedAt;
+      }
+
+      let dateDisplay = m.date;
+      if(!dateDisplay || dateDisplay === 'TBD' || dateDisplay === 'Playoffs' || dateDisplay === t.end || dateDisplay === t.start){
+        if(completedAt){
+          dateDisplay = new Date(completedAt).toLocaleString([], {month:'short',day:'numeric',hour:'numeric',minute:'2-digit'});
+        } else {
+          dateDisplay = t.end || t.start || 'Playoffs';
+        }
+      }
+      rawMatch.date = dateDisplay;
+
+      let timestamp = getMatchTimestamp(rawMatch, t, 10000 + idx);
+
       matches.push({
-        id: m.id || `${t.id}-tc-${idx}`,
-        matchKey: (typeof getMatchKey === 'function' ? getMatchKey(m) : null) || ('tc_' + (m.actualMatchId || m.id || idx)),
+        id: rawMatch.id || `${t.id}-tc-${idx}`,
+        matchKey,
         tournamentId: t.id,
         tournamentName: t.name,
         tournamentSeason: t.season,
         stage: m.title || m.roundTitle || m.label || 'Playoff Fixture',
         isTopCut: true,
-        date: m.date || t.end || t.start || 'Playoffs',
+        date: dateDisplay,
+        timestamp,
         isPlayed,
         opponent,
         opponentTeam: (typeof teamName === 'function' ? teamName(t, opponent) : null) || profiles[opponent]?.team || 'Team',
@@ -18547,12 +18733,20 @@ function getPlayerMatchHistory(p){
         oppScore: isPlayed ? oppScore : '-',
         won,
         lost,
-        rawMatch: m
+        rawMatch
       });
     });
   });
 
-  return matches.reverse();
+  matches.sort((a, b) => {
+    let tA = a.timestamp || 0;
+    let tB = b.timestamp || 0;
+    if(tA !== tB) return tB - tA;
+    if(a.isTopCut !== b.isTopCut) return a.isTopCut ? -1 : 1;
+    return 0;
+  });
+
+  return matches;
 }
 
 function getPlayerPredictionHistory(userId, username){
@@ -18685,6 +18879,17 @@ function renderAccountMatchHistory(mine, matchHistory){
       tourneyGroups.push(entry);
     }
     tourneyMap.get(m.tournamentId).matches.push(m);
+  });
+
+  // Sort matches within each tournament group chronologically (newest first)
+  tourneyGroups.forEach(grp => {
+    grp.matches.sort((a, b) => {
+      let tA = a.timestamp || 0;
+      let tB = b.timestamp || 0;
+      if(tA !== tB) return tB - tA;
+      if(a.isTopCut !== b.isTopCut) return a.isTopCut ? -1 : 1;
+      return 0;
+    });
   });
 
   return `
