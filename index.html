@@ -7082,6 +7082,18 @@ function calculateTeamOfTheSeason(t) {
     finalsMvp = qualified[0] || null;
   }
 
+  // Pre-build roster coach map to reliably attribute wins even if coach name is missing in log
+  let rosterCoachMap = new Map();
+  if(t.rosters) {
+    Object.keys(t.rosters).forEach(coachName => {
+      let rList = t.rosters[coachName] || [];
+      rList.forEach(rMon => {
+        let clean = normalizeBattleFormToDraftForm(String(rMon).trim());
+        if(clean) rosterCoachMap.set(clean.toLowerCase(), coachName);
+      });
+    });
+  }
+
   // 3. Aggregate stats across all replays, tracking Match MVPs and regular vs top cut
   let monMap = new Map();
   allReplays.forEach(({ replay, match, isTopCut }) => {
@@ -7102,6 +7114,8 @@ function calculateTeamOfTheSeason(t) {
     }
     let pList = Array.isArray(stats?.pokemon) ? stats.pokemon : (stats?.pokemon ? Object.values(stats.pokemon) : []);
     if(!pList || pList.length === 0) return;
+
+    let winningCoach = replay.winnerCoach || stats?.winnerCoach || replay.winner;
 
     // Identify game MVP from stats or highest impactScore in this game
     let gameMvpName = stats?.mvp?.name ? normalizeBattleFormToDraftForm(stats.mvp.name.trim()).toLowerCase() : null;
@@ -7132,15 +7146,18 @@ function calculateTeamOfTheSeason(t) {
       let hpHealed = p.hpHealed || 0;
       let fainted = Boolean(p.fainted);
       let curImpact = p.impactScore != null ? p.impactScore : ((kills * 150) + Math.round(damageDealt) + (fainted ? 0 : 75) + Math.round(hpHealed * 0.5));
+      let initialCoach = p.coach || rosterCoachMap.get(key) || '';
 
       if(!monMap.has(key)) {
         monMap.set(key, {
           name: cleanName,
-          coach: p.coach || '',
+          coach: initialCoach,
           sprite: p.sprite || (typeof resolvePokemonData === 'function' ? resolvePokemonData(cleanName)?.sprite : (typeof getPokemonSpriteUrl === 'function' ? getPokemonSpriteUrl(cleanName.toLowerCase()) : '')),
           games: 0,
           regGames: 0,
           tcGames: 0,
+          faints: 0,
+          wins: 0,
           matchMvps: 0,
           regMatchMvps: 0,
           totalKills: 0,
@@ -7156,6 +7173,7 @@ function calculateTeamOfTheSeason(t) {
       }
       let entry = monMap.get(key);
       entry.games += 1;
+      if(fainted) entry.faints += 1;
       if(isTopCut) {
         entry.tcGames += 1;
       } else {
@@ -7163,6 +7181,13 @@ function calculateTeamOfTheSeason(t) {
         entry.regKills += kills;
         entry.regDamageDealt += damageDealt;
         entry.regImpactScoreTotal += curImpact;
+      }
+
+      let curCoach = p.coach || entry.coach || rosterCoachMap.get(key);
+      if(winningCoach && curCoach) {
+        if(String(curCoach).trim().toLowerCase() === String(winningCoach).trim().toLowerCase() || isCoachMatch(curCoach, winningCoach, t)) {
+          entry.wins += 1;
+        }
       }
 
       if(key === gameMvpName) {
@@ -7175,7 +7200,7 @@ function calculateTeamOfTheSeason(t) {
       entry.totalDamageTaken += damageTaken;
       entry.totalHpHealed += hpHealed;
       entry.impactScoreTotal += curImpact;
-      if(!entry.coach && p.coach) entry.coach = p.coach;
+      if(!entry.coach && curCoach) entry.coach = curCoach;
       (p.moves || []).forEach(mv => entry.moves.add(mv));
     });
   });
@@ -7201,6 +7226,14 @@ function calculateTeamOfTheSeason(t) {
     let dpg = m.totalDamageDealt / games;
     let tpg = m.totalDamageTaken / games;
     let hpg = m.totalHpHealed / games;
+    let faints = m.faints || 0;
+    let wins = m.wins || 0;
+    let survivedGames = Math.max(0, games - faints);
+    let survivalRate = Math.max(0, Math.min(1, survivedGames / games));
+    let winRate = Math.max(0, Math.min(1, wins / games));
+    let rawTank = tpg + (hpg * 1.5);
+    let tankMult = 0.55 + (0.35 * winRate) + (0.45 * survivalRate);
+    let tankScore = rawTank * tankMult;
     return {
       ...m,
       moves: Array.from(m.moves),
@@ -7208,6 +7241,13 @@ function calculateTeamOfTheSeason(t) {
       damageDealtPerGame: dpg,
       damageTakenPerGame: tpg,
       healedPerGame: hpg,
+      faints,
+      wins,
+      survivedGames,
+      survivalRate,
+      winRate,
+      rawTankScore: rawTank,
+      tankScore,
       avgImpactScore: m.impactScoreTotal / games,
       regAvgImpactScore: m.regImpactScoreTotal / regG
     };
@@ -7304,8 +7344,8 @@ function calculateTeamOfTheSeason(t) {
   };
 
   let sortTank = (a, b) => {
-    let aScore = a.damageTakenPerGame + (a.healedPerGame * 1.5);
-    let bScore = b.damageTakenPerGame + (b.healedPerGame * 1.5);
+    let aScore = a.tankScore != null ? a.tankScore : (a.damageTakenPerGame + (a.healedPerGame * 1.5));
+    let bScore = b.tankScore != null ? b.tankScore : (b.damageTakenPerGame + (b.healedPerGame * 1.5));
     if(bScore !== aScore) return bScore - aScore;
     if(b.damageTakenPerGame !== a.damageTakenPerGame) return b.damageTakenPerGame - a.damageTakenPerGame;
     return b.totalHpHealed - a.totalHpHealed;
@@ -7349,7 +7389,8 @@ function calculateTeamOfTheSeason(t) {
       });
     }
     if(tank1) {
-      let tankScore = tank1.damageTakenPerGame + (tank1.healedPerGame * 1.5);
+      let tankScore = tank1.tankScore != null ? tank1.tankScore : (tank1.damageTakenPerGame + (tank1.healedPerGame * 1.5));
+      let survPct = Math.round((tank1.survivalRate || 0) * 100);
       slots.push({
         roleKey: 'tank',
         slotNum: 1,
@@ -7358,13 +7399,14 @@ function calculateTeamOfTheSeason(t) {
         mon: tank1,
         statVal: Math.round(tankScore),
         statUnit: 'Tank Rating',
-        statBreakdown: `${Math.round(tank1.damageTakenPerGame)} Taken/g \u2022 ${Math.round(tank1.healedPerGame)} Heal/g`,
+        statBreakdown: `${Math.round(tank1.damageTakenPerGame)} Taken/g \u2022 ${Math.round(tank1.healedPerGame)} Heal/g \u2022 ${survPct}% Surv`,
         tags: getMonLeaderTags(tank1.name),
         heroColor: '#7dd3fc'
       });
     }
     if(tank2) {
-      let tankScore = tank2.damageTakenPerGame + (tank2.healedPerGame * 1.5);
+      let tankScore = tank2.tankScore != null ? tank2.tankScore : (tank2.damageTakenPerGame + (tank2.healedPerGame * 1.5));
+      let survPct = Math.round((tank2.survivalRate || 0) * 100);
       slots.push({
         roleKey: 'tank',
         slotNum: 2,
@@ -7373,7 +7415,7 @@ function calculateTeamOfTheSeason(t) {
         mon: tank2,
         statVal: Math.round(tankScore),
         statUnit: 'Tank Rating',
-        statBreakdown: `${Math.round(tank2.damageTakenPerGame)} Taken/g \u2022 ${Math.round(tank2.healedPerGame)} Heal/g`,
+        statBreakdown: `${Math.round(tank2.damageTakenPerGame)} Taken/g \u2022 ${Math.round(tank2.healedPerGame)} Heal/g \u2022 ${survPct}% Surv`,
         tags: getMonLeaderTags(tank2.name),
         heroColor: '#7dd3fc'
       });
