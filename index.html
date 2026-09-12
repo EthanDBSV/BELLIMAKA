@@ -6794,9 +6794,11 @@ function getGrandFinalReplays(t) {
 
   let isGfTitle = (str) => {
     if(!str || typeof str !== 'string') return false;
-    let s = str.toLowerCase();
+    let s = str.toLowerCase().trim();
     if(s.includes('3rd') || s.includes('third') || s.includes('bronze')) return false;
-    return /grand\s*final|bracket\s*reset|championship\s*final|\bfinals?\b/i.test(s);
+    if(s.includes('winner') || s.includes('loser') || s.includes('wb ') || s.includes('lb ') || s.includes('semi') || s.includes('quarter')) return false;
+    if(/grand\s*final|bracket\s*reset|championship\s*final/i.test(s)) return true;
+    return /^(the\s*)?(championship\s*)?finals?(\s*[-–:]|$)/i.test(s);
   };
 
   // Method 1: Cross-reference with getTournamentTopCutModel
@@ -6806,7 +6808,7 @@ function getGrandFinalReplays(t) {
       if(model && Array.isArray(model.gfMatches) && model.gfMatches.length > 0) {
         let finalsOnly = model.gfMatches.filter(m => {
           let title = (m.title || '').toLowerCase();
-          return !title.includes('3rd') && !title.includes('third') && !title.includes('bronze');
+          return !title.includes('3rd') && !title.includes('third') && !title.includes('bronze') && isGfTitle(m.title || 'finals');
         });
         finalsOnly.forEach(m => {
           if(Array.isArray(m.replays) && m.replays.length > 0) {
@@ -6826,19 +6828,6 @@ function getGrandFinalReplays(t) {
             if(Array.isArray(list) && list.length > 0) {
               list.forEach(r => addReplay(r));
             }
-          }
-
-          if(t.topCutReplays && (m.p1 || m.a) && (m.p2 || m.b)) {
-            let p1 = m.p1 || m.a;
-            let p2 = m.p2 || m.b;
-            Object.values(t.topCutReplays).forEach(list => {
-              if(Array.isArray(list) && list.length > 0) {
-                let r0 = list[0];
-                if(r0 && ((isCoachMatch(r0.p1, p1, t) && isCoachMatch(r0.p2, p2, t)) || (isCoachMatch(r0.p1, p2, t) && isCoachMatch(r0.p2, p1, t)))) {
-                  list.forEach(r => addReplay(r));
-                }
-              }
-            });
           }
         });
       }
@@ -6864,17 +6853,6 @@ function getGrandFinalReplays(t) {
           list.forEach(r => addReplay(r));
         }
       }
-
-      if(t.topCutReplays && res.p1 && res.p2) {
-        Object.values(t.topCutReplays).forEach(list => {
-          if(Array.isArray(list) && list.length > 0) {
-            let r0 = list[0];
-            if(r0 && ((isCoachMatch(r0.p1, res.p1, t) && isCoachMatch(r0.p2, res.p2, t)) || (isCoachMatch(r0.p1, res.p2, t) && isCoachMatch(r0.p2, res.p1, t)))) {
-              list.forEach(r => addReplay(r));
-            }
-          }
-        });
-      }
     });
   }
 
@@ -6884,10 +6862,14 @@ function getGrandFinalReplays(t) {
     let bmdMatches = bmd.match;
     let finalGroup = (bmd.group || []).find(g => g.number === 3);
     let finalGroupId = finalGroup ? finalGroup.id : null;
-    let gfMatches = bmdMatches.filter(m =>
-      (finalGroupId != null && m.group_id === finalGroupId) ||
-      isGfTitle(m.title)
-    );
+    let gfMatches = [];
+    if(finalGroupId != null) {
+      // In double elimination, Group 3 is specifically the Grand Finals stage
+      gfMatches = bmdMatches.filter(m => m.group_id === finalGroupId && !m.title?.toLowerCase().includes('3rd'));
+    } else {
+      // Single elimination or custom bracket
+      gfMatches = bmdMatches.filter(m => isGfTitle(m.title));
+    }
     gfMatches.forEach(m => {
       let keys = [m.id, 'tc_' + m.id, String(m.id)];
       for(let k of keys) {
@@ -6904,7 +6886,7 @@ function getGrandFinalReplays(t) {
     Object.keys(t.topCutReplays).forEach(k => {
       let list = t.topCutReplays[k];
       if(!Array.isArray(list) || list.length === 0) return;
-      let isGfKey = /^(tc_)?(gf\d*|grand_?finals?|bracket_?reset|finals?)$/i.test(k);
+      let isGfKey = /^(tc_)?(gf\d*|grand_?finals?|bracket_?reset)$/i.test(k);
       let matchObj = (typeof findTournamentMatch === 'function') ? findTournamentMatch(t, k)?.match : null;
       let isGfMatch = matchObj && isGfTitle(matchObj.title || matchObj.round || matchObj.stage);
       if(isGfKey || isGfMatch) {
@@ -6972,9 +6954,17 @@ function calculateTeamOfTheSeason(t) {
 
   // Fallback: If gfReplays didn't capture matches, check allReplays for titles matching finals
   if(gfReplays.length === 0 && allReplays.length > 0) {
+    let isFallbackGfTitle = (str) => {
+      if(!str || typeof str !== 'string') return false;
+      let s = str.toLowerCase().trim();
+      if(s.includes('3rd') || s.includes('third') || s.includes('bronze')) return false;
+      if(s.includes('winner') || s.includes('loser') || s.includes('wb ') || s.includes('lb ') || s.includes('semi') || s.includes('quarter')) return false;
+      if(/grand\s*final|bracket\s*reset|championship\s*final/i.test(s)) return true;
+      return /^(the\s*)?(championship\s*)?finals?(\s*[-–:]|$)/i.test(s);
+    };
     allReplays.forEach(({ replay, match }) => {
       let title = replay?.matchTitle || replay?.title || match?.title || match?.round || match?.stage || '';
-      if(/grand\s*final|bracket\s*reset|championship\s*final/i.test(title) && !/3rd|third|bronze/i.test(title)) {
+      if(isFallbackGfTitle(title)) {
         let repId = replay.id || `${replay.game}_${replay.date || ''}_${replay.winner || ''}`;
         if(!gfReplays.some(x => (x.id || `${x.game}_${x.date || ''}_${x.winner || ''}`) === repId)) {
           gfReplays.push(replay);
