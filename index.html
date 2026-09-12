@@ -9451,6 +9451,11 @@ function getTournamentTopCutModel(t){
     qualifiers=qualified(t).map((x,idx)=>({name:x.p,seed:idx+1,group:x.group}));
   }
 
+  let seedMap = {};
+  qualifiers.forEach(q => {
+    if(q && q.name) seedMap[q.name] = q.seed;
+  });
+
   let bmd = t.bracketManagerData;
   let count = qualifiers.length > 4 ? 8 : (qualifiers.length > 2 ? 4 : 2);
   let seededNames = qualifiers.map(q => q.name);
@@ -9463,6 +9468,8 @@ function getTournamentTopCutModel(t){
     else if(bmd) matchObj.p1 = null;
     if(sm.p2 != null) matchObj.p2 = sm.p2;
     else if(bmd) matchObj.p2 = null;
+    if(matchObj.p1 && seedMap[matchObj.p1]) matchObj.p1Seed = seedMap[matchObj.p1];
+    if(matchObj.p2 && seedMap[matchObj.p2]) matchObj.p2Seed = seedMap[matchObj.p2];
     matchObj.a = matchObj.p1;
     matchObj.b = matchObj.p2;
     matchObj.isTopCut = true;
@@ -9784,6 +9791,8 @@ function getTournamentTopCutModel(t){
     bm.isTopCut = true;
     if(bm.p1 && !bm.a) bm.a = bm.p1;
     if(bm.p2 && !bm.b) bm.b = bm.p2;
+    if(bm.p1 && seedMap[bm.p1]) bm.p1Seed = seedMap[bm.p1];
+    if(bm.p2 && seedMap[bm.p2]) bm.p2Seed = seedMap[bm.p2];
     if(t?.topCutReplays && bm.actualMatchId != null){
       let reps = t.topCutReplays[bm.actualMatchId] || t.topCutReplays['tc_' + bm.actualMatchId];
       if(reps && (!bm.replays || bm.replays.length === 0)){
@@ -9870,6 +9879,7 @@ function getTournamentTopCutModel(t){
   return {
     isPreview,
     qualifiers,
+    seedMap,
     wbRounds,
     lbRounds,
     gfMatches,
@@ -10011,8 +10021,11 @@ function topCutSection(t, preview){
   let isModEditable = canManageTournament(t) && t.status !== 'COMPLETE' && (t.status === 'ONGOING' || t.phase === 'topcut');
   let statusBadge = preview ? `<span class="tag hunt">PROJECTED SEEDS</span>` : (t.status === 'COMPLETE' ? `<span class="tag safe">TOURNAMENT ARCHIVE · COMPLETE</span>` : `<span class="tag hunt">PLAYOFFS LIVE</span>`);
 
+  let seedMap = model.seedMap || {};
+
   function renderMatchSlot(pName, seed, score, isWinner, isLoser, originLabel){
     let isReal = isKnownPlayer(pName);
+    let effSeed = seed || seedMap[pName];
     if(!isReal){
       return `<div class="tc-slot tbd">
         <span class="tc-slot-seed">—</span>
@@ -10031,7 +10044,7 @@ function topCutSection(t, preview){
     let teamStr = teamName(t, pName);
 
     return `<div class="tc-slot ${isWinner?'winner':''} ${isLoser?'loser':''}">
-      <span class="tc-slot-seed">${seed ? `#${seed}` : ''}</span>
+      <span class="tc-slot-seed">${effSeed ? `#${effSeed}` : ''}</span>
       <div class="tc-slot-info">
         <span class="mrow-face" style="background-image:${faceArt};background-size:cover;background-position:center;width:24px;height:24px;font-size:10px;border-radius:50%;flex:none;display:grid;place-items:center;border:2px solid ${ovrObj.color}">${faceLetter}</span>
         <div style="min-width:0">
@@ -19877,7 +19890,7 @@ function topCutPredictionBracket(t){
     if(!mObj) return '';
     let pName = isP1 ? mObj.p1 : mObj.p2;
     let opponent = isP1 ? mObj.p2 : mObj.p1;
-    let seed = isP1 ? mObj.p1Seed : mObj.p2Seed;
+    let seed = (isP1 ? mObj.p1Seed : mObj.p2Seed) || (model?.seedMap && model.seedMap[pName]);
     let mId = mObj.id;
     let isReal = isKnownPlayer(pName);
     let isOpponentReal = isKnownPlayer(opponent);
