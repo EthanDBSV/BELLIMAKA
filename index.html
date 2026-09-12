@@ -9239,26 +9239,49 @@ function shouldApply(incoming){
   // 5. Stale packet while local save is actively in debounce flight
   return false;
 }
+function getTournamentSeasonNumber(t){
+  if(!t) return 0;
+  let candidates = [t.season, t.name, t.id];
+  for(let c of candidates){
+    if(!c) continue;
+    let s = String(c);
+    let m = s.match(/season\s*(\d+)/i);
+    if(m) return parseInt(m[1], 10);
+    let m2 = s.match(/\bS(\d+)\b/i) || s.match(/\bS(\d+)_/i);
+    if(m2) return parseInt(m2[1], 10);
+  }
+  let num = Number(String(t.season || '').replace(/\D/g, ''));
+  if(num > 0) return num;
+  return 0;
+}
+
 function sortedTournamentsChronological(){
   return Object.values(tournamentData).sort((a,b)=>{
-    let da=Date.parse(a.start)||0, db=Date.parse(b.start)||0;
+    let sa = getTournamentSeasonNumber(a);
+    let sb = getTournamentSeasonNumber(b);
+    if(sa && sb && sa !== sb) return sa - sb;
+    if(sa && !sb) return 1;
+    if(!sa && sb) return -1;
+
+    let da = Date.parse(a.start) || 0;
+    let db = Date.parse(b.start) || 0;
     if(da && db && da !== db) return da - db;
     if(da && !db) return -1;
     if(!da && db) return 1;
-    let sa=Number(String(a.season||'').replace(/\D/g,''))||0;
-    let sb=Number(String(b.season||'').replace(/\D/g,''))||0;
-    if(sa && sb && sa !== sb) return sa - sb;
-    let ida=Number(String(a.id||'').replace(/\D/g,''))||0;
-    let idb=Number(String(b.id||'').replace(/\D/g,''))||0;
+
+    let ida = Number(String(a.id || '').replace(/\D/g, '')) || 0;
+    let idb = Number(String(b.id || '').replace(/\D/g, '')) || 0;
     if(ida && idb && ida !== idb) return ida - idb;
-    return String(a.id||'').localeCompare(String(b.id||''));
+    return String(a.id || '').localeCompare(String(b.id || ''));
   });
 }
 
 function syncTournamentSeasons(){
-  let sorted=sortedTournamentsChronological();
+  let sorted = sortedTournamentsChronological();
   sorted.forEach((t, i)=>{
-    t.season = `Season ${i + 1}`;
+    if(!t.season || !getTournamentSeasonNumber(t)){
+      t.season = `Season ${i + 1}`;
+    }
   });
 }
 
@@ -18556,6 +18579,104 @@ function getMatchTimestamp(m, t, defaultIdx) {
   return base + (typeof defaultIdx === 'number' ? defaultIdx : 0);
 }
 
+function getTopCutStageRank(m) {
+  let title = String(m?.stage || m?.title || m?.roundTitle || m?.label || '').toLowerCase();
+  if(title.includes('bracket reset')) return 100;
+  if(title.includes('grand final') || title.includes('championship final')) return 90;
+  if(title.includes('bronze') || title.includes('3rd place')) return 82;
+  if(title.includes('losers final') || title.includes('loser final') || title.includes('lb final')) return 80;
+  if(title.includes('winners final') || title.includes('winner final') || title.includes('wb final')) return 75;
+  if(title.includes('final') && !title.includes('semi') && !title.includes('quarter') && !title.includes('round')) return 85;
+
+  if(title.includes('losers semi') || title.includes('loser semi') || title.includes('lb semi')) return 70;
+  if(title.includes('winners semi') || title.includes('winner semi') || title.includes('wb semi') || title.includes('semifinal') || title.includes('semi-final')) return 65;
+
+  let lrMatch = title.match(/losers?\s+round\s*(\d+)/i) || title.match(/lb\s*r(?:ound)?\s*(\d+)/i);
+  if(lrMatch) return 55 + parseInt(lrMatch[1], 10);
+
+  let wrMatch = title.match(/winners?\s+round\s*(\d+)/i) || title.match(/wb\s*r(?:ound)?\s*(\d+)/i);
+  if(wrMatch) return 50 + parseInt(wrMatch[1], 10);
+
+  if(title.includes('quarterfinal') || title.includes('quarter-final') || title.includes('quarter final') || title.includes('qf')) return 50;
+
+  return 40;
+}
+
+function getGroupRoundNumber(m) {
+  if(!m) return 0;
+  let raw = m.rawMatch || m;
+  let str = `${raw.round || ''} ${raw.label || ''} ${m.stage || ''}`;
+  let match = str.match(/(?:round|rd|r)\s*(\d+)/i);
+  if(match) return parseInt(match[1], 10);
+  if(typeof raw.round === 'number') return raw.round;
+  return 0;
+}
+
+function compareTournamentMatches(a, b) {
+  // 1. Different tournaments: sort by tournament season descending (Season 3 > Season 2 > Season 1)
+  if(a.tournamentId !== b.tournamentId){
+    let ta = tournamentData[a.tournamentId] || { id: a.tournamentId, name: a.tournamentName, season: a.tournamentSeason };
+    let tb = tournamentData[b.tournamentId] || { id: b.tournamentId, name: b.tournamentName, season: b.tournamentSeason };
+    let sa = (typeof getTournamentSeasonNumber === 'function') ? getTournamentSeasonNumber(ta) : 0;
+    let sb = (typeof getTournamentSeasonNumber === 'function') ? getTournamentSeasonNumber(tb) : 0;
+    if(sa && sb && sa !== sb) return sb - sa;
+    if(sa && !sb) return -1;
+    if(!sa && sb) return 1;
+
+    let da = Date.parse(ta.end || ta.start) || 0;
+    let db = Date.parse(tb.end || tb.start) || 0;
+    if(da && db && da !== db) return db - da;
+
+    let ida = Number(String(a.tournamentId || '').replace(/\D/g, '')) || 0;
+    let idb = Number(String(b.tournamentId || '').replace(/\D/g, '')) || 0;
+    if(ida && idb && ida !== idb) return idb - ida;
+
+    return String(b.tournamentId || '').localeCompare(String(a.tournamentId || ''));
+  }
+
+  // 2. Same tournament: Top Cut / Bracket matches ALWAYS come before Group Stage matches!
+  if(a.isTopCut !== b.isTopCut){
+    return a.isTopCut ? -1 : 1;
+  }
+
+  // 3. Both are Top Cut matches in the same tournament
+  if(a.isTopCut && b.isTopCut){
+    let rA = getTopCutStageRank(a);
+    let rB = getTopCutStageRank(b);
+    if(rA !== rB) return rB - rA; // Higher stage first (Bracket Reset > Grand Final > Winners Final...)
+
+    // If stage rank is tied, check timestamps descending
+    let tA = a.timestamp || 0;
+    let tB = b.timestamp || 0;
+    if(tA && tB && tA !== tB) return tB - tA;
+
+    let idxA = typeof a.fixtureIndex === 'number' ? a.fixtureIndex : 0;
+    let idxB = typeof b.fixtureIndex === 'number' ? b.fixtureIndex : 0;
+    if(idxA !== idxB) return idxB - idxA;
+
+    return 0;
+  }
+
+  // 4. Both are Group Stage matches in the same tournament
+  let tA = a.timestamp || 0;
+  let tB = b.timestamp || 0;
+  if(tA && tB && tA !== tB){
+    return tB - tA; // Newest played group match first
+  }
+  if(tA && !tB) return -1;
+  if(!tA && tB) return 1;
+
+  let roundA = getGroupRoundNumber(a);
+  let roundB = getGroupRoundNumber(b);
+  if(roundA !== roundB) return roundB - roundA; // Later round first
+
+  let idxA = typeof a.fixtureIndex === 'number' ? a.fixtureIndex : 0;
+  let idxB = typeof b.fixtureIndex === 'number' ? b.fixtureIndex : 0;
+  if(idxA !== idxB) return idxB - idxA;
+
+  return 0;
+}
+
 function getPlayerMatchHistory(p){
   if(!p) return [];
   let matches = [];
@@ -18592,6 +18713,7 @@ function getPlayerMatchHistory(p){
         isTopCut: topCutFlag,
         date: m.date || t.start || 'League Fixture',
         timestamp,
+        fixtureIndex: idx,
         isPlayed,
         opponent,
         opponentTeam: (typeof teamName === 'function' ? teamName(t, opponent) : null) || profiles[opponent]?.team || 'Team',
@@ -18725,6 +18847,7 @@ function getPlayerMatchHistory(p){
         isTopCut: true,
         date: dateDisplay,
         timestamp,
+        fixtureIndex: 10000 + idx,
         isPlayed,
         opponent,
         opponentTeam: (typeof teamName === 'function' ? teamName(t, opponent) : null) || profiles[opponent]?.team || 'Team',
@@ -18738,14 +18861,7 @@ function getPlayerMatchHistory(p){
     });
   });
 
-  matches.sort((a, b) => {
-    let tA = a.timestamp || 0;
-    let tB = b.timestamp || 0;
-    if(tA !== tB) return tB - tA;
-    if(a.isTopCut !== b.isTopCut) return a.isTopCut ? -1 : 1;
-    return 0;
-  });
-
+  matches.sort(compareTournamentMatches);
   return matches;
 }
 
@@ -18881,15 +18997,30 @@ function renderAccountMatchHistory(mine, matchHistory){
     tourneyMap.get(m.tournamentId).matches.push(m);
   });
 
-  // Sort matches within each tournament group chronologically (newest first)
+  // Sort tournament sections by season descending: Season 3, Season 2, Season 1...
+  tourneyGroups.sort((ga, gb) => {
+    let ta = tournamentData[ga.tournamentId] || ga;
+    let tb = tournamentData[gb.tournamentId] || gb;
+    let sa = (typeof getTournamentSeasonNumber === 'function') ? getTournamentSeasonNumber(ta) : 0;
+    let sb = (typeof getTournamentSeasonNumber === 'function') ? getTournamentSeasonNumber(tb) : 0;
+    if(sa && sb && sa !== sb) return sb - sa; // Higher season first: Season 3 > Season 2 > Season 1
+    if(sa && !sb) return -1;
+    if(!sa && sb) return 1;
+
+    let da = Date.parse(ta.end || ta.start) || 0;
+    let db = Date.parse(tb.end || tb.start) || 0;
+    if(da && db && da !== db) return db - da;
+
+    let ida = Number(String(ga.tournamentId || '').replace(/\D/g, '')) || 0;
+    let idb = Number(String(gb.tournamentId || '').replace(/\D/g, '')) || 0;
+    if(ida && idb && ida !== idb) return idb - ida;
+
+    return String(gb.tournamentId || '').localeCompare(String(ga.tournamentId || ''));
+  });
+
+  // Sort matches within each tournament group
   tourneyGroups.forEach(grp => {
-    grp.matches.sort((a, b) => {
-      let tA = a.timestamp || 0;
-      let tB = b.timestamp || 0;
-      if(tA !== tB) return tB - tA;
-      if(a.isTopCut !== b.isTopCut) return a.isTopCut ? -1 : 1;
-      return 0;
-    });
+    grp.matches.sort(compareTournamentMatches);
   });
 
   return `
