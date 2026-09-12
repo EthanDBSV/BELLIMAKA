@@ -23892,7 +23892,9 @@ function saveTournamentPointCosts(targetId){
 }
 
 function parseDraftBoardData(rawText){
-  if(!rawText || !rawText.trim()){
+  if(!rawText) return { tiers: [], totalMons: 0, error: 'Empty text provided.' };
+  rawText = rawText.replace(/^\uFEFF/, '');
+  if(!rawText.trim()){
     return { tiers: [], totalMons: 0, error: 'Empty text provided.' };
   }
 
@@ -23908,19 +23910,29 @@ function parseDraftBoardData(rawText){
       let row = [], inQ = false, cur = '';
       for(let i = 0; i < line.length; i++){
         let c = line[i];
-        if(c === '"'){ inQ = !inQ; }
-        else if(c === ',' && !inQ){ row.push(cur.trim()); cur = ''; }
-        else { cur += c; }
+        if(c === '"'){
+          if(inQ && line[i+1] === '"'){
+            cur += '"';
+            i++;
+          } else {
+            inQ = !inQ;
+          }
+        } else if(c === ',' && !inQ){
+          row.push(cur.trim().replace(/^"|"$/g, '').trim());
+          cur = '';
+        } else {
+          cur += c;
+        }
       }
-      row.push(cur.trim());
+      row.push(cur.trim().replace(/^"|"$/g, '').trim());
       return row;
     }
-    return line.split('\t').map(c => c.trim());
+    return line.split('\t').map(c => c.trim().replace(/^"|"$/g, '').trim());
   });
 
   function extractPointCost(s){
     if(!s) return null;
-    let str = String(s).trim();
+    let str = String(s).trim().replace(/^"|"$/g, '').trim();
     let m = str.match(/^(?:Tier\s*\d+[\s:\-–—]+)?(\d{1,2})\s*(?:pts?|points?|p)?$/i)
          || str.match(/(\d{1,2})\s*(?:pts?|points?|p)\b/i)
          || str.match(/Tier\s*\d+\s*\((\d{1,2})\s*(?:pts?|points?|p)?\)/i);
@@ -23974,8 +23986,23 @@ function parseDraftBoardData(rawText){
     }
   }
 
-  // Format 1: 2-Column Row-pairs (Pokemon, Cost) or (Cost, Pokemon)
-  let isRowPairCandidate = grid.every(r => r.filter(c => c.length > 0).length <= 3) && grid.length >= 3;
+  // Scan for multi-column header costs first to avoid misinterpreting multi-column tables as row-pairs
+  let bestHeaderRowIdx = -1;
+  let maxCostsFound = 0;
+  for(let r = 0; r < Math.min(grid.length, 12); r++){
+    let row = grid[r];
+    let costsInRow = 0;
+    row.forEach(cell => {
+      if(extractPointCost(cell) !== null) costsInRow++;
+    });
+    if(costsInRow > maxCostsFound){
+      maxCostsFound = costsInRow;
+      bestHeaderRowIdx = r;
+    }
+  }
+
+  // Format 1: 2-Column or 3-Column Row-pairs (e.g. Pokemon, Cost or Tier, Pokemon, Cost)
+  let isRowPairCandidate = (maxCostsFound <= 1) && grid.every(r => r.filter(c => c.length > 0).length <= 3) && grid.length >= 3;
   if(isRowPairCandidate){
     let validPairs = 0;
     let map = {};
@@ -23985,7 +24012,13 @@ function parseDraftBoardData(rawText){
         let mon = '', cost = null;
         let c0 = extractPointCost(cells[0]);
         let c1 = extractPointCost(cells[1]);
-        if(c1 !== null && isNaN(+cells[0])){
+        let c2 = cells.length >= 3 ? extractPointCost(cells[2]) : null;
+
+        if(c2 !== null && isNaN(+cells[1])){
+          mon = cells[1]; cost = c2;
+        } else if(c2 !== null && isNaN(+cells[0])){
+          mon = cells[0]; cost = c2;
+        } else if(c1 !== null && isNaN(+cells[0])){
           mon = cells[0]; cost = c1;
         } else if(c0 !== null && isNaN(+cells[1])){
           mon = cells[1]; cost = c0;
@@ -23994,7 +24027,8 @@ function parseDraftBoardData(rawText){
           validPairs++;
           let tierKey = 'cost_' + cost;
           if(!map[tierKey]){
-            map[tierKey] = { id: 'tier-' + cost, name: `${cost} Points`, cost: cost, pokemon: [] };
+            let tierName = (cells.length >= 3 && cells[0] && isNaN(+cells[0]) && cells[0] !== mon) ? cells[0] : `${cost} Points`;
+            map[tierKey] = { id: 'tier-' + cost, name: tierName, cost: cost, pokemon: [] };
           }
           let clean = formatPokemonDisplayName(mon);
           if(clean && !map[tierKey].pokemon.includes(clean)){
@@ -24010,28 +24044,15 @@ function parseDraftBoardData(rawText){
     }
   }
 
-  // Format 2: Multi-Column Table (Google Sheets with sprite columns & merged headers)
-  let bestHeaderRowIdx = -1;
-  let maxCostsFound = 0;
-  for(let r = 0; r < Math.min(grid.length, 12); r++){
-    let row = grid[r];
-    let costsInRow = 0;
-    row.forEach(cell => {
-      if(extractPointCost(cell) !== null) costsInRow++;
-    });
-    if(costsInRow > maxCostsFound){
-      maxCostsFound = costsInRow;
-      bestHeaderRowIdx = r;
-    }
-  }
-
+  // Format 2: Multi-Column Table (Google Sheets / Exported CSV with tiers as columns)
   if(bestHeaderRowIdx >= 0 && maxCostsFound >= 1){
     let headerRow = grid[bestHeaderRowIdx];
     let tierColumns = [];
     headerRow.forEach((cell, colIdx) => {
       let cost = extractPointCost(cell);
       if(cost !== null){
-        let name = cell.match(/\b\d+\s*points?\b/i) ? cell : `${cost} Points`;
+        let cleanCell = cell.replace(/^["']|["']$/g, '').trim();
+        let name = (cleanCell.match(/\b\d+\s*(?:points?|pts?)\b/i) || cleanCell.toLowerCase().includes('tier')) ? cleanCell : `${cost} Points`;
         tierColumns.push({ colIdx, cost, name });
       }
     });
@@ -24195,11 +24216,14 @@ function openDraftBoardImporter(tId){
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;flex-wrap:wrap;gap:6px">
             <label style="font-weight:800;color:#e2e0e8;margin:0">Paste Google Sheets Columns or CSV</label>
             <div style="display:flex;gap:6px;flex-wrap:wrap">
+              <input type="file" id="draftCsvFileInput" accept=".csv,.tsv,.txt" style="display:none" onchange="handleDraftCsvFileUpload(event)">
+              <button type="button" class="btn ghost btn-sm" style="padding:2px 8px!important;font-size:10px!important" onclick="document.getElementById('draftCsvFileInput').click()">📁 Upload CSV File</button>
               ${hasOffseason ? `
                 <button type="button" class="btn ghost btn-sm" style="padding:2px 8px!important;font-size:10px!important;color:#93c5fd;border-color:#264366" onclick="loadOffseasonBoardIntoImporter()">📋 Load Offseason Board</button>
               ` : ''}
               <button type="button" class="btn ghost btn-sm" style="padding:2px 8px!important;font-size:10px!important" onclick="loadSampleDraftBoard()">Load Sample Board</button>
               <button type="button" class="btn ghost btn-sm" style="padding:2px 8px!important;font-size:10px!important" onclick="document.getElementById('importDraftText').value=''">Clear</button>
+              <button type="button" class="btn ghost btn-sm" style="padding:2px 8px!important;font-size:10px!important;color:#4bdd91;border-color:#205739" onclick="exportDraftBoardCSV('${jsArg(t.id)}')">📥 Export Board (CSV)</button>
             </div>
           </div>
           <textarea id="importDraftText" class="draft-import-textarea" placeholder="Paste columns copied from Google Sheets here...
@@ -24282,6 +24306,106 @@ Baxcalibur\tLandorus-Therian\tIron Hands\tSlowking-Galar\tClodsire`;
     previewDraftBoardImport();
   }
 }
+
+function handleDraftCsvFileUpload(event){
+  let file = event?.target?.files?.[0];
+  if(!file) return;
+
+  let reader = new FileReader();
+  reader.onload = function(e){
+    let content = e.target.result || '';
+    let textarea = document.getElementById('importDraftText');
+    if(textarea){
+      textarea.value = content;
+      previewDraftBoardImport();
+      if(typeof showDraftToast === 'function'){
+        showDraftToast(`📄 Uploaded and parsed ${file.name}!`);
+      }
+    }
+  };
+  reader.readAsText(file);
+  if(event.target) event.target.value = '';
+}
+
+function exportDraftBoardCSV(tId){
+  if(!moderator && (typeof canManageTournament !== 'function' || (tId && tournamentData[tId] && !canManageTournament(tournamentData[tId])))){
+    alert('Moderator or Tournament Director permissions required to export the draft board.');
+    return;
+  }
+
+  let t = tId ? (tournamentData[tId] || null) : null;
+  let board = null;
+
+  if(t && t.draftData && Array.isArray(t.draftData.board) && t.draftData.board.length > 0){
+    board = t.draftData.board;
+  } else if(tId && tournamentData[tId]?.draftData?.board?.length){
+    board = tournamentData[tId].draftData.board;
+  } else if(typeof getOffseasonDraftBoard === 'function' && getOffseasonDraftBoard().length > 0){
+    board = getOffseasonDraftBoard();
+  } else {
+    let curT = (typeof ongoingT === 'function' ? ongoingT() : null) || (typeof activeT === 'function' ? activeT() : null);
+    if(curT && curT.draftData && Array.isArray(curT.draftData.board) && curT.draftData.board.length > 0){
+      board = curT.draftData.board;
+      t = curT;
+    }
+  }
+
+  if((!board || !board.length) && draftPendingImport && Array.isArray(draftPendingImport.tiers) && draftPendingImport.tiers.length > 0){
+    board = draftPendingImport.tiers;
+  }
+
+  if(!board || !board.length){
+    alert('No draft board is currently loaded to export.');
+    return;
+  }
+
+  let sortedTiers = [...board].sort((a,b) => (Number(b.cost) || 0) - (Number(a.cost) || 0));
+
+  let maxRows = 0;
+  sortedTiers.forEach(t => {
+    let count = (t.pokemon || []).length;
+    if(count > maxRows) maxRows = count;
+  });
+
+  let headerCells = sortedTiers.map(tier => {
+    let label = (tier.name || '').trim();
+    if(!label){
+      label = `${tier.cost} Points`;
+    } else if(!/\b\d+\s*pts?\b/i.test(label) && !/\b\d+\s*points?\b/i.test(label)){
+      label = `${label} (${tier.cost} Pts)`;
+    }
+    return `"${label.replace(/"/g, '""')}"`;
+  });
+
+  let lines = [headerCells.join(',')];
+
+  for(let r = 0; r < maxRows; r++){
+    let row = sortedTiers.map(tier => {
+      let mon = (tier.pokemon && tier.pokemon[r]) ? tier.pokemon[r] : '';
+      return `"${mon.replace(/"/g, '""')}"`;
+    });
+    lines.push(row.join(','));
+  }
+
+  let csvContent = '\uFEFF' + lines.join('\r\n');
+  let blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  let url = URL.createObjectURL(blob);
+  let a = document.createElement('a');
+  let cleanName = t ? (t.name || t.id).toLowerCase().replace(/[^a-z0-9]/g, '-') : 'bellimaka-offseason';
+  let filename = `draft-board-${cleanName}.csv`;
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+
+  let totalMons = sortedTiers.reduce((s, x) => s + (x.pokemon || []).length, 0);
+  if(typeof showDraftToast === 'function'){
+    showDraftToast(`📥 Exported draft board (${sortedTiers.length} tiers, ${totalMons} Pokémon) to ${filename}!`);
+  }
+}
+window.exportDraftBoardCSV = exportDraftBoardCSV;
 
 function saveImportedDraftBoard(tId){
   let t = tournamentData[tId] || activeT();
@@ -25009,6 +25133,7 @@ function DraftRoom(t){
       ${canManageDraft && d.status === 'paused' ? `<button class="btn btn-sm" onclick="resumeDraft('${jsArg(t.id)}')">▶️ Resume</button>` : ''}
       ${canManageDraft && d.picks?.length ? `<button class="btn ghost btn-sm" style="color:#ff9ba1" onclick="undoDraftPick('${jsArg(t.id)}')">↩️ Undo Pick</button>` : ''}
       ${canManageDraft ? `<button class="btn ghost btn-sm" onclick="openDraftOrderEditor('${jsArg(t.id)}')">🔀 Draft Order</button>` : ''}
+      ${canManageDraft ? `<button class="btn ghost btn-sm" onclick="exportDraftBoardCSV('${jsArg(t.id)}')">📥 Export Board (CSV)</button>` : ''}
       ${canManageDraft ? `<button class="btn ghost btn-sm" onclick="openDraftBoardImporter('${jsArg(t.id)}')">📥 Import Sheet</button>` : ''}
       ${canManageDraft && (d.status === 'completed' || d.picks?.length >= getDraftTotalPicks(t)) ? `<button class="btn btn-sm" style="background:#10b981;border-color:#34d399" onclick="completeDraftAndAdvance('${jsArg(t.id)}')">🏁 Start ${getStage1Format(t) === 'swiss' ? 'Swiss Stage' : 'Group Stage'} →</button>` : ''}
     </div>
@@ -25378,6 +25503,7 @@ function DraftBoardView(t){
             </div>
 
             ${canManageTournament(t) ? `
+              <button class="btn ghost btn-sm" onclick="exportDraftBoardCSV('${jsArg(t.id)}')">📥 Export Board (CSV)</button>
               <button class="btn ghost btn-sm" onclick="openDraftBoardImporter('${jsArg(t.id)}')">⚙️ Edit</button>
             ` : ''}
           </div>
@@ -25993,11 +26119,14 @@ function openOffseasonDraftBoardImporter(){
         </div>
 
         <div class="field" style="margin-top:14px">
-          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;flex-wrap:wrap;gap:6px">
             <label style="font-weight:800;color:#e2e0e8;margin:0">Paste Google Sheets Columns or CSV</label>
-            <div style="display:flex;gap:6px">
+            <div style="display:flex;gap:6px;flex-wrap:wrap">
+              <input type="file" id="offseasonDraftCsvFileInput" accept=".csv,.tsv,.txt" style="display:none" onchange="handleDraftCsvFileUpload(event)">
+              <button type="button" class="btn ghost btn-sm" style="padding:2px 8px!important;font-size:10px!important" onclick="document.getElementById('offseasonDraftCsvFileInput').click()">📁 Upload CSV File</button>
               <button type="button" class="btn ghost btn-sm" style="padding:2px 8px!important;font-size:10px!important" onclick="loadSampleDraftBoard()">Load Sample Board</button>
               <button type="button" class="btn ghost btn-sm" style="padding:2px 8px!important;font-size:10px!important" onclick="document.getElementById('importDraftText').value=''">Clear</button>
+              <button type="button" class="btn ghost btn-sm" style="padding:2px 8px!important;font-size:10px!important;color:#4bdd91;border-color:#205739" onclick="exportDraftBoardCSV()">📥 Export Board (CSV)</button>
             </div>
           </div>
           <textarea id="importDraftText" class="draft-import-textarea" placeholder="Paste columns copied from Google Sheets here...
@@ -26080,6 +26209,7 @@ function OffseasonDraftView(){
   let actions = `
     <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
       ${moderator ? `
+        <button class="btn ghost btn-sm" onclick="exportDraftBoardCSV()">📥 Export Board (CSV)</button>
         <button class="btn ghost btn-sm" onclick="openOffseasonDraftBoardImporter()">📋 Edit / Re-Import Board</button>
         <button class="btn ghost btn-sm" style="color:#ff8e95;border-color:#5a242c" onclick="clearOffseasonDraftBoard()">🗑️ Clear Board</button>
       ` : ''}
