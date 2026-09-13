@@ -2677,6 +2677,7 @@ const tournamentData={};
 window.tournamentData = tournamentData;
 var accountLinks=(()=>{try{return JSON.parse(localStorage.getItem('draftdex-accountlinks')||'{}')||{}}catch{return {}}})();
 let cut=+localStorage.getItem('draftdex-cut')||4,boardLink=localStorage.getItem('draftdex-board')||'https://docs.google.com/spreadsheets/';let moderator=false;
+window.setModerator = function(v){ moderator = Boolean(v); window.moderator = Boolean(v); };
 function save(){localStorage.setItem('draftdex-cut',cut);localStorage.setItem('draftdex-board',boardLink)}
 
 function head(title,over,action=''){return `<div class="page-head"><div><div class="eyebrow">${over}</div><h1>${title}</h1></div>${action}</div>`}
@@ -2817,7 +2818,7 @@ function renderReadOnlyDirectorBadges(selectedManagers=[]){
 }
 
 function canManageTournament(t){
-  if(moderator) return true; // Global commissioner always has full access
+  if(moderator || window.moderator) return true; // Global commissioner always has full access
   if(!t) return false;
   if(typeof t === 'string') t = tournamentData[t] || null;
   if(!t) return false;
@@ -8477,6 +8478,8 @@ function deleteTournament(id){
 
   // 3. Delete tournament from state
   delete tournamentData[id];
+  window._cloudTournamentCount = Object.keys(tournamentData).length;
+  window.__FORCE_TRUNCATE_PUSH__ = true;
 
   // 4. Sync active rosters so only real ongoing tournament pokemon exist
   syncActiveRostersWithTournaments();
@@ -8487,6 +8490,7 @@ function deleteTournament(id){
   }
   rebuildAllPlayerStats();
   persistLeague();
+  flushSync();
   current = 'Tournaments';
   render();
 }
@@ -12352,6 +12356,8 @@ async function flushSync(){
     console.warn('Draftdex: flushSync prevented - local tournament count is less than known cloud count');
     return;
   }
+  window.__FORCE_TRUNCATE_PUSH__ = false;
+  window._cloudTournamentCount = tourneyCount;
 
   // Clean tournaments to remove heavy base64 strings from frequent main sync payload
   let cleanTournaments = {};
@@ -19137,7 +19143,7 @@ function openBadgeManager(p){
     { id: 'triple-crown', icon: '👑', name: 'Triple Crown', color: 'gold', desc: 'Legendary three-peat: Won 3 consecutive tournament championships.', perTournament: true },
     { id: 'unrivaled', icon: '⚜️', name: 'Unrivaled', color: 'gold', desc: 'Flawless tournament championship without dropping a single game (2-0 in every match).', perTournament: true },
     { id: 'undefeated-champ', icon: '🌟', name: 'Undefeated Champ', color: 'gold', desc: 'Won an entire tournament without dropping a single match in groups or playoffs.', perTournament: true },
-    { id: 'dark-horse', icon: '🐴', name: 'Dark Horse', color: 'amber', desc: 'Projected as a Dark Horse by pre-tournament playoff odds and went on to win the Championship.', perTournament: true },
+    { id: 'dark-horse', icon: '🐴', name: 'Dark Horse', color: 'amber', desc: 'Projected as a Dark Horse or below by pre-tournament playoff odds and went on to win the Championship.', perTournament: true },
     { id: 'champion-badge', icon: '🏆', name: 'League Champion', color: 'gold', desc: 'Won a League Championship tournament.', perTournament: true },
     { id: 'dynasty-badge', icon: '🏛️', name: 'Dynasty Champion', color: 'gold', desc: 'Won 2 or more League Championships.', perTournament: false },
     { id: 'top-gun', icon: '🚀', name: 'Top Gun', color: 'gold', desc: 'All-time peak OVR rating record holder in league history.', perTournament: false },
@@ -21859,7 +21865,7 @@ function calculateLeagueRecords(forceRefresh = false){
           }
         }
 
-        // Dark Horse: Projected as a Dark Horse by playoff odds before Match 1 and won the Championship
+        // Dark Horse: Projected as a Dark Horse or below by playoff odds before Match 1 and won the Championship
         let isChamp = (t.champion === p) || (finish && finish.place === 1);
         if(!isChamp && typeof getTournamentTopCutModel === 'function'){
           let topCutModel = getTournamentTopCutModel(t);
@@ -21871,21 +21877,26 @@ function calculateLeagueRecords(forceRefresh = false){
         }
         if(isChamp){
           let preOdds = getPreTournamentOdds(t, { statsByPlayer });
-          let isDarkHorse = preOdds?.darkHorses?.includes(p);
-          if(!isDarkHorse && preOdds?.list){
+          let isDarkHorseOrBelow = preOdds?.darkHorses?.includes(p);
+          if(!isDarkHorseOrBelow && preOdds?.list){
             let idx = preOdds.list.findIndex(x => x.player === p);
-            let pChamp = (idx >= 0 ? preOdds.list[idx]?.champPct : 0) || 0;
-            if(idx >= 3 && pChamp < 10.0 && (pChamp >= 3.5 || (idx <= 5 && pChamp >= 2.5))){
-              isDarkHorse = true;
+            if(idx >= 0){
+              let x = preOdds.list[idx];
+              let isFav = (idx === 0);
+              let isContender = !isFav && (idx < 3 || (x.champPct || 0) >= 10.0);
+              // Dark Horse and below = neither Title Favorite nor Contender (covers both Dark Horse and Longshot tiers)
+              if(!isFav && !isContender){
+                isDarkHorseOrBelow = true;
+              }
             }
           }
-          if(isDarkHorse){
+          if(isDarkHorseOrBelow){
             if(!statsByPlayer[p].badges.some(b => b.id === 'dark-horse-' + t.id)){
               statsByPlayer[p].badges.push({
                 id: 'dark-horse-' + t.id,
                 icon: '🐴',
                 name: `Dark Horse (${t.name})`,
-                desc: `Projected as a Dark Horse by pre-tournament odds and went on to win the ${t.name} Championship`,
+                desc: `Projected as a Dark Horse or below by pre-tournament odds and went on to win the ${t.name} Championship`,
                 category: 'championship',
                 color: 'amber'
               });
@@ -22800,7 +22811,7 @@ function openBadgeGuide(){
         { icon: '🌟', name: 'Undefeated Champ', color: 'gold', desc: 'Won an entire tournament without dropping a single match in groups or playoffs.' },
         { icon: '🏛️', name: 'Dynasty Champion', color: 'gold', desc: 'Won 2 or more League Championships.' },
         { icon: '🏆', name: 'League Champion', color: 'gold', desc: 'Won 1 League Championship.' },
-        { icon: '🐴', name: 'Dark Horse', color: 'amber', desc: 'Projected as a Dark Horse by playoff odds before Match 1 and went on to win the Championship.' },
+        { icon: '🐴', name: 'Dark Horse', color: 'amber', desc: 'Projected as a Dark Horse or below by playoff odds before Match 1 and went on to win the Championship.' },
         { icon: '🏰', name: 'Playoff Royalty', color: 'purple', desc: 'Reached Top Cut in 5 or more tournaments.' },
         { icon: '🏅', name: 'Playoff Regular', color: 'silver', desc: 'Reached Top Cut in 3 or more tournaments.' }
       ]
@@ -24998,8 +25009,8 @@ function ensureTournamentDraft(t){
   }
   if(!t.draftData.picks) t.draftData.picks = [];
   if(!t.draftData.board) t.draftData.board = [];
-  if(t.draftData.pointBudget === undefined) t.draftData.pointBudget = 100;
-  if(t.draftData.maxRosterSize === undefined) t.draftData.maxRosterSize = 10;
+  if(t.draftData.pointBudget === undefined) t.draftData.pointBudget = t.draftData.budget ?? 100;
+  if(t.draftData.maxRosterSize === undefined) t.draftData.maxRosterSize = t.draftData.rounds ?? 10;
   return t.draftData;
 }
 
@@ -25010,7 +25021,7 @@ function getDraftOrderList(t){
 
 function getDraftTotalPicks(t){
   let order = getDraftOrderList(t);
-  let rounds = t?.draftData?.maxRosterSize || 10;
+  let rounds = t?.draftData?.maxRosterSize || t?.draftData?.rounds || 10;
   return order.length * rounds;
 }
 
