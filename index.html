@@ -1391,47 +1391,85 @@ details[open] > .past-tourney-summary .past-chevron{transform:rotate(180deg);col
   font-size: 12px !important;
 }
 
-/* Exact Tournament Archive from Old Website File */
+/* Tournament Archive — Hero Card Layout */
 .page:has(.archive) {
   max-width: 1420px !important;
   margin: 0 auto !important;
   padding: 34px 36px 70px !important;
 }
 .archive {
-  grid-template-columns: repeat(auto-fit, minmax(420px, 1fr)) !important;
-  display: grid;
-  gap: 15px;
-}
-.archive > div:only-child {
-  grid-column: 1 / -1;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
 }
 .archive-card {
+  position: relative;
   width: 100% !important;
-  min-height: 260px !important;
+  min-height: 340px !important;
   background-size: cover !important;
-  padding: 21px !important;
+  background-position: center !important;
+  padding: 38px !important;
   text-align: left !important;
   cursor: pointer !important;
-  transition: .16s !important;
-  display: block !important;
+  transition: border-color .16s, transform .16s !important;
+  display: flex !important;
+  flex-direction: column !important;
+  justify-content: flex-end !important;
+  border-radius: 10px !important;
+  border: 1px solid #2a2a36 !important;
+  overflow: hidden;
 }
 .archive-card:hover {
   border-color: #85313b !important;
   transform: translateY(-2px) !important;
 }
-.archive-card h3 {
-  font: 800 33px 'Barlow Condensed' !important;
-  margin: 10px 0 6px !important;
+.archive-card .archive-season-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font: 800 11px/1 'Barlow Condensed';
+  letter-spacing: 1.4px;
+  text-transform: uppercase;
+  color: #f5f3f0;
+  background: rgba(17,17,28,.7);
+  padding: 5px 12px;
+  border-radius: 50px;
+  backdrop-filter: blur(6px);
+  border: 1px solid rgba(255,255,255,.12);
+  margin-bottom: 14px;
+  width: fit-content;
 }
-.archive-card p {
-  color: #aaa !important;
-  font-size: 14px !important;
-  margin: 0 !important;
+.archive-card .archive-season-badge i {
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  background: var(--red);
+  display: inline-block;
+}
+.archive-card .archive-title {
+  font: 800 48px/.88 'Barlow Condensed' !important;
+  color: #f5f3f0;
+  margin: 0 0 6px 0;
+  text-transform: uppercase;
+  letter-spacing: .5px;
+}
+.archive-card .archive-regulation {
+  font: 800 16px/1.2 'Barlow Condensed';
+  color: #a09fa8;
+  text-transform: uppercase;
+  letter-spacing: .4px;
+  margin: 0 0 4px 0;
+}
+.archive-card .archive-champion {
+  font: 800 16px/1.2 'Barlow Condensed';
+  color: #ffd166;
+  text-transform: uppercase;
+  letter-spacing: .5px;
+  margin: 0;
 }
 .archive-stats {
   display: flex !important;
   gap: 28px !important;
-  margin-top: 40px !important;
+  margin-top: 20px !important;
   font-size: 10px !important;
   color: #97959e !important;
   border-top: none !important;
@@ -1441,6 +1479,12 @@ details[open] > .past-tourney-summary .past-chevron{transform:rotate(180deg);col
   display: block !important;
   color: white !important;
   font: 800 17px 'Barlow Condensed' !important;
+}
+.archive-card .archive-actions {
+  margin-top: 18px;
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
 }
 .archive .cover-edit {
   position: absolute !important;
@@ -1460,6 +1504,10 @@ details[open] > .past-tourney-summary .past-chevron{transform:rotate(180deg);col
 .archive .cover-edit:hover {
   opacity: 1 !important;
   background: #401b21 !important;
+}
+@media(max-width:600px){
+  .archive-card { min-height: 260px !important; padding: 24px !important; }
+  .archive-card .archive-title { font-size: 34px !important; }
 }
 
 /* Scaled Matches Top Controls Bar */
@@ -14501,9 +14549,26 @@ function tournamentTotalMatches(t){
 }
 
 function tournamentCard(t){
-  let bg=t.backgroundImage?`style="background-image:linear-gradient(90deg,rgba(20,20,25,.92),rgba(20,20,25,.68)),url('${t.backgroundImage}') ;background-size:cover;background-position:center"`:'';
+  let bgStyle = t.backgroundImage
+    ? `style="background-image:linear-gradient(90deg,rgba(18,18,24,0.94) 0%,rgba(18,18,24,0.72) 42%,rgba(18,18,24,0.12) 100%),url('${t.backgroundImage}');background-size:cover;background-position:center"`
+    : '';
   let totalMatches = tournamentTotalMatches(t);
-  return `<button class="card archive-card" ${bg} onclick="openTournament('${t.id}')"><div class="${t.status==='ONGOING'?'status':'eyebrow'}">${t.status==='ONGOING'?'<i></i>':''}${t.status}</div><h3>${t.name} · ${t.season}</h3><p>${t.champion?'Champion: '+esc(t.champion):(t.phase==='topcut'?'Top Cut':(getStage1Format(t)==='swiss'?'Swiss Stage':'Group Stage'))+' · '+t.players.length+' Trainers'}<br>${esc(t.regulation||'')}</p><div class="archive-stats"><span><b>${totalMatches}</b>Matches</span><span><b>${esc(t.start||'TBD')}</b>Started</span></div></button>`;
+  let seasonLabel = t.season ? t.season.toUpperCase() : '';
+  let statusLabel = t.status === 'COMPLETE' ? 'ARCHIVE' : (t.status === 'ONGOING' ? 'LIVE' : t.status);
+  let badgeText = seasonLabel ? `${seasonLabel} ${statusLabel}` : statusLabel;
+  let champLine = t.champion
+    ? `<div class="archive-champion">Champion: ${esc(t.champion.toUpperCase())}</div>`
+    : `<div class="archive-regulation" style="color:#8e8c95">${(t.phase==='topcut'?'Top Cut':(getStage1Format(t)==='swiss'?'Swiss Stage':'Group Stage'))} · ${t.players.length} Trainers</div>`;
+  return `<button class="card archive-card" ${bgStyle} onclick="openTournament('${t.id}')">
+    <div class="archive-season-badge"><i></i>${esc(badgeText)}</div>
+    <div class="archive-title">${esc(t.name)}</div>
+    <div class="archive-regulation">${esc(t.regulation ? t.regulation.toUpperCase() : '')}</div>
+    ${champLine}
+    <div class="archive-stats"><span><b>${totalMatches}</b>Matches</span><span><b>${esc(t.start||'TBD')}</b>Started</span></div>
+    <div class="archive-actions">
+      <button class="btn btn-sm" onclick="event.stopPropagation();openTournament('${t.id}')">View Tournament Details →</button>
+    </div>
+  </button>`;
 }
 
 function Tournaments(){
