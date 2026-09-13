@@ -2729,6 +2729,7 @@ const roster={};
 function rr(names){let out=[],r=1;for(let i=0;i<names.length;i++)for(let j=i+1;j<names.length;j++){out.push({id:r+'-'+i+j,round:'Round '+r,a:names[i],b:names[j],as:'',bs:'',date:'TBD'});r=r===5?1:r+1}return out}
 const tournamentData={};
 window.tournamentData = tournamentData;
+window.profiles = profiles;
 var accountLinks=(()=>{try{return JSON.parse(localStorage.getItem('draftdex-accountlinks')||'{}')||{}}catch{return {}}})();
 let cut=+localStorage.getItem('draftdex-cut')||4,boardLink=localStorage.getItem('draftdex-board')||'https://docs.google.com/spreadsheets/';let moderator=false;
 window.setModerator = function(v){ moderator = Boolean(v); window.moderator = Boolean(v); };
@@ -2794,6 +2795,15 @@ const profilePictures={};
 const pulsePanelImages={};
 function ongoingT(){return Object.values(tournamentData).find(t=>t.status==='ONGOING')||null}
 function activeT(){return tournamentData[viewTournament]||ongoingT()||Object.values(tournamentData)[0]||null}
+
+function tournamentBadgeLabel(t){
+  if(!t) return '';
+  if(typeof t === 'string'){
+    t = tournamentData[t] || Object.values(tournamentData || {}).find(x => x.name === t || x.season === t) || { name: t };
+  }
+  let custom = String(t.badgeLabel || t.shortName || '').trim();
+  return custom || (t.name || 'Tournament');
+}
 
 function getTournamentManagers(t){
   if(!t) return [];
@@ -4118,11 +4128,13 @@ function createTournament(){
   if(!assignedSeason || (requestedNum > 0 && existingNums.has(requestedNum))){
     assignedSeason = `Season ${getNextSeasonNumber()}`;
   }
+  let badgeLabel = document.querySelector('#tbl')?.value?.trim() || '';
 
   tournamentData[id]={
     id,
     name,
     season: assignedSeason,
+    badgeLabel,
     status:'ONGOING',
     phase: enableDraft ? 'draft' : (stage1Format === 'swiss' ? 'swiss' : 'group'),
     hasDraft: enableDraft,
@@ -8388,6 +8400,14 @@ function openTournamentRecordEditor(id){
 
       <div class="field" style="margin-top:14px">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+          <label style="font-weight:800;color:#e2e0e8;margin:0">Badge Label / Short Name (Optional)</label>
+          <span style="font-size:10px;color:#8e8c95;font-weight:500">Parentheses in badges, e.g. Clean Sheet (Norman)</span>
+        </div>
+        <input id="recordBadgeLabel" value="${esc(t.badgeLabel || '')}" placeholder="e.g. Norman (defaults to tournament name if blank)" style="background:#181822;border:1px solid #363646;border-radius:6px;padding:10px 12px;color:#f5f3f0">
+      </div>
+
+      <div class="field" style="margin-top:14px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
           <label style="font-weight:800;color:#e2e0e8;margin:0">Regulation / Format</label>
           <div style="display:flex;gap:4px">
             <button type="button" class="btn ghost btn-sm" style="padding:2px 7px!important;font-size:10px!important" onclick="document.getElementById('recordRule').value='Regulation H'">Reg H</button>
@@ -8469,6 +8489,8 @@ function saveTournamentRecord(id){
   t.name = document.querySelector('#recordName').value.trim() || t.name;
   let recordSeasonVal = document.querySelector('#recordSeason')?.value?.trim();
   if(recordSeasonVal) t.season = recordSeasonVal;
+  let badgeLabelVal = document.querySelector('#recordBadgeLabel')?.value?.trim();
+  t.badgeLabel = badgeLabelVal || '';
   t.start = document.querySelector('#recordStart').value.trim() || t.start;
   t.end = document.querySelector('#recordEnd').value.trim() || t.end;
   t.regulation = document.querySelector('#recordRule').value.trim() || t.regulation;
@@ -12982,6 +13004,13 @@ function openCreator(){
       <div class="creator-grid">
         <div class="field" style="margin-top:0"><label style="margin-top:0">Tournament name</label><input id="tn" placeholder="e.g. Moonlit Cup" oninput="updateCreatorLiveCardPreview()"></div>
         <div class="field" style="margin-top:0"><label style="margin-top:0">Season</label><input id="ts" value="Season ${getNextSeasonNumber()}" placeholder="e.g. Season ${getNextSeasonNumber()}" oninput="updateCreatorLiveCardPreview()"></div>
+        <div class="field" style="grid-column:1/-1;margin-top:8px">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+            <label style="margin:0">Badge Label / Short Name (Optional)</label>
+            <span style="font-size:9.5px;color:#8e8c95">Parentheses in badges, e.g. Clean Sheet (Norman)</span>
+          </div>
+          <input id="tbl" placeholder="e.g. Norman (defaults to tournament name if blank)">
+        </div>
         <div class="field" style="grid-column:1/-1;margin-top:8px"><label style="margin-top:0">Regulation / Format</label><input id="tr" placeholder="e.g. Regulation I · Singles" oninput="updateCreatorLiveCardPreview()"></div>
         <div class="field">
           <label style="display:flex;justify-content:space-between;align-items:center">
@@ -18999,7 +19028,16 @@ function getBadgeTournamentIndex(b, sortedTournaments){
     if(match) tName = match[1];
   }
   if(tName && sortedTournaments){
-    let matchT = sortedTournaments.find(x => x.name === tName || x.season === tName || (x.name + ' (' + x.season + ')') === tName || tName.includes(x.name) || x.name.includes(tName));
+    let matchT = sortedTournaments.find(x => 
+      x.name === tName || 
+      x.season === tName || 
+      (x.badgeLabel && x.badgeLabel === tName) || 
+      tournamentBadgeLabel(x) === tName || 
+      (x.name + ' (' + x.season + ')') === tName || 
+      tName.includes(x.name) || 
+      x.name.includes(tName) || 
+      (x.badgeLabel && (tName.includes(x.badgeLabel) || x.badgeLabel.includes(tName)))
+    );
     if(matchT) return sortedTournaments.indexOf(matchT);
   }
   return 9999;
@@ -19238,7 +19276,7 @@ function openBadgeManager(p){
     { id: 'victim', icon: '💀', name: 'Victim', color: 'red', desc: 'Went winless (0 wins) in a completed group stage.', perTournament: true }
   ];
 
-  let tournamentOptions = `<option value="">General / All-Time</option>` + pastTournaments.map(t => `<option value="${esc(t.name)}">${esc(t.name)} (${esc(t.season)})</option>`).join('');
+  let tournamentOptions = `<option value="">General / All-Time</option>` + pastTournaments.map(t => `<option value="${esc(tournamentBadgeLabel(t))}">${esc(t.name)} (${esc(t.season)})</option>`).join('');
 
   document.querySelector('#modal').innerHTML = `
     <div class="modal-wrap">
@@ -21870,7 +21908,7 @@ function calculateLeagueRecords(forceRefresh = false){
             statsByPlayer[p].badges.push({
               id: badgeId,
               icon: '💥',
-              name: `+${totalTournamentGD} GD (${t.name})`,
+              name: `+${totalTournamentGD} GD (${tournamentBadgeLabel(t)})`,
               desc: `Dominant +${totalTournamentGD} game differential in ${t.name}`,
               category: 'dominance',
               color: 'amber'
@@ -21884,7 +21922,7 @@ function calculateLeagueRecords(forceRefresh = false){
             statsByPlayer[p].badges.push({
               id: 'unrivaled-' + t.id,
               icon: '⚜️',
-              name: `Unrivaled (${t.name})`,
+              name: `Unrivaled (${tournamentBadgeLabel(t)})`,
               desc: `Flawless championship run in ${t.name} without dropping a single game (${totalGamesWon}-0)`,
               category: 'championship',
               color: 'gold'
@@ -21898,7 +21936,7 @@ function calculateLeagueRecords(forceRefresh = false){
             statsByPlayer[p].badges.push({
               id: 'undefeated-champ-' + t.id,
               icon: '🌟',
-              name: `Undefeated Champ (${t.name})`,
+              name: `Undefeated Champ (${tournamentBadgeLabel(t)})`,
               desc: `Won ${t.name} without dropping a single match (${w}-0)`,
               category: 'championship',
               color: 'gold'
@@ -21912,7 +21950,7 @@ function calculateLeagueRecords(forceRefresh = false){
             statsByPlayer[p].badges.push({
               id: 'cleansheet-' + t.id,
               icon: '🛡️',
-              name: `Clean Sheet (${t.name})`,
+              name: `Clean Sheet (${tournamentBadgeLabel(t)})`,
               desc: `Flawless group stage without a single match loss (${mw}-0) in ${t.name}`,
               category: 'dominance',
               color: 'teal'
@@ -21927,7 +21965,7 @@ function calculateLeagueRecords(forceRefresh = false){
             statsByPlayer[p].badges.push({
               id: 'clutch-king-' + t.id,
               icon: '🎯',
-              name: `Clutch King (${t.name})`,
+              name: `Clutch King (${tournamentBadgeLabel(t)})`,
               desc: `Won ${clutchWins} intense Game-3 deciders (2-1 matches) in ${t.name}`,
               category: 'performance',
               color: 'purple'
@@ -21965,7 +22003,7 @@ function calculateLeagueRecords(forceRefresh = false){
               statsByPlayer[p].badges.push({
                 id: 'dark-horse-' + t.id,
                 icon: '🐴',
-                name: `Dark Horse (${t.name})`,
+                name: `Dark Horse (${tournamentBadgeLabel(t)})`,
                 desc: `Projected as a Dark Horse or below by pre-tournament odds and went on to win the ${t.name} Championship`,
                 category: 'championship',
                 color: 'amber'
@@ -21980,7 +22018,7 @@ function calculateLeagueRecords(forceRefresh = false){
             statsByPlayer[p].badges.push({
               id: 'victim-' + t.id,
               icon: '💀',
-              name: `Victim (${t.name})`,
+              name: `Victim (${tournamentBadgeLabel(t)})`,
               desc: `Went winless in ${t.name} group stage (0-${ml})`,
               category: 'notoriety',
               color: 'red'
@@ -22005,7 +22043,7 @@ function calculateLeagueRecords(forceRefresh = false){
             statsByPlayer[p].badges.push({
               id: 'prediction-king-' + t.id,
               icon: '🔮',
-              name: `Prediction King (${t.name})`,
+              name: `Prediction King (${tournamentBadgeLabel(t)})`,
               desc: `Scored the most prediction points in ${t.name}`,
               category: 'predictions',
               color: 'purple'
@@ -22068,7 +22106,7 @@ function calculateLeagueRecords(forceRefresh = false){
               statsByPlayer[p].badges.push({
                 id: 'oracle-' + t.id,
                 icon: '👁️',
-                name: `Oracle (${t.name})`,
+                name: `Oracle (${tournamentBadgeLabel(t)})`,
                 desc: `Predicted 100% of ALL ${t.name} outcomes correctly (${totalSettledKeys.length}/${totalSettledKeys.length} perfect picks, 0 misses)`,
                 category: 'predictions',
                 color: 'indigo'
@@ -22086,7 +22124,7 @@ function calculateLeagueRecords(forceRefresh = false){
               statsByPlayer[p].badges.push({
                 id: 'cinderella-' + t.id,
                 icon: '✨',
-                name: `Cinderella Run (${t.name})`,
+                name: `Cinderella Run (${tournamentBadgeLabel(t)})`,
                 desc: `Cinderella Losers Bracket Miracle: Lost Match 1 in Top Cut, crawled all the way through the Losers Bracket, and won the ${t.name} Championship!`,
                 category: 'miracle',
                 color: 'magenta',
@@ -22130,8 +22168,8 @@ function calculateLeagueRecords(forceRefresh = false){
           score,
           currF,
           prevF,
-          prevTName:prevF.tournament.name,
-          currTName:currT.name
+          prevTName:tournamentBadgeLabel(prevF.tournament),
+          currTName:tournamentBadgeLabel(currT)
         });
       }
     });
@@ -22233,7 +22271,7 @@ function calculateLeagueRecords(forceRefresh = false){
           s.badges.push({
             id: badgeId,
             icon: '👑',
-            name: `Triple Crown (${t1.name} → ${t3.name})`,
+            name: `Triple Crown (${tournamentBadgeLabel(t1)} → ${tournamentBadgeLabel(t3)})`,
             desc: `Legendary three-peat: Won 3 consecutive tournament championships in a row (${t1.name}, ${t2.name}, ${t3.name})`,
             category: 'championship',
             color: 'gold'
@@ -22569,7 +22607,7 @@ function calculateLeagueRecords(forceRefresh = false){
           statsByPlayer[champ].badges.push({
             id: 'moneyball-' + t.id,
             icon: '💵',
-            name: `Moneyball (${t.name})`,
+            name: `Moneyball (${tournamentBadgeLabel(t)})`,
             desc: `Won the ${t.name} Championship with a budget value roster of ${spent} pts (< 85 pts cap).`,
             category: 'acumen',
             color: 'amber',
