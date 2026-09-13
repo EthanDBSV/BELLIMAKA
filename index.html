@@ -10067,24 +10067,6 @@ function shouldApply(incoming){
   let incomingTime = typeof incoming.updatedAt === 'number' ? incoming.updatedAt : (Date.parse(incoming.updated_at) || 0);
   let hasLocalData = Object.keys(tournamentData).length > 0;
 
-  // 0. Safety rule: If local client is missing replay logs but cloud has them, ALWAYS apply!
-  if(incoming.tournaments && typeof incoming.tournaments === 'object'){
-    let localMissingLogs = Object.values(tournamentData).some(t =>
-      (Array.isArray(t?.matches) && t.matches.some(m => Array.isArray(m.replays) && m.replays.some(r => !r.log || r.log.length < 20))) ||
-      (t?.topCutReplays && Object.values(t.topCutReplays).some(list => Array.isArray(list) && list.some(r => !r.log || r.log.length < 20)))
-    );
-    if(localMissingLogs){
-      let cloudHasLogs = Object.values(incoming.tournaments).some(t =>
-        (Array.isArray(t?.matches) && t.matches.some(m => Array.isArray(m.replays) && m.replays.some(r => r.log && r.log.length > 20))) ||
-        (t?.topCutReplays && Object.values(t.topCutReplays).some(list => Array.isArray(list) && list.some(r => r.log && r.log.length > 20)))
-      );
-      if(cloudHasLogs){
-        knownRev = Math.max(knownRev, incomingRev);
-        lastLocalUpdate = Math.max(lastLocalUpdate, incomingTime || Date.now());
-        return true;
-      }
-    }
-  }
 
   // 1. Initial boot or session startup sync: always accept authoritative cloud state if valid
   if(!window._initialCloudSyncCompleted){
@@ -19486,7 +19468,9 @@ function restorePlayerBadge(p, revokedKey){
    The link lives in league_state (moderator-writable) rather than in
    user_profiles, so no schema migration is needed and players cannot
    claim to be someone else. Keyed by account username. */
-var accountLinks=(()=>{try{return JSON.parse(localStorage.getItem('draftdex-accountlinks')||'{}')||{}}catch{return {}}})();
+if(typeof accountLinks === 'undefined' || !accountLinks){
+  var accountLinks=(()=>{try{return JSON.parse(localStorage.getItem('draftdex-accountlinks')||'{}')||{}}catch{return {}}})();
+}
 /* Links are validated against live profiles, so a deleted player can
    never leave an account pointing at a profile that no longer exists. */
 function accountForPlayer(p){
@@ -19636,6 +19620,10 @@ async function saveAccountLinks(){
   persistLeague();
   closeModal();
   render();
+  if(!isSandboxMode() && backendReady()){
+    clearTimeout(syncTimer);
+    try { await flushSync(); } catch(e){}
+  }
 }
 
 async function forceCloudSync(){
@@ -19657,7 +19645,36 @@ async function forceCloudSync(){
     await flushSync();
     let dest = getBackendType() === 'cloudflare' ? 'Cloudflare' : 'Cloud';
     if(typeof showDraftToast === 'function') showDraftToast(`☁️ Synced all tournaments to ${dest}!`);
-    alert(`✓ Cloud Sync Successful!\n\nAll tournaments (${Object.keys(tournamentData).length} total) and rosters are now live in ${dest}.\nAny phone or computer refreshing the site will now see this exact state.`);
+
+    // Automatically download matching local backup snapshot
+    try {
+      let backupData = {
+        rev: knownRev,
+        updatedAt: lastLocalUpdate,
+        mediaRev: localMediaRev,
+        tournaments: tournamentData,
+        profiles: profiles,
+        roster: roster,
+        teamHistory: teamHistory,
+        cut: cut,
+        boardLink: boardLink,
+        spriteStyle: getSpriteStylePreference(),
+        draftPool: (typeof draftPool !== 'undefined' ? draftPool : null),
+        offseasonDraftBoard: (typeof offseasonDraftBoard !== 'undefined' ? offseasonDraftBoard : []),
+        accountLinks: accountLinks
+      };
+      let blob = new Blob([JSON.stringify(backupData, null, 2)], { type: 'application/json' });
+      let url = URL.createObjectURL(blob);
+      let a = document.createElement('a');
+      a.href = url;
+      a.download = 'league_backup.json';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(() => URL.revokeObjectURL(url), 5000);
+    } catch(bErr){}
+
+    alert(`✓ Cloud Sync Successful!\n\nAll tournaments (${Object.keys(tournamentData).length} total) and rosters are now live in ${dest}.\nA fresh copy of league_backup.json was downloaded to keep your computer's backup 100% in sync.`);
     render();
   } catch(e){
     alert('Cloud Sync Exception: ' + e.message);
@@ -25151,7 +25168,20 @@ function ensureTournamentDraft(t){
   }
   t.draft = t.draftData;
   if(!t.draftData.order || !t.draftData.order.length){
-    t.draftData.order = [...(t.players || [])];
+    let r1Picks = (t.draftData.picks || []).filter(pk => pk && (pk.round === 1 || (!pk.round && pk.pickNumber <= (t.players || []).length)));
+    if(r1Picks.length > 0){
+      r1Picks.sort((a,b) => (a.pickNumber || 0) - (b.pickNumber || 0));
+      let pickOrder = [];
+      r1Picks.forEach(pk => {
+        if(pk.player && !pickOrder.includes(pk.player)) pickOrder.push(pk.player);
+      });
+      (t.players || []).forEach(p => {
+        if(!pickOrder.includes(p)) pickOrder.push(p);
+      });
+      t.draftData.order = pickOrder;
+    } else {
+      t.draftData.order = [...(t.players || [])];
+    }
   }
   if(!t.draftData.picks) t.draftData.picks = [];
   if(!t.draftData.board) t.draftData.board = [];
@@ -25283,17 +25313,24 @@ function findPokemonCostOnBoard(t, pokemonName){
   if(d?.customCosts && typeof d.customCosts[cleanTarget] === 'number'){
     return d.customCosts[cleanTarget];
   }
-  if(!d || !d.board) return 0;
-  if(!d._monCostMap){
+  let boardToUse = (d && Array.isArray(d.board) && d.board.length > 0) ? d.board : ((typeof getOffseasonDraftBoard === 'function') ? getOffseasonDraftBoard() : []);
+  if(!boardToUse || !boardToUse.length) return 0;
+  if(!d._monCostMap || d._monCostMapBoardRef !== boardToUse){
     let map = {};
-    (d.board || []).forEach(tier => {
+    boardToUse.forEach(tier => {
       (tier.pokemon || []).forEach(mon => {
-        if(mon) map[mon.toLowerCase().trim()] = tier.cost || 0;
+        if(mon){
+          let clean = mon.toLowerCase().trim();
+          map[clean] = tier.cost || 0;
+          map[clean.replace(/-/g, ' ')] = tier.cost || 0;
+        }
       });
     });
     d._monCostMap = map;
+    d._monCostMapBoardRef = boardToUse;
   }
-  return d._monCostMap[cleanTarget] ?? 0;
+  let c = d._monCostMap[cleanTarget] ?? d._monCostMap[cleanTarget.replace(/-/g, ' ')];
+  return (typeof c === 'number') ? c : 0;
 }
 
 function setPokemonPointCost(t, pokemonName, cost){
