@@ -802,6 +802,11 @@ details[open] > .past-tourney-summary .past-chevron{transform:rotate(180deg);col
   white-space:nowrap;
 }
 .team-stat-chip.pts{
+  color:#ffd166;
+  border-color:rgba(255,209,102,0.35);
+  background:rgba(255,209,102,0.10);
+}
+.team-stat-chip.pts.over-budget{
   color:#ff787e;
   border-color:rgba(239,48,56,0.35);
   background:rgba(239,48,56,0.10);
@@ -992,10 +997,17 @@ details[open] > .past-tourney-summary .past-chevron{transform:rotate(180deg);col
   font-size:13px;
 }
 .team-detail-pill.pts{
+  border-color:rgba(255,209,102,0.35);
+  background:rgba(255,209,102,0.08);
+}
+.team-detail-pill.pts b{
+  color:#ffd166;
+}
+.team-detail-pill.pts.over-budget{
   border-color:rgba(239,48,56,0.40);
   background:rgba(239,48,56,0.08);
 }
-.team-detail-pill.pts b{
+.team-detail-pill.pts.over-budget b{
   color:#ff5964;
 }
 
@@ -24492,7 +24504,7 @@ function TeamRosterDetailView(t, p){
             PICKS <b>${coachStats.count}/${coachStats.maxSlots}</b>
           </div>
           ${hasBudget ? `
-            <div class="team-detail-pill pts">
+            <div class="team-detail-pill pts ${coachStats.pointsSpent > coachStats.budget ? 'over-budget' : ''}">
               SPENT <b>${coachStats.pointsSpent}/${coachStats.budget}</b>
             </div>
           ` : ''}
@@ -24624,7 +24636,7 @@ function renderTeamsGridHtml(t){
               </div>
               <div class="team-card-chips">
                 <span class="team-stat-chip" title="Drafted Picks">${coachStats.count}/${coachStats.maxSlots}</span>
-                ${hasBudget ? `<span class="team-stat-chip pts" title="Points Budget">${coachStats.pointsSpent}/${coachStats.budget}</span>` : ''}
+                ${hasBudget ? `<span class="team-stat-chip pts ${coachStats.pointsSpent > coachStats.budget ? 'over-budget' : ''}" title="Points Budget">${coachStats.pointsSpent}/${coachStats.budget}</span>` : ''}
               </div>
             </div>
 
@@ -25185,6 +25197,14 @@ function ensureTournamentDraft(t){
   }
   if(!t.draftData.picks) t.draftData.picks = [];
   if(!t.draftData.board) t.draftData.board = [];
+  if(Array.isArray(t.draftData.picks) && t.draftData.picks.length > 0 && typeof findPokemonCostOnBoard === 'function'){
+    t.draftData.picks.forEach(pk => {
+      if(pk && pk.pokemon){
+        let bc = findPokemonCostOnBoard(t, pk.pokemon);
+        if(typeof bc === 'number' && bc > 0) pk.cost = bc;
+      }
+    });
+  }
   if(t.draftData.pointBudget === undefined) t.draftData.pointBudget = t.draftData.budget ?? 100;
   if(t.draftData.maxRosterSize === undefined) t.draftData.maxRosterSize = t.draftData.rounds ?? 10;
   return t.draftData;
@@ -25277,6 +25297,11 @@ function getDraftCoachStats(t, p){
       pokemon: mon,
       cost: findPokemonCostOnBoard(t, mon)
     }));
+  } else {
+    picks = picks.map(x => {
+      let bc = findPokemonCostOnBoard(t, x.pokemon);
+      return (typeof bc === 'number' && bc > 0) ? { ...x, cost: bc } : x;
+    });
   }
   let pointsSpent = picks.reduce((sum, x) => sum + (x.cost || 0), 0);
   let budget = d?.pointBudget || 0;
@@ -25303,34 +25328,62 @@ function getDraftCoachStats(t, p){
   };
 }
 
+function getPokemonNameCandidates(name){
+  if(!name) return [];
+  let s = String(name).toLowerCase().trim();
+  let list = [s, s.replace(/-/g, ' '), s.replace(/\s+/g, '-')];
+  if(s === 'bloodmoon ursaluna' || s === 'ursaluna bloodmoon' || s === 'ursaluna-bloodmoon'){
+    list.push('bloodmoon ursaluna', 'ursaluna-bloodmoon', 'ursaluna bloodmoon', 'ursaluna (bloodmoon)');
+  }
+  if(s === 'indeedee' || s === 'indeedee-m' || s === 'indeedee-male' || s === 'indeedee male'){
+    list.push('indeedee', 'indeedee-m', 'indeedee-male', 'indeedee male');
+  }
+  if(s === 'indeedee-f' || s === 'indeedee-female' || s === 'indeedee female'){
+    list.push('indeedee-f', 'indeedee-female', 'indeedee female');
+  }
+  if(s === 'basculegion' || s === 'basculegion-f' || s === 'basculegion-female' || s === 'basculegion female'){
+    list.push('basculegion-f', 'basculegion-female', 'basculegion female', 'basculegion');
+  }
+  if(s === 'basculegion-m' || s === 'basculegion-male' || s === 'basculegion male'){
+    list.push('basculegion-m', 'basculegion-male', 'basculegion male', 'basculegion');
+  }
+  return Array.from(new Set(list));
+}
+
 function findPokemonCostOnBoard(t, pokemonName){
   if(!t || !pokemonName) return 0;
-  let cleanTarget = (pokemonName || '').toLowerCase().trim();
-  if(t.pokemonPoints && typeof t.pokemonPoints[cleanTarget] === 'number'){
-    return t.pokemonPoints[cleanTarget];
+  let candidates = getPokemonNameCandidates(pokemonName);
+  if(t.pokemonPoints && typeof t.pokemonPoints === 'object'){
+    for(let c of candidates){
+      if(typeof t.pokemonPoints[c] === 'number') return t.pokemonPoints[c];
+    }
   }
   let d = ensureTournamentDraft(t);
-  if(d?.customCosts && typeof d.customCosts[cleanTarget] === 'number'){
-    return d.customCosts[cleanTarget];
+  if(d?.customCosts && typeof d.customCosts === 'object'){
+    for(let c of candidates){
+      if(typeof d.customCosts[c] === 'number') return d.customCosts[c];
+    }
   }
   let boardToUse = (d && Array.isArray(d.board) && d.board.length > 0) ? d.board : ((typeof getOffseasonDraftBoard === 'function') ? getOffseasonDraftBoard() : []);
   if(!boardToUse || !boardToUse.length) return 0;
   if(!d._monCostMap || d._monCostMapBoardRef !== boardToUse){
     let map = {};
     boardToUse.forEach(tier => {
+      let cost = tier.cost || 0;
       (tier.pokemon || []).forEach(mon => {
         if(mon){
-          let clean = mon.toLowerCase().trim();
-          map[clean] = tier.cost || 0;
-          map[clean.replace(/-/g, ' ')] = tier.cost || 0;
+          let cands = getPokemonNameCandidates(mon);
+          cands.forEach(k => { map[k] = cost; });
         }
       });
     });
     d._monCostMap = map;
     d._monCostMapBoardRef = boardToUse;
   }
-  let c = d._monCostMap[cleanTarget] ?? d._monCostMap[cleanTarget.replace(/-/g, ' ')];
-  return (typeof c === 'number') ? c : 0;
+  for(let c of candidates){
+    if(typeof d._monCostMap[c] === 'number') return d._monCostMap[c];
+  }
+  return 0;
 }
 
 function setPokemonPointCost(t, pokemonName, cost){
@@ -27467,7 +27520,7 @@ function DraftRostersView(t){
                 </div>
               </div>
               <div style="display:flex;justify-content:space-between;align-items:center;border-top:1px solid #282836;padding-top:4px;font-size:10px">
-                <span style="color:#ffd166;font-weight:800;font-size:11px">${stats.budget > 0 ? `${stats.pointsSpent}/${stats.budget}p` : `${stats.pointsSpent}p`}</span>
+                <span style="color:${stats.budget > 0 && stats.pointsSpent > stats.budget ? '#ff5964' : '#ffd166'};font-weight:800;font-size:11px">${stats.budget > 0 ? `${stats.pointsSpent}/${stats.budget}p` : `${stats.pointsSpent}p`}</span>
                 <span style="color:#8e8c95;font-weight:700">${stats.count}/${stats.maxSlots} Mons</span>
               </div>
             </div>
@@ -27494,16 +27547,17 @@ function DraftRostersView(t){
               let pickObj = (d.picks || []).find(x => x.player === coach && x.round === roundNum) || (stats.picks && stats.picks[rIdx]) || (d.picks || []).find(x => x.pickNumber === pickNumber);
 
               if(pickObj){
+                let cellCost = (typeof findPokemonCostOnBoard === 'function') ? (findPokemonCostOnBoard(t, pickObj.pokemon) || pickObj.cost || 0) : (pickObj.cost || 0);
                 let spriteUrl = pokeSprite(pickObj.pokemon);
                 let theme = getPokemonTypeTheme(pickObj.pokemon);
                 return `
                   <div class="draft-matrix-cell drafted ${canManage ? 'mod-clickable' : ''}"
                        style="background:linear-gradient(135deg, ${theme.bg} 0%, ${theme.bgEnd} 100%);border:1px solid ${theme.border};box-shadow:0 2px 8px rgba(0,0,0,0.3);"
-                       title="${esc(pickObj.pokemon)} (${theme.name} · ${pickObj.cost} pts) · Round ${roundNum}, Pick #${pickNumber}${canManage ? ' · Click to swap out' : ''}"
-                       ${canManage ? `onclick="openModeratorSwapModal('${jsArg(t.id)}', '${jsArg(coach)}', '${jsArg(pickObj.pokemon)}', ${roundNum}, ${pickNumber}, ${pickObj.cost || 0})"` : ''}>
+                       title="${esc(pickObj.pokemon)} (${theme.name} · ${cellCost} pts) · Round ${roundNum}, Pick #${pickNumber}${canManage ? ' · Click to swap out' : ''}"
+                       ${canManage ? `onclick="openModeratorSwapModal('${jsArg(t.id)}', '${jsArg(coach)}', '${jsArg(pickObj.pokemon)}', ${roundNum}, ${pickNumber}, ${cellCost})"` : ''}>
                     <div class="draft-matrix-cell-head">
                       <span class="draft-matrix-pick-num" style="color:${theme.accent};font-weight:800">${roundNum}.${posInRound + 1}</span>
-                      <span class="draft-matrix-cost" style="background:${theme.badgeBg};border:1px solid ${theme.border};color:${theme.badgeText};font-weight:700">${pickObj.cost} PTS</span>
+                      <span class="draft-matrix-cost" style="background:${theme.badgeBg};border:1px solid ${theme.border};color:${theme.badgeText};font-weight:700">${cellCost} PTS</span>
                     </div>
                     <div class="draft-matrix-cell-body">
                       <img src="${esc(spriteUrl)}" class="draft-matrix-sprite" alt="${esc(pickObj.pokemon)}" loading="lazy" onerror="handleSpriteError(this)">
