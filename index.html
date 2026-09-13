@@ -25197,14 +25197,6 @@ function ensureTournamentDraft(t){
   }
   if(!t.draftData.picks) t.draftData.picks = [];
   if(!t.draftData.board) t.draftData.board = [];
-  if(Array.isArray(t.draftData.picks) && t.draftData.picks.length > 0 && typeof findPokemonCostOnBoard === 'function'){
-    t.draftData.picks.forEach(pk => {
-      if(pk && pk.pokemon){
-        let bc = findPokemonCostOnBoard(t, pk.pokemon);
-        if(typeof bc === 'number' && bc > 0) pk.cost = bc;
-      }
-    });
-  }
   if(t.draftData.pointBudget === undefined) t.draftData.pointBudget = t.draftData.budget ?? 100;
   if(t.draftData.maxRosterSize === undefined) t.draftData.maxRosterSize = t.draftData.rounds ?? 10;
   return t.draftData;
@@ -25358,7 +25350,7 @@ function findPokemonCostOnBoard(t, pokemonName){
       if(typeof t.pokemonPoints[c] === 'number') return t.pokemonPoints[c];
     }
   }
-  let d = ensureTournamentDraft(t);
+  let d = t.draftData || t.draft || null;
   if(d?.customCosts && typeof d.customCosts === 'object'){
     for(let c of candidates){
       if(typeof d.customCosts[c] === 'number') return d.customCosts[c];
@@ -25366,7 +25358,8 @@ function findPokemonCostOnBoard(t, pokemonName){
   }
   let boardToUse = (d && Array.isArray(d.board) && d.board.length > 0) ? d.board : ((typeof getOffseasonDraftBoard === 'function') ? getOffseasonDraftBoard() : []);
   if(!boardToUse || !boardToUse.length) return 0;
-  if(!d._monCostMap || d._monCostMapBoardRef !== boardToUse){
+  let cacheHolder = d || window;
+  if(!cacheHolder._monCostMap || cacheHolder._monCostMapBoardRef !== boardToUse){
     let map = {};
     boardToUse.forEach(tier => {
       let cost = tier.cost || 0;
@@ -25377,11 +25370,11 @@ function findPokemonCostOnBoard(t, pokemonName){
         }
       });
     });
-    d._monCostMap = map;
-    d._monCostMapBoardRef = boardToUse;
+    cacheHolder._monCostMap = map;
+    cacheHolder._monCostMapBoardRef = boardToUse;
   }
   for(let c of candidates){
-    if(typeof d._monCostMap[c] === 'number') return d._monCostMap[c];
+    if(typeof cacheHolder._monCostMap[c] === 'number') return cacheHolder._monCostMap[c];
   }
   return 0;
 }
