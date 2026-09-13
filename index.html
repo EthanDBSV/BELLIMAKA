@@ -19036,7 +19036,10 @@ function getBadgeTournamentIndex(b, sortedTournaments){
       (x.name + ' (' + x.season + ')') === tName || 
       tName.includes(x.name) || 
       x.name.includes(tName) || 
-      (x.badgeLabel && (tName.includes(x.badgeLabel) || x.badgeLabel.includes(tName)))
+      (x.badgeLabel && (tName.includes(x.badgeLabel) || x.badgeLabel.includes(tName))) ||
+      (x.regulation && (x.regulation.toLowerCase().includes(tName.toLowerCase()) || tName.toLowerCase().includes(x.regulation.toLowerCase()))) ||
+      (tName.toLowerCase().includes('national dex') && x.id === 't1787300970005') ||
+      (tName.toLowerCase().includes('norman') && x.id === 't1787300970005')
     );
     if(matchT) return sortedTournaments.indexOf(matchT);
   }
@@ -22640,8 +22643,30 @@ function calculateLeagueRecords(forceRefresh = false){
     }
 
     granted.forEach(gb=>{
-      if(!s.badges.some(b=>b.id===gb.id||b.name===gb.name)){
-        s.badges.push(gb);
+      let badgeToPush = { ...gb };
+      let match = badgeToPush.name ? badgeToPush.name.match(/^(.+?)\s*\(([^)]+)\)$/) : null;
+      let targetTName = (badgeToPush.tournament || (match ? match[2] : '')).trim();
+      if(targetTName){
+        let matchT = sortedTournaments.find(x => 
+          x.name === targetTName || 
+          x.badgeLabel === targetTName || 
+          x.season === targetTName || 
+          (x.regulation && x.regulation.toLowerCase().includes(targetTName.toLowerCase())) ||
+          (targetTName.toLowerCase().includes('national dex') && x.id === 't1787300970005') ||
+          (targetTName.toLowerCase().includes('norman') && x.id === 't1787300970005')
+        );
+        if(matchT && match){
+          let prefix = match[1];
+          let newLabel = tournamentBadgeLabel(matchT);
+          badgeToPush.name = `${prefix} (${newLabel})`;
+          badgeToPush.tournament = newLabel;
+          badgeToPush.tIdx = sortedTournaments.indexOf(matchT);
+          gb.name = badgeToPush.name;
+          gb.tournament = badgeToPush.tournament;
+        }
+      }
+      if(!s.badges.some(b=>b.id===badgeToPush.id||b.name===badgeToPush.name)){
+        s.badges.push(badgeToPush);
       }
     });
 
