@@ -24995,12 +24995,23 @@ function builderHTML(){
     `;
   }
 
-  let curT = ongoingT() || activeT();
-  let draftPicks = curT?.draftData?.picks || [];
+  let isLiveDraft = (function(){
+    if(window._isRenderingOffseasonDraft || (typeof document !== 'undefined' && document.getElementById('offseasonDraftBoardGridWrap'))) return false;
+    let t = ongoingT();
+    if(!t || t.status !== 'ONGOING' || !t.hasDraft || t.phase !== 'draft') return false;
+    let d = t.draftData;
+    if(!d || d.status === 'completed') return false;
+    return true;
+  })();
+
+  let curT = isLiveDraft ? ongoingT() : null;
+  let draftPicks = isLiveDraft ? (curT?.draftData?.picks || []) : [];
   let draftedMap = {};
-  draftPicks.forEach(p => {
-    if(p.pokemon) draftedMap[p.pokemon.toLowerCase().trim()] = p.player;
-  });
+  if(isLiveDraft && draftPicks.length > 0){
+    draftPicks.forEach(p => {
+      if(p.pokemon) draftedMap[p.pokemon.toLowerCase().trim()] = p.player;
+    });
+  }
   let curUser = window.currentAccount?.username || sessionUser?.user_metadata?.username || sessionUser?.email?.split('@')[0] || '';
   let myCoach = (typeof myPlayer === 'function' ? myPlayer() : null) || (typeof playerForAccount === 'function' ? playerForAccount(curUser) : null) || curUser;
 
@@ -25025,11 +25036,13 @@ function builderHTML(){
     <div class="tm-list">
       ${team.picks.map((x,i)=>{
         let cleanName = (x.name || '').toLowerCase().trim();
-        let drafter = draftedMap[cleanName];
-        let isDrafted = !!drafter;
+        let drafter = isLiveDraft ? draftedMap[cleanName] : null;
+        let isDrafted = Boolean(isLiveDraft && drafter);
         let isMine = isDrafted && myCoach && drafter.toLowerCase() === myCoach.toLowerCase();
         let statusBadge = isDrafted ? (isMine ? `<span style="font-size:9.5px;color:#4bdd91;background:#0e281b;border:1px solid #1c5236;padding:1px 5px;border-radius:4px;font-weight:800">✓ Drafted</span>` : `<span style="font-size:9.5px;color:#ff8e95;background:#281216;border:1px solid #54222a;padding:1px 5px;border-radius:4px;font-weight:800">❌ Taken</span>`) : '';
-        let rowTitle = isDrafted ? (isMine ? `Drafted by you in this tournament` : `Already taken by another coach`) : `Click to draft ${esc(x.name)}`;
+        let rowTitle = isLiveDraft
+          ? (isDrafted ? (isMine ? `Drafted by you in this tournament` : `Already taken by another coach (${esc(drafter)})`) : `Click to draft ${esc(x.name)}`)
+          : `Click to view ${esc(x.name)} details`;
 
         return `<div class="tm-item" style="cursor:pointer;transition:all .15s ease;${isDrafted && !isMine ? 'opacity:0.6;' : ''}" title="${esc(rowTitle)}" onclick="openDraftFromPlanner('${jsArg(x.name)}', ${x.cost})">
           <img src="${esc(monSprite(x.name))}" alt="" loading="lazy" onerror="handleSpriteError(this)">
@@ -25044,7 +25057,7 @@ function builderHTML(){
       ${Array.from({length:free},(_,i)=>`<div class="tm-slot-free">Slot ${team.picks.length+i+1} open</div>`).join('')}
     </div>
     <div class="mock-actions"><button class="chip" onclick="copyTeam()">Copy list</button><button class="chip" onclick="deleteTeam()" style="color:#ff9ba1">Delete team</button></div>
-    <p class="tm-note">Teams are private and saved to ${esc(who)}${s.key!=='guest'?' — they follow your account when you sign in elsewhere':''}. Click any Pokémon above to draft it on the board.</p>`
+    <p class="tm-note">Teams are private and saved to ${esc(who)}${s.key!=='guest'?' — they follow your account when you sign in elsewhere':''}. ${isLiveDraft ? 'Click any Pokémon above to draft it on the board.' : 'Click any Pokémon on the board to add it to your plan.'}</p>`
 }
 
 /* ------------------------------------------------------------
@@ -27767,6 +27780,7 @@ function OffseasonDraftClosedView(){
 }
 
 function OffseasonDraftView(){
+  window._isRenderingOffseasonDraft = true;
   let board = getOffseasonDraftBoard();
   let actions = `
     <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
@@ -27778,7 +27792,7 @@ function OffseasonDraftView(){
     </div>
   `;
 
-  return head('Draft Board & Team Planner', 'Pre-Season Tiered Board & Roster Planner', actions) + `
+  let viewHtml = head('Draft Board & Team Planner', 'Pre-Season Tiered Board & Roster Planner', actions) + `
     <div class="draft-board-with-planner">
       <div style="display:flex;flex-direction:column;gap:14px;min-width:0">
         <!-- Search and Filter Bar -->
@@ -27817,6 +27831,8 @@ function OffseasonDraftView(){
       </aside>
     </div>
   `;
+  window._isRenderingOffseasonDraft = false;
+  return viewHtml;
 }
 
 /* --- Navigation & Board Main Handler --- */
