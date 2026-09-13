@@ -1398,17 +1398,18 @@ details[open] > .past-tourney-summary .past-chevron{transform:rotate(180deg);col
   padding: 34px 36px 70px !important;
 }
 .archive {
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+  gap: 18px;
 }
 .archive-card {
   position: relative;
   width: 100% !important;
-  min-height: 340px !important;
+  aspect-ratio: 16 / 9;
+  min-height: 0 !important;
   background-size: cover !important;
   background-position: center !important;
-  padding: 38px !important;
+  padding: 22px !important;
   text-align: left !important;
   cursor: pointer !important;
   transition: border-color .16s, transform .16s !important;
@@ -1426,17 +1427,17 @@ details[open] > .past-tourney-summary .past-chevron{transform:rotate(180deg);col
 .archive-card .archive-season-badge {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  font: 800 11px/1 'Barlow Condensed';
-  letter-spacing: 1.4px;
+  gap: 5px;
+  font: 800 9px/1 'Barlow Condensed';
+  letter-spacing: 1.2px;
   text-transform: uppercase;
   color: #f5f3f0;
   background: rgba(17,17,28,.7);
-  padding: 5px 12px;
+  padding: 4px 10px;
   border-radius: 50px;
   backdrop-filter: blur(6px);
   border: 1px solid rgba(255,255,255,.12);
-  margin-bottom: 14px;
+  margin-bottom: 10px;
   width: fit-content;
 }
 .archive-card .archive-season-badge i {
@@ -1446,21 +1447,21 @@ details[open] > .past-tourney-summary .past-chevron{transform:rotate(180deg);col
   display: inline-block;
 }
 .archive-card .archive-title {
-  font: 800 48px/.88 'Barlow Condensed' !important;
+  font: 800 30px/.92 'Barlow Condensed' !important;
   color: #f5f3f0;
-  margin: 0 0 6px 0;
+  margin: 0 0 4px 0;
   text-transform: uppercase;
   letter-spacing: .5px;
 }
 .archive-card .archive-regulation {
-  font: 800 16px/1.2 'Barlow Condensed';
+  font: 800 13px/1.2 'Barlow Condensed';
   color: #a09fa8;
   text-transform: uppercase;
   letter-spacing: .4px;
-  margin: 0 0 4px 0;
+  margin: 0 0 2px 0;
 }
 .archive-card .archive-champion {
-  font: 800 16px/1.2 'Barlow Condensed';
+  font: 800 13px/1.2 'Barlow Condensed';
   color: #ffd166;
   text-transform: uppercase;
   letter-spacing: .5px;
@@ -1468,8 +1469,8 @@ details[open] > .past-tourney-summary .past-chevron{transform:rotate(180deg);col
 }
 .archive-stats {
   display: flex !important;
-  gap: 28px !important;
-  margin-top: 20px !important;
+  gap: 20px !important;
+  margin-top: 12px !important;
   font-size: 10px !important;
   color: #97959e !important;
   border-top: none !important;
@@ -14565,9 +14566,6 @@ function tournamentCard(t){
     <div class="archive-regulation">${esc(t.regulation ? t.regulation.toUpperCase() : '')}</div>
     ${champLine}
     <div class="archive-stats"><span><b>${totalMatches}</b>Matches</span><span><b>${esc(t.start||'TBD')}</b>Started</span></div>
-    <div class="archive-actions">
-      <button class="btn btn-sm" onclick="event.stopPropagation();openTournament('${t.id}')">View Tournament Details →</button>
-    </div>
   </button>`;
 }
 
