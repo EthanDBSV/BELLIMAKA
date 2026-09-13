@@ -1425,23 +1425,28 @@ details[open] > .past-tourney-summary .past-chevron{transform:rotate(180deg);col
   transform: translateY(-2px) !important;
 }
 .archive-card .archive-season-badge {
+  position: absolute;
+  top: 16px;
+  left: 18px;
   display: inline-flex;
   align-items: center;
-  gap: 5px;
-  font: 800 9px/1 'Barlow Condensed';
+  gap: 6px;
+  font: 800 10px/1 'Barlow Condensed';
   letter-spacing: 1.2px;
   text-transform: uppercase;
   color: #f5f3f0;
-  background: rgba(17,17,28,.7);
-  padding: 4px 10px;
+  background: rgba(15,15,22,.82);
+  padding: 5px 12px;
   border-radius: 50px;
   backdrop-filter: blur(6px);
-  border: 1px solid rgba(255,255,255,.12);
-  margin-bottom: 10px;
+  -webkit-backdrop-filter: blur(6px);
+  border: 1px solid rgba(255,255,255,.16);
+  z-index: 2;
   width: fit-content;
+  pointer-events: none;
 }
 .archive-card .archive-season-badge i {
-  width: 7px; height: 7px;
+  width: 6px; height: 6px;
   border-radius: 50%;
   background: var(--red);
   display: inline-block;
@@ -8421,8 +8426,9 @@ function openTournamentRecordEditor(id){
         <div class="field" style="margin-top:0">
           <label style="font-weight:800;color:#e2e0e8;margin-bottom:6px">Current Phase</label>
           <select id="recordPhase" style="background:#181822;border:1px solid #363646;border-radius:6px;padding:10px 12px;color:#f5f3f0">
+            ${(t.status === 'COMPLETE' || t.phase === 'complete') ? `<option value="complete" ${t.phase === 'complete' || t.status === 'COMPLETE' ? 'selected' : ''}>Archived / Complete</option>` : ''}
             <option value="draft" ${t.phase === 'draft' ? 'selected' : ''}>Live Draft Room</option>
-            <option value="${getStage1Format(t) === 'swiss' ? 'swiss' : 'group'}" ${t.phase === 'group' || t.phase === 'swiss' || !t.phase ? 'selected' : ''}>${getStage1Format(t) === 'swiss' ? 'Swiss Stage' : 'Group Stage'}</option>
+            <option value="${getStage1Format(t) === 'swiss' ? 'swiss' : 'group'}" ${t.phase === 'group' || t.phase === 'swiss' || (!t.phase && t.status !== 'COMPLETE') ? 'selected' : ''}>${getStage1Format(t) === 'swiss' ? 'Swiss Stage' : 'Group Stage'}</option>
             <option value="topcut" ${t.phase === 'topcut' ? 'selected' : ''}>Top Cut Playoffs</option>
           </select>
         </div>
@@ -8469,6 +8475,7 @@ function saveTournamentRecord(id){
   let newPhase = document.querySelector('#recordPhase')?.value || t.phase;
   t.phase = newPhase;
   if(newPhase === 'draft') t.hasDraft = true;
+  if(newPhase === 'complete') t.status = 'COMPLETE';
 
   if(moderator){
     let newManagers = [...document.querySelectorAll('.recordManagerChoice:checked')].map(x => x.value.trim()).filter(Boolean);
@@ -14554,9 +14561,9 @@ function tournamentCard(t){
     ? `style="background-image:linear-gradient(90deg,rgba(18,18,24,0.94) 0%,rgba(18,18,24,0.72) 42%,rgba(18,18,24,0.12) 100%),url('${t.backgroundImage}');background-size:cover;background-position:center"`
     : '';
   let totalMatches = tournamentTotalMatches(t);
-  let seasonLabel = t.season ? t.season.toUpperCase() : '';
-  let statusLabel = t.status === 'COMPLETE' ? 'ARCHIVE' : (t.status === 'ONGOING' ? 'LIVE' : t.status);
-  let badgeText = seasonLabel ? `${seasonLabel} ${statusLabel}` : statusLabel;
+  let badgeText = t.status === 'ONGOING'
+    ? (t.season ? `${t.season.toUpperCase()} · LIVE` : 'LIVE')
+    : (t.season ? t.season.toUpperCase() : (t.status || 'TOURNAMENT'));
   let champLine = t.champion
     ? `<div class="archive-champion">Champion: ${esc(t.champion.toUpperCase())}</div>`
     : `<div class="archive-regulation" style="color:#8e8c95">${(t.phase==='topcut'?'Top Cut':(getStage1Format(t)==='swiss'?'Swiss Stage':'Group Stage'))} · ${t.players.length} Trainers</div>`;
@@ -24099,7 +24106,7 @@ function openTournamentEdit(id){
   if(!canManageTournament(t))return;
   window.editingTournamentId=t.id;
   let locked=t.phase==='topcut';
-  let canEditDraft = (t.status === 'ONGOING' && (t.hasDraft || t.phase === 'draft'));
+  let canEditDraft = Boolean(t.hasDraft || t.draftData || t.draftData?.picks?.length || t.draftData?.board?.length || t.status === 'COMPLETE' || t.phase === 'draft');
   let mgrs = getTournamentManagers(t);
   let mgrSubtitle = mgrs.length ? (mgrs.length > 1 ? ` · Directors: ${mgrs.map(esc).join(', ')}` : ` · Director: ${esc(mgrs[0])}`) : '';
 
@@ -24121,7 +24128,7 @@ function openTournamentEdit(id){
       <button class="btn ghost" style="text-align:left;justify-content:flex-start;padding:10px 14px" onclick="openTournamentPointCostsEditor('${jsArg(t.id)}')">💰 Edit Pokémon Point Costs</button>
       ${canEditDraft ? `
         <button class="btn ghost" style="text-align:left;justify-content:flex-start;padding:10px 14px" onclick="openDraftBoardImporter('${jsArg(t.id)}')">📥 Import / Edit Draft Board</button>
-        <button class="btn ghost" style="text-align:left;justify-content:flex-start;padding:10px 14px" onclick="openDraftOrderEditor('${jsArg(t.id)}')">🔀 Edit Draft Snake Order</button>
+        <button class="btn ghost" style="text-align:left;justify-content:flex-start;padding:10px 14px" onclick="openDraftOrderEditor('${jsArg(t.id)}')">🔀 Edit Draft Snake & Board Order</button>
       ` : ''}
       <button class="btn ghost" style="text-align:left;justify-content:flex-start;padding:10px 14px" onclick="openCoverEditor('${jsArg(t.id)}')">🖼️ Edit Cover Image</button>
       ${t.status==='COMPLETE'?`<button class="btn ghost" style="text-align:left;justify-content:flex-start;padding:10px 14px" onclick="resyncTournamentStats('${jsArg(t.id)}')">🔄 Resync Stats</button>`:''}
@@ -25954,11 +25961,30 @@ function moveDraftOrderBottom(tId, idx){
   setDraftOrderSlot(tId, idx, d.order.length - 1);
 }
 
+function cancelDraftOrder(tId){
+  let t = tournamentData[tId] || activeT();
+  if(!t) return;
+  let d = ensureTournamentDraft(t);
+  if(window._draftOrderOrig){
+    d.order = [...window._draftOrderOrig];
+    window._draftOrderOrig = null;
+  }
+}
+
 function openDraftOrderEditor(tId){
   let t = tournamentData[tId] || activeT();
   if(!t || !canManageTournament(t)) return;
   let d = ensureTournamentDraft(t);
+  if(!d.order || !d.order.length){
+    d.order = [...(t.players || [])];
+  } else {
+    (t.players || []).forEach(p => {
+      if(!d.order.includes(p)) d.order.push(p);
+    });
+    d.order = d.order.filter(p => (t.players || []).includes(p));
+  }
   let order = [...d.order];
+  window._draftOrderOrig = [...d.order];
 
   document.querySelector('#modal').innerHTML = `
     <div class="modal-wrap">
@@ -25966,10 +25992,10 @@ function openDraftOrderEditor(tId){
         <div class="modal-head">
           <div>
             <div class="eyebrow" style="color:var(--red)">${moderator ? 'Moderator Only' : 'Tournament Director'}</div>
-            <h2>Draft Snake Order</h2>
-            <p class="sub" style="margin-top:2px">Set Round 1 picking order. Drag rows, select pick # from dropdown, or use quick jump buttons.</p>
+            <h2>Draft Snake & Board Order</h2>
+            <p class="sub" style="margin-top:2px">Set coach picking order and board columns. Drag rows, select slot from dropdown, or use quick jump buttons.</p>
           </div>
-          <button class="close" onclick="closeModal()">×</button>
+          <button class="close" onclick="cancelDraftOrder('${jsArg(t.id)}');closeModal()">×</button>
         </div>
 
         <div style="display:flex;justify-content:space-between;align-items:center;margin-top:14px;margin-bottom:10px">
@@ -25982,7 +26008,7 @@ function openDraftOrderEditor(tId){
         </div>
 
         <div class="creator-actions" style="margin-top:20px;display:flex;justify-content:space-between">
-          <button class="btn ghost" onclick="closeModal()">Cancel</button>
+          <button class="btn ghost" onclick="cancelDraftOrder('${jsArg(t.id)}');closeModal()">Cancel</button>
           <button class="btn" style="padding:10px 24px;font-weight:800" onclick="saveDraftOrder('${jsArg(t.id)}')">Save Order</button>
         </div>
       </div>
@@ -26053,6 +26079,47 @@ function randomizeDraftOrder(tId){
 function saveDraftOrder(tId){
   let t = tournamentData[tId] || activeT();
   if(!t || !canManageTournament(t)) return;
+  let d = ensureTournamentDraft(t);
+  window._draftOrderOrig = null;
+
+  if(d && (!d.picks || !d.picks.length) && t.rosters && Object.keys(t.rosters).length){
+    let newPicks = [];
+    let order = (d.order && d.order.length) ? d.order : (t.players || []);
+    let maxRoster = Math.max(...order.map(p => (t.rosters[p] || []).length), 0);
+    for(let r = 1; r <= maxRoster; r++){
+      let isReversed = (r % 2 === 0);
+      order.forEach((coach, colIdx) => {
+        let posInRound = isReversed ? (order.length - 1 - colIdx) : colIdx;
+        let pNum = (r - 1) * order.length + posInRound + 1;
+        let mon = t.rosters[coach]?.[r - 1];
+        if(mon){
+          newPicks.push({
+            round: r,
+            pickNumber: pNum,
+            player: coach,
+            pokemon: mon,
+            cost: findPokemonCostOnBoard(t, mon)
+          });
+        }
+      });
+    }
+    d.picks = newPicks;
+  }
+
+  if(d && Array.isArray(d.picks) && d.order && d.order.length){
+    d.picks.forEach(pick => {
+      let coach = pick.player;
+      let roundNum = pick.round || 1;
+      let colIdx = d.order.indexOf(coach);
+      if(colIdx !== -1){
+        let isReversed = (roundNum % 2 === 0);
+        let posInRound = isReversed ? (d.order.length - 1 - colIdx) : colIdx;
+        pick.pickNumber = (roundNum - 1) * d.order.length + posInRound + 1;
+      }
+    });
+    d.picks.sort((a,b) => (a.pickNumber || 0) - (b.pickNumber || 0));
+  }
+
   window._lastLocalDraftActionTime = Date.now();
   persistLeague();
   closeModal();
@@ -27311,7 +27378,7 @@ function DraftRostersView(t){
               let posInRound = isReversed ? (order.length - 1 - colIdx) : colIdx;
               let pickNumber = (roundNum - 1) * order.length + posInRound + 1;
               let stats = coachStatsMap[coach];
-              let pickObj = (d.picks || []).find(x => x.pickNumber === pickNumber) || (d.picks || []).find(x => x.player === coach && x.round === roundNum) || (stats.picks && stats.picks[rIdx]);
+              let pickObj = (d.picks || []).find(x => x.player === coach && x.round === roundNum) || (stats.picks && stats.picks[rIdx]) || (d.picks || []).find(x => x.pickNumber === pickNumber);
 
               if(pickObj){
                 let spriteUrl = pokeSprite(pickObj.pokemon);
@@ -27320,7 +27387,7 @@ function DraftRostersView(t){
                   <div class="draft-matrix-cell drafted ${canManage ? 'mod-clickable' : ''}"
                        style="background:linear-gradient(135deg, ${theme.bg} 0%, ${theme.bgEnd} 100%);border:1px solid ${theme.border};box-shadow:0 2px 8px rgba(0,0,0,0.3);"
                        title="${esc(pickObj.pokemon)} (${theme.name} · ${pickObj.cost} pts) · Round ${roundNum}, Pick #${pickNumber}${canManage ? ' · Click to swap out' : ''}"
-                       ${canManage ? `onclick="openModeratorSwapModal('${jsArg(t.id)}', '${jsArg(coach)}', '${jsArg(pickObj.pokemon)}', ${pickObj.round || roundNum}, ${pickObj.pickNumber || pickNumber}, ${pickObj.cost || 0})"` : ''}>
+                       ${canManage ? `onclick="openModeratorSwapModal('${jsArg(t.id)}', '${jsArg(coach)}', '${jsArg(pickObj.pokemon)}', ${roundNum}, ${pickNumber}, ${pickObj.cost || 0})"` : ''}>
                     <div class="draft-matrix-cell-head">
                       <span class="draft-matrix-pick-num" style="color:${theme.accent};font-weight:800">${roundNum}.${posInRound + 1}</span>
                       <span class="draft-matrix-cost" style="background:${theme.badgeBg};border:1px solid ${theme.border};color:${theme.badgeText};font-weight:700">${pickObj.cost} PTS</span>
