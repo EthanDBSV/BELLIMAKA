@@ -2246,6 +2246,36 @@ function _resolvePokemonDataUncached(raw) {
     'mewtwo-mega-x': { slug: 'mewtwo-megax', name: 'Mega Mewtwo X' },
     'mewtwo-mega-y': { slug: 'mewtwo-megay', name: 'Mega Mewtwo Y' },
 
+    // Salamence Megas
+    'mega salamence': { slug: 'salamence-mega', name: 'Mega Salamence' },
+    'salamence-mega': { slug: 'salamence-mega', name: 'Mega Salamence' },
+    'salamence mega': { slug: 'salamence-mega', name: 'Mega Salamence' },
+    'salamencemega': { slug: 'salamence-mega', name: 'Mega Salamence' },
+
+    // Kangaskhan Megas
+    'mega kangaskhan': { slug: 'kangaskhan-mega', name: 'Mega Kangaskhan' },
+    'kangaskhan-mega': { slug: 'kangaskhan-mega', name: 'Mega Kangaskhan' },
+    'kangaskhan mega': { slug: 'kangaskhan-mega', name: 'Mega Kangaskhan' },
+    'kangaskhanmega': { slug: 'kangaskhan-mega', name: 'Mega Kangaskhan' },
+
+    // Garchomp Megas
+    'mega garchomp': { slug: 'garchomp-mega', name: 'Mega Garchomp' },
+    'garchomp-mega': { slug: 'garchomp-mega', name: 'Mega Garchomp' },
+    'garchomp mega': { slug: 'garchomp-mega', name: 'Mega Garchomp' },
+    'garchompmega': { slug: 'garchomp-mega', name: 'Mega Garchomp' },
+
+    // Tyranitar Megas
+    'mega tyranitar': { slug: 'tyranitar-mega', name: 'Mega Tyranitar' },
+    'tyranitar-mega': { slug: 'tyranitar-mega', name: 'Mega Tyranitar' },
+    'tyranitar mega': { slug: 'tyranitar-mega', name: 'Mega Tyranitar' },
+    'tyranitarmega': { slug: 'tyranitar-mega', name: 'Mega Tyranitar' },
+
+    // Diancie Megas
+    'mega diancie': { slug: 'diancie-mega', name: 'Mega Diancie' },
+    'diancie-mega': { slug: 'diancie-mega', name: 'Mega Diancie' },
+    'diancie mega': { slug: 'diancie-mega', name: 'Mega Diancie' },
+    'dianciemega': { slug: 'diancie-mega', name: 'Mega Diancie' },
+
     // Steelix & Onix Megas
     'mega steelix': { slug: 'steelix-mega', name: 'Mega Steelix' },
     'steelix-mega': { slug: 'steelix-mega', name: 'Mega Steelix' },
@@ -5921,7 +5951,10 @@ function renderMatchStatsBoxScoreHtml(stats, p1, p2, t, matchKey, gameNum) {
         if(m.isMega) {
           existing.isMega = true;
           existing.species = m.species || existing.species;
-          if(m.name && m.name.toLowerCase().includes('mega')) existing.name = m.name;
+          if(m.name && m.name.toLowerCase().includes('mega')) {
+            existing.name = m.name;
+            existing.sprite = (typeof resolvePokemonData === 'function' ? resolvePokemonData(m.name)?.sprite : null) || m.sprite || existing.sprite;
+          }
         }
       }
     });
@@ -5986,7 +6019,7 @@ function renderMatchStatsBoxScoreHtml(stats, p1, p2, t, matchKey, gameNum) {
             </thead>
             <tbody>
               ${mons.map(m => {
-                let sprite = m.sprite || (typeof resolvePokemonData === 'function' ? resolvePokemonData(m.name)?.sprite : (typeof getPokemonSpriteUrl === 'function' ? getPokemonSpriteUrl(m.name.toLowerCase()) : ''));
+                let sprite = (typeof resolvePokemonData === 'function' ? resolvePokemonData(m.name)?.sprite : null) || (typeof getPokemonSpriteUrl === 'function' ? getPokemonSpriteUrl(m.name.toLowerCase()) : '') || m.sprite || '';
                 return `
                   <tr>
                     <td style="text-align:center;padding:4px">
@@ -6063,7 +6096,7 @@ function renderMatchStatsBoxScoreHtml(stats, p1, p2, t, matchKey, gameNum) {
       ${mvp ? `
         <div class="replay-mvp-card">
           <div style="position:relative;flex:none;text-align:center">
-            <img src="${mvp.sprite}" alt="${esc(mvp.name)}" style="width:72px;height:72px;object-fit:contain;filter:drop-shadow(0 0 10px rgba(255,209,102,0.4))" onerror="handleSpriteError(this)">
+            <img src="${(typeof resolvePokemonData === 'function' && mvp.name ? resolvePokemonData(mvp.name)?.sprite : null) || (typeof getPokemonSpriteUrl === 'function' && mvp.name ? getPokemonSpriteUrl(mvp.name.toLowerCase()) : '') || mvp.sprite || ''}" alt="${esc(mvp.name)}" style="width:72px;height:72px;object-fit:contain;filter:drop-shadow(0 0 10px rgba(255,209,102,0.4))" onerror="handleSpriteError(this)">
             <span style="position:absolute;bottom:-4px;left:50%;transform:translateX(-50%);background:#ffd166;color:#111;font:900 9px 'Barlow Condensed';padding:1px 6px;border-radius:3px;letter-spacing:1px">MVP</span>
           </div>
           <div style="flex:1;min-width:0">
@@ -7218,10 +7251,11 @@ function calculateTeamOfTheSeason(t) {
       let impact = p.impactScore != null ? p.impactScore : ((kills * 150) + Math.round(damageDealt) + (fainted ? 0 : 75) + Math.round(hpHealed * 0.5));
 
       if(!gfGameGroup.has(gKey)) {
+        let canonicalSprite = (typeof resolvePokemonData === 'function' ? resolvePokemonData(cleanName)?.sprite : null) || (typeof getPokemonSpriteUrl === 'function' ? getPokemonSpriteUrl(cleanName.toLowerCase()) : '') || p.sprite;
         gfGameGroup.set(gKey, {
           name: cleanName,
           coach: coach,
-          sprite: p.sprite,
+          sprite: canonicalSprite,
           kills: 0,
           damageDealt: 0,
           impact: 0
@@ -7237,10 +7271,11 @@ function calculateTeamOfTheSeason(t) {
     gfGameGroup.forEach(gEntry => {
       let key = gEntry.name.toLowerCase();
       if(!gfMonMap.has(key)) {
+        let canonicalSprite = (typeof resolvePokemonData === 'function' ? resolvePokemonData(gEntry.name)?.sprite : null) || (typeof getPokemonSpriteUrl === 'function' ? getPokemonSpriteUrl(key) : '') || gEntry.sprite;
         gfMonMap.set(key, {
           name: gEntry.name,
           coach: gEntry.coach || '',
-          sprite: gEntry.sprite || (typeof resolvePokemonData === 'function' ? resolvePokemonData(gEntry.name)?.sprite : (typeof getPokemonSpriteUrl === 'function' ? getPokemonSpriteUrl(key) : '')),
+          sprite: canonicalSprite,
           games: 0,
           totalImpact: 0,
           totalKills: 0,
@@ -7398,11 +7433,12 @@ function calculateTeamOfTheSeason(t) {
       let curImpact = p.impactScore != null ? p.impactScore : ((kills * 150) + Math.round(damageDealt) + (fainted ? 0 : 75) + Math.round(hpHealed * 0.5));
 
       if(!replayGameGroup.has(gKey)) {
+        let canonicalSprite = (typeof resolvePokemonData === 'function' ? resolvePokemonData(cleanName)?.sprite : null) || (typeof getPokemonSpriteUrl === 'function' ? getPokemonSpriteUrl(cleanName.toLowerCase()) : '') || p.sprite;
         replayGameGroup.set(gKey, {
           name: cleanName,
           rawName: p.name,
           coach: coach,
-          sprite: p.sprite,
+          sprite: canonicalSprite,
           kills: 0,
           damageDealt: 0,
           damageTaken: 0,
@@ -7428,10 +7464,11 @@ function calculateTeamOfTheSeason(t) {
       let initialCoach = gEntry.coach || rosterCoachMap.get(key) || '';
 
       if(!monMap.has(key)) {
+        let canonicalSprite = (typeof resolvePokemonData === 'function' ? resolvePokemonData(gEntry.name)?.sprite : null) || (typeof getPokemonSpriteUrl === 'function' ? getPokemonSpriteUrl(key) : '') || gEntry.sprite;
         monMap.set(key, {
           name: gEntry.name,
           coach: initialCoach,
-          sprite: gEntry.sprite || (typeof resolvePokemonData === 'function' ? resolvePokemonData(gEntry.name)?.sprite : (typeof getPokemonSpriteUrl === 'function' ? getPokemonSpriteUrl(key) : '')),
+          sprite: canonicalSprite,
           games: 0,
           regGames: 0,
           tcGames: 0,
@@ -7781,7 +7818,7 @@ function renderMajorAwardsCardsHtml(major, t, isCompact = false) {
           let types = (typeof getPokemonTypes === 'function' ? getPokemonTypes(mon.name) : []) || ['Normal'];
           let pType = types[0] || 'Normal';
           let theme = (typeof TYPE_THEMES !== 'undefined' && TYPE_THEMES[pType]) ? TYPE_THEMES[pType] : { bg: '#1c1c24', border: '#383847', glow: 'rgba(255,255,255,0.06)' };
-          let sprite = mon.sprite || (typeof resolvePokemonData === 'function' ? resolvePokemonData(mon.name)?.sprite : (typeof getPokemonSpriteUrl === 'function' ? getPokemonSpriteUrl(mon.name.toLowerCase()) : ''));
+          let sprite = (typeof resolvePokemonData === 'function' ? resolvePokemonData(mon.name)?.sprite : null) || (typeof getPokemonSpriteUrl === 'function' ? getPokemonSpriteUrl(mon.name.toLowerCase()) : '') || mon.sprite || '';
 
           return `
             <div class="award-major-card" style="background:linear-gradient(135deg, ${theme.bg} 0%, #15131a 55%, #101015 100%);border:1px solid ${item.badgeBorder}">
@@ -7864,7 +7901,7 @@ function renderMajorAwardsCardsHtml(major, t, isCompact = false) {
         let types = (typeof getPokemonTypes === 'function' ? getPokemonTypes(mon.name) : []) || ['Normal'];
         let pType = types[0] || 'Normal';
         let theme = (typeof TYPE_THEMES !== 'undefined' && TYPE_THEMES[pType]) ? TYPE_THEMES[pType] : { bg: '#1c1c24', border: '#383847', glow: 'rgba(255,255,255,0.06)' };
-        let sprite = mon.sprite || (typeof resolvePokemonData === 'function' ? resolvePokemonData(mon.name)?.sprite : (typeof getPokemonSpriteUrl === 'function' ? getPokemonSpriteUrl(mon.name.toLowerCase()) : ''));
+        let sprite = (typeof resolvePokemonData === 'function' ? resolvePokemonData(mon.name)?.sprite : null) || (typeof getPokemonSpriteUrl === 'function' ? getPokemonSpriteUrl(mon.name.toLowerCase()) : '') || mon.sprite || '';
 
         return `
           <div class="tots-card" style="background:linear-gradient(180deg, ${theme.bg} 0%, rgba(18,18,24,0.96) 100%);border-color:${theme.border || '#2e2e3e'}">
@@ -7925,7 +7962,7 @@ function renderTeamOfTheSeasonCardsHtml(totsOrList, isCompact = false) {
           let types = (typeof getPokemonTypes === 'function' ? getPokemonTypes(mon.name) : []) || ['Normal'];
           let pType = types[0] || 'Normal';
           let theme = (typeof TYPE_THEMES !== 'undefined' && TYPE_THEMES[pType]) ? TYPE_THEMES[pType] : { bg: '#1c1c24', border: '#383847', glow: 'rgba(255,255,255,0.06)' };
-          let sprite = mon.sprite || (typeof resolvePokemonData === 'function' ? resolvePokemonData(mon.name)?.sprite : (typeof getPokemonSpriteUrl === 'function' ? getPokemonSpriteUrl(mon.name.toLowerCase()) : ''));
+          let sprite = (typeof resolvePokemonData === 'function' ? resolvePokemonData(mon.name)?.sprite : null) || (typeof getPokemonSpriteUrl === 'function' ? getPokemonSpriteUrl(mon.name.toLowerCase()) : '') || mon.sprite || '';
 
           return `
             <div class="award-compact-card" style="background:linear-gradient(135deg, ${theme.bg} 0%, #15151e 100%);border:1px solid ${theme.border || '#2e2e3e'}">
@@ -7988,7 +8025,7 @@ function renderTeamOfTheSeasonCardsHtml(totsOrList, isCompact = false) {
         let types = (typeof getPokemonTypes === 'function' ? getPokemonTypes(mon.name) : []) || ['Normal'];
         let pType = types[0] || 'Normal';
         let theme = (typeof TYPE_THEMES !== 'undefined' && TYPE_THEMES[pType]) ? TYPE_THEMES[pType] : { bg: '#1c1c24', border: '#383847', glow: 'rgba(255,255,255,0.06)' };
-        let sprite = mon.sprite || (typeof resolvePokemonData === 'function' ? resolvePokemonData(mon.name)?.sprite : (typeof getPokemonSpriteUrl === 'function' ? getPokemonSpriteUrl(mon.name.toLowerCase()) : ''));
+        let sprite = (typeof resolvePokemonData === 'function' ? resolvePokemonData(mon.name)?.sprite : null) || (typeof getPokemonSpriteUrl === 'function' ? getPokemonSpriteUrl(mon.name.toLowerCase()) : '') || mon.sprite || '';
 
         return `
           <div class="tots-card" style="background:linear-gradient(180deg, ${theme.bg} 0%, rgba(18,18,24,0.96) 100%);border-color:${theme.border || '#2e2e3e'}">
