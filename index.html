@@ -4652,6 +4652,83 @@ function normalizeBattleFormToDraftForm(name) {
   return str;
 }
 
+function resolveDraftMonName(rawName, coachName, tournament) {
+  if (!rawName) return '';
+  let clean = normalizeBattleFormToDraftForm(rawName);
+  let cleanKey = clean.toLowerCase().replace(/[^a-z0-9]/g, '');
+
+  let coachRoster = (tournament?.rosters && coachName) ? (tournament.rosters[coachName] || []) : [];
+
+  if (coachRoster.length > 0) {
+    // 1. Direct match on coach's drafted roster
+    for (let r of coachRoster) {
+      let rStr = typeof r === 'string' ? r : (r.pokemon || r.name || '');
+      let rKey = rStr.toLowerCase().replace(/[^a-z0-9]/g, '');
+      if (rKey === cleanKey) return rStr;
+    }
+
+    // 2. Base species match (e.g. Salamence <-> Mega Salamence, Charizard <-> Mega Charizard Y)
+    let baseKey = clean.toLowerCase()
+      .replace(/-mega(-[xy])?/g, '')
+      .replace(/^mega\s+/g, '')
+      .replace(/\s+mega(-[xy])?$/g, '')
+      .replace(/\s+[xy]$/g, '')
+      .replace(/[^a-z0-9]/g, '');
+
+    for (let r of coachRoster) {
+      let rStr = typeof r === 'string' ? r : (r.pokemon || r.name || '');
+      let rBaseKey = rStr.toLowerCase()
+        .replace(/-mega(-[xy])?/g, '')
+        .replace(/^mega\s+/g, '')
+        .replace(/\s+mega(-[xy])?$/g, '')
+        .replace(/\s+[xy]$/g, '')
+        .replace(/[^a-z0-9]/g, '');
+
+      if (baseKey === rBaseKey) {
+        let rIsMega = /mega/i.test(rStr);
+        let cleanIsMega = /mega/i.test(clean);
+        if (rIsMega || !cleanIsMega) {
+          return rStr;
+        }
+      }
+    }
+  } else if (tournament?.rosters) {
+    let baseKey = clean.toLowerCase()
+      .replace(/-mega(-[xy])?/g, '')
+      .replace(/^mega\s+/g, '')
+      .replace(/\s+mega(-[xy])?$/g, '')
+      .replace(/\s+[xy]$/g, '')
+      .replace(/[^a-z0-9]/g, '');
+
+    let matches = [];
+    Object.keys(tournament.rosters).forEach(cName => {
+      (tournament.rosters[cName] || []).forEach(r => {
+        let rStr = typeof r === 'string' ? r : (r.pokemon || r.name || '');
+        let rBaseKey = rStr.toLowerCase()
+          .replace(/-mega(-[xy])?/g, '')
+          .replace(/^mega\s+/g, '')
+          .replace(/\s+mega(-[xy])?$/g, '')
+          .replace(/\s+[xy]$/g, '')
+          .replace(/[^a-z0-9]/g, '');
+        if (baseKey === rBaseKey) {
+          matches.push({ coach: cName, mon: rStr });
+        }
+      });
+    });
+
+    if (matches.length === 1) {
+      return matches[0].mon;
+    }
+    let isCleanMega = /mega/i.test(clean);
+    let megaMatches = matches.filter(m => /mega/i.test(m.mon));
+    if (isCleanMega && megaMatches.length === 1) {
+      return megaMatches[0].mon;
+    }
+  }
+
+  return clean;
+}
+
 function parseShowdownBattleLog(logText, meta = {}) {
   if(!logText || typeof logText !== 'string') return null;
   let lines = logText.split('\n');
@@ -5803,6 +5880,56 @@ function renderMatchStatsBoxScoreHtml(stats, p1, p2, t, matchKey, gameNum) {
       coachBMons = Object.values(stats.pokemon).filter(x => x.side === 'p2');
     }
   }
+
+  function consolidateSquadMons(mons, coachName) {
+    if(!Array.isArray(mons) || mons.length <= 1) return mons;
+    let map = new Map();
+    mons.forEach(m => {
+      let resolvedName = (typeof resolveDraftMonName === 'function') ? resolveDraftMonName(m.name, coachName, t) : m.name;
+      let key = (resolvedName || m.name).toLowerCase();
+      if(!map.has(key)) {
+        map.set(key, {
+          ...m,
+          name: resolvedName || m.name,
+          kills: m.kills || 0,
+          killedMons: [...(m.killedMons || [])],
+          damageDealt: m.damageDealt || 0,
+          damageTaken: m.damageTaken || 0,
+          hpHealed: m.hpHealed || 0,
+          moves: [...(m.moves || [])],
+          fainted: Boolean(m.fainted),
+          faintTurn: m.faintTurn || null
+        });
+      } else {
+        let existing = map.get(key);
+        existing.kills += (m.kills || 0);
+        if(m.killedMons) {
+          m.killedMons.forEach(k => {
+            if(!existing.killedMons.includes(k)) existing.killedMons.push(k);
+          });
+        }
+        existing.damageDealt += (m.damageDealt || 0);
+        existing.damageTaken += (m.damageTaken || 0);
+        existing.hpHealed += (m.hpHealed || 0);
+        if(m.moves) {
+          m.moves.forEach(mv => {
+            if(!existing.moves.includes(mv)) existing.moves.push(mv);
+          });
+        }
+        if(m.fainted) existing.fainted = true;
+        if(m.faintTurn) existing.faintTurn = Math.max(existing.faintTurn || 0, m.faintTurn);
+        if(m.isMega) {
+          existing.isMega = true;
+          existing.species = m.species || existing.species;
+          if(m.name && m.name.toLowerCase().includes('mega')) existing.name = m.name;
+        }
+      }
+    });
+    return Array.from(map.values());
+  }
+
+  coachAMons = consolidateSquadMons(coachAMons, coachA);
+  coachBMons = consolidateSquadMons(coachBMons, coachB);
 
   let p1Kills = coachAMons.reduce((s, m) => s + (m.kills || 0), 0);
   let p2Kills = coachBMons.reduce((s, m) => s + (m.kills || 0), 0);
@@ -7078,21 +7205,42 @@ function calculateTeamOfTheSeason(t) {
       }
     }
     let pList = Array.isArray(stats?.pokemon) ? stats.pokemon : (stats?.pokemon ? Object.values(stats.pokemon) : []);
+    let gfGameGroup = new Map();
     pList.forEach(p => {
       if(!p.name) return;
-      let cleanName = normalizeBattleFormToDraftForm(p.name.trim());
-      let key = cleanName.toLowerCase();
+      let coach = p.coach || (p.side === 'p1' ? r.coach1 : r.coach2) || '';
+      let cleanName = (typeof resolveDraftMonName === 'function') ? resolveDraftMonName(p.name, coach, t) : normalizeBattleFormToDraftForm(p.name.trim());
+      let gKey = (coach || '') + '::' + cleanName.toLowerCase();
       let kills = p.kills || 0;
       let damageDealt = p.damageDealt || 0;
       let hpHealed = p.hpHealed || 0;
       let fainted = Boolean(p.fainted);
       let impact = p.impactScore != null ? p.impactScore : ((kills * 150) + Math.round(damageDealt) + (fainted ? 0 : 75) + Math.round(hpHealed * 0.5));
 
+      if(!gfGameGroup.has(gKey)) {
+        gfGameGroup.set(gKey, {
+          name: cleanName,
+          coach: coach,
+          sprite: p.sprite,
+          kills: 0,
+          damageDealt: 0,
+          impact: 0
+        });
+      }
+      let gEntry = gfGameGroup.get(gKey);
+      gEntry.kills += kills;
+      gEntry.damageDealt += damageDealt;
+      gEntry.impact += impact;
+      if(!gEntry.sprite && p.sprite) gEntry.sprite = p.sprite;
+    });
+
+    gfGameGroup.forEach(gEntry => {
+      let key = gEntry.name.toLowerCase();
       if(!gfMonMap.has(key)) {
         gfMonMap.set(key, {
-          name: cleanName,
-          coach: p.coach || '',
-          sprite: p.sprite || (typeof resolvePokemonData === 'function' ? resolvePokemonData(cleanName)?.sprite : (typeof getPokemonSpriteUrl === 'function' ? getPokemonSpriteUrl(cleanName.toLowerCase()) : '')),
+          name: gEntry.name,
+          coach: gEntry.coach || '',
+          sprite: gEntry.sprite || (typeof resolvePokemonData === 'function' ? resolvePokemonData(gEntry.name)?.sprite : (typeof getPokemonSpriteUrl === 'function' ? getPokemonSpriteUrl(key) : '')),
           games: 0,
           totalImpact: 0,
           totalKills: 0,
@@ -7101,10 +7249,10 @@ function calculateTeamOfTheSeason(t) {
       }
       let entry = gfMonMap.get(key);
       entry.games += 1;
-      entry.totalImpact += impact;
-      entry.totalKills += kills;
-      entry.totalDamageDealt += damageDealt;
-      if(!entry.coach && p.coach) entry.coach = p.coach;
+      entry.totalImpact += gEntry.impact;
+      entry.totalKills += gEntry.kills;
+      entry.totalDamageDealt += gEntry.damageDealt;
+      if(!entry.coach && gEntry.coach) entry.coach = gEntry.coach;
     });
   });
 
@@ -7180,6 +7328,15 @@ function calculateTeamOfTheSeason(t) {
       rList.forEach(rMon => {
         let clean = normalizeBattleFormToDraftForm(String(rMon).trim());
         if(clean) rosterCoachMap.set(clean.toLowerCase(), coachName);
+        let baseKey = clean.toLowerCase()
+          .replace(/-mega(-[xy])?/g, '')
+          .replace(/^mega\s+/g, '')
+          .replace(/\s+mega(-[xy])?$/g, '')
+          .replace(/\s+[xy]$/g, '')
+          .replace(/[^a-z0-9]/g, '');
+        if(baseKey && !rosterCoachMap.has(baseKey)) {
+          rosterCoachMap.set(baseKey, coachName);
+        }
       });
     });
   }
@@ -7226,23 +7383,55 @@ function calculateTeamOfTheSeason(t) {
       if(topMon && topMon.name) gameMvpName = normalizeBattleFormToDraftForm(topMon.name.trim()).toLowerCase();
     }
 
+    let replayGameGroup = new Map();
     pList.forEach(p => {
       if(!p.name) return;
-      let cleanName = normalizeBattleFormToDraftForm(p.name.trim());
-      let key = cleanName.toLowerCase();
+      let coach = p.coach || (p.side === 'p1' ? (replay.coach1 || match?.a || match?.p1) : (replay.coach2 || match?.b || match?.p2)) || rosterCoachMap.get(p.name.trim().toLowerCase()) || '';
+      let cleanName = (typeof resolveDraftMonName === 'function') ? resolveDraftMonName(p.name, coach, t) : normalizeBattleFormToDraftForm(p.name.trim());
+      let gKey = (coach || '') + '::' + cleanName.toLowerCase();
+
       let kills = p.kills || 0;
       let damageDealt = p.damageDealt || 0;
       let damageTaken = p.damageTaken || 0;
       let hpHealed = p.hpHealed || 0;
       let fainted = Boolean(p.fainted);
       let curImpact = p.impactScore != null ? p.impactScore : ((kills * 150) + Math.round(damageDealt) + (fainted ? 0 : 75) + Math.round(hpHealed * 0.5));
-      let initialCoach = p.coach || rosterCoachMap.get(key) || '';
+
+      if(!replayGameGroup.has(gKey)) {
+        replayGameGroup.set(gKey, {
+          name: cleanName,
+          rawName: p.name,
+          coach: coach,
+          sprite: p.sprite,
+          kills: 0,
+          damageDealt: 0,
+          damageTaken: 0,
+          hpHealed: 0,
+          fainted: false,
+          curImpact: 0,
+          moves: new Set()
+        });
+      }
+      let gEntry = replayGameGroup.get(gKey);
+      gEntry.kills += kills;
+      gEntry.damageDealt += damageDealt;
+      gEntry.damageTaken += damageTaken;
+      gEntry.hpHealed += hpHealed;
+      if(fainted) gEntry.fainted = true;
+      gEntry.curImpact += curImpact;
+      (p.moves || []).forEach(mv => gEntry.moves.add(mv));
+      if(!gEntry.sprite && p.sprite) gEntry.sprite = p.sprite;
+    });
+
+    replayGameGroup.forEach(gEntry => {
+      let key = gEntry.name.toLowerCase();
+      let initialCoach = gEntry.coach || rosterCoachMap.get(key) || '';
 
       if(!monMap.has(key)) {
         monMap.set(key, {
-          name: cleanName,
+          name: gEntry.name,
           coach: initialCoach,
-          sprite: p.sprite || (typeof resolvePokemonData === 'function' ? resolvePokemonData(cleanName)?.sprite : (typeof getPokemonSpriteUrl === 'function' ? getPokemonSpriteUrl(cleanName.toLowerCase()) : '')),
+          sprite: gEntry.sprite || (typeof resolvePokemonData === 'function' ? resolvePokemonData(gEntry.name)?.sprite : (typeof getPokemonSpriteUrl === 'function' ? getPokemonSpriteUrl(key) : '')),
           games: 0,
           regGames: 0,
           tcGames: 0,
@@ -7263,35 +7452,36 @@ function calculateTeamOfTheSeason(t) {
       }
       let entry = monMap.get(key);
       entry.games += 1;
-      if(fainted) entry.faints += 1;
+      if(gEntry.fainted) entry.faints += 1;
       if(isTopCut) {
         entry.tcGames += 1;
       } else {
         entry.regGames += 1;
-        entry.regKills += kills;
-        entry.regDamageDealt += damageDealt;
-        entry.regImpactScoreTotal += curImpact;
+        entry.regKills += gEntry.kills;
+        entry.regDamageDealt += gEntry.damageDealt;
+        entry.regImpactScoreTotal += gEntry.curImpact;
       }
 
-      let curCoach = p.coach || entry.coach || rosterCoachMap.get(key);
+      let curCoach = gEntry.coach || entry.coach || rosterCoachMap.get(key);
       if(winningCoach && curCoach) {
-        if(String(curCoach).trim().toLowerCase() === String(winningCoach).trim().toLowerCase() || isCoachMatch(curCoach, winningCoach, t)) {
+        if(String(curCoach).trim().toLowerCase() === String(winningCoach).trim().toLowerCase() || (typeof isCoachMatch === 'function' && isCoachMatch(curCoach, winningCoach, t))) {
           entry.wins += 1;
         }
       }
 
-      if(key === gameMvpName) {
+      let rawKey = (gEntry.rawName || '').toLowerCase().trim();
+      if(key === gameMvpName || rawKey === gameMvpName) {
         entry.matchMvps += 1;
         if(!isTopCut) entry.regMatchMvps += 1;
       }
 
-      entry.totalKills += kills;
-      entry.totalDamageDealt += damageDealt;
-      entry.totalDamageTaken += damageTaken;
-      entry.totalHpHealed += hpHealed;
-      entry.impactScoreTotal += curImpact;
+      entry.totalKills += gEntry.kills;
+      entry.totalDamageDealt += gEntry.damageDealt;
+      entry.totalDamageTaken += gEntry.damageTaken;
+      entry.totalHpHealed += gEntry.hpHealed;
+      entry.impactScoreTotal += gEntry.curImpact;
       if(!entry.coach && curCoach) entry.coach = curCoach;
-      (p.moves || []).forEach(mv => entry.moves.add(mv));
+      gEntry.moves.forEach(mv => entry.moves.add(mv));
     });
   });
 
@@ -8200,7 +8390,7 @@ function renderTopCutMvpBannerHtml(tots, t) {
 
 function getTournamentPokemonStatsMap(t) {
   if(!t) return {};
-  if(t._cachedMonStatsVersion === 5 && t._cachedMonStatsMap && t._cachedMonStatsTime && (Date.now() - t._cachedMonStatsTime < 30000)) {
+  if(t._cachedMonStatsVersion === 6 && t._cachedMonStatsMap && t._cachedMonStatsTime && (Date.now() - t._cachedMonStatsTime < 30000)) {
     return t._cachedMonStatsMap;
   }
 
@@ -8246,10 +8436,37 @@ function getTournamentPokemonStatsMap(t) {
       }
     }
     let pList = Array.isArray(stats?.pokemon) ? stats.pokemon : (stats?.pokemon ? Object.values(stats.pokemon) : []);
+
+    let gameGroup = new Map();
     pList.forEach(p => {
       if(!p.name) return;
-      let rawClean = p.name.trim();
-      let clean = normalizeBattleFormToDraftForm(rawClean);
+      let coach = p.coach || (p.side === 'p1' ? (replay.coach1 || match?.a || match?.p1) : (replay.coach2 || match?.b || match?.p2)) || '';
+      let resolvedDraftName = (typeof resolveDraftMonName === 'function') ? resolveDraftMonName(p.name, coach, t) : normalizeBattleFormToDraftForm(p.name);
+      let gKey = (coach || '') + '::' + resolvedDraftName.toLowerCase();
+
+      if(!gameGroup.has(gKey)) {
+        gameGroup.set(gKey, {
+          name: resolvedDraftName,
+          rawName: p.name,
+          coach: coach,
+          kills: 0,
+          dmg: 0,
+          taken: 0,
+          healed: 0,
+          impact: 0
+        });
+      }
+      let gEntry = gameGroup.get(gKey);
+      gEntry.kills += (p.kills || 0);
+      gEntry.dmg += (p.damageDealt || 0);
+      gEntry.taken += (p.damageTaken || 0);
+      gEntry.healed += (p.hpHealed || 0);
+      gEntry.impact += (p.impactScore || 0);
+    });
+
+    gameGroup.forEach(gEntry => {
+      let clean = gEntry.name;
+      let rawClean = (gEntry.rawName || '').trim();
       let kClean = clean.toLowerCase().replace(/[^a-z0-9]/g, '');
       let kRaw = rawClean.toLowerCase().replace(/[^a-z0-9]/g, '');
       let alt = clean.toLowerCase()
@@ -8278,14 +8495,14 @@ function getTournamentPokemonStatsMap(t) {
       }
 
       statObj.games += 1;
-      statObj.kills += (p.kills || 0);
-      statObj.dmg += (p.damageDealt || 0);
-      statObj.taken += (p.damageTaken || 0);
-      statObj.healed += (p.hpHealed || 0);
-      statObj.impact += (p.impactScore || 0);
+      statObj.kills += gEntry.kills;
+      statObj.dmg += gEntry.dmg;
+      statObj.taken += gEntry.taken;
+      statObj.healed += gEntry.healed;
+      statObj.impact += gEntry.impact;
 
       map[kClean] = statObj;
-      if(kRaw) map[kRaw] = statObj;
+      if(!map[kRaw] && kRaw) map[kRaw] = statObj;
       if(alt) map[alt] = statObj;
       if(kSlug) map[kSlug] = statObj;
       if(kResName) map[kResName] = statObj;
@@ -8304,7 +8521,7 @@ function getTournamentPokemonStatsMap(t) {
   });
 
   t._cachedMonStatsMap = map;
-  t._cachedMonStatsVersion = 5;
+  t._cachedMonStatsVersion = 6;
   t._cachedMonStatsTime = Date.now();
   return map;
 }
@@ -8338,6 +8555,16 @@ function findPokemonStatsInMap(map, name) {
     let kResName = resolved.name.toLowerCase().replace(/[^a-z0-9]/g, '');
     if(map[kResName]) return map[kResName];
     if(map[resolved.name]) return map[resolved.name];
+  }
+
+  // Fallback between Mega and Base form keys
+  let baseOnly = k1.replace(/^mega/g, '').replace(/mega$/g, '').replace(/[xy]$/g, '');
+  if(baseOnly && baseOnly !== k1) {
+    if(map[baseOnly]) return map[baseOnly];
+  } else if(baseOnly) {
+    if(map['mega' + baseOnly]) return map['mega' + baseOnly];
+    if(map['mega' + baseOnly + 'y']) return map['mega' + baseOnly + 'y'];
+    if(map['mega' + baseOnly + 'x']) return map['mega' + baseOnly + 'x'];
   }
 
   // Fallbacks for legacy/unparsed battle and cosmetic form keys
