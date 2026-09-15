@@ -586,6 +586,7 @@ details[open] > .past-tourney-summary .past-chevron{transform:rotate(180deg);col
 
 .draft-clock-card{background:linear-gradient(135deg,#281216,#15151c 75%);border:1.5px solid #ef3038;border-radius:8px;padding:14px 16px;display:flex;align-items:center;gap:14px;box-shadow:0 0 20px rgba(239,48,56,0.22);position:relative;overflow:hidden}
 .draft-clock-card.paused{border-color:#f59e0b;background:linear-gradient(135deg,#2e2208,#15151c 75%);box-shadow:0 0 18px rgba(245,158,11,0.2)}
+.draft-clock-card.pending{border-color:#4a4a58;background:linear-gradient(135deg,#1c1c24,#15151c 75%);box-shadow:none}
 .draft-clock-card.completed{border-color:#10b981;background:linear-gradient(135deg,#0c281c,#15151c 75%);box-shadow:0 0 18px rgba(16,185,129,0.2)}
 .draft-clock-avatar{width:54px;height:54px;border-radius:50%;flex:none;background-size:cover;background-position:center;border:2px solid #fff;display:grid;place-items:center;font:800 20px 'Barlow Condensed';color:#fff;box-shadow:0 4px 14px rgba(0,0,0,0.6)}
 
@@ -12264,6 +12265,11 @@ function applyRemoteDraftPick(payload){
   if(!t) return;
   let d = ensureTournamentDraft(t);
   if(!d) return;
+
+  if(d.status === 'pending'){
+    console.warn('Ignoring remote draft pick because draft has not officially started yet (pending status).');
+    return;
+  }
 
   if(Array.isArray(payload.picks) && payload.picks.length >= (d.picks || []).length){
     d.picks = payload.picks;
@@ -25463,6 +25469,16 @@ function ensureTournamentDraft(t){
   if(!t.draftData.board) t.draftData.board = [];
   if(t.draftData.pointBudget === undefined) t.draftData.pointBudget = t.draftData.budget ?? 100;
   if(t.draftData.maxRosterSize === undefined) t.draftData.maxRosterSize = t.draftData.rounds ?? 10;
+  if(!t.draftData.status){
+    let totalPicks = (t.draftData.order?.length || t.players?.length || 0) * (t.draftData.maxRosterSize || 10);
+    if(t.draftData.picks && t.draftData.picks.length >= totalPicks && totalPicks > 0){
+      t.draftData.status = 'completed';
+    } else if(t.draftData.picks && t.draftData.picks.length > 0){
+      t.draftData.status = 'active';
+    } else {
+      t.draftData.status = 'pending';
+    }
+  }
   return t.draftData;
 }
 
@@ -26724,7 +26740,10 @@ function openDraftConfirmationModal(tId, monName, cost, tierName){
   let linkedPlayerName = (typeof myPlayer === 'function' ? myPlayer() : null) || (typeof playerForAccount === 'function' ? playerForAccount(currentUsername) : null);
   let isMe = (currentUsername && currentUsername.toLowerCase() === (pickingCoach || '').toLowerCase()) ||
              (linkedPlayerName && linkedPlayerName.toLowerCase() === (pickingCoach || '').toLowerCase());
-  let canPick = moderator || canManageTournament(t) || isMe;
+  let isPending = (d.status === 'pending');
+  let isPaused = (d.status === 'paused');
+  let isDraftLive = (d.status === 'active');
+  let canPick = isDraftLive && (moderator || canManageTournament(t) || isMe);
   let hasDirectBudget = (coachStats.budget === 0 || coachStats.remainingBudget >= cost);
   let satisfiesReserve = (coachStats.budget === 0 || cost <= coachStats.maxAffordableCost);
   let hasBudget = hasDirectBudget && satisfiesReserve;
@@ -26782,7 +26801,17 @@ function openDraftConfirmationModal(tId, monName, cost, tierName){
             ` : ''}
           </div>
 
-          ${!canPick ? `<div class="sub" style="color:#a09fa8;margin-bottom:10px">Waiting for <b>${esc(pickingCoach)}</b> to make official Pick #${turn.currentPickNumber}.</div>` : ''}
+          ${isPending ? `
+            <div class="sub" style="color:#ffd166;background:rgba(255,209,102,0.1);border:1px solid rgba(255,209,102,0.3);border-radius:6px;padding:8px 10px;margin-bottom:10px;font-size:12px">
+              ⏳ <b>Draft Has Not Started Yet</b><br>Official picks are disabled until the tournament organizer presses <b>Start Draft</b>.
+            </div>
+          ` : ''}
+          ${isPaused ? `
+            <div class="sub" style="color:#f59e0b;background:rgba(245,158,11,0.1);border:1px solid rgba(245,158,11,0.3);border-radius:6px;padding:8px 10px;margin-bottom:10px;font-size:12px">
+              ⏸️ <b>Draft Paused</b><br>Drafting is currently paused by a moderator.
+            </div>
+          ` : ''}
+          ${isDraftLive && !canPick ? `<div class="sub" style="color:#a09fa8;margin-bottom:10px">Waiting for <b>${esc(pickingCoach)}</b> to make official Pick #${turn.currentPickNumber}.</div>` : ''}
           ${canPick && !hasDirectBudget ? `<div class="sub" style="color:#ff4b54;margin-bottom:10px">⚠️ Not enough points. ${esc(pickingCoach)} only has ${coachStats.remainingBudget} pts remaining (costs ${cost} pts).</div>` : ''}
           ${canPick && hasDirectBudget && !satisfiesReserve ? `<div class="sub" style="color:#ff4b54;margin-bottom:10px">⚠️ Roster Reserve Guardrail: You must keep at least 1 point for every remaining slot (${coachStats.minPointsReserve} pts for ${coachStats.slotsAfterPick} slot(s)). Maximum affordable on this pick is <b>${coachStats.maxAffordableCost} pts</b>.</div>` : ''}
           ${canPick && !hasSlots ? `<div class="sub" style="color:#ff4b54;margin-bottom:10px">⚠️ Roster is already full (${coachStats.maxSlots}/${coachStats.maxSlots}).</div>` : ''}
@@ -26792,7 +26821,15 @@ function openDraftConfirmationModal(tId, monName, cost, tierName){
               <button class="btn" ${(!hasBudget || !hasSlots) ? 'disabled style="opacity:.4;cursor:not-allowed"' : ''} style="padding:11px 16px;font-weight:800;width:100%" onclick="makeDraftPick('${jsArg(t.id)}', '${jsArg(monName)}');closeModal()">
                 🎯 Official Draft Pick (${esc(monName)})
               </button>
-            ` : ''}
+            ` : (isPending ? `
+              <button class="btn" disabled style="opacity:.45;cursor:not-allowed;padding:11px 16px;font-weight:800;width:100%;background:#2a2a38;color:#8e8c95;border:1px solid #3d3d4e">
+                ⏳ Draft Not Started (Pending)
+              </button>
+            ` : (isPaused ? `
+              <button class="btn" disabled style="opacity:.45;cursor:not-allowed;padding:11px 16px;font-weight:800;width:100%;background:#2e2208;color:#f59e0b;border:1px solid #5a441c">
+                ⏸️ Draft Paused
+              </button>
+            ` : ''))}
 
             <button class="btn ghost" style="color:#ffd166;border-color:#5a441c;width:100%" onclick="addTeamMon('${jsArg(monName)}', ${cost});closeModal()">
               📝 Add to My Private Team Plan
@@ -26812,12 +26849,20 @@ function makeDraftPick(tId, pokemonName, forcedPlayer = null){
   let d = ensureTournamentDraft(t);
   if(!d) return;
 
+  if(d.status === 'pending'){
+    alert('The draft has not officially started yet. Please wait for the tournament organizer to press Start Draft.');
+    return;
+  }
   if(d.status === 'paused'){
     alert('The draft is currently paused by a moderator.');
     return;
   }
   if(d.status === 'completed'){
     alert('The draft has already finished!');
+    return;
+  }
+  if(d.status !== 'active'){
+    alert('The draft is not currently active.');
     return;
   }
 
@@ -27139,19 +27184,19 @@ function DraftRoom(t){
 
         <div class="draft-hud-hero">
           <!-- On The Clock Card -->
-          <div class="draft-clock-card ${d.status === 'paused' ? 'paused' : (d.status === 'completed' ? 'completed' : '')}">
+          <div class="draft-clock-card ${d.status === 'paused' ? 'paused' : (d.status === 'completed' ? 'completed' : (d.status === 'pending' ? 'pending' : ''))}">
             <div class="draft-clock-avatar" style="background-image:${faceArt};border-color:${curOvr?.color || '#fff'}">
               ${faceLetter}
             </div>
             <div style="min-width:0;flex:1">
-              <div style="font-size:10px;font-weight:800;letter-spacing:1px;color:${d.status === 'active' ? '#ff858b' : '#ffd166'};text-transform:uppercase">
-                ${d.status === 'completed' ? 'Draft Finished' : (d.status === 'paused' ? 'Draft Paused' : (isMe ? '⭐ YOU ARE ON THE CLOCK!' : '⏳ ON THE CLOCK'))}
+              <div style="font-size:10px;font-weight:800;letter-spacing:1px;color:${d.status === 'active' ? '#ff858b' : (d.status === 'pending' ? '#a09fa8' : '#ffd166')};text-transform:uppercase">
+                ${d.status === 'completed' ? 'Draft Finished' : (d.status === 'paused' ? 'Draft Paused' : (d.status === 'pending' ? '⏳ DRAFT PENDING START' : (isMe ? '⭐ YOU ARE ON THE CLOCK!' : '⏳ ON THE CLOCK')))}
               </div>
               <div style="font:800 22px 'Barlow Condensed';color:#f5f3f0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;line-height:1.2">
                 ${turn.isComplete ? 'All Rosters Drafted' : esc(curPlayer)}
               </div>
               <div style="font-size:11px;color:#a09fa8;margin-top:2px">
-                ${turn.isComplete ? 'Ready for Group Stage' : esc(teamName(t, curPlayer))}
+                ${turn.isComplete ? 'Ready for Group Stage' : (d.status === 'pending' ? 'First pick when draft starts' : esc(teamName(t, curPlayer)))}
               </div>
             </div>
 
