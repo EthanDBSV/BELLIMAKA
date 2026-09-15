@@ -1,0 +1,110 @@
+﻿# Bellimaka League — Changelog
+
+All notable changes to the Bellimaka Pokémon Draft League site are documented here.
+Format: `v[MAJOR].[MINOR].[PATCH]` — Major = big new systems, Minor = new features, Patch = bug fixes / small improvements.
+
+---
+
+## [v1.1.0] — 2026-09-15
+
+### Fixed
+- **Draft Start Stutter** — Clicking ▶️ Start Draft no longer flickers between "Draft Pending" and the live draft screen. Background cloud sync polls returning stale `pending` status are now suppressed for 15 seconds after the organizer starts the draft.
+- **Draft Order Resetting** — Reordering coaches in the Draft Order Editor no longer gets reset to alphabetical order every few seconds by background cloud sync. Order edits are now staged in a local buffer and fully isolated from background sync while the modal is open.
+- **Genuine Remote Pick Ingestion** — Despite the sync protections above, legitimate draft picks made by other coaches on their own devices are still accepted and rendered in real time.
+- **Discord Draft Duplicate Announcements** — Duplicate draft pick announcements that were firing on reconnect/delay have been suppressed.
+
+### Added
+- **Instant Draft State Cloud Sync** — Draft status changes (start/pause/resume/order save) are now immediately pushed to Cloudflare KV via a lightweight fast-path endpoint, cutting propagation lag from ~2–5 seconds down to under 50ms.
+- **Draft Pending Pick Guard** — Coaches can no longer submit official draft picks before the tournament organizer presses Start Draft. The confirmation modal now shows a clear "⏳ Draft Not Started" notice and disables the pick button in pending status.
+- **Draft Pending HUD** — The On-The-Clock card in the Draft Room now shows "⏳ DRAFT PENDING START" during pending status instead of incorrectly showing "YOU ARE ON THE CLOCK!" before the draft has started.
+
+---
+
+## [v1.0.0] — 2026-09-14
+
+Initial full release of the Bellimaka Pokémon Draft League site.
+
+### Core League Platform
+
+- **Home Dashboard** — Live season overview with tournament progress bar, draft progress tracker, recent match results, and current standings snapshot. Switches to an Offseason view (season archive, previous champions, all-time stats) when no tournament is active.
+- **Multi-Tournament Support** — Create and manage multiple tournament seasons. Each tournament is independently tracked with its own phases, players, rosters, matches, and results. Previous seasons are archived and browsable.
+- **Cloudflare Workers Backend** — All league data is stored and synced in real time via a Cloudflare Workers + KV backend. Zero database egress costs, ~2s live sync polling, and < 50ms edge write latency.
+- **Accounts & Auth System** — Moderator / coach role system. Coaches log in via a Cloudflare-authenticated account. Moderators have access to all management controls. Regular coaches see a read-only view unless editing their own profile.
+- **Sandbox Mode** — Moderators can toggle a sandbox mode (purple status dot) that disables all cloud sync and Discord announcements, allowing safe testing and data editing without affecting live state.
+
+---
+
+### Draft System
+
+- **Live Draft Room** — Real-time Pokémon drafting with a live on-the-clock system, snake order support, pick confirmation modal, and automatic turn advancement.
+- **Draft Board (CSV Import)** — Import a draft board from CSV (e.g. a Google Sheets export). Pokémon are organized into cost tiers and displayed as a pick grid.
+- **Draft Status Controls** — Moderator controls to Start, Pause, and Resume the draft with live status broadcast to all connected coaches.
+- **Draft Order Editor** — Set and rearrange the snake draft order via a drag-and-drop / button-based modal. Supports randomize, move to top, move to bottom, move up/down, and direct slot selection.
+- **Undo Last Pick** — Moderators can undo the most recent draft pick, restoring the previous state and broadcasting the undo to all connected coaches.
+- **Point Budget System** — Each coach has a configurable point budget (default 100). The draft board tracks remaining budget in real time and prevents picks that would exceed the budget.
+- **Real-Time Sync** — Draft picks, status changes, and undo events are broadcast to all connected clients within 2 seconds via Cloudflare KV polling. No page reload required.
+- **Mobile Wake Lock** — The Draft Room requests a screen wake lock on mobile devices so coaches' screens don't sleep mid-draft.
+- **Draft Pick Discord Announcements** — Each official draft pick automatically posts an announcement to a configured Discord webhook channel, including the picked Pokémon's sprite, cost, coach name, and next coach on the clock.
+
+---
+
+### Match & Score System
+
+- **Match Schedule (Group / Swiss)** — Supports both Group Stage (round-robin within groups) and Swiss Stage formats. Matches are auto-generated based on the tournament format and number of players/groups.
+- **Score Entry** — Moderators can enter match scores directly on the Matches tab. Scores are saved and synced to the cloud on submit.
+- **Showdown Replay Parser** — Paste a Pokémon Showdown replay URL or log text to auto-parse match results, KOs, damage dealt, Pokémon used, and survivorship statistics. Replays are stored per match.
+- **Match Score Discord Announcements** — When a score is saved, an embed is automatically posted to Discord with winner, loser, score, and Pokémon used.
+- **Top Cut Playoffs** — Automatic generation of a top-cut bracket (supports 4/6/8-team cuts). Winners and losers bracket support via the brackets-manager library. Bracket results update automatically as scores are entered.
+
+---
+
+### Standings & Records
+
+- **Live Standings** — Win/loss standings with customizable group filtering, W-L-D record display, tiebreaker sorting, and visual safe/elimination/hunt zone indicators.
+- **All-Time Records** — Per-player career records, win streaks, max win streak tracking, and tournament finish history.
+- **Team of the Season (TOTS)** — Auto-calculated award at season end: Season MVP, Finals MVP, 1st/2nd/3rd All-League Teams, Top Damage Dealer, and other major awards, all driven by Showdown replay parse data.
+- **Player Profiles** — Per-coach profile with champion count, top-cut appearances, career record, current roster, team history across previous seasons, and profile picture / team cover art.
+
+---
+
+### Predictions & Playoff Odds
+
+- **Predictions (Pick'em)** — Coaches can predict match winners before results are entered. Both a classic versus-card format and a compact grid format are available. Predictions lock after scores are submitted.
+- **Prediction Leaderboard** — Tracks cumulative correct predictions per coach across the season.
+- **Playoff Odds** — Monte Carlo simulation (2,000 runs) calculates each coach's projected probability of making the top cut, winning the championship, and finishing in each placement. Updates after every match result.
+
+---
+
+### Teams & Rosters
+
+- **Teams Tab** — Displays all coaches' teams with team name, cover art, roster, and record. Clickable to view a full roster detail view.
+- **Team Cover Art** — Moderators can upload custom cover images per coach. Images are compressed and stored in Cloudflare KV, served via CDN.
+- **Player Profile Pictures** — Per-coach avatar images, separate from team covers.
+- **Pokémon Sprite System** — Sprites pulled from Pokémon Showdown's CDN. Supports Home sprites (default), Gen 5 animated BW sprites, and animated GIF sprites where available. Sprite style is a user-settable preference.
+- **Draft Roster View** — Within a tournament's detail page, a dedicated "Draft" tab shows all coaches' drafted rosters with sprites, pick order, and cost breakdowns.
+
+---
+
+### Tournaments Archive
+
+- **Tournaments Tab** — Browse all seasons in chronological order. View completed and ongoing tournaments with their champions, dates, and format.
+- **Tournament Detail View** — Deep-dive into any tournament with tabbed sub-views: Standings, Teams, Draft Rosters, Matches, Top Cut, and Predictions.
+- **OVR Ratings** — Each coach has an auto-calculated OVR (Overall Rating) score based on win rates, playoff finishes, and performance metrics, calculated both for the current season and historically per tournament.
+
+---
+
+### Discord Integration
+
+- **Webhook Configuration** — Moderators can configure up to two Discord webhooks (main + backup) per tournament, stored securely in Cloudflare KV.
+- **Draft Pick Announcements** — Auto-posted to Discord on every official pick during a live draft.
+- **Match Score Announcements** — Auto-posted to Discord when scores are saved.
+- **Announce Next Draft embed** — Moderators can post a formatted "Draft Starting Soon" countdown announcement to Discord.
+
+---
+
+### Admin & Moderation Tools
+
+- **Moderator Panel** — Moderator-only controls accessible from the top bar: create tournaments, edit scores, manage rosters, upload media, configure Discord, and toggle sandbox mode.
+- **Bandwidth & Egress Breakdown** — A detailed breakdown modal showing estimated data transfer from Cloudflare Workers, KV reads/writes, image uploads, and sprite CDN usage. Includes live allowance tracking against the Cloudflare free tier.
+- **Drag-and-Drop Group Placement** — During group stage, moderators can drag and drop coaches into groups via a visual interface.
+- **Drag-and-Drop Standings Rank Override** — Moderators can manually override standings rank positions by dragging rows within the standings editor.
