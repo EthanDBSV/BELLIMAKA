@@ -2958,7 +2958,15 @@ function noTournament(){return head('No active tournament','League management')+
 
 
 
-function closeModal(){document.querySelector('#modal').innerHTML='';render()}
+function closeModal(){
+  if(typeof window._editingDraftOrderId !== 'undefined' && window._editingDraftOrderId){
+    window._editingDraftOrder = null;
+    window._editingDraftOrderId = null;
+    window._draftOrderOrig = null;
+  }
+  document.querySelector('#modal').innerHTML='';
+  render();
+}
 
 
 function updateMonAddPreview(val, imgId='newMonPreview'){
@@ -9940,6 +9948,7 @@ async function saveDiscordSettings(){
 
 async function announceDraftPickToDiscord(t, pickObj, nextTurn){
   if(isSandboxMode()) return;
+  if(typeof window !== 'undefined' && (window.__TEST_ENV__ || window.__MOCK_ENV__ || window.__IS_VERIFY_RUNNER__)) return;
   if(getBackendType() !== 'cloudflare') return;
   if(!t || !pickObj) return;
 
@@ -10370,10 +10379,14 @@ function shouldApply(incoming){
     return true;
   }
 
-  // 2. Protect draft progress: if incoming cloud draft has different/more picks or status diff, accept!
+  // 2. Protect draft progress: if incoming cloud draft has new picks or authoritative diff, accept!
   if(incoming.tournaments && typeof incoming.tournaments === 'object'){
     let hasDraftDiff = false;
-    let isRecentLocalAction = (Date.now() - (window._lastLocalDraftActionTime || 0)) < 7000;
+    let isRecentLocalAction = (Date.now() - (window._lastLocalDraftActionTime || 0)) < 15000;
+    let isRecentStatusAction = (Date.now() - (window._lastLocalDraftStatusActionTime || 0)) < 15000;
+    let isRecentOrderAction = (Date.now() - (window._lastLocalDraftOrderActionTime || 0)) < 15000;
+    let isEditingOrder = Boolean(window._editingDraftOrderId || document.getElementById('draftOrderListContainer'));
+
     for(let tId in incoming.tournaments){
       let incT = incoming.tournaments[tId];
       let locT = tournamentData[tId];
@@ -10384,9 +10397,22 @@ function shouldApply(incoming){
         let locPicks = locD.picks?.length || 0;
         if(isRecentLocalAction && incPicks < locPicks){
           // Local client recently drafted; do not let stale cloud edge overwrite newer local draft state!
-        } else if(incPicks !== locPicks || incD.status !== locD.status){
+        } else if(incPicks > locPicks){
           hasDraftDiff = true;
           break;
+        } else if(!isRecentLocalAction && incPicks !== locPicks){
+          hasDraftDiff = true;
+          break;
+        } else if(incD.status !== locD.status){
+          if(!isRecentStatusAction || (incomingTime && incomingTime > (window._lastLocalDraftStatusActionTime || 0))){
+            hasDraftDiff = true;
+            break;
+          }
+        } else if(!isEditingOrder && JSON.stringify(incD.order || []) !== JSON.stringify(locD.order || [])){
+          if(!isRecentOrderAction || (incomingTime && incomingTime > (window._lastLocalDraftOrderActionTime || 0))){
+            hasDraftDiff = true;
+            break;
+          }
         }
       }
     }
@@ -12014,6 +12040,19 @@ function applySharedState(data){
             });
           }
         }
+
+        // Preserve local draft status if local client recently acted
+        let isRecentStatusAction = (Date.now() - (window._lastLocalDraftStatusActionTime || 0)) < 15000;
+        if(isRecentStatusAction && locT.draftData.status && locT.draftData.status !== incT.draftData.status){
+          incT.draftData.status = locT.draftData.status;
+        }
+
+        // Preserve local draft order if actively editing or recently saved
+        let isRecentOrderAction = (Date.now() - (window._lastLocalDraftOrderActionTime || 0)) < 15000;
+        let isEditingOrder = Boolean(window._editingDraftOrderId || document.getElementById('draftOrderListContainer'));
+        if((isEditingOrder || isRecentOrderAction) && locT.draftData.order?.length){
+          incT.draftData.order = [...locT.draftData.order];
+        }
       }
 
       // Preserve local replay logs if incoming tournament happens to have empty logs
@@ -12201,9 +12240,12 @@ function setupDraftRealtime(){
     teardownDraftRealtime();
     return;
   }
-  let t = ongoingT() || activeT();
-  let isDraftActive = (t && t.phase === 'draft');
-  let isViewingDraft = (current === 'Draft');
+  let t = (typeof viewTournament !== 'undefined' && viewTournament && tournamentData[viewTournament]) ||
+          (typeof window !== 'undefined' && window.viewTournament && tournamentData[window.viewTournament]) ||
+          (typeof activeT === 'function' ? activeT() : null) ||
+          (typeof ongoingT === 'function' ? ongoingT() : null);
+  let isDraftActive = Boolean(t && (t.phase === 'draft' || t.draftData?.status === 'active' || t.draftData?.status === 'paused'));
+  let isViewingDraft = (current === 'Draft' || (typeof window !== 'undefined' && window.current === 'Draft') || (typeof detailTab !== 'undefined' && detailTab === 'Draft'));
 
   // ONLY tear down if tournament is not in active draft phase OR user navigated away from Draft Room
   if(!isDraftActive || !isViewingDraft){
@@ -12363,12 +12405,35 @@ function applyRemoteDraftControl(payload){
   render();
 }
 
+async function syncDraftStateToCloud(t){
+  if(!t || !t.id || (isSandboxMode() && !window.__MOCK_ENV__)) return;
+  let bType = getBackendType();
+  if(bType === 'cloudflare'){
+    try {
+      let cfUrl = getCloudflareUrl();
+      let d = typeof ensureTournamentDraft === 'function' ? ensureTournamentDraft(t) : (t.draftData || t.draft);
+      await fetch(`${cfUrl}/api/draft`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          tournamentId: t.id,
+          draftData: d,
+          roster: (typeof roster !== 'undefined' ? roster : (t.rosters || {})),
+          updatedAt: Date.now()
+        })
+      });
+    } catch(e){
+      console.warn('Draftdex: Fast draft cloud sync deferred or failed', e);
+    }
+  }
+}
+
 var isSyncingFromCloud = false;
 var lastFullStateSyncTime = 0;
 var lastSyncStartTime = 0;
 async function syncFromCloud(force = false){
   let bType = getBackendType();
-  if(isSandboxMode() || bType === 'local') return;
+  if((isSandboxMode() && !window.__MOCK_ENV__) || bType === 'local') return;
   // Guard against hung fetch on flaky mobile connections (max 5s lock)
   if(isSyncingFromCloud && (Date.now() - lastSyncStartTime < 5000)) return;
   isSyncingFromCloud = true;
@@ -12377,15 +12442,24 @@ async function syncFromCloud(force = false){
     let localUpdatedAt = Number(localStorage.getItem('draftdex-updated-at') || 0);
     let localRev = Number(localStorage.getItem('draftdex-rev') || 0) || knownRev || 0;
     let hasLocalTourneys = Object.keys(tournamentData).length > 0;
-    let curT = ongoingT() || activeT();
-    let isDraftActive = (curT && curT.phase === 'draft');
+    let curT = (typeof viewTournament !== 'undefined' && viewTournament && tournamentData[viewTournament]) ||
+               (typeof window !== 'undefined' && window.viewTournament && tournamentData[window.viewTournament]) ||
+               (typeof activeT === 'function' ? activeT() : null) ||
+               (typeof ongoingT === 'function' ? ongoingT() : null);
+    let isDraftActive = Boolean(curT && (curT.phase === 'draft' || curT.draftData?.status === 'active' || curT.draftData?.status === 'paused'));
+    let isViewingDraft = (current === 'Draft' || (typeof window !== 'undefined' && window.current === 'Draft') || (typeof detailTab !== 'undefined' && detailTab === 'Draft'));
 
     if(bType === 'cloudflare'){
       let cfUrl = getCloudflareUrl();
       // If viewing active draft, quickly check lightweight /api/draft endpoint (~2KB vs ~600KB)
-      if(isDraftActive && curT.id && current === 'Draft'){
+      if(isDraftActive && curT?.id && isViewingDraft){
         try {
-          let timeoutSignal = (typeof AbortSignal !== 'undefined' && AbortSignal.timeout) ? AbortSignal.timeout(4000) : undefined;
+          let timeoutSignal = undefined;
+          try {
+            if(typeof AbortSignal !== 'undefined' && typeof AbortSignal.timeout === 'function'){
+              timeoutSignal = AbortSignal.timeout(4000);
+            }
+          } catch(e){}
           let dRes = await fetch(`${cfUrl}/api/draft?tournamentId=${encodeURIComponent(curT.id)}&_t=${Date.now()}`, {
             cache: 'no-store',
             signal: timeoutSignal
@@ -12399,27 +12473,75 @@ async function syncFromCloud(force = false){
               let remotePicksCount = remotePicks.length;
               let localPicksCount = localPicks.length;
 
-              let isRecentLocalAction = (Date.now() - (window._lastLocalDraftActionTime || 0)) < 7000;
+              let remoteTime = Number(dJson.updatedAt || 0);
+              let isRecentLocalAction = (Date.now() - (window._lastLocalDraftActionTime || 0)) < 15000;
+              let isRecentStatusAction = (Date.now() - (window._lastLocalDraftStatusActionTime || 0)) < 15000;
+              let isRecentOrderAction = (Date.now() - (window._lastLocalDraftOrderActionTime || 0)) < 15000;
+              let isEditingOrder = Boolean(window._editingDraftOrderId || document.getElementById('draftOrderListContainer'));
 
-              // PC Lagback Guard: if coach on this device made a local draft action in last 7s,
+              // PC Lagback Guard: if coach on this device made a local draft action in last 15s,
               // ignore stale edge responses that haven't received our latest pick yet!
               if(isRecentLocalAction && remotePicksCount < localPicksCount){
                 return;
               }
 
+              // If remote snapshot is genuinely older than our last local draft action, don't let it revert anything!
+              if(remoteTime > 0 && window._lastLocalDraftActionTime && remoteTime < window._lastLocalDraftActionTime){
+                if(remotePicksCount <= localPicksCount){
+                  return;
+                }
+              }
+
               let hasPickDiff = remotePicksCount > localPicksCount || (!isRecentLocalAction && remotePicksCount !== localPicksCount);
-              let hasStatusDiff = dJson.draft.status !== localD?.status;
-              let hasOrderDiff = JSON.stringify(dJson.draft.order || []) !== JSON.stringify(localD?.order || []);
+              
+              // Status diff guard: do NOT revert status (e.g. active -> pending) if organizer recently changed status
+              let hasStatusDiff = false;
+              if(dJson.draft.status && dJson.draft.status !== localD?.status){
+                if(isRecentStatusAction){
+                  if(remoteTime > (window._lastLocalDraftStatusActionTime || 0)){
+                    hasStatusDiff = true;
+                  }
+                } else {
+                  hasStatusDiff = true;
+                }
+              }
+
+              // Order diff guard: NEVER clobber order while user is editing or if user recently saved order
+              let hasOrderDiff = false;
+              let remoteOrder = (Array.isArray(dJson.draft.order) && dJson.draft.order.length) ? dJson.draft.order : null;
+              if(remoteOrder && JSON.stringify(remoteOrder) !== JSON.stringify(localD?.order || [])){
+                if(!isEditingOrder){
+                  if(isRecentOrderAction){
+                    if(remoteTime > (window._lastLocalDraftOrderActionTime || 0)){
+                      hasOrderDiff = true;
+                    }
+                  } else {
+                    hasOrderDiff = true;
+                  }
+                }
+              }
 
               if(hasPickDiff || hasStatusDiff || hasOrderDiff){
-                // Update BOTH curT.draftData and curT.draft so ensureTournamentDraft sees new state immediately
-                curT.draftData = dJson.draft;
-                curT.draft = dJson.draft;
+                if(hasPickDiff){
+                  localD.picks = remotePicks;
+                }
+                if(hasStatusDiff){
+                  localD.status = dJson.draft.status;
+                }
+                if(hasOrderDiff && !isEditingOrder){
+                  localD.order = remoteOrder;
+                }
+                if(dJson.draft.pointBudget !== undefined) localD.pointBudget = dJson.draft.pointBudget;
+                if(dJson.draft.maxRosterSize !== undefined) localD.maxRosterSize = dJson.draft.maxRosterSize;
+                if(Array.isArray(dJson.draft.board) && dJson.draft.board.length) localD.board = dJson.draft.board;
+
+                curT.draftData = localD;
+                curT.draft = localD;
 
                 // Sync rosters for all coaches cleanly from the received draft picks
                 let freshRosters = {};
                 (curT.players || []).forEach(p => { freshRosters[p] = []; });
-                remotePicks.forEach(pk => {
+                (localD.picks || []).forEach(pk => {
                   if(pk && pk.player && pk.pokemon){
                     if(!freshRosters[pk.player]) freshRosters[pk.player] = [];
                     if(!freshRosters[pk.player].includes(pk.pokemon)){
@@ -12429,7 +12551,7 @@ async function syncFromCloud(force = false){
                 });
                 curT.rosters = freshRosters;
 
-                if(dJson.roster && typeof dJson.roster === 'object'){
+                if(dJson.roster && typeof dJson.roster === 'object' && !isRecentLocalAction){
                   if(typeof roster !== 'undefined'){
                     for(let p in dJson.roster){
                       roster[p] = [...(dJson.roster[p] || [])];
@@ -12446,9 +12568,12 @@ async function syncFromCloud(force = false){
                   safeSaveTournamentsToLocalStorage(tournamentData);
                   localStorage.setItem('draftdex-rosters', JSON.stringify(roster));
                 } catch(e){}
-                render();
-                if(typeof centerActiveDraftPickTile === 'function'){
-                  setTimeout(centerActiveDraftPickTile, 50);
+
+                if(!isEditingOrder){
+                  render();
+                  if(typeof centerActiveDraftPickTile === 'function'){
+                    setTimeout(centerActiveDraftPickTile, 50);
+                  }
                 }
 
                 // Corner toast notification for incoming remote draft picks
@@ -26379,7 +26504,7 @@ function setDraftOrderSlot(tId, oldIdx, newIdx){
   let t = tournamentData[tId] || activeT();
   if(!t) return;
   let d = ensureTournamentDraft(t);
-  let order = d.order;
+  let order = window._editingDraftOrder || d.order;
   oldIdx = parseInt(oldIdx, 10);
   newIdx = parseInt(newIdx, 10);
   if(isNaN(oldIdx) || isNaN(newIdx) || oldIdx < 0 || oldIdx >= order.length || newIdx < 0 || newIdx >= order.length || oldIdx === newIdx) return;
@@ -26397,17 +26522,14 @@ function moveDraftOrderBottom(tId, idx){
   let t = tournamentData[tId] || activeT();
   if(!t) return;
   let d = ensureTournamentDraft(t);
-  setDraftOrderSlot(tId, idx, d.order.length - 1);
+  let order = window._editingDraftOrder || d.order;
+  setDraftOrderSlot(tId, idx, order.length - 1);
 }
 
 function cancelDraftOrder(tId){
-  let t = tournamentData[tId] || activeT();
-  if(!t) return;
-  let d = ensureTournamentDraft(t);
-  if(window._draftOrderOrig){
-    d.order = [...window._draftOrderOrig];
-    window._draftOrderOrig = null;
-  }
+  window._editingDraftOrder = null;
+  window._editingDraftOrderId = null;
+  window._draftOrderOrig = null;
 }
 
 function openDraftOrderEditor(tId){
@@ -26422,8 +26544,10 @@ function openDraftOrderEditor(tId){
     });
     d.order = d.order.filter(p => (t.players || []).includes(p));
   }
-  let order = [...d.order];
+  window._editingDraftOrderId = t.id;
+  window._editingDraftOrder = [...d.order];
   window._draftOrderOrig = [...d.order];
+  let order = window._editingDraftOrder;
 
   document.querySelector('#modal').innerHTML = `
     <div class="modal-wrap">
@@ -26490,7 +26614,7 @@ function moveDraftOrder(tId, idx, dir){
   let t = tournamentData[tId] || activeT();
   if(!t) return;
   let d = ensureTournamentDraft(t);
-  let order = d.order;
+  let order = window._editingDraftOrder || d.order;
   let target = idx + dir;
   if(target < 0 || target >= order.length) return;
   let temp = order[idx];
@@ -26504,7 +26628,7 @@ function randomizeDraftOrder(tId){
   let t = tournamentData[tId] || activeT();
   if(!t) return;
   let d = ensureTournamentDraft(t);
-  let order = d.order;
+  let order = window._editingDraftOrder || d.order;
   for(let i = order.length - 1; i > 0; i--){
     let j = Math.floor(Math.random() * (i + 1));
     let temp = order[i];
@@ -26519,6 +26643,11 @@ function saveDraftOrder(tId){
   let t = tournamentData[tId] || activeT();
   if(!t || !canManageTournament(t)) return;
   let d = ensureTournamentDraft(t);
+  if(window._editingDraftOrder && window._editingDraftOrder.length){
+    d.order = [...window._editingDraftOrder];
+  }
+  window._editingDraftOrder = null;
+  window._editingDraftOrderId = null;
   window._draftOrderOrig = null;
 
   if(d && (!d.picks || !d.picks.length) && t.rosters && Object.keys(t.rosters).length){
@@ -26560,9 +26689,16 @@ function saveDraftOrder(tId){
   }
 
   window._lastLocalDraftActionTime = Date.now();
+  window._lastLocalDraftOrderActionTime = Date.now();
+  knownRev = (knownRev || 0) + 1;
+  lastLocalUpdate = Date.now();
   persistLeague();
   closeModal();
   render();
+
+  // Fast draft sync to Cloudflare KV immediately (< 50ms)
+  syncDraftStateToCloud(t);
+
   if(!isSandboxMode() && backendReady()){
     clearTimeout(syncTimer);
     flushSync();
@@ -27028,8 +27164,14 @@ function startDraft(tId){
   let d = ensureTournamentDraft(t);
   d.status = 'active';
   window._lastLocalDraftActionTime = Date.now();
+  window._lastLocalDraftStatusActionTime = Date.now();
+  knownRev = (knownRev || 0) + 1;
+  lastLocalUpdate = Date.now();
   persistLeague();
   render();
+
+  // Fast lightweight draft state sync (< 50ms)
+  syncDraftStateToCloud(t);
 
   if(draftRealtimeChannel){
     try {
@@ -27052,8 +27194,14 @@ function pauseDraft(tId){
   let d = ensureTournamentDraft(t);
   d.status = 'paused';
   window._lastLocalDraftActionTime = Date.now();
+  window._lastLocalDraftStatusActionTime = Date.now();
+  knownRev = (knownRev || 0) + 1;
+  lastLocalUpdate = Date.now();
   persistLeague();
   render();
+
+  // Fast lightweight draft state sync (< 50ms)
+  syncDraftStateToCloud(t);
 
   if(draftRealtimeChannel){
     try {
@@ -27076,8 +27224,14 @@ function resumeDraft(tId){
   let d = ensureTournamentDraft(t);
   d.status = 'active';
   window._lastLocalDraftActionTime = Date.now();
+  window._lastLocalDraftStatusActionTime = Date.now();
+  knownRev = (knownRev || 0) + 1;
+  lastLocalUpdate = Date.now();
   persistLeague();
   render();
+
+  // Fast lightweight draft state sync (< 50ms)
+  syncDraftStateToCloud(t);
 
   if(draftRealtimeChannel){
     try {
