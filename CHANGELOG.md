@@ -1,7 +1,17 @@
-﻿# Bellimaka League — Changelog
+# Bellimaka League — Changelog
 
 All notable changes to the Bellimaka Pokémon Draft League site are documented here.
 Format: `v[MAJOR].[MINOR].[PATCH]` — Major = big new systems, Minor = new features, Patch = bug fixes / small improvements.
+
+---
+
+## [v1.1.1] — 2026-09-18
+
+### Fixed
+- **Prediction Selection Glow Not Appearing** — Clicking a prediction pick (Champion contender, Group Winner, Match Pick'em row, or Top Cut bracket slot) now immediately highlights the selected card with gold border and `✓ PICK` badge. Previously the UI scored the pick on the leaderboard but never visually marked the selection.
+- **Cloud Picks Not Showing on Load** — Picks stored in Cloudflare KV from another device or session are now hydrated back into `localStorage` when the Prediction Leaderboard loads, so prior predictions show as selected without requiring a re-pick.
+- **Cross-Device Pick Selection Sync** — `savedPick()` now falls back to `predictionScoresCache` when `localStorage` is empty, so signed-in coaches see their cloud picks reflected on any device or browser.
+- **Tournament ID Mismatch on Prediction Save** — Prediction save handlers now receive the explicit tournament ID from the caller rather than relying on `ongoingT()`, eliminating the risk of picks being saved or read under the wrong tournament's key when multiple tournaments exist.
 
 ---
 
