@@ -12807,6 +12807,11 @@ const pushStateToSupabase = pushStateToCloud;
 async function flushSync(){
   let bType = getBackendType();
   if(isSandboxMode() || bType === 'local') return;
+  if(!moderator) return;
+  if(!window._initialCloudSyncCompleted){
+    console.warn('Draftdex: flushSync prevented - initial cloud sync not completed yet');
+    return;
+  }
 
   // Test environment guard: NEVER push mock/test runner state to cloud!
   if(typeof window !== 'undefined' && (window.__TEST_ENV__ || window.__MOCK_ENV__ || window.__IS_VERIFY_RUNNER__)){
@@ -21476,7 +21481,6 @@ async function renderPredictionLeaders(t, forceFresh = false){
     let topUser = board[0].u;
     if(t.predictionKing !== topUser){
       t.predictionKing = topUser;
-      try { persistLeague(); } catch(e){}
       if(typeof rebuildAllPlayerStats === 'function') rebuildAllPlayerStats();
     }
   }
