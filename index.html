@@ -18447,7 +18447,28 @@ function mockView(){
 /* ------------------------------------------------------------ 3. VERSUS GRAPHICS ON PREDICTIONS ------------------------------------------------------------
    Question text is byte-identical to the friend's version, so
    already-saved picks and the Cloudflare predictions table still match. */
-function savedPick(t,question){try{return localStorage.getItem('draftdex-pick-'+(t?.id||'')+'-'+question)||''}catch{return ''}}
+function savedPick(t, question){
+  try {
+    let id = t?.id || (typeof viewTournament !== 'undefined' && viewTournament) || ongoingT()?.id || '';
+    let hit = id ? localStorage.getItem('draftdex-pick-' + id + '-' + question) : null;
+    if(hit) return hit;
+    if(question && question.startsWith('Top Cut · ') && id){
+      hit = localStorage.getItem('draftdex-pick-' + id + '-' + question.slice(10));
+      if(hit) return hit;
+    }
+    // Cross-device / Cloud fallback: Check predictionScoresCache for current logged-in coach
+    let userKey = sessionUser?.id || window.currentAccount?.username || (typeof myPlayer === 'function' ? myPlayer() : null);
+    let userAlt = window.currentAccount?.username || sessionUser?.username;
+    if(id && typeof predictionScoresCache !== 'undefined' && predictionScoresCache[id]?.rows && (userKey || userAlt)){
+      let row = predictionScoresCache[id].rows.find(r =>
+        (r.user_id === userKey || (userAlt && r.user_id === userAlt) || r.user_id === 'local_user') &&
+        r.prediction_key === question
+      );
+      if(row?.selection) return row.selection;
+    }
+    return '';
+  } catch(e){ return ''; }
+}
 /* ------------------------------------------------------------ 4. NAVIGATION: league order, and "Draft" tab ------------------------------------------------------------ */
 tabs.length=0;
 tabs.push('Home','Standings','Teams','Draft','Matches','Top Cut','Playoff Odds','Predictions','Records','Tournaments');
@@ -21398,6 +21419,24 @@ async function renderPredictionLeaders(t, forceFresh = false){
     }
   }
 
+  // Hydrate current user's picks from cloud into localStorage so selections glow across devices
+  let meKeys = [sessionUser?.id, window.currentAccount?.username, sessionUser?.username].filter(Boolean);
+  if(meKeys.length && t?.id && Array.isArray(rows)){
+    let hydratedAny = false;
+    rows.filter(r => meKeys.includes(r.user_id)).forEach(r => {
+      try {
+        let lk = 'draftdex-pick-' + t.id + '-' + r.prediction_key;
+        if(!localStorage.getItem(lk) && r.selection){
+          localStorage.setItem(lk, r.selection);
+          hydratedAny = true;
+        }
+      } catch(e){}
+    });
+    if(hydratedAny && (current === 'Predictions' || detailTab === 'Predictions')){
+      setTimeout(() => { if(typeof render === 'function') render(); }, 40);
+    }
+  }
+
   // Merge local predictions from localStorage for the active user so points are always calculated
   let localRows = getLocalPredictionRows(t.id);
   localRows.forEach(lr => {
@@ -21445,12 +21484,54 @@ async function renderPredictionLeaders(t, forceFresh = false){
 
 /* ------------------------------------------------------------ 3. MODERN PREDICTIONS & PICK'EMS ------------------------------------------------------------ */
 
-function savePredictionPick(question, choice, el){
-  let t = ongoingT() || activeT();
+function savePredictionPick(question, choice, el, tourneyId){
+  let t = (tourneyId && tournamentData[tourneyId]) || 
+          (typeof viewTournament !== 'undefined' && viewTournament && tournamentData[viewTournament]) || 
+          activeT() || 
+          ongoingT();
   if(!t || !question || !choice) return;
 
   let currentPick = savedPick(t, question);
   let isTogglingOff = (currentPick === choice);
+
+  // Instant optimistic DOM feedback so selection glows immediately on click
+  try {
+    if(el){
+      if(el.classList.contains('pred-contender-card')){
+        let grid = el.closest('.pred-contender-grid') || el.parentElement;
+        if(grid){
+          grid.querySelectorAll('.pred-contender-card').forEach(c => {
+            c.classList.remove('is-selected');
+            let pill = c.querySelector('.pred-check-pill');
+            if(pill) pill.remove();
+          });
+        }
+        if(!isTogglingOff){
+          el.classList.add('is-selected');
+          if(!el.querySelector('.pred-check-pill')){
+            let pill = document.createElement('span');
+            pill.className = 'pred-check-pill';
+            pill.textContent = '✓ PICK';
+            el.appendChild(pill);
+          }
+        }
+      } else if(el.classList.contains('pred-team-row')){
+        let card = el.closest('.pred-compact-card') || el.parentElement;
+        if(card){
+          card.querySelectorAll('.pred-team-row').forEach(r => {
+            r.classList.remove('is-selected');
+            let box = r.querySelector('.pred-pick-box');
+            if(box) box.classList.remove('is-gold');
+          });
+        }
+        if(!isTogglingOff){
+          el.classList.add('is-selected');
+          let box = el.querySelector('.pred-pick-box');
+          if(box) box.classList.add('is-gold');
+        }
+      }
+    }
+  } catch(e){}
 
   try {
     if(isTogglingOff){
@@ -21463,8 +21544,8 @@ function savePredictionPick(question, choice, el){
   updateLocalPredictionInCache(t.id, question, choice, isTogglingOff);
 
   // Synchronous, instant 0ms UI update!
-  if(current === 'Predictions' || detailTab === 'Predictions'){
-    render();
+  if(current === 'Predictions' || detailTab === 'Predictions' || current === 'Tournament Detail'){
+    try { render(); } catch(e){}
   }
 
   // Fire backend sync in background
@@ -21507,7 +21588,7 @@ function renderChampionPredictionPicker(t, question, locked){
           return `<button class="pred-contender-card ${isChosen ? 'is-selected' : ''} ${isHit ? 'is-champ-hit' : (isMiss ? 'is-champ-miss' : '')}"
             ${locked ? 'disabled' : ''}
             title="${isChosen ? 'Click to unselect ' + esc(p) : 'Click to pick ' + esc(p)}"
-            onclick="savePredictionPick('${jsArg(question)}', '${jsArg(p)}', this)">
+            onclick="savePredictionPick('${jsArg(question)}', '${jsArg(p)}', this, '${jsArg(t.id)}')">
             <span class="avatar mini" style="background-image:${face};background-size:cover;background-position:center;width:30px;height:30px;border-radius:50%;font-size:12px;border:1px solid ${ovr.color};display:grid;place-items:center;flex:none">${letter}</span>
             <div style="min-width:0;flex:1">
               <div style="font-size:13px;font-weight:800;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;line-height:1.2">${esc(p)}</div>
@@ -21565,7 +21646,7 @@ function renderGroupWinnersPredictionPicker(t, groups, locked){
                 style="padding:6px 8px"
                 ${locked ? 'disabled' : ''}
                 title="${isChosen ? 'Click to unselect ' + esc(p) : 'Click to pick ' + esc(p)}"
-                onclick="savePredictionPick('${jsArg(question)}', '${jsArg(p)}', this)">
+                onclick="savePredictionPick('${jsArg(question)}', '${jsArg(p)}', this, '${jsArg(t.id)}')">
                 <span class="avatar mini" style="background-image:${face};background-size:cover;background-position:center;width:24px;height:24px;border-radius:50%;font-size:10px;border:1px solid ${ovr.color};display:grid;place-items:center;flex:none">${letter}</span>
                 <span style="font-size:12px;font-weight:800;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1">${esc(p)}</span>
                 ${isChosen ? `<span class="pred-check-pill" style="font-size:8px">${isHit ? '✓' : (isMiss ? '✗' : '✓')}</span>` : ''}
@@ -21610,7 +21691,7 @@ function compactMatchPredictionCard(t, m){
     <button type="button" class="pred-team-row ${chosen === p1 ? 'is-selected' : ''} ${isHit1 ? 'is-hit' : (isMiss1 ? 'is-miss' : '')}"
       ${locked ? 'disabled' : ''}
       title="${chosen === p1 ? 'Click to unselect ' + esc(p1) : 'Click to pick ' + esc(p1)}"
-      onclick="savePredictionPick('${jsArg(question)}', '${jsArg(p1)}', this)">
+      onclick="savePredictionPick('${jsArg(question)}', '${jsArg(p1)}', this, '${jsArg(t.id)}')">
       <div class="pred-vct-meta">
         <span class="pred-vct-logo" style="background-image:${faceArt1}">${letter1}</span>
         <div class="pred-vct-name-wrap">
@@ -21627,7 +21708,7 @@ function compactMatchPredictionCard(t, m){
     <button type="button" class="pred-team-row ${chosen === p2 ? 'is-selected' : ''} ${isHit2 ? 'is-hit' : (isMiss2 ? 'is-miss' : '')}"
       ${locked ? 'disabled' : ''}
       title="${chosen === p2 ? 'Click to unselect ' + esc(p2) : 'Click to pick ' + esc(p2)}"
-      onclick="savePredictionPick('${jsArg(question)}', '${jsArg(p2)}', this)">
+      onclick="savePredictionPick('${jsArg(question)}', '${jsArg(p2)}', this, '${jsArg(t.id)}')">
       <div class="pred-vct-meta">
         <span class="pred-vct-logo" style="background-image:${faceArt2}">${letter2}</span>
         <div class="pred-vct-name-wrap">
@@ -21852,7 +21933,7 @@ function topCutPredictionBracket(t){
     let isClickable = !mObj.isDone && isReal && isOpponentReal;
 
     return `<div class="tc-slot ${isClickable ? 'interactive' : ''} ${isPicked ? 'picked' : ''} ${isHit ? 'hit' : (isMiss ? 'miss' : '')}"
-      ${isClickable ? `onclick="saveBracketPredictionPick('${jsArg(mId)}', '${jsArg(pName)}')"` : ''}
+      ${isClickable ? `onclick="saveBracketPredictionPick('${jsArg(mId)}', '${jsArg(pName)}', this, '${jsArg(t.id)}')"` : ''}
       title="${mObj.isDone ? 'Match complete' : (!isOpponentReal ? 'Waiting for opponent' : (isPicked ? 'Click to unselect ' + esc(pName) : 'Click to pick ' + esc(pName) + ' to advance'))}">
       <span class="tc-slot-seed">${seed ? `#${seed}` : ''}</span>
       <div class="tc-slot-info">
@@ -21975,13 +22056,35 @@ function topCutPredictionBracket(t){
   </div>`;
 }
 
-function saveBracketPredictionPick(mId, choice){
-  let t = ongoingT() || activeT();
+function saveBracketPredictionPick(mId, choice, el, tourneyId){
+  let t = (tourneyId && tournamentData[tourneyId]) || 
+          (typeof viewTournament !== 'undefined' && viewTournament && tournamentData[viewTournament]) || 
+          activeT() || 
+          ongoingT();
   if(!t || !mId || !choice) return;
 
   let bpickKey = 'draftdex-bpick-' + mId;
   let currentPick = savedPick(t, bpickKey);
   let isTogglingOff = (currentPick === choice);
+
+  // Instant optimistic DOM feedback
+  try {
+    if(el){
+      let matchCard = el.closest('.tc-match-card') || el.parentElement;
+      if(matchCard){
+        matchCard.querySelectorAll('.tc-slot').forEach(s => {
+          s.classList.remove('picked');
+          let box = s.querySelector('.tc-slot-pickbox');
+          if(box && !s.classList.contains('hit') && !s.classList.contains('miss')) box.textContent = '';
+        });
+      }
+      if(!isTogglingOff){
+        el.classList.add('picked');
+        let box = el.querySelector('.tc-slot-pickbox');
+        if(box && !el.classList.contains('hit') && !el.classList.contains('miss')) box.textContent = '✓';
+      }
+    }
+  } catch(e){}
 
   try {
     if(isTogglingOff){
@@ -21995,8 +22098,8 @@ function saveBracketPredictionPick(mId, choice){
   updateLocalPredictionInCache(t.id, question, choice, isTogglingOff);
 
   // Synchronous, instant 0ms UI update!
-  if(current === 'Predictions' || detailTab === 'Predictions'){
-    render();
+  if(current === 'Predictions' || detailTab === 'Predictions' || current === 'Tournament Detail'){
+    try { render(); } catch(e){}
   }
 
   // Fire backend sync in background
@@ -25244,13 +25347,27 @@ function saveTournamentPlayers(){
 
 /* Top Cut question text gained a "Top Cut · " prefix; keep reading the
    old key so picks made before this change still show as selected. */
-function savedPick(t,question){
-  try{
-    let id=t?.id||'',hit=localStorage.getItem('draftdex-pick-'+id+'-'+question);
-    if(hit)return hit;
-    if(question.startsWith('Top Cut · '))return localStorage.getItem('draftdex-pick-'+id+'-'+question.slice(10))||'';
-    return ''
-  }catch{return ''}
+function savedPick(t, question){
+  try {
+    let id = t?.id || (typeof viewTournament !== 'undefined' && viewTournament) || ongoingT()?.id || '';
+    let hit = id ? localStorage.getItem('draftdex-pick-' + id + '-' + question) : null;
+    if(hit) return hit;
+    if(question && question.startsWith('Top Cut · ') && id){
+      hit = localStorage.getItem('draftdex-pick-' + id + '-' + question.slice(10));
+      if(hit) return hit;
+    }
+    // Cross-device / Cloud fallback: Check predictionScoresCache for current logged-in coach
+    let userKey = sessionUser?.id || window.currentAccount?.username || (typeof myPlayer === 'function' ? myPlayer() : null);
+    let userAlt = window.currentAccount?.username || sessionUser?.username;
+    if(id && typeof predictionScoresCache !== 'undefined' && predictionScoresCache[id]?.rows && (userKey || userAlt)){
+      let row = predictionScoresCache[id].rows.find(r =>
+        (r.user_id === userKey || (userAlt && r.user_id === userAlt) || r.user_id === 'local_user') &&
+        r.prediction_key === question
+      );
+      if(row?.selection) return row.selection;
+    }
+    return '';
+  } catch(e){ return ''; }
 }
 /* ------------------------------------------------------------
    5. DRAFT TOOLS REWORK
