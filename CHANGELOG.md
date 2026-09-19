@@ -5,6 +5,16 @@ Format: `v[MAJOR].[MINOR].[PATCH]` — Major = big new systems, Minor = new feat
 
 ---
 
+## [v1.1.2] — 2026-09-18
+
+### Fixed
+- **Split-Second Draft Room Flash on Refresh** — Eliminated the split-second flash on page reload where the site momentarily displayed the mid-draft room with pick #43 (Lycanroc-Dusk) before flipping to the Group Stage.
+- **LocalStorage Quota Failure & Stale Cache** — Serialized tournament cache is now optimized from ~3.08 MB down to 182 KB by stripping redundant base64 image strings (already stored in dedicated cover keys), deduplicating draft objects, and offloading bulky match replay logs to IndexedDB. This prevents browser `QuotaExceededError` from silently freezing `localStorage` in outdated draft states.
+- **0ms Startup Self-Healing** — Added synchronous startup validation that detects when an ongoing tournament's draft is structurally complete (e.g. coach rosters are already filled or matches are scheduled) and immediately renders the tournament stage at 0ms, preventing any false mid-draft frames before cloud sync completes.
+- **IndexedDB Structural Progress Sync** — Enhanced `hydrateTournamentsFromIndexedDB()` to hydrate newer picks, matches, and phase transitions from IndexedDB in addition to battle replay logs.
+
+---
+
 ## [v1.1.1] — 2026-09-18
 
 ### Fixed

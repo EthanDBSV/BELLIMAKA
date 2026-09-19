@@ -3584,6 +3584,22 @@ async function hydrateTournamentsFromIndexedDB() {
         let locT = tournamentData[tId];
         if(!locT) return;
 
+        // If IndexedDB has more up-to-date tournament state (e.g. more draft picks, matches, or advanced phase):
+        let fPicks = (fullT.draftData?.picks?.length || fullT.draft?.picks?.length || 0);
+        let lPicks = (locT.draftData?.picks?.length || locT.draft?.picks?.length || 0);
+        let fMatches = (Array.isArray(fullT.matches) ? fullT.matches.length : 0);
+        let lMatches = (Array.isArray(locT.matches) ? locT.matches.length : 0);
+        if(fPicks > lPicks || fMatches > lMatches || (fullT.phase && fullT.phase !== 'draft' && locT.phase === 'draft')){
+          if(fullT.phase) locT.phase = fullT.phase;
+          if(fullT.status) locT.status = fullT.status;
+          if(fullT.draftData) locT.draftData = fullT.draftData;
+          if(fullT.draft) locT.draft = fullT.draft;
+          if(fullT.matches && fMatches > lMatches) locT.matches = fullT.matches;
+          if(fullT.groups) locT.groups = fullT.groups;
+          if(fullT.rosters) locT.rosters = fullT.rosters;
+          restoredCount++;
+        }
+
         if(Array.isArray(fullT.matches) && Array.isArray(locT.matches)) {
           locT.matches.forEach((lm, idx) => {
             let fm = fullT.matches[idx];
@@ -3634,19 +3650,34 @@ async function hydrateTournamentsFromIndexedDB() {
 
 try{
   let savedLeague=(typeof window !== 'undefined' && window.__SEED_STATE__?.tournaments) ? window.__SEED_STATE__.tournaments : JSON.parse(localStorage.getItem('draftdex-tournaments')||'null');
-  if(savedLeague){
-    Object.keys(tournamentData).forEach(k=>delete tournamentData[k]);
-    Object.assign(tournamentData,savedLeague);
-    Object.values(tournamentData).forEach(t => {
-      if(t && Array.isArray(t.standingsCriteria)){
-        t.standingsCriteria = t.standingsCriteria.filter(c => c !== 'ovr');
-      }
-    });
-  }
   let savedProfiles=(typeof window !== 'undefined' && window.__SEED_STATE__?.profiles) ? window.__SEED_STATE__.profiles : JSON.parse(localStorage.getItem('draftdex-profiles')||'null');
   if(savedProfiles)Object.assign(profiles,savedProfiles);
   let savedRosters=JSON.parse(localStorage.getItem('draftdex-rosters')||'null');
   if(savedRosters)Object.assign(roster,savedRosters);
+  if(savedLeague){
+    Object.keys(tournamentData).forEach(k=>delete tournamentData[k]);
+    Object.assign(tournamentData,savedLeague);
+    Object.values(tournamentData).forEach(t => {
+      if(!t) return;
+      if(Array.isArray(t.standingsCriteria)){
+        t.standingsCriteria = t.standingsCriteria.filter(c => c !== 'ovr');
+      }
+      // Self-healing: if cached tournament is marked as 'draft', but the draft is already finished
+      // (matches generated, picks complete, or saved rosters are full), heal the phase immediately
+      // so the page never flashes a mid-draft screen on refresh!
+      if(t.phase === 'draft'){
+        let d = t.draftData || t.draft;
+        let totalExpectedPicks = (d?.order?.length || t.players?.length || 10) * (d?.maxRosterSize || 10);
+        let picksCount = d?.picks?.length || 0;
+        let hasMatches = Array.isArray(t.matches) && t.matches.length > 0;
+        let rostersFull = Boolean(t.players && t.players.length > 0 && t.players.every(p => (savedRosters?.[p]?.length || t.rosters?.[p]?.length || 0) >= (d?.maxRosterSize || 10)));
+        if(hasMatches || (picksCount >= totalExpectedPicks && totalExpectedPicks > 0) || rostersFull){
+          t.phase = (getStage1Format(t) === 'swiss' ? 'swiss' : 'group');
+          if(d) d.status = 'completed';
+        }
+      }
+    });
+  }
   let savedHistory=JSON.parse(localStorage.getItem('draftdex-history')||'null');
   if(savedHistory)Object.assign(teamHistory,savedHistory);
   let savedCovers=JSON.parse(localStorage.getItem('draftdex-teamcovers')||'null');
@@ -11953,42 +11984,39 @@ function safeSaveTournamentsToLocalStorage(data) {
   } catch(idbErr){}
 
   try {
-    let serialized = JSON.stringify(data);
-    if(serialized.length <= 3500000) {
-      try {
-        localStorage.setItem('draftdex-tournaments', serialized);
-        return;
-      } catch(qErr) {
-        // QuotaExceededError: fall through to lightweight cache
-      }
-    }
-
-    let lightweight = {};
+    let compact = {};
     for(let tId in data) {
       let t = data[tId];
       if(!t) continue;
       // Deep clone so in-memory tournamentData is NEVER mutated or stripped!
       let tClone = JSON.parse(JSON.stringify(t));
 
-      if(tClone.topCutReplays) {
-        let cleanTc = {};
-        for(let k in tClone.topCutReplays) {
-          if(/^\d+$/.test(k) && tClone.topCutReplays['tc_' + k]) continue;
-          cleanTc[k] = (tClone.topCutReplays[k] || []).map(r => ({ ...r, log: '' }));
-        }
-        tClone.topCutReplays = cleanTc;
+      // 1. Strip massive base64 images (already stored in draftdex-tournament-covers and draftdex-recap-covers)
+      delete tClone.backgroundImage;
+      delete tClone.recapPanelImage;
+      delete tClone._cachedMonStatsMap;
+
+      // 2. Dedup draft vs draftData
+      if(tClone.draftData && tClone.draft) {
+        delete tClone.draft;
       }
 
+      // 3. Strip replay logs and replay bloat from matches (safely preserved in IndexedDB)
       if(Array.isArray(tClone.matches)) {
         tClone.matches = tClone.matches.map(m => {
-          if(!m.replays || !Array.isArray(m.replays)) return m;
-          return {
-            ...m,
-            replays: m.replays.map(r => ({ ...r, log: '' }))
-          };
+          if(!m.replays) return m;
+          let mClone = { ...m };
+          delete mClone.replays;
+          return mClone;
         });
       }
 
+      // 4. Strip topCutReplays (safely preserved in IndexedDB)
+      if(tClone.topCutReplays) {
+        delete tClone.topCutReplays;
+      }
+
+      // 5. Strip bracket manager replays
       if(tClone.bracketManagerData?.match && Array.isArray(tClone.bracketManagerData.match)) {
         tClone.bracketManagerData = {
           ...tClone.bracketManagerData,
@@ -12001,13 +12029,48 @@ function safeSaveTournamentsToLocalStorage(data) {
         };
       }
 
-      lightweight[tId] = tClone;
+      compact[tId] = tClone;
     }
 
+    let compactStr = JSON.stringify(compact);
+    localStorage.setItem('draftdex-tournaments', compactStr);
+    return;
+  } catch(qErr) {
+    // Fallback: Ultra-compact (vital metadata, scores, and draft summary only)
     try {
-      localStorage.setItem('draftdex-tournaments', JSON.stringify(lightweight));
+      let ultra = {};
+      for(let tId in data) {
+        let t = data[tId];
+        if(!t) continue;
+        ultra[tId] = {
+          id: t.id,
+          name: t.name,
+          season: t.season,
+          status: t.status,
+          phase: t.phase,
+          regulation: t.regulation,
+          players: t.players || [],
+          groups: t.groups || {},
+          stage1Format: t.stage1Format,
+          stage2Format: t.stage2Format,
+          advancePerGroup: t.advancePerGroup,
+          swissCut: t.swissCut,
+          swissRounds: t.swissRounds,
+          matches: (t.matches || []).map(m => ({ a: m.a, b: m.b, as: m.as, bs: m.bs, round: m.round, group: m.group })),
+          draftData: t.draftData ? {
+            status: t.draftData.status,
+            pointBudget: t.draftData.pointBudget,
+            maxRosterSize: t.draftData.maxRosterSize,
+            order: t.draftData.order || [],
+            picks: t.draftData.picks || []
+          } : undefined,
+          rosters: t.rosters || {}
+        };
+      }
+      localStorage.setItem('draftdex-tournaments', JSON.stringify(ultra));
     } catch(qErr2) {
-      console.warn('Draftdex: localStorage quota exceeded even for lightweight tournaments');
+      console.warn('Draftdex: localStorage quota exceeded even for compact tournaments');
+      try { localStorage.removeItem('draftdex-tournaments'); } catch(e){}
     }
   } catch(e) {
     console.warn('Draftdex: safeSaveTournamentsToLocalStorage note:', e);
