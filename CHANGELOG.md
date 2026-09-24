@@ -3,6 +3,17 @@
 All notable changes to the Bellimaka Pokémon Draft League site are documented here.
 Format: `v[MAJOR].[MINOR].[PATCH]` — Major = big new systems, Minor = new features, Patch = bug fixes / small improvements.
 
+## [v1.1.8] — 2026-09-24
+
+### Fixed
+- **Severed Prediction Auto-Sync Feedback Loop** — Resolved a recursion loop where `syncLocalPicksToCloud` triggered `renderPredictionLeaders`, which in turn invoked `syncLocalPicksToCloud`. Removed all write triggers from read-only views (`renderPredictionLeaders`, `updateLocalPredictionInCache`, `syncFromCloud`).
+- **Cloudflare KV Quota Circuit Breaker & Throttling** — Added strict rate limiting and backoff controls:
+  - Throttled `syncLocalPicksToCloud` to at most once per 60 seconds per tournament.
+  - Added an HTTP 429 response guard (`window._kvWriteBlocked`): if Cloudflare KV reaches its daily write quota, the application automatically suspends background sync requests and preserves picks locally in `localStorage` without spamming the API.
+  - Streamlined sync payload to single upsert operations, eliminating redundant delete operations.
+
+---
+
 ## [v1.1.7] — 2026-09-24
 
 ### Fixed
