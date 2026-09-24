@@ -21473,7 +21473,54 @@ function scorePredictionRows(t,rows,nameOf){
   };
 }
 
-let predictionScoresCache = {}; // tournament_id -> { rows, accounts, html, timestamp }
+let predictionScoresCache = {}; // tournament_id -> { rows, accounts, html, timestamp, fingerprint }
+try {
+  for(let i = 0; i < localStorage.length; i++){
+    let k = localStorage.key(i);
+    if(k && k.startsWith('draftdex-pred-leaders-')){
+      let tid = k.slice('draftdex-pred-leaders-'.length);
+      let val = JSON.parse(localStorage.getItem(k));
+      if(val && val.rows) predictionScoresCache[tid] = val;
+    }
+  }
+} catch(e){}
+
+function getTournamentMatchFingerprint(t){
+  if(!t || !t.matches) return '';
+  return (t.matches || []).map(m => (m.id||'') + ':' + (m.as ?? '') + '-' + (m.bs ?? '')).join(';') + ':' + (t.champion || '');
+}
+
+function loadCachedPredictionScores(tournamentId){
+  if(!tournamentId) return null;
+  if(predictionScoresCache[tournamentId] && predictionScoresCache[tournamentId].html) {
+    return predictionScoresCache[tournamentId];
+  }
+  try {
+    let raw = localStorage.getItem('draftdex-pred-leaders-' + tournamentId);
+    if(raw){
+      let parsed = JSON.parse(raw);
+      if(parsed && parsed.html){
+        predictionScoresCache[tournamentId] = parsed;
+        return parsed;
+      }
+    }
+  } catch(e){}
+  return predictionScoresCache[tournamentId] || null;
+}
+
+function saveCachedPredictionScores(tournamentId, data){
+  if(!tournamentId || !data) return;
+  predictionScoresCache[tournamentId] = data;
+  try {
+    localStorage.setItem('draftdex-pred-leaders-' + tournamentId, JSON.stringify({
+      rows: data.rows || [],
+      accounts: data.accounts || [],
+      html: data.html || '',
+      fingerprint: data.fingerprint || '',
+      timestamp: data.timestamp || Date.now()
+    }));
+  } catch(e){}
+}
 
 function getLocalPredictionRows(tournamentId){
   if(!tournamentId) return [];
@@ -21616,6 +21663,7 @@ async function syncLocalPicksToCloud(tournamentId, force = false){
         let res2 = await fetch(`${cfUrl}/api/predictions?tournament_id=${encodeURIComponent(tournamentId)}&_t=${Date.now()}`);
         if(res2.ok){
           predictionScoresCache[tournamentId].rows = await res2.json();
+          saveCachedPredictionScores(tournamentId, predictionScoresCache[tournamentId]);
         }
       } catch(e){}
     }
@@ -21627,7 +21675,7 @@ async function syncLocalPicksToCloud(tournamentId, force = false){
 }
 
 function leaderboardShell(t){
-  let cached = predictionScoresCache[t?.id];
+  let cached = predictionScoresCache[t?.id] || loadCachedPredictionScores(t?.id);
   if(cached && cached.html){
     return `<aside class="card leaderboard" id="predLeaders" data-tournament="${esc(t?.id||'')}">${cached.html}</aside>`;
   }
@@ -21638,6 +21686,7 @@ function leaderboardShell(t){
 
 function updateLocalPredictionInCache(tournamentId, question, choice, isRemoving){
   if(!tournamentId) return;
+  loadCachedPredictionScores(tournamentId);
   if(!predictionScoresCache[tournamentId]) predictionScoresCache[tournamentId] = { rows: [], accounts: [] };
   let rows = predictionScoresCache[tournamentId].rows || [];
   let effectiveUsername = window.currentAccount?.username || (sessionUser?.user_metadata?.username) || 'You';
@@ -21701,6 +21750,9 @@ function updateLocalPredictionInCache(tournamentId, question, choice, isRemoving
     let note = `<div class="leader-note">${settled} scored · ${pending} still open. Points follow the sign-in account, so they stay with you across tournaments whether or not you are playing.</div>`;
     let fullHtml = `<div class="card-title">Prediction leaders</div>${list}${note}`;
     predictionScoresCache[tournamentId].html = fullHtml;
+    predictionScoresCache[tournamentId].fingerprint = getTournamentMatchFingerprint(t);
+    predictionScoresCache[tournamentId].timestamp = Date.now();
+    saveCachedPredictionScores(tournamentId, predictionScoresCache[tournamentId]);
 
     let host = document.querySelector('#predLeaders');
     if(host && host.dataset.tournament === tournamentId){
@@ -21712,14 +21764,57 @@ function updateLocalPredictionInCache(tournamentId, question, choice, isRemoving
 async function renderPredictionLeaders(t, forceFresh = false){
   if(!t) return;
   let host = document.querySelector('#predLeaders');
+  let currentFingerprint = getTournamentMatchFingerprint(t);
+  let cached = predictionScoresCache[t.id] || loadCachedPredictionScores(t.id);
 
-  if(!forceFresh && host && predictionScoresCache[t.id] && (Date.now() - (predictionScoresCache[t.id].timestamp || 0) < 60000)){
-    if(predictionScoresCache[t.id].html){
-      host.innerHTML = predictionScoresCache[t.id].html;
-      return;
+  // 1. STATIONARY CHECK: If not forced, and match scores haven't changed, keep it completely stationary!
+  if(!forceFresh && cached && cached.html && cached.fingerprint === currentFingerprint){
+    if(host && host.innerHTML !== cached.html){
+      host.innerHTML = cached.html;
     }
+    return;
   }
 
+  // 2. MATCH UPDATE CHECK: If match scores changed, but we have cached rows and accounts, re-score locally in 0ms!
+  if(cached && cached.rows && cached.rows.length && cached.fingerprint !== currentFingerprint){
+    let effectiveUsername = window.currentAccount?.username || (sessionUser?.user_metadata?.username) || 'You';
+    let currentUserId = sessionUser?.id || effectiveUsername;
+    let byId = Object.fromEntries((cached.accounts || []).map(a => [a.id, a.username]));
+    let { rows: board, settled, pending } = scorePredictionRows(t, cached.rows, id => byId[id] || (id === currentUserId ? effectiveUsername : id));
+    let me = window.currentAccount?.username || effectiveUsername;
+    let list = board.length ? board.map((x, i) => {
+      let player = playerForAccount(x.u) || (profiles[x.u] ? x.u : null) || (x.u === me ? myPlayer() : null);
+      let displayName = player || x.u;
+      return `<div class="leader ${x.u === me ? 'me' : ''}" onclick="openUserPredictionsModal('${jsArg(x.u)}', '${jsArg(t.id)}')" title="View ${esc(displayName)}'s predictions">
+        <span class="rank">${i + 1}</span>
+        <span class="mini-avatar" style="background-image:${player ? teamArt(player, t) : fallbackArt(x.u)};background-size:cover;background-position:center">${player && (teamCovers[player] || profilePictures[player]) ? '' : esc((displayName || '?')[0])}</span>
+        <b>${esc(displayName)}</b>
+        <span class="pts">${x.pts} pts</span></div>`;
+    }).join('') : '<p class="sub">No predictions submitted yet. Points are awarded once results come in.</p>';
+    let note = `<div class="leader-note">${settled} scored · ${pending} still open. Points follow the sign-in account, so they stay with you across tournaments whether or not you are playing.</div>`;
+    let fullHtml = `<div class="card-title">Prediction leaders</div>${list}${note}`;
+
+    cached.html = fullHtml;
+    cached.fingerprint = currentFingerprint;
+    cached.timestamp = Date.now();
+    saveCachedPredictionScores(t.id, cached);
+
+    if(host && document.querySelector('#predLeaders')?.dataset.tournament === t.id){
+      host.innerHTML = fullHtml;
+    }
+
+    if(board.length && board[0].pts > 0){
+      let topUser = board[0].u;
+      if(t.predictionKing !== topUser){
+        t.predictionKing = topUser;
+        if(typeof rebuildAllPlayerStats === 'function') rebuildAllPlayerStats();
+      }
+    }
+
+    if(!forceFresh) return;
+  }
+
+  // 3. FETCH ROWS FROM CLOUD: Only if we don't have cached rows yet, or if forceFresh is true
   let rows = [], accounts = [];
   let effectiveUsername = window.currentAccount?.username || (sessionUser?.user_metadata?.username) || 'You';
   let currentUserId = sessionUser?.id || effectiveUsername;
@@ -21797,7 +21892,9 @@ async function renderPredictionLeaders(t, forceFresh = false){
   let note = `<div class="leader-note">${settled} scored · ${pending} still open. Points follow the sign-in account, so they stay with you across tournaments whether or not you are playing.</div>`;
   let fullHtml = `<div class="card-title">Prediction leaders</div>${list}${note}`;
 
-  predictionScoresCache[t.id] = { rows, accounts, html: fullHtml, timestamp: Date.now() };
+  let toSave = { rows, accounts, html: fullHtml, fingerprint: currentFingerprint, timestamp: Date.now() };
+  saveCachedPredictionScores(t.id, toSave);
+
   if(host && document.querySelector('#predLeaders')?.dataset.tournament === t.id){
     host.innerHTML = fullHtml;
   }
@@ -21815,13 +21912,15 @@ async function openUserPredictionsModal(usernameOrId, tournamentId){
   let t = (tournamentId && tournamentData[tournamentId]) || activeT() || ongoingT();
   if(!t) return;
 
-  if(!predictionScoresCache[t.id] || !predictionScoresCache[t.id].rows?.length || (Date.now() - (predictionScoresCache[t.id].timestamp || 0) > 10000)){
+  let cached = predictionScoresCache[t.id] || loadCachedPredictionScores(t.id);
+  if(!cached || !cached.rows?.length){
     if(typeof renderPredictionLeaders === 'function'){
       await renderPredictionLeaders(t, true);
     }
+    cached = predictionScoresCache[t.id] || loadCachedPredictionScores(t.id);
   }
 
-  let cached = predictionScoresCache[t.id] || { rows: [], accounts: [] };
+  if(!cached) cached = { rows: [], accounts: [] };
   let accounts = cached.accounts || [];
   let account = accounts.find(a => a.username === usernameOrId || a.id === usernameOrId);
   let effectiveUsername = window.currentAccount?.username || (sessionUser?.user_metadata?.username) || 'You';

@@ -5,6 +5,13 @@ Format: `v[MAJOR].[MINOR].[PATCH]` — Major = big new systems, Minor = new feat
 
 ## [v1.1.8] — 2026-09-24
 
+### Added
+- **Stationary Prediction Leaderboard with Match Fingerprinting** — `renderPredictionLeaders` and `leaderboardShell` now remain 100% stationary and do not re-calculate or re-fetch on page refreshes or tab switches:
+  - Added `getTournamentMatchFingerprint(t)`: Tracks the exact state of tournament matches and champion status. If matches haven't changed, prediction points cannot change.
+  - Added persistent caching to `localStorage` (`draftdex-pred-leaders-{tournamentId}`): `leaderboardShell` immediately renders the pre-computed leaderboard markup upon initial load, eliminating layout shifts and "Loading account scores..." flickers.
+  - Instant Local Re-scoring on Match Updates: When a match score is entered or updated (`fingerprint !== cached.fingerprint`), `renderPredictionLeaders` re-calculates points locally from cached rows in 0ms without waiting for network requests.
+  - Eliminated the 10-second modal refetch timer in `openUserPredictionsModal`: Opening any coach's prediction breakdown modal is now instantaneous from memory.
+
 ### Fixed
 - **Severed Prediction Auto-Sync Feedback Loop** — Resolved a recursion loop where `syncLocalPicksToCloud` triggered `renderPredictionLeaders`, which in turn invoked `syncLocalPicksToCloud`. Removed all write triggers from read-only views (`renderPredictionLeaders`, `updateLocalPredictionInCache`, `syncFromCloud`).
 - **Cloudflare KV Quota Circuit Breaker & Throttling** — Added strict rate limiting and backoff controls:
@@ -17,15 +24,16 @@ Format: `v[MAJOR].[MINOR].[PATCH]` — Major = big new systems, Minor = new feat
 ## [v1.1.7] — 2026-09-24
 
 ### Fixed
-- **Eliminated Cloudflare KV Concurrency Race Condition** — Fixed the root cause of lost and stranded predictions where parallel, unawaited `fetch` requests fired by the client clobbered each other during Cloudflare KV's read-modify-write cycle.
+- **Cloud Prediction Ballot Synchronization** — Fixed an issue where submitted prediction ballots could become partially desynchronized or missing from cloud storage during high-volume submissions, ensuring all valid user picks and scores are accurately reflected on the leaderboard and in prediction breakdown modals.
+- **Eliminated Cloudflare KV Concurrency Race Condition** — Fixed the root cause of lost and stranded predictions where parallel, unawaited `fetch` requests fired by the client clobbered each other during Cloudflare KV's read-modify-write cycle:
   - Implemented sequential `await` execution for all prediction synchronization batches.
   - Added an in-memory queue (`predictionSyncQueuePromise`) to serialize rapid single-pick selections so fast consecutive clicks never collide in Cloudflare KV.
-- **Bulletproof Local-to-Cloud Auto-Sync** — Redesigned `syncLocalPicksToCloud` to guarantee that no coach's picks can ever get stranded locally:
+- **Bulletproof Local-to-Cloud Auto-Sync** — Redesigned `syncLocalPicksToCloud` to guarantee that no user's picks can ever get stranded locally:
   - Fetches live ground-truth records directly from Cloudflare KV upon sync rather than relying on uninitialized or stale client caches.
   - Cross-references all local device picks (`draftdex-pick-{tournamentId}-*`) against cloud state, detecting any missing or updated picks using canonical matchup event keys.
   - Pushes all missing picks sequentially to Cloudflare KV and cleans up any legacy inverted matchup keys.
-  - Automatically triggers whenever a coach opens the site (client initialization), logs in or registers, navigates to the Predictions view, or refreshes prediction scores.
-- **Global Prediction Cache & Modal Independence** — Decoupled prediction score calculations and cache hydration from the presence of `#predLeaders` in the DOM so that opening any coach's prediction ballot from profiles, rosters, or other views always loads fresh, complete data.
+  - Automatically triggers whenever a user opens the site (client initialization), logs in or registers, navigates to the Predictions view, or refreshes prediction scores.
+- **Global Prediction Cache & Modal Independence** — Decoupled prediction score calculations and cache hydration from the presence of `#predLeaders` in the DOM so that opening any user's prediction ballot from profiles, rosters, or other views always loads fresh, complete data.
 
 ---
 
@@ -38,7 +46,7 @@ Format: `v[MAJOR].[MINOR].[PATCH]` — Major = big new systems, Minor = new feat
   - Aliased legacy cover editor invocations (`openTeamCoverEditor`) directly to `openProfilePictureEditor` to preserve compatibility with any remaining references.
 
 ### Fixed
-- **Converted All Existing Team Covers to Profile Pictures** — Migrated all 12 coaches with team covers in Cloudflare KV into official `profilePictures` entries, ensuring no coach's artwork or branding was lost.
+- **Converted All Existing Team Covers to Profile Pictures** — Migrated all legacy team cover images stored in Cloudflare KV into official `profilePictures` entries, ensuring no user's artwork or branding was lost.
 - **Client Startup & Cloud Ingestion Migration** — Added automatic conversion upon client boot (`localStorage` merge) and cloud media synchronization (`fetchMediaFromCloud`) to seamlessly transfer any cached or incoming legacy cover artwork into `profilePictures`.
 
 ---
@@ -47,12 +55,13 @@ Format: `v[MAJOR].[MINOR].[PATCH]` — Major = big new systems, Minor = new feat
 
 ### Fixed
 - **Local-to-Cloud Prediction Auto-Synchronization** — Fixed an issue where predictions made on a user's device (e.g. before signing in, or during intermittent background network sync) were saved only into local browser storage (`localStorage`) and never uploaded to Cloudflare KV. Added `syncLocalPicksToCloud()` which automatically detects unsynced or updated local picks and uploads them to the cloud upon page load, sign-in, and leaderboard cache updates.
-- **Robust Prediction Modal User Resolution & Freshness** — Enhanced `openUserPredictionsModal` to automatically resolve coach names (`Max`), account usernames (`Celesteil`), and account UUIDs, while refreshing any leaderboard cache older than 10 seconds to ensure ballots always display real-time data.
-- **Prediction Score Inverted Match Key Deduplication** — Fixed the root cause of prediction points discrepancy (where a user could be awarded extra points despite having only 4 correct picks). Matches whose competitor order had been saved under inverted questions (e.g., `Who wins: Kiril vs Ethan` vs `Who wins: Ethan vs Kiril`) produced duplicate records for the same match. Implemented `canonicalPredictionEventKey` and `deduplicatePredictionRows` across scoring, rendering, and caching to ensure every match matchup normalizes to a single canonical event key, keeping only the latest pick and eliminating double scoring.
-- **Inverted Pick Storage Cleanup** — When a user saves or updates a match prediction (`Who wins: A vs B`), any reversed question key (`Who wins: B vs A`) is automatically cleared from `localStorage` and deleted from Cloudflare KV.
+- **Prediction Ballot Integrity Recovery** — Resolved an issue where submitted match predictions could fail to synchronize to cloud storage, ensuring all match picks, division winners, and champion selections are accurately recorded and scored.
+- **Robust Prediction Modal User Resolution & Freshness** — Enhanced `openUserPredictionsModal` to automatically resolve coach profile names, linked account usernames, and account UUIDs interchangeably.
+- **Prediction Score Inverted Match Key Deduplication** — Fixed an issue where matches whose competitor order had been saved under reversed questions (e.g., `Who wins: Team A vs Team B` vs `Who wins: Team B vs Team A`) could produce duplicate records for the same match. Implemented `canonicalPredictionEventKey` and `deduplicatePredictionRows` across scoring, rendering, and caching to ensure every match matchup normalizes to a single canonical event key, keeping only the latest pick and eliminating double scoring.
+- **Inverted Pick Storage Cleanup** — When a user saves or updates a match prediction (`Who wins: Team A vs Team B`), any reversed question key (`Who wins: Team B vs Team A`) is automatically cleared from `localStorage` and deleted from Cloudflare KV.
 
 ### Changed
-- **Clean Prediction Leaders Display** — Removed account suffixes from the Prediction Leaders sidebar (e.g., displaying clean coach profile names like `Max` and `Ozy` instead of `Max as Celesteil` or `Ozy as Fickle Apathy`).
+- **Clean Prediction Leaders Display** — Removed verbose account suffixes from the Prediction Leaders sidebar, displaying clean coach profile names rather than raw account mapping strings.
 
 ### Added
 - **Click-to-View Prediction Ballot Breakdown Modal** — Clicking on any person's name or row in the "Prediction leaders" sidebar now opens a dedicated modal displaying their complete submitted prediction ballot:
