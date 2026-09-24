@@ -8677,13 +8677,9 @@ function renderTournamentAwardsStandingsBannerHtml(t) {
 }
 
 function TopCut(){
-  let allTourneys = typeof sortedTournamentsChronological === 'function' ? sortedTournamentsChronological() : Object.values(tournamentData);
-  let liveT = ongoingT();
-  let defaultT = liveT || activeT() || allTourneys[allTourneys.length - 1] || null;
-  let targetTId = (typeof viewTournament !== 'undefined' && viewTournament && tournamentData[viewTournament]) ? viewTournament : (defaultT ? defaultT.id : null);
-  let t = (targetTId && tournamentData[targetTId]) || defaultT;
-  if(!t)return noTournament();
-  viewTournament=t.id;
+  let t = ongoingT() || activeT();
+  if(!t) return noTournament();
+  viewTournament = t.id;
   if(t.phase === 'draft' && t.status === 'ONGOING'){
     return renderDraftLockedTopCut(t);
   }
@@ -8692,17 +8688,7 @@ function TopCut(){
   let champName=t.topCutCache?.champion || t.champion;
   let canManage = canManageTournament(t);
   let subtitle = isPreview ? (t.name+' · pending group stage') : (t.status==='COMPLETE' ? (t.name+' · championship results') : (t.name+' · live double elimination'));
-  let selectorHtml = allTourneys.length > 1 ? `
-    <div style="display:flex;align-items:center;justify-content:flex-end;margin-bottom:14px">
-      <div class="match-season-select-wrap" style="display:inline-flex;align-items:center;gap:6px;background:#0d0d12;border:1px solid #363644;border-radius:6px;padding:4px 10px">
-        <span style="font:800 11px 'Barlow Condensed';color:#8e8c95;letter-spacing:.6px;text-transform:uppercase">Tournament:</span>
-        <select id="topCutTournamentSelector" onchange="viewTournament=this.value;render()" style="background:transparent;border:none;color:#ffd166;font:800 12px 'DM Sans';cursor:pointer;outline:none;padding-right:4px">
-          ${allTourneys.slice().reverse().map(tn => `<option value="${tn.id}" ${tn.id === t.id ? 'selected' : ''} style="background:#141419;color:#f5f3f0">${esc(tn.name)} (${esc(tn.season || 'Season')}${tn.status === 'ONGOING' ? ' · LIVE' : ''})</option>`).join('')}
-        </select>
-      </div>
-    </div>
-  ` : '';
-  return head('Top Cut', subtitle)+selectorHtml+topCutSection(t, isPreview)+`${canManage && t.status==='ONGOING' && !isPreview ? `<div class="creator-actions" style="margin-top:20px">${ready?`<button class="btn" onclick="endTournament()">End tournament · ${esc(champName)} wins! 👑</button>`:`<p class="sub">Complete every bracket match to enable ending the tournament (${t.topCutCache?.done||0}/${t.topCutCache?.total||0} played).</p>`}</div>`:''}`;
+  return head('Top Cut', subtitle)+topCutSection(t, isPreview)+`${canManage && t.status==='ONGOING' && !isPreview ? `<div class="creator-actions" style="margin-top:20px">${ready?`<button class="btn" onclick="endTournament()">End tournament · ${esc(champName)} wins! 👑</button>`:`<p class="sub">Complete every bracket match to enable ending the tournament (${t.topCutCache?.done||0}/${t.topCutCache?.total||0} played).</p>`}</div>`:''}`;
 }
 
 function openTournamentRecordEditor(id){
@@ -17135,26 +17121,12 @@ function toggleGroupCollapse(key){
 }
 
 function Matches(){
-  let allTourneys = typeof sortedTournamentsChronological === 'function' ? sortedTournamentsChronological() : Object.values(tournamentData);
-  let liveT = ongoingT();
-  let defaultT = liveT || activeT() || allTourneys[allTourneys.length - 1] || null;
-  let targetTId = (typeof viewTournament !== 'undefined' && viewTournament && tournamentData[viewTournament]) ? viewTournament : (defaultT ? defaultT.id : null);
-  let t = (targetTId && tournamentData[targetTId]) || defaultT;
+  let t = ongoingT() || activeT();
   if(!t) return noTournament();
   viewTournament = t.id;
 
   if(t.phase === 'draft' && t.status === 'ONGOING'){
-    let selectorHtml = allTourneys.length > 1 ? `
-      <div style="display:flex;justify-content:center;margin-bottom:16px">
-        <div class="match-season-select-wrap" style="display:inline-flex;align-items:center;gap:6px;background:#0d0d12;border:1px solid #363644;border-radius:6px;padding:5px 12px">
-          <span style="font:800 11px 'Barlow Condensed';color:#8e8c95;letter-spacing:.6px;text-transform:uppercase">Tournament:</span>
-          <select id="matchTournamentSelector" onchange="viewTournament=this.value;matchGroupTab='all';matchFilterPlayers=[];render()" style="background:transparent;border:none;color:#ffd166;font:800 12px 'DM Sans';cursor:pointer;outline:none;padding-right:4px">
-            ${allTourneys.slice().reverse().map(tn => `<option value="${tn.id}" ${tn.id === t.id ? 'selected' : ''} style="background:#141419;color:#f5f3f0">${esc(tn.name)} (${esc(tn.season || 'Season')}${tn.status === 'ONGOING' ? ' · LIVE' : ''})</option>`).join('')}
-          </select>
-        </div>
-      </div>
-    ` : '';
-    return selectorHtml + renderDraftLockedMatches(t);
+    return renderDraftLockedMatches(t);
   }
 
   let isSwiss = (t.stage1Format === 'swiss');
@@ -17235,16 +17207,6 @@ function Matches(){
       <div class="match-controls-bar">
         <div style="display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px;width:100%">
           <div style="display:flex;flex-wrap:wrap;align-items:center;gap:12px">
-            ${allTourneys.length > 1 ? `
-              <div class="match-season-select-wrap" style="display:inline-flex;align-items:center;gap:6px;background:#0d0d12;border:1px solid #363644;border-radius:6px;padding:4px 9px">
-                <span style="font:800 11px 'Barlow Condensed';color:#8e8c95;letter-spacing:.6px;text-transform:uppercase">Tournament:</span>
-                <select id="matchTournamentSelector" onchange="viewTournament=this.value;matchGroupTab='all';matchFilterPlayers=[];render()" style="background:transparent;border:none;color:#ffd166;font:800 12px 'DM Sans';cursor:pointer;outline:none;padding-right:4px">
-                  ${allTourneys.slice().reverse().map(tn => `<option value="${tn.id}" ${tn.id === t.id ? 'selected' : ''} style="background:#141419;color:#f5f3f0">${esc(tn.name)} (${esc(tn.season || 'Season')}${tn.status === 'ONGOING' ? ' · LIVE' : ''})</option>`).join('')}
-                </select>
-              </div>
-              <span style="color:#4a4a58">|</span>
-            ` : ''}
-
             <div class="match-filter-tabs">
               <button class="m-tab ${matchGroupTab === 'all' ? 'active' : ''}" onclick="matchGroupTab='all';render()">${isSwiss ? 'All Rounds' : 'All Groups'}</button>
               ${(isSwiss ? swissRoundsList : groups).map(item => `<button class="m-tab ${matchGroupTab === item ? 'active' : ''}" onclick="matchGroupTab='${item}';render()">${esc(item)}</button>`).join('')}

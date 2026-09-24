@@ -5,6 +5,14 @@ Format: `v[MAJOR].[MINOR].[PATCH]` — Major = big new systems, Minor = new feat
 
 ---
 
+## [v1.1.4] — 2026-09-23
+
+### Changed
+- **Streamlined Matches & Top Cut Pages** — Removed the tournament selector dropdowns from the top-level **Matches** and **Top Cut** pages. These primary views now strictly load the current/ongoing tournament (`ongoingT() || activeT()`) without dropdown clutter or unnecessary reload overhead.
+- **Tournament Archive Architecture** — Historical match schedules, scores, battle replays, and playoff brackets are accessed directly via the individual tournament archive page (**Tournaments** tab → click any tournament card → **Tournament Detail** view with dedicated Group/Swiss Stage, Top Cut, Standings, and Teams tabs).
+
+---
+
 ## [v1.1.3] — 2026-09-23
 
 ### Fixed
