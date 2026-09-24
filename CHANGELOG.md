@@ -13,6 +13,7 @@ Format: `v[MAJOR].[MINOR].[PATCH]` — Major = big new systems, Minor = new feat
   - Eliminated the 10-second modal refetch timer in `openUserPredictionsModal`: Opening any coach's prediction breakdown modal is now instantaneous from memory.
 
 ### Fixed
+- **Resolved UUID Display on Prediction Leaderboard & Career Points** — Fixed an issue where unmapped user account identifiers displayed as raw UUID strings instead of coach profile names on the prediction leaders board. Added robust coach identity resolution (`getCoachForUserId`), client account seed fallbacks, corrupt cached HTML detection, and integrated career prediction points calculation across all historical records.
 - **Severed Prediction Auto-Sync Feedback Loop** — Resolved a recursion loop where `syncLocalPicksToCloud` triggered `renderPredictionLeaders`, which in turn invoked `syncLocalPicksToCloud`. Removed all write triggers from read-only views (`renderPredictionLeaders`, `updateLocalPredictionInCache`, `syncFromCloud`).
 - **Cloudflare KV Quota Circuit Breaker & Throttling** — Added strict rate limiting and backoff controls:
   - Throttled `syncLocalPicksToCloud` to at most once per 60 seconds per tournament.

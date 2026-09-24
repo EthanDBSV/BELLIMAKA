@@ -20091,6 +20091,60 @@ function restorePlayerBadge(p, revokedKey){
 if(typeof accountLinks === 'undefined' || !accountLinks){
   var accountLinks=(()=>{try{return JSON.parse(localStorage.getItem('draftdex-accountlinks')||'{}')||{}}catch{return {}}})();
 }
+
+const SEED_LEAGUE_ACCOUNTS = [
+  { id: '8359e2fc-5815-4aba-af3a-458c432cc838', username: 'Celesteil' },
+  { id: '028b86b1-4176-4036-b756-b9a086989b6a', username: 'Jabes' },
+  { id: '9cac7c59-b28f-4606-89db-5eb233ac27cd', username: 'Fickle Apathy' },
+  { id: 'ecc5af98-e23f-40db-b715-339956e82b73', username: 'zkl' },
+  { id: 'edfd70ef-1422-4aa0-ab4c-bd5ffa7b018c', username: 'Yamazin' },
+  { id: 'a6591289-9a63-46ff-9dd3-ea155447900c', username: 'Ethan' },
+  { id: 'ccf34ba7-1651-42ee-8519-cda3595b2a3f', username: 'kirilzyuk' },
+  { id: '0588a2a3-17bc-4780-994d-4b0355841f74', username: 'Wyrmmie' },
+  { id: 'fd7cb8e1-904f-4fbc-89e4-dcac766d59f2', username: 'Fish158' },
+  { id: '2c08b3ff-7e95-4fab-801c-f76868d68926', username: 'Wick' },
+  { id: 'd578f28a-04e4-4707-bb61-0604daf1938d', username: 'Wick' }
+];
+
+try {
+  let savedAccs = localStorage.getItem('draftdex-league-accounts');
+  if(savedAccs){
+    let parsed = JSON.parse(savedAccs);
+    if(Array.isArray(parsed) && parsed.length){
+      window.leagueAccounts = parsed;
+    }
+  }
+} catch(e){}
+if(!window.leagueAccounts || !window.leagueAccounts.length){
+  window.leagueAccounts = [...SEED_LEAGUE_ACCOUNTS];
+}
+
+function getAccountUsername(userId){
+  if(!userId) return '';
+  if(userId === sessionUser?.id && (window.currentAccount?.username || sessionUser?.user_metadata?.username)){
+    return window.currentAccount?.username || sessionUser?.user_metadata?.username;
+  }
+  let accList = (window.leagueAccounts && window.leagueAccounts.length) ? window.leagueAccounts : SEED_LEAGUE_ACCOUNTS;
+  let cleanId = String(userId).trim().toLowerCase();
+  let found = accList.find(a => a.id === userId || a.id?.toLowerCase() === cleanId || a.username?.toLowerCase() === cleanId);
+  if(found && found.username) return found.username;
+  if(typeof predictionScoresCache !== 'undefined'){
+    for(let tid in predictionScoresCache){
+      let accs = predictionScoresCache[tid]?.accounts || [];
+      let match = accs.find(a => a.id === userId || a.id?.toLowerCase() === cleanId || a.username?.toLowerCase() === cleanId);
+      if(match && match.username) return match.username;
+    }
+  }
+  return userId;
+}
+
+function getCoachForUserId(userId){
+  if(!userId) return '';
+  let username = getAccountUsername(userId);
+  let player = (typeof playerForAccount === 'function' ? (playerForAccount(username) || playerForAccount(userId)) : null) || (profiles[username] ? username : null) || (profiles[userId] ? userId : null);
+  return player || username;
+}
+
 /* Links are validated against live profiles, so a deleted player can
    never leave an account pointing at a profile that no longer exists. */
 function accountForPlayer(p){
@@ -20120,6 +20174,12 @@ function playerForAccount(u){
       if(matchedProfile) return matchedProfile;
       return p || null;
     }
+  }
+  // Check if u is a UUID that maps to an account username in window.leagueAccounts or SEED_LEAGUE_ACCOUNTS
+  let accList = (window.leagueAccounts && window.leagueAccounts.length) ? window.leagueAccounts : (typeof SEED_LEAGUE_ACCOUNTS !== 'undefined' ? SEED_LEAGUE_ACCOUNTS : []);
+  let matchedAcc = accList.find(a => a.id === u || a.id?.toLowerCase() === cleanU);
+  if(matchedAcc && matchedAcc.username && matchedAcc.username !== u){
+    return playerForAccount(matchedAcc.username);
   }
   if(profiles[u]) return u;
   let directMatch = Object.keys(profiles).find(pk => pk.toLowerCase() === cleanU);
@@ -21451,8 +21511,8 @@ function scorePredictionRows(t,rows,nameOf){
   cleanRows.forEach(r=>{
     if(!(r.prediction_key in cache)) cache[r.prediction_key] = predictionOutcome(t, r.prediction_key);
     let { answer, value } = cache[r.prediction_key];
-    let who = nameOf ? nameOf(r.user_id) : r.user_id;
-    if(!who) who = r.user_id || 'Player';
+    let who = nameOf ? nameOf(r.user_id) : (typeof getCoachForUserId === 'function' ? getCoachForUserId(r.user_id) : r.user_id);
+    if(!who) who = typeof getCoachForUserId === 'function' ? getCoachForUserId(r.user_id) : (r.user_id || 'Player');
     totals[who] = totals[who] || { pts: 0, hits: 0, made: 0, open: 0 };
     totals[who].made++;
     if(answer == null){
@@ -21676,7 +21736,8 @@ async function syncLocalPicksToCloud(tournamentId, force = false){
 
 function leaderboardShell(t){
   let cached = predictionScoresCache[t?.id] || loadCachedPredictionScores(t?.id);
-  if(cached && cached.html){
+  let isCorrupt = cached?.html && /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i.test(cached.html);
+  if(cached && cached.html && !isCorrupt){
     return `<aside class="card leaderboard" id="predLeaders" data-tournament="${esc(t?.id||'')}">${cached.html}</aside>`;
   }
   return `<aside class="card leaderboard" id="predLeaders" data-tournament="${esc(t?.id||'')}">
@@ -21723,25 +21784,19 @@ function updateLocalPredictionInCache(tournamentId, question, choice, isRemoving
 
   predictionScoresCache[tournamentId].rows = deduplicatePredictionRows(rows);
 
-  let accounts = predictionScoresCache[tournamentId].accounts || [];
-  let userAcc = accounts.find(a => a.id === userIdentifier || a.username === effectiveUsername);
-  if(!userAcc){
-    accounts.push({ id: userIdentifier, username: effectiveUsername });
-  } else {
-    userAcc.username = effectiveUsername;
-    userAcc.id = userIdentifier;
-  }
+  let accounts = (window.leagueAccounts && window.leagueAccounts.length) ? window.leagueAccounts : (predictionScoresCache[tournamentId].accounts || SEED_LEAGUE_ACCOUNTS);
   predictionScoresCache[tournamentId].accounts = accounts;
 
   let t = ongoingT() || activeT();
   if(t && t.id === tournamentId){
-    let byId = Object.fromEntries(accounts.map(a => [a.id, a.username]));
-    let { rows: board, settled, pending } = scorePredictionRows(t, rows, id => byId[id] || (id === userIdentifier ? effectiveUsername : id));
+    let { rows: board, settled, pending } = scorePredictionRows(t, rows, id => getCoachForUserId(id));
     let me = window.currentAccount?.username || effectiveUsername;
+    let myP = myPlayer();
     let list = board.length ? board.map((x, i) => {
-      let player = playerForAccount(x.u) || (profiles[x.u] ? x.u : null) || (x.u === me ? myPlayer() : null);
+      let player = getCoachForUserId(x.u);
       let displayName = player || x.u;
-      return `<div class="leader ${x.u === me ? 'me' : ''}" onclick="openUserPredictionsModal('${jsArg(x.u)}', '${jsArg(t.id)}')" title="View ${esc(displayName)}'s predictions">
+      let isMe = (x.u === me || x.u === userIdentifier || player === myP);
+      return `<div class="leader ${isMe ? 'me' : ''}" onclick="openUserPredictionsModal('${jsArg(x.u)}', '${jsArg(t.id)}')" title="View ${esc(displayName)}'s predictions">
         <span class="rank">${i + 1}</span>
         <span class="mini-avatar" style="background-image:${player ? teamArt(player, t) : fallbackArt(x.u)};background-size:cover;background-position:center">${player && (teamCovers[player] || profilePictures[player]) ? '' : esc((displayName || '?')[0])}</span>
         <b>${esc(displayName)}</b>
@@ -21758,6 +21813,7 @@ function updateLocalPredictionInCache(tournamentId, question, choice, isRemoving
     if(host && host.dataset.tournament === tournamentId){
       host.innerHTML = fullHtml;
     }
+    if(typeof rebuildAllPlayerStats === 'function') rebuildAllPlayerStats();
   }
 }
 
@@ -21766,26 +21822,28 @@ async function renderPredictionLeaders(t, forceFresh = false){
   let host = document.querySelector('#predLeaders');
   let currentFingerprint = getTournamentMatchFingerprint(t);
   let cached = predictionScoresCache[t.id] || loadCachedPredictionScores(t.id);
+  let isCorrupt = cached?.html && /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i.test(cached.html);
 
-  // 1. STATIONARY CHECK: If not forced, and match scores haven't changed, keep it completely stationary!
-  if(!forceFresh && cached && cached.html && cached.fingerprint === currentFingerprint){
+  // 1. STATIONARY CHECK: If not forced, not corrupt, and match scores haven't changed, keep it completely stationary!
+  if(!forceFresh && !isCorrupt && cached && cached.html && cached.fingerprint === currentFingerprint){
     if(host && host.innerHTML !== cached.html){
       host.innerHTML = cached.html;
     }
     return;
   }
 
-  // 2. MATCH UPDATE CHECK: If match scores changed, but we have cached rows and accounts, re-score locally in 0ms!
-  if(cached && cached.rows && cached.rows.length && cached.fingerprint !== currentFingerprint){
+  // 2. MATCH UPDATE OR LOCAL RE-SCORE: If we have cached rows, re-score locally using coach names in 0ms!
+  if(cached && cached.rows && cached.rows.length && (isCorrupt || cached.fingerprint !== currentFingerprint)){
     let effectiveUsername = window.currentAccount?.username || (sessionUser?.user_metadata?.username) || 'You';
     let currentUserId = sessionUser?.id || effectiveUsername;
-    let byId = Object.fromEntries((cached.accounts || []).map(a => [a.id, a.username]));
-    let { rows: board, settled, pending } = scorePredictionRows(t, cached.rows, id => byId[id] || (id === currentUserId ? effectiveUsername : id));
+    let { rows: board, settled, pending } = scorePredictionRows(t, cached.rows, id => getCoachForUserId(id));
     let me = window.currentAccount?.username || effectiveUsername;
+    let myP = myPlayer();
     let list = board.length ? board.map((x, i) => {
-      let player = playerForAccount(x.u) || (profiles[x.u] ? x.u : null) || (x.u === me ? myPlayer() : null);
+      let player = getCoachForUserId(x.u);
       let displayName = player || x.u;
-      return `<div class="leader ${x.u === me ? 'me' : ''}" onclick="openUserPredictionsModal('${jsArg(x.u)}', '${jsArg(t.id)}')" title="View ${esc(displayName)}'s predictions">
+      let isMe = (x.u === me || x.u === currentUserId || player === myP);
+      return `<div class="leader ${isMe ? 'me' : ''}" onclick="openUserPredictionsModal('${jsArg(x.u)}', '${jsArg(t.id)}')" title="View ${esc(displayName)}'s predictions">
         <span class="rank">${i + 1}</span>
         <span class="mini-avatar" style="background-image:${player ? teamArt(player, t) : fallbackArt(x.u)};background-size:cover;background-position:center">${player && (teamCovers[player] || profilePictures[player]) ? '' : esc((displayName || '?')[0])}</span>
         <b>${esc(displayName)}</b>
@@ -21797,6 +21855,7 @@ async function renderPredictionLeaders(t, forceFresh = false){
     cached.html = fullHtml;
     cached.fingerprint = currentFingerprint;
     cached.timestamp = Date.now();
+    cached.accounts = (window.leagueAccounts && window.leagueAccounts.length) ? window.leagueAccounts : SEED_LEAGUE_ACCOUNTS;
     saveCachedPredictionScores(t.id, cached);
 
     if(host && document.querySelector('#predLeaders')?.dataset.tournament === t.id){
@@ -21807,14 +21866,14 @@ async function renderPredictionLeaders(t, forceFresh = false){
       let topUser = board[0].u;
       if(t.predictionKing !== topUser){
         t.predictionKing = topUser;
-        if(typeof rebuildAllPlayerStats === 'function') rebuildAllPlayerStats();
       }
     }
+    if(typeof rebuildAllPlayerStats === 'function') rebuildAllPlayerStats();
 
-    if(!forceFresh) return;
+    if(!forceFresh && !isCorrupt) return;
   }
 
-  // 3. FETCH ROWS FROM CLOUD: Only if we don't have cached rows yet, or if forceFresh is true
+  // 3. FETCH ROWS FROM CLOUD: Only if we don't have cached rows yet, or if forceFresh is true, or if corrupt
   let rows = [], accounts = [];
   let effectiveUsername = window.currentAccount?.username || (sessionUser?.user_metadata?.username) || 'You';
   let currentUserId = sessionUser?.id || effectiveUsername;
@@ -21837,6 +21896,10 @@ async function renderPredictionLeaders(t, forceFresh = false){
     } catch(e){
       console.warn('Prediction scores load error:', e);
     }
+  }
+
+  if(!accounts || !accounts.length){
+    accounts = (window.leagueAccounts && window.leagueAccounts.length) ? window.leagueAccounts : SEED_LEAGUE_ACCOUNTS;
   }
 
   // Hydrate current user's picks from cloud into localStorage so selections glow across devices
@@ -21877,13 +21940,14 @@ async function renderPredictionLeaders(t, forceFresh = false){
 
   rows = deduplicatePredictionRows(rows);
 
-  let byId = Object.fromEntries((accounts || []).map(a => [a.id, a.username]));
-  let { rows: board, settled, pending } = scorePredictionRows(t, rows, id => byId[id] || (id === currentUserId ? effectiveUsername : id));
+  let { rows: board, settled, pending } = scorePredictionRows(t, rows, id => getCoachForUserId(id));
   let me = window.currentAccount?.username || effectiveUsername;
+  let myP = myPlayer();
   let list = board.length ? board.map((x, i) => {
-    let player = playerForAccount(x.u) || (profiles[x.u] ? x.u : null) || (x.u === me ? myPlayer() : null);
+    let player = getCoachForUserId(x.u);
     let displayName = player || x.u;
-    return `<div class="leader ${x.u === me ? 'me' : ''}" onclick="openUserPredictionsModal('${jsArg(x.u)}', '${jsArg(t.id)}')" title="View ${esc(displayName)}'s predictions">
+    let isMe = (x.u === me || x.u === currentUserId || player === myP);
+    return `<div class="leader ${isMe ? 'me' : ''}" onclick="openUserPredictionsModal('${jsArg(x.u)}', '${jsArg(t.id)}')" title="View ${esc(displayName)}'s predictions">
       <span class="rank">${i + 1}</span>
       <span class="mini-avatar" style="background-image:${player ? teamArt(player, t) : fallbackArt(x.u)};background-size:cover;background-position:center">${player && (teamCovers[player] || profilePictures[player]) ? '' : esc((displayName || '?')[0])}</span>
       <b>${esc(displayName)}</b>
@@ -21903,9 +21967,9 @@ async function renderPredictionLeaders(t, forceFresh = false){
     let topUser = board[0].u;
     if(t.predictionKing !== topUser){
       t.predictionKing = topUser;
-      if(typeof rebuildAllPlayerStats === 'function') rebuildAllPlayerStats();
     }
   }
+  if(typeof rebuildAllPlayerStats === 'function') rebuildAllPlayerStats();
 }
 
 async function openUserPredictionsModal(usernameOrId, tournamentId){
@@ -21921,27 +21985,25 @@ async function openUserPredictionsModal(usernameOrId, tournamentId){
   }
 
   if(!cached) cached = { rows: [], accounts: [] };
-  let accounts = cached.accounts || [];
-  let account = accounts.find(a => a.username === usernameOrId || a.id === usernameOrId);
+  let accounts = (window.leagueAccounts && window.leagueAccounts.length) ? window.leagueAccounts : (cached.accounts || SEED_LEAGUE_ACCOUNTS || []);
   let effectiveUsername = window.currentAccount?.username || (sessionUser?.user_metadata?.username) || 'You';
   let currentUserId = sessionUser?.id || effectiveUsername;
 
-  let player = (typeof playerForAccount === 'function' ? (playerForAccount(usernameOrId) || (account ? playerForAccount(account.username) : null)) : null) || (profiles[usernameOrId] ? usernameOrId : null) || account?.username || usernameOrId;
+  let player = getCoachForUserId(usernameOrId);
+  let userAccount = accounts.find(a => a.username === usernameOrId || a.id === usernameOrId || playerForAccount(a.username) === player || a.username === player);
 
   let userIds = [usernameOrId];
-  if(account){
-    if(account.id) userIds.push(account.id);
-    if(account.username) userIds.push(account.username);
+  if(userAccount){
+    if(userAccount.id) userIds.push(userAccount.id);
+    if(userAccount.username) userIds.push(userAccount.username);
   }
-  if(typeof accountForPlayer === 'function'){
-    let ac = accountForPlayer(player) || accountForPlayer(usernameOrId);
-    if(ac){
-      userIds.push(ac);
-      let linkedAcc = accounts.find(a => a.username?.toLowerCase() === String(ac).toLowerCase() || a.id === ac);
-      if(linkedAcc?.id) userIds.push(linkedAcc.id);
-      if(linkedAcc?.username) userIds.push(linkedAcc.username);
+  // Find all accounts matching this coach
+  accounts.forEach(a => {
+    if(playerForAccount(a.username) === player || a.username === player || a.id === usernameOrId){
+      if(a.id) userIds.push(a.id);
+      if(a.username) userIds.push(a.username);
     }
-  }
+  });
 
   let allRows = cached.rows || [];
   let userRows = allRows.filter(r => userIds.includes(r.user_id) || (account && r.user_id === account.id));
@@ -23271,16 +23333,15 @@ function calculateLeagueRecords(forceRefresh = false){
 
         // Prediction King: Top prediction score in a tournament with predictions scored
         let pk = t.predictionKing || t.predictionLeader || t.predictionWinner;
-        if(!pk && predictionScoresCache[t.id]?.rows?.length){
-          let accounts = predictionScoresCache[t.id].accounts || [];
-          let byId = Object.fromEntries(accounts.map(a => [a.id, a.username]));
-          let { rows: board } = scorePredictionRows(t, predictionScoresCache[t.id].rows, id => byId[id] || id);
+        let tCache = predictionScoresCache[t.id] || (typeof loadCachedPredictionScores === 'function' ? loadCachedPredictionScores(t.id) : null);
+        if(!pk && tCache?.rows?.length){
+          let { rows: board } = scorePredictionRows(t, tCache.rows, id => getCoachForUserId(id));
           if(board.length && board[0].pts > 0){
-            pk = board[0].u;
+            pk = getCoachForUserId(board[0].u);
             t.predictionKing = pk;
           }
         }
-        let pkPlayer = pk ? ((typeof playerForAccount === 'function' ? playerForAccount(pk) : null) || (profiles[pk] ? pk : null) || pk) : null;
+        let pkPlayer = pk ? getCoachForUserId(pk) : null;
         if(pkPlayer === p){
           if(!statsByPlayer[p].badges.some(b => b.id === 'prediction-king-' + t.id)){
             statsByPlayer[p].badges.push({
@@ -23321,13 +23382,10 @@ function calculateLeagueRecords(forceRefresh = false){
           }
         });
 
-        let tPredRows = (predictionScoresCache[t.id]?.rows || []).concat(getLocalPredictionRows(t.id));
+        let tPredRows = (tCache?.rows || []).concat(getLocalPredictionRows(t.id));
         if(totalSettledKeys.length >= 4 && tPredRows.length){
-          let accounts = predictionScoresCache[t.id]?.accounts || [];
-          let byId = Object.fromEntries(accounts.map(a => [a.id, a.username]));
           let pRows = tPredRows.filter(r => {
-            let uName = byId[r.user_id] || r.user_id;
-            let targetP = (typeof playerForAccount === 'function' ? playerForAccount(uName) : null) || (profiles[uName] ? uName : null) || uName;
+            let targetP = getCoachForUserId(r.user_id);
             return targetP === p;
           });
           
@@ -23718,12 +23776,11 @@ function calculateLeagueRecords(forceRefresh = false){
     if(!s) return;
     let totalPts = 0;
     sortedTournaments.forEach(t => {
-      if(predictionScoresCache[t.id]?.rows?.length){
-        let accounts = predictionScoresCache[t.id].accounts || [];
-        let byId = Object.fromEntries(accounts.map(a => [a.id, a.username]));
-        let { rows: board } = scorePredictionRows(t, predictionScoresCache[t.id].rows, id => byId[id] || id);
+      let tCache = predictionScoresCache[t.id] || (typeof loadCachedPredictionScores === 'function' ? loadCachedPredictionScores(t.id) : null);
+      if(tCache?.rows?.length){
+        let { rows: board } = scorePredictionRows(t, tCache.rows, id => getCoachForUserId(id));
         board.forEach(entry => {
-          let entryPlayer = (typeof playerForAccount === 'function' ? playerForAccount(entry.u) : null) || (profiles[entry.u] ? entry.u : null) || entry.u;
+          let entryPlayer = getCoachForUserId(entry.u);
           if(entryPlayer === p){
             totalPts += entry.pts;
           }
