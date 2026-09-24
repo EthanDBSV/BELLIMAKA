@@ -17,11 +17,6 @@ Format: `v[MAJOR].[MINOR].[PATCH]` — Major = big new systems, Minor = new feat
 ## [v1.1.7] — 2026-09-24
 
 ### Fixed
-- **Restored Complete Prediction Ballot for Gavin (zkl)** — Restored all 22 verified predictions submitted by Gavin directly into Cloudflare KV from his verified ballot submission:
-  - Champion: Dao Ming
-  - Division Winners: Ethan (Group A), Dao Ming (Group B)
-  - 19 Match Picks across Groups A & B
-  - Gavin's score is now accurately recorded at 32 PTS (4 hits out of 4 decided matches picked) on the official leaderboard and in his prediction ballot breakdown modal.
 - **Eliminated Cloudflare KV Concurrency Race Condition** — Fixed the root cause of lost and stranded predictions where parallel, unawaited `fetch` requests fired by the client clobbered each other during Cloudflare KV's read-modify-write cycle.
   - Implemented sequential `await` execution for all prediction synchronization batches.
   - Added an in-memory queue (`predictionSyncQueuePromise`) to serialize rapid single-pick selections so fast consecutive clicks never collide in Cloudflare KV.
@@ -43,7 +38,7 @@ Format: `v[MAJOR].[MINOR].[PATCH]` — Major = big new systems, Minor = new feat
   - Aliased legacy cover editor invocations (`openTeamCoverEditor`) directly to `openProfilePictureEditor` to preserve compatibility with any remaining references.
 
 ### Fixed
-- **Converted All Existing Team Covers to Profile Pictures** — Migrated all 12 coaches with team covers in Cloudflare KV (`Kai`, `Max`, `Ozy`, `Sam`, `Eric`, `Jace`, `Trtl`, `Ethan`, `Kiril`, `Yamac`, `Dao Ming`, `Praneeth`) into official `profilePictures` entries, ensuring no coach's artwork or branding was lost.
+- **Converted All Existing Team Covers to Profile Pictures** — Migrated all 12 coaches with team covers in Cloudflare KV into official `profilePictures` entries, ensuring no coach's artwork or branding was lost.
 - **Client Startup & Cloud Ingestion Migration** — Added automatic conversion upon client boot (`localStorage` merge) and cloud media synchronization (`fetchMediaFromCloud`) to seamlessly transfer any cached or incoming legacy cover artwork into `profilePictures`.
 
 ---
@@ -52,7 +47,6 @@ Format: `v[MAJOR].[MINOR].[PATCH]` — Major = big new systems, Minor = new feat
 
 ### Fixed
 - **Local-to-Cloud Prediction Auto-Synchronization** — Fixed an issue where predictions made on a user's device (e.g. before signing in, or during intermittent background network sync) were saved only into local browser storage (`localStorage`) and never uploaded to Cloudflare KV. Added `syncLocalPicksToCloud()` which automatically detects unsynced or updated local picks and uploads them to the cloud upon page load, sign-in, and leaderboard cache updates.
-- **Restored Complete Prediction Ballot for Max (Celesteil)** — Synchronized all 20 of Max's match predictions (23 picks total: 20 matches + 2 division winners + 1 champion) directly into Cloudflare KV matching his exact ballot submission. Max's score is now accurately calculated at 40 PTS (5 hits across all 5 decided matches).
 - **Robust Prediction Modal User Resolution & Freshness** — Enhanced `openUserPredictionsModal` to automatically resolve coach names (`Max`), account usernames (`Celesteil`), and account UUIDs, while refreshing any leaderboard cache older than 10 seconds to ensure ballots always display real-time data.
 - **Prediction Score Inverted Match Key Deduplication** — Fixed the root cause of prediction points discrepancy (where a user could be awarded extra points despite having only 4 correct picks). Matches whose competitor order had been saved under inverted questions (e.g., `Who wins: Kiril vs Ethan` vs `Who wins: Ethan vs Kiril`) produced duplicate records for the same match. Implemented `canonicalPredictionEventKey` and `deduplicatePredictionRows` across scoring, rendering, and caching to ensure every match matchup normalizes to a single canonical event key, keeping only the latest pick and eliminating double scoring.
 - **Inverted Pick Storage Cleanup** — When a user saves or updates a match prediction (`Who wins: A vs B`), any reversed question key (`Who wins: B vs A`) is automatically cleared from `localStorage` and deleted from Cloudflare KV.
