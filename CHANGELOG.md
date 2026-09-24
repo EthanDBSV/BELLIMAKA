@@ -5,6 +5,17 @@ Format: `v[MAJOR].[MINOR].[PATCH]` — Major = big new systems, Minor = new feat
 
 ---
 
+## [v1.1.3] — 2026-09-23
+
+### Fixed
+- **Multi-Season Matches & Past Tournament Fixtures** — Added a Tournament / Season Selector dropdown to the main Matches page controls bar. When a tournament is active/ongoing, coaches and organizers can now freely toggle between the live tournament (e.g. Bentonville Regional · LIVE) and any past completed tournaments (Wilmington Regional, Cagliari Regional, Sugar Land Regional) to view past match grids, scores, replays, and group standings.
+- **Top Cut Tournament Switcher** — Added a Tournament Selector dropdown to the Top Cut tab, allowing viewers to easily inspect championship results and playoff brackets from past completed tournaments as well as live double-elimination brackets.
+- **Replay Metadata Preservation in Local Cache** — Updated `safeSaveTournamentsToLocalStorage()` to strip only bulky raw battle log text (`r.log`) while retaining the match replay metadata objects (`id`, `game`, `title`, `winnerCoach`). This keeps the cached payload well under 300 KB while ensuring `m.replays` arrays remain fully populated so replay navigation pills `[ ▶ 1 ] [ ▶ 2 ]` render instantly at 0ms without waiting for background rehydration.
+- **Replay Ingestion Guard on Cloud Sync** — Updated `flushSync()` and `applySharedState()` to safeguard battle replays and prevent accidental cloud overwrites if memory state or local storage had stripped replay objects.
+- **Restored Historical Battle Replays** — Successfully merged and restored all 131 battle replays from completed tournaments (Cagliari, Sugar Land, Wilmington) to Cloudflare KV while 100% preserving all live Bentonville Regional tournament matches, picks, and Showdown battle replays.
+
+---
+
 ## [v1.1.2] — 2026-09-18
 
 ### Fixed

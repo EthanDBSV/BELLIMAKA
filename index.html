@@ -3603,17 +3603,22 @@ async function hydrateTournamentsFromIndexedDB() {
         if(Array.isArray(fullT.matches) && Array.isArray(locT.matches)) {
           locT.matches.forEach((lm, idx) => {
             let fm = fullT.matches[idx];
-            if(fm && Array.isArray(fm.replays) && Array.isArray(lm.replays)) {
-              lm.replays.forEach(lr => {
-                if(!lr.log || lr.log.length < 20) {
-                  let fr = fm.replays.find(r => r.game === lr.game || (r.id && r.id === lr.id));
-                  if(fr && fr.log && fr.log.length > 20) {
-                    lr.log = fr.log;
-                    if(!lr.stats && fr.stats) lr.stats = fr.stats;
-                    restoredCount++;
+            if(fm && Array.isArray(fm.replays) && fm.replays.length > 0) {
+              if(!Array.isArray(lm.replays) || lm.replays.length === 0) {
+                lm.replays = JSON.parse(JSON.stringify(fm.replays));
+                restoredCount += fm.replays.length;
+              } else {
+                lm.replays.forEach(lr => {
+                  if(!lr.log || lr.log.length < 20) {
+                    let fr = fm.replays.find(r => r.game === lr.game || (r.id && r.id === lr.id));
+                    if(fr && fr.log && fr.log.length > 20) {
+                      lr.log = fr.log;
+                      if(!lr.stats && fr.stats) lr.stats = fr.stats;
+                      restoredCount++;
+                    }
                   }
-                }
-              });
+                });
+              }
             }
           });
         }
@@ -8672,7 +8677,11 @@ function renderTournamentAwardsStandingsBannerHtml(t) {
 }
 
 function TopCut(){
-  let t=ongoingT();
+  let allTourneys = typeof sortedTournamentsChronological === 'function' ? sortedTournamentsChronological() : Object.values(tournamentData);
+  let liveT = ongoingT();
+  let defaultT = liveT || activeT() || allTourneys[allTourneys.length - 1] || null;
+  let targetTId = (typeof viewTournament !== 'undefined' && viewTournament && tournamentData[viewTournament]) ? viewTournament : (defaultT ? defaultT.id : null);
+  let t = (targetTId && tournamentData[targetTId]) || defaultT;
   if(!t)return noTournament();
   viewTournament=t.id;
   if(t.phase === 'draft' && t.status === 'ONGOING'){
@@ -8683,7 +8692,17 @@ function TopCut(){
   let champName=t.topCutCache?.champion || t.champion;
   let canManage = canManageTournament(t);
   let subtitle = isPreview ? (t.name+' · pending group stage') : (t.status==='COMPLETE' ? (t.name+' · championship results') : (t.name+' · live double elimination'));
-  return head('Top Cut', subtitle)+topCutSection(t, isPreview)+`${canManage && t.status==='ONGOING' && !isPreview ? `<div class="creator-actions" style="margin-top:20px">${ready?`<button class="btn" onclick="endTournament()">End tournament · ${esc(champName)} wins! 👑</button>`:`<p class="sub">Complete every bracket match to enable ending the tournament (${t.topCutCache?.done||0}/${t.topCutCache?.total||0} played).</p>`}</div>`:''}`;
+  let selectorHtml = allTourneys.length > 1 ? `
+    <div style="display:flex;align-items:center;justify-content:flex-end;margin-bottom:14px">
+      <div class="match-season-select-wrap" style="display:inline-flex;align-items:center;gap:6px;background:#0d0d12;border:1px solid #363644;border-radius:6px;padding:4px 10px">
+        <span style="font:800 11px 'Barlow Condensed';color:#8e8c95;letter-spacing:.6px;text-transform:uppercase">Tournament:</span>
+        <select id="topCutTournamentSelector" onchange="viewTournament=this.value;render()" style="background:transparent;border:none;color:#ffd166;font:800 12px 'DM Sans';cursor:pointer;outline:none;padding-right:4px">
+          ${allTourneys.slice().reverse().map(tn => `<option value="${tn.id}" ${tn.id === t.id ? 'selected' : ''} style="background:#141419;color:#f5f3f0">${esc(tn.name)} (${esc(tn.season || 'Season')}${tn.status === 'ONGOING' ? ' · LIVE' : ''})</option>`).join('')}
+        </select>
+      </div>
+    </div>
+  ` : '';
+  return head('Top Cut', subtitle)+selectorHtml+topCutSection(t, isPreview)+`${canManage && t.status==='ONGOING' && !isPreview ? `<div class="creator-actions" style="margin-top:20px">${ready?`<button class="btn" onclick="endTournament()">End tournament · ${esc(champName)} wins! 👑</button>`:`<p class="sub">Complete every bracket match to enable ending the tournament (${t.topCutCache?.done||0}/${t.topCutCache?.total||0} played).</p>`}</div>`:''}`;
 }
 
 function openTournamentRecordEditor(id){
@@ -12001,29 +12020,50 @@ function safeSaveTournamentsToLocalStorage(data) {
         delete tClone.draft;
       }
 
-      // 3. Strip replay logs and replay bloat from matches (safely preserved in IndexedDB)
+      // 3. Strip bulky raw replay logs from matches (safely preserved in IndexedDB) while PRESERVING replay metadata objects & count!
       if(Array.isArray(tClone.matches)) {
         tClone.matches = tClone.matches.map(m => {
-          if(!m.replays) return m;
+          if(!Array.isArray(m.replays)) return m;
           let mClone = { ...m };
-          delete mClone.replays;
+          mClone.replays = m.replays.map(r => {
+            let rClone = { ...r };
+            delete rClone.log; // Strip the 20-50KB raw text log; metadata (id, game, title, winnerCoach) is preserved!
+            return rClone;
+          });
           return mClone;
         });
       }
 
-      // 4. Strip topCutReplays (safely preserved in IndexedDB)
-      if(tClone.topCutReplays) {
-        delete tClone.topCutReplays;
+      // 4. Strip bulky raw logs from topCutReplays while preserving metadata
+      if(tClone.topCutReplays && typeof tClone.topCutReplays === 'object') {
+        let tcClone = {};
+        for(let k in tClone.topCutReplays) {
+          let list = tClone.topCutReplays[k];
+          if(Array.isArray(list)) {
+            tcClone[k] = list.map(r => {
+              let rClone = { ...r };
+              delete rClone.log;
+              return rClone;
+            });
+          } else {
+            tcClone[k] = list;
+          }
+        }
+        tClone.topCutReplays = tcClone;
       }
 
-      // 5. Strip bracket manager replays
+      // 5. Strip bulky raw logs from bracket manager replays
       if(tClone.bracketManagerData?.match && Array.isArray(tClone.bracketManagerData.match)) {
         tClone.bracketManagerData = {
           ...tClone.bracketManagerData,
           match: tClone.bracketManagerData.match.map(bm => {
-            if(!bm.replays) return bm;
+            if(!Array.isArray(bm.replays)) return bm;
             let bmClone = { ...bm };
-            delete bmClone.replays;
+            bmClone.replays = bm.replays.map(r => {
+              let rClone = { ...r };
+              delete rClone.log;
+              return rClone;
+            });
             return bmClone;
           })
         };
@@ -12121,20 +12161,26 @@ function applySharedState(data){
         if(Array.isArray(incT.matches) && Array.isArray(locT.matches)){
           incT.matches.forEach((im, idx) => {
             let lm = locT.matches[idx];
-            if(im && lm && Array.isArray(im.replays) && Array.isArray(lm.replays)){
-              im.replays.forEach(ir => {
-                if(!ir.log || ir.log.length < 20){
-                  let lr = lm.replays.find(r => r.game === ir.game || (r.id && r.id === ir.id));
-                  if(lr && lr.log && lr.log.length > 20){
-                    ir.log = lr.log;
-                    if(!ir.stats && lr.stats) ir.stats = lr.stats;
+            if(im && lm){
+              if(Array.isArray(lm.replays) && lm.replays.length > 0 && (!Array.isArray(im.replays) || im.replays.length === 0)){
+                im.replays = lm.replays;
+              } else if(Array.isArray(im.replays) && Array.isArray(lm.replays)){
+                im.replays.forEach(ir => {
+                  if(!ir.log || ir.log.length < 20){
+                    let lr = lm.replays.find(r => r.game === ir.game || (r.id && r.id === ir.id));
+                    if(lr && lr.log && lr.log.length > 20){
+                      ir.log = lr.log;
+                      if(!ir.stats && lr.stats) ir.stats = lr.stats;
+                    }
                   }
-                }
-              });
+                });
+              }
             }
           });
         }
-        if(incT.topCutReplays && locT.topCutReplays){
+        if(locT.topCutReplays && (!incT.topCutReplays || Object.keys(incT.topCutReplays).length === 0)){
+          incT.topCutReplays = locT.topCutReplays;
+        } else if(incT.topCutReplays && locT.topCutReplays){
           Object.keys(incT.topCutReplays).forEach(k => {
             let iList = incT.topCutReplays[k];
             let lList = locT.topCutReplays[k];
@@ -12905,7 +12951,10 @@ async function flushSync(){
   Object.entries(cleanTournaments).forEach(([tId, t]) => {
     let tName = t.name || tId;
     if(Array.isArray(t.matches)){
-      t.matches.forEach(m => {
+      t.matches.forEach((m, idx) => {
+        if((!Array.isArray(m.replays) || m.replays.length === 0) && Array.isArray(tournamentData[tId]?.matches?.[idx]?.replays) && tournamentData[tId].matches[idx].replays.length > 0){
+          m.replays = JSON.parse(JSON.stringify(tournamentData[tId].matches[idx].replays));
+        }
         if(Array.isArray(m.replays)){
           m.replays.forEach(r => {
             if(!r.log || typeof r.log !== 'string' || r.log.length < 20){
@@ -14015,7 +14064,7 @@ function OffseasonHome(){
 var scoreDrafts={},oddsCache={key:'',data:null};
 document.addEventListener('input',e=>{if(/^([ab]\d+|bs.+[ab])$/.test(e.target.id||''))scoreDrafts[e.target.id]=e.target.value});
 function score(i){
-  let t=(current==='Tournament Detail'?activeT():ongoingT())||activeT();
+  let t=(current==='Tournament Detail' || current==='Matches' ? activeT() : ongoingT()) || activeT();
   if(!t||!canManageTournament(t))return;
   if(t.phase==='topcut'){alert('Group-stage scores are locked after Top Cut seeding.');return}
   let m=t.matches?.[i];
@@ -14121,7 +14170,7 @@ function score(i){
   }
 }
 function clearSingleScore(i){
-  let t=(current==='Tournament Detail'?activeT():ongoingT())||activeT();
+  let t=(current==='Tournament Detail' || current==='Matches' ? activeT() : ongoingT()) || activeT();
   if(!t||!canManageTournament(t))return;
   let m=t.matches?.[i];
   if(!m)return;
@@ -16916,7 +16965,7 @@ var matchStatusTab = 'all';
 var matchSearchTerm = '';
 
 function resetGroupStageScores(){
-  let t = (current === 'Tournament Detail' ? activeT() : ongoingT()) || activeT();
+  let t = (current === 'Tournament Detail' || current === 'Matches' ? activeT() : ongoingT()) || activeT();
   if(!t || !canManageTournament(t)) return;
   let hasScores = (t.matches || []).some(m => m.as !== '' && m.as != null);
   if(!hasScores){
@@ -17086,16 +17135,35 @@ function toggleGroupCollapse(key){
 }
 
 function Matches(){
-  let t = ongoingT();
+  let allTourneys = typeof sortedTournamentsChronological === 'function' ? sortedTournamentsChronological() : Object.values(tournamentData);
+  let liveT = ongoingT();
+  let defaultT = liveT || activeT() || allTourneys[allTourneys.length - 1] || null;
+  let targetTId = (typeof viewTournament !== 'undefined' && viewTournament && tournamentData[viewTournament]) ? viewTournament : (defaultT ? defaultT.id : null);
+  let t = (targetTId && tournamentData[targetTId]) || defaultT;
   if(!t) return noTournament();
   viewTournament = t.id;
 
   if(t.phase === 'draft' && t.status === 'ONGOING'){
-    return renderDraftLockedMatches(t);
+    let selectorHtml = allTourneys.length > 1 ? `
+      <div style="display:flex;justify-content:center;margin-bottom:16px">
+        <div class="match-season-select-wrap" style="display:inline-flex;align-items:center;gap:6px;background:#0d0d12;border:1px solid #363644;border-radius:6px;padding:5px 12px">
+          <span style="font:800 11px 'Barlow Condensed';color:#8e8c95;letter-spacing:.6px;text-transform:uppercase">Tournament:</span>
+          <select id="matchTournamentSelector" onchange="viewTournament=this.value;matchGroupTab='all';matchFilterPlayers=[];render()" style="background:transparent;border:none;color:#ffd166;font:800 12px 'DM Sans';cursor:pointer;outline:none;padding-right:4px">
+            ${allTourneys.slice().reverse().map(tn => `<option value="${tn.id}" ${tn.id === t.id ? 'selected' : ''} style="background:#141419;color:#f5f3f0">${esc(tn.name)} (${esc(tn.season || 'Season')}${tn.status === 'ONGOING' ? ' · LIVE' : ''})</option>`).join('')}
+          </select>
+        </div>
+      </div>
+    ` : '';
+    return selectorHtml + renderDraftLockedMatches(t);
   }
 
   let isSwiss = (t.stage1Format === 'swiss');
-  let groups = isSwiss ? ['Swiss Stage'] : Object.keys(groupsOf(t));
+  let matchGroups = new Set();
+  (t.matches || []).forEach(m => {
+    if(m.group) matchGroups.add(m.group);
+  });
+  let groups = isSwiss ? ['Swiss Stage'] : Array.from(new Set([...Object.keys(groupsOf(t)), ...matchGroups]));
+  if(!groups.length) groups = ['Group A'];
   let allMatches = t.matches || [];
   let totalMatches = allMatches.length;
   let reportedMatches = allMatches.filter(m => m.b === 'BYE' || m.a === 'BYE' || (m.as !== '' && m.as != null && m.bs !== '' && m.bs != null)).length;
@@ -17158,13 +17226,25 @@ function Matches(){
   };
 
   let playersList = t.players || [];
-  let stageSubtitle = isSwiss ? (t.name + ` · Swiss stage fixtures (Round ${curRound} of ${totalRounds})`) : (t.name + ' · group stage fixtures');
+  let stageSubtitle = isSwiss 
+    ? (t.name + ` · Swiss stage fixtures (Round ${curRound} of ${totalRounds})${t.status === 'COMPLETE' ? ' · Archived' : ''}`) 
+    : (t.name + ` · group stage fixtures${t.status === 'COMPLETE' ? ' · Archived' : ''}`);
 
   return head('Matches', stageSubtitle, modActions) + `
     <div class="match-layout-modern">
       <div class="match-controls-bar">
         <div style="display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px;width:100%">
           <div style="display:flex;flex-wrap:wrap;align-items:center;gap:12px">
+            ${allTourneys.length > 1 ? `
+              <div class="match-season-select-wrap" style="display:inline-flex;align-items:center;gap:6px;background:#0d0d12;border:1px solid #363644;border-radius:6px;padding:4px 9px">
+                <span style="font:800 11px 'Barlow Condensed';color:#8e8c95;letter-spacing:.6px;text-transform:uppercase">Tournament:</span>
+                <select id="matchTournamentSelector" onchange="viewTournament=this.value;matchGroupTab='all';matchFilterPlayers=[];render()" style="background:transparent;border:none;color:#ffd166;font:800 12px 'DM Sans';cursor:pointer;outline:none;padding-right:4px">
+                  ${allTourneys.slice().reverse().map(tn => `<option value="${tn.id}" ${tn.id === t.id ? 'selected' : ''} style="background:#141419;color:#f5f3f0">${esc(tn.name)} (${esc(tn.season || 'Season')}${tn.status === 'ONGOING' ? ' · LIVE' : ''})</option>`).join('')}
+                </select>
+              </div>
+              <span style="color:#4a4a58">|</span>
+            ` : ''}
+
             <div class="match-filter-tabs">
               <button class="m-tab ${matchGroupTab === 'all' ? 'active' : ''}" onclick="matchGroupTab='all';render()">${isSwiss ? 'All Rounds' : 'All Groups'}</button>
               ${(isSwiss ? swissRoundsList : groups).map(item => `<button class="m-tab ${matchGroupTab === item ? 'active' : ''}" onclick="matchGroupTab='${item}';render()">${esc(item)}</button>`).join('')}
