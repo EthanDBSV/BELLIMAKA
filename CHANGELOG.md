@@ -5,6 +5,24 @@ Format: `v[MAJOR].[MINOR].[PATCH]` — Major = big new systems, Minor = new feat
 
 ---
 
+## [v1.1.5] — 2026-09-23
+
+### Fixed
+- **Prediction Score Inverted Match Key Deduplication** — Fixed the root cause of prediction points discrepancy (where a user could be awarded extra points despite having only 4 correct picks). Matches whose competitor order had been saved under inverted questions (e.g., `Who wins: Kiril vs Ethan` vs `Who wins: Ethan vs Kiril`) produced duplicate records for the same match. Implemented `canonicalPredictionEventKey` and `deduplicatePredictionRows` across scoring, rendering, and caching to ensure every match matchup normalizes to a single canonical event key, keeping only the latest pick and eliminating double scoring.
+- **Inverted Pick Storage Cleanup** — When a user saves or updates a match prediction (`Who wins: A vs B`), any reversed question key (`Who wins: B vs A`) is automatically cleared from `localStorage` and deleted from Cloudflare KV.
+
+### Changed
+- **Clean Prediction Leaders Display** — Removed account suffixes from the Prediction Leaders sidebar (e.g., displaying clean coach profile names like `Max` and `Ozy` instead of `Max as Celesteil` or `Ozy as Fickle Apathy`).
+
+### Added
+- **Click-to-View Prediction Ballot Breakdown Modal** — Clicking on any person's name or row in the "Prediction leaders" sidebar now opens a dedicated modal displaying their complete submitted prediction ballot:
+  - Total points, hit count, and accuracy summary
+  - Champion pick (with hit/miss/pending status)
+  - Group Stage winner picks (with hit/miss/pending status)
+  - Full Match Pick'em history with final match scores and colored HIT/MISS/PENDING badges
+
+---
+
 ## [v1.1.4] — 2026-09-23
 
 ### Changed
