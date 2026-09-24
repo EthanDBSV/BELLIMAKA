@@ -3,6 +3,26 @@
 All notable changes to the Bellimaka Pokémon Draft League site are documented here.
 Format: `v[MAJOR].[MINOR].[PATCH]` — Major = big new systems, Minor = new features, Patch = bug fixes / small improvements.
 
+## [v1.1.7] — 2026-09-24
+
+### Fixed
+- **Restored Complete Prediction Ballot for Gavin (zkl)** — Restored all 22 verified predictions submitted by Gavin directly into Cloudflare KV from his verified ballot submission:
+  - Champion: Dao Ming
+  - Division Winners: Ethan (Group A), Dao Ming (Group B)
+  - 19 Match Picks across Groups A & B
+  - Gavin's score is now accurately recorded at 32 PTS (4 hits out of 4 decided matches picked) on the official leaderboard and in his prediction ballot breakdown modal.
+- **Eliminated Cloudflare KV Concurrency Race Condition** — Fixed the root cause of lost and stranded predictions where parallel, unawaited `fetch` requests fired by the client clobbered each other during Cloudflare KV's read-modify-write cycle.
+  - Implemented sequential `await` execution for all prediction synchronization batches.
+  - Added an in-memory queue (`predictionSyncQueuePromise`) to serialize rapid single-pick selections so fast consecutive clicks never collide in Cloudflare KV.
+- **Bulletproof Local-to-Cloud Auto-Sync** — Redesigned `syncLocalPicksToCloud` to guarantee that no coach's picks can ever get stranded locally:
+  - Fetches live ground-truth records directly from Cloudflare KV upon sync rather than relying on uninitialized or stale client caches.
+  - Cross-references all local device picks (`draftdex-pick-{tournamentId}-*`) against cloud state, detecting any missing or updated picks using canonical matchup event keys.
+  - Pushes all missing picks sequentially to Cloudflare KV and cleans up any legacy inverted matchup keys.
+  - Automatically triggers whenever a coach opens the site (client initialization), logs in or registers, navigates to the Predictions view, or refreshes prediction scores.
+- **Global Prediction Cache & Modal Independence** — Decoupled prediction score calculations and cache hydration from the presence of `#predLeaders` in the DOM so that opening any coach's prediction ballot from profiles, rosters, or other views always loads fresh, complete data.
+
+---
+
 ## [v1.1.6] — 2026-09-24
 
 ### Changed

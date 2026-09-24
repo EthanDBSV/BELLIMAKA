@@ -2792,6 +2792,12 @@ function go(t,updateHash=true){
       history.replaceState(null,'','#'+encodeURIComponent(current));
     }
   }catch(e){}
+  if(current==='Predictions'){
+    let oT = (typeof ongoingT === 'function' && ongoingT()) || (typeof activeT === 'function' && activeT());
+    if(oT?.id && typeof syncLocalPicksToCloud === 'function'){
+      syncLocalPicksToCloud(oT.id);
+    }
+  }
   render();
 }
 function render(){
@@ -2817,6 +2823,9 @@ function openTournament(id, tab = 'Standings'){
   detailTab=tab || 'Standings';
   window.selectedTeamRosterCoach = null;
   current='Tournament Detail';
+  if(detailTab === 'Predictions' && viewTournament && typeof syncLocalPicksToCloud === 'function'){
+    syncLocalPicksToCloud(viewTournament);
+  }
   try{
     localStorage.setItem('draftdex-active-tab','Tournament Detail');
     localStorage.setItem('draftdex-view-tournament',id);
@@ -4155,6 +4164,9 @@ function Predictions(){
   viewTournament=t.id;
   if(t.phase === 'draft' && t.status === 'ONGOING'){
     return renderDraftLockedPredictions(t);
+  }
+  if(typeof syncLocalPicksToCloud === 'function'){
+    syncLocalPicksToCloud(t.id);
   }
   return head('Predictions',t.name+' · pick the outcomes')+predictions(t);
 }
@@ -12702,6 +12714,10 @@ async function syncFromCloud(force = false){
             try { localStorage.setItem('draftdex-updated-at', String(lastLocalUpdate)); } catch(e){}
           }
           render();
+          let oT = (typeof ongoingT === 'function' && ongoingT()) || (typeof activeT === 'function' && activeT());
+          if(oT?.id && typeof syncLocalPicksToCloud === 'function'){
+            syncLocalPicksToCloud(oT.id);
+          }
           if(current === 'Draft' && typeof centerActiveDraftPickTile === 'function'){
             setTimeout(centerActiveDraftPickTile, 50);
           }
@@ -13123,28 +13139,32 @@ async function pick(el){
   }
 }
 
+let predictionSyncQueuePromise = Promise.resolve();
+
 async function syncPredictionRecord(tournamentId, key, choice, isDelete = false){
   if(isSandboxMode() || !sessionUser || !tournamentId) return;
   let bType = getBackendType();
   if(bType === 'local') return;
 
   if(bType === 'cloudflare'){
-    try {
-      let cfUrl = getCloudflareUrl();
-      await fetch(`${cfUrl}/api/predictions?tournament_id=${encodeURIComponent(tournamentId)}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          action: isDelete ? 'delete' : 'upsert',
-          user_id: sessionUser.id,
-          prediction_key: key,
-          selection: choice
-        })
-      });
-    } catch(e){
-      console.warn('Prediction sync error (Cloudflare):', e);
-    }
-    return;
+    predictionSyncQueuePromise = predictionSyncQueuePromise.then(async () => {
+      try {
+        let cfUrl = getCloudflareUrl();
+        await fetch(`${cfUrl}/api/predictions?tournament_id=${encodeURIComponent(tournamentId)}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            action: isDelete ? 'delete' : 'upsert',
+            user_id: sessionUser.id,
+            prediction_key: key,
+            selection: choice
+          })
+        });
+      } catch(e){
+        console.warn('Prediction sync error (Cloudflare):', e);
+      }
+    });
+    return predictionSyncQueuePromise;
   }
 
   if(supabaseClient){
@@ -21480,33 +21500,143 @@ function getLocalPredictionRows(tournamentId){
   return rows;
 }
 
-async function syncLocalPicksToCloud(tournamentId){
-  if(isSandboxMode() || !backendReady() || !sessionUser?.id || !tournamentId) return;
+let isSyncingLocalPicks = false;
+
+async function syncLocalPicksToCloud(tournamentId, force = false){
+  if(isSandboxMode() || !backendReady() || !tournamentId) return;
   let bType = getBackendType();
   if(bType !== 'cloudflare') return;
+
+  // Resolve active logged in user
+  let activeUser = sessionUser || window.currentAccount;
+  if(!activeUser?.id && !activeUser?.username){
+    try {
+      let savedCf = localStorage.getItem('draftdex-cf-session');
+      if(savedCf){
+        let s = JSON.parse(savedCf);
+        if(s && (s.id || s.username)){
+          sessionUser = s;
+          window.currentAccount = s;
+          activeUser = s;
+        }
+      }
+    } catch(e){}
+  }
+  if(!activeUser?.id && !activeUser?.username) return;
+
+  if(isSyncingLocalPicks) return;
+  isSyncingLocalPicks = true;
+
   try {
-    let localRows = getLocalPredictionRows(tournamentId);
-    if(!localRows.length) return;
     let cfUrl = getCloudflareUrl();
-    let cacheRows = predictionScoresCache[tournamentId]?.rows || [];
+    if(!cfUrl) return;
+
+    // 1. Fetch fresh ground-truth predictions directly from Cloudflare KV
+    let cloudRows = [];
+    try {
+      let res = await fetch(`${cfUrl}/api/predictions?tournament_id=${encodeURIComponent(tournamentId)}&_t=${Date.now()}`);
+      if(res.ok){
+        cloudRows = await res.json();
+      }
+    } catch(e){}
+    if(!Array.isArray(cloudRows)) cloudRows = [];
+
+    // Keep predictionScoresCache updated with ground truth
+    if(!predictionScoresCache[tournamentId]) predictionScoresCache[tournamentId] = { rows: [], accounts: [] };
+    if(cloudRows.length){
+      predictionScoresCache[tournamentId].rows = cloudRows;
+    }
+
+    // Identify user keys
+    let myUserIds = [activeUser.id, activeUser.username, window.currentAccount?.username, window.currentAccount?.id].filter(Boolean);
+    let myCoach = (typeof coachForAccount === 'function' ? coachForAccount(activeUser.username) : null) || activeUser.coachProfile;
+    if(myCoach) myUserIds.push(myCoach);
+
+    // 2. Hydrate from cloud into localStorage (if cloud has picks this device lacks)
+    let myCloudPicks = cloudRows.filter(r => myUserIds.includes(r.user_id));
+    let hydratedAny = false;
+    for(let cp of myCloudPicks){
+      if(!cp.prediction_key || !cp.selection) continue;
+      let lKey = 'draftdex-pick-' + tournamentId + '-' + cp.prediction_key;
+      let existingLocal = localStorage.getItem(lKey);
+      if(!existingLocal){
+        try {
+          localStorage.setItem(lKey, cp.selection);
+          hydratedAny = true;
+        } catch(e){}
+      }
+    }
+
+    // 3. Find any local picks in localStorage that are MISSING or DIFFERENT in Cloudflare KV
+    let localRows = getLocalPredictionRows(tournamentId);
+    let picksToPush = [];
+
     for(let lr of localRows){
       if(!lr.prediction_key || !lr.selection) continue;
       let lrTarget = canonicalPredictionEventKey(lr.prediction_key);
-      let cloudMatch = cacheRows.find(r => (r.user_id === sessionUser.id || r.user_id === window.currentAccount?.username) && canonicalPredictionEventKey(r.prediction_key) === lrTarget);
-      if(!cloudMatch || cloudMatch.selection !== lr.selection){
-        fetch(`${cfUrl}/api/predictions?tournament_id=${encodeURIComponent(tournamentId)}`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            action: 'upsert',
-            user_id: sessionUser.id,
-            prediction_key: lr.prediction_key,
-            selection: lr.selection
-          })
-        }).catch(()=>{});
+      let match = myCloudPicks.find(r => canonicalPredictionEventKey(r.prediction_key) === lrTarget);
+      if(!match || match.selection !== lr.selection){
+        picksToPush.push(lr);
       }
     }
-  } catch(e){}
+
+    // 4. Push missing/updated picks sequentially with await to prevent Cloudflare KV race conditions
+    if(picksToPush.length > 0){
+      let targetUserId = activeUser.id || activeUser.username;
+      for(let p of picksToPush){
+        try {
+          await fetch(`${cfUrl}/api/predictions?tournament_id=${encodeURIComponent(tournamentId)}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              action: 'upsert',
+              user_id: targetUserId,
+              prediction_key: p.prediction_key,
+              selection: p.selection
+            })
+          });
+
+          // If this was a matchup pick, clean up any inverted key in cloud
+          let vs = p.prediction_key.match(/^Who wins: (.+) vs (.+)$/i);
+          if(vs){
+            let rev = 'Who wins: ' + vs[2] + ' vs ' + vs[1];
+            await fetch(`${cfUrl}/api/predictions?tournament_id=${encodeURIComponent(tournamentId)}`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                action: 'delete',
+                user_id: targetUserId,
+                prediction_key: rev
+              })
+            }).catch(()=>{});
+          }
+        } catch(e){
+          console.warn('Error pushing pick to cloud:', p.prediction_key, e);
+        }
+      }
+
+      // Re-fetch ground truth after push so cache is completely fresh
+      try {
+        let res2 = await fetch(`${cfUrl}/api/predictions?tournament_id=${encodeURIComponent(tournamentId)}&_t=${Date.now()}`);
+        if(res2.ok){
+          predictionScoresCache[tournamentId].rows = await res2.json();
+          let tObj = tournamentData[tournamentId] || ongoingT() || activeT();
+          if(tObj && typeof renderPredictionLeaders === 'function'){
+            renderPredictionLeaders(tObj, true);
+          }
+        }
+      } catch(e){}
+    } else if(hydratedAny){
+      let tObj = tournamentData[tournamentId] || ongoingT() || activeT();
+      if(tObj && typeof renderPredictionLeaders === 'function'){
+        renderPredictionLeaders(tObj, true);
+      }
+    }
+  } catch(err){
+    console.warn('syncLocalPicksToCloud exception:', err);
+  } finally {
+    isSyncingLocalPicks = false;
+  }
 }
 
 function leaderboardShell(t){
@@ -21596,10 +21726,10 @@ function updateLocalPredictionInCache(tournamentId, question, choice, isRemoving
 }
 
 async function renderPredictionLeaders(t, forceFresh = false){
+  if(!t) return;
   let host = document.querySelector('#predLeaders');
-  if(!host || !t) return;
 
-  if(!forceFresh && predictionScoresCache[t.id] && (Date.now() - (predictionScoresCache[t.id].timestamp || 0) < 60000)){
+  if(!forceFresh && host && predictionScoresCache[t.id] && (Date.now() - (predictionScoresCache[t.id].timestamp || 0) < 60000)){
     if(predictionScoresCache[t.id].html){
       host.innerHTML = predictionScoresCache[t.id].html;
       return;
@@ -21687,7 +21817,7 @@ async function renderPredictionLeaders(t, forceFresh = false){
   let fullHtml = `<div class="card-title">Prediction leaders</div>${list}${note}`;
 
   predictionScoresCache[t.id] = { rows, accounts, html: fullHtml, timestamp: Date.now() };
-  if(document.querySelector('#predLeaders')?.dataset.tournament === t.id){
+  if(host && document.querySelector('#predLeaders')?.dataset.tournament === t.id){
     host.innerHTML = fullHtml;
   }
 
