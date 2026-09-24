@@ -21989,45 +21989,67 @@ async function openUserPredictionsModal(usernameOrId, tournamentId){
   let effectiveUsername = window.currentAccount?.username || (sessionUser?.user_metadata?.username) || 'You';
   let currentUserId = sessionUser?.id || effectiveUsername;
 
-  let player = getCoachForUserId(usernameOrId);
-  let userAccount = accounts.find(a => a.username === usernameOrId || a.id === usernameOrId || playerForAccount(a.username) === player || a.username === player);
+  let player = (typeof getCoachForUserId === 'function' ? getCoachForUserId(usernameOrId) : null) || usernameOrId;
+  let userAccount = accounts.find(a => a.username === usernameOrId || a.id === usernameOrId || (typeof playerForAccount === 'function' && playerForAccount(a.username) === player) || a.username === player);
 
   let userIds = [usernameOrId];
+  if(player && !userIds.includes(player)) userIds.push(player);
   if(userAccount){
-    if(userAccount.id) userIds.push(userAccount.id);
-    if(userAccount.username) userIds.push(userAccount.username);
+    if(userAccount.id && !userIds.includes(userAccount.id)) userIds.push(userAccount.id);
+    if(userAccount.username && !userIds.includes(userAccount.username)) userIds.push(userAccount.username);
   }
   // Find all accounts matching this coach
   accounts.forEach(a => {
-    if(playerForAccount(a.username) === player || a.username === player || a.id === usernameOrId){
-      if(a.id) userIds.push(a.id);
-      if(a.username) userIds.push(a.username);
+    let pMatch = typeof playerForAccount === 'function' && playerForAccount(a.username);
+    if(pMatch === player || a.username === player || a.id === usernameOrId || a.username === usernameOrId){
+      if(a.id && !userIds.includes(a.id)) userIds.push(a.id);
+      if(a.username && !userIds.includes(a.username)) userIds.push(a.username);
     }
   });
 
   let allRows = cached.rows || [];
-  let userRows = allRows.filter(r => userIds.includes(r.user_id) || (account && r.user_id === account.id));
+  let userRows = allRows.filter(r => {
+    if(!r) return false;
+    if(userIds.includes(r.user_id)) return true;
+    if(userAccount && (r.user_id === userAccount.id || r.user_id === userAccount.username)) return true;
+    let coach = typeof getCoachForUserId === 'function' ? getCoachForUserId(r.user_id) : null;
+    return coach && (coach === player || coach === usernameOrId);
+  });
 
   // If viewing current user, incorporate local rows from localStorage
-  if(userIds.includes(effectiveUsername) || userIds.includes(currentUserId)){
-    let localRows = getLocalPredictionRows(t.id);
-    localRows.forEach(lr => {
-      let lrTarget = canonicalPredictionEventKey(lr.prediction_key);
-      let matchIdx = userRows.findIndex(r => canonicalPredictionEventKey(r.prediction_key) === lrTarget);
-      if(matchIdx >= 0){
-        userRows[matchIdx] = lr;
-      } else {
-        userRows.push(lr);
-      }
-    });
+  let myP = typeof myPlayer === 'function' ? myPlayer() : null;
+  if(userIds.includes(effectiveUsername) || userIds.includes(currentUserId) || (myP && player === myP)){
+    if(typeof getLocalPredictionRows === 'function'){
+      let localRows = getLocalPredictionRows(t.id);
+      localRows.forEach(lr => {
+        let lrTarget = canonicalPredictionEventKey(lr.prediction_key);
+        let matchIdx = userRows.findIndex(r => canonicalPredictionEventKey(r.prediction_key) === lrTarget);
+        if(matchIdx >= 0){
+          userRows[matchIdx] = lr;
+        } else {
+          userRows.push(lr);
+        }
+      });
+    }
   }
 
-  let deduped = deduplicatePredictionRows(userRows);
-
   let pickMap = {};
-  deduped.forEach(r => {
-    pickMap[canonicalPredictionEventKey(r.prediction_key)] = r;
+  userRows.forEach(r => {
+    if(!r || !r.prediction_key) return;
+    let cKey = canonicalPredictionEventKey(r.prediction_key);
+    let existing = pickMap[cKey];
+    if(!existing){
+      pickMap[cKey] = r;
+    } else {
+      let exTime = existing.updated_at ? new Date(existing.updated_at).getTime() : 0;
+      let rTime = r.updated_at ? new Date(r.updated_at).getTime() : 1;
+      if(rTime >= exTime){
+        pickMap[cKey] = r;
+      }
+    }
   });
+
+  let deduped = Object.values(pickMap);
 
   // Calculate score and hits
   let userHits = 0, userPts = 0;
@@ -22042,10 +22064,14 @@ async function openUserPredictionsModal(usernameOrId, tournamentId){
   let face = (typeof profilePictures !== 'undefined' && profilePictures[player]) || (typeof teamCovers !== 'undefined' && teamCovers[player]) || '';
   let faceArt = face ? `url('${esc(face)}')` : fallbackArt(player);
   let letter = face ? '' : esc((player || '?')[0]);
-  let team = (typeof teamName === 'function' ? teamName(t, player) : null) || profiles[player]?.team || '';
+  let team = (typeof teamName === 'function' ? teamName(t, player) : null) || (profiles[player]?.team) || '';
+
+  let handledKeys = new Set();
 
   // 1. Champion Pick
   let champQ = `Who will be the ${t.name} Champion?`;
+  handledKeys.add('champion');
+  handledKeys.add(canonicalPredictionEventKey(champQ));
   let champRow = pickMap['champion'] || deduped.find(r => /^Who will be the .* Champion\?$/i.test(r.prediction_key));
   let champPick = champRow?.selection || null;
   let champOutcome = predictionOutcome(t, champQ);
@@ -22063,7 +22089,7 @@ async function openUserPredictionsModal(usernameOrId, tournamentId){
   }
 
   // 2. Division / Group Winners
-  let groups = groupsOf(t);
+  let groups = typeof groupsOf === 'function' ? groupsOf(t) : {};
   let groupEntries = Object.entries(groups);
   let groupWinnersHtml = groupEntries.length ? `
     <div style="margin-top:14px">
@@ -22071,6 +22097,8 @@ async function openUserPredictionsModal(usernameOrId, tournamentId){
       <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px">
         ${groupEntries.map(([gName]) => {
           let gKey = 'group:' + gName.trim().toLowerCase();
+          handledKeys.add(gKey);
+          handledKeys.add(canonicalPredictionEventKey('Who will top ' + gName + '?'));
           let gRow = pickMap[gKey] || deduped.find(r => r.prediction_key === ('Who will top ' + gName + '?'));
           let gPick = gRow?.selection || null;
           let gOutcome = predictionOutcome(t, 'Who will top ' + gName + '?');
@@ -22108,15 +22136,20 @@ async function openUserPredictionsModal(usernameOrId, tournamentId){
 
   // 3. Match Pick'ems
   let isSwiss = (t.stage1Format === 'swiss');
-  let matchGroups = new Set();
-  (t.matches || []).forEach(m => {
-    if(m.group) matchGroups.add(m.group);
-  });
-  let groupsList = isSwiss ? ['Swiss Stage'] : Array.from(new Set([...Object.keys(groups), ...matchGroups]));
-  if(!groupsList.length) groupsList = ['Group A'];
+  let groupsList;
+  if(isSwiss){
+    groupsList = ['Swiss Stage'];
+  } else {
+    let groupSet = new Set(Object.keys(groups));
+    (t.matches || []).forEach(m => {
+      groupSet.add(m.group || 'Matches');
+    });
+    groupsList = Array.from(groupSet);
+  }
+  if(!groupsList.length) groupsList = ['Matches'];
 
   let matchesHtml = groupsList.map(g => {
-    let gMatches = isSwiss ? (t.matches || []) : (t.matches || []).filter(m => (m.group || 'Group A') === g);
+    let gMatches = isSwiss ? (t.matches || []) : (t.matches || []).filter(m => (m.group || groupsList[0] || 'Matches') === g);
     if(!gMatches.length) return '';
     return `
       <div style="margin-top:14px">
@@ -22125,8 +22158,11 @@ async function openUserPredictionsModal(usernameOrId, tournamentId){
         </div>
         <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:8px">
           ${gMatches.map(m => {
-            let p1 = m.a, p2 = m.b;
+            let p1 = (m.a || '').trim(), p2 = (m.b || '').trim();
             let cKey = 'match:' + [p1, p2].sort((a,b) => a.localeCompare(b)).join(' vs ');
+            handledKeys.add(cKey);
+            handledKeys.add('match:' + p1 + ' vs ' + p2);
+            handledKeys.add('match:' + p2 + ' vs ' + p1);
             let mRow = pickMap[cKey] || deduped.find(r => r.prediction_key === ('Who wins: ' + p1 + ' vs ' + p2) || r.prediction_key === ('Who wins: ' + p2 + ' vs ' + p1));
             let pick = mRow?.selection || null;
 
@@ -22147,8 +22183,8 @@ async function openUserPredictionsModal(usernameOrId, tournamentId){
               badgeHtml = `<span class="tag hunt" style="font-size:9px;background:#3b2a14;color:#ffd166;border:1px solid #63471f">⏳ PENDING</span>`;
             }
 
-            let p1Art = profilePictures[p1] ? `url('${esc(profilePictures[p1])}')` : (teamCovers[p1] ? `url('${esc(teamCovers[p1])}')` : fallbackArt(p1));
-            let p2Art = profilePictures[p2] ? `url('${esc(profilePictures[p2])}')` : (teamCovers[p2] ? `url('${esc(teamCovers[p2])}')` : fallbackArt(p2));
+            let p1Art = (typeof profilePictures !== 'undefined' && profilePictures[p1]) ? `url('${esc(profilePictures[p1])}')` : ((typeof teamCovers !== 'undefined' && teamCovers[p1]) ? `url('${esc(teamCovers[p1])}')` : fallbackArt(p1));
+            let p2Art = (typeof profilePictures !== 'undefined' && profilePictures[p2]) ? `url('${esc(profilePictures[p2])}')` : ((typeof teamCovers !== 'undefined' && teamCovers[p2]) ? `url('${esc(teamCovers[p2])}')` : fallbackArt(p2));
 
             let p1Pick = (pick === p1);
             let p2Pick = (pick === p2);
@@ -22162,7 +22198,7 @@ async function openUserPredictionsModal(usernameOrId, tournamentId){
                 <div style="display:flex;flex-direction:column;gap:5px">
                   <div style="display:flex;align-items:center;justify-content:space-between;padding:5px 8px;border-radius:5px;background:${p1Pick ? '#281c16' : '#181820'};border:1px solid ${p1Pick ? '#ffd166' : 'transparent'}">
                     <div style="display:flex;align-items:center;gap:6px;min-width:0">
-                      <span class="mini-avatar" style="width:20px;height:20px;background-image:${p1Art};background-size:cover;background-position:center;font-size:10px">${profilePictures[p1]||teamCovers[p1]?'':esc((p1||'?')[0])}</span>
+                      <span class="mini-avatar" style="width:20px;height:20px;background-image:${p1Art};background-size:cover;background-position:center;font-size:10px">${(profilePictures[p1]||teamCovers[p1])?'':esc((p1||'?')[0])}</span>
                       <span style="font-size:12px;font-weight:800;color:${p1Pick ? '#ffd166' : '#e6e4e2'};overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(p1)}</span>
                     </div>
                     <div style="display:flex;align-items:center;gap:6px">
@@ -22172,7 +22208,7 @@ async function openUserPredictionsModal(usernameOrId, tournamentId){
                   </div>
                   <div style="display:flex;align-items:center;justify-content:space-between;padding:5px 8px;border-radius:5px;background:${p2Pick ? '#281c16' : '#181820'};border:1px solid ${p2Pick ? '#ffd166' : 'transparent'}">
                     <div style="display:flex;align-items:center;gap:6px;min-width:0">
-                      <span class="mini-avatar" style="width:20px;height:20px;background-image:${p2Art};background-size:cover;background-position:center;font-size:10px">${profilePictures[p2]||teamCovers[p2]?'':esc((p2||'?')[0])}</span>
+                      <span class="mini-avatar" style="width:20px;height:20px;background-image:${p2Art};background-size:cover;background-position:center;font-size:10px">${(profilePictures[p2]||teamCovers[p2])?'':esc((p2||'?')[0])}</span>
                       <span style="font-size:12px;font-weight:800;color:${p2Pick ? '#ffd166' : '#e6e4e2'};overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(p2)}</span>
                     </div>
                     <div style="display:flex;align-items:center;gap:6px">
@@ -22189,8 +22225,173 @@ async function openUserPredictionsModal(usernameOrId, tournamentId){
     `;
   }).join('');
 
+  // 4. Top Cut Bracket Matches (if any)
+  let cutModel = typeof getTournamentTopCutModel === 'function' ? getTournamentTopCutModel(t) : null;
+  let allCutMatches = cutModel ? [
+    ...(cutModel.wbRounds || []).flatMap(r => r.matches),
+    ...(cutModel.lbRounds || []).flatMap(r => r.matches),
+    ...(cutModel.gfMatches || [])
+  ] : [];
+  let topCutMatchesHtml = '';
+  if(allCutMatches.length > 0){
+    topCutMatchesHtml = `
+      <div style="margin-top:14px">
+        <div style="font:800 13px 'Barlow Condensed';color:#f5f3f0;letter-spacing:.6px;text-transform:uppercase;margin-bottom:8px;padding-bottom:4px;border-bottom:1px solid #282833">
+          Top Cut Bracket Matches (20 PTS EACH)
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:8px">
+          ${allCutMatches.map(m => {
+            let p1 = (m.p1 || 'TBD').trim(), p2 = (m.p2 || 'TBD').trim();
+            let slotKey = 'bracket:' + (m.id || '').toLowerCase();
+            handledKeys.add(slotKey);
+            handledKeys.add('draftdex-bpick-' + m.id);
+            handledKeys.add('Top Cut Bracket Match · ' + m.id);
+            let cutKey = (p1 !== 'TBD' && p2 !== 'TBD') ? ('cut:' + [p1, p2].sort((a,b) => a.localeCompare(b)).join(' vs ')) : null;
+            if(cutKey){
+              handledKeys.add(cutKey);
+              handledKeys.add('Top Cut · Who wins: ' + p1 + ' vs ' + p2);
+              handledKeys.add('Top Cut · Who wins: ' + p2 + ' vs ' + p1);
+            }
+            let mRow = pickMap[slotKey] || 
+                       (cutKey && pickMap[cutKey]) || 
+                       deduped.find(r => r.prediction_key === ('draftdex-bpick-' + m.id) || 
+                                         r.prediction_key === ('Top Cut Bracket Match · ' + m.id) ||
+                                         (p1 !== 'TBD' && p2 !== 'TBD' && (r.prediction_key === ('Top Cut · Who wins: ' + p1 + ' vs ' + p2) || r.prediction_key === ('Top Cut · Who wins: ' + p2 + ' vs ' + p1))));
+            let pick = mRow?.selection || null;
+            let reported = m.isDone && m.winner;
+            let winner = reported ? m.winner : null;
+
+            let isHit = reported && winner && pick === winner;
+            let isMiss = reported && winner && pick && pick !== winner;
+
+            let badgeHtml = '';
+            if(!pick){
+              badgeHtml = '<span class="tag" style="font-size:9px;background:#1a1a20;color:#6b6975;border:1px solid #282832">No Pick</span>';
+            } else if(isHit){
+              badgeHtml = `<span class="tag safe" style="font-size:9px;background:#153b29;color:#77e8a8;border:1px solid #235c40">✓ HIT (+20 PTS)</span>`;
+            } else if(isMiss){
+              badgeHtml = `<span class="tag out" style="font-size:9px;background:#491a20;color:#fa8a90;border:1px solid #6b242e">✗ MISSED</span>`;
+            } else {
+              badgeHtml = `<span class="tag hunt" style="font-size:9px;background:#3b2a14;color:#ffd166;border:1px solid #63471f">⏳ PENDING</span>`;
+            }
+
+            let p1Art = (p1 !== 'TBD' && profilePictures[p1]) ? `url('${esc(profilePictures[p1])}')` : ((p1 !== 'TBD' && teamCovers[p1]) ? `url('${esc(teamCovers[p1])}')` : fallbackArt(p1));
+            let p2Art = (p2 !== 'TBD' && profilePictures[p2]) ? `url('${esc(profilePictures[p2])}')` : ((p2 !== 'TBD' && teamCovers[p2]) ? `url('${esc(teamCovers[p2])}')` : fallbackArt(p2));
+
+            let p1Pick = (pick === p1);
+            let p2Pick = (pick === p2);
+
+            return `
+              <div class="card" style="padding:10px 12px;background:#121217;border:1px solid ${isHit ? '#235c40' : (isMiss ? '#4a242a' : '#282833')}">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+                  <span style="font-size:10px;font-weight:700;color:var(--amber)">${esc(m.title || m.id.toUpperCase())}</span>
+                  ${badgeHtml}
+                </div>
+                <div style="display:flex;flex-direction:column;gap:5px">
+                  <div style="display:flex;align-items:center;justify-content:space-between;padding:5px 8px;border-radius:5px;background:${p1Pick ? '#281c16' : '#181820'};border:1px solid ${p1Pick ? '#ffd166' : 'transparent'}">
+                    <div style="display:flex;align-items:center;gap:6px;min-width:0">
+                      <span class="mini-avatar" style="width:20px;height:20px;background-image:${p1Art};background-size:cover;background-position:center;font-size:10px">${p1 !== 'TBD' && (profilePictures[p1]||teamCovers[p1])?'':esc((p1||'?')[0])}</span>
+                      <span style="font-size:12px;font-weight:800;color:${p1Pick ? '#ffd166' : '#e6e4e2'};overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(p1)}</span>
+                    </div>
+                    <div style="display:flex;align-items:center;gap:6px">
+                      ${m.as != null && m.as !== '' ? `<span style="font:800 13px 'Barlow Condensed';color:${winner === p1 ? '#77e8a8' : '#8e8c95'}">${m.as}</span>` : ''}
+                      ${p1Pick ? `<span style="font-size:9px;font-weight:900;color:#ffd166;background:#3d2c10;padding:2px 5px;border-radius:3px">PICK</span>` : ''}
+                    </div>
+                  </div>
+                  <div style="display:flex;align-items:center;justify-content:space-between;padding:5px 8px;border-radius:5px;background:${p2Pick ? '#281c16' : '#181820'};border:1px solid ${p2Pick ? '#ffd166' : 'transparent'}">
+                    <div style="display:flex;align-items:center;gap:6px;min-width:0">
+                      <span class="mini-avatar" style="width:20px;height:20px;background-image:${p2Art};background-size:cover;background-position:center;font-size:10px">${p2 !== 'TBD' && (profilePictures[p2]||teamCovers[p2])?'':esc((p2||'?')[0])}</span>
+                      <span style="font-size:12px;font-weight:800;color:${p2Pick ? '#ffd166' : '#e6e4e2'};overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(p2)}</span>
+                    </div>
+                    <div style="display:flex;align-items:center;gap:6px">
+                      ${m.bs != null && m.bs !== '' ? `<span style="font:800 13px 'Barlow Condensed';color:${winner === p2 ? '#77e8a8' : '#8e8c95'}">${m.bs}</span>` : ''}
+                      ${p2Pick ? `<span style="font-size:9px;font-weight:900;color:#ffd166;background:#3d2c10;padding:2px 5px;border-radius:3px">PICK</span>` : ''}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            `;
+          }).join('')}
+        </div>
+      </div>
+    `;
+  }
+
+  // 5. Additional Predictions (if any unhandled questions exist)
+  let otherPicks = deduped.filter(r => !handledKeys.has(canonicalPredictionEventKey(r.prediction_key)) && !handledKeys.has(r.prediction_key));
+  let otherHtml = otherPicks.length ? `
+    <div style="margin-top:14px">
+      <div style="font:800 13px 'Barlow Condensed';color:#f5f3f0;letter-spacing:.6px;text-transform:uppercase;margin-bottom:8px;padding-bottom:4px;border-bottom:1px solid #282833">
+        Additional Predictions (${otherPicks.length})
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:8px">
+        ${otherPicks.map(r => {
+          let outcome = predictionOutcome(t, r.prediction_key);
+          let isHit = outcome.answer != null && outcome.answer === r.selection;
+          let isMiss = outcome.answer != null && outcome.answer !== r.selection;
+          let badge = '';
+          if(outcome.answer == null){
+            badge = `<span class="tag hunt" style="font-size:9px;background:#3b2a14;color:#ffd166;border:1px solid #63471f">⏳ PENDING</span>`;
+          } else if(isHit){
+            badge = `<span class="tag safe" style="font-size:9px;background:#153b29;color:#77e8a8;border:1px solid #235c40">✓ HIT (+${outcome.value} PTS)</span>`;
+          } else {
+            badge = `<span class="tag out" style="font-size:9px;background:#491a20;color:#fa8a90;border:1px solid #6b242e">✗ MISSED</span>`;
+          }
+          return `
+            <div class="card" style="padding:10px 12px;background:#121217;border:1px solid ${isHit ? '#235c40' : (isMiss ? '#4a242a' : '#282833')}">
+              <div style="font-size:11px;font-weight:700;color:#aaa;margin-bottom:6px">${esc(r.prediction_key)}</div>
+              <div style="display:flex;justify-content:space-between;align-items:center">
+                <span style="font-size:13px;font-weight:800;color:#ffd166">${esc(r.selection)}</span>
+                ${badge}
+              </div>
+            </div>
+          `;
+        }).join('')}
+      </div>
+    </div>
+  ` : '';
+
+  let bodyContent = deduped.length === 0 ? `
+    <div class="card empty" style="padding:32px 20px;text-align:center;background:#14141c;border:1px dashed #3a3a48;border-radius:8px;margin-top:10px">
+      <div style="font:800 18px 'Barlow Condensed';color:#f5f3f0;margin-bottom:6px">NO PREDICTIONS SUBMITTED</div>
+      <p class="sub" style="margin:0;font-size:12px;color:#8e8c95">${esc(player)} has not submitted any predictions for ${esc(t.name)} yet.</p>
+    </div>
+  ` : `
+    <!-- Champion Section -->
+    <div class="card" style="padding:14px 16px;background:linear-gradient(135deg,#1f1318 0%,#15151c 60%);border:1px solid #5c242d">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+        <span class="eyebrow" style="color:var(--amber)">Tournament Champion (100 PTS)</span>
+        ${champStatusHtml}
+      </div>
+      <div style="display:flex;align-items:center;gap:10px">
+        ${champPick ? `
+          <span class="mini-avatar" style="width:28px;height:28px;background-image:${profilePictures[champPick] ? `url('${esc(profilePictures[champPick])}')` : fallbackArt(champPick)};background-size:cover;background-position:center;font-size:12px">${profilePictures[champPick] ? '' : esc((champPick||'?')[0])}</span>
+          <div>
+            <div style="font-weight:800;font-size:15px;color:#ffd166">${esc(champPick)}</div>
+            <div style="font-size:10px;color:#8e8c95">${esc(teamName(t, champPick) || '')}</div>
+          </div>
+        ` : `<span style="font-size:12px;color:#8e8c95">No champion prediction submitted</span>`}
+      </div>
+    </div>
+
+    <!-- Group Winners Section -->
+    ${groupWinnersHtml}
+
+    <!-- Match Pick'ems Section -->
+    <div style="margin-top:8px">
+      <div class="eyebrow" style="color:#f05059;margin-bottom:4px">Match Pick'ems (8 PTS EACH)</div>
+      ${matchesHtml}
+    </div>
+
+    <!-- Top Cut Matches Section -->
+    ${topCutMatchesHtml}
+
+    <!-- Other Predictions Section -->
+    ${otherHtml}
+  `;
+
   document.querySelector('#modal').innerHTML = `
-    <div class="modal-wrap">
+    <div class="modal-wrap" onclick="if(event.target===this)closeModal()">
       <div class="modal" style="max-width:760px;max-height:88vh;display:flex;flex-direction:column;padding:22px 24px">
         <div class="modal-head" style="margin-bottom:14px;padding-bottom:14px;border-bottom:1px solid #2a2a36">
           <div style="display:flex;align-items:center;gap:12px">
@@ -22211,31 +22412,7 @@ async function openUserPredictionsModal(usernameOrId, tournamentId){
         </div>
 
         <div style="overflow-y:auto;padding-right:6px;display:flex;flex-direction:column;gap:12px">
-          <!-- Champion Section -->
-          <div class="card" style="padding:14px 16px;background:linear-gradient(135deg,#1f1318 0%,#15151c 60%);border:1px solid #5c242d">
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-              <span class="eyebrow" style="color:var(--amber)">Tournament Champion (100 PTS)</span>
-              ${champStatusHtml}
-            </div>
-            <div style="display:flex;align-items:center;gap:10px">
-              ${champPick ? `
-                <span class="mini-avatar" style="width:28px;height:28px;background-image:${profilePictures[champPick] ? `url('${esc(profilePictures[champPick])}')` : fallbackArt(champPick)};background-size:cover;background-position:center;font-size:12px">${profilePictures[champPick] ? '' : esc((champPick||'?')[0])}</span>
-                <div>
-                  <div style="font-weight:800;font-size:15px;color:#ffd166">${esc(champPick)}</div>
-                  <div style="font-size:10px;color:#8e8c95">${esc(teamName(t, champPick) || '')}</div>
-                </div>
-              ` : `<span style="font-size:12px;color:#8e8c95">No champion prediction submitted</span>`}
-            </div>
-          </div>
-
-          <!-- Group Winners Section -->
-          ${groupWinnersHtml}
-
-          <!-- Match Pick'ems Section -->
-          <div style="margin-top:8px">
-            <div class="eyebrow" style="color:#f05059;margin-bottom:4px">Match Pick'ems (8 PTS EACH)</div>
-            ${matchesHtml}
-          </div>
+          ${bodyContent}
         </div>
       </div>
     </div>
