@@ -3689,6 +3689,17 @@ try{
   if(savedCovers)Object.assign(teamCovers,savedCovers);
   let savedPics=JSON.parse(localStorage.getItem('draftdex-profilepics')||'null');
   if(savedPics)Object.assign(profilePictures,savedPics);
+  // Auto-convert any team covers into profile pictures
+  let convertedAnyCovers = false;
+  Object.keys(teamCovers).forEach(k => {
+    if(teamCovers[k] && !profilePictures[k]){
+      profilePictures[k] = teamCovers[k];
+      convertedAnyCovers = true;
+    }
+  });
+  if(convertedAnyCovers){
+    try{ localStorage.setItem('draftdex-profilepics', JSON.stringify(profilePictures)); }catch(e){}
+  }
   let savedPulse=JSON.parse(localStorage.getItem('draftdex-pulsepanels')||'null');
   if(savedPulse)Object.assign(pulsePanelImages,savedPulse);
   let savedDraftCover=localStorage.getItem('draftdex-draft-cover');
@@ -4150,7 +4161,7 @@ function Predictions(){
 
 function historyTournamentOptions(){let past=Object.values(tournamentData).filter(t=>t.status==='COMPLETE');return past.length?past.map(t=>`<option value="${t.name} · ${t.season}">${t.name} · ${t.season}</option>`).join(''):'<option>No completed tournaments yet</option>'}
 
-function openProfile(p){let q=ensureProfile(p);document.querySelector('#modal').innerHTML=`<div class="modal-wrap"><div class="modal"><div class="modal-head"><div><div class="eyebrow">Player profile · linked account</div><h2>${p}</h2></div><button class="close" onclick="closeModal()">×</button></div><div class="profile-layout" style="margin-top:18px"><aside class="card profile-card"><div class="avatar" style="background:${profileArt(p)}">${profilePictures[p]||teamCovers[p]?``:p[0]}</div><div class="profile-name">${p}</div><div class="mini-stats"><div><b>${q.cups.length}x</b><span>Champion</span></div><div><b>${q.tops}x</b><span>Top Cut</span></div><div><b>${q.record}</b><span>All-time W-L</span></div></div>${q.cups.length?`<div style="margin-top:14px"><div class="card-title">Championships</div>${q.cups.map(c=>`<div class="sub" style="margin-top:4px">🏆 ${c}</div>`).join('')}</div>`:''}${moderator?`<div class="card" style="padding:14px;margin-top:14px;background:#111116;border-color:#32323a"><div class="eyebrow">Profile art</div><div class="sub" style="margin-top:6px">Update the player photo and the team cover used across the site.</div><div class="creator-actions" style="justify-content:flex-start;flex-wrap:wrap"><button class="btn ghost" onclick="openProfilePictureEditor('${p}')">Edit profile picture</button><button class="btn ghost" onclick="openTeamCoverEditor('${p}')">Edit team cover</button></div></div>`:''}</aside><section class="card roster-editor"><div class="card-title">Current roster</div>${moderator?`<div class="poke-search"><input id="newMon" placeholder="Search / add a Pokémon"><button class="btn" onclick="addMon('${p}')">Add</button></div>`:''}<div class="roster-edit-list" id="rosterList">${rosterList(p)}</div><div class="section"><div class="card-title">Team history</div>${historyList(p)}${moderator?`<div class="card" style="padding:14px;margin-top:12px"><div class="field"><label>Previous tournament</label><select id="historyTournament">${historyTournamentOptions()}</select></div><div class="field"><label>Team name in that tournament</label><input id="historyTeam" placeholder="e.g. Obsidian Owls"></div><button class="btn ghost" style="margin-top:12px" onclick="addHistoryTeam('${p}')">+ Add historical team</button></div>`:''}</div></section></div></div></div>`}
+function openProfile(p){let q=ensureProfile(p);document.querySelector('#modal').innerHTML=`<div class="modal-wrap"><div class="modal"><div class="modal-head"><div><div class="eyebrow">Player profile · linked account</div><h2>${p}</h2></div><button class="close" onclick="closeModal()">×</button></div><div class="profile-layout" style="margin-top:18px"><aside class="card profile-card"><div class="avatar" style="background:${profileArt(p)}">${profilePictures[p]||teamCovers[p]?``:p[0]}</div><div class="profile-name">${p}</div><div class="mini-stats"><div><b>${q.cups.length}x</b><span>Champion</span></div><div><b>${q.tops}x</b><span>Top Cut</span></div><div><b>${q.record}</b><span>All-time W-L</span></div></div>${q.cups.length?`<div style="margin-top:14px"><div class="card-title">Championships</div>${q.cups.map(c=>`<div class="sub" style="margin-top:4px">🏆 ${c}</div>`).join('')}</div>`:''}${moderator?`<div class="card" style="padding:14px;margin-top:14px;background:#111116;border-color:#32323a"><div class="eyebrow">Profile picture</div><div class="sub" style="margin-top:6px">Update the coach profile picture used across the site.</div><div class="creator-actions" style="justify-content:flex-start;flex-wrap:wrap"><button class="btn ghost" onclick="openProfilePictureEditor('${p}')">Edit profile picture</button></div></div>`:''}</aside><section class="card roster-editor"><div class="card-title">Current roster</div>${moderator?`<div class="poke-search"><input id="newMon" placeholder="Search / add a Pokémon"><button class="btn" onclick="addMon('${p}')">Add</button></div>`:''}<div class="roster-edit-list" id="rosterList">${rosterList(p)}</div><div class="section"><div class="card-title">Team history</div>${historyList(p)}${moderator?`<div class="card" style="padding:14px;margin-top:12px"><div class="field"><label>Previous tournament</label><select id="historyTournament">${historyTournamentOptions()}</select></div><div class="field"><label>Team name in that tournament</label><input id="historyTeam" placeholder="e.g. Obsidian Owls"></div><button class="btn ghost" style="margin-top:12px" onclick="addHistoryTeam('${p}')">+ Add historical team</button></div>`:''}</div></section></div></div></div>`}
 function addHistoryTeam(p){let tournament=document.querySelector('#historyTournament').value,team=document.querySelector('#historyTeam').value.trim()||'Unnamed team';if(tournament==='No completed tournaments yet'){alert('Complete a tournament first.');return}teamHistory[p]??=[];teamHistory[p].push({tournament,team,pokemon:[]});persistLeague();openProfile(p)}
 
 function createTournament(){
@@ -4283,39 +4294,13 @@ function teamName(t,p){return t&&Object.prototype.hasOwnProperty.call(t,'teamNam
 
 
 
-function teamCoverBg(p){return teamCovers[p]?`style="background-image:url('${esc(teamCovers[p])}');background-size:cover;background-position:center"`:''}
+function teamCoverBg(p){
+  let img = profilePictures[p] || teamCovers[p];
+  return img ? `style="background-image:url('${esc(img)}');background-size:cover;background-position:center"` : '';
+}
 
 function openTeamCoverEditor(p){
-  let t = ongoingT() || activeT();
-  let tName = t ? teamName(t, p) : (profiles[p]?.team || `${p}'s Team`);
-  let curCover = teamCovers[p] || '';
-
-  openVisualCoverCropper({
-    title: tName,
-    eyebrow: `Team Banner · ${p}`,
-    description: `Frame and crop your team banner artwork. This image is showcased across the Teams tab, Standings, and coach cards. Drag the photo or use the sliders to frame.`,
-    aspectRatio: 2.2,
-    panelShapeName: 'Team Banner (2.2:1)',
-    currentCover: curCover,
-    mockOverlay: 'team',
-    coachName: p,
-    teamName: tName,
-    onSave: function(croppedDataUrl){
-      teamCovers[p] = croppedDataUrl;
-      try{ localStorage.setItem('draftdex-teamcovers', JSON.stringify(teamCovers)); }catch(e){}
-      if(moderator) pushMediaToCloud();
-      persistLeague();
-      if(document.querySelector('#modal')?.innerHTML?.trim()){
-        openProfile(p);
-      } else {
-        render();
-      }
-      if(typeof showDraftToast === 'function') showDraftToast('🎨 Team banner cropped & saved!');
-    },
-    onRemove: function(){
-      removeTeamCover(p);
-    }
-  });
+  return openProfilePictureEditor(p);
 }
 function saveTeamCover(p){
   if(!window.pendingTeamCover){closeModal();return}
@@ -9052,10 +9037,10 @@ function editProfile(p, returnToProfile = false){
     <div class="field"><label>Default team name</label><input id="editDefaultTeam" value="${esc(q.team)}" placeholder="e.g. Celestial Garchomps"></div>
     <div class="field"><label>Pokémon Showdown Username(s)</label><input id="editShowdownUsername" value="${esc(q.showdownUser || '')}" placeholder="e.g. EthanDBSV (or comma-separated alts)"></div>
     <div class="card" style="padding:14px;margin-top:14px;background:#111116;border-color:#32323a">
-      <div class="eyebrow">Profile art</div>
-      <p class="sub" style="margin:7px 0 12px">Use the player photo on profile pages and the team cover on team cards.</p>
+      <div class="eyebrow">Profile picture</div>
+      <p class="sub" style="margin:7px 0 12px">Coach avatar showcased across matches, standings, rosters, and leaderboards.</p>
       <div class="creator-actions" style="justify-content:start;flex-wrap:wrap">
-        ${moderator?`<button class="btn ghost" onclick="openProfilePictureEditor('${jsArg(p)}')">Edit profile picture</button><button class="btn ghost" onclick="openTeamCoverEditor('${jsArg(p)}')">Edit team cover</button>`:''}
+        ${moderator?`<button class="btn ghost" onclick="openProfilePictureEditor('${jsArg(p)}')">Edit profile picture</button>`:''}
       </div>
     </div>
     <div class="card" style="padding:14px;margin-top:14px;background:#111116;border-color:#32323a">
@@ -11912,6 +11897,17 @@ async function fetchMediaFromCloud(){
       if(m.profilePictures){
         Object.keys(profilePictures).forEach(k => delete profilePictures[k]);
         Object.assign(profilePictures, m.profilePictures);
+        try { localStorage.setItem('draftdex-profilepics', JSON.stringify(profilePictures)); } catch(e){}
+      }
+      // Ensure all team covers are converted to profile pictures
+      let convertedAnyCloudCovers = false;
+      Object.keys(teamCovers).forEach(k => {
+        if(teamCovers[k] && !profilePictures[k]){
+          profilePictures[k] = teamCovers[k];
+          convertedAnyCloudCovers = true;
+        }
+      });
+      if(convertedAnyCloudCovers){
         try { localStorage.setItem('draftdex-profilepics', JSON.stringify(profilePictures)); } catch(e){}
       }
       if(m.pulsePanelImages){
@@ -18244,8 +18240,8 @@ function removePulsePanelCover(id){
   closeModal();
   render();
 }
-function teamArt(p,t){let img=teamCovers[p];return img?`url('${esc(img)}')`:fallbackArt(teamName(t||ongoingT(),p)+p)}
-function profileArt(p,t){let img=profilePictures[p];return img?`url('${esc(img)}')`:teamArt(p,t)}
+function teamArt(p,t){let img=profilePictures[p]||teamCovers[p];return img?`url('${esc(img)}')`:fallbackArt((typeof teamName==='function'?teamName(t||ongoingT(),p):'')+p)}
+function profileArt(p,t){let img=profilePictures[p]||teamCovers[p];return img?`url('${esc(img)}')`:fallbackArt((typeof teamName==='function'?teamName(t||ongoingT(),p):'')+p)}
 /* ------------------------------------------------------------ 2. DRAFT BOARD ------------------------------------------------------------ */
 const LEAGUE_SHEET='https://docs.google.com/spreadsheets/d/1Yp2dd_1VljvlX7XA-vCZBqMv4IMcZell3wSLkTjI8fI/edit';
 var boardTab='Draft Sheet',poolStatus='',mockSearch='',poolSort='cost',affordableOnly=false;
@@ -19782,8 +19778,7 @@ function openProfile(p){
             <div class="eyebrow" style="margin-bottom:8px">Moderator tools</div>
             <div class="pf-mod-actions">
               <button class="btn ghost btn-sm" style="color:var(--amber);border-color:#5e4a1a;grid-column:1/-1" onclick="openBadgeManager('${jsArg(p)}')">🎖️ Manage Player Badges</button>
-              <button class="btn ghost btn-sm" onclick="openProfilePictureEditor('${jsArg(p)}')">Edit photo</button>
-              <button class="btn ghost btn-sm" onclick="openTeamCoverEditor('${jsArg(p)}')">Edit cover</button>
+              <button class="btn ghost btn-sm" onclick="openProfilePictureEditor('${jsArg(p)}')">Edit profile picture</button>
               <button class="btn ghost btn-sm" onclick="editProfile('${jsArg(p)}', true)">Edit Profile</button>
               <button class="btn ghost btn-sm" onclick="openAccountLinks('${jsArg(p)}')">Link account</button>
               <button class="btn ghost btn-sm" style="color:var(--amber);border-color:#5e4a1a;grid-column:1/-1" onclick="cleanAndSyncRostersPrompt()">🧹 Clean Active Rosters</button>
@@ -25476,8 +25471,8 @@ function TeamRosterDetailView(t, p){
       <button class="btn ghost btn-sm" onclick="openTournamentPointCostsEditor('${jsArg(t.id)}')">
         💰 Edit Point Costs
       </button>
-      <button class="btn ghost btn-sm" onclick="openTeamCoverEditor('${jsArg(p)}')">
-        📷 Edit Cover
+      <button class="btn ghost btn-sm" onclick="openProfilePictureEditor('${jsArg(p)}')">
+        📷 Edit Profile Picture
       </button>
     </div>
   ` : '';

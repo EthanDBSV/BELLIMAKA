@@ -3,6 +3,18 @@
 All notable changes to the Bellimaka Pokémon Draft League site are documented here.
 Format: `v[MAJOR].[MINOR].[PATCH]` — Major = big new systems, Minor = new features, Patch = bug fixes / small improvements.
 
+## [v1.1.6] — 2026-09-24
+
+### Changed
+- **Unified Sole Profile Picture (PFP) System** — Retired the dual team cover and coach photo system in favor of a single, unified coach profile picture (PFP) identity across the platform:
+  - All coach cards, leaderboard items, tournament match cards, draft displays, and roster views now display the coach's circular profile picture avatar.
+  - Streamlined the Coach Profile modal, moderation controls, and Team Roster detail headers by removing redundant "Edit Cover" buttons and replacing them with a single "Edit profile picture" control featuring the 1:1 circular guide cropper.
+  - Aliased legacy cover editor invocations (`openTeamCoverEditor`) directly to `openProfilePictureEditor` to preserve compatibility with any remaining references.
+
+### Fixed
+- **Converted All Existing Team Covers to Profile Pictures** — Migrated all 12 coaches with team covers in Cloudflare KV (`Kai`, `Max`, `Ozy`, `Sam`, `Eric`, `Jace`, `Trtl`, `Ethan`, `Kiril`, `Yamac`, `Dao Ming`, `Praneeth`) into official `profilePictures` entries, ensuring no coach's artwork or branding was lost.
+- **Client Startup & Cloud Ingestion Migration** — Added automatic conversion upon client boot (`localStorage` merge) and cloud media synchronization (`fetchMediaFromCloud`) to seamlessly transfer any cached or incoming legacy cover artwork into `profilePictures`.
+
 ---
 
 ## [v1.1.5] — 2026-09-23
