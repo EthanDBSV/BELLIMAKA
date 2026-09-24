@@ -12834,6 +12834,10 @@ async function initBackend(){
       setupDraftRealtime();
       await syncFromCloud(true);
       fetchMediaFromCloud();
+      if(sessionUser?.id && typeof syncLocalPicksToCloud === 'function'){
+        let oT = (typeof ongoingT === 'function' && ongoingT()) || (typeof activeT === 'function' && activeT());
+        if(oT?.id) syncLocalPicksToCloud(oT.id);
+      }
       render();
     } catch(e){
       console.warn('Draftdex: initCloudflare error:', e);
@@ -16591,6 +16595,10 @@ async function signIn(event){
         if(document.querySelector('#modal .auth-form-card')){
           closeModal();
         }
+        if(typeof syncLocalPicksToCloud === 'function'){
+          let oT = (typeof ongoingT === 'function' && ongoingT()) || (typeof activeT === 'function' && activeT());
+          if(oT?.id) syncLocalPicksToCloud(oT.id);
+        }
         render();
       }
     } catch(err) {
@@ -16724,6 +16732,10 @@ async function signUp(event){
         }
         if(document.querySelector('#modal .auth-form-card')){
           closeModal();
+        }
+        if(typeof syncLocalPicksToCloud === 'function'){
+          let oT = (typeof ongoingT === 'function' && ongoingT()) || (typeof activeT === 'function' && activeT());
+          if(oT?.id) syncLocalPicksToCloud(oT.id);
         }
         render();
       }
@@ -21473,6 +21485,35 @@ function getLocalPredictionRows(tournamentId){
   return rows;
 }
 
+async function syncLocalPicksToCloud(tournamentId){
+  if(isSandboxMode() || !backendReady() || !sessionUser?.id || !tournamentId) return;
+  let bType = getBackendType();
+  if(bType !== 'cloudflare') return;
+  try {
+    let localRows = getLocalPredictionRows(tournamentId);
+    if(!localRows.length) return;
+    let cfUrl = getCloudflareUrl();
+    let cacheRows = predictionScoresCache[tournamentId]?.rows || [];
+    for(let lr of localRows){
+      if(!lr.prediction_key || !lr.selection) continue;
+      let lrTarget = canonicalPredictionEventKey(lr.prediction_key);
+      let cloudMatch = cacheRows.find(r => (r.user_id === sessionUser.id || r.user_id === window.currentAccount?.username) && canonicalPredictionEventKey(r.prediction_key) === lrTarget);
+      if(!cloudMatch || cloudMatch.selection !== lr.selection){
+        fetch(`${cfUrl}/api/predictions?tournament_id=${encodeURIComponent(tournamentId)}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            action: 'upsert',
+            user_id: sessionUser.id,
+            prediction_key: lr.prediction_key,
+            selection: lr.selection
+          })
+        }).catch(()=>{});
+      }
+    }
+  } catch(e){}
+}
+
 function leaderboardShell(t){
   let cached = predictionScoresCache[t?.id];
   if(cached && cached.html){
@@ -21520,6 +21561,9 @@ function updateLocalPredictionInCache(tournamentId, question, choice, isRemoving
   });
 
   predictionScoresCache[tournamentId].rows = deduplicatePredictionRows(rows);
+  if(sessionUser?.id && tournamentId && typeof syncLocalPicksToCloud === 'function'){
+    syncLocalPicksToCloud(tournamentId);
+  }
 
   let accounts = predictionScoresCache[tournamentId].accounts || [];
   let userAcc = accounts.find(a => a.id === userIdentifier || a.username === effectiveUsername);
@@ -21628,6 +21672,9 @@ async function renderPredictionLeaders(t, forceFresh = false){
   }
 
   rows = deduplicatePredictionRows(rows);
+  if(sessionUser?.id && t?.id && typeof syncLocalPicksToCloud === 'function'){
+    syncLocalPicksToCloud(t.id);
+  }
 
   let byId = Object.fromEntries((accounts || []).map(a => [a.id, a.username]));
   let { rows: board, settled, pending } = scorePredictionRows(t, rows, id => byId[id] || (id === currentUserId ? effectiveUsername : id));
@@ -21662,7 +21709,7 @@ async function openUserPredictionsModal(usernameOrId, tournamentId){
   let t = (tournamentId && tournamentData[tournamentId]) || activeT() || ongoingT();
   if(!t) return;
 
-  if(!predictionScoresCache[t.id] || !predictionScoresCache[t.id].rows?.length){
+  if(!predictionScoresCache[t.id] || !predictionScoresCache[t.id].rows?.length || (Date.now() - (predictionScoresCache[t.id].timestamp || 0) > 10000)){
     if(typeof renderPredictionLeaders === 'function'){
       await renderPredictionLeaders(t, true);
     }
@@ -21681,9 +21728,14 @@ async function openUserPredictionsModal(usernameOrId, tournamentId){
     if(account.id) userIds.push(account.id);
     if(account.username) userIds.push(account.username);
   }
-  if(usernameOrId === player && typeof accountForPlayer === 'function'){
-    let ac = accountForPlayer(player);
-    if(ac) userIds.push(ac);
+  if(typeof accountForPlayer === 'function'){
+    let ac = accountForPlayer(player) || accountForPlayer(usernameOrId);
+    if(ac){
+      userIds.push(ac);
+      let linkedAcc = accounts.find(a => a.username?.toLowerCase() === String(ac).toLowerCase() || a.id === ac);
+      if(linkedAcc?.id) userIds.push(linkedAcc.id);
+      if(linkedAcc?.username) userIds.push(linkedAcc.username);
+    }
   }
 
   let allRows = cached.rows || [];
