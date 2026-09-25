@@ -4596,6 +4596,13 @@ const POKEMON_BASE_HP = {"snorlax":160,"cyclohm":108,"cranidos":67,"oinkolognef"
 
 function getPokemonBaseHp(name) {
   let k = String(name || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+  if(!k) return 80;
+  if(k.startsWith('hisuian')) k = k.slice(7) + 'hisui';
+  else if(k.startsWith('alolan')) k = k.slice(6) + 'alola';
+  else if(k.startsWith('galarian')) k = k.slice(8) + 'galar';
+  else if(k.startsWith('paldean')) k = k.slice(7) + 'paldea';
+  if(k === 'bloodmoon') k = 'ursalunabloodmoon';
+
   if(POKEMON_BASE_HP[k]) return POKEMON_BASE_HP[k];
   for(let key in POKEMON_BASE_HP){
     if(k.startsWith(key) || key.startsWith(k)) return POKEMON_BASE_HP[key];
@@ -4603,11 +4610,72 @@ function getPokemonBaseHp(name) {
   return 80;
 }
 
+const VGC_BULKY_SET = new Set([
+  'incineroar', 'amoonguss', 'farigiraf', 'clefairy', 'clefable', 'pelipper', 'torkoal',
+  'grimmsnarl', 'sinistcha', 'politoed', 'toxapex', 'indeedee', 'indeedeef', 'oranguru',
+  'smeargle', 'whimsicott', 'comfey', 'alomomola', 'dondozo', 'cresselia', 'tinglu',
+  'wochien', 'garganacl', 'corviknight', 'blissey', 'chansey', 'sableye', 'maushold',
+  'mausholdfour', 'mausholdthree', 'ursaluna', 'ursalunabloodmoon', 'kingambit',
+  'archaludon', 'ironhands', 'rillaboom', 'ragingbolt', 'gougingfire', 'heatran',
+  'goodrahisui', 'goodra', 'slowbro', 'slowking', 'slowkinggalar', 'skeledirge',
+  'bellibolt', 'mudsdale', 'hippowdon', 'gastrodon', 'quagsire', 'clodsire', 'brutebonnet',
+  'screamtail', 'okidogi', 'orthworm', 'arcaninehisui', 'arcanine', 'milotic', 'suicune',
+  'raichu', 'raichualola', 'lapras', 'snorlax', 'abomasnow', 'drifblim', 'copperajah',
+  'hariyama', 'volcarona', 'rotomwash', 'rotomheat', 'rotommow', 'rotomfrost', 'articuno',
+  'articunogalar', 'zapdos', 'moltres', 'entei', 'swampert', 'blastoisegmax', 'blastoise',
+  'venusaur', 'venusaurgmax', 'charizard', 'charizardgmax', 'tyranitar', 'metagross',
+  'garchomp', 'kommoo', 'hydreigon', 'baxcalibur', 'annihilape'
+]);
+
+const VGC_FAST_OFFENSIVE_SET = new Set([
+  'fluttermane', 'chienpao', 'chiyu', 'urshifu', 'urshifurapidstrike', 'dragapult',
+  'meowscarada', 'ironbundle', 'ironvaliant', 'roaringmoon', 'gengar', 'greninja',
+  'weavile', 'talonflame', 'kilowattrel', 'barraskewda', 'regieleki', 'cinderace',
+  'inteleon', 'zoroark', 'zoroarkhisui', 'sneasler', 'staraptor', 'aerodactyl',
+  'ninjask', 'dugtrio', 'dugtrioalola', 'breloom', 'darmanitan', 'darmanitangalar',
+  'blacephalon', 'kartana', 'pheromosa', 'spectrier', 'alakazam', 'lucario',
+  'thundurus', 'thundurustherian', 'tornadus', 'tornadustherian', 'zapdosgalar',
+  'moltresgalar', 'quaquaval', 'ceruledge', 'armarouge', 'espathra', 'brambleghast',
+  'scovillain', 'gallade', 'gardevoir', 'haxorus', 'noivern'
+]);
+
 function getPokemonEstimatedMaxHp(name, rawMax) {
   if(rawMax > 100) return rawMax;
+  let clean = String(name || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+  if(clean === 'shedinja') return 1;
+
   let base = getPokemonBaseHp(name);
-  let bonus = base >= 80 ? 90 : 75;
-  return base + bonus;
+
+  // VGC Level 50 formula (31 IVs):
+  // Min (0 HP EVs) = Base + 75
+  // Moderate (~120 HP EVs) = Base + 90
+  // Max (252 HP EVs) = Base + 107
+  if(VGC_BULKY_SET.has(clean)){
+    return base + 107;
+  }
+  for(let bKey of VGC_BULKY_SET){
+    if(clean.startsWith(bKey) || bKey.startsWith(clean)){
+      return base + 107;
+    }
+  }
+
+  if(VGC_FAST_OFFENSIVE_SET.has(clean)){
+    return base + 75;
+  }
+  for(let fKey of VGC_FAST_OFFENSIVE_SET){
+    if(clean.startsWith(fKey) || fKey.startsWith(clean)){
+      return base + 75;
+    }
+  }
+
+  // VGC heuristics:
+  // High base HP (>= 105) almost always fully invested in VGC
+  if(base >= 105) return base + 107;
+  // Naturally fragile/fast base HP (<= 65) almost always 0 HP EVs in VGC
+  if(base <= 65) return base + 75;
+
+  // Balanced default (moderate ~120 EV investment)
+  return base + 90;
 }
 
 function normalizeBattleFormToDraftForm(name) {
@@ -4816,7 +4884,7 @@ function parseShowdownBattleLog(logText, meta = {}) {
     pokemon: {},
     teamPreview: { p1: [], p2: [] },
     mvp: null,
-    version: 4
+    version: 6
   };
 
   let activeSlots = {};
@@ -5733,7 +5801,7 @@ function openMatchReplayHubModal(tournamentId, matchKey, activeGameNum = 1, acti
   let isLogMissing = (!activeReplay.log || typeof activeReplay.log !== 'string' || activeReplay.log.trim().length < 20);
 
   let stats = activeReplay.stats;
-  if(!isLogMissing && (!stats || !stats.sideAttribution || !stats.version || stats.version < 5)){
+  if(!isLogMissing && (!stats || !stats.sideAttribution || !stats.version || stats.version < 6)){
     stats = parseShowdownBattleLog(activeReplay.log, { id: activeReplay.id, game: activeGameNum, match: m, coach1: p1, coach2: p2, manualSwapped: activeReplay.swapped });
     activeReplay.stats = stats;
   }
@@ -7269,7 +7337,7 @@ function calculateTeamOfTheSeason(t) {
   gfReplays.forEach(r => {
     let stats = r.stats;
     let hasValidStats = stats && stats.pokemon && (Array.isArray(stats.pokemon) ? stats.pokemon.length > 0 : Object.keys(stats.pokemon).length > 0);
-    if((!hasValidStats || !stats.version || stats.version < 5) && r.log && typeof r.log === 'string' && r.log.includes('|')) {
+    if((!hasValidStats || !stats.version || stats.version < 6) && r.log && typeof r.log === 'string' && r.log.includes('|')) {
       let parsed = parseShowdownBattleLog(r.log, {
         id: r.id,
         game: r.game,
@@ -7423,7 +7491,7 @@ function calculateTeamOfTheSeason(t) {
   allReplays.forEach(({ replay, match, isTopCut }) => {
     let stats = replay.stats;
     let hasValidStats = stats && stats.pokemon && (Array.isArray(stats.pokemon) ? stats.pokemon.length > 0 : Object.keys(stats.pokemon).length > 0);
-    if((!hasValidStats || !stats.version || stats.version < 5) && replay.log && typeof replay.log === 'string' && replay.log.includes('|')) {
+    if((!hasValidStats || !stats.version || stats.version < 6) && replay.log && typeof replay.log === 'string' && replay.log.includes('|')) {
       let parsed = parseShowdownBattleLog(replay.log, {
         id: replay.id,
         game: replay.game,
@@ -8501,7 +8569,7 @@ function getTournamentPokemonStatsMap(t) {
   allReplays.forEach(({ replay, match }) => {
     let stats = replay.stats;
     let hasValidStats = stats && stats.pokemon && (Array.isArray(stats.pokemon) ? stats.pokemon.length > 0 : Object.keys(stats.pokemon).length > 0);
-    if((!hasValidStats || !stats.version || stats.version < 5) && replay.log && typeof replay.log === 'string' && replay.log.includes('|')) {
+    if((!hasValidStats || !stats.version || stats.version < 6) && replay.log && typeof replay.log === 'string' && replay.log.includes('|')) {
       let parsed = parseShowdownBattleLog(replay.log, {
         id: replay.id,
         game: replay.game,

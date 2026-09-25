@@ -3,6 +3,24 @@
 All notable changes to the Bellimaka Pokémon Draft League site are documented here.
 Format: `v[MAJOR].[MINOR].[PATCH]` — Major = big new systems, Minor = new features, Patch = bug fixes / small improvements.
 
+## [v1.1.9] — 2026-09-25
+
+### Changed
+- **Fair Level 50 VGC Damage & HP Calculations for Showdown Replays** — Overhauled the damage dealt and damage taken stat parser for Pokémon Showdown battle replays to ensure balanced and fair metrics between spectated and non-spectated players:
+  - In Showdown replays, non-spectated opponent Pokémon report remaining health as percentages rather than exact raw HP values.
+  - Replaced legacy flat HP estimation heuristics with standard Level 50 VGC stat calculations based on 31 IVs and archetype-specific EV investments.
+  - Implemented archetype-aware HP formulas:
+    - Bulky & Support archetype (252 HP EVs): `Base + 107` HP (e.g., Incineroar, Amoonguss, Farigiraf, Torkoal, Pelipper, Clefairy, Sinistcha).
+    - Fast & Offensive archetype (0 HP EVs): `Base + 75` HP (e.g., Flutter Mane, Chi-Yu, Urshifu, Chien-Pao).
+    - Balanced / Flexible builds (~120 HP EVs default heuristic): `Base + 90` HP.
+    - Handled special mechanics directly (e.g., Shedinja capped at 1 HP).
+  - Normalized regional form prefixes and alternate form naming before HP lookup.
+
+### Fixed
+- **Automated Replay Stats Cache Invalidation** — Bumped the battle log parser version to `v6` across all replay aggregation pipelines (Match Replay Hub modal, Game Freak season stats, overall leaderboard aggregations, and player box scores). All existing battle logs automatically re-parse with fair Level 50 VGC damage stats without requiring manual cache resets.
+
+---
+
 ## [v1.1.8] — 2026-09-24
 
 ### Added
