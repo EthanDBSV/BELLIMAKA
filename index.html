@@ -5306,7 +5306,7 @@ function parseShowdownBattleLog(logText, meta = {}) {
     }
   }
   result.mvp = mvpMon;
-  result.version = 5;
+  result.version = 6;
 
   return result;
 }
@@ -7379,9 +7379,10 @@ function calculateTeamOfTheSeason(t) {
     });
 
     gfGameGroup.forEach(gEntry => {
-      let key = gEntry.name.toLowerCase();
+      let key = (gEntry.coach ? gEntry.coach.toLowerCase() + '::' : '') + gEntry.name.toLowerCase();
+      let draftKey = gEntry.name.toLowerCase();
       if(!gfMonMap.has(key)) {
-        let canonicalSprite = (typeof resolvePokemonData === 'function' ? resolvePokemonData(gEntry.name)?.sprite : null) || (typeof getPokemonSpriteUrl === 'function' ? getPokemonSpriteUrl(key) : '') || gEntry.sprite;
+        let canonicalSprite = (typeof resolvePokemonData === 'function' ? resolvePokemonData(gEntry.name)?.sprite : null) || (typeof getPokemonSpriteUrl === 'function' ? getPokemonSpriteUrl(draftKey) : '') || gEntry.sprite;
         gfMonMap.set(key, {
           name: gEntry.name,
           coach: gEntry.coach || '',
@@ -7473,15 +7474,6 @@ function calculateTeamOfTheSeason(t) {
       rList.forEach(rMon => {
         let clean = normalizeBattleFormToDraftForm(String(rMon).trim());
         if(clean) rosterCoachMap.set(clean.toLowerCase(), coachName);
-        let baseKey = clean.toLowerCase()
-          .replace(/-mega(-[xy])?/g, '')
-          .replace(/^mega\s+/g, '')
-          .replace(/\s+mega(-[xy])?$/g, '')
-          .replace(/\s+[xy]$/g, '')
-          .replace(/[^a-z0-9]/g, '');
-        if(baseKey && !rosterCoachMap.has(baseKey)) {
-          rosterCoachMap.set(baseKey, coachName);
-        }
       });
     });
   }
@@ -7529,9 +7521,17 @@ function calculateTeamOfTheSeason(t) {
     }
 
     let replayGameGroup = new Map();
+    let mC1 = replay.coach1 || match?.a || match?.p1 || '';
+    let mC2 = replay.coach2 || match?.b || match?.p2 || '';
     pList.forEach(p => {
       if(!p.name) return;
-      let coach = p.coach || (p.side === 'p1' ? (replay.coach1 || match?.a || match?.p1) : (replay.coach2 || match?.b || match?.p2)) || rosterCoachMap.get(p.name.trim().toLowerCase()) || '';
+      let coach = p.coach;
+      if(!coach || coach.toLowerCase().startsWith('player ')) {
+        coach = p.side === 'p1' ? mC1 : (p.side === 'p2' ? mC2 : '');
+      }
+      if(!coach) {
+        coach = (p.side === 'p1' ? mC1 : mC2) || rosterCoachMap.get(p.name.trim().toLowerCase()) || '';
+      }
       let cleanName = (typeof resolveDraftMonName === 'function') ? resolveDraftMonName(p.name, coach, t) : normalizeBattleFormToDraftForm(p.name.trim());
       let gKey = (coach || '') + '::' + cleanName.toLowerCase();
 
@@ -7570,11 +7570,12 @@ function calculateTeamOfTheSeason(t) {
     });
 
     replayGameGroup.forEach(gEntry => {
-      let key = gEntry.name.toLowerCase();
-      let initialCoach = gEntry.coach || rosterCoachMap.get(key) || '';
+      let key = (gEntry.coach ? gEntry.coach.toLowerCase() + '::' : '') + gEntry.name.toLowerCase();
+      let draftKey = gEntry.name.toLowerCase();
+      let initialCoach = gEntry.coach || rosterCoachMap.get(draftKey) || '';
 
       if(!monMap.has(key)) {
-        let canonicalSprite = (typeof resolvePokemonData === 'function' ? resolvePokemonData(gEntry.name)?.sprite : null) || (typeof getPokemonSpriteUrl === 'function' ? getPokemonSpriteUrl(key) : '') || gEntry.sprite;
+        let canonicalSprite = (typeof resolvePokemonData === 'function' ? resolvePokemonData(gEntry.name)?.sprite : null) || (typeof getPokemonSpriteUrl === 'function' ? getPokemonSpriteUrl(draftKey) : '') || gEntry.sprite;
         monMap.set(key, {
           name: gEntry.name,
           coach: initialCoach,
@@ -7609,7 +7610,7 @@ function calculateTeamOfTheSeason(t) {
         entry.regImpactScoreTotal += gEntry.curImpact;
       }
 
-      let curCoach = gEntry.coach || entry.coach || rosterCoachMap.get(key);
+      let curCoach = gEntry.coach || entry.coach || rosterCoachMap.get(draftKey);
       if(winningCoach && curCoach) {
         if(String(curCoach).trim().toLowerCase() === String(winningCoach).trim().toLowerCase() || (typeof isCoachMatch === 'function' && isCoachMatch(curCoach, winningCoach, t))) {
           entry.wins += 1;
@@ -7617,7 +7618,7 @@ function calculateTeamOfTheSeason(t) {
       }
 
       let rawKey = (gEntry.rawName || '').toLowerCase().trim();
-      if(key === gameMvpName || rawKey === gameMvpName) {
+      if(draftKey === gameMvpName || rawKey === gameMvpName) {
         entry.matchMvps += 1;
         if(!isTopCut) entry.regMatchMvps += 1;
       }
@@ -7637,7 +7638,7 @@ function calculateTeamOfTheSeason(t) {
     Object.keys(t.rosters).forEach(coachName => {
       let rList = t.rosters[coachName] || [];
       rList.forEach(rMon => {
-        let key = String(rMon).toLowerCase().trim();
+        let key = coachName.toLowerCase() + '::' + String(rMon).toLowerCase().trim();
         if(monMap.has(key)) {
           let entry = monMap.get(key);
           if(!entry.coach || entry.coach.toLowerCase().startsWith('player ')) entry.coach = coachName;
@@ -8535,10 +8536,14 @@ function renderTopCutMvpBannerHtml(tots, t) {
 }
 
 
-function getTournamentPokemonStatsMap(t) {
+function getTournamentPokemonStatsMap(t, coachFilter) {
   if(!t) return {};
-  if(t._cachedMonStatsVersion === 6 && t._cachedMonStatsMap && t._cachedMonStatsTime && (Date.now() - t._cachedMonStatsTime < 30000)) {
-    return t._cachedMonStatsMap;
+  let targetNorm = coachFilter ? String(coachFilter).trim().toLowerCase() : null;
+  let cacheKey = targetNorm || '__global__';
+
+  if(!t._cachedMonStatsMaps) t._cachedMonStatsMaps = {};
+  if(t._cachedMonStatsVersion === 6 && t._cachedMonStatsMaps[cacheKey] && t._cachedMonStatsTime && (Date.now() - t._cachedMonStatsTime < 30000)) {
+    return t._cachedMonStatsMaps[cacheKey];
   }
 
   let allReplays = [];
@@ -8553,7 +8558,7 @@ function getTournamentPokemonStatsMap(t) {
     Object.keys(t.topCutReplays).forEach(tcKey => {
       let rList = t.topCutReplays[tcKey];
       if(Array.isArray(rList)) {
-        let tcMatch = findTournamentMatch(t, tcKey)?.match || null;
+        let tcMatch = (typeof findTournamentMatch === 'function') ? findTournamentMatch(t, tcKey)?.match : null;
         rList.forEach(r => {
           let repId = r.id || `${tcKey}_g${r.game}`;
           if(!seenReplayIds.has(repId)){
@@ -8567,6 +8572,18 @@ function getTournamentPokemonStatsMap(t) {
 
   let map = {};
   allReplays.forEach(({ replay, match }) => {
+    let c1 = replay.coach1 || match?.a || match?.p1 || '';
+    let c2 = replay.coach2 || match?.b || match?.p2 || '';
+    let c1Norm = String(c1).trim().toLowerCase();
+    let c2Norm = String(c2).trim().toLowerCase();
+
+    // If coachFilter is specified, skip matches that do NOT involve this coach!
+    if(targetNorm) {
+      let isC1 = (c1Norm === targetNorm) || (typeof isCoachMatch === 'function' && isCoachMatch(c1, coachFilter, t));
+      let isC2 = (c2Norm === targetNorm) || (typeof isCoachMatch === 'function' && isCoachMatch(c2, coachFilter, t));
+      if(!isC1 && !isC2) return;
+    }
+
     let stats = replay.stats;
     let hasValidStats = stats && stats.pokemon && (Array.isArray(stats.pokemon) ? stats.pokemon.length > 0 : Object.keys(stats.pokemon).length > 0);
     if((!hasValidStats || !stats.version || stats.version < 6) && replay.log && typeof replay.log === 'string' && replay.log.includes('|')) {
@@ -8574,8 +8591,8 @@ function getTournamentPokemonStatsMap(t) {
         id: replay.id,
         game: replay.game,
         match: match,
-        coach1: match?.a || match?.p1,
-        coach2: match?.b || match?.p2,
+        coach1: c1,
+        coach2: c2,
         manualSwapped: replay.swapped
       });
       if(parsed && parsed.pokemon && (Array.isArray(parsed.pokemon) ? parsed.pokemon.length > 0 : Object.keys(parsed.pokemon).length > 0)) {
@@ -8587,7 +8604,21 @@ function getTournamentPokemonStatsMap(t) {
     let gameGroup = new Map();
     pList.forEach(p => {
       if(!p.name) return;
-      let coach = p.coach || (p.side === 'p1' ? (replay.coach1 || match?.a || match?.p1) : (replay.coach2 || match?.b || match?.p2)) || '';
+      let coach = p.coach;
+      if(!coach || coach.toLowerCase().startsWith('player ')) {
+        coach = p.side === 'p1' ? c1 : (p.side === 'p2' ? c2 : '');
+      }
+      if(!coach) {
+        coach = (p.side === 'p1' ? c1 : c2) || '';
+      }
+      let coachNorm = String(coach).trim().toLowerCase();
+
+      // If coachFilter is specified, ONLY count Pokemon fielded by that coach!
+      if(targetNorm) {
+        let isMatch = (coachNorm === targetNorm) || (typeof isCoachMatch === 'function' && isCoachMatch(coach, coachFilter, t));
+        if(!isMatch) return;
+      }
+
       let resolvedDraftName = (typeof resolveDraftMonName === 'function') ? resolveDraftMonName(p.name, coach, t) : normalizeBattleFormToDraftForm(p.name);
       let gKey = (coach || '') + '::' + resolvedDraftName.toLowerCase();
 
@@ -8667,7 +8698,7 @@ function getTournamentPokemonStatsMap(t) {
     s.avgImpactScore = s.impact / g;
   });
 
-  t._cachedMonStatsMap = map;
+  t._cachedMonStatsMaps[cacheKey] = map;
   t._cachedMonStatsVersion = 6;
   t._cachedMonStatsTime = Date.now();
   return map;
@@ -8704,14 +8735,10 @@ function findPokemonStatsInMap(map, name) {
     if(map[resolved.name]) return map[resolved.name];
   }
 
-  // Fallback between Mega and Base form keys
+  // Fallback if player drafted a Mega form but in battle log it was logged as base species without -mega
   let baseOnly = k1.replace(/^mega/g, '').replace(/mega$/g, '').replace(/[xy]$/g, '');
   if(baseOnly && baseOnly !== k1) {
     if(map[baseOnly]) return map[baseOnly];
-  } else if(baseOnly) {
-    if(map['mega' + baseOnly]) return map['mega' + baseOnly];
-    if(map['mega' + baseOnly + 'y']) return map['mega' + baseOnly + 'y'];
-    if(map['mega' + baseOnly + 'x']) return map['mega' + baseOnly + 'x'];
   }
 
   // Fallbacks for legacy/unparsed battle and cosmetic form keys
@@ -25948,7 +25975,7 @@ function TeamRosterDetailView(t, p){
   let coachStats = getDraftCoachStats(t, p);
   let maxSlots = coachStats.maxSlots || 10;
   let hasBudget = coachStats.budget > 0;
-  let monStatsMap = (typeof getTournamentPokemonStatsMap === 'function') ? getTournamentPokemonStatsMap(t) : {};
+  let monStatsMap = (typeof getTournamentPokemonStatsMap === 'function') ? getTournamentPokemonStatsMap(t, p) : {};
 
   // Build slot list: 10 slots (or maxSlots)
   let totalSlots = Math.max(10, maxSlots, teamMons.length);

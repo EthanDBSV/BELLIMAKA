@@ -18,6 +18,11 @@ Format: `v[MAJOR].[MINOR].[PATCH]` — Major = big new systems, Minor = new feat
 
 ### Fixed
 - **Automated Replay Stats Cache Invalidation** — Bumped the battle log parser version to `v6` across all replay aggregation pipelines (Match Replay Hub modal, Game Freak season stats, overall leaderboard aggregations, and player box scores). All existing battle logs automatically re-parse with fair Level 50 VGC damage stats without requiring manual cache resets.
+- **Coach-Scoped Replay Attribution & Species Form Isolation** — Fixed a bug where team roster cards could attribute Pokémon appearances and battle stats across different coaches who drafted distinct forms of the same species (e.g., base form vs Mega form):
+  - Scoped team roster stats strictly to matches played by that specific coach, preventing stats from leaking onto other rosters.
+  - Removed blind base-to-mega form fallbacks in stats lookups so distinct drafted forms never cross-pollinate.
+  - Enforced strict replay participant isolation so Pokémon in a battle replay can only ever be credited to the coaches participating in that match.
+  - Updated awards and all-star calculations to track each coach's Pokémon independently (`coach::species`) to prevent stats collisions.
 
 ---
 
