@@ -3,6 +3,21 @@
 All notable changes to the Bellimaka Pokémon Draft League site are documented here.
 Format: `v[MAJOR].[MINOR].[PATCH]` — Major = big new systems, Minor = new features, Patch = bug fixes / small improvements.
 
+## [v1.1.10] — 2026-09-27
+
+### Added
+- **Zoroark & Illusion Ability Support in Replay Parser** — Added comprehensive Showdown protocol handling for Zoroark and Hisuian Zoroark disguised via the Illusion ability:
+  - **Dynamic Slot Delta Attribution**: Added active slot snapshotting that tracks combat actions per switch. When Showdown emits `|replace|` upon breaking Illusion, all damage dealt, KOs, moves used, and damage taken while disguised are retroactively deducted from the disguised disguise and credited to the true Zoroark entry.
+  - **Fair Level 50 HP & Damage Rescaling**: Recalculates Zoroark's true Level 50 max HP and rescales percentage-based damage taken and HP healed to Zoroark's actual HP baseline. Automatically adjusts opposing attackers' damage dealt on the disguised slot to reflect Zoroark's true HP pool rather than the disguise's base HP.
+  - **Disguised Pokémon State Isolation**: Disguised species only retain combat statistics and appearances from turns where they were legitimately fielded on their own. If a Pokémon only appeared as a Zoroark disguise and was never brought into battle, its switch count drops to zero, resetting its status to benched (0 appearances, 0 damage, 0 KOs) so it is excluded from team rosters and award calculations.
+  - **Revival & Multi-Disguise Cycling**: Full support for multiple disguise cycles in a single battle, including revival via Revival Blessing followed by subsequent disguised entries and reveals.
+  - **Unbroken Illusion Fallback Detection**: If a team drafts or previews Zoroark and the Illusion is never broken during combat (e.g. 4-0 sweeps, clean substitutions, or evasion of direct hits), signature moves (`Bitter Malice` for Zoroark-Hisui, `Night Daze` for Zoroark) automatically detect the unbroken identity and attribute battle stats to Zoroark.
+
+### Fixed
+- **Replay Parser & Stats Cache Invalidation (`v7`)** — Bumped the Showdown replay parser and tournament stats cache version to `v7` across all aggregation systems (Match Replay Hub modals, Game Freak season stats, coach team rosters, and tournament leaderboard awards). All historical matches with Zoroark, Hisuian Zoroark, and disguised teammates re-parse automatically without requiring manual cache resets.
+
+---
+
 ## [v1.1.9] — 2026-09-25
 
 ### Changed

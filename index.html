@@ -4884,7 +4884,7 @@ function parseShowdownBattleLog(logText, meta = {}) {
     pokemon: {},
     teamPreview: { p1: [], p2: [] },
     mvp: null,
-    version: 6
+    version: 7
   };
 
   let activeSlots = {};
@@ -4964,11 +4964,15 @@ function parseShowdownBattleLog(logText, meta = {}) {
           faintTurn: null,
           moves: [],
           brought: true,
-          isMega: isMegaForm
+          isMega: isMegaForm,
+          switchCount: 0
         };
       }
 
       let pObj = result.pokemon[monId];
+      pObj.switchCount = (pObj.switchCount || 0) + 1;
+      pObj.brought = true;
+
       if(isMegaForm && !pObj.isMega){
         pObj.isMega = true;
         pObj.species = monName;
@@ -4977,7 +4981,161 @@ function parseShowdownBattleLog(logText, meta = {}) {
       }
       let curHp = maxHpRaw > 100 ? curHpRaw : Math.round(pObj.maxHp * (curHpRaw / 100));
       pObj.curHp = curHp;
-      activeSlots[slot] = { side, name: pObj.name, species: pObj.species, monId, key: monId, pObj, curHp, maxHp: pObj.maxHp, isRaw: maxHpRaw > 100 };
+
+      activeSlots[slot] = {
+        side,
+        name: pObj.name,
+        species: pObj.species,
+        monId,
+        key: monId,
+        pObj,
+        curHp,
+        maxHp: pObj.maxHp,
+        isRaw: maxHpRaw > 100,
+        switchSnapshot: {
+          kills: pObj.kills,
+          damageDealt: pObj.damageDealt,
+          damageTaken: pObj.damageTaken,
+          hpHealed: pObj.hpHealed,
+          moves: [...pObj.moves],
+          killedMons: [...pObj.killedMons]
+        },
+        recentAttacks: []
+      };
+    } else if(cmd === 'replace'){
+      let rawIdent = (parts[2] || '').trim();
+      let colonIdx = rawIdent.indexOf(':');
+      let slot = colonIdx !== -1 ? rawIdent.slice(0, colonIdx).trim() : rawIdent;
+      let side = slot.slice(0, 2);
+      let nickname = colonIdx !== -1 ? rawIdent.slice(colonIdx + 1).trim() : '';
+      let detailsStr = (parts[3] || '').trim();
+      let trueMonName = detailsStr.split(',')[0].trim();
+      if(!nickname) nickname = trueMonName;
+      let zoroMonId = `${side}:${nickname}`;
+
+      let currentSlot = activeSlots[slot];
+      if(currentSlot && currentSlot.pObj){
+        let fakePObj = currentSlot.pObj;
+        let snapshot = currentSlot.switchSnapshot || { kills: 0, damageDealt: 0, damageTaken: 0, hpHealed: 0, moves: [], killedMons: [] };
+
+        let deltaKills = Math.max(0, (fakePObj.kills || 0) - (snapshot.kills || 0));
+        let deltaDamageDealt = Math.max(0, (fakePObj.damageDealt || 0) - (snapshot.damageDealt || 0));
+        let deltaDamageTaken = Math.max(0, (fakePObj.damageTaken || 0) - (snapshot.damageTaken || 0));
+        let deltaHpHealed = Math.max(0, (fakePObj.hpHealed || 0) - (snapshot.hpHealed || 0));
+        let newMoves = (fakePObj.moves || []).filter(m => !(snapshot.moves || []).includes(m));
+        let newKilledMons = (fakePObj.killedMons || []).slice((snapshot.killedMons || []).length);
+
+        // Deduct deltas from fake mon
+        fakePObj.kills = Math.max(0, (fakePObj.kills || 0) - deltaKills);
+        fakePObj.damageDealt = Math.max(0, (fakePObj.damageDealt || 0) - deltaDamageDealt);
+        fakePObj.damageTaken = Math.max(0, (fakePObj.damageTaken || 0) - deltaDamageTaken);
+        fakePObj.hpHealed = Math.max(0, (fakePObj.hpHealed || 0) - deltaHpHealed);
+        fakePObj.moves = (snapshot.moves || []).slice();
+        fakePObj.killedMons = (snapshot.killedMons || []).slice();
+        fakePObj.switchCount = Math.max(0, (fakePObj.switchCount || 1) - 1);
+
+        if(fakePObj.switchCount === 0){
+          fakePObj.brought = false;
+          fakePObj.fainted = false;
+          fakePObj.faintTurn = null;
+          fakePObj.curHp = fakePObj.maxHp;
+        }
+
+        // Look up or create true mon (Zoroark)
+        let isMegaForm = trueMonName.toLowerCase().includes('-mega') || trueMonName.toLowerCase().startsWith('mega ') || trueMonName.toLowerCase().startsWith('mega-');
+        let canonicalDraftName = !isMegaForm ? normalizeBattleFormToDraftForm(trueMonName) : trueMonName;
+
+        if(!result.pokemon[zoroMonId]){
+          let estMax = getPokemonEstimatedMaxHp(canonicalDraftName, currentSlot.isRaw ? currentSlot.maxHp : 100);
+          let resolved = (typeof resolvePokemonData === 'function') ? resolvePokemonData(canonicalDraftName) : null;
+          let displayName = isMegaForm ? (resolved?.name || trueMonName) : (resolved?.name || canonicalDraftName);
+          let baseSpecies = isMegaForm ? trueMonName.replace(/-mega(-[xy])?/i, '') : canonicalDraftName;
+
+          result.pokemon[zoroMonId] = {
+            side,
+            coach: side === 'p1' ? result.player1 : result.player2,
+            name: displayName,
+            species: trueMonName,
+            baseSpecies: baseSpecies,
+            nickname: nickname,
+            monId: zoroMonId,
+            kills: 0,
+            killedMons: [],
+            maxHp: estMax,
+            curHp: estMax,
+            damageDealt: 0,
+            damageTaken: 0,
+            hpHealed: 0,
+            tera: null,
+            fainted: false,
+            faintTurn: null,
+            moves: [],
+            brought: true,
+            isMega: isMegaForm,
+            switchCount: 0
+          };
+        }
+
+        let zoroPObj = result.pokemon[zoroMonId];
+        zoroPObj.brought = true;
+        zoroPObj.switchCount = (zoroPObj.switchCount || 0) + 1;
+
+        // Scale damage taken and heal to Zoroark's true Level 50 max HP if battle was in percentage
+        let scaledDeltaDamageTaken = deltaDamageTaken;
+        let scaledDeltaHpHealed = deltaHpHealed;
+        if(!currentSlot.isRaw && fakePObj.maxHp > 0 && zoroPObj.maxHp > 0){
+          let ratio = zoroPObj.maxHp / fakePObj.maxHp;
+          scaledDeltaDamageTaken = Math.round(deltaDamageTaken * ratio);
+          scaledDeltaHpHealed = Math.round(deltaHpHealed * ratio);
+
+          if(Array.isArray(currentSlot.recentAttacks)){
+            currentSlot.recentAttacks.forEach(att => {
+              if(att.attObj){
+                let scaledAtt = Math.round(att.diff * ratio);
+                let diffAdj = scaledAtt - att.diff;
+                att.attObj.damageDealt = Math.max(0, (att.attObj.damageDealt || 0) + diffAdj);
+              }
+            });
+          }
+        }
+
+        zoroPObj.kills += deltaKills;
+        newKilledMons.forEach(kMon => {
+          zoroPObj.killedMons.push(kMon);
+        });
+        zoroPObj.damageDealt += deltaDamageDealt;
+        zoroPObj.damageTaken += scaledDeltaDamageTaken;
+        zoroPObj.hpHealed += scaledDeltaHpHealed;
+        newMoves.forEach(mv => {
+          if(!zoroPObj.moves.includes(mv)){
+            zoroPObj.moves.push(mv);
+          }
+        });
+
+        let zoroCurHp = currentSlot.isRaw ? currentSlot.curHp : (fakePObj.maxHp > 0 ? Math.round(zoroPObj.maxHp * (currentSlot.curHp / fakePObj.maxHp)) : zoroPObj.maxHp);
+        zoroPObj.curHp = zoroCurHp;
+
+        activeSlots[slot] = {
+          side,
+          name: zoroPObj.name,
+          species: zoroPObj.species,
+          monId: zoroMonId,
+          key: zoroMonId,
+          pObj: zoroPObj,
+          curHp: zoroCurHp,
+          maxHp: zoroPObj.maxHp,
+          isRaw: currentSlot.isRaw,
+          switchSnapshot: {
+            kills: zoroPObj.kills,
+            damageDealt: zoroPObj.damageDealt,
+            damageTaken: zoroPObj.damageTaken,
+            hpHealed: zoroPObj.hpHealed,
+            moves: [...zoroPObj.moves],
+            killedMons: [...zoroPObj.killedMons]
+          },
+          recentAttacks: []
+        };
+      }
     } else if(cmd === 'detailschange'){
       let isSilent = line.includes('[silent]') || parts.some(p => p.includes('[silent]'));
       if(!isSilent){
@@ -5145,6 +5303,8 @@ function parseShowdownBattleLog(logText, meta = {}) {
             let attObj = attacker.pObj || result.pokemon[attacker.key];
             if(attObj){
               attObj.damageDealt += diff;
+              if(!target.recentAttacks) target.recentAttacks = [];
+              target.recentAttacks.push({ attObj, diff });
             }
           }
         }
@@ -5200,9 +5360,55 @@ function parseShowdownBattleLog(logText, meta = {}) {
     }
   }
 
+  // Remove fake mons that were never legitimately brought out
+  for(let k in result.pokemon){
+    let mon = result.pokemon[k];
+    if(mon.brought === false){
+      delete result.pokemon[k];
+    }
+  }
+
   let coach1 = meta.coach1 || (meta.match?.a || meta.match?.p1);
   let coach2 = meta.coach2 || (meta.match?.b || meta.match?.p2);
   let t = meta.tournament || (meta.match?.tournamentId && tournamentData[meta.match.tournamentId]) || activeT() || ongoingT();
+
+  // Unbroken Illusion fallback check
+  ['p1', 'p2'].forEach(side => {
+    let preview = result.teamPreview?.[side] || [];
+    let coachName = side === 'p1' ? (coach1 || result.player1) : (coach2 || result.player2);
+    let coachRoster = (t?.rosters && coachName) ? (t.rosters[coachName] || []) : [];
+    
+    let sideHasZoroHisui = preview.some(m => /zoroark-hisui/i.test(m)) || coachRoster.some(r => /zoroark-hisui/i.test(typeof r === 'string' ? r : r.pokemon || r.name || ''));
+    let sideHasZoro = preview.some(m => /zoroark/i.test(m)) || coachRoster.some(r => /zoroark/i.test(typeof r === 'string' ? r : r.pokemon || r.name || ''));
+    
+    if(sideHasZoroHisui || sideHasZoro){
+      let alreadyBrought = Object.values(result.pokemon).some(p => p.side === side && p.brought && /zoroark/i.test(p.name || p.species));
+      if(!alreadyBrought){
+        for(let k in result.pokemon){
+          let p = result.pokemon[k];
+          if(p.side === side && p.brought){
+            let hasBitterMalice = p.moves && p.moves.includes('Bitter Malice');
+            let hasNightDaze = p.moves && p.moves.includes('Night Daze');
+            if(hasBitterMalice || hasNightDaze){
+              let targetSpecies = hasBitterMalice ? 'Zoroark-Hisui' : (sideHasZoroHisui ? 'Zoroark-Hisui' : 'Zoroark');
+              let canonicalDraftName = normalizeBattleFormToDraftForm(targetSpecies);
+              let resolved = (typeof resolvePokemonData === 'function') ? resolvePokemonData(canonicalDraftName) : null;
+              let oldMaxHp = p.maxHp;
+              let newMaxHp = getPokemonEstimatedMaxHp(canonicalDraftName, 100);
+              p.name = resolved?.name || canonicalDraftName;
+              p.species = targetSpecies;
+              p.baseSpecies = targetSpecies;
+              p.maxHp = newMaxHp;
+              if(oldMaxHp > 0 && newMaxHp > 0 && p.damageTaken > 0){
+                p.damageTaken = Math.round(p.damageTaken * (newMaxHp / oldMaxHp));
+              }
+              break;
+            }
+          }
+        }
+      }
+    }
+  });
 
   let p1MonsPreview = (result.teamPreview?.p1 || []).slice();
   let p2MonsPreview = (result.teamPreview?.p2 || []).slice();
@@ -5306,7 +5512,7 @@ function parseShowdownBattleLog(logText, meta = {}) {
     }
   }
   result.mvp = mvpMon;
-  result.version = 6;
+  result.version = 7;
 
   return result;
 }
@@ -5801,7 +6007,7 @@ function openMatchReplayHubModal(tournamentId, matchKey, activeGameNum = 1, acti
   let isLogMissing = (!activeReplay.log || typeof activeReplay.log !== 'string' || activeReplay.log.trim().length < 20);
 
   let stats = activeReplay.stats;
-  if(!isLogMissing && (!stats || !stats.sideAttribution || !stats.version || stats.version < 6)){
+  if(!isLogMissing && (!stats || !stats.sideAttribution || !stats.version || stats.version < 7)){
     stats = parseShowdownBattleLog(activeReplay.log, { id: activeReplay.id, game: activeGameNum, match: m, coach1: p1, coach2: p2, manualSwapped: activeReplay.swapped });
     activeReplay.stats = stats;
   }
@@ -7337,7 +7543,7 @@ function calculateTeamOfTheSeason(t) {
   gfReplays.forEach(r => {
     let stats = r.stats;
     let hasValidStats = stats && stats.pokemon && (Array.isArray(stats.pokemon) ? stats.pokemon.length > 0 : Object.keys(stats.pokemon).length > 0);
-    if((!hasValidStats || !stats.version || stats.version < 6) && r.log && typeof r.log === 'string' && r.log.includes('|')) {
+    if((!hasValidStats || !stats.version || stats.version < 7) && r.log && typeof r.log === 'string' && r.log.includes('|')) {
       let parsed = parseShowdownBattleLog(r.log, {
         id: r.id,
         game: r.game,
@@ -7350,7 +7556,7 @@ function calculateTeamOfTheSeason(t) {
     let pList = Array.isArray(stats?.pokemon) ? stats.pokemon : (stats?.pokemon ? Object.values(stats.pokemon) : []);
     let gfGameGroup = new Map();
     pList.forEach(p => {
-      if(!p.name) return;
+      if(!p.name || p.brought === false) return;
       let coach = p.coach || (p.side === 'p1' ? r.coach1 : r.coach2) || '';
       let cleanName = (typeof resolveDraftMonName === 'function') ? resolveDraftMonName(p.name, coach, t) : normalizeBattleFormToDraftForm(p.name.trim());
       let gKey = (coach || '') + '::' + cleanName.toLowerCase();
@@ -7483,7 +7689,7 @@ function calculateTeamOfTheSeason(t) {
   allReplays.forEach(({ replay, match, isTopCut }) => {
     let stats = replay.stats;
     let hasValidStats = stats && stats.pokemon && (Array.isArray(stats.pokemon) ? stats.pokemon.length > 0 : Object.keys(stats.pokemon).length > 0);
-    if((!hasValidStats || !stats.version || stats.version < 6) && replay.log && typeof replay.log === 'string' && replay.log.includes('|')) {
+    if((!hasValidStats || !stats.version || stats.version < 7) && replay.log && typeof replay.log === 'string' && replay.log.includes('|')) {
       let parsed = parseShowdownBattleLog(replay.log, {
         id: replay.id,
         game: replay.game,
@@ -7524,7 +7730,7 @@ function calculateTeamOfTheSeason(t) {
     let mC1 = replay.coach1 || match?.a || match?.p1 || '';
     let mC2 = replay.coach2 || match?.b || match?.p2 || '';
     pList.forEach(p => {
-      if(!p.name) return;
+      if(!p.name || p.brought === false) return;
       let coach = p.coach;
       if(!coach || coach.toLowerCase().startsWith('player ')) {
         coach = p.side === 'p1' ? mC1 : (p.side === 'p2' ? mC2 : '');
@@ -8542,7 +8748,7 @@ function getTournamentPokemonStatsMap(t, coachFilter) {
   let cacheKey = targetNorm || '__global__';
 
   if(!t._cachedMonStatsMaps) t._cachedMonStatsMaps = {};
-  if(t._cachedMonStatsVersion === 6 && t._cachedMonStatsMaps[cacheKey] && t._cachedMonStatsTime && (Date.now() - t._cachedMonStatsTime < 30000)) {
+  if(t._cachedMonStatsVersion === 7 && t._cachedMonStatsMaps[cacheKey] && t._cachedMonStatsTime && (Date.now() - t._cachedMonStatsTime < 30000)) {
     return t._cachedMonStatsMaps[cacheKey];
   }
 
@@ -8586,7 +8792,7 @@ function getTournamentPokemonStatsMap(t, coachFilter) {
 
     let stats = replay.stats;
     let hasValidStats = stats && stats.pokemon && (Array.isArray(stats.pokemon) ? stats.pokemon.length > 0 : Object.keys(stats.pokemon).length > 0);
-    if((!hasValidStats || !stats.version || stats.version < 6) && replay.log && typeof replay.log === 'string' && replay.log.includes('|')) {
+    if((!hasValidStats || !stats.version || stats.version < 7) && replay.log && typeof replay.log === 'string' && replay.log.includes('|')) {
       let parsed = parseShowdownBattleLog(replay.log, {
         id: replay.id,
         game: replay.game,
@@ -8603,7 +8809,7 @@ function getTournamentPokemonStatsMap(t, coachFilter) {
 
     let gameGroup = new Map();
     pList.forEach(p => {
-      if(!p.name) return;
+      if(!p.name || p.brought === false) return;
       let coach = p.coach;
       if(!coach || coach.toLowerCase().startsWith('player ')) {
         coach = p.side === 'p1' ? c1 : (p.side === 'p2' ? c2 : '');
@@ -8699,7 +8905,7 @@ function getTournamentPokemonStatsMap(t, coachFilter) {
   });
 
   t._cachedMonStatsMaps[cacheKey] = map;
-  t._cachedMonStatsVersion = 6;
+  t._cachedMonStatsVersion = 7;
   t._cachedMonStatsTime = Date.now();
   return map;
 }
