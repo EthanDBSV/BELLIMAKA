@@ -16516,8 +16516,160 @@ function buildTopCutSeeding(t){
   return {seeding,size};
 }
 function isGroupComplete(t,g){let ms=groupMatches(t,g);return ms.length>0&&ms.every(m=>m.as!==''&&m.as!=null&&m.bs!==''&&m.bs!=null)}
-function isMathematicallyEliminated(t,p){let g=Object.entries(groupsOf(t)).find(([,ps])=>ps.includes(p))?.[0];if(!g)return true;let ps=groupsOf(t)[g],cut=advancePerGroup(t);if(ps.length<=cut)return false;if(isGroupComplete(t,g))return getStand(t,g).findIndex(x=>x.p===p)>=cut;let wins={},remaining={};ps.forEach(x=>{wins[x]=0;remaining[x]=0});groupMatches(t,g).forEach(m=>{if(m.as!==''&&m.as!=null&&m.bs!==''&&m.bs!=null){if(+m.as>+m.bs)wins[m.a]++;else if(+m.bs>+m.as)wins[m.b]++}else{remaining[m.a]=(remaining[m.a]||0)+1;remaining[m.b]=(remaining[m.b]||0)+1}});let maxWins=(wins[p]||0)+(remaining[p]||0);return ps.filter(x=>x!==p&&(wins[x]||0)>maxWins).length>=cut}
-function isMathematicallyClinched(t,p){let g=Object.entries(groupsOf(t)).find(([,ps])=>ps.includes(p))?.[0];if(!g)return false;let ps=groupsOf(t)[g],cut=advancePerGroup(t);if(ps.length<=cut)return true;if(isGroupComplete(t,g))return getStand(t,g).findIndex(x=>x.p===p)<cut;let wins={},remaining={};ps.forEach(x=>{wins[x]=0;remaining[x]=0});groupMatches(t,g).forEach(m=>{if(m.as!==''&&m.as!=null&&m.bs!==''&&m.bs!=null){if(+m.as>+m.bs)wins[m.a]++;else if(+m.bs>+m.as)wins[m.b]++}else{remaining[m.a]=(remaining[m.a]||0)+1;remaining[m.b]=(remaining[m.b]||0)+1}});let minWins=wins[p]||0;let othersWhoCanReach=ps.filter(x=>x!==p&&((wins[x]||0)+(remaining[x]||0))>=minWins).length;return othersWhoCanReach<cut}
+function isMathematicallyEliminated(t, p) {
+  let g = Object.entries(groupsOf(t)).find(([, ps]) => ps.includes(p))?.[0];
+  if (!g) return true;
+  let ps = groupsOf(t)[g], cut = advancePerGroup(t);
+  if (ps.length <= cut) return false;
+  if (isGroupComplete(t, g)) return getStand(t, g).findIndex(x => x.p === p) >= cut;
+
+  let wins = {}, remaining = {};
+  ps.forEach(x => { wins[x] = 0; remaining[x] = 0; });
+  let unplayedMatches = [];
+
+  groupMatches(t, g).forEach(m => {
+    if (m.as !== '' && m.as != null && m.bs !== '' && m.bs != null) {
+      if (+m.as > +m.bs) wins[m.a] = (wins[m.a] || 0) + 1;
+      else if (+m.bs > +m.as) wins[m.b] = (wins[m.b] || 0) + 1;
+    } else {
+      remaining[m.a] = (remaining[m.a] || 0) + 1;
+      remaining[m.b] = (remaining[m.b] || 0) + 1;
+      unplayedMatches.push(m);
+    }
+  });
+
+  let maxWins = (wins[p] || 0) + (remaining[p] || 0);
+
+  // Fast check: If already at least 'cut' players have strictly more wins than maxWins, eliminated immediately
+  if (ps.filter(x => x !== p && (wins[x] || 0) > maxWins).length >= cut) return true;
+
+  // Fast check: If fewer than 'cut' players can even potentially exceed maxWins, cannot be eliminated
+  if (ps.filter(x => x !== p && ((wins[x] || 0) + (remaining[x] || 0)) > maxWins).length < cut) return false;
+
+  // Schedule-aware evaluation:
+  // In the best-case scenario for p, p wins all unplayed matches involving p.
+  // Remaining unplayed matches between OTHER opponents must be distributed.
+  let otherMatches = unplayedMatches.filter(m => m.a !== p && m.b !== p);
+
+  if (otherMatches.length === 0) {
+    return ps.filter(x => x !== p && (wins[x] || 0) > maxWins).length >= cut;
+  }
+
+  if (otherMatches.length <= 14) {
+    let numScenarios = 1 << otherMatches.length;
+    for (let mask = 0; mask < numScenarios; mask++) {
+      let simWins = Object.assign({}, wins);
+      for (let i = 0; i < otherMatches.length; i++) {
+        let m = otherMatches[i];
+        if ((mask & (1 << i)) === 0) simWins[m.a] = (simWins[m.a] || 0) + 1;
+        else simWins[m.b] = (simWins[m.b] || 0) + 1;
+      }
+      let ahead = ps.filter(x => x !== p && (simWins[x] || 0) > maxWins).length;
+      if (ahead < cut) {
+        return false; // Found a valid scenario where p can reach the top 'cut' in wins!
+      }
+    }
+    return true; // In all remaining schedule outcomes, at least 'cut' opponents finish with more wins.
+  }
+
+  let canSurvive = false;
+  function search(idx, currentSimWins) {
+    if (canSurvive) return;
+    if (idx === otherMatches.length) {
+      let ahead = ps.filter(x => x !== p && (currentSimWins[x] || 0) > maxWins).length;
+      if (ahead < cut) canSurvive = true;
+      return;
+    }
+    let m = otherMatches[idx];
+    currentSimWins[m.a] = (currentSimWins[m.a] || 0) + 1;
+    search(idx + 1, currentSimWins);
+    currentSimWins[m.a]--;
+    if (canSurvive) return;
+    currentSimWins[m.b] = (currentSimWins[m.b] || 0) + 1;
+    search(idx + 1, currentSimWins);
+    currentSimWins[m.b]--;
+  }
+  search(0, Object.assign({}, wins));
+  return !canSurvive;
+}
+
+function isMathematicallyClinched(t, p) {
+  let g = Object.entries(groupsOf(t)).find(([, ps]) => ps.includes(p))?.[0];
+  if (!g) return false;
+  let ps = groupsOf(t)[g], cut = advancePerGroup(t);
+  if (ps.length <= cut) return true;
+  if (isGroupComplete(t, g)) return getStand(t, g).findIndex(x => x.p === p) < cut;
+
+  let wins = {}, remaining = {};
+  ps.forEach(x => { wins[x] = 0; remaining[x] = 0; });
+  let unplayedMatches = [];
+
+  groupMatches(t, g).forEach(m => {
+    if (m.as !== '' && m.as != null && m.bs !== '' && m.bs != null) {
+      if (+m.as > +m.bs) wins[m.a] = (wins[m.a] || 0) + 1;
+      else if (+m.bs > +m.as) wins[m.b] = (wins[m.b] || 0) + 1;
+    } else {
+      remaining[m.a] = (remaining[m.a] || 0) + 1;
+      remaining[m.b] = (remaining[m.b] || 0) + 1;
+      unplayedMatches.push(m);
+    }
+  });
+
+  let minWins = wins[p] || 0; // Worst case for p: p loses all remaining matches
+
+  // Fast check: If even under naive upper bounds, fewer than 'cut' opponents can reach >= minWins
+  if (ps.filter(x => x !== p && ((wins[x] || 0) + (remaining[x] || 0)) >= minWins).length < cut) return true;
+
+  // In worst case for p, any unplayed match involving p is won by p's opponent
+  let baseWins = Object.assign({}, wins);
+  let otherMatches = [];
+  unplayedMatches.forEach(m => {
+    if (m.a === p) baseWins[m.b] = (baseWins[m.b] || 0) + 1;
+    else if (m.b === p) baseWins[m.a] = (baseWins[m.a] || 0) + 1;
+    else otherMatches.push(m);
+  });
+
+  if (otherMatches.length === 0) {
+    return ps.filter(x => x !== p && (baseWins[x] || 0) >= minWins).length < cut;
+  }
+
+  if (otherMatches.length <= 14) {
+    let numScenarios = 1 << otherMatches.length;
+    for (let mask = 0; mask < numScenarios; mask++) {
+      let simWins = Object.assign({}, baseWins);
+      for (let i = 0; i < otherMatches.length; i++) {
+        let m = otherMatches[i];
+        if ((mask & (1 << i)) === 0) simWins[m.a] = (simWins[m.a] || 0) + 1;
+        else simWins[m.b] = (simWins[m.b] || 0) + 1;
+      }
+      let tiedOrAhead = ps.filter(x => x !== p && (simWins[x] || 0) >= minWins).length;
+      if (tiedOrAhead >= cut) {
+        return false; // Found a scenario where at least 'cut' opponents reach or exceed p's win total
+      }
+    }
+    return true; // In all scenarios, fewer than 'cut' opponents can reach or exceed p's win total -> Clinched!
+  }
+
+  let canBeCaught = false;
+  function searchClinch(idx, currentSimWins) {
+    if (canBeCaught) return;
+    if (idx === otherMatches.length) {
+      let tiedOrAhead = ps.filter(x => x !== p && (currentSimWins[x] || 0) >= minWins).length;
+      if (tiedOrAhead >= cut) canBeCaught = true;
+      return;
+    }
+    let m = otherMatches[idx];
+    currentSimWins[m.a] = (currentSimWins[m.a] || 0) + 1;
+    searchClinch(idx + 1, currentSimWins);
+    currentSimWins[m.a]--;
+    if (canBeCaught) return;
+    currentSimWins[m.b] = (currentSimWins[m.b] || 0) + 1;
+    searchClinch(idx + 1, currentSimWins);
+    currentSimWins[m.b]--;
+  }
+  searchClinch(0, Object.assign({}, baseWins));
+  return !canBeCaught;
+}
 function getPlayerTournamentPower(p, tourn, cachedLeagueRecs){
   let leagueRecs = cachedLeagueRecs || calculateLeagueRecords();
   let ovrObj = calculatePlayerOVR(p, leagueRecs);

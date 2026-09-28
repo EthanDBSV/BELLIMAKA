@@ -3,6 +3,18 @@
 All notable changes to the Bellimaka Pokémon Draft League site are documented here.
 Format: `v[MAJOR].[MINOR].[PATCH]` — Major = big new systems, Minor = new features, Patch = bug fixes / small improvements.
 
+## [v1.1.14] — 2026-09-28
+
+### Fixed
+- **Schedule-Aware Mathematical Elimination & Clinching in Group Standings** — Overhauled the tournament group stage clinching and elimination algorithms to evaluate remaining head-to-head fixtures rather than relying only on isolated win maximums:
+  - **Remaining Match Head-to-Head Accounting**: Analyzed unplayed matches between remaining contenders in the division. Since head-to-head fixtures must produce a winner, guaranteed opponent win distributions are now fully evaluated across all future scenario branches.
+  - **Strict Elimination Precision**: A coach is marked as **ELIMINATED** (with the red status badge) if and only if every single possible permutation of remaining group match outcomes guarantees that at least the cutoff threshold of opponents will finish with strictly more wins than the coach's maximum possible total.
+  - **Contention & Hunt Preservation**: If any valid combination of remaining match results allows a coach to tie for a qualifying spot in match wins, they remain alive in the **HUNT** to contest playoff advancement via tiebreakers.
+  - **Schedule-Aware Clinching Precision**: A coach is marked as **CLINCHED** when they are mathematically guaranteed to finish within the Top Cut under every possible remaining fixture outcome, ensuring no combination of opponent wins can drop them below the qualification cutoff.
+  - **Odds Simulation Consistency**: Playoff odds calculations and Monte Carlo projections automatically sync with the schedule-aware elimination logic, setting mathematically eliminated contenders to 0% and clinched qualifiers to 100%.
+
+---
+
 ## [v1.1.13] — 2026-09-28
 
 ### Added
