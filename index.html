@@ -22343,6 +22343,159 @@ function setBallotFilter(type, val){
   }
 }
 
+function renderBallotChampionShowcase(t, question){
+  let chosen = savedPick(t, question);
+  let outcome = predictionOutcome(t, question);
+  let isSettled = outcome.answer != null;
+  let isHit = isSettled && outcome.answer === chosen && chosen;
+  let isMiss = isSettled && outcome.answer !== chosen && chosen;
+
+  let statusBadge = '';
+  if(!chosen){
+    statusBadge = '<span class="tag" style="background:#202027;color:#8e8c95;border:1px solid #33333d;font-weight:800">NO PICK SUBMITTED</span>';
+  } else if(isHit){
+    statusBadge = '<span class="tag safe" style="background:#153b29;color:#77e8a8;border:1px solid #235c40;font-weight:800;letter-spacing:0.4px">✓ HIT (+100 PTS)</span>';
+  } else if(isMiss){
+    statusBadge = '<span class="tag out" style="background:#491a20;color:#fa8a90;border:1px solid #6b242e;font-weight:800;letter-spacing:0.4px">✗ MISSED</span>';
+  } else {
+    statusBadge = '<span class="tag hunt" style="background:#3b2a14;color:#ffd166;border:1px solid #63471f;font-weight:800;letter-spacing:0.4px">⏳ PENDING (100 PTS)</span>';
+  }
+
+  let sortedT = typeof sortedTournamentsChronological === 'function' ? sortedTournamentsChronological() : Object.values(tournamentData);
+  let tIdx = t ? sortedT.findIndex(x => x.id === t.id || x.name === t.name) : -1;
+  let isPastT = (t && t.status === 'COMPLETE' && tIdx >= 0);
+
+  let ovr = chosen ? ((isPastT && typeof getHistoricalPlayerOVR === 'function')
+    ? getHistoricalPlayerOVR(chosen, tIdx, 'complete', sortedT)
+    : calculatePlayerOVR(chosen)) : { color: '#8e8c95' };
+  let tName = chosen ? teamName(t, chosen) : '';
+  let face = chosen && (typeof profilePictures !== 'undefined' && profilePictures[chosen])
+    ? `url('${esc(profilePictures[chosen])}')`
+    : ((chosen && typeof teamCovers !== 'undefined' && teamCovers[chosen])
+      ? `url('${esc(teamCovers[chosen])}')`
+      : fallbackArt(chosen || ''));
+  let letter = (chosen && ((typeof profilePictures !== 'undefined' && profilePictures[chosen]) || (typeof teamCovers !== 'undefined' && teamCovers[chosen])))
+    ? ''
+    : esc((chosen || '?')[0]);
+
+  return `
+    <section class="pred-section">
+      <div class="card" style="padding:16px 20px;background:linear-gradient(135deg,#1f1318 0%,#15151c 60%,#121520 100%);border-color:${isSettled ? (isHit ? '#235c40' : '#6b242e') : '#5c242d'}">
+        <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid #282836">
+          <div>
+            <div class="eyebrow" style="color:var(--amber);margin-bottom:2px">100 PTS · TOURNAMENT OUTCOME</div>
+            <h2 style="font-size:20px;margin:0">${esc(question)}</h2>
+          </div>
+          <div>${statusBadge}</div>
+        </div>
+
+        ${chosen ? `
+          <div style="display:flex;align-items:center;gap:14px;padding:10px 14px;background:#181822;border:1px solid ${isSettled ? (isHit ? '#235c40' : '#4a242a') : '#3d3019'};border-radius:8px">
+            <span class="avatar mini" style="background-image:${face};background-size:cover;background-position:center;width:44px;height:44px;border-radius:50%;font-size:16px;border:2px solid ${ovr.color};display:grid;place-items:center;flex:none">${letter}</span>
+            <div style="min-width:0;flex:1">
+              <div style="font:800 17px 'Barlow Condensed';letter-spacing:0.4px;color:#f5f3f0;line-height:1.2">${esc(chosen)}</div>
+              ${tName && tName !== chosen ? `<div style="font-size:12px;color:#8e8c95">${esc(tName)}</div>` : ''}
+            </div>
+            <span class="pred-check-pill" style="font-size:11px;padding:4px 10px;border-radius:4px;font-weight:800;background:${isHit ? '#153b29' : (isMiss ? '#491a20' : '#2d2412')};color:${isHit ? '#77e8a8' : (isMiss ? '#fa8a90' : '#ffd166')};border:1px solid ${isHit ? '#235c40' : (isMiss ? '#6b242e' : '#63471f')}">
+              ${isHit ? '✓ HIT' : (isMiss ? '✗ MISSED' : '✓ PICK')}
+            </span>
+          </div>
+        ` : `
+          <div style="padding:12px 14px;background:#15151c;border:1px dashed #33333e;border-radius:8px;color:#8e8c95;font-size:13px;display:flex;align-items:center;gap:8px">
+            <span>⚠️</span>
+            <span>No champion prediction submitted</span>
+          </div>
+        `}
+      </div>
+    </section>
+  `;
+}
+
+function renderBallotGroupWinners(t, groups){
+  let groupEntries = Object.entries(groups);
+  if(!groupEntries.length) return '';
+
+  let sortedT = typeof sortedTournamentsChronological === 'function' ? sortedTournamentsChronological() : Object.values(tournamentData);
+  let tIdx = t ? sortedT.findIndex(x => x.id === t.id || x.name === t.name) : -1;
+  let isPastT = (t && t.status === 'COMPLETE' && tIdx >= 0);
+
+  return `
+    <section class="pred-section">
+      <div class="section-head" style="margin-bottom:10px">
+        <div>
+          <div class="eyebrow" style="color:#ffd166;margin-bottom:2px">45 PTS EACH · DIVISION OUTCOMES</div>
+          <h2>GROUP STAGE WINNERS</h2>
+        </div>
+        <span style="font-size:11px;color:#8e8c95">Trainer picked to top each division</span>
+      </div>
+
+      <div style="display:grid;grid-template-columns:repeat(${groupEntries.length > 1 ? 2 : 1}, minmax(0, 1fr));gap:12px">
+        ${groupEntries.map(([g]) => {
+          let question = 'Who will top ' + g + '?';
+          let chosen = savedPick(t, question);
+          let outcome = predictionOutcome(t, question);
+          let isSettled = outcome.answer != null;
+          let isHit = isSettled && outcome.answer === chosen && chosen;
+          let isMiss = isSettled && outcome.answer !== chosen && chosen;
+
+          let badge = '';
+          if(!chosen){
+            badge = '<span class="tag" style="background:#202027;color:#8e8c95;border:1px solid #33333d;font-size:9px">No pick</span>';
+          } else if(isHit){
+            badge = '<span class="tag safe" style="background:#153b29;color:#77e8a8;border:1px solid #235c40;font-size:9px">✓ HIT (+45 PTS)</span>';
+          } else if(isMiss){
+            badge = '<span class="tag out" style="background:#491a20;color:#fa8a90;border:1px solid #6b242e;font-size:9px">✗ MISSED</span>';
+          } else {
+            badge = '<span class="tag hunt" style="background:#3b2a14;color:#ffd166;border:1px solid #63471f;font-size:9px">⏳ PENDING (45 PTS)</span>';
+          }
+
+          let ovr = chosen ? ((isPastT && typeof getHistoricalPlayerOVR === 'function')
+            ? getHistoricalPlayerOVR(chosen, tIdx, 'complete', sortedT)
+            : calculatePlayerOVR(chosen)) : { color: '#8e8c95' };
+          let tName = chosen ? teamName(t, chosen) : '';
+          let face = chosen && (typeof profilePictures !== 'undefined' && profilePictures[chosen])
+            ? `url('${esc(profilePictures[chosen])}')`
+            : ((chosen && typeof teamCovers !== 'undefined' && teamCovers[chosen])
+              ? `url('${esc(teamCovers[chosen])}')`
+              : fallbackArt(chosen || ''));
+          let letter = (chosen && ((typeof profilePictures !== 'undefined' && profilePictures[chosen]) || (typeof teamCovers !== 'undefined' && teamCovers[chosen])))
+            ? ''
+            : esc((chosen || '?')[0]);
+
+          return `
+            <div class="card" style="padding:14px;background:#14141c;border-color:${isSettled ? (isHit ? '#235c40' : '#4a242a') : '#2a2a36'}">
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;padding-bottom:6px;border-bottom:1px solid #232330">
+                <span style="font:800 15px 'Barlow Condensed';letter-spacing:0.6px;color:#f5f3f0;text-transform:uppercase">${esc(g)}</span>
+                ${badge}
+              </div>
+
+              ${chosen ? `
+                <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 10px;background:#181822;border:1px solid ${isSettled ? (isHit ? '#235c40' : '#4a242a') : '#3d3019'};border-radius:6px">
+                  <div style="display:flex;align-items:center;gap:10px;min-width:0;flex:1">
+                    <span class="avatar mini" style="background-image:${face};background-size:cover;background-position:center;width:32px;height:32px;border-radius:50%;font-size:12px;border:1px solid ${ovr.color};display:grid;place-items:center;flex:none">${letter}</span>
+                    <div style="min-width:0;flex:1">
+                      <div style="font:800 14px 'Barlow Condensed';color:#ffd166;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(chosen)}</div>
+                      ${tName && tName !== chosen ? `<div style="font-size:10px;color:#8e8c95;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(tName)}</div>` : ''}
+                    </div>
+                  </div>
+                  <span class="pred-check-pill" style="font-size:10px;padding:3px 8px;border-radius:4px;font-weight:800;background:${isHit ? '#153b29' : (isMiss ? '#491a20' : '#2d2412')};color:${isHit ? '#77e8a8' : (isMiss ? '#fa8a90' : '#ffd166')};border:1px solid ${isHit ? '#235c40' : (isMiss ? '#6b242e' : '#63471f')}">
+                    ${isHit ? '✓ HIT' : (isMiss ? '✗' : '✓ PICK')}
+                  </span>
+                </div>
+              ` : `
+                <div style="padding:10px;background:#15151c;border:1px dashed #33333e;border-radius:6px;color:#8e8c95;font-size:12px;display:flex;align-items:center;gap:6px">
+                  <span>⚠️</span>
+                  <span>No prediction submitted for this division</span>
+                </div>
+              `}
+            </div>
+          `;
+        }).join('')}
+      </div>
+    </section>
+  `;
+}
+
 function renderBallotModalScrollContent(){
   if(!window._currentBallotData) return '';
   let { t, player, deduped, pickMap } = window._currentBallotData;
@@ -22424,7 +22577,7 @@ function renderBallotModalScrollContent(){
 
       return `
         <!-- Champion Outright Picker (100 PTS) -->
-        ${renderChampionPredictionPicker(t, champQuestion, true)}
+        ${renderBallotChampionShowcase(t, champQuestion)}
 
         <!-- Top Cut Prediction Bracket -->
         ${topCutPredictionBracket(t)}
@@ -22515,10 +22668,10 @@ function renderBallotModalScrollContent(){
 
     return `
       <!-- 1. Champion Outright Picker (100 PTS) -->
-      ${renderChampionPredictionPicker(t, champQuestion, true)}
+      ${renderBallotChampionShowcase(t, champQuestion)}
 
       <!-- 2. Division / Group Leaders (45 PTS each) -->
-      ${!isSwiss && groupsList.length ? renderGroupWinnersPredictionPicker(t, groups, true) : ''}
+      ${!isSwiss && groupsList.length ? renderBallotGroupWinners(t, groups) : ''}
 
       <!-- 3. Individual Match Pick'ems -->
       <section class="pred-section">
