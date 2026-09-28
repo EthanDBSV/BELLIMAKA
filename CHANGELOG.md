@@ -3,6 +3,23 @@
 All notable changes to the Bellimaka Pokémon Draft League site are documented here.
 Format: `v[MAJOR].[MINOR].[PATCH]` — Major = big new systems, Minor = new features, Patch = bug fixes / small improvements.
 
+## [v1.1.13] — 2026-09-28
+
+### Added
+- **Interactive Multi-Metric Column Sorting for Offseason Standings & Records Tables** — Added comprehensive column header sorting to both the All-Time Offseason Standings leaderboard and the Records (Hall of Fame) leaderboard:
+  - **Bidirectional Header Sorting**: All numeric and categorical columns can be toggled between descending (highest/most first) and ascending (lowest/least first) orders on successive clicks, with directional indicators (`▲` / `▼`) displaying the active sort key and direction.
+  - **Interactive Hover & Visual Feedback**: Column headers feature pointer cursors and subtle gold accent highlights on hover and active selection to clearly indicate interactive capabilities.
+  - **Preserved All-Time Legacy Rank Identity**: Coaches retain their permanent canonical All-Time Legacy rank number (and legacy crown for #1) in the rank `#` column regardless of the active sorting order, allowing users to cross-reference baseline standing while comparing individual statistical categories.
+  - **Deterministic Legacy Tie-Breaking**: When coaches are tied in a metric (e.g. identical overall ratings, equal win totals, or matching trophy counts), ties are consistently and deterministically broken by canonical All-Time Legacy rank.
+  - **Streak & Accolade Momentum Sorting**:
+    - **Active Streak**: Sorts by streak momentum from longest active win streaks down to deepest active loss streaks, and vice versa.
+    - **Accolades & Badges / Records Held**: Sorts by total badge and historic record counts.
+    - **Trainer / Team**: Toggles alphabetically (A-Z) and reverse-alphabetically (Z-A) by coach profile name.
+    - **Career W-L & Win Rate**: Primary sorting by total career victories, secondary tie-breaking by fewest losses.
+  - **Scroll Position Preservation**: Sorting re-renders the table instantaneously while maintaining the user's vertical scroll position on the page.
+
+---
+
 ## [v1.1.12] — 2026-09-28
 
 ### Added

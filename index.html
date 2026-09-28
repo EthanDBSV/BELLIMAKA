@@ -1622,6 +1622,17 @@ details[open] > .past-tourney-summary .past-chevron{transform:rotate(180deg);col
   padding: 13px 10px !important;
   font-size: 11px !important;
 }
+.standings th.sortable-th {
+  cursor: pointer;
+  user-select: none;
+  transition: color 0.15s, background-color 0.15s;
+}
+.standings th.sortable-th:hover {
+  color: #ffd166 !important;
+}
+.standings th.sortable-th.is-sorted {
+  color: #f5f3f0 !important;
+}
 .standings td {
   padding: 13px 10px !important;
   font-size: 14px !important;
@@ -18275,6 +18286,120 @@ function calculateLeagueRivalries(allMatches){
   return { mostPlayed, mostOneSided, mostContested, peakPlayoff, totalRivalries: list.length };
 }
 
+window.offseasonSortCol = 'rank';
+window.offseasonSortDir = 'asc';
+window.recordsSortCol = 'rank';
+window.recordsSortDir = 'asc';
+
+function toggleOffseasonSort(colKey){
+  let scrollY = window.scrollY;
+  if(window.offseasonSortCol === colKey){
+    window.offseasonSortDir = (window.offseasonSortDir === 'desc' ? 'asc' : 'desc');
+  } else {
+    window.offseasonSortCol = colKey;
+    window.offseasonSortDir = (colKey === 'player' || colKey === 'rank') ? 'asc' : 'desc';
+  }
+  render();
+  window.scrollTo(0, scrollY);
+}
+
+function toggleRecordsSort(colKey){
+  let scrollY = window.scrollY;
+  if(window.recordsSortCol === colKey){
+    window.recordsSortDir = (window.recordsSortDir === 'desc' ? 'asc' : 'desc');
+  } else {
+    window.recordsSortCol = colKey;
+    window.recordsSortDir = (colKey === 'player' || colKey === 'rank') ? 'asc' : 'desc';
+  }
+  render();
+  window.scrollTo(0, scrollY);
+}
+
+function renderSortTh(label, colKey, activeCol, activeDir, style='', extraClass='', onClickFn='toggleOffseasonSort'){
+  let isActive = (activeCol === colKey);
+  let arrow = '';
+  if(isActive){
+    arrow = activeDir === 'asc' 
+      ? ' <span style="font-size:10px;color:var(--amber);margin-left:3px;display:inline-block">▲</span>' 
+      : ' <span style="font-size:10px;color:var(--amber);margin-left:3px;display:inline-block">▼</span>';
+  }
+  let baseClass = 'sortable-th ' + (isActive ? 'is-sorted ' : '') + extraClass;
+  let activeTitle = isActive 
+    ? `Sorted by ${label} (${activeDir === 'asc' ? 'Ascending / Lowest' : 'Descending / Highest'}). Click to reverse.`
+    : `Click to sort by ${label}`;
+  return `<th class="${baseClass.trim()}" style="${style}" onclick="${onClickFn}('${colKey}')" title="${esc(activeTitle)}">${label}${arrow}</th>`;
+}
+
+function sortRankingsRows(rows, sortCol, sortDir, statsByPlayer){
+  rows.forEach((x, i) => {
+    if(x.legacyRank == null) x.legacyRank = i + 1;
+    let career = x._career || playerCareerStats(x.p);
+    let s = x._s || (statsByPlayer && statsByPlayer[x.p]) || {};
+    let ovrObj = x._ovrObj || x.ovrObj || calculatePlayerOVR(x.p, { statsByPlayer });
+
+    x._career = career;
+    x._s = s;
+    x._ovrVal = Number(ovrObj.overall ?? ovrObj.ovr ?? x.ovr ?? 0);
+    x._titles = Number(career.titles || 0);
+    x._recordsCount = Number(x.recordsHeldCount || 0);
+    x._wins = Number(career.wins || 0);
+    x._losses = Number(career.losses || 0);
+    x._winPct = Number(career.winPct || 0);
+    x._topCuts = Number(career.topCuts || 0);
+    x._bestStreak = Number(s.maxWinStreak || 0);
+    x._activeStreak = (s.currentWinStreak > 0 ? s.currentWinStreak : (s.currentLossStreak > 0 ? -s.currentLossStreak : 0));
+    x._badgeCount = (s.badges || []).length;
+    x._ovrObj = ovrObj;
+  });
+
+  let dir = sortDir === 'asc' ? 1 : -1;
+  return [...rows].sort((a, b) => {
+    let diff = 0;
+    switch(sortCol){
+      case 'rank':
+        diff = a.legacyRank - b.legacyRank;
+        break;
+      case 'player':
+        diff = a.p.localeCompare(b.p, undefined, { sensitivity: 'base' });
+        break;
+      case 'elo':
+        diff = a.score - b.score;
+        break;
+      case 'ovr':
+        diff = a._ovrVal - b._ovrVal;
+        break;
+      case 'titles':
+        diff = a._titles - b._titles;
+        break;
+      case 'records':
+        diff = a._recordsCount - b._recordsCount;
+        break;
+      case 'wl':
+        diff = (a._wins - b._wins) || (b._losses - a._losses);
+        break;
+      case 'winpct':
+        diff = (a._winPct - b._winPct) || (a._wins - b._wins);
+        break;
+      case 'topcuts':
+        diff = a._topCuts - b._topCuts;
+        break;
+      case 'beststreak':
+        diff = a._bestStreak - b._bestStreak;
+        break;
+      case 'active':
+        diff = a._activeStreak - b._activeStreak;
+        break;
+      case 'badges':
+        diff = a._badgeCount - b._badgeCount;
+        break;
+      default:
+        diff = a.legacyRank - b.legacyRank;
+    }
+    if(diff !== 0) return diff * dir;
+    return a.legacyRank - b.legacyRank;
+  });
+}
+
 function Standings(){
   let t=ongoingT();
   if(!t){
@@ -18282,6 +18407,10 @@ function Standings(){
     let {allMatches}=getChronologicalMatches();
     let r=recapRankings();
     let rivalries = calculateLeagueRivalries(allMatches);
+
+    let sortCol = window.offseasonSortCol || 'rank';
+    let sortDir = window.offseasonSortDir || 'asc';
+    let sortedRows = sortRankingsRows(r, sortCol, sortDir, statsByPlayer);
 
     let actions = `
       <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
@@ -18383,32 +18512,32 @@ function Standings(){
         <table class="standings">
           <thead>
             <tr>
-              <th style="width:32px;text-align:center">#</th>
-              <th>Trainer / Team</th>
-              <th style="text-align:center;white-space:nowrap">All-Time Elo</th>
-              <th style="text-align:center;white-space:nowrap">OVR</th>
-              <th style="text-align:center;white-space:nowrap">Titles</th>
-              <th style="text-align:center;white-space:nowrap">Records Held</th>
-              <th style="text-align:center;white-space:nowrap">All-Time W-L</th>
-              <th style="text-align:center;white-space:nowrap">Win %</th>
-              <th style="text-align:center;white-space:nowrap">Top Cuts</th>
-              <th style="text-align:center;white-space:nowrap">Best Streak</th>
+              ${renderSortTh('#', 'rank', sortCol, sortDir, 'width:38px;text-align:center', '', 'toggleOffseasonSort')}
+              ${renderSortTh('Trainer / Team', 'player', sortCol, sortDir, '', '', 'toggleOffseasonSort')}
+              ${renderSortTh('All-Time Elo', 'elo', sortCol, sortDir, 'text-align:center;white-space:nowrap', '', 'toggleOffseasonSort')}
+              ${renderSortTh('OVR', 'ovr', sortCol, sortDir, 'text-align:center;white-space:nowrap', '', 'toggleOffseasonSort')}
+              ${renderSortTh('Titles', 'titles', sortCol, sortDir, 'text-align:center;white-space:nowrap', '', 'toggleOffseasonSort')}
+              ${renderSortTh('Records Held', 'records', sortCol, sortDir, 'text-align:center;white-space:nowrap', '', 'toggleOffseasonSort')}
+              ${renderSortTh('All-Time W-L', 'wl', sortCol, sortDir, 'text-align:center;white-space:nowrap', '', 'toggleOffseasonSort')}
+              ${renderSortTh('Win %', 'winpct', sortCol, sortDir, 'text-align:center;white-space:nowrap', '', 'toggleOffseasonSort')}
+              ${renderSortTh('Top Cuts', 'topcuts', sortCol, sortDir, 'text-align:center;white-space:nowrap', '', 'toggleOffseasonSort')}
+              ${renderSortTh('Best Streak', 'beststreak', sortCol, sortDir, 'text-align:center;white-space:nowrap', '', 'toggleOffseasonSort')}
               <th style="text-align:center;white-space:nowrap">Best Rival (3+ GP)</th>
               <th style="text-align:center;white-space:nowrap">Worst Rival (3+ GP)</th>
             </tr>
           </thead>
           <tbody>
-            ${r.map((x,i)=>{
+            ${sortedRows.map((x,i)=>{
               let p=x.p;
-              let s=statsByPlayer[p]||{};
-              let career=playerCareerStats(p);
-              let ovrObj=x.ovrObj||calculatePlayerOVR(p, {statsByPlayer});
+              let s=x._s || statsByPlayer[p]||{};
+              let career=x._career || playerCareerStats(p);
+              let ovrObj=x._ovrObj || x.ovrObj || calculatePlayerOVR(p, {statsByPlayer});
               let { best: bestRival, worst: worstRival } = getPlayerRivals(p, allMatches);
               let faceArt=profilePictures[p]?`url('${esc(profilePictures[p])}')`:(teamCovers[p]?`url('${esc(teamCovers[p])}')`:fallbackArt(p));
               let faceLetter=(profilePictures[p]||teamCovers[p])?'':esc((p||'?')[0]);
 
               return `<tr>
-                <td class="rank" style="text-align:center">${i===0?'👑':(i+1)}</td>
+                <td class="rank" style="text-align:center">${x.legacyRank === 1 ? '👑' : x.legacyRank}</td>
                 <td class="player">
                   <div style="display:flex;align-items:center;gap:9px">
                     <span class="mrow-face" style="background-image:${faceArt};background-size:cover;background-position:center;width:30px;height:30px;font-size:13px;border-radius:50%;flex:none;display:grid;place-items:center;border:2px solid ${ovrObj.color}">${faceLetter}</span>
@@ -24607,6 +24736,10 @@ function Records(){
   let {statsByPlayer,records}=calculateLeagueRecords();
   let r=recapRankings();
 
+  let sortCol = window.recordsSortCol || 'rank';
+  let sortDir = window.recordsSortDir || 'asc';
+  let sortedRows = sortRankingsRows(r, sortCol, sortDir, statsByPlayer);
+
   return head('Hall of Fame','League Records, Player Overalls & Historic Milestones')
     +`<div class="hof-grid">
       <!-- 1. Highest Overall Rating (OVR) -->
@@ -24782,30 +24915,30 @@ function Records(){
         <table class="standings">
           <thead>
             <tr>
-              <th style="width:32px;text-align:center">#</th>
-              <th>Trainer / Team</th>
-              <th style="text-align:center;white-space:nowrap">OVR Rating</th>
-              <th>Accolades & Badges</th>
-              <th style="text-align:center;white-space:nowrap">Career W-L</th>
-              <th style="text-align:center;white-space:nowrap">Win %</th>
-              <th style="text-align:center;white-space:nowrap">Best Streak</th>
-              <th style="text-align:center;white-space:nowrap">Active</th>
-              <th style="text-align:center;white-space:nowrap">Titles</th>
-              <th style="text-align:center;white-space:nowrap">Top Cuts</th>
+              ${renderSortTh('#', 'rank', sortCol, sortDir, 'width:38px;text-align:center', '', 'toggleRecordsSort')}
+              ${renderSortTh('Trainer / Team', 'player', sortCol, sortDir, '', '', 'toggleRecordsSort')}
+              ${renderSortTh('OVR Rating', 'ovr', sortCol, sortDir, 'text-align:center;white-space:nowrap', '', 'toggleRecordsSort')}
+              ${renderSortTh('Accolades & Badges', 'badges', sortCol, sortDir, '', '', 'toggleRecordsSort')}
+              ${renderSortTh('Career W-L', 'wl', sortCol, sortDir, 'text-align:center;white-space:nowrap', '', 'toggleRecordsSort')}
+              ${renderSortTh('Win %', 'winpct', sortCol, sortDir, 'text-align:center;white-space:nowrap', '', 'toggleRecordsSort')}
+              ${renderSortTh('Best Streak', 'beststreak', sortCol, sortDir, 'text-align:center;white-space:nowrap', '', 'toggleRecordsSort')}
+              ${renderSortTh('Active', 'active', sortCol, sortDir, 'text-align:center;white-space:nowrap', '', 'toggleRecordsSort')}
+              ${renderSortTh('Titles', 'titles', sortCol, sortDir, 'text-align:center;white-space:nowrap', '', 'toggleRecordsSort')}
+              ${renderSortTh('Top Cuts', 'topcuts', sortCol, sortDir, 'text-align:center;white-space:nowrap', '', 'toggleRecordsSort')}
             </tr>
           </thead>
           <tbody>
-            ${r.map((x,i)=>{
+            ${sortedRows.map((x,i)=>{
               let p=x.p;
-              let s=statsByPlayer[p]||{};
-              let career=playerCareerStats(p);
+              let s=x._s || statsByPlayer[p]||{};
+              let career=x._career || playerCareerStats(p);
               let badges=s.badges||[];
-              let ovrObj=calculatePlayerOVR(p, {statsByPlayer});
+              let ovrObj=x._ovrObj || calculatePlayerOVR(p, {statsByPlayer});
               let faceArt=profilePictures[p]?`url('${esc(profilePictures[p])}')`:(teamCovers[p]?`url('${esc(teamCovers[p])}')`:fallbackArt(p));
               let faceLetter=(profilePictures[p]||teamCovers[p])?'':esc((p||'?')[0]);
 
               return `<tr>
-                <td class="rank" style="text-align:center">${i+1}</td>
+                <td class="rank" style="text-align:center">${x.legacyRank}</td>
                 <td class="player">
                   <div style="display:flex;align-items:center;gap:9px">
                     <span class="mrow-face" style="background-image:${faceArt};background-size:cover;background-position:center;width:30px;height:30px;font-size:13px;border-radius:50%;flex:none;display:grid;place-items:center;border:2px solid ${ovrObj.color}">${faceLetter}</span>
