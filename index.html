@@ -367,7 +367,8 @@
 .pf-mod-box{background:#121217;border:1px solid #2d2d38;border-radius:8px;padding:12px}
 .pf-mod-actions{display:grid;grid-template-columns:1fr 1fr;gap:6px}
 .btn-sm{padding:7px 8px!important;font-size:10px!important;font-weight:800!important;text-align:center;justify-content:center}
-.mon-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(136px,1fr));gap:8px}
+.mon-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+@media(max-width:480px){.mon-grid{grid-template-columns:1fr}}
 .mon-chip{position:relative;display:flex;align-items:center;gap:9px;background:linear-gradient(135deg,#1f1f29,#161620);border:1px solid #363646;border-left:3px solid var(--red);border-radius:7px;padding:7px 9px;min-width:0;transition:transform .15s ease,border-color .15s ease}
 .mon-chip:hover{border-color:#5c242c;transform:translateY(-1px)}
 .mon-chip.clickable{cursor:pointer}
@@ -3198,7 +3199,7 @@ function renderTournamentRosterGrid(p, tId){
       <span style="font-size:11px;color:#8a8894">No Pokémon recorded for this tournament roster yet.</span>
     </div>`;
   }
-  return `<div class="mon-grid" style="grid-template-columns:repeat(auto-fill,minmax(128px,1fr));gap:6px">
+  return `<div class="mon-grid" style="gap:6px">
     ${tMons.map((m, idx) => `
       <div class="mon-chip historic ${canEdit ? 'clickable' : ''}" style="padding:6px 8px;border-radius:6px" ${canEdit ? `onclick="openReplaceMonModal('${jsArg(p)}', ${idx}, '${jsArg(t.id)}')" title="Click to replace ${esc(m)}"` : ''}>
         <img src="${esc(monSprite(m))}" alt="${esc(m)}" style="width:30px;height:30px;object-fit:contain;image-rendering:var(--sprite-rendering,auto);flex:none;filter:drop-shadow(0 2px 4px rgba(0,0,0,0.6))" loading="lazy" onerror="handleSpriteError(this)">

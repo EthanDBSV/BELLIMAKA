@@ -3,6 +3,17 @@
 All notable changes to the Bellimaka Pokémon Draft League site are documented here.
 Format: `v[MAJOR].[MINOR].[PATCH]` — Major = big new systems, Minor = new features, Patch = bug fixes / small improvements.
 
+## [v1.1.15] — 2026-09-28
+
+### Improved
+- **Balanced 2-Column Roster Grid on Player Profiles & Tournament History** — Restructured the Pokémon roster grid across player profile cards and historical tournament rosters to create a clean, balanced layout:
+  - **Symmetric 2-Column Grid**: Replaced the previous auto-fill configuration with a symmetrical 2-column layout (`repeat(2, minmax(0, 1fr))`), ensuring standard 10-Pokémon rosters display cleanly across exactly 5 rows of 2 cards without awkward trailing items on the final row.
+  - **Comfortable Breathing Room**: Expanded card widths to ~245–250px per Pokémon chip, providing generous space for long Pokémon form names, sprite art, and quick-action buttons (⇄ swap / × remove) without text truncation or wrapping.
+  - **Cross-View Consistency**: Applied the 2-column grid structure across active draft rosters, historical team rosters, and expandable tournament history rosters on player profiles.
+  - **Responsive Mobile Layout**: Added a responsive media breakpoint (`@media(max-width: 480px)`) to automatically collapse rosters into a single column (`1fr`) on compact mobile viewports for easy vertical scrolling and comfortable touch targets.
+
+---
+
 ## [v1.1.14] — 2026-09-28
 
 ### Fixed
