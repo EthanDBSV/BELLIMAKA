@@ -3,6 +3,17 @@
 All notable changes to the Bellimaka Pokémon Draft League site are documented here.
 Format: `v[MAJOR].[MINOR].[PATCH]` — Major = big new systems, Minor = new features, Patch = bug fixes / small improvements.
 
+## [v1.1.11] — 2026-09-27
+
+### Fixed
+- **Paldean Tauros Breed Typings & Form Resolution** — Fixed typing detection and naming recognition for all Paldean Tauros breeds across the team roster view, draft board, battle log parser, and Pokédex autocompletes:
+  - **Typing Accuracy**: Resolved an issue where Paldean Tauros (Blaze Breed) and Paldean Tauros (Aqua Breed) displayed as pure Normal-type on team sheets and the draft board. Updated primary and dual typing maps to ensure Blaze Breed correctly resolves to **Fighting / Fire**, Aqua Breed resolves to **Fighting / Water**, and Combat Breed resolves to **Fighting**, while preserving regular Kantonian Tauros as pure **Normal**.
+  - **Showdown Battle Form Normalization**: Added mapping rules to `normalizeBattleFormToDraftForm` so Showdown battle forms (`Tauros-Paldea-Blaze`, `Tauros-Paldea-Aqua`, `Tauros-Paldea-Combat`, `Tauros-Paldea`) automatically reconcile to drafted roster entries (`Paldean Tauros (Blaze)`, `Paldean Tauros (Aqua)`, `Paldean Tauros`).
+  - **Draft Resolution Resilience**: Enhanced `resolveDraftMonName` to match both raw and normalized form keys, ensuring battle statistics map accurately to drafted roster slots regardless of input formatting variations.
+  - **Pokédex & HP Baseline Coverage**: Added all three Paldean Tauros breeds (`Paldean Tauros (Aqua)`, `Paldean Tauros (Blaze)`, `Paldean Tauros (Combat)`) to `MASTER_POKEDEX` for search datalists and updated `getPokemonBaseHp` to properly index all Paldean Tauros breed keys with their 75 base HP.
+
+---
+
 ## [v1.1.10] — 2026-09-27
 
 ### Added
