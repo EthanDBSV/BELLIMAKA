@@ -3,6 +3,18 @@
 All notable changes to the Bellimaka Pokémon Draft League site are documented here.
 Format: `v[MAJOR].[MINOR].[PATCH]` — Major = big new systems, Minor = new features, Patch = bug fixes / small improvements.
 
+## [v1.1.12] — 2026-09-28
+
+### Added
+- **Spacious Desktop Prediction Ballot View & In-Place Filtering** — Overhauled the prediction ballot modal opened from the tournament prediction leaderboard to match the spacious desktop layout of the main predictions page:
+  - **Full-Width Modal Presentation**: Replaced the narrow, condensed modal list with a spacious `1350px` wide popup window allocating full width to the prediction pick sections (Champion Outright row, Group Stage Winners grid, and Match Pick'ems grid).
+  - **Identical Compact Match Cards**: Rendered match pick'ems using the exact compact card layout from the main predictions page (team logos, coach and team labels, and colored pick boxes: gold for open/pending picks, green for hits, and red for misses).
+  - **In-Place Tab & Status Filtering**: Integrated the interactive filter bar (All / Division tabs, plus All / Open / Decided status pills) directly inside the ballot view, updating the ballot fixtures instantaneously in-place while preserving container scroll position and leaving the background page filter state untouched.
+  - **Read-Only Ballot Security**: Scoped pick resolution to the viewed participant's selections via `_viewingBallotPickMap` and enforced read-only disabled states across all contender buttons and match pick boxes so external ballots cannot trigger accidental edits.
+  - **Playoff & Tournament Phase Adaptation**: Automatically renders the full Top Cut Prediction Bracket when inspecting ballots for playoff-phase tournaments, while handling custom prediction bonus questions gracefully.
+
+---
+
 ## [v1.1.11] — 2026-09-27
 
 ### Fixed
