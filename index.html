@@ -4195,7 +4195,7 @@ function tournamentNumber(t){let all=Object.values(tournamentData);return Math.m
 
 
 
-function topCutPredictionMatches(t){if(!t.topCutMatches){let q=qualified(t),out=[];for(let i=0;i<Math.ceil(q.length/2);i++)out.push({a:q[i]?.p||'BYE',b:q[q.length-1-i]?.p||'BYE',as:'',bs:'',round:'Top Cut opening round'});t.topCutMatches=out}return t.topCutMatches}
+function topCutPredictionMatches(t){if(!t.topCutMatches){let q=(t.customTopCutSeeding&&t.customTopCutSeeding.length)?t.customTopCutSeeding.filter(Boolean):seedTopCut(t).filter(Boolean),size=nextPow2(Math.max(2,q.length)),s=q.slice();while(s.length<size)s.push(null);let out=[];if(size===8){let pairs=[[s[0],s[7]],[s[3],s[4]],[s[1],s[6]],[s[2],s[5]]];pairs.forEach(pr=>out.push({a:pr[0]||'BYE',b:pr[1]||'BYE',as:'',bs:'',round:'Top Cut Quarterfinal'}))}else{for(let i=0;i<Math.ceil(size/2);i++)out.push({a:s[i]||'BYE',b:s[size-1-i]||'BYE',as:'',bs:'',round:'Top Cut opening round'})}t.topCutMatches=out}return t.topCutMatches}
 function Predictions(){
   let t=ongoingT();
   if(!t)return head('Predictions','Tournament picks')+`<div class="card empty"><div class="card-title">Predictions are inactive</div><p class="sub">Predictions open automatically when a new tournament begins.</p></div>`;
@@ -11182,8 +11182,11 @@ function getTournamentTopCutModel(t){
     qualifiers=t.bracketManagerData.participant.map((pt,idx)=>({name:pt.name,seed:idx+1}));
   }else if(t.topCutCache?.participants?.length){
     qualifiers=t.topCutCache.participants.map((name,idx)=>({name,seed:idx+1}));
+  }else if(t.customTopCutSeeding && t.customTopCutSeeding.length){
+    qualifiers=t.customTopCutSeeding.filter(Boolean).map((name,idx)=>({name,seed:idx+1}));
   }else{
-    qualifiers=qualified(t).map((x,idx)=>({name:x.p,seed:idx+1,group:x.group}));
+    let seeds = seedTopCut(t).filter(Boolean);
+    qualifiers=seeds.map((name,idx)=>({name,seed:idx+1}));
   }
 
   let seedMap = {};
@@ -11654,15 +11657,34 @@ function openReseedBracketModal(){
   };
 
   let getPairingPreview = () => {
+    let size = nextPow2(Math.max(2, count));
+    let s = currentSeeds.slice();
+    while(s.length < size) s.push(null);
     let rows = [];
-    for(let i = 0; i < Math.floor(count / 2); i++){
-      let p1 = currentSeeds[i] || `Seed #${i+1}`;
-      let p2 = currentSeeds[count - 1 - i] || `Seed #${count-i}`;
-      rows.push(`<div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid #202028;font-size:11px">
-        <span><b>#${i+1}</b> ${esc(p1)}</span>
-        <span style="color:#8e8c95">vs</span>
-        <span><b>#${count-i}</b> ${esc(p2)}</span>
-      </div>`);
+    if(size === 8){
+      let pairs = [
+        { label: 'QF 1', s1: 1, p1: s[0], s2: 8, p2: s[7] || 'BYE' },
+        { label: 'QF 2', s1: 4, p1: s[3], s2: 5, p2: s[4] },
+        { label: 'QF 3', s1: 2, p1: s[1], s2: 7, p2: s[6] || 'BYE' },
+        { label: 'QF 4', s1: 3, p1: s[2], s2: 6, p2: s[5] }
+      ];
+      pairs.forEach(pr => {
+        rows.push(`<div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid #202028;font-size:11px">
+          <span><span style="color:#8e8c95;font-weight:700;margin-right:4px">${pr.label}:</span> <b>#${pr.s1}</b> ${esc(pr.p1 || 'Seed #' + pr.s1)}</span>
+          <span style="color:#8e8c95">vs</span>
+          <span><b>#${pr.s2}</b> ${esc(pr.p2 || 'Seed #' + pr.s2)}</span>
+        </div>`);
+      });
+    } else {
+      for(let i = 0; i < Math.floor(size / 2); i++){
+        let p1 = s[i] || `Seed #${i+1}`;
+        let p2 = s[size - 1 - i] || `Seed #${size-i}`;
+        rows.push(`<div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid #202028;font-size:11px">
+          <span><b>#${i+1}</b> ${esc(p1)}</span>
+          <span style="color:#8e8c95">vs</span>
+          <span><b>#${size-i}</b> ${esc(p2)}</span>
+        </div>`);
+      }
     }
     return rows.join('');
   };
@@ -16479,13 +16501,74 @@ function removeDraftStageCover(){
 }
 
 function seedTopCut(t){
+  if(!t) return [];
   if(t?.stage1Format === 'swiss'){
     let swissStand = getSwissStand(t);
     let cutCount = advancePerGroup(t);
     return swissStand.slice(0, cutCount).map(x => x.p);
   }
-  let groups=Object.keys(groupsOf(t)),per=advancePerGroup(t),entries=[];
-  for(let rank=0;rank<per;rank++)groups.forEach(g=>{let x=getStand(t,g)[rank];if(x)entries.push(x.p)});
+  let groups = Object.keys(groupsOf(t)), per = advancePerGroup(t);
+  if(groups.length <= 1){
+    let g = groups[0] || 'Group A';
+    return getStand(t, g).slice(0, per).map(x => x.p);
+  }
+
+  let cmp = (a, b) => {
+    if(!a && !b) return 0;
+    if(!a) return 1;
+    if(!b) return -1;
+    if(typeof getStandingsCriteria === 'function' && typeof STANDING_METRICS !== 'undefined'){
+      let criteria = getStandingsCriteria(t);
+      for(let critId of criteria){
+        let metric = STANDING_METRICS[critId];
+        if(metric && typeof metric.compare === 'function'){
+          let diff = metric.compare(a, b);
+          if(diff !== 0) return diff;
+        }
+      }
+    }
+    return (b.gw - a.gw) || ((b.gw - b.gl) - (a.gw - a.gl));
+  };
+
+  // For 2 groups: cross-seed to guarantee opposite-group matchups and eliminate same-group opening fixtures
+  if(groups.length === 2){
+    let gA = groups[0], gB = groups[1];
+    let standA = getStand(t, gA);
+    let standB = getStand(t, gB);
+    let r1A = standA[0], r1B = standB[0];
+    
+    // Group 1 is the group with the superior #1 overall seed
+    let s1 = standA, s2 = standB;
+    if(cmp(r1A, r1B) > 0){
+      s1 = standB;
+      s2 = standA;
+    }
+
+    // Rank 0: Seed 1 = G1-1, Seed 2 = G2-1
+    // Rank 1: Seed 3 = G1-2, Seed 4 = G2-2
+    // Rank 2: Seed 5 = G1-3, Seed 6 = G2-3
+    // Rank 3: Seed 7 = G1-4, Seed 8 = G2-4
+    let entries = [];
+    for(let r = 0; r < per; r++){
+      let p1 = s1[r]?.p;
+      let p2 = s2[r]?.p;
+      if(p1) entries.push(p1);
+      if(p2) entries.push(p2);
+    }
+    return entries;
+  }
+
+  // For > 2 groups: sort groups by #1 seed performance
+  let sortedGroups = groups.slice().sort((ga, gb) => {
+    return cmp(getStand(t, ga)[0], getStand(t, gb)[0]);
+  });
+  let entries = [];
+  for(let rank = 0; rank < per; rank++){
+    sortedGroups.forEach(g => {
+      let x = getStand(t, g)[rank];
+      if(x) entries.push(x.p);
+    });
+  }
   return entries;
 }
 function topCutBracketSeedOrder(size){let order=[1,2];for(let n=4;n<=size;n*=2)order=order.flatMap(seed=>[seed,n+1-seed]);return order}
@@ -16495,7 +16578,7 @@ function buildTopCutSeeding(t){
   let size=nextPow2(Math.max(2,names.length));
   let seeding=names.slice();
   while(seeding.length<size)seeding.push(null);
-  if(!t.customTopCutSeeding){
+  if(!t.customTopCutSeeding && Object.keys(groups).length > 2){
     let order=topCutBracketSeedOrder(size);
     let positions=order.map(seed=>seeding[seed-1]);
     for(let i=0;i<positions.length;i+=2){
@@ -16504,7 +16587,7 @@ function buildTopCutSeeding(t){
         for(let j=0;j<positions.length;j++){
           if(j===i||j===i+1)continue;
           let partnerIdx=j%2===0?j+1:j-1,candidate=positions[j],partner=positions[partnerIdx];
-          if(candidate&&groupOf(candidate)!==groupOf(a)&&(!partner||groupOf(partner)!==groupOf(b))){
+          if(candidate&&partner&&groupOf(candidate)!==groupOf(a)&&groupOf(partner)!==groupOf(b)){
             [positions[i+1],positions[j]]=[positions[j],positions[i+1]];
             let seedIdxB=order[i+1]-1,seedIdxJ=order[j]-1;
             [seeding[seedIdxB],seeding[seedIdxJ]]=[seeding[seedIdxJ],seeding[seedIdxB]];

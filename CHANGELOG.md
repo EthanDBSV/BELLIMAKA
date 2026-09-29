@@ -3,6 +3,17 @@
 All notable changes to the Bellimaka Pokémon Draft League site are documented here.
 Format: `v[MAJOR].[MINOR].[PATCH]` — Major = big new systems, Minor = new features, Patch = bug fixes / small improvements.
 
+## [v1.1.16] — 2026-09-29
+
+### Fixed
+- **Cross-Group Playoff Seeding & Elimination of Same-Group Opening Rematches** — Overhauled the Top Cut bracket preview generator, automatic seed ordering, and bracket stage creation algorithms to guarantee proper cross-group matchups and eliminate opening-round same-division rematches:
+  - **Cross-Division Seeding Algorithm**: Refactored seed resolution across multi-group stages so that qualifiers from opposite divisions are paired in opening playoff rounds. In 2-group tournaments advancing 3 coaches per group (into an 8-slot bracket with top-seed byes), 2nd-place finishers are systematically paired against 3rd-place finishers from the opposite group (Group B #2 vs Group A #3, and Group A #2 vs Group B #3) rather than facing their own group rivals.
+  - **Bracket Half Separation & Delayed Group Rematches**: Positioned the runner-up of the #1 overall seed's division in the opposite half of the bracket (feeding into the #2 overall seed), ensuring that coaches who competed in the same group stage cannot rematch until the Grand Finals (or deep in the semifinals in the event of an upset).
+  - **Harmonized Bracket Preview & Stage Creation**: Unified `getTournamentTopCutModel` preview resolution with `seedTopCut` and `buildTopCutSeeding`, ensuring the projected live standings bracket preview, the generated BracketsManager stage, and prediction pick'ems reflect identical, mathematically consistent pairings.
+  - **Accurate Reseed Pairing Preview**: Updated the manual bracket re-seeding modal preview to reflect actual 8-bracket matchup paths and bye placements instead of naive contiguous indices.
+
+---
+
 ## [v1.1.15] — 2026-09-28
 
 ### Improved
