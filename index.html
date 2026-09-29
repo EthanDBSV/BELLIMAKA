@@ -11173,6 +11173,38 @@ function findStageMatch(bmd, groupNum, roundNum, matchNum){
   };
 }
 
+function cleanGroupLetter(gName, idx){
+  let m = String(gName || '').match(/(?:Group|Pool|Division|Conference)\s*([A-Za-z0-9]+)$/i);
+  if(m) return m[1].toUpperCase();
+  if(String(gName || '').length === 1) return String(gName).toUpperCase();
+  return String.fromCharCode(65 + idx);
+}
+
+function getTournamentTopCutSeedLabel(t, pName, numericSeed){
+  if(!t || !pName) return numericSeed != null ? String(numericSeed) : '';
+  if(t.stage1Format === 'swiss') return String(numericSeed != null ? numericSeed : '');
+  
+  let groups = groupsOf(t);
+  let groupKeys = Object.keys(groups);
+  if(groupKeys.length <= 1) return String(numericSeed != null ? numericSeed : '');
+  if(t.customTopCutSeeding && t.customTopCutSeeding.length) return String(numericSeed != null ? numericSeed : '');
+
+  for(let i = 0; i < groupKeys.length; i++){
+    let g = groupKeys[i];
+    let stand = (t.finalStandings && t.finalStandings[g]) 
+      ? t.finalStandings[g] 
+      : ((t.manualStandings && t.manualStandings[g])
+        ? t.manualStandings[g]
+        : (getStand(t, g) || []).map(x => x.p));
+    let rankIdx = Array.isArray(stand) ? stand.findIndex(x => (typeof x === 'string' ? x : x?.p) === pName) : -1;
+    if(rankIdx >= 0){
+      let gLetter = cleanGroupLetter(g, i);
+      return `${rankIdx + 1}${gLetter}`;
+    }
+  }
+  return numericSeed != null ? String(numericSeed) : '';
+}
+
 function getTournamentTopCutModel(t){
   if(!t) return null;
   let isPreview = (!t.bracketManagerData && t.phase!=='topcut' && t.status==='ONGOING');
@@ -11191,13 +11223,20 @@ function getTournamentTopCutModel(t){
 
   let seedMap = {};
   qualifiers.forEach(q => {
-    if(q && q.name) seedMap[q.name] = q.seed;
+    if(q && q.name) seedMap[q.name] = getTournamentTopCutSeedLabel(t, q.name, q.seed);
   });
 
   let bmd = t.bracketManagerData;
   let count = qualifiers.length > 4 ? 8 : (qualifiers.length > 2 ? 4 : 2);
   let seededNames = qualifiers.map(q => q.name);
   while(seededNames.length < count) seededNames.push(null);
+
+  let isMultiGroup = (Object.keys(groupsOf(t)).length > 1 && t?.stage1Format !== 'swiss' && !(t.customTopCutSeeding && t.customTopCutSeeding.length));
+  let sLabel = (idx, fallback) => {
+    let name = seededNames[idx];
+    if(name && seedMap[name]) return seedMap[name];
+    return fallback;
+  };
 
   function applyStageMatch(matchObj, sm){
     if(!sm) return;
@@ -11238,10 +11277,10 @@ function getTournamentTopCutModel(t){
       let p8Label = qualifiers.length <= 7 ? 'BYE' : 'Seed #8';
       let p7Label = qualifiers.length <= 6 ? 'BYE' : 'Seed #7';
       let qfMatches = [
-        { id:'qf1', title:'Quarterfinal 1', p1:seededNames[0]||'Seed #1', p1Seed:1, p2:seededNames[7]||p8Label, p2Seed:8, originP1:'Seed #1', originP2:p8Label },
-        { id:'qf2', title:'Quarterfinal 2', p1:seededNames[3]||'Seed #4', p1Seed:4, p2:seededNames[4]||'Seed #5', p2Seed:5, originP1:'Seed #4', originP2:'Seed #5' },
-        { id:'qf3', title:'Quarterfinal 3', p1:seededNames[1]||'Seed #2', p1Seed:2, p2:seededNames[6]||p7Label, p2Seed:7, originP1:'Seed #2', originP2:p7Label },
-        { id:'qf4', title:'Quarterfinal 4', p1:seededNames[2]||'Seed #3', p1Seed:3, p2:seededNames[5]||'Seed #6', p2Seed:6, originP1:'Seed #3', originP2:'Seed #6' },
+        { id:'qf1', title:'Quarterfinal 1', p1:seededNames[0]||'Seed #1', p1Seed:sLabel(0, isMultiGroup ? '1A' : 1), p2:seededNames[7]||p8Label, p2Seed:sLabel(7, isMultiGroup ? (qualifiers.length <= 7 ? 'BYE' : '4B') : 8), originP1:'Seed #1', originP2:p8Label },
+        { id:'qf2', title:'Quarterfinal 2', p1:seededNames[3]||'Seed #4', p1Seed:sLabel(3, isMultiGroup ? '2B' : 4), p2:seededNames[4]||'Seed #5', p2Seed:sLabel(4, isMultiGroup ? '3A' : 5), originP1:'Seed #4', originP2:'Seed #5' },
+        { id:'qf3', title:'Quarterfinal 3', p1:seededNames[1]||'Seed #2', p1Seed:sLabel(1, isMultiGroup ? '1B' : 2), p2:seededNames[6]||p7Label, p2Seed:sLabel(6, isMultiGroup ? (qualifiers.length <= 6 ? 'BYE' : '4A') : 7), originP1:'Seed #2', originP2:p7Label },
+        { id:'qf4', title:'Quarterfinal 4', p1:seededNames[2]||'Seed #3', p1Seed:sLabel(2, isMultiGroup ? '2A' : 3), p2:seededNames[5]||'Seed #6', p2Seed:sLabel(5, isMultiGroup ? '3B' : 6), originP1:'Seed #3', originP2:'Seed #6' },
       ];
       [1, 2, 3, 4].forEach((num, idx)=>{
         let sm = findStageMatch(bmd, 1, 1, num);
@@ -11289,8 +11328,8 @@ function getTournamentTopCutModel(t){
 
     } else if(count === 4){
       let sfMatches = [
-        { id:'sf1', title:'Semifinal 1', p1:seededNames[0]||'Seed #1', p1Seed:1, p2:seededNames[3]||'Seed #4', p2Seed:4, originP1:'Seed #1', originP2:'Seed #4' },
-        { id:'sf2', title:'Semifinal 2', p1:seededNames[1]||'Seed #2', p1Seed:2, p2:seededNames[2]||'Seed #3', p2Seed:3, originP1:'Seed #2', originP2:'Seed #3' }
+        { id:'sf1', title:'Semifinal 1', p1:seededNames[0]||'Seed #1', p1Seed:sLabel(0, isMultiGroup ? '1A' : 1), p2:seededNames[3]||'Seed #4', p2Seed:sLabel(3, isMultiGroup ? '2B' : 4), originP1:'Seed #1', originP2:'Seed #4' },
+        { id:'sf2', title:'Semifinal 2', p1:seededNames[1]||'Seed #2', p1Seed:sLabel(1, isMultiGroup ? '1B' : 2), p2:seededNames[2]||'Seed #3', p2Seed:sLabel(2, isMultiGroup ? '2A' : 3), originP1:'Seed #2', originP2:'Seed #3' }
       ];
       [1, 2].forEach((num, idx)=>{
         let sm = findStageMatch(bmd, 1, 1, num);
@@ -11320,7 +11359,7 @@ function getTournamentTopCutModel(t){
 
     } else {
       let finalsMatch = {
-        id:'finals', title:'Championship Final', p1:seededNames[0]||'Seed #1', p1Seed:1, p2:seededNames[1]||'Seed #2', p2Seed:2, originP1:'Seed #1', originP2:'Seed #2'
+        id:'finals', title:'Championship Final', p1:seededNames[0]||'Seed #1', p1Seed:sLabel(0, isMultiGroup ? '1A' : 1), p2:seededNames[1]||'Seed #2', p2Seed:sLabel(1, isMultiGroup ? '1B' : 2), originP1:'Seed #1', originP2:'Seed #2'
       };
       let smFinals = findStageMatch(bmd, 1, 1, 1);
       if(smFinals){
@@ -11332,10 +11371,10 @@ function getTournamentTopCutModel(t){
     let p8Label = qualifiers.length <= 7 ? 'BYE' : 'Seed #8';
     let p7Label = qualifiers.length <= 6 ? 'BYE' : 'Seed #7';
     let wb1Matches = [
-      { id:'wb1', title:'WB Quarterfinal 1', p1:seededNames[0]||'Seed #1', p1Seed:1, p2:seededNames[7]||p8Label, p2Seed:8, originP1:'Seed #1', originP2:p8Label },
-      { id:'wb2', title:'WB Quarterfinal 2', p1:seededNames[3]||'Seed #4', p1Seed:4, p2:seededNames[4]||'Seed #5', p2Seed:5, originP1:'Seed #4', originP2:'Seed #5' },
-      { id:'wb3', title:'WB Quarterfinal 3', p1:seededNames[1]||'Seed #2', p1Seed:2, p2:seededNames[6]||p7Label, p2Seed:7, originP1:'Seed #2', originP2:p7Label },
-      { id:'wb4', title:'WB Quarterfinal 4', p1:seededNames[2]||'Seed #3', p1Seed:3, p2:seededNames[5]||'Seed #6', p2Seed:6, originP1:'Seed #3', originP2:'Seed #6' },
+      { id:'wb1', title:'WB Quarterfinal 1', p1:seededNames[0]||'Seed #1', p1Seed:sLabel(0, isMultiGroup ? '1A' : 1), p2:seededNames[7]||p8Label, p2Seed:sLabel(7, isMultiGroup ? (qualifiers.length <= 7 ? 'BYE' : '4B') : 8), originP1:'Seed #1', originP2:p8Label },
+      { id:'wb2', title:'WB Quarterfinal 2', p1:seededNames[3]||'Seed #4', p1Seed:sLabel(3, isMultiGroup ? '2B' : 4), p2:seededNames[4]||'Seed #5', p2Seed:sLabel(4, isMultiGroup ? '3A' : 5), originP1:'Seed #4', originP2:'Seed #5' },
+      { id:'wb3', title:'WB Quarterfinal 3', p1:seededNames[1]||'Seed #2', p1Seed:sLabel(1, isMultiGroup ? '1B' : 2), p2:seededNames[6]||p7Label, p2Seed:sLabel(6, isMultiGroup ? (qualifiers.length <= 6 ? 'BYE' : '4A') : 7), originP1:'Seed #2', originP2:p7Label },
+      { id:'wb4', title:'WB Quarterfinal 4', p1:seededNames[2]||'Seed #3', p1Seed:sLabel(2, isMultiGroup ? '2A' : 3), p2:seededNames[5]||'Seed #6', p2Seed:sLabel(5, isMultiGroup ? '3B' : 6), originP1:'Seed #3', originP2:'Seed #6' },
     ];
     [1, 2, 3, 4].forEach((num, idx)=>{
       let sm = findStageMatch(bmd, 1, 1, num);
@@ -11458,8 +11497,8 @@ function getTournamentTopCutModel(t){
 
   } else {
     let wb1Matches = [
-      { id:'wb1', title:'WB Semifinal 1', p1:seededNames[0]||'Seed #1', p1Seed:1, p2:seededNames[3]||'Seed #4', p2Seed:4, originP1:'Seed #1', originP2:'Seed #4' },
-      { id:'wb2', title:'WB Semifinal 2', p1:seededNames[1]||'Seed #2', p1Seed:2, p2:seededNames[2]||'Seed #3', p2Seed:3, originP1:'Seed #2', originP2:'Seed #3' }
+      { id:'wb1', title:'WB Semifinal 1', p1:seededNames[0]||'Seed #1', p1Seed:sLabel(0, isMultiGroup ? '1A' : 1), p2:seededNames[3]||'Seed #4', p2Seed:sLabel(3, isMultiGroup ? '2B' : 4), originP1:'Seed #1', originP2:'Seed #4' },
+      { id:'wb2', title:'WB Semifinal 2', p1:seededNames[1]||'Seed #2', p1Seed:sLabel(1, isMultiGroup ? '1B' : 2), p2:seededNames[2]||'Seed #3', p2Seed:sLabel(2, isMultiGroup ? '2A' : 3), originP1:'Seed #2', originP2:'Seed #3' }
     ];
     let sm1 = findStageMatch(bmd, 1, 1, 1);
     if(sm1){
@@ -11653,36 +11692,53 @@ function openReseedBracketModal(){
   if(count < 2) count = 2;
 
   let playerOptions = (selectedVal) => {
-    return (t.players || []).map(p => `<option value="${esc(p)}" ${p === selectedVal ? 'selected' : ''}>${esc(p)}${autoSeeds.includes(p)?` (Auto: #${autoSeeds.indexOf(p)+1})`:''}</option>`).join('');
+    return (t.players || []).map(p => {
+      let autoIdx = autoSeeds.indexOf(p);
+      let autoLabel = '';
+      if(autoIdx >= 0){
+        let sLab = getTournamentTopCutSeedLabel(t, p, autoIdx + 1);
+        autoLabel = ` (Auto: #${sLab})`;
+      }
+      return `<option value="${esc(p)}" ${p === selectedVal ? 'selected' : ''}>${esc(p)}${autoLabel}</option>`;
+    }).join('');
   };
 
   let getPairingPreview = () => {
     let size = nextPow2(Math.max(2, count));
     let s = currentSeeds.slice();
     while(s.length < size) s.push(null);
+    let isMultiGroup = (Object.keys(groupsOf(t)).length > 1 && t?.stage1Format !== 'swiss');
+    let sLab = (name, numericFallback) => {
+      if(name) return getTournamentTopCutSeedLabel(t, name, numericFallback);
+      return numericFallback;
+    };
     let rows = [];
     if(size === 8){
       let pairs = [
-        { label: 'QF 1', s1: 1, p1: s[0], s2: 8, p2: s[7] || 'BYE' },
-        { label: 'QF 2', s1: 4, p1: s[3], s2: 5, p2: s[4] },
-        { label: 'QF 3', s1: 2, p1: s[1], s2: 7, p2: s[6] || 'BYE' },
-        { label: 'QF 4', s1: 3, p1: s[2], s2: 6, p2: s[5] }
+        { label: 'QF 1', s1: sLab(s[0], isMultiGroup ? '1A' : 1), p1: s[0], s2: sLab(s[7], isMultiGroup ? (count <= 7 ? 'BYE' : '4B') : 8), p2: s[7] || 'BYE' },
+        { label: 'QF 2', s1: sLab(s[3], isMultiGroup ? '2B' : 4), p1: s[3], s2: sLab(s[4], isMultiGroup ? '3A' : 5), p2: s[4] },
+        { label: 'QF 3', s1: sLab(s[1], isMultiGroup ? '1B' : 2), p1: s[1], s2: sLab(s[6], isMultiGroup ? (count <= 6 ? 'BYE' : '4A') : 7), p2: s[6] || 'BYE' },
+        { label: 'QF 4', s1: sLab(s[2], isMultiGroup ? '2A' : 3), p1: s[2], s2: sLab(s[5], isMultiGroup ? '3B' : 6), p2: s[5] }
       ];
       pairs.forEach(pr => {
+        let p1Str = pr.p1 ? esc(pr.p1) : (pr.s1 ? `Seed #${pr.s1}` : 'TBD');
+        let p2Str = pr.p2 ? esc(pr.p2) : (pr.s2 ? `Seed #${pr.s2}` : 'TBD');
         rows.push(`<div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid #202028;font-size:11px">
-          <span><span style="color:#8e8c95;font-weight:700;margin-right:4px">${pr.label}:</span> <b>#${pr.s1}</b> ${esc(pr.p1 || 'Seed #' + pr.s1)}</span>
+          <span><span style="color:#8e8c95;font-weight:700;margin-right:4px">${pr.label}:</span> <b>#${pr.s1}</b> ${p1Str}</span>
           <span style="color:#8e8c95">vs</span>
-          <span><b>#${pr.s2}</b> ${esc(pr.p2 || 'Seed #' + pr.s2)}</span>
+          <span><b>#${pr.s2}</b> ${p2Str}</span>
         </div>`);
       });
     } else {
       for(let i = 0; i < Math.floor(size / 2); i++){
         let p1 = s[i] || `Seed #${i+1}`;
         let p2 = s[size - 1 - i] || `Seed #${size-i}`;
+        let s1Badge = s[i] ? sLab(s[i], i+1) : (i+1);
+        let s2Badge = s[size - 1 - i] ? sLab(s[size - 1 - i], size - i) : (size - i);
         rows.push(`<div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid #202028;font-size:11px">
-          <span><b>#${i+1}</b> ${esc(p1)}</span>
+          <span><b>#${s1Badge}</b> ${esc(p1)}</span>
           <span style="color:#8e8c95">vs</span>
-          <span><b>#${size-i}</b> ${esc(p2)}</span>
+          <span><b>#${s2Badge}</b> ${esc(p2)}</span>
         </div>`);
       }
     }

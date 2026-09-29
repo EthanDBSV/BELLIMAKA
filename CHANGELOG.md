@@ -3,6 +3,17 @@
 All notable changes to the Bellimaka Pokémon Draft League site are documented here.
 Format: `v[MAJOR].[MINOR].[PATCH]` — Major = big new systems, Minor = new features, Patch = bug fixes / small improvements.
 
+## [v1.1.17] — 2026-09-29
+
+### Added
+- **Group-Specific Division Seed Identifiers for Multi-Group Playoff Brackets** — Upgraded seed numbering across Top Cut brackets, preview cards, re-seeding director tools, and prediction brackets to reflect actual division finishes in multi-group tournaments:
+  - **Division Seed Numbering**: In tournaments with multiple groups/divisions (e.g. 2-group formats), contenders' seeds now clearly display their group placement (e.g. `#1A`, `#1B`, `#2A`, `#2B`, `#3A`, `#3B`) instead of ambiguous sequential numbers (`#1`, `#2`, `#3`, `#4`).
+  - **Single-Group & Swiss Format Preservation**: Maintained standard numeric seeds (`#1`, `#2`, `#3`, `#4`...) for tournaments with a single group, Swiss stage 1 formats, or manually customized seeding orders where division prefixes do not apply.
+  - **Robust Group Letter Extraction**: Implemented dynamic extraction of group identifiers supporting standard conventions (`Group A` -> `A`, `Division 1` -> `1`, `Pool B` -> `B`) with clean alphabetical fallbacks.
+  - **End-to-End Bracket Presentation**: Propagated division seed badges across opening match slots, advancing rounds, semifinal/final cards, bracket re-seed modals, and prediction pick'ems.
+
+---
+
 ## [v1.1.16] — 2026-09-29
 
 ### Fixed
