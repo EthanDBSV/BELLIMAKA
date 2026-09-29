@@ -11187,7 +11187,6 @@ function getTournamentTopCutSeedLabel(t, pName, numericSeed){
   let groups = groupsOf(t);
   let groupKeys = Object.keys(groups);
   if(groupKeys.length <= 1) return String(numericSeed != null ? numericSeed : '');
-  if(t.customTopCutSeeding && t.customTopCutSeeding.length) return String(numericSeed != null ? numericSeed : '');
 
   for(let i = 0; i < groupKeys.length; i++){
     let g = groupKeys[i];
@@ -11231,7 +11230,7 @@ function getTournamentTopCutModel(t){
   let seededNames = qualifiers.map(q => q.name);
   while(seededNames.length < count) seededNames.push(null);
 
-  let isMultiGroup = (Object.keys(groupsOf(t)).length > 1 && t?.stage1Format !== 'swiss' && !(t.customTopCutSeeding && t.customTopCutSeeding.length));
+  let isMultiGroup = (Object.keys(groupsOf(t)).length > 1 && t?.stage1Format !== 'swiss');
   let sLabel = (idx, fallback) => {
     let name = seededNames[idx];
     if(name && seedMap[name]) return seedMap[name];
@@ -11838,7 +11837,7 @@ function topCutSection(t, preview){
 
   function renderMatchSlot(pName, seed, score, isWinner, isLoser, originLabel){
     let isReal = isKnownPlayer(pName);
-    let effSeed = seed || seedMap[pName];
+    let effSeed = seedMap[pName] || (t && pName ? getTournamentTopCutSeedLabel(t, pName, seed) : seed);
     if(!isReal){
       return `<div class="tc-slot tbd">
         <span class="tc-slot-seed">—</span>
@@ -23782,7 +23781,7 @@ function topCutPredictionBracket(t){
     if(!mObj) return '';
     let pName = isP1 ? mObj.p1 : mObj.p2;
     let opponent = isP1 ? mObj.p2 : mObj.p1;
-    let seed = (isP1 ? mObj.p1Seed : mObj.p2Seed) || (model?.seedMap && model.seedMap[pName]);
+    let seed = (model?.seedMap && model.seedMap[pName]) || (isP1 ? mObj.p1Seed : mObj.p2Seed) || (t && pName ? getTournamentTopCutSeedLabel(t, pName, null) : null);
     let mId = mObj.id;
     let isReal = isKnownPlayer(pName);
     let isOpponentReal = isKnownPlayer(opponent);
