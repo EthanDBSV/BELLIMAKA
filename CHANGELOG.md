@@ -3,6 +3,16 @@
 All notable changes to the Bellimaka Pokémon Draft League site are documented here.
 Format: `v[MAJOR].[MINOR].[PATCH]` — Major = big new systems, Minor = new features, Patch = bug fixes / small improvements.
 
+## [v1.1.19] — 2026-09-29
+
+### Fixed
+- **Prediction Ballot Modal Pick Tag Containment & Layout Anchoring** — Resolved an issue where pick status tags (`✓ PICK`, `✓ HIT`, `✗ MISSED`) broke out of contender showcase rows and stacked in the top-right corner of the viewport:
+  - **Inline Badge Containment**: Introduced dedicated inline flex pill styling (`.pred-ballot-pill`) for prediction ballot modals, decoupling showcase badges from the contender card's corner-anchored absolute positioning (`.pred-check-pill`).
+  - **Container Positioning Context**: Added explicit `position: relative` and balanced space-between flex alignment to Champion showcase rows and Division winner rows inside the ballot modal, guaranteeing badges remain neatly anchored on the right edge of each contender card.
+  - **Modal Pill Safeguard**: Implemented an automated CSS boundary safeguard (`.modal .pred-check-pill`) ensuring any status pill rendered inside modals retains static document flow unless explicitly designated as an absolute corner tag on an interactive contender card.
+
+---
+
 ## [v1.1.18] — 2026-09-29
 
 ### Improved
