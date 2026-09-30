@@ -3,6 +3,16 @@
 All notable changes to the Bellimaka Pokémon Draft League site are documented here.
 Format: `v[MAJOR].[MINOR].[PATCH]` — Major = big new systems, Minor = new features, Patch = bug fixes / small improvements.
 
+## [v1.1.18] — 2026-09-29
+
+### Improved
+- **Full-Width Layout Alignment & 3-Column Grid for Tournaments Archive** — Harmonized the Tournaments archive page container width and card grid structure with the rest of the application:
+  - **Site-Wide Width Consistency**: Removed the narrow container restriction (`1,420px`) on the Tournaments page, expanding it to match the standard `1,775px` max-width and `36px 40px 80px` padding used across the Hall of Fame, Standings, Teams, and Home pages.
+  - **Symmetric 3-Column Grid**: Configured the tournament archive card grid to display strictly 3 rectangular cards per row across desktop displays (`repeat(3, minmax(0, 1fr))`), giving tournament cover art, season badges, and match statistics balanced horizontal scale and generous breathing room.
+  - **Clean Responsive Breakpoints**: Implemented smooth responsive transitions from 3 columns on desktop (≥1100px) down to 2 columns on tablets (641px–1099px) and a single full-width column on mobile viewports (≤640px).
+
+---
+
 ## [v1.1.17] — 2026-09-29
 
 ### Added
