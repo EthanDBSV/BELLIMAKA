@@ -3590,6 +3590,12 @@ function extractAllReplayLogs(tourneys) {
                 logMap[`${t.id}_${p2}_${p1}_g${g}`] = r.log;
                 logMap[`${tName}_${p1}_${p2}_g${g}`] = r.log;
                 logMap[`${tName}_${p2}_${p1}_g${g}`] = r.log;
+                let p1Low = p1.toLowerCase();
+                let p2Low = p2.toLowerCase();
+                logMap[`${t.id}_${p1Low}_${p2Low}_g${g}`] = r.log;
+                logMap[`${t.id}_${p2Low}_${p1Low}_g${g}`] = r.log;
+                logMap[`${tName}_${p1Low}_${p2Low}_g${g}`] = r.log;
+                logMap[`${tName}_${p2Low}_${p1Low}_g${g}`] = r.log;
               }
             }
           });
@@ -3604,6 +3610,9 @@ function extractAllReplayLogs(tourneys) {
               if(r.id) logMap[r.id] = r.log;
               logMap[`${t.id}_tc_${k}_g${r.game || 1}`] = r.log;
               logMap[`${tName}_tc_${k}_g${r.game || 1}`] = r.log;
+              let kLow = k.toLowerCase();
+              logMap[`${t.id}_tc_${kLow}_g${r.game || 1}`] = r.log;
+              logMap[`${tName}_tc_${kLow}_g${r.game || 1}`] = r.log;
             }
           });
         }
@@ -3662,18 +3671,59 @@ async function hydrateTournamentsFromIndexedDB() {
 
         if(Array.isArray(fullT.matches) && Array.isArray(locT.matches)) {
           locT.matches.forEach((lm, idx) => {
-            let fm = fullT.matches[idx];
+            let fm = (lm.id != null ? fullT.matches.find(m => m.id === lm.id) : null) ||
+                     fullT.matches.find(m => ((m.a === lm.a && m.b === lm.b) || (m.a === lm.b && m.b === lm.a)) && (m.round === lm.round || m.group === lm.group)) ||
+                     fullT.matches[idx];
             if(fm && Array.isArray(fm.replays) && fm.replays.length > 0) {
               if(!Array.isArray(lm.replays) || lm.replays.length === 0) {
                 lm.replays = JSON.parse(JSON.stringify(fm.replays));
                 restoredCount += fm.replays.length;
               } else {
                 lm.replays.forEach(lr => {
+                  let fr = fm.replays.find(r => (lr.id && r.id === lr.id) || r.game === lr.game);
+                  let hasLocStats = lr.stats && lr.stats.pokemon && (Array.isArray(lr.stats.pokemon) ? lr.stats.pokemon.length > 0 : Object.keys(lr.stats.pokemon).length > 0);
+                  let hasFullStats = fr?.stats && fr.stats.pokemon && (Array.isArray(fr.stats.pokemon) ? fr.stats.pokemon.length > 0 : Object.keys(fr.stats.pokemon).length > 0);
+                  if(!hasLocStats && hasFullStats) {
+                    lr.stats = fr.stats;
+                    restoredCount++;
+                  }
+                  if((!lr.log || lr.log.length < 20) && fr?.log && fr.log.length > 20) {
+                    lr.log = fr.log;
+                    restoredCount++;
+                  }
                   if(!lr.log || lr.log.length < 20) {
-                    let fr = fm.replays.find(r => r.game === lr.game || (r.id && r.id === lr.id));
-                    if(fr && fr.log && fr.log.length > 20) {
-                      lr.log = fr.log;
-                      if(!lr.stats && fr.stats) lr.stats = fr.stats;
+                    let p1 = lm.a || lm.p1 || '';
+                    let p2 = lm.b || lm.p2 || '';
+                    let p1Low = p1 ? p1.toLowerCase() : '';
+                    let p2Low = p2 ? p2.toLowerCase() : '';
+                    let g = lr.game || 1;
+                    let tName = locT.name || tId;
+                    let cached = (lr.id && window._replayLogCache?.[lr.id]) ||
+                      window._replayLogCache?.[`${tId}_${p1}_${p2}_g${g}`] ||
+                      window._replayLogCache?.[`${tId}_${p2}_${p1}_g${g}`] ||
+                      window._replayLogCache?.[`${tName}_${p1}_${p2}_g${g}`] ||
+                      window._replayLogCache?.[`${tName}_${p2}_${p1}_g${g}`] ||
+                      (p1Low && p2Low && window._replayLogCache?.[`${tId}_${p1Low}_${p2Low}_g${g}`]) ||
+                      (p1Low && p2Low && window._replayLogCache?.[`${tId}_${p2Low}_${p1Low}_g${g}`]) ||
+                      (p1Low && p2Low && window._replayLogCache?.[`${tName}_${p1Low}_${p2Low}_g${g}`]) ||
+                      (p1Low && p2Low && window._replayLogCache?.[`${tName}_${p2Low}_${p1Low}_g${g}`]);
+                    if(cached && cached.length > 20) {
+                      lr.log = cached;
+                      restoredCount++;
+                    }
+                  }
+                  let hasStatsNow = lr.stats && lr.stats.pokemon && (Array.isArray(lr.stats.pokemon) ? lr.stats.pokemon.length > 0 : Object.keys(lr.stats.pokemon).length > 0);
+                  if((!hasStatsNow || !lr.stats.version || lr.stats.version < 7) && lr.log && typeof lr.log === 'string' && lr.log.includes('|')) {
+                    let parsed = parseShowdownBattleLog(lr.log, {
+                      id: lr.id,
+                      game: lr.game,
+                      match: lm,
+                      coach1: lm.a || lm.p1,
+                      coach2: lm.b || lm.p2,
+                      manualSwapped: lr.swapped
+                    });
+                    if(parsed && parsed.pokemon && (Array.isArray(parsed.pokemon) ? parsed.pokemon.length > 0 : Object.keys(parsed.pokemon).length > 0)) {
+                      lr.stats = parsed;
                       restoredCount++;
                     }
                   }
@@ -3689,11 +3739,38 @@ async function hydrateTournamentsFromIndexedDB() {
             let lList = locT.topCutReplays[k];
             if(Array.isArray(fList) && Array.isArray(lList)) {
               lList.forEach(lr => {
+                let fr = fList.find(r => (lr.id && r.id === lr.id) || r.game === lr.game);
+                let hasLocStats = lr.stats && lr.stats.pokemon && (Array.isArray(lr.stats.pokemon) ? lr.stats.pokemon.length > 0 : Object.keys(lr.stats.pokemon).length > 0);
+                let hasFullStats = fr?.stats && fr.stats.pokemon && (Array.isArray(fr.stats.pokemon) ? fr.stats.pokemon.length > 0 : Object.keys(fr.stats.pokemon).length > 0);
+                if(!hasLocStats && hasFullStats) {
+                  lr.stats = fr.stats;
+                  restoredCount++;
+                }
+                if((!lr.log || lr.log.length < 20) && fr?.log && fr.log.length > 20) {
+                  lr.log = fr.log;
+                  restoredCount++;
+                }
                 if(!lr.log || lr.log.length < 20) {
-                  let fr = fList.find(r => r.game === lr.game || (r.id && r.id === lr.id));
-                  if(fr && fr.log && fr.log.length > 20) {
-                    lr.log = fr.log;
-                    if(!lr.stats && fr.stats) lr.stats = fr.stats;
+                  let kLow = k ? k.toLowerCase() : '';
+                  let cached = (lr.id && window._replayLogCache?.[lr.id]) ||
+                    window._replayLogCache?.[`${tId}_tc_${k}_g${lr.game || 1}`] ||
+                    window._replayLogCache?.[`${locT.name || tId}_tc_${k}_g${lr.game || 1}`] ||
+                    (kLow && window._replayLogCache?.[`${tId}_tc_${kLow}_g${lr.game || 1}`]) ||
+                    (kLow && window._replayLogCache?.[`${locT.name || tId}_tc_${kLow}_g${lr.game || 1}`]);
+                  if(cached && cached.length > 20) {
+                    lr.log = cached;
+                    restoredCount++;
+                  }
+                }
+                let hasStatsNow = lr.stats && lr.stats.pokemon && (Array.isArray(lr.stats.pokemon) ? lr.stats.pokemon.length > 0 : Object.keys(lr.stats.pokemon).length > 0);
+                if((!hasStatsNow || !lr.stats.version || lr.stats.version < 7) && lr.log && typeof lr.log === 'string' && lr.log.includes('|')) {
+                  let parsed = parseShowdownBattleLog(lr.log, {
+                    id: lr.id,
+                    game: lr.game,
+                    manualSwapped: lr.swapped
+                  });
+                  if(parsed && parsed.pokemon && (Array.isArray(parsed.pokemon) ? parsed.pokemon.length > 0 : Object.keys(parsed.pokemon).length > 0)) {
+                    lr.stats = parsed;
                     restoredCount++;
                   }
                 }
@@ -3701,9 +3778,12 @@ async function hydrateTournamentsFromIndexedDB() {
             }
           });
         }
+        locT._cachedMonStatsMaps = {};
+        locT._cachedMonStatsTime = 0;
       });
       if(restoredCount > 0) {
         console.log(`Draftdex: Restored ${restoredCount} replay logs from IndexedDB`);
+        if(typeof invalidateLeagueCache === 'function') invalidateLeagueCache();
         rebuildAllPlayerStats();
         if(typeof render === 'function') render();
       }
@@ -7050,6 +7130,10 @@ function saveReplayToMatch(tournamentId, matchKey, gameNum, replayData, finalize
     }
   }
 
+  if(t) {
+    t._cachedMonStatsMaps = {};
+    t._cachedMonStatsTime = 0;
+  }
   persistLeague();
   openMatchReplayHubModal(t.id, matchKey, gameNum, 'watch');
   render();
@@ -7066,6 +7150,10 @@ function deleteReplayFromMatch(tournamentId, matchKey, gameNum) {
   if(mInfo.isTopCut && mInfo.tcMatchId != null && t.topCutReplays){
     t.topCutReplays[mInfo.tcMatchId] = m.replays;
     t.topCutReplays['tc_' + mInfo.tcMatchId] = m.replays;
+  }
+  if(t) {
+    t._cachedMonStatsMaps = {};
+    t._cachedMonStatsTime = 0;
   }
   persistLeague();
   if(typeof showDraftToast === 'function'){
@@ -7606,14 +7694,28 @@ function calculateTeamOfTheSeason(t) {
   gfReplays.forEach(r => {
     let stats = r.stats;
     let hasValidStats = stats && stats.pokemon && (Array.isArray(stats.pokemon) ? stats.pokemon.length > 0 : Object.keys(stats.pokemon).length > 0);
-    if((!hasValidStats || !stats.version || stats.version < 7) && r.log && typeof r.log === 'string' && r.log.includes('|')) {
-      let parsed = parseShowdownBattleLog(r.log, {
-        id: r.id,
-        game: r.game,
-        manualSwapped: r.swapped
-      });
-      if(parsed && parsed.pokemon && (Array.isArray(parsed.pokemon) ? parsed.pokemon.length > 0 : Object.keys(parsed.pokemon).length > 0)) {
-        stats = parsed;
+    if(!hasValidStats || !stats.version || stats.version < 7) {
+      let log = (r.log && typeof r.log === 'string' && r.log.includes('|')) ? r.log : null;
+      if(!log && window._replayLogCache) {
+        let repId = r.id || '';
+        let cached = (repId && window._replayLogCache[repId]) ||
+          (t?.id && window._replayLogCache[`${t.id}_tc_gf1_g${r.game || 1}`]) ||
+          (t?.name && window._replayLogCache[`${t.name}_tc_gf1_g${r.game || 1}`]);
+        if(cached && typeof cached === 'string' && cached.includes('|')) {
+          log = cached;
+          r.log = cached;
+        }
+      }
+      if(log) {
+        let parsed = parseShowdownBattleLog(log, {
+          id: r.id,
+          game: r.game,
+          manualSwapped: r.swapped
+        });
+        if(parsed && parsed.pokemon && (Array.isArray(parsed.pokemon) ? parsed.pokemon.length > 0 : Object.keys(parsed.pokemon).length > 0)) {
+          stats = parsed;
+          r.stats = parsed;
+        }
       }
     }
     let pList = Array.isArray(stats?.pokemon) ? stats.pokemon : (stats?.pokemon ? Object.values(stats.pokemon) : []);
@@ -7752,17 +7854,44 @@ function calculateTeamOfTheSeason(t) {
   allReplays.forEach(({ replay, match, isTopCut }) => {
     let stats = replay.stats;
     let hasValidStats = stats && stats.pokemon && (Array.isArray(stats.pokemon) ? stats.pokemon.length > 0 : Object.keys(stats.pokemon).length > 0);
-    if((!hasValidStats || !stats.version || stats.version < 7) && replay.log && typeof replay.log === 'string' && replay.log.includes('|')) {
-      let parsed = parseShowdownBattleLog(replay.log, {
-        id: replay.id,
-        game: replay.game,
-        match: match,
-        coach1: match?.a || match?.p1,
-        coach2: match?.b || match?.p2,
-        manualSwapped: replay.swapped
-      });
-      if(parsed && parsed.pokemon && (Array.isArray(parsed.pokemon) ? parsed.pokemon.length > 0 : Object.keys(parsed.pokemon).length > 0)) {
-        stats = parsed;
+    if(!hasValidStats || !stats.version || stats.version < 7) {
+      let log = (replay.log && typeof replay.log === 'string' && replay.log.includes('|')) ? replay.log : null;
+      if(!log && window._replayLogCache) {
+        let repId = replay.id || '';
+        let p1 = match?.a || match?.p1 || '';
+        let p2 = match?.b || match?.p2 || '';
+        let p1Low = p1 ? p1.toLowerCase() : '';
+        let p2Low = p2 ? p2.toLowerCase() : '';
+        let g = replay.game || 1;
+        let tName = t?.name || '';
+        let tId = t?.id || '';
+        let cached = (repId && window._replayLogCache[repId]) ||
+          (tId && p1 && p2 && window._replayLogCache[`${tId}_${p1}_${p2}_g${g}`]) ||
+          (tId && p1 && p2 && window._replayLogCache[`${tId}_${p2}_${p1}_g${g}`]) ||
+          (tName && p1 && p2 && window._replayLogCache[`${tName}_${p1}_${p2}_g${g}`]) ||
+          (tName && p1 && p2 && window._replayLogCache[`${tName}_${p2}_${p1}_g${g}`]) ||
+          (tId && p1Low && p2Low && window._replayLogCache[`${tId}_${p1Low}_${p2Low}_g${g}`]) ||
+          (tId && p1Low && p2Low && window._replayLogCache[`${tId}_${p2Low}_${p1Low}_g${g}`]) ||
+          (tName && p1Low && p2Low && window._replayLogCache[`${tName}_${p1Low}_${p2Low}_g${g}`]) ||
+          (tName && p1Low && p2Low && window._replayLogCache[`${tName}_${p2Low}_${p1Low}_g${g}`]);
+        if(cached && typeof cached === 'string' && cached.includes('|')) {
+          log = cached;
+          replay.log = cached;
+        }
+      }
+      if(log) {
+        let parsed = parseShowdownBattleLog(log, {
+          id: replay.id,
+          game: replay.game,
+          match: match,
+          coach1: match?.a || match?.p1,
+          coach2: match?.b || match?.p2,
+          manualSwapped: replay.swapped
+        });
+        if(parsed && parsed.pokemon && (Array.isArray(parsed.pokemon) ? parsed.pokemon.length > 0 : Object.keys(parsed.pokemon).length > 0)) {
+          stats = parsed;
+          replay.stats = parsed;
+        }
       }
     }
     let pList = Array.isArray(stats?.pokemon) ? stats.pokemon : (stats?.pokemon ? Object.values(stats.pokemon) : []);
@@ -8816,22 +8945,34 @@ function getTournamentPokemonStatsMap(t, coachFilter) {
   }
 
   let allReplays = [];
+  let seenReplays = new Set();
   (t.matches || []).forEach(m => {
     if(Array.isArray(m.replays)) {
-      m.replays.forEach(r => allReplays.push({ replay: r, match: m }));
+      m.replays.forEach(r => {
+        if(!r) return;
+        let matchKey = m.id || `${m.a || ''}_${m.b || ''}_${m.round || m.group || ''}`;
+        let repKey = r.id || `${matchKey}_g${r.game || 1}`;
+        if(!seenReplays.has(r) && !seenReplays.has(repKey)){
+          seenReplays.add(r);
+          seenReplays.add(repKey);
+          allReplays.push({ replay: r, match: m });
+        }
+      });
     }
   });
 
-  if(t.topCutReplays) {
-    let seenReplayIds = new Set();
+  if(t.topCutReplays && typeof t.topCutReplays === 'object') {
     Object.keys(t.topCutReplays).forEach(tcKey => {
       let rList = t.topCutReplays[tcKey];
       if(Array.isArray(rList)) {
         let tcMatch = (typeof findTournamentMatch === 'function') ? findTournamentMatch(t, tcKey)?.match : null;
         rList.forEach(r => {
-          let repId = r.id || `${tcKey}_g${r.game}`;
-          if(!seenReplayIds.has(repId)){
-            seenReplayIds.add(repId);
+          if(!r) return;
+          let matchKey = tcMatch?.id || `${tcMatch?.a || ''}_${tcMatch?.b || ''}_${tcKey}`;
+          let repKey = r.id || `${matchKey}_g${r.game || 1}`;
+          if(!seenReplays.has(r) && !seenReplays.has(repKey)){
+            seenReplays.add(r);
+            seenReplays.add(repKey);
             allReplays.push({ replay: r, match: tcMatch });
           }
         });
@@ -8855,17 +8996,44 @@ function getTournamentPokemonStatsMap(t, coachFilter) {
 
     let stats = replay.stats;
     let hasValidStats = stats && stats.pokemon && (Array.isArray(stats.pokemon) ? stats.pokemon.length > 0 : Object.keys(stats.pokemon).length > 0);
-    if((!hasValidStats || !stats.version || stats.version < 7) && replay.log && typeof replay.log === 'string' && replay.log.includes('|')) {
-      let parsed = parseShowdownBattleLog(replay.log, {
-        id: replay.id,
-        game: replay.game,
-        match: match,
-        coach1: c1,
-        coach2: c2,
-        manualSwapped: replay.swapped
-      });
-      if(parsed && parsed.pokemon && (Array.isArray(parsed.pokemon) ? parsed.pokemon.length > 0 : Object.keys(parsed.pokemon).length > 0)) {
-        stats = parsed;
+    if(!hasValidStats || !stats.version || stats.version < 7) {
+      let log = (replay.log && typeof replay.log === 'string' && replay.log.includes('|')) ? replay.log : null;
+      if(!log && window._replayLogCache) {
+        let repId = replay.id || '';
+        let p1 = match?.a || match?.p1 || '';
+        let p2 = match?.b || match?.p2 || '';
+        let p1Low = p1 ? p1.toLowerCase() : '';
+        let p2Low = p2 ? p2.toLowerCase() : '';
+        let g = replay.game || 1;
+        let tName = t?.name || '';
+        let tId = t?.id || '';
+        let cached = (repId && window._replayLogCache[repId]) ||
+          (tId && p1 && p2 && window._replayLogCache[`${tId}_${p1}_${p2}_g${g}`]) ||
+          (tId && p1 && p2 && window._replayLogCache[`${tId}_${p2}_${p1}_g${g}`]) ||
+          (tName && p1 && p2 && window._replayLogCache[`${tName}_${p1}_${p2}_g${g}`]) ||
+          (tName && p1 && p2 && window._replayLogCache[`${tName}_${p2}_${p1}_g${g}`]) ||
+          (tId && p1Low && p2Low && window._replayLogCache[`${tId}_${p1Low}_${p2Low}_g${g}`]) ||
+          (tId && p1Low && p2Low && window._replayLogCache[`${tId}_${p2Low}_${p1Low}_g${g}`]) ||
+          (tName && p1Low && p2Low && window._replayLogCache[`${tName}_${p1Low}_${p2Low}_g${g}`]) ||
+          (tName && p1Low && p2Low && window._replayLogCache[`${tName}_${p2Low}_${p1Low}_g${g}`]);
+        if(cached && typeof cached === 'string' && cached.includes('|')) {
+          log = cached;
+          replay.log = cached;
+        }
+      }
+      if(log) {
+        let parsed = parseShowdownBattleLog(log, {
+          id: replay.id,
+          game: replay.game,
+          match: match,
+          coach1: c1,
+          coach2: c2,
+          manualSwapped: replay.swapped
+        });
+        if(parsed && parsed.pokemon && (Array.isArray(parsed.pokemon) ? parsed.pokemon.length > 0 : Object.keys(parsed.pokemon).length > 0)) {
+          stats = parsed;
+          replay.stats = parsed;
+        }
       }
     }
     let pList = Array.isArray(stats?.pokemon) ? stats.pokemon : (stats?.pokemon ? Object.values(stats.pokemon) : []);
@@ -12449,6 +12617,9 @@ function safeSaveTournamentsToLocalStorage(data) {
       delete tClone.backgroundImage;
       delete tClone.recapPanelImage;
       delete tClone._cachedMonStatsMap;
+      delete tClone._cachedMonStatsMaps;
+      delete tClone._cachedMonStatsTime;
+      delete tClone._cachedMonStatsVersion;
 
       // 2. Dedup draft vs draftData
       if(tClone.draftData && tClone.draft) {
@@ -12591,21 +12762,59 @@ function applySharedState(data){
         }
       }
 
-      // Preserve local replay logs if incoming tournament happens to have empty logs
+      // Preserve local replay logs and stats if incoming tournament happens to have empty logs/stats
       if(locT && incT){
+        let tName = incT.name || tId;
         if(Array.isArray(incT.matches) && Array.isArray(locT.matches)){
           incT.matches.forEach((im, idx) => {
-            let lm = locT.matches[idx];
+            let lm = (im.id != null ? locT.matches.find(m => m.id === im.id) : null) ||
+                     locT.matches.find(m => ((m.a === im.a && m.b === im.b) || (m.a === im.b && m.b === im.a)) && (m.round === im.round || m.group === im.group)) ||
+                     locT.matches[idx];
             if(im && lm){
               if(Array.isArray(lm.replays) && lm.replays.length > 0 && (!Array.isArray(im.replays) || im.replays.length === 0)){
                 im.replays = lm.replays;
               } else if(Array.isArray(im.replays) && Array.isArray(lm.replays)){
                 im.replays.forEach(ir => {
+                  let lr = lm.replays.find(r => (ir.id && r.id === ir.id) || r.game === ir.game);
+                  let hasIncStats = ir.stats && ir.stats.pokemon && (Array.isArray(ir.stats.pokemon) ? ir.stats.pokemon.length > 0 : Object.keys(ir.stats.pokemon).length > 0);
+                  let hasLocStats = lr?.stats && lr.stats.pokemon && (Array.isArray(lr.stats.pokemon) ? lr.stats.pokemon.length > 0 : Object.keys(lr.stats.pokemon).length > 0);
+                  if(!hasIncStats && hasLocStats){
+                    ir.stats = lr.stats;
+                  }
+                  if((!ir.log || ir.log.length < 20) && lr?.log && lr.log.length > 20){
+                    ir.log = lr.log;
+                  }
                   if(!ir.log || ir.log.length < 20){
-                    let lr = lm.replays.find(r => r.game === ir.game || (r.id && r.id === ir.id));
-                    if(lr && lr.log && lr.log.length > 20){
-                      ir.log = lr.log;
-                      if(!ir.stats && lr.stats) ir.stats = lr.stats;
+                    let p1 = im.a || im.p1 || '';
+                    let p2 = im.b || im.p2 || '';
+                    let p1Low = p1 ? p1.toLowerCase() : '';
+                    let p2Low = p2 ? p2.toLowerCase() : '';
+                    let g = ir.game || 1;
+                    let cached = (ir.id && window._replayLogCache?.[ir.id]) ||
+                      window._replayLogCache?.[`${tId}_${p1}_${p2}_g${g}`] ||
+                      window._replayLogCache?.[`${tId}_${p2}_${p1}_g${g}`] ||
+                      window._replayLogCache?.[`${tName}_${p1}_${p2}_g${g}`] ||
+                      window._replayLogCache?.[`${tName}_${p2}_${p1}_g${g}`] ||
+                      (p1Low && p2Low && window._replayLogCache?.[`${tId}_${p1Low}_${p2Low}_g${g}`]) ||
+                      (p1Low && p2Low && window._replayLogCache?.[`${tId}_${p2Low}_${p1Low}_g${g}`]) ||
+                      (p1Low && p2Low && window._replayLogCache?.[`${tName}_${p1Low}_${p2Low}_g${g}`]) ||
+                      (p1Low && p2Low && window._replayLogCache?.[`${tName}_${p2Low}_${p1Low}_g${g}`]);
+                    if(cached && cached.length > 20){
+                      ir.log = cached;
+                    }
+                  }
+                  let hasStatsNow = ir.stats && ir.stats.pokemon && (Array.isArray(ir.stats.pokemon) ? ir.stats.pokemon.length > 0 : Object.keys(ir.stats.pokemon).length > 0);
+                  if((!hasStatsNow || !ir.stats.version || ir.stats.version < 7) && ir.log && typeof ir.log === 'string' && ir.log.includes('|')){
+                    let parsed = parseShowdownBattleLog(ir.log, {
+                      id: ir.id,
+                      game: ir.game,
+                      match: im,
+                      coach1: im.a || im.p1,
+                      coach2: im.b || im.p2,
+                      manualSwapped: ir.swapped
+                    });
+                    if(parsed && parsed.pokemon && (Array.isArray(parsed.pokemon) ? parsed.pokemon.length > 0 : Object.keys(parsed.pokemon).length > 0)){
+                      ir.stats = parsed;
                     }
                   }
                 });
@@ -12621,17 +12830,43 @@ function applySharedState(data){
             let lList = locT.topCutReplays[k];
             if(Array.isArray(iList) && Array.isArray(lList)){
               iList.forEach(ir => {
+                let lr = lList.find(r => (ir.id && r.id === ir.id) || r.game === ir.game);
+                let hasIncStats = ir.stats && ir.stats.pokemon && (Array.isArray(ir.stats.pokemon) ? ir.stats.pokemon.length > 0 : Object.keys(ir.stats.pokemon).length > 0);
+                let hasLocStats = lr?.stats && lr.stats.pokemon && (Array.isArray(lr.stats.pokemon) ? lr.stats.pokemon.length > 0 : Object.keys(lr.stats.pokemon).length > 0);
+                if(!hasIncStats && hasLocStats){
+                  ir.stats = lr.stats;
+                }
+                if((!ir.log || ir.log.length < 20) && lr?.log && lr.log.length > 20){
+                  ir.log = lr.log;
+                }
                 if(!ir.log || ir.log.length < 20){
-                  let lr = lList.find(r => r.game === ir.game || (r.id && r.id === ir.id));
-                  if(lr && lr.log && lr.log.length > 20){
-                    ir.log = lr.log;
-                    if(!ir.stats && lr.stats) ir.stats = lr.stats;
+                  let kLow = k ? k.toLowerCase() : '';
+                  let cached = (ir.id && window._replayLogCache?.[ir.id]) ||
+                    window._replayLogCache?.[`${tId}_tc_${k}_g${ir.game || 1}`] ||
+                    window._replayLogCache?.[`${tName}_tc_${k}_g${ir.game || 1}`] ||
+                    (kLow && window._replayLogCache?.[`${tId}_tc_${kLow}_g${ir.game || 1}`]) ||
+                    (kLow && window._replayLogCache?.[`${tName}_tc_${kLow}_g${ir.game || 1}`]);
+                  if(cached && cached.length > 20){
+                    ir.log = cached;
+                  }
+                }
+                let hasStatsNow = ir.stats && ir.stats.pokemon && (Array.isArray(ir.stats.pokemon) ? ir.stats.pokemon.length > 0 : Object.keys(ir.stats.pokemon).length > 0);
+                if((!hasStatsNow || !ir.stats.version || ir.stats.version < 7) && ir.log && typeof ir.log === 'string' && ir.log.includes('|')){
+                  let parsed = parseShowdownBattleLog(ir.log, {
+                    id: ir.id,
+                    game: ir.game,
+                    manualSwapped: ir.swapped
+                  });
+                  if(parsed && parsed.pokemon && (Array.isArray(parsed.pokemon) ? parsed.pokemon.length > 0 : Object.keys(parsed.pokemon).length > 0)){
+                    ir.stats = parsed;
                   }
                 }
               });
             }
           });
         }
+        locT._cachedMonStatsMaps = {};
+        locT._cachedMonStatsTime = 0;
       }
     });
   }
@@ -12646,6 +12881,8 @@ function applySharedState(data){
     if(t){
       if(!t.backgroundImage && tournamentCovers[tId]) t.backgroundImage = tournamentCovers[tId];
       if(!t.recapPanelImage && recapPanelImages[tId]) t.recapPanelImage = recapPanelImages[tId];
+      t._cachedMonStatsMaps = {};
+      t._cachedMonStatsTime = 0;
     }
   });
 
@@ -13383,6 +13620,10 @@ async function flushSync(){
     let clone = { ...t };
     delete clone.backgroundImage;
     delete clone.recapPanelImage;
+    delete clone._cachedMonStatsMap;
+    delete clone._cachedMonStatsMaps;
+    delete clone._cachedMonStatsTime;
+    delete clone._cachedMonStatsVersion;
     cleanTournaments[tId] = clone;
   });
 
@@ -13396,16 +13637,44 @@ async function flushSync(){
         }
         if(Array.isArray(m.replays)){
           m.replays.forEach(r => {
+            let origMatch = tournamentData[tId]?.matches?.[idx];
+            let origR = origMatch && Array.isArray(origMatch.replays) ? origMatch.replays.find(x => (r.id && x.id === r.id) || x.game === r.game) : null;
+            if(!r.stats && origR?.stats){
+              r.stats = origR.stats;
+            }
             if(!r.log || typeof r.log !== 'string' || r.log.length < 20){
               let p1 = m.a || m.p1 || '';
               let p2 = m.b || m.p2 || '';
+              let p1Low = p1 ? p1.toLowerCase() : '';
+              let p2Low = p2 ? p2.toLowerCase() : '';
               let g = r.game || 1;
               let cached = (r.id && window._replayLogCache?.[r.id]) ||
                 window._replayLogCache?.[`${tId}_${p1}_${p2}_g${g}`] ||
                 window._replayLogCache?.[`${tId}_${p2}_${p1}_g${g}`] ||
-                window._replayLogCache?.[`${tName}_${p1}_${p2}_g${g}`];
+                window._replayLogCache?.[`${tName}_${p1}_${p2}_g${g}`] ||
+                window._replayLogCache?.[`${tName}_${p2}_${p1}_g${g}`] ||
+                (p1Low && p2Low && window._replayLogCache?.[`${tId}_${p1Low}_${p2Low}_g${g}`]) ||
+                (p1Low && p2Low && window._replayLogCache?.[`${tId}_${p2Low}_${p1Low}_g${g}`]) ||
+                (p1Low && p2Low && window._replayLogCache?.[`${tName}_${p1Low}_${p2Low}_g${g}`]) ||
+                (p1Low && p2Low && window._replayLogCache?.[`${tName}_${p2Low}_${p1Low}_g${g}`]);
               if(cached && cached.length > 20) {
                 r.log = cached;
+                if(origR && (!origR.log || origR.log.length < 20)) origR.log = cached;
+              }
+            }
+            let hasStats = r.stats && r.stats.pokemon && (Array.isArray(r.stats.pokemon) ? r.stats.pokemon.length > 0 : Object.keys(r.stats.pokemon).length > 0);
+            if((!hasStats || !r.stats.version || r.stats.version < 7) && r.log && typeof r.log === 'string' && r.log.includes('|')){
+              let parsed = parseShowdownBattleLog(r.log, {
+                id: r.id,
+                game: r.game,
+                match: m,
+                coach1: m.a || m.p1,
+                coach2: m.b || m.p2,
+                manualSwapped: r.swapped
+              });
+              if(parsed && parsed.pokemon && (Array.isArray(parsed.pokemon) ? parsed.pokemon.length > 0 : Object.keys(parsed.pokemon).length > 0)){
+                r.stats = parsed;
+                if(origR) origR.stats = parsed;
               }
             }
           });
@@ -13416,12 +13685,33 @@ async function flushSync(){
       Object.entries(t.topCutReplays).forEach(([k, list]) => {
         if(Array.isArray(list)){
           list.forEach(r => {
+            let origList = tournamentData[tId]?.topCutReplays?.[k];
+            let origR = Array.isArray(origList) ? origList.find(x => (r.id && x.id === r.id) || x.game === r.game) : null;
+            if(!r.stats && origR?.stats){
+              r.stats = origR.stats;
+            }
             if(!r.log || typeof r.log !== 'string' || r.log.length < 20){
+              let kLow = k ? k.toLowerCase() : '';
               let cached = (r.id && window._replayLogCache?.[r.id]) ||
                 window._replayLogCache?.[`${tId}_tc_${k}_g${r.game || 1}`] ||
-                window._replayLogCache?.[`${tName}_tc_${k}_g${r.game || 1}`];
+                window._replayLogCache?.[`${tName}_tc_${k}_g${r.game || 1}`] ||
+                (kLow && window._replayLogCache?.[`${tId}_tc_${kLow}_g${r.game || 1}`]) ||
+                (kLow && window._replayLogCache?.[`${tName}_tc_${kLow}_g${r.game || 1}`]);
               if(cached && cached.length > 20) {
                 r.log = cached;
+                if(origR && (!origR.log || origR.log.length < 20)) origR.log = cached;
+              }
+            }
+            let hasStats = r.stats && r.stats.pokemon && (Array.isArray(r.stats.pokemon) ? r.stats.pokemon.length > 0 : Object.keys(r.stats.pokemon).length > 0);
+            if((!hasStats || !r.stats.version || r.stats.version < 7) && r.log && typeof r.log === 'string' && r.log.includes('|')){
+              let parsed = parseShowdownBattleLog(r.log, {
+                id: r.id,
+                game: r.game,
+                manualSwapped: r.swapped
+              });
+              if(parsed && parsed.pokemon && (Array.isArray(parsed.pokemon) ? parsed.pokemon.length > 0 : Object.keys(parsed.pokemon).length > 0)){
+                r.stats = parsed;
+                if(origR) origR.stats = parsed;
               }
             }
           });
@@ -20164,6 +20454,14 @@ function invalidateLeagueCache(){
   _cachedLeagueRecordsTime = 0;
   _cachedPlayerOVR = {};
   _historicalOVRCache = {};
+  if(typeof tournamentData === 'object' && tournamentData){
+    Object.values(tournamentData).forEach(t => {
+      if(t && typeof t === 'object') {
+        t._cachedMonStatsMaps = {};
+        t._cachedMonStatsTime = 0;
+      }
+    });
+  }
 }
 
 function getPlayerOfficialMilestoneStats(p, recs = null){

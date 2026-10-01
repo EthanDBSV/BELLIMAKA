@@ -3,6 +3,18 @@
 All notable changes to the Bellimaka Pokémon Draft League site are documented here.
 Format: `v[MAJOR].[MINOR].[PATCH]` — Major = big new systems, Minor = new features, Patch = bug fixes / small improvements.
 
+## [v1.1.20] — 2026-10-01
+
+### Fixed
+- **Replay Parser Statistics Persistence & Cloud State Cache Clobber Prevention** — Resolved a bug where battle replay statistics intermittently failed to count toward Pokémon appearances and game performance metrics on team rosters and tournament stat leaderboards:
+  - **Unconditional Replay Statistics Transfer**: Updated cloud synchronization state application (`applySharedState`) to preserve locally cached and parsed replay statistics (`stats`) onto incoming tournament objects independently of whether raw Showdown battle logs (`log`) are present in memory.
+  - **Multi-Level Replay Log Cache Fallbacks**: Added case-insensitive match participant and bracket key lookups against the persistent replay log cache (`window._replayLogCache` and IndexedDB) in `getTournamentPokemonStatsMap`, `calculateTeamOfTheSeason`, and `hydrateTournamentsFromIndexedDB`, guaranteeing missing battle logs are transparently recovered and parsed on demand.
+  - **Pre-Parsed Statistics Cloud Bundling**: Enhanced outbound synchronization (`flushSync`) to automatically parse and attach structured statistics objects to all match and playoff replays before sending data to Cloudflare KV, ensuring clients and background sync cycles receive populated, versioned statistics without relying on bulky raw battle log strings.
+  - **Granular Replay Deduplication**: Replaced naive index-based replay identification with composite match-and-game keys across standard and top-cut matches, preventing replays across different matches from colliding or being incorrectly deduplicated.
+  - **Dynamic In-Memory Cache Invalidation**: Added automated cache invalidation for tournament Pokémon statistics maps (`_cachedMonStatsMaps`) whenever incoming shared cloud state is applied, replays are saved or deleted, or IndexedDB records are rehydrated, ensuring fresh statistics are rendered immediately without delay.
+
+---
+
 ## [v1.1.19] — 2026-09-29
 
 ### Fixed
