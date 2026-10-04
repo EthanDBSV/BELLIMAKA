@@ -391,8 +391,11 @@
 .matchup-hero-frame{position:relative;clip-path:polygon(16px 0, calc(100% - 16px) 0, 100% 16px, 100% calc(100% - 16px), calc(100% - 16px) 100%, 16px 100%, 0 calc(100% - 16px), 0 16px);padding:1.5px;background:linear-gradient(135deg,#ef3038 0%,#4a2834 35%,#2a2a3c 65%,#ffd166 100%);transition:background .2s ease}
 .matchup-hero-outer.top-cut-glow .matchup-hero-frame{background:linear-gradient(135deg,#ffd166 0%,#6e461f 35%,#2a2230 65%,#f59e0b 100%)}
 .matchup-hero-card{position:relative;clip-path:polygon(15px 0, calc(100% - 15px) 0, 100% 15px, 100% calc(100% - 15px), calc(100% - 15px) 100%, 15px 100%, 0 calc(100% - 15px), 0 15px);background:linear-gradient(135deg,#131118 0%,#0e0e15 50%,#0c0f18 100%);display:flex;flex-direction:column;justify-content:space-between;min-height:242px;overflow:hidden;contain:paint;isolation:isolate}
-.primetime-diagonal-split{position:absolute;inset:0;pointer-events:none;z-index:1;overflow:hidden}
-.primetime-slash{position:absolute;top:-20%;bottom:-20%;left:50%;width:2px;background:linear-gradient(180deg,transparent 0%,rgba(255,255,255,0.08) 20%,rgba(255,209,102,0.45) 50%,rgba(255,255,255,0.08) 80%,transparent 100%);transform:translateX(-50%) skewX(-16deg);box-shadow:0 0 12px rgba(255,209,102,0.3)}
+.primetime-split-backdrop-left, .primetime-split-backdrop-right{position:absolute;inset:0;background-size:cover;background-position:center;pointer-events:none;z-index:1;transition:background .25s ease}
+.primetime-split-backdrop-left{clip-path:polygon(0 0, calc(50% + 36px) 0, calc(50% - 36px) 100%, 0 100%)}
+.primetime-split-backdrop-right{clip-path:polygon(calc(50% + 36px) 0, 100% 0, 100% 100%, calc(50% - 36px) 100%)}
+.primetime-diagonal-split{position:absolute;inset:0;pointer-events:none;z-index:2;overflow:hidden}
+.primetime-slash{position:absolute;top:-20%;bottom:-20%;left:50%;width:3px;background:linear-gradient(180deg,transparent 0%,rgba(255,255,255,0.2) 20%,rgba(255,209,102,0.85) 50%,rgba(255,255,255,0.2) 80%,transparent 100%);transform:translateX(-50%) skewX(-16.6deg);box-shadow:0 0 14px rgba(255,209,102,0.45);z-index:2}
 .primetime-glow-left{position:absolute;top:-10%;bottom:-10%;left:0;width:50%;background:radial-gradient(ellipse at 30% 50%,rgba(239,48,56,0.18) 0%,transparent 70%)}
 .primetime-glow-right{position:absolute;top:-10%;bottom:-10%;right:0;width:50%;background:radial-gradient(ellipse at 70% 50%,rgba(59,130,246,0.14) 0%,transparent 70%)}
 .matchup-hero-outer.top-cut-glow .primetime-glow-right{background:radial-gradient(ellipse at 70% 50%,rgba(245,158,11,0.16) 0%,transparent 70%)}
@@ -414,18 +417,16 @@
 .primetime-flank.right .primetime-mons-cluster{justify-content:flex-end;flex-direction:row-reverse}
 .primetime-mon-card{position:relative;width:44px;height:56px;border-radius:8px;background:radial-gradient(circle at 50% 40%,rgba(255,255,255,0.08) 0%,rgba(14,14,22,0.88) 80%);border:1px solid rgba(255,255,255,0.12);display:grid;place-items:center;box-shadow:0 4px 12px rgba(0,0,0,0.5),inset 0 0 10px rgba(0,0,0,0.6);transition:transform .18s ease,border-color .18s ease,box-shadow .18s ease;cursor:default}
 .primetime-mon-card:hover{transform:translateY(-3px) scale(1.08);border-color:rgba(255,209,102,0.45);box-shadow:0 8px 20px rgba(0,0,0,0.7),0 0 12px rgba(255,209,102,0.25);z-index:6}
-.primetime-mon-img{width:42px;height:42px;object-fit:contain;filter:drop-shadow(0 4px 8px rgba(0,0,0,0.85));transition:transform .18s ease}
+.primetime-mon-img{width:42px;height:42px;object-fit:contain;filter:drop-shadow(0 4px 8px rgba(0,0,0,0.85));transition:transform .18s ease;color:transparent}
 .primetime-flank.left .primetime-mon-img{transform:scaleX(-1)}
-.primetime-center-hub{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;padding:6px 12px;cursor:pointer;border-radius:8px;transition:transform .15s ease,background .15s ease;min-width:88px}
-.primetime-center-hub:hover{transform:scale(1.05);background:rgba(255,255,255,0.05)}
+.primetime-center-hub{display:flex;align-items:center;justify-content:center;padding:6px 12px;cursor:pointer;border-radius:8px;transition:transform .15s ease,background .15s ease;min-width:84px;align-self:center}
+.primetime-center-hub:hover{transform:scale(1.06);background:rgba(255,255,255,0.06)}
 .primetime-vs-emblem{width:42px;height:42px;clip-path:polygon(50% 0%,100% 50%,50% 100%,0% 50%);background:linear-gradient(135deg,#ef3038,#ff9f1c);display:grid;place-items:center;font:900 16px 'Barlow Condensed';color:#fff;box-shadow:0 0 20px rgba(239,48,56,0.6);border:2px solid #ffffff40}
 .matchup-hero-outer.top-cut-glow .primetime-vs-emblem{background:linear-gradient(135deg,#ffd166,#f59e0b);box-shadow:0 0 20px rgba(255,209,102,0.6)}
-.primetime-score-row{display:flex;align-items:center;gap:8px;font:900 30px/1 'Barlow Condensed';text-shadow:0 2px 10px rgba(0,0,0,0.85)}
-.primetime-score-val{min-width:20px;text-align:center}
-.primetime-score-val.winner{color:#4ade80;text-shadow:0 0 16px rgba(74,222,128,0.5)}
+.primetime-score-row{display:flex;align-items:center;justify-content:center;gap:6px;font:900 34px/1 'Barlow Condensed';text-shadow:0 2px 12px rgba(0,0,0,0.9)}
+.primetime-score-val{min-width:24px;text-align:center}
+.primetime-score-val.winner{color:#4ade80;text-shadow:0 0 18px rgba(74,222,128,0.55)}
 .primetime-score-val.loser{color:#7e7d8a}
-.primetime-status-pill{font:900 10px 'Barlow Condensed';letter-spacing:.8px;padding:2px 8px;border-radius:4px;text-transform:uppercase;background:rgba(74,222,128,0.15);color:#4ade80;border:1px solid rgba(74,222,128,0.3)}
-.primetime-format-sub{font:800 10px 'Barlow Condensed';letter-spacing:.6px;color:#8e8c9a;text-transform:uppercase}
 .primetime-pin-btn{background:rgba(0,0,0,0.55);border:1px solid rgba(255,255,255,0.22);color:#c8c6ce;font:800 10px 'Barlow Condensed';letter-spacing:.6px;padding:3px 8px;border-radius:4px;cursor:pointer;display:inline-flex;align-items:center;gap:4px;transition:all .15s ease}
 .primetime-pin-btn:hover{border-color:var(--amber);color:#ffd166;background:rgba(255,209,102,0.12)}
 .primetime-pin-btn.active{border-color:var(--amber);color:#ffd166;background:rgba(255,209,102,0.18);box-shadow:0 0 8px rgba(255,209,102,0.3)}
@@ -2060,14 +2061,16 @@ function getSpriteBaseUrl() {
 }
 
 const ANIMATED_ONLY_SPRITES = new Set([
-  'staraptor-mega', 'raichu-megax', 'raichu-megay', 'malamar-mega', 'dragalge-mega', 'scrafty-mega'
+  'staraptor-mega', 'raichu-megax', 'raichu-megay', 'malamar-mega', 'dragalge-mega', 'scrafty-mega',
+  'eelektross-mega', 'pyroar-mega', 'falinks-mega', 'scolipede-mega', 'barbaracle-mega'
 ]);
 
 const GEN5_ONLY_MEGAS = new Set([
   'floette-mega', 'meganium-mega', 'feraligatr-mega', 'emboar-mega', 'chesnaught-mega',
   'delphox-mega', 'greninja-mega', 'clefable-mega', 'victreebel-mega', 'starmie-mega',
   'dragonite-mega', 'skarmory-mega', 'chimecho-mega', 'froslass-mega', 'excadrill-mega',
-  'chandelure-mega', 'hawlucha-mega', 'baxcalibur-mega', 'absol-megaz', 'garchomp-megaz', 'lucario-megaz'
+  'chandelure-mega', 'hawlucha-mega', 'baxcalibur-mega', 'absol-megaz', 'garchomp-megaz', 'lucario-megaz',
+  'crabominable-mega', 'drampa-mega', 'scovillain-mega', 'golurk-mega', 'golisopod-mega', 'glimmora-mega', 'crucibelle-mega'
 ]);
 
 function getPokemonSpriteUrl(slug) {
@@ -15559,8 +15562,17 @@ function matchupOfTheWeekCard(t){
   let matchKey = (typeof getMatchKey === 'function' ? getMatchKey(mRef, item.matchIndex) : '') || item.matchId || '';
   let matchClickAttr = matchKey ? `onclick="event.stopPropagation();openMatchReplayHubModal('${jsArg(t.id)}', '${jsArg(matchKey)}', 1, 'stats')"` : '';
 
-  let innerBackdrop = primetimeCover ? `
-    <div class="matchup-hero-backdrop" style="position:absolute;inset:0;background-image:linear-gradient(135deg,${isTopCut ? 'rgba(38,18,22,0.88)' : 'rgba(24,10,16,0.88)'} 0%,${isTopCut ? 'rgba(20,12,18,0.92)' : 'rgba(14,10,16,0.92)'} 50%,rgba(10,10,15,0.94) 100%),url('${esc(primetimeCover)}');background-size:cover;background-position:center;border-radius:inherit;overflow:hidden;pointer-events:none;z-index:0"></div>
+  let bg1 = (typeof teamCovers === 'object' && teamCovers[p1]) || (typeof profilePictures === 'object' && profilePictures[p1]) || '';
+  let bg2 = (typeof teamCovers === 'object' && teamCovers[p2]) || (typeof profilePictures === 'object' && profilePictures[p2]) || '';
+  let leftBgStyle = bg1
+    ? `background-image:linear-gradient(135deg,rgba(18,12,16,0.84),rgba(12,12,18,0.92)),url('${esc(bg1)}');`
+    : `background:${fallbackArt(p1)};opacity:0.75;`;
+  let rightBgStyle = bg2
+    ? `background-image:linear-gradient(135deg,rgba(12,14,22,0.84),rgba(10,12,18,0.92)),url('${esc(bg2)}');`
+    : `background:${fallbackArt(p2)};opacity:0.75;`;
+
+  let globalUnderlay = primetimeCover ? `
+    <div class="matchup-hero-backdrop" style="position:absolute;inset:0;background-image:linear-gradient(135deg,${isTopCut ? 'rgba(38,18,22,0.90)' : 'rgba(24,10,16,0.90)'} 0%,rgba(10,10,15,0.94) 100%),url('${esc(primetimeCover)}');background-size:cover;background-position:center;border-radius:inherit;overflow:hidden;pointer-events:none;z-index:0;opacity:0.35"></div>
   ` : '';
 
   let isMod = Boolean(moderator || window.moderator || (typeof canManageTournament === 'function' && canManageTournament(t)));
@@ -15575,7 +15587,7 @@ function matchupOfTheWeekCard(t){
     return mons.map(name => {
       let spr = (typeof monSprite === 'function') ? monSprite(name) : (typeof pokeSprite === 'function' ? pokeSprite(name) : '');
       return `<div class="primetime-mon-card" title="${esc(name)}">
-        <img class="primetime-mon-img" src="${esc(spr)}" alt="${esc(name)}" loading="lazy" />
+        <img class="primetime-mon-img" src="${esc(spr)}" alt="${esc(name)}" loading="lazy" onerror="handleSpriteError(this)" />
       </div>`;
     }).join('');
   };
@@ -15583,9 +15595,13 @@ function matchupOfTheWeekCard(t){
   return `<div class="matchup-hero-outer ${isTopCut ? 'top-cut-glow' : ''}">
     <div class="matchup-hero-frame">
       <aside class="card matchup-hero-card" onmouseenter="pauseFeaturedAutoplay()" onmouseleave="resumeFeaturedAutoplay(${total})">
-        ${innerBackdrop}
+        ${globalUnderlay}
 
-        <!-- Diagonal Split Backdrop Mesh -->
+        <!-- Dual Team Cover Split Backdrops -->
+        <div class="primetime-split-backdrop-left" style="${leftBgStyle}"></div>
+        <div class="primetime-split-backdrop-right" style="${rightBgStyle}"></div>
+
+        <!-- Diagonal Slash Seam & Ambient Glow Overlays -->
         <div class="primetime-diagonal-split">
           <div class="primetime-glow-left"></div>
           <div class="primetime-glow-right"></div>
@@ -15632,16 +15648,12 @@ function matchupOfTheWeekCard(t){
           <div class="primetime-center-hub" ${matchClickAttr} title="Click to view Match Boxscore & Replays">
             ${isPlayed ? `
               <div class="primetime-score-row">
-                <span class="primetime-score-val ${p1Won ? 'winner' : 'loser'}">${sA}</span>
-                <span style="color:#504f5e;font-size:20px">-</span>
-                <span class="primetime-score-val ${p2Won ? 'winner' : 'loser'}">${sB}</span>
+                <span class="primetime-score-val ${p1Won ? 'winner' : (p2Won ? 'loser' : '')}">${sA ?? 0}</span>
+                <span style="color:#504f5e;font-size:24px;line-height:1;margin:0 4px">-</span>
+                <span class="primetime-score-val ${p2Won ? 'winner' : (p1Won ? 'loser' : '')}">${sB ?? 0}</span>
               </div>
-              <span class="primetime-status-pill">FINAL</span>
-              <span class="primetime-format-sub">${esc(item.label || 'Fixture')}</span>
             ` : `
               <div class="primetime-vs-emblem">VS</div>
-              <span class="primetime-format-sub" style="color:#ffd166;margin-top:2px">${esc(item.label || 'Fixture')}</span>
-              <span class="primetime-format-sub" style="font-size:9px">BEST OF 3</span>
             `}
           </div>
 
