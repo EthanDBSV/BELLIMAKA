@@ -3555,7 +3555,7 @@ body.mobile-nav-open {
   width: 100%;
   max-width: 860px;
   margin: 0 auto;
-  aspect-ratio: 640 / 460;
+  aspect-ratio: 640 / 468;
   height: auto;
   max-height: calc(90vh - 180px);
   max-height: calc(90dvh - 180px);
@@ -3568,34 +3568,8 @@ body.mobile-nav-open {
   align-items: center;
   justify-content: center;
 }
-.replay-fullscreen-toggle {
-  position: absolute;
-  top: 10px;
-  right: 10px;
-  z-index: 100;
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  background: rgba(18, 18, 26, 0.88);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  color: #f5f3f0;
-  font: 800 11px 'Barlow Condensed', sans-serif;
-  letter-spacing: 0.6px;
-  text-transform: uppercase;
-  padding: 5px 11px;
-  border-radius: 6px;
-  cursor: pointer;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.6);
-  transition: all .15s ease;
-  user-select: none;
-}
-.replay-fullscreen-toggle:hover {
-  background: rgba(239, 48, 56, 0.9);
-  border-color: var(--red);
-  color: #fff;
-  transform: translateY(-1px);
+.replay-fs-exit-pill {
+  display: none !important;
 }
 .replay-viewport-container:fullscreen,
 .replay-viewport-container:-webkit-full-screen {
@@ -3614,12 +3588,43 @@ body.mobile-nav-open {
   box-shadow: none !important;
   z-index: 9999999 !important;
 }
-.replay-viewport-container:fullscreen .replay-fullscreen-toggle,
-.replay-viewport-container:-webkit-full-screen .replay-fullscreen-toggle {
-  top: 16px;
-  right: 16px;
-  background: rgba(25, 25, 35, 0.92);
-  padding: 8px 14px;
+.replay-viewport-container:fullscreen .replay-fs-exit-pill,
+.replay-viewport-container:-webkit-full-screen .replay-fs-exit-pill {
+  display: inline-flex !important;
+  position: absolute;
+  top: 14px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 99999999;
+  align-items: center;
+  gap: 7px;
+  background: rgba(18, 18, 26, 0.92);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  color: #f5f3f0;
+  font: 800 11px 'Barlow Condensed', sans-serif;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+  padding: 6px 16px;
+  border-radius: 20px;
+  cursor: pointer;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.8);
+  opacity: 0;
+  transition: opacity 0.25s ease, background 0.15s ease, transform 0.15s ease;
+  pointer-events: auto;
+  user-select: none;
+}
+.replay-viewport-container:fullscreen:hover .replay-fs-exit-pill,
+.replay-viewport-container:-webkit-full-screen:hover .replay-fs-exit-pill,
+.replay-viewport-container.show-fs-pill .replay-fs-exit-pill {
+  opacity: 1;
+}
+.replay-fs-exit-pill:hover {
+  background: rgba(239, 48, 56, 0.95);
+  border-color: var(--red);
+  color: #fff;
+  transform: translateX(-50%) translateY(1px);
 }
 .replay-controls-subbar {
   background: #13131a;
@@ -3643,7 +3648,7 @@ body.mobile-nav-open {
 .replay-hub-modal .replay-tab-bar {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 5px;
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
   scrollbar-width: none;
@@ -3682,12 +3687,22 @@ body.mobile-nav-open {
     font-size: 11px !important;
     flex-shrink: 0 !important;
   }
+  .replay-tab-body {
+    padding: 6px 0 12px 0 !important;
+  }
+  .replay-tab-body > div:last-child {
+    padding: 6px 12px !important;
+  }
   .replay-viewport-container {
-    aspect-ratio: 640 / 460 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    aspect-ratio: 640 / 468 !important;
     height: auto !important;
-    max-height: calc(100vh - 220px) !important;
-    max-height: calc(100dvh - 220px) !important;
-    border-radius: 8px !important;
+    max-height: calc(100vh - 200px) !important;
+    max-height: calc(100dvh - 200px) !important;
+    border-radius: 0 !important;
+    border-left: none !important;
+    border-right: none !important;
   }
 }
 
@@ -6585,12 +6600,13 @@ html, body {
   top: 0 !important;
   left: 50% !important;
   width: 640px !important;
-  height: 460px !important;
+  height: 468px !important;
   min-width: 640px !important;
-  min-height: 460px !important;
+  min-height: 468px !important;
   max-width: 640px !important;
   margin-left: -320px !important;
   padding: 0 !important;
+  padding-top: 0 !important;
   margin-top: 0 !important;
   transform-origin: top center !important;
   overflow: visible !important;
@@ -6601,6 +6617,8 @@ html, body {
   left: 0px !important;
   width: 640px !important;
   height: 360px !important;
+  transform: none !important;
+  margin-bottom: 0px !important;
   border: 1px solid #2a2a3a !important;
   box-shadow: 0 4px 20px rgba(0,0,0,0.5) !important;
   background: #000 !important;
@@ -6651,6 +6669,7 @@ html, body {
   left: 0px !important;
   right: 0px !important;
   width: 640px !important;
+  height: 48px !important;
   display: flex !important;
   flex-wrap: nowrap !important;
   justify-content: center !important;
@@ -6712,11 +6731,16 @@ ${scOpen}>
   function fitReplay(){
     var w = document.querySelector('.replay-wrapper');
     if(!w) return;
+    var b = document.querySelector('.battle');
+    if(b){
+      b.style.setProperty('transform', 'none', 'important');
+      b.style.setProperty('margin-bottom', '0px', 'important');
+    }
     var vw = window.innerWidth;
     var vh = window.innerHeight;
     var scale = vw / 640;
-    if(scale * 460 > vh && vh > 60){
-      scale = vh / 460;
+    if(scale * 468 > vh && vh > 60){
+      scale = vh / 468;
     }
     w.style.transform = 'scale(' + scale + ')';
     w.style.transformOrigin = 'top center';
@@ -6725,7 +6749,8 @@ ${scOpen}>
   window.addEventListener('orientationchange', fitReplay);
   window.addEventListener('DOMContentLoaded', function(){
     setTimeout(fitReplay, 50);
-    setTimeout(fitReplay, 200);
+    setTimeout(fitReplay, 150);
+    setTimeout(fitReplay, 300);
     setTimeout(fitReplay, 600);
     setTimeout(fitReplay, 1200);
   });
@@ -8300,6 +8325,17 @@ async function ensureReplayLog(tournamentId, matchKey, gameNum = 1) {
   return null;
 }
 
+let fsPillTimer = null;
+function flashFullscreenPill(c){
+  if(!c) c = document.querySelector('.replay-viewport-container');
+  if(!c) return;
+  c.classList.add('show-fs-pill');
+  if(fsPillTimer) clearTimeout(fsPillTimer);
+  fsPillTimer = setTimeout(() => {
+    c.classList.remove('show-fs-pill');
+  }, 2400);
+}
+
 function toggleReplayFullscreen(){
   let c = document.querySelector('.replay-viewport-container');
   if(!c) return;
@@ -8308,6 +8344,7 @@ function toggleReplayFullscreen(){
     let req = c.requestFullscreen || c.webkitRequestFullscreen || c.mozRequestFullScreen || c.msRequestFullscreen;
     if(req) {
       req.call(c).then(() => {
+        flashFullscreenPill(c);
         notifyIframeResize();
       }).catch(() => {});
     }
@@ -8334,21 +8371,25 @@ document.addEventListener('fullscreenchange', handleReplayFsChange);
 document.addEventListener('webkitfullscreenchange', handleReplayFsChange);
 function handleReplayFsChange(){
   let isFs = !!(document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement || document.msFullscreenElement);
-  let btn = document.querySelector('.replay-fullscreen-toggle');
-  if(btn){
+  let c = document.querySelector('.replay-viewport-container');
+  if(isFs && c){
+    flashFullscreenPill(c);
+  }
+  let fsBtns = document.querySelectorAll('.replay-fs-btn');
+  fsBtns.forEach(btn => {
     let enterIcon = btn.querySelector('.fs-icon-enter');
     let exitIcon = btn.querySelector('.fs-icon-exit');
     let label = btn.querySelector('.fs-btn-label');
     if(isFs){
       if(enterIcon) enterIcon.style.display = 'none';
       if(exitIcon) exitIcon.style.display = 'inline-block';
-      if(label) label.textContent = 'Exit';
+      if(label) label.textContent = 'Exit Fullscreen';
     } else {
       if(enterIcon) enterIcon.style.display = 'inline-block';
       if(exitIcon) exitIcon.style.display = 'none';
       if(label) label.textContent = 'Fullscreen';
     }
-  }
+  });
   notifyIframeResize();
 }
 
@@ -8454,13 +8495,12 @@ function openMatchReplayHubModal(tournamentId, matchKey, activeGameNum = 1, acti
       let replayHtmlDoc = buildShowdownReplayHtml(activeReplay);
       contentHtml = `
         <div class="replay-tab-body" style="padding:12px 14px;display:flex;flex-direction:column;gap:12px">
-          <div class="replay-viewport-container">
+          <div class="replay-viewport-container" onclick="flashFullscreenPill(this)">
             <iframe id="replayEmbedFrame" style="width:100%;height:100%;border:0;color-scheme:dark;background:#09090d" sandbox="allow-scripts allow-same-origin allow-fullscreen" allow="fullscreen" allowfullscreen="true" srcdoc="${esc(replayHtmlDoc)}"></iframe>
-            <button class="replay-fullscreen-toggle" onclick="toggleReplayFullscreen()" title="Toggle Fullscreen Replay" aria-label="Toggle Fullscreen">
-              <svg class="fs-icon-enter" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg>
-              <svg class="fs-icon-exit" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="display:none"><path d="M4 14h6v6m10-10h-6V4m0 6 7-7M3 21l7-7"/></svg>
-              <span class="fs-btn-label">Fullscreen</span>
-            </button>
+            <div class="replay-fs-exit-pill" onclick="toggleReplayFullscreen()" title="Exit Fullscreen (Esc)">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 14h6v6m10-10h-6V4m0 6 7-7M3 21l7-7"/></svg>
+              <span>Exit Fullscreen</span>
+            </div>
           </div>
           <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;padding:6px 2px">
             <div style="font-size:11px;color:#8e8c95">
@@ -8551,8 +8591,15 @@ function openMatchReplayHubModal(tournamentId, matchKey, activeGameNum = 1, acti
           <div class="replay-game-pills-strip">
             ${gamePillsHtml}
           </div>
-          <div class="replay-tab-bar">
+          <div class="replay-tab-bar" style="display:flex;align-items:center;gap:6px">
             ${tabButtonsHtml}
+            ${activeTab === 'watch' ? `
+              <button class="replay-tab-btn replay-fs-btn" onclick="toggleReplayFullscreen()" title="Toggle Fullscreen Replay" style="display:inline-flex;align-items:center;gap:6px;background:rgba(255,255,255,0.05);border:1px solid #323244;color:#f5f3f0;font-weight:700">
+                <svg class="fs-icon-enter" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg>
+                <svg class="fs-icon-exit" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="display:none"><path d="M4 14h6v6m10-10h-6V4m0 6 7-7M3 21l7-7"/></svg>
+                <span class="fs-btn-label">Fullscreen</span>
+              </button>
+            ` : ''}
           </div>
         </div>
 

@@ -3,6 +3,27 @@
 All notable changes to the Bellimaka Pokémon Draft League site are documented here.
 Format: `v[MAJOR].[MINOR].[PATCH]` — Major = big new systems, Minor = new features, Patch = bug fixes / small improvements.
 
+## [v2.1.0] — 2026-10-04
+
+### Added
+- **Pokémon Showdown Replay Viewer & Analyzer Complete Overhaul** — Transformed the match replay theater on both desktop and mobile devices into a clean, unobstructed, edge-to-edge experience:
+  - **Zero-Overlay Canvas Architecture**: Permanently eliminated tacky and obstructive overlay buttons from inside the battle screen. The Fullscreen control is now positioned cleanly in the Replay Subbar alongside the game tabs and analysis modes (`🎬 Watch Replay`, `📊 Box Score & Stats`, `📜 Battle Log`), leaving trainer cards, battle sprites, and Pokémon HP bars 100% visible and unhindered.
+  - **Unified Mobile Full-Width Responsive Scaling**: Solved the critical sizing bug where Showdown's internal `battle.js` resizing collided with iframe wrappers, which previously shrank the battle canvas into a tiny top-left corner box leaving a giant black void. The entire 640×468 Showdown player suite (battle field, turn controls, speed selectors, color scheme) now scales uniformly as a single cohesive unit to fill 100% of mobile phone screens edge-to-edge with zero side margins and zero dead space.
+  - **PC Desktop Viewport & Controls Clearance**: Expanded viewport height and aspect-ratio constraints (`640 / 468`) to ensure Showdown's bottom control row (`Speed: Hyperfast / Fast / Normal / Slow / Really Slow`, `Color Scheme`, `Music`) is never clipped at the bottom by container borders.
+  - **Auto-Fading Fullscreen Exit Pill**: In fullscreen mode, replaced persistent screen-cluttering buttons with a sleek top pill that appears smoothly on hover or tap and auto-fades during playback, paired with native Escape key and mobile swipe-back gestures.
+  - **Multi-Game Replay Switcher & Synchronized Box Score Engine**: Instant tab switching between Game 1, Game 2, and Game 3 with auto-calculated box scores, MVP awards, damage charts, and complete turn-by-turn battle logs.
+- **Universal Modal Backdrop Click Dismissal & Mobile Escape Key Support** — Upgraded all 55 modal views across the entire application shell to instantly dismiss when tapping or clicking the dark backdrop outside the dialog card or pressing the `Escape` key, standardizing modern web modal UX.
+- **Tournament Playbooks & Mechanics Modernization** — Completely modernized and expanded the league's core analytical documentation:
+  - **Overall (OVR) Rating Guide Overhaul**: Detailed formula breakdowns, metric weight explanations (Combat Win %, Match Win %, Differential Score, Strength of Schedule), Tier classification brackets (S+ to D), and dynamic coach rating previews.
+  - **Elo System Guide Overhaul**: Deep dive into the league's dynamic K-factor rating mathematics, expected outcome probabilities, postseason multiplier logic, and rating progression ladders.
+  - **Badges & Accolades Playbook Overhaul**: Comprehensive guide covering all coach badges, milestone tiers, rarity rings, and unlock criteria.
+  - **Season Awards & Honors Playbook Overhaul**: In-depth criteria and historical tracking guide for MVP, Finals MVP, First-Team All-League, statistical crowns, and divisional trophies.
+
+### Improved
+- **Mobile Replay Tab Strips & Header Typography**: Fluid horizontal scrollbars for round filters, division tabs, and game selection chips with responsive typography clamping.
+
+---
+
 ## [v2.0.1] — 2026-10-04
 
 ### Improved
