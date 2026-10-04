@@ -3,6 +3,18 @@
 All notable changes to the Bellimaka Pokémon Draft League site are documented here.
 Format: `v[MAJOR].[MINOR].[PATCH]` — Major = big new systems, Minor = new features, Patch = bug fixes / small improvements.
 
+## [v1.1.21] — 2026-10-03
+
+### Fixed
+- **Replay Coach Attribution & Roster-Backed Statistical Validation** — Fixed a bug where battle replay statistics, appearances, and postseason awards were incorrectly attributed or inverted between match participants, particularly in playoff series and replays with swapped side assignments:
+  - **Roster-Exclusivity Coach Resolution**: Introduced centralized roster cross-referencing (`resolvePokemonCoach` and `checkCoachDraftRoster`) that directly verifies drafted rosters of both match participants before assigning Pokémon credit, ensuring species uniquely drafted by a coach are never erroneously awarded to their opponent.
+  - **Playoff & Top-Cut Match Metadata Attachment**: Updated replay rehydration and parsing across `hydrateTournamentsFromIndexedDB`, `applySharedState`, and `flushSync` to explicitly look up playoff match records and pass coaches and tournament context to the parser, preventing unassigned or placeholder coach labels (`Player 1`/`Player 2`) from defaulting to inverted side attributions.
+  - **Swapped Replay Side Handling**: Refactored replay side-swapping logic to respect explicit side flags during replay modal inspections, manual swap toggles, and postseason awards compilation, preventing reversed player sides from overriding legitimate draft ownership.
+  - **Paldean Tauros Form Normalization**: Corrected regular expression patterns in `normalizeBattleFormToDraftForm` to properly recognize and normalize `Tauros-Paldean-Aqua`, `Tauros-Paldean-Blaze`, and `Tauros-Paldean-Combat` draft variants into unified species keys across all roster sheets and statistical leaderboards.
+  - **Awards & Season Leaderboard Parser Versioning**: Bumped the replay parser specification to version 8 across `calculateTeamOfTheSeason`, `getTournamentPokemonStatsMap`, and synchronization routines, invalidating stale cached maps and ensuring postseason awards accurately compute total games played, kills, and MVP impact scores from properly attributed replays.
+
+---
+
 ## [v1.1.20] — 2026-10-01
 
 ### Fixed

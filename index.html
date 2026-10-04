@@ -3713,13 +3713,15 @@ async function hydrateTournamentsFromIndexedDB() {
                     }
                   }
                   let hasStatsNow = lr.stats && lr.stats.pokemon && (Array.isArray(lr.stats.pokemon) ? lr.stats.pokemon.length > 0 : Object.keys(lr.stats.pokemon).length > 0);
-                  if((!hasStatsNow || !lr.stats.version || lr.stats.version < 7) && lr.log && typeof lr.log === 'string' && lr.log.includes('|')) {
+                  let hasBadCoaches = hasStatsNow && (Array.isArray(lr.stats.pokemon) ? lr.stats.pokemon : Object.values(lr.stats.pokemon)).some(p => !p.coach || p.coach.toLowerCase().startsWith('player '));
+                  if((!hasStatsNow || !lr.stats.version || lr.stats.version < 8 || hasBadCoaches) && lr.log && typeof lr.log === 'string' && lr.log.includes('|')) {
                     let parsed = parseShowdownBattleLog(lr.log, {
                       id: lr.id,
                       game: lr.game,
                       match: lm,
-                      coach1: lm.a || lm.p1,
-                      coach2: lm.b || lm.p2,
+                      coach1: lr.coach1 || lm.a || lm.p1,
+                      coach2: lr.coach2 || lm.b || lm.p2,
+                      tournament: locT,
                       manualSwapped: lr.swapped
                     });
                     if(parsed && parsed.pokemon && (Array.isArray(parsed.pokemon) ? parsed.pokemon.length > 0 : Object.keys(parsed.pokemon).length > 0)) {
@@ -3763,10 +3765,20 @@ async function hydrateTournamentsFromIndexedDB() {
                   }
                 }
                 let hasStatsNow = lr.stats && lr.stats.pokemon && (Array.isArray(lr.stats.pokemon) ? lr.stats.pokemon.length > 0 : Object.keys(lr.stats.pokemon).length > 0);
-                if((!hasStatsNow || !lr.stats.version || lr.stats.version < 7) && lr.log && typeof lr.log === 'string' && lr.log.includes('|')) {
+                let hasBadCoaches = hasStatsNow && (Array.isArray(lr.stats.pokemon) ? lr.stats.pokemon : Object.values(lr.stats.pokemon)).some(p => !p.coach || p.coach.toLowerCase().startsWith('player '));
+                if((!hasStatsNow || !lr.stats.version || lr.stats.version < 8 || hasBadCoaches) && lr.log && typeof lr.log === 'string' && lr.log.includes('|')) {
+                  let tcMatch = (typeof findTournamentMatch === 'function') ? findTournamentMatch(locT, k)?.match : null;
+                  let tcCoach1 = lr.coach1 || tcMatch?.a || tcMatch?.p1 || '';
+                  let tcCoach2 = lr.coach2 || tcMatch?.b || tcMatch?.p2 || '';
+                  if(tcCoach1 && !lr.coach1) lr.coach1 = tcCoach1;
+                  if(tcCoach2 && !lr.coach2) lr.coach2 = tcCoach2;
                   let parsed = parseShowdownBattleLog(lr.log, {
                     id: lr.id,
                     game: lr.game,
+                    match: tcMatch,
+                    coach1: tcCoach1,
+                    coach2: tcCoach2,
+                    tournament: locT,
                     manualSwapped: lr.swapped
                   });
                   if(parsed && parsed.pokemon && (Array.isArray(parsed.pokemon) ? parsed.pokemon.length > 0 : Object.keys(parsed.pokemon).length > 0)) {
@@ -4634,17 +4646,36 @@ ${scOpen} src="https://play.pokemonshowdown.com/js/replay-embed.js">${scClose}
 
 function resolveReplayCoachAttribution(params) {
   let { coach1, coach2, p1Name, p2Name, p1Mons = [], p2Mons = [], tournament, manualSwapped } = params;
+
+  let c1 = String(coach1 || '').trim();
+  let c2 = String(coach2 || '').trim();
+
+  // If coaches are missing but tournament rosters and battle mons are available, attempt recovery
+  if((!c1 || !c2) && tournament?.rosters && (p1Mons.length || p2Mons.length)) {
+    let scores = {};
+    Object.keys(tournament.rosters).forEach(cName => {
+      let rList = tournament.rosters[cName] || [];
+      let cMons = rList.map(r => (typeof r === 'string' ? r : (r.pokemon || r.name || '')).toLowerCase().replace(/[^a-z0-9]/g, ''));
+      let p1Score = p1Mons.filter(m => cMons.some(cm => cm.includes(m.toLowerCase().replace(/[^a-z0-9]/g, '')) || m.toLowerCase().replace(/[^a-z0-9]/g, '').includes(cm))).length;
+      let p2Score = p2Mons.filter(m => cMons.some(cm => cm.includes(m.toLowerCase().replace(/[^a-z0-9]/g, '')) || m.toLowerCase().replace(/[^a-z0-9]/g, '').includes(cm))).length;
+      scores[cName] = { p1Score, p2Score };
+    });
+    let bestP1 = Object.keys(scores).sort((a,b) => scores[b].p1Score - scores[a].p1Score)[0];
+    let bestP2 = Object.keys(scores).filter(k => k !== bestP1).sort((a,b) => scores[b].p2Score - scores[a].p2Score)[0];
+    if(!c1 && bestP1 && scores[bestP1].p1Score > 0) c1 = bestP1;
+    if(!c2 && bestP2 && scores[bestP2].p2Score > 0) c2 = bestP2;
+    if(!coach1 && c1) coach1 = c1;
+    if(!coach2 && c2) coach2 = c2;
+  }
+
   if(manualSwapped) {
     return {
-      p1Coach: coach2 || 'Player 2',
-      p2Coach: coach1 || 'Player 1',
+      p1Coach: coach2 || c2 || 'Player 2',
+      p2Coach: coach1 || c1 || 'Player 1',
       swapped: true,
       reason: 'manual_override'
     };
   }
-
-  let c1 = String(coach1 || '').trim();
-  let c2 = String(coach2 || '').trim();
   let p1 = String(p1Name || '').trim();
   let p2 = String(p2Name || '').trim();
 
@@ -4824,9 +4855,9 @@ function normalizeBattleFormToDraftForm(name) {
   if (isMega) return str;
 
   // Paldean Tauros Breeds
-  if (/^tauros-(paldea-)?blaze/i.test(lower) || lower === 'taurospaldeablaze' || lower === 'taurosblaze') return 'Paldean Tauros (Blaze)';
-  if (/^tauros-(paldea-)?aqua/i.test(lower) || lower === 'taurospaldeaaqua' || lower === 'taurosaqua') return 'Paldean Tauros (Aqua)';
-  if (/^tauros-(paldea-)?combat/i.test(lower) || lower === 'taurospaldeacombat' || /^tauros-paldea$/i.test(lower) || lower === 'taurospaldea' || lower === 'tauroscombat') return 'Paldean Tauros';
+  if (/^tauros-(paldean?-)?blaze/i.test(lower) || lower === 'taurospaldeablaze' || lower === 'taurospaldeanblaze' || lower === 'taurosblaze') return 'Paldean Tauros (Blaze)';
+  if (/^tauros-(paldean?-)?aqua/i.test(lower) || lower === 'taurospaldeaaqua' || lower === 'taurospaldeanaqua' || lower === 'taurosaqua') return 'Paldean Tauros (Aqua)';
+  if (/^tauros-(paldean?-)?combat/i.test(lower) || lower === 'taurospaldeacombat' || lower === 'taurospaldeancombat' || /^tauros-paldean?$/i.test(lower) || lower === 'taurospaldea' || lower === 'taurospaldean' || lower === 'tauroscombat') return 'Paldean Tauros';
 
   // In-battle transformation forms that Showdown switches to via |detailschange| or |-formechange|
   // Mimikyu Disguise -> Busted
@@ -5012,6 +5043,68 @@ function resolveDraftMonName(rawName, coachName, tournament) {
   return clean;
 }
 
+function checkCoachDraftRoster(monName, coachName, tournament) {
+  if(!monName || !coachName || !tournament?.rosters?.[coachName]) return false;
+  let rList = tournament.rosters[coachName];
+  if(!Array.isArray(rList) || rList.length === 0) return false;
+
+  let monClean = (typeof normalizeBattleFormToDraftForm === 'function' ? normalizeBattleFormToDraftForm(monName) : String(monName)).trim().toLowerCase();
+  let monBase = monClean.replace(/-mega(-[xy])?/g, '').replace(/^mega\s+/g, '').replace(/\s+mega(-[xy])?$/g, '').replace(/\s+[xy]$/g, '').replace(/[^a-z0-9]/g, '');
+  let monKey = monClean.replace(/[^a-z0-9]/g, '');
+
+  for(let r of rList) {
+    let rStr = typeof r === 'string' ? r : (r.pokemon || r.name || '');
+    let rClean = (typeof normalizeBattleFormToDraftForm === 'function' ? normalizeBattleFormToDraftForm(rStr) : String(rStr)).trim().toLowerCase();
+    let rBase = rClean.replace(/-mega(-[xy])?/g, '').replace(/^mega\s+/g, '').replace(/\s+mega(-[xy])?$/g, '').replace(/\s+[xy]$/g, '').replace(/[^a-z0-9]/g, '');
+    let rKey = rClean.replace(/[^a-z0-9]/g, '');
+    if(rKey === monKey || (rBase && monBase && rBase === monBase)) return true;
+  }
+  return false;
+}
+
+function resolvePokemonCoach(p, c1, c2, tournament, isSwapped) {
+  if(!p) return '';
+  let monName = p.name || '';
+
+  // 1. Cross-reference with drafted rosters of the two match participants
+  if(tournament?.rosters && monName) {
+    let c1Has = checkCoachDraftRoster(monName, c1, tournament);
+    let c2Has = checkCoachDraftRoster(monName, c2, tournament);
+    if(c1Has && !c2Has) return c1;
+    if(c2Has && !c1Has) return c2;
+  }
+
+  // 2. Existing coach if valid and not a placeholder
+  let curCoach = p.coach;
+  if(curCoach && typeof curCoach === 'string' && !curCoach.toLowerCase().startsWith('player ')) {
+    let curNorm = curCoach.trim().toLowerCase();
+    let c1Norm = (c1 || '').trim().toLowerCase();
+    let c2Norm = (c2 || '').trim().toLowerCase();
+    if(!c1Norm && !c2Norm) return curCoach;
+    if((c1Norm && curNorm === c1Norm) || (c2Norm && curNorm === c2Norm)) return curCoach;
+  }
+
+  // 3. Side attribution respecting swapped flag
+  if(p.side === 'p1') {
+    let sCoach = isSwapped ? c2 : c1;
+    if(sCoach) return sCoach;
+  } else if(p.side === 'p2') {
+    let sCoach = isSwapped ? c1 : c2;
+    if(sCoach) return sCoach;
+  }
+
+  // 4. Fallback to full tournament rosters if only one coach drafted this Pokémon
+  if(tournament?.rosters && monName) {
+    let matchingCoaches = [];
+    Object.keys(tournament.rosters).forEach(cName => {
+      if(checkCoachDraftRoster(monName, cName, tournament)) matchingCoaches.push(cName);
+    });
+    if(matchingCoaches.length === 1) return matchingCoaches[0];
+  }
+
+  return (curCoach && !curCoach.toLowerCase().startsWith('player ')) ? curCoach : (c1 || c2 || '');
+}
+
 function parseShowdownBattleLog(logText, meta = {}) {
   if(!logText || typeof logText !== 'string') return null;
   let lines = logText.split('\n');
@@ -5027,7 +5120,7 @@ function parseShowdownBattleLog(logText, meta = {}) {
     pokemon: {},
     teamPreview: { p1: [], p2: [] },
     mvp: null,
-    version: 7
+    version: 8
   };
 
   let activeSlots = {};
@@ -5605,10 +5698,10 @@ function parseShowdownBattleLog(logText, meta = {}) {
     if(p.name && !p.isMega){
       p.name = normalizeBattleFormToDraftForm(p.name);
     }
-    p.coach = p.side === 'p1' ? (attr.p1Coach || 'Player 1') : (attr.p2Coach || 'Player 2');
+    p.coach = resolvePokemonCoach(p, coach1, coach2, t, attr.swapped) || (p.side === 'p1' ? (attr.p1Coach || 'Player 1') : (attr.p2Coach || 'Player 2'));
 
     // Cross-reference with drafted coach roster if not already mega evolved in battle
-    let coachRoster = p.side === 'p1' ? c1Roster : c2Roster;
+    let coachRoster = (t?.rosters?.[p.coach] || (p.side === 'p1' ? c1Roster : c2Roster) || []).slice();
     if(!p.isMega && coachRoster.length > 0){
       let norm = s => String(s || '').toLowerCase().replace(/[^a-z0-9]/g, '');
       let baseNorm = norm(p.baseSpecies || p.name);
@@ -6150,8 +6243,8 @@ function openMatchReplayHubModal(tournamentId, matchKey, activeGameNum = 1, acti
   let isLogMissing = (!activeReplay.log || typeof activeReplay.log !== 'string' || activeReplay.log.trim().length < 20);
 
   let stats = activeReplay.stats;
-  if(!isLogMissing && (!stats || !stats.sideAttribution || !stats.version || stats.version < 7)){
-    stats = parseShowdownBattleLog(activeReplay.log, { id: activeReplay.id, game: activeGameNum, match: m, coach1: p1, coach2: p2, manualSwapped: activeReplay.swapped });
+  if(!isLogMissing && (!stats || !stats.sideAttribution || !stats.version || stats.version < 8)){
+    stats = parseShowdownBattleLog(activeReplay.log, { id: activeReplay.id, game: activeGameNum, match: m, coach1: p1, coach2: p2, tournament: t, manualSwapped: activeReplay.swapped });
     activeReplay.stats = stats;
   }
 
@@ -6195,7 +6288,7 @@ function openMatchReplayHubModal(tournamentId, matchKey, activeGameNum = 1, acti
         let loadedLog = await ensureReplayLog(t?.id, matchKey, activeGameNum);
         if(loadedLog) {
           activeReplay.log = loadedLog;
-          activeReplay.stats = parseShowdownBattleLog(loadedLog, { id: activeReplay.id, game: activeGameNum, match: m, coach1: p1, coach2: p2, manualSwapped: activeReplay.swapped });
+          activeReplay.stats = parseShowdownBattleLog(loadedLog, { id: activeReplay.id, game: activeGameNum, match: m, coach1: p1, coach2: p2, tournament: t, manualSwapped: activeReplay.swapped });
           if(document.querySelector('#replayEmbedLoading')) {
             openMatchReplayHubModal(t?.id, matchKey, activeGameNum, activeTab);
           }
@@ -6250,7 +6343,7 @@ function openMatchReplayHubModal(tournamentId, matchKey, activeGameNum = 1, acti
         let loadedLog = await ensureReplayLog(t?.id, matchKey, activeGameNum);
         if(loadedLog) {
           activeReplay.log = loadedLog;
-          activeReplay.stats = parseShowdownBattleLog(loadedLog, { id: activeReplay.id, game: activeGameNum, match: m, coach1: p1, coach2: p2, manualSwapped: activeReplay.swapped });
+          activeReplay.stats = parseShowdownBattleLog(loadedLog, { id: activeReplay.id, game: activeGameNum, match: m, coach1: p1, coach2: p2, tournament: t, manualSwapped: activeReplay.swapped });
           if(document.querySelector('#replayStatsLoading')) {
             openMatchReplayHubModal(t?.id, matchKey, activeGameNum, activeTab);
           }
@@ -6335,6 +6428,7 @@ function toggleReplaySideSwap(tournamentId, matchKey, gameNum) {
     match: m,
     coach1: p1,
     coach2: p2,
+    tournament: t,
     manualSwapped: replay.swapped
   });
   if(mInfo.isTopCut && mInfo.tcMatchId != null && t.topCutReplays){
@@ -6821,7 +6915,7 @@ function processRawReplayInput(text, tournamentId, matchKey) {
   let p1 = m?.a || m?.p1 || '';
   let p2 = m?.b || m?.p2 || '';
 
-  let stats = parseShowdownBattleLog(log, { match: m, coach1: p1, coach2: p2 });
+  let stats = parseShowdownBattleLog(log, { match: m, coach1: p1, coach2: p2, tournament: t });
 
   // Strict verification check for participants
   let isMod = Boolean(moderator || canManageTournament(t));
@@ -7694,7 +7788,8 @@ function calculateTeamOfTheSeason(t) {
   gfReplays.forEach(r => {
     let stats = r.stats;
     let hasValidStats = stats && stats.pokemon && (Array.isArray(stats.pokemon) ? stats.pokemon.length > 0 : Object.keys(stats.pokemon).length > 0);
-    if(!hasValidStats || !stats.version || stats.version < 7) {
+    let hasBadCoaches = hasValidStats && (Array.isArray(stats.pokemon) ? stats.pokemon : Object.values(stats.pokemon)).some(p => !p.coach || p.coach.toLowerCase().startsWith('player '));
+    if(!hasValidStats || !stats.version || stats.version < 8 || hasBadCoaches) {
       let log = (r.log && typeof r.log === 'string' && r.log.includes('|')) ? r.log : null;
       if(!log && window._replayLogCache) {
         let repId = r.id || '';
@@ -7707,9 +7802,18 @@ function calculateTeamOfTheSeason(t) {
         }
       }
       if(log) {
+        let gfMatch = (typeof findTournamentMatch === 'function') ? (findTournamentMatch(t, 'tc_gf1')?.match || findTournamentMatch(t, 'gf1')?.match) : null;
+        let gfCoach1 = r.coach1 || gfMatch?.a || gfMatch?.p1 || '';
+        let gfCoach2 = r.coach2 || gfMatch?.b || gfMatch?.p2 || '';
+        if(gfCoach1 && !r.coach1) r.coach1 = gfCoach1;
+        if(gfCoach2 && !r.coach2) r.coach2 = gfCoach2;
         let parsed = parseShowdownBattleLog(log, {
           id: r.id,
           game: r.game,
+          match: gfMatch,
+          coach1: gfCoach1,
+          coach2: gfCoach2,
+          tournament: t,
           manualSwapped: r.swapped
         });
         if(parsed && parsed.pokemon && (Array.isArray(parsed.pokemon) ? parsed.pokemon.length > 0 : Object.keys(parsed.pokemon).length > 0)) {
@@ -7720,9 +7824,12 @@ function calculateTeamOfTheSeason(t) {
     }
     let pList = Array.isArray(stats?.pokemon) ? stats.pokemon : (stats?.pokemon ? Object.values(stats.pokemon) : []);
     let gfGameGroup = new Map();
+    let isSwapped = Boolean(r.swapped || stats?.swapped || stats?.sideAttribution?.swapped);
+    let gfCoach1 = r.coach1 || '';
+    let gfCoach2 = r.coach2 || '';
     pList.forEach(p => {
       if(!p.name || p.brought === false) return;
-      let coach = p.coach || (p.side === 'p1' ? r.coach1 : r.coach2) || '';
+      let coach = resolvePokemonCoach(p, gfCoach1, gfCoach2, t, isSwapped);
       let cleanName = (typeof resolveDraftMonName === 'function') ? resolveDraftMonName(p.name, coach, t) : normalizeBattleFormToDraftForm(p.name.trim());
       let gKey = (coach || '') + '::' + cleanName.toLowerCase();
       let kills = p.kills || 0;
@@ -7854,7 +7961,8 @@ function calculateTeamOfTheSeason(t) {
   allReplays.forEach(({ replay, match, isTopCut }) => {
     let stats = replay.stats;
     let hasValidStats = stats && stats.pokemon && (Array.isArray(stats.pokemon) ? stats.pokemon.length > 0 : Object.keys(stats.pokemon).length > 0);
-    if(!hasValidStats || !stats.version || stats.version < 7) {
+    let hasBadCoaches = hasValidStats && (Array.isArray(stats.pokemon) ? stats.pokemon : Object.values(stats.pokemon)).some(p => !p.coach || p.coach.toLowerCase().startsWith('player '));
+    if(!hasValidStats || !stats.version || stats.version < 8 || hasBadCoaches) {
       let log = (replay.log && typeof replay.log === 'string' && replay.log.includes('|')) ? replay.log : null;
       if(!log && window._replayLogCache) {
         let repId = replay.id || '';
@@ -7880,12 +7988,17 @@ function calculateTeamOfTheSeason(t) {
         }
       }
       if(log) {
+        let mC1 = replay.coach1 || match?.a || match?.p1 || '';
+        let mC2 = replay.coach2 || match?.b || match?.p2 || '';
+        if(mC1 && !replay.coach1) replay.coach1 = mC1;
+        if(mC2 && !replay.coach2) replay.coach2 = mC2;
         let parsed = parseShowdownBattleLog(log, {
           id: replay.id,
           game: replay.game,
           match: match,
-          coach1: match?.a || match?.p1,
-          coach2: match?.b || match?.p2,
+          coach1: mC1,
+          coach2: mC2,
+          tournament: t,
           manualSwapped: replay.swapped
         });
         if(parsed && parsed.pokemon && (Array.isArray(parsed.pokemon) ? parsed.pokemon.length > 0 : Object.keys(parsed.pokemon).length > 0)) {
@@ -7921,14 +8034,14 @@ function calculateTeamOfTheSeason(t) {
     let replayGameGroup = new Map();
     let mC1 = replay.coach1 || match?.a || match?.p1 || '';
     let mC2 = replay.coach2 || match?.b || match?.p2 || '';
+    if(mC1 && !replay.coach1) replay.coach1 = mC1;
+    if(mC2 && !replay.coach2) replay.coach2 = mC2;
+    let isSwapped = Boolean(replay.swapped || stats?.swapped || stats?.sideAttribution?.swapped);
     pList.forEach(p => {
       if(!p.name || p.brought === false) return;
-      let coach = p.coach;
-      if(!coach || coach.toLowerCase().startsWith('player ')) {
-        coach = p.side === 'p1' ? mC1 : (p.side === 'p2' ? mC2 : '');
-      }
+      let coach = resolvePokemonCoach(p, mC1, mC2, t, isSwapped);
       if(!coach) {
-        coach = (p.side === 'p1' ? mC1 : mC2) || rosterCoachMap.get(p.name.trim().toLowerCase()) || '';
+        coach = rosterCoachMap.get(normalizeBattleFormToDraftForm(p.name).toLowerCase()) || '';
       }
       let cleanName = (typeof resolveDraftMonName === 'function') ? resolveDraftMonName(p.name, coach, t) : normalizeBattleFormToDraftForm(p.name.trim());
       let gKey = (coach || '') + '::' + cleanName.toLowerCase();
@@ -8940,7 +9053,7 @@ function getTournamentPokemonStatsMap(t, coachFilter) {
   let cacheKey = targetNorm || '__global__';
 
   if(!t._cachedMonStatsMaps) t._cachedMonStatsMaps = {};
-  if(t._cachedMonStatsVersion === 7 && t._cachedMonStatsMaps[cacheKey] && t._cachedMonStatsTime && (Date.now() - t._cachedMonStatsTime < 30000)) {
+  if(t._cachedMonStatsVersion === 8 && t._cachedMonStatsMaps[cacheKey] && t._cachedMonStatsTime && (Date.now() - t._cachedMonStatsTime < 30000)) {
     return t._cachedMonStatsMaps[cacheKey];
   }
 
@@ -8968,6 +9081,10 @@ function getTournamentPokemonStatsMap(t, coachFilter) {
         let tcMatch = (typeof findTournamentMatch === 'function') ? findTournamentMatch(t, tcKey)?.match : null;
         rList.forEach(r => {
           if(!r) return;
+          if(tcMatch) {
+            if(!r.coach1 && (tcMatch.a || tcMatch.p1)) r.coach1 = tcMatch.a || tcMatch.p1;
+            if(!r.coach2 && (tcMatch.b || tcMatch.p2)) r.coach2 = tcMatch.b || tcMatch.p2;
+          }
           let matchKey = tcMatch?.id || `${tcMatch?.a || ''}_${tcMatch?.b || ''}_${tcKey}`;
           let repKey = r.id || `${matchKey}_g${r.game || 1}`;
           if(!seenReplays.has(r) && !seenReplays.has(repKey)){
@@ -8980,10 +9097,23 @@ function getTournamentPokemonStatsMap(t, coachFilter) {
     });
   }
 
+  let rosterCoachMap = new Map();
+  if(t.rosters) {
+    Object.keys(t.rosters).forEach(coachName => {
+      let rList = t.rosters[coachName] || [];
+      rList.forEach(rMon => {
+        let clean = (typeof normalizeBattleFormToDraftForm === 'function' ? normalizeBattleFormToDraftForm(String(rMon).trim()) : String(rMon).trim());
+        if(clean) rosterCoachMap.set(clean.toLowerCase(), coachName);
+      });
+    });
+  }
+
   let map = {};
   allReplays.forEach(({ replay, match }) => {
     let c1 = replay.coach1 || match?.a || match?.p1 || '';
     let c2 = replay.coach2 || match?.b || match?.p2 || '';
+    if(c1 && !replay.coach1) replay.coach1 = c1;
+    if(c2 && !replay.coach2) replay.coach2 = c2;
     let c1Norm = String(c1).trim().toLowerCase();
     let c2Norm = String(c2).trim().toLowerCase();
 
@@ -8996,7 +9126,8 @@ function getTournamentPokemonStatsMap(t, coachFilter) {
 
     let stats = replay.stats;
     let hasValidStats = stats && stats.pokemon && (Array.isArray(stats.pokemon) ? stats.pokemon.length > 0 : Object.keys(stats.pokemon).length > 0);
-    if(!hasValidStats || !stats.version || stats.version < 7) {
+    let hasBadCoaches = hasValidStats && (Array.isArray(stats.pokemon) ? stats.pokemon : Object.values(stats.pokemon)).some(p => !p.coach || p.coach.toLowerCase().startsWith('player '));
+    if(!hasValidStats || !stats.version || stats.version < 8 || hasBadCoaches) {
       let log = (replay.log && typeof replay.log === 'string' && replay.log.includes('|')) ? replay.log : null;
       if(!log && window._replayLogCache) {
         let repId = replay.id || '';
@@ -9028,6 +9159,7 @@ function getTournamentPokemonStatsMap(t, coachFilter) {
           match: match,
           coach1: c1,
           coach2: c2,
+          tournament: t,
           manualSwapped: replay.swapped
         });
         if(parsed && parsed.pokemon && (Array.isArray(parsed.pokemon) ? parsed.pokemon.length > 0 : Object.keys(parsed.pokemon).length > 0)) {
@@ -9039,14 +9171,12 @@ function getTournamentPokemonStatsMap(t, coachFilter) {
     let pList = Array.isArray(stats?.pokemon) ? stats.pokemon : (stats?.pokemon ? Object.values(stats.pokemon) : []);
 
     let gameGroup = new Map();
+    let isSwapped = Boolean(replay.swapped || stats?.swapped || stats?.sideAttribution?.swapped);
     pList.forEach(p => {
       if(!p.name || p.brought === false) return;
-      let coach = p.coach;
-      if(!coach || coach.toLowerCase().startsWith('player ')) {
-        coach = p.side === 'p1' ? c1 : (p.side === 'p2' ? c2 : '');
-      }
-      if(!coach) {
-        coach = (p.side === 'p1' ? c1 : c2) || '';
+      let coach = resolvePokemonCoach(p, c1, c2, t, isSwapped);
+      if(!coach && rosterCoachMap) {
+        coach = rosterCoachMap.get(normalizeBattleFormToDraftForm(p.name).toLowerCase()) || '';
       }
       let coachNorm = String(coach).trim().toLowerCase();
 
@@ -12804,13 +12934,16 @@ function applySharedState(data){
                     }
                   }
                   let hasStatsNow = ir.stats && ir.stats.pokemon && (Array.isArray(ir.stats.pokemon) ? ir.stats.pokemon.length > 0 : Object.keys(ir.stats.pokemon).length > 0);
-                  if((!hasStatsNow || !ir.stats.version || ir.stats.version < 7) && ir.log && typeof ir.log === 'string' && ir.log.includes('|')){
+                  let pList = hasStatsNow ? (Array.isArray(ir.stats.pokemon) ? ir.stats.pokemon : Object.values(ir.stats.pokemon)) : [];
+                  let hasBadCoaches = pList.some(p => !p.coach || p.coach.toLowerCase().startsWith('player '));
+                  if((!hasStatsNow || !ir.stats.version || ir.stats.version < 8 || hasBadCoaches) && ir.log && typeof ir.log === 'string' && ir.log.includes('|')){
                     let parsed = parseShowdownBattleLog(ir.log, {
                       id: ir.id,
                       game: ir.game,
                       match: im,
                       coach1: im.a || im.p1,
                       coach2: im.b || im.p2,
+                      tournament: incT || locT,
                       manualSwapped: ir.swapped
                     });
                     if(parsed && parsed.pokemon && (Array.isArray(parsed.pokemon) ? parsed.pokemon.length > 0 : Object.keys(parsed.pokemon).length > 0)){
@@ -12851,10 +12984,21 @@ function applySharedState(data){
                   }
                 }
                 let hasStatsNow = ir.stats && ir.stats.pokemon && (Array.isArray(ir.stats.pokemon) ? ir.stats.pokemon.length > 0 : Object.keys(ir.stats.pokemon).length > 0);
-                if((!hasStatsNow || !ir.stats.version || ir.stats.version < 7) && ir.log && typeof ir.log === 'string' && ir.log.includes('|')){
+                let pList = hasStatsNow ? (Array.isArray(ir.stats.pokemon) ? ir.stats.pokemon : Object.values(ir.stats.pokemon)) : [];
+                let hasBadCoaches = pList.some(p => !p.coach || p.coach.toLowerCase().startsWith('player '));
+                if((!hasStatsNow || !ir.stats.version || ir.stats.version < 8 || hasBadCoaches) && ir.log && typeof ir.log === 'string' && ir.log.includes('|')){
+                  let tcMatch = (typeof findTournamentMatch === 'function') ? (findTournamentMatch(incT, k)?.match || findTournamentMatch(locT, k)?.match) : null;
+                  let tcCoach1 = ir.coach1 || lr?.coach1 || tcMatch?.a || tcMatch?.p1 || '';
+                  let tcCoach2 = ir.coach2 || lr?.coach2 || tcMatch?.b || tcMatch?.p2 || '';
+                  if(tcCoach1 && !ir.coach1) ir.coach1 = tcCoach1;
+                  if(tcCoach2 && !ir.coach2) ir.coach2 = tcCoach2;
                   let parsed = parseShowdownBattleLog(ir.log, {
                     id: ir.id,
                     game: ir.game,
+                    match: tcMatch,
+                    coach1: tcCoach1,
+                    coach2: tcCoach2,
+                    tournament: incT || locT,
                     manualSwapped: ir.swapped
                   });
                   if(parsed && parsed.pokemon && (Array.isArray(parsed.pokemon) ? parsed.pokemon.length > 0 : Object.keys(parsed.pokemon).length > 0)){
@@ -13663,13 +13807,16 @@ async function flushSync(){
               }
             }
             let hasStats = r.stats && r.stats.pokemon && (Array.isArray(r.stats.pokemon) ? r.stats.pokemon.length > 0 : Object.keys(r.stats.pokemon).length > 0);
-            if((!hasStats || !r.stats.version || r.stats.version < 7) && r.log && typeof r.log === 'string' && r.log.includes('|')){
+            let pList = hasStats ? (Array.isArray(r.stats.pokemon) ? r.stats.pokemon : Object.values(r.stats.pokemon)) : [];
+            let hasBadCoaches = pList.some(p => !p.coach || p.coach.toLowerCase().startsWith('player '));
+            if((!hasStats || !r.stats.version || r.stats.version < 8 || hasBadCoaches) && r.log && typeof r.log === 'string' && r.log.includes('|')){
               let parsed = parseShowdownBattleLog(r.log, {
                 id: r.id,
                 game: r.game,
                 match: m,
                 coach1: m.a || m.p1,
                 coach2: m.b || m.p2,
+                tournament: t,
                 manualSwapped: r.swapped
               });
               if(parsed && parsed.pokemon && (Array.isArray(parsed.pokemon) ? parsed.pokemon.length > 0 : Object.keys(parsed.pokemon).length > 0)){
@@ -13703,10 +13850,23 @@ async function flushSync(){
               }
             }
             let hasStats = r.stats && r.stats.pokemon && (Array.isArray(r.stats.pokemon) ? r.stats.pokemon.length > 0 : Object.keys(r.stats.pokemon).length > 0);
-            if((!hasStats || !r.stats.version || r.stats.version < 7) && r.log && typeof r.log === 'string' && r.log.includes('|')){
+            let pList = hasStats ? (Array.isArray(r.stats.pokemon) ? r.stats.pokemon : Object.values(r.stats.pokemon)) : [];
+            let hasBadCoaches = pList.some(p => !p.coach || p.coach.toLowerCase().startsWith('player '));
+            if((!hasStats || !r.stats.version || r.stats.version < 8 || hasBadCoaches) && r.log && typeof r.log === 'string' && r.log.includes('|')){
+              let tcMatch = (typeof findTournamentMatch === 'function') ? findTournamentMatch(t, k)?.match : null;
+              let tcCoach1 = r.coach1 || origR?.coach1 || tcMatch?.a || tcMatch?.p1 || '';
+              let tcCoach2 = r.coach2 || origR?.coach2 || tcMatch?.b || tcMatch?.p2 || '';
+              if(tcCoach1 && !r.coach1) r.coach1 = tcCoach1;
+              if(tcCoach2 && !r.coach2) r.coach2 = tcCoach2;
+              if(origR && tcCoach1 && !origR.coach1) origR.coach1 = tcCoach1;
+              if(origR && tcCoach2 && !origR.coach2) origR.coach2 = tcCoach2;
               let parsed = parseShowdownBattleLog(r.log, {
                 id: r.id,
                 game: r.game,
+                match: tcMatch,
+                coach1: tcCoach1,
+                coach2: tcCoach2,
+                tournament: t,
                 manualSwapped: r.swapped
               });
               if(parsed && parsed.pokemon && (Array.isArray(parsed.pokemon) ? parsed.pokemon.length > 0 : Object.keys(parsed.pokemon).length > 0)){
