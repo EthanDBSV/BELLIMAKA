@@ -3,6 +3,24 @@
 All notable changes to the Bellimaka Pokémon Draft League site are documented here.
 Format: `v[MAJOR].[MINOR].[PATCH]` — Major = big new systems, Minor = new features, Patch = bug fixes / small improvements.
 
+## [v1.2.0] — 2026-10-03
+
+### Added
+- **Cyber-Esports Angled Chamfered Broadcast Banner for Primetime Matchups** — Completely redesigned the Primetime Matchup hero card into a futuristic, high-energy cyber-esports clash broadcast banner utilizing 100% of available stage space:
+  - **Beveled Geometric Silhouette**: Replaced the conventional rounded rectangle with a cyber-esports frame featuring precision 45-degree angled corner chamfers (`clip-path: polygon(...)`), metallic border accents, and dynamic division ambient glow (electric crimson for regular season, prestige gold for Top Cut playoffs).
+  - **Inward-Facing Battle Lineup & Star Pokémon Showcase**: Integrated an authentic Pokémon face-off staging where outer flanks feature enlarged coach avatars, team logos, and records, while inner flanks showcase 3 star Pokémon sprites staged facing inward toward each other across an energetic diagonal energy slash.
+  - **Context-Aware Roster & Battle Performer Resolution**: In unplayed upcoming matches, the lineup highlights top drafted picks and tier aces; in completed fixtures, it automatically showcases top battle performers and starters parsed directly from match replay telemetry.
+  - **One-Click Commissioner Feature Pinning**: Added an inline pin toggle button (`📌 PIN FEATURE` / `📌 PINNED`) enabling commissioners and moderators to lock any marquee fixture as the #1 spotlight card, with instant unpin toggling to restore automated hype ordering.
+  - **Integrated Match Hub & Replay Action**: Center hub features a metallic clash emblem (`VS` for upcoming matches, bold final series score bug for completed matches) that opens the comprehensive Match Replay Hub and Boxscore modal on click.
+
+### Improved
+- **Smart Active-Round Prioritization for Primetime Selection** — Upgraded the match selection algorithm to prioritize active unplayed games:
+  - **Active Round Weighting**: Automatically detects the current active unplayed round of group play and elevates marquee matchups from that round first, factoring in combined team win records, team power ratings (OVR), and divisional rivalry closeness before falling back to completed thrillers.
+  - **Collision-Proof Match Identification**: Unified match key generation across regular season and playoff brackets to uniquely qualify fixtures with group, round, ID, and opponent pairings, ensuring feature pinning and replay lookups never collide across divisions.
+  - **Responsive Stage Geometry**: Designed fluid responsive scaling across desktop, tablet, and mobile displays, adjusting Pokémon sprite cards and coach blocks seamlessly while preserving the angled broadcast geometry.
+
+---
+
 ## [v1.1.21] — 2026-10-03
 
 ### Fixed
