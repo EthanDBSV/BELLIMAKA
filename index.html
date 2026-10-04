@@ -3555,7 +3555,7 @@ body.mobile-nav-open {
   width: 100%;
   max-width: 860px;
   margin: 0 auto;
-  aspect-ratio: 640 / 468;
+  aspect-ratio: 640 / 456;
   height: auto;
   max-height: calc(90vh - 180px);
   max-height: calc(90dvh - 180px);
@@ -3696,7 +3696,7 @@ body.mobile-nav-open {
   .replay-viewport-container {
     width: 100% !important;
     max-width: 100% !important;
-    aspect-ratio: 640 / 468 !important;
+    aspect-ratio: 640 / 456 !important;
     height: auto !important;
     max-height: calc(100vh - 200px) !important;
     max-height: calc(100dvh - 200px) !important;
@@ -6600,9 +6600,9 @@ html, body {
   top: 0 !important;
   left: 50% !important;
   width: 640px !important;
-  height: 468px !important;
+  height: 456px !important;
   min-width: 640px !important;
-  min-height: 468px !important;
+  min-height: 456px !important;
   max-width: 640px !important;
   margin-left: -320px !important;
   padding: 0 !important;
@@ -6629,34 +6629,42 @@ html, body {
 }
 .replay-controls {
   position: absolute !important;
-  top: 366px !important;
+  top: 368px !important;
   left: 0px !important;
   right: 0px !important;
   width: 640px !important;
+  height: 34px !important;
   display: flex !important;
   flex-wrap: nowrap !important;
   justify-content: center !important;
   align-items: center !important;
   gap: 6px !important;
-  padding: 4px 6px !important;
+  padding: 0 4px !important;
   margin: 0 !important;
+  box-sizing: border-box !important;
 }
 .replay-controls button, .replay-controls input[type="button"], .replay-controls .button {
   background: #191924 !important;
   color: #ffffff !important;
   border: 1px solid #36364a !important;
   border-radius: 6px !important;
-  padding: 6px 12px !important;
+  padding: 5px 10px !important;
   font-family: inherit !important;
-  font-size: 12px !important;
+  font-size: 11px !important;
   font-weight: 700 !important;
-  min-height: 32px !important;
+  height: 32px !important;
   cursor: pointer !important;
   display: inline-flex !important;
   align-items: center !important;
   justify-content: center !important;
+  gap: 6px !important;
   box-shadow: 0 2px 6px rgba(0,0,0,0.4) !important;
   transition: all .15s ease !important;
+  white-space: nowrap !important;
+}
+.replay-controls button i, .replay-controls button .fa {
+  margin-right: 6px !important;
+  font-size: 11px !important;
 }
 .replay-controls button:hover, .replay-controls button:active {
   background: #252536 !important;
@@ -6665,45 +6673,72 @@ html, body {
 }
 .replay-controls-2 {
   position: absolute !important;
-  top: 412px !important;
+  top: 414px !important;
   left: 0px !important;
   right: 0px !important;
   width: 640px !important;
-  height: 48px !important;
+  height: 28px !important;
   display: flex !important;
   flex-wrap: nowrap !important;
   justify-content: center !important;
   align-items: center !important;
-  gap: 10px !important;
-  padding: 4px 8px !important;
+  gap: 8px !important;
+  padding: 0 10px !important;
   background: transparent !important;
   border: none !important;
-  font-size: 11px !important;
-  color: #a09fa8 !important;
   margin: 0 !important;
+  box-sizing: border-box !important;
 }
 .replay-controls-2 .chooser {
-  display: flex !important;
+  display: inline-flex !important;
   align-items: center !important;
-  gap: 4px !important;
+  gap: 2px !important;
+  background: rgba(18, 18, 26, 0.95) !important;
+  border: 1px solid #303042 !important;
+  border-radius: 5px !important;
+  padding: 2px 4px !important;
+  height: 26px !important;
+  box-sizing: border-box !important;
+  flex-shrink: 0 !important;
+  float: none !important;
+  margin: 0 !important;
+}
+.replay-controls-2 .chooser em {
+  font-style: normal !important;
+  font-size: 10px !important;
+  font-weight: 700 !important;
+  color: #9e9cb0 !important;
+  margin-right: 4px !important;
+  padding: 0 2px !important;
+  float: none !important;
+  height: auto !important;
+  border: none !important;
+  background: transparent !important;
 }
 .replay-controls-2 .chooser div {
-  display: flex !important;
+  display: inline-flex !important;
+  align-items: center !important;
   gap: 2px !important;
+  float: none !important;
+  padding: 0 !important;
 }
 .replay-controls-2 .chooser button {
-  background: #161622 !important;
+  background: #14141e !important;
   color: #bbb !important;
-  border: 1px solid #303042 !important;
-  border-radius: 4px !important;
-  padding: 3px 8px !important;
+  border: 1px solid transparent !important;
+  border-radius: 3px !important;
+  padding: 2px 5px !important;
   font-size: 10px !important;
   font-family: inherit !important;
+  line-height: 1.2 !important;
   cursor: pointer !important;
   transition: all .12s ease !important;
+  white-space: nowrap !important;
+  height: 20px !important;
+  float: none !important;
 }
 .replay-controls-2 .chooser button:hover {
-  background: #222230 !important;
+  background: #252538 !important;
   color: #fff !important;
 }
 .replay-controls-2 .chooser button.sel {
@@ -6739,8 +6774,8 @@ ${scOpen}>
     var vw = window.innerWidth;
     var vh = window.innerHeight;
     var scale = vw / 640;
-    if(scale * 468 > vh && vh > 60){
-      scale = vh / 468;
+    if(scale * 456 > vh && vh > 60){
+      scale = vh / 456;
     }
     w.style.transform = 'scale(' + scale + ')';
     w.style.transformOrigin = 'top center';
@@ -8438,24 +8473,24 @@ function openMatchReplayHubModal(tournamentId, matchKey, activeGameNum = 1, acti
 
   let gamePillsHtml = replays.map(r => {
     let isActive = r.game === activeGameNum;
-    return `<button class="replay-tab-btn ${isActive ? 'active' : ''}" style="font-size:12px;padding:6px 14px;border-radius:6px;background:${isActive ? 'rgba(56,189,248,0.15)' : 'transparent'};border:1px solid ${isActive ? '#38bdf8' : '#2d2d3c'};color:${isActive ? '#38bdf8' : '#8e8c95'}" onclick="openMatchReplayHubModal('${t?.id}','${jsArg(matchKey)}',${r.game},'${activeTab}')">
-      🎮 Game ${r.game}
+    return `<button class="replay-tab-btn ${isActive ? 'active' : ''}" style="font-size:12px;padding:6px 14px;border-radius:6px;background:${isActive ? 'rgba(56,189,248,0.15)' : 'transparent'};border:1px solid ${isActive ? '#38bdf8' : '#2d2d3c'};color:${isActive ? '#38bdf8' : '#8e8c95'};display:inline-flex;align-items:center;gap:7px" onclick="openMatchReplayHubModal('${t?.id}','${jsArg(matchKey)}',${r.game},'${activeTab}')">
+      <span style="font-size:13px">🎮</span> <span>Game ${r.game}</span>
     </button>`;
   }).join('');
 
   if(canManage && replays.length < 3){
-    gamePillsHtml += `<button class="btn ghost btn-sm" style="font-size:11px;padding:4px 10px;margin-left:6px" onclick="openAddReplayModal('${t?.id}','${jsArg(matchKey)}',${replays.length + 1})">+ Add Game</button>`;
+    gamePillsHtml += `<button class="btn ghost btn-sm" style="font-size:11px;padding:5px 12px;margin-left:6px;display:inline-flex;align-items:center;gap:6px" onclick="openAddReplayModal('${t?.id}','${jsArg(matchKey)}',${replays.length + 1})"><span style="font-weight:900">+</span> <span>Add Game</span></button>`;
   }
 
   let tabButtonsHtml = `
-    <button class="replay-tab-btn ${activeTab === 'watch' ? 'active' : ''}" onclick="openMatchReplayHubModal('${t?.id}','${jsArg(matchKey)}',${activeGameNum},'watch')">
-      🎬 Watch Replay
+    <button class="replay-tab-btn ${activeTab === 'watch' ? 'active' : ''}" style="display:inline-flex;align-items:center;gap:7px" onclick="openMatchReplayHubModal('${t?.id}','${jsArg(matchKey)}',${activeGameNum},'watch')">
+      <span style="font-size:13px">🎬</span> <span>Watch Replay</span>
     </button>
-    <button class="replay-tab-btn ${activeTab === 'stats' ? 'active' : ''}" onclick="openMatchReplayHubModal('${t?.id}','${jsArg(matchKey)}',${activeGameNum},'stats')">
-      📊 Box Score & Stats
+    <button class="replay-tab-btn ${activeTab === 'stats' ? 'active' : ''}" style="display:inline-flex;align-items:center;gap:7px" onclick="openMatchReplayHubModal('${t?.id}','${jsArg(matchKey)}',${activeGameNum},'stats')">
+      <span style="font-size:13px">📊</span> <span>Box Score & Stats</span>
     </button>
-    <button class="replay-tab-btn ${activeTab === 'log' ? 'active' : ''}" onclick="openMatchReplayHubModal('${t?.id}','${jsArg(matchKey)}',${activeGameNum},'log')">
-      📜 Battle Log
+    <button class="replay-tab-btn ${activeTab === 'log' ? 'active' : ''}" style="display:inline-flex;align-items:center;gap:7px" onclick="openMatchReplayHubModal('${t?.id}','${jsArg(matchKey)}',${activeGameNum},'log')">
+      <span style="font-size:13px">📜</span> <span>Battle Log</span>
     </button>
   `;
 
@@ -8510,11 +8545,11 @@ function openMatchReplayHubModal(tournamentId, matchKey, activeGameNum = 1, acti
             </div>
             <div style="display:flex;align-items:center;gap:8px">
               <button class="btn btn-sm" onclick="downloadReplayHtmlFile('${t?.id}','${jsArg(matchKey)}',${activeGameNum})">
-                ⬇ Download Replay (.html)
+                <span>⬇</span> <span>Download Replay (.html)</span>
               </button>
               ${canManage ? `
                 <button class="btn ghost btn-sm" style="color:#ff8a90;border-color:#522227" onclick="if(confirm('Delete Game ${activeGameNum} replay?')){deleteReplayFromMatch('${t?.id}','${jsArg(matchKey)}',${activeGameNum});}">
-                  🗑 Delete Game ${activeGameNum}
+                  <span>🗑</span> <span>Delete Game ${activeGameNum}</span>
                 </button>
               ` : ''}
             </div>
@@ -8580,7 +8615,7 @@ function openMatchReplayHubModal(tournamentId, matchKey, activeGameNum = 1, acti
             </h2>
           </div>
           <div style="display:flex;align-items:center;gap:8px;flex-shrink:0">
-            <button class="btn ghost btn-sm replay-dl-btn" style="padding:5px 10px;font-size:11px" onclick="downloadReplayHtmlFile('${t?.id}','${jsArg(matchKey)}',${activeGameNum})">
+            <button class="btn ghost btn-sm replay-dl-btn" style="padding:5px 11px;font-size:11px;display:inline-flex;align-items:center;gap:6px" onclick="downloadReplayHtmlFile('${t?.id}','${jsArg(matchKey)}',${activeGameNum})">
               <span>⬇</span> <span class="dl-text">Download .html</span>
             </button>
             <button class="close" onclick="closeModal()">×</button>
@@ -8594,7 +8629,7 @@ function openMatchReplayHubModal(tournamentId, matchKey, activeGameNum = 1, acti
           <div class="replay-tab-bar" style="display:flex;align-items:center;gap:6px">
             ${tabButtonsHtml}
             ${activeTab === 'watch' ? `
-              <button class="replay-tab-btn replay-fs-btn" onclick="toggleReplayFullscreen()" title="Toggle Fullscreen Replay" style="display:inline-flex;align-items:center;gap:6px;background:rgba(255,255,255,0.05);border:1px solid #323244;color:#f5f3f0;font-weight:700">
+              <button class="replay-tab-btn replay-fs-btn" onclick="toggleReplayFullscreen()" title="Toggle Fullscreen Replay" style="display:inline-flex;align-items:center;gap:7px;background:rgba(255,255,255,0.05);border:1px solid #323244;color:#f5f3f0;font-weight:700">
                 <svg class="fs-icon-enter" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg>
                 <svg class="fs-icon-exit" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="display:none"><path d="M4 14h6v6m10-10h-6V4m0 6 7-7M3 21l7-7"/></svg>
                 <span class="fs-btn-label">Fullscreen</span>
