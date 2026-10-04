@@ -2287,11 +2287,18 @@ details[open] > .past-tourney-summary .past-chevron{transform:rotate(180deg);col
   white-space: nowrap;
 }
 .bcast-coach-row {
-  display: flex;
+  display: inline-flex;
   align-items: center;
   gap: 6px;
   margin-top: 1px;
   min-width: 0;
+  border: none;
+  background: transparent;
+  padding: 0;
+  cursor: pointer;
+  font: inherit;
+  text-align: left;
+  user-select: none;
 }
 .bcast-coach-pfp {
   width: 16px;
@@ -2300,6 +2307,7 @@ details[open] > .past-tourney-summary .past-chevron{transform:rotate(180deg);col
   border: 1px solid rgba(255, 255, 255, 0.25);
   object-fit: cover;
   flex-shrink: 0;
+  transition: transform 0.15s ease, border-color 0.15s ease;
 }
 .bcast-coach-name {
   font-size: 11px;
@@ -2307,23 +2315,18 @@ details[open] > .past-tourney-summary .past-chevron{transform:rotate(180deg);col
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-.bcast-coach-name .player-link {
   color: #ff9da3;
   font-weight: 700;
   text-shadow: 0 1px 3px rgba(0, 0, 0, 0.85);
+  transition: color 0.15s ease;
 }
-.bcast-coach-name .player-link:hover {
+.bcast-coach-row:hover .bcast-coach-name {
   color: #ffffff;
+  text-decoration: underline;
 }
-.bcast-ovr-wrap {
-  display: inline-flex;
-  align-items: center;
-  flex-shrink: 0;
-}
-.bcast-ovr-wrap .ovr-badge {
-  font-size: 9px !important;
-  padding: 1px 4px !important;
+.bcast-coach-row:hover .bcast-coach-pfp {
+  border-color: rgba(255, 255, 255, 0.7);
+  transform: scale(1.08);
 }
 
 /* Stat Cubes */
@@ -19462,9 +19465,6 @@ function standingTable(t, g){
   list.forEach((x, i) => {
     let p = x.p;
     let tName = teamName(t, p) || 'Unassigned team';
-    let ovrObj = (isPastT && typeof getHistoricalPlayerOVR === 'function')
-      ? getHistoricalPlayerOVR(p, tIdx, isSwiss ? 'swiss' : 'group', sortedT)
-      : (typeof calculatePlayerOVR === 'function' ? calculatePlayerOVR(p) : null);
 
     let statusTag = '';
     let statusClass = '';
@@ -19559,11 +19559,10 @@ function standingTable(t, g){
         <div class="bcast-team-banner" style="${bannerStyle}">
           <div class="bcast-team-info">
             <span class="bcast-team-name" title="${esc(tName)}">${esc(tName)}</span>
-            <div class="bcast-coach-row">
+            <button class="bcast-coach-row player-link" onclick="openProfile('${jsArg(p)}')" onmouseenter="highlightMatches('${jsArg(p)}', true)" onmouseleave="highlightMatches('', false)" title="View ${esc(p)} profile">
               ${pfpArt ? `<img src="${esc(pfpArt)}" class="bcast-coach-pfp" alt="${esc(p)}" onerror="this.style.display='none'">` : ''}
-              <span class="bcast-coach-name">${playerLink(p)}</span>
-              ${ovrObj ? `<span class="bcast-ovr-wrap">${ovrObj.badgeHtml}</span>` : ''}
-            </div>
+              <span class="bcast-coach-name">${esc(p)}</span>
+            </button>
           </div>
         </div>
 
@@ -19575,17 +19574,6 @@ function standingTable(t, g){
         </div>
       </div>
     `);
-
-    // Qualification cutoff divider
-    if(i === cut - 1 && i < list.length - 1){
-      rowsHtml.push(`
-        <div class="bcast-cutoff-divider">
-          <span class="bcast-cutoff-line"></span>
-          <span class="bcast-cutoff-pill">TOP ${cut} ADVANCE CUTOFF</span>
-          <span class="bcast-cutoff-line"></span>
-        </div>
-      `);
-    }
   });
 
   let titleText = isSwiss ? 'SWISS STAGE STANDINGS' : `${esc(g)} STANDINGS`;
