@@ -3553,30 +3553,141 @@ body.mobile-nav-open {
 .replay-viewport-container {
   position: relative;
   width: 100%;
-  height: 620px;
-  border-radius: 8px;
+  max-width: 860px;
+  margin: 0 auto;
+  aspect-ratio: 640 / 460;
+  height: auto;
+  max-height: calc(90vh - 180px);
+  max-height: calc(90dvh - 180px);
+  border-radius: 10px;
   overflow: hidden;
-  background: #000;
-  box-shadow: 0 8px 30px rgba(0,0,0,0.6);
-  border: 1px solid #2a2a38;
+  background: #09090d;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.7);
+  border: 1px solid #2a2a3a;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
+.replay-fullscreen-toggle {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 100;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(18, 18, 26, 0.88);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: #f5f3f0;
+  font: 800 11px 'Barlow Condensed', sans-serif;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+  padding: 5px 11px;
+  border-radius: 6px;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.6);
+  transition: all .15s ease;
+  user-select: none;
+}
+.replay-fullscreen-toggle:hover {
+  background: rgba(239, 48, 56, 0.9);
+  border-color: var(--red);
+  color: #fff;
+  transform: translateY(-1px);
+}
+.replay-viewport-container:fullscreen,
+.replay-viewport-container:-webkit-full-screen {
+  width: 100vw !important;
+  height: 100vh !important;
+  height: 100dvh !important;
+  max-width: 100vw !important;
+  max-height: 100vh !important;
+  max-height: 100dvh !important;
+  aspect-ratio: auto !important;
+  border-radius: 0 !important;
+  border: none !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  background: #000 !important;
+  box-shadow: none !important;
+  z-index: 9999999 !important;
+}
+.replay-viewport-container:fullscreen .replay-fullscreen-toggle,
+.replay-viewport-container:-webkit-full-screen .replay-fullscreen-toggle {
+  top: 16px;
+  right: 16px;
+  background: rgba(25, 25, 35, 0.92);
+  padding: 8px 14px;
+}
+.replay-controls-subbar {
+  background: #13131a;
+  border-bottom: 1px solid #232330;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 18px;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.replay-game-pills-strip {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+.replay-game-pills-strip::-webkit-scrollbar { display: none; }
+.replay-hub-modal .replay-tab-bar {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  border: none;
+  padding: 0;
+  background: transparent;
+}
+.replay-hub-modal .replay-tab-bar::-webkit-scrollbar { display: none; }
 @media (max-width: 680px) {
+  .replay-modal-header {
+    padding: 12px 14px !important;
+  }
+  .replay-dl-btn .dl-text {
+    display: none !important;
+  }
+  .replay-dl-btn {
+    padding: 6px 10px !important;
+  }
   .replay-hub-modal {
     width: 100vw !important;
     max-width: 100vw !important;
     max-height: 96vh !important;
+    max-height: 96dvh !important;
     border-radius: 14px 14px 0 0 !important;
   }
+  .replay-controls-subbar {
+    padding: 8px 12px !important;
+    gap: 8px !important;
+  }
   .replay-hub-modal .replay-tab-bar {
-    padding: 0 8px !important;
+    width: 100% !important;
+    padding: 2px 0 !important;
   }
   .replay-hub-modal .replay-tab-btn {
-    padding: 6px 10px !important;
+    padding: 6px 12px !important;
     font-size: 11px !important;
+    flex-shrink: 0 !important;
   }
   .replay-viewport-container {
-    height: 480px !important;
-    max-height: calc(100vh - 230px) !important;
+    aspect-ratio: 640 / 460 !important;
+    height: auto !important;
+    max-height: calc(100vh - 220px) !important;
+    max-height: calc(100dvh - 220px) !important;
+    border-radius: 8px !important;
   }
 }
 
@@ -6446,90 +6557,79 @@ function buildShowdownReplayHtml(replay) {
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>${esc(title)}</title>
 <style>
-html,body {
-  font-family: Verdana, sans-serif;
-  font-size: 10pt;
+html, body {
   margin: 0;
   padding: 0;
-  background: #0d0d12;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: #09090d;
   color: #eee;
   color-scheme: dark;
-  overflow-x: hidden;
-  max-width: 100vw;
 }
-body { padding: 8px 0; }
 * {
-  scrollbar-width: thin;
-  scrollbar-color: #383848 #0e0e14;
   box-sizing: border-box;
 }
-::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
-}
-::-webkit-scrollbar-track {
-  background: #0e0e14;
-  border-radius: 4px;
-}
-::-webkit-scrollbar-thumb {
-  background: #333342;
-  border-radius: 4px;
-  border: 2px solid #0e0e14;
-}
-::-webkit-scrollbar-thumb:hover {
-  background: #505064;
-}
-::-webkit-scrollbar-corner {
-  background: #0e0e14;
-}
-.battle-log {
-  font-family: Verdana, sans-serif;
-  font-size: 10pt;
-  scrollbar-width: thin;
-  scrollbar-color: #383848 #0e0e14;
-}
-.subtle { color: #60a5fa; }
-.battle-log-inline {
-  border: 1px solid #333;
-  background: #15151c;
-  color: #eee;
-  max-width: 680px;
-  margin: 0 auto 60px;
-  padding-bottom: 5px;
+.replay-stage {
+  position: relative;
   width: 100%;
+  height: 100%;
+  overflow: hidden;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  background: #09090d;
 }
 .replay-wrapper {
-  max-width: 100%;
-  margin: 0 auto;
-  padding: 0 6px;
-  overflow-x: hidden;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
+  position: absolute !important;
+  top: 0 !important;
+  left: 50% !important;
+  width: 640px !important;
+  height: 460px !important;
+  min-width: 640px !important;
+  min-height: 460px !important;
+  max-width: 640px !important;
+  margin-left: -320px !important;
+  padding: 0 !important;
+  margin-top: 0 !important;
+  transform-origin: top center !important;
+  overflow: visible !important;
 }
 .battle {
-  max-width: 100% !important;
-  margin: 0 auto !important;
-  transform-origin: top center;
-  transition: transform .1s ease;
+  position: absolute !important;
+  top: 0px !important;
+  left: 0px !important;
+  width: 640px !important;
+  height: 360px !important;
+  border: 1px solid #2a2a3a !important;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.5) !important;
+  background: #000 !important;
+  margin: 0 !important;
+}
+.battle-log {
+  display: none !important;
 }
 .replay-controls {
+  position: absolute !important;
+  top: 366px !important;
+  left: 0px !important;
+  right: 0px !important;
+  width: 640px !important;
   display: flex !important;
-  flex-wrap: wrap !important;
+  flex-wrap: nowrap !important;
   justify-content: center !important;
   align-items: center !important;
   gap: 6px !important;
-  margin: 10px auto 4px !important;
-  padding: 4px !important;
-  width: 100% !important;
-  max-width: 640px !important;
+  padding: 4px 6px !important;
+  margin: 0 !important;
 }
 .replay-controls button, .replay-controls input[type="button"], .replay-controls .button {
-  background: #1b1b24 !important;
+  background: #191924 !important;
   color: #ffffff !important;
-  border: 1px solid #38384c !important;
+  border: 1px solid #36364a !important;
   border-radius: 6px !important;
   padding: 6px 12px !important;
+  font-family: inherit !important;
   font-size: 12px !important;
   font-weight: 700 !important;
   min-height: 32px !important;
@@ -6538,77 +6638,101 @@ body { padding: 8px 0; }
   align-items: center !important;
   justify-content: center !important;
   box-shadow: 0 2px 6px rgba(0,0,0,0.4) !important;
-  transition: background .15s ease, border-color .15s ease !important;
+  transition: all .15s ease !important;
 }
 .replay-controls button:hover, .replay-controls button:active {
-  background: #282838 !important;
+  background: #252536 !important;
   border-color: #ef3038 !important;
+  color: #ffffff !important;
 }
 .replay-controls-2 {
+  position: absolute !important;
+  top: 412px !important;
+  left: 0px !important;
+  right: 0px !important;
+  width: 640px !important;
   display: flex !important;
-  flex-wrap: wrap !important;
+  flex-wrap: nowrap !important;
   justify-content: center !important;
   align-items: center !important;
-  gap: 8px !important;
-  margin: 6px auto 12px !important;
-  padding: 8px 12px !important;
-  background: #13131b !important;
-  border: 1px solid #282836 !important;
-  border-radius: 8px !important;
+  gap: 10px !important;
+  padding: 4px 8px !important;
+  background: transparent !important;
+  border: none !important;
   font-size: 11px !important;
   color: #a09fa8 !important;
-  width: 100% !important;
-  max-width: 620px !important;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.3) !important;
+  margin: 0 !important;
 }
-.replay-controls-2 select, .replay-controls-2 button, .replay-controls-2 input[type="button"] {
-  background: #1f1f2b !important;
-  color: #eee !important;
-  border: 1px solid #3c3c4e !important;
+.replay-controls-2 .chooser {
+  display: flex !important;
+  align-items: center !important;
+  gap: 4px !important;
+}
+.replay-controls-2 .chooser div {
+  display: flex !important;
+  gap: 2px !important;
+}
+.replay-controls-2 .chooser button {
+  background: #161622 !important;
+  color: #bbb !important;
+  border: 1px solid #303042 !important;
   border-radius: 4px !important;
-  padding: 4px 8px !important;
-  font-size: 11px !important;
+  padding: 3px 8px !important;
+  font-size: 10px !important;
   font-family: inherit !important;
   cursor: pointer !important;
+  transition: all .12s ease !important;
 }
-h1 { color: #f5f3f0; }
+.replay-controls-2 .chooser button:hover {
+  background: #222230 !important;
+  color: #fff !important;
+}
+.replay-controls-2 .chooser button.sel {
+  background: #ef3038 !important;
+  border-color: #ef3038 !important;
+  color: #fff !important;
+  font-weight: 800 !important;
+}
 </style>
 </head>
 <body>
-<div class="wrapper replay-wrapper">
-  <input type="hidden" name="replayid" value="${esc(replay?.id || 'battle-replay')}" />
-  <div class="battle"></div>
-  <div class="battle-log"></div>
-  <div class="replay-controls"></div>
-  <div class="replay-controls-2"></div>
-  <h1 style="font-weight:normal;text-align:center;font-size:15px;margin:10px 0 6px">
-    <strong>${esc(title)}</strong>
-  </h1>
-  ${scOpen} type="text/plain" class="battle-log-data">${log}${scClose}
+<div class="replay-stage">
+  <div class="wrapper replay-wrapper">
+    <input type="hidden" name="replayid" value="${esc(replay?.id || 'battle-replay')}" />
+    <div class="battle"></div>
+    <div class="battle-log"></div>
+    <div class="replay-controls"></div>
+    <div class="replay-controls-2"></div>
+    ${scOpen} type="text/plain" class="battle-log-data">${log}${scClose}
+  </div>
 </div>
 ${scOpen} src="https://play.pokemonshowdown.com/js/replay-embed.js">${scClose}
 ${scOpen}>
 (function(){
-  function fitBattle(){
-    var b = document.querySelector('.battle');
-    if(!b) return;
-    var w = window.innerWidth;
-    if(w < 640 && w > 0){
-      var scale = Math.min(1, (w - 12) / 640);
-      b.style.transform = 'scale(' + scale + ')';
-      b.style.transformOrigin = 'top center';
-      b.style.marginBottom = '-' + Math.round(360 * (1 - scale)) + 'px';
-    } else {
-      b.style.transform = 'none';
-      b.style.marginBottom = '0px';
+  function fitReplay(){
+    var w = document.querySelector('.replay-wrapper');
+    if(!w) return;
+    var vw = window.innerWidth;
+    var vh = window.innerHeight;
+    var scale = vw / 640;
+    if(scale * 460 > vh && vh > 60){
+      scale = vh / 460;
     }
+    w.style.transform = 'scale(' + scale + ')';
+    w.style.transformOrigin = 'top center';
   }
-  window.addEventListener('resize', fitBattle);
+  window.addEventListener('resize', fitReplay);
+  window.addEventListener('orientationchange', fitReplay);
   window.addEventListener('DOMContentLoaded', function(){
-    setTimeout(fitBattle, 100);
-    setTimeout(fitBattle, 500);
-    setTimeout(fitBattle, 1200);
+    setTimeout(fitReplay, 50);
+    setTimeout(fitReplay, 200);
+    setTimeout(fitReplay, 600);
+    setTimeout(fitReplay, 1200);
   });
+  if(window.MutationObserver){
+    var observer = new MutationObserver(fitReplay);
+    observer.observe(document.body, { childList: true, subtree: true });
+  }
 })();
 ${scClose}
 </body>
@@ -8176,6 +8300,58 @@ async function ensureReplayLog(tournamentId, matchKey, gameNum = 1) {
   return null;
 }
 
+function toggleReplayFullscreen(){
+  let c = document.querySelector('.replay-viewport-container');
+  if(!c) return;
+  let isFs = !!(document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement || document.msFullscreenElement);
+  if(!isFs){
+    let req = c.requestFullscreen || c.webkitRequestFullscreen || c.mozRequestFullScreen || c.msRequestFullscreen;
+    if(req) {
+      req.call(c).then(() => {
+        notifyIframeResize();
+      }).catch(() => {});
+    }
+  } else {
+    let exit = document.exitFullscreen || document.webkitExitFullscreen || document.mozCancelFullScreen || document.msExitFullscreen;
+    if(exit) {
+      exit.call(document).then(() => {
+        notifyIframeResize();
+      }).catch(() => {});
+    }
+  }
+}
+
+function notifyIframeResize(){
+  setTimeout(() => {
+    let frame = document.getElementById('replayEmbedFrame');
+    if(frame && frame.contentWindow){
+      try { frame.contentWindow.dispatchEvent(new Event('resize')); } catch(e){}
+    }
+  }, 100);
+}
+
+document.addEventListener('fullscreenchange', handleReplayFsChange);
+document.addEventListener('webkitfullscreenchange', handleReplayFsChange);
+function handleReplayFsChange(){
+  let isFs = !!(document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement || document.msFullscreenElement);
+  let btn = document.querySelector('.replay-fullscreen-toggle');
+  if(btn){
+    let enterIcon = btn.querySelector('.fs-icon-enter');
+    let exitIcon = btn.querySelector('.fs-icon-exit');
+    let label = btn.querySelector('.fs-btn-label');
+    if(isFs){
+      if(enterIcon) enterIcon.style.display = 'none';
+      if(exitIcon) exitIcon.style.display = 'inline-block';
+      if(label) label.textContent = 'Exit';
+    } else {
+      if(enterIcon) enterIcon.style.display = 'inline-block';
+      if(exitIcon) exitIcon.style.display = 'none';
+      if(label) label.textContent = 'Fullscreen';
+    }
+  }
+  notifyIframeResize();
+}
+
 function openMatchReplayHubModal(tournamentId, matchKey, activeGameNum = 1, activeTab = 'watch') {
   let t = (tournamentId && tournamentData[tournamentId]) || activeT() || ongoingT();
   let mInfo = findTournamentMatch(t, matchKey);
@@ -8279,7 +8455,12 @@ function openMatchReplayHubModal(tournamentId, matchKey, activeGameNum = 1, acti
       contentHtml = `
         <div class="replay-tab-body" style="padding:12px 14px;display:flex;flex-direction:column;gap:12px">
           <div class="replay-viewport-container">
-            <iframe id="replayEmbedFrame" style="width:100%;height:100%;border:0;color-scheme:dark;background:#0d0d12" sandbox="allow-scripts allow-same-origin" srcdoc="${esc(replayHtmlDoc)}"></iframe>
+            <iframe id="replayEmbedFrame" style="width:100%;height:100%;border:0;color-scheme:dark;background:#09090d" sandbox="allow-scripts allow-same-origin allow-fullscreen" allow="fullscreen" allowfullscreen="true" srcdoc="${esc(replayHtmlDoc)}"></iframe>
+            <button class="replay-fullscreen-toggle" onclick="toggleReplayFullscreen()" title="Toggle Fullscreen Replay" aria-label="Toggle Fullscreen">
+              <svg class="fs-icon-enter" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg>
+              <svg class="fs-icon-exit" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="display:none"><path d="M4 14h6v6m10-10h-6V4m0 6 7-7M3 21l7-7"/></svg>
+              <span class="fs-btn-label">Fullscreen</span>
+            </button>
           </div>
           <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;padding:6px 2px">
             <div style="font-size:11px;color:#8e8c95">
@@ -8348,29 +8529,29 @@ function openMatchReplayHubModal(tournamentId, matchKey, activeGameNum = 1, acti
   document.querySelector('#modal').innerHTML = `
     <div class="modal-wrap" onclick="if(event.target===this)closeModal()">
       <div class="modal replay-hub-modal" style="padding:0">
-        <div style="padding:16px 20px;background:linear-gradient(90deg, #181822, #101016);border-bottom:1px solid #2a2a38;display:flex;justify-content:space-between;align-items:center;gap:12px">
-          <div>
+        <div class="replay-modal-header" style="padding:14px 18px;background:linear-gradient(90deg, #181822, #101016);border-bottom:1px solid #2a2a38;display:flex;justify-content:space-between;align-items:center;gap:12px">
+          <div style="min-width:0;flex:1">
             <div class="eyebrow" style="color:var(--red);margin-bottom:2px">
               ${esc(t?.name || 'Bellimaka League')} · ${esc(stageLabel)} · Game ${activeGameNum}
             </div>
-            <h2 style="font:800 24px 'Barlow Condensed';margin:0;letter-spacing:.5px">
+            <h2 style="font:800 clamp(18px, 4.5vw, 24px) 'Barlow Condensed';margin:0;letter-spacing:.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">
               ${esc(p1)} <span style="color:#ff5964;font-size:18px;margin:0 4px">vs</span> ${esc(p2)}
-              ${isPlayed ? `<span style="margin-left:8px;font-size:20px;color:var(--amber)">(${s1} - ${s2})</span>` : ''}
+              ${isPlayed ? `<span style="margin-left:6px;font-size:20px;color:var(--amber)">(${s1} - ${s2})</span>` : ''}
             </h2>
           </div>
-          <div style="display:flex;align-items:center;gap:10px">
-            <button class="btn ghost btn-sm" style="padding:4px 10px;font-size:11px" onclick="downloadReplayHtmlFile('${t?.id}','${jsArg(matchKey)}',${activeGameNum})">
-              ⬇ Download .html
+          <div style="display:flex;align-items:center;gap:8px;flex-shrink:0">
+            <button class="btn ghost btn-sm replay-dl-btn" style="padding:5px 10px;font-size:11px" onclick="downloadReplayHtmlFile('${t?.id}','${jsArg(matchKey)}',${activeGameNum})">
+              <span>⬇</span> <span class="dl-text">Download .html</span>
             </button>
             <button class="close" onclick="closeModal()">×</button>
           </div>
         </div>
 
-        <div style="background:#13131a;border-bottom:1px solid #232330;display:flex;justify-content:space-between;align-items:center;padding:8px 20px;flex-wrap:wrap;gap:10px">
-          <div style="display:flex;align-items:center;gap:6px">
+        <div class="replay-controls-subbar">
+          <div class="replay-game-pills-strip">
             ${gamePillsHtml}
           </div>
-          <div class="replay-tab-bar" style="border:none;padding:0;background:transparent">
+          <div class="replay-tab-bar">
             ${tabButtonsHtml}
           </div>
         </div>
