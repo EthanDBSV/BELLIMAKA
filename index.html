@@ -2524,6 +2524,347 @@ details[open] > .past-tourney-summary .past-chevron{transform:rotate(180deg);col
   }
 }
 /* ------------------------------------------------------------ End Broadcast Standings ------------------------------------------------------------ */
+
+/* ------------------------------------------------------------ TV Broadcast Tournament Progression Showcase ------------------------------------------------------------ */
+.prog-cards-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.prog-card {
+  display: flex;
+  align-items: stretch;
+  gap: 12px;
+  background: #13131c;
+  border: 1px solid #232332;
+  border-radius: 10px;
+  padding: 10px 14px;
+  position: relative;
+  transition: all 0.2s ease;
+  overflow: hidden;
+}
+.prog-card:hover {
+  transform: translateX(2px);
+  box-shadow: 0 6px 22px rgba(0, 0, 0, 0.5);
+}
+
+/* Prestige Tier Styling */
+.prog-card.champ-tier {
+  border: 1px solid rgba(255, 209, 102, 0.65);
+  background: linear-gradient(90deg, rgba(255, 209, 102, 0.12) 0%, #151520 40%, #121219 100%);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4), 0 0 20px rgba(255, 209, 102, 0.12);
+}
+.prog-card.runnerup-tier {
+  border: 1px solid rgba(203, 213, 225, 0.55);
+  background: linear-gradient(90deg, rgba(203, 213, 225, 0.10) 0%, #151520 40%, #121219 100%);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4), 0 0 16px rgba(203, 213, 225, 0.10);
+}
+.prog-card.third-tier {
+  border: 1px solid rgba(212, 152, 106, 0.55);
+  background: linear-gradient(90deg, rgba(212, 152, 106, 0.10) 0%, #151520 40%, #121219 100%);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4), 0 0 16px rgba(212, 152, 106, 0.08);
+}
+.prog-card.qualify-tier {
+  border: 1px solid rgba(74, 222, 128, 0.35);
+  background: linear-gradient(90deg, rgba(74, 222, 128, 0.06) 0%, #14141e 40%, #111116 100%);
+}
+.prog-card.standard-tier {
+  border: 1px solid #222230;
+  background: #121218;
+}
+
+/* Card Top Row / Content Wrap */
+.prog-card-top {
+  display: flex;
+  align-items: stretch;
+  gap: 12px;
+  flex: 1;
+  min-width: 0;
+}
+
+/* Rank Badge */
+.prog-rank-badge {
+  width: 58px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  border: 1px solid #2e2e3f;
+  background: #191924;
+  text-align: center;
+  padding: 6px 4px;
+  box-sizing: border-box;
+}
+.prog-rank-badge.champ-tier {
+  background: linear-gradient(135deg, #ffd166 0%, #b45309 100%);
+  border-color: #ffd166;
+  color: #161002;
+  box-shadow: 0 0 14px rgba(255, 209, 102, 0.4);
+}
+.prog-rank-badge.runnerup-tier {
+  background: linear-gradient(135deg, #f1f5f9 0%, #64748b 100%);
+  border-color: #cbd5e1;
+  color: #0f172a;
+  box-shadow: 0 0 12px rgba(203, 213, 225, 0.3);
+}
+.prog-rank-badge.third-tier {
+  background: linear-gradient(135deg, #f0a875 0%, #9a3412 100%);
+  border-color: #f0a875;
+  color: #200d02;
+  box-shadow: 0 0 12px rgba(240, 168, 117, 0.3);
+}
+.prog-rank-badge.qualify-tier {
+  background: #132b1d;
+  border-color: #22c55e;
+  color: #4ade80;
+}
+.prog-rank-badge.standard-tier {
+  background: #171720;
+  border-color: #272738;
+  color: #8e8c95;
+}
+.prog-rank-icon {
+  font-size: 18px;
+  line-height: 1;
+  margin-bottom: 2px;
+}
+.prog-rank-num {
+  font: 900 15px/1 'Barlow Condensed', sans-serif;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+
+/* Center Wrap with Cover Art */
+.prog-center-wrap {
+  flex: 1;
+  min-width: 0;
+  border-radius: 8px;
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  padding: 10px 16px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+.prog-center-content {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-width: 0;
+  width: 100%;
+}
+.prog-coach-row {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.prog-coach-name {
+  background: transparent;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  font: 900 20px/1.2 'Barlow Condensed', sans-serif;
+  color: #ffffff;
+  letter-spacing: 0.5px;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.8);
+  transition: color 0.15s ease;
+}
+.prog-coach-name:hover {
+  color: #ffd166;
+  text-decoration: underline;
+}
+.prog-team-name {
+  font: 700 13px/1.2 'Barlow Condensed', sans-serif;
+  color: #94a3b8;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+}
+.prog-accolades {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-top: 6px;
+}
+.prog-no-accolades {
+  font-size: 11px;
+  color: #64748b;
+  margin-top: 4px;
+  font-style: italic;
+}
+
+/* Accolade Chips */
+.prog-accolade-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font: 800 11px/1 'Barlow Condensed', sans-serif;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+  padding: 3px 8px;
+  border-radius: 12px;
+  white-space: nowrap;
+  user-select: none;
+  transition: transform 0.15s ease;
+}
+.prog-accolade-chip:hover {
+  transform: scale(1.04);
+}
+.prog-chip-icon {
+  font-size: 12px;
+  line-height: 1;
+}
+.prog-accolade-chip.gold {
+  background: rgba(255, 209, 102, 0.16);
+  border: 1px solid rgba(255, 209, 102, 0.48);
+  color: #ffd166;
+  box-shadow: 0 0 8px rgba(255, 209, 102, 0.15);
+}
+.prog-accolade-chip.silver {
+  background: rgba(203, 213, 225, 0.16);
+  border: 1px solid rgba(203, 213, 225, 0.48);
+  color: #e2e8f0;
+}
+.prog-accolade-chip.bronze {
+  background: rgba(212, 152, 106, 0.16);
+  border: 1px solid rgba(212, 152, 106, 0.48);
+  color: #f0a875;
+}
+.prog-accolade-chip.qualify {
+  background: rgba(74, 222, 128, 0.12);
+  border: 1px solid rgba(74, 222, 128, 0.35);
+  color: #4ade80;
+}
+.prog-accolade-chip.tots1 {
+  background: rgba(255, 209, 102, 0.12);
+  border: 1px solid rgba(255, 209, 102, 0.38);
+  color: #ffd166;
+}
+.prog-accolade-chip.tots2 {
+  background: rgba(203, 213, 225, 0.12);
+  border: 1px solid rgba(203, 213, 225, 0.38);
+  color: #cbd5e1;
+}
+.prog-accolade-chip.tots3 {
+  background: rgba(212, 152, 106, 0.12);
+  border: 1px solid rgba(212, 152, 106, 0.38);
+  color: #f0a875;
+}
+.prog-accolade-chip.stat {
+  background: rgba(244, 63, 94, 0.15);
+  border: 1px solid rgba(244, 63, 94, 0.4);
+  color: #fda4af;
+}
+
+/* Rating Progression Module */
+.prog-ovr-module {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  background: rgba(14, 14, 20, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 8px;
+  padding: 8px 16px;
+  flex-shrink: 0;
+  box-shadow: inset 0 0 16px rgba(0, 0, 0, 0.5);
+}
+.prog-ovr-box {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  min-width: 68px;
+  text-align: center;
+}
+.prog-ovr-lbl {
+  font: 800 10px/1 'Barlow Condensed', sans-serif;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+  color: #8e8c95;
+  user-select: none;
+}
+.prog-ovr-val {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.prog-ovr-arrow {
+  font-size: 14px;
+  color: #555465;
+  user-select: none;
+}
+.prog-growth-box {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  min-width: 64px;
+  text-align: center;
+}
+.prog-growth {
+  font: 900 14px/1 'Barlow Condensed', sans-serif;
+  letter-spacing: 0.5px;
+  padding: 4px 10px;
+  border-radius: 6px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 44px;
+  box-sizing: border-box;
+}
+.prog-growth.pos {
+  background: rgba(83, 232, 156, 0.15);
+  border: 1px solid rgba(83, 232, 156, 0.45);
+  color: #53e89c;
+  box-shadow: 0 0 10px rgba(83, 232, 156, 0.2);
+}
+.prog-growth.neg {
+  background: rgba(255, 142, 149, 0.15);
+  border: 1px solid rgba(255, 142, 149, 0.45);
+  color: #ff8e95;
+  box-shadow: 0 0 10px rgba(255, 142, 149, 0.2);
+}
+.prog-growth.zero {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #94a3b8;
+}
+.prog-growth.none {
+  background: transparent;
+  border: 1px dashed rgba(255, 255, 255, 0.08);
+  color: #6b6978;
+  font-weight: 700;
+}
+
+/* Mobile Stacking for Progression Cards */
+@media (max-width: 768px) {
+  .prog-card {
+    flex-direction: column;
+    gap: 10px;
+    padding: 10px;
+  }
+  .prog-card-top {
+    width: 100%;
+  }
+  .prog-ovr-module {
+    width: 100%;
+    justify-content: space-around;
+    padding: 8px 12px;
+    box-sizing: border-box;
+  }
+  .prog-center-wrap {
+    padding: 8px 12px;
+  }
+  .prog-coach-name {
+    font-size: 17px;
+  }
+}
+/* ------------------------------------------------------------ End Tournament Progression Showcase ------------------------------------------------------------ */
 </style>
 <body><div class="shell"><header class="topbar"><div class="brand" onclick="go('Home')"><img src="bellimaka_logo.jpg" class="bellimaka-logo" alt="Bellimaka"><span style="letter-spacing:1px">BELLIMAKA</span></div><nav class="nav" id="nav"></nav><div id="topbarActions" style="display:flex;align-items:center;gap:8px;margin-left:auto"><button class="account" onclick="go('Account')"><span class="mode-dot"></span><span id="accountText">Sign in</span></button></div></header><main class="page" id="app"></main></div><div id="modal"></div>
 <script>
@@ -8788,7 +9129,11 @@ function calculateTeamOfTheSeason(t) {
     damageMon: topDamageMon?.name?.toLowerCase() || null,
     kosMon: topKOsMon?.name?.toLowerCase() || null,
     takenMon: topTakenMon?.name?.toLowerCase() || null,
-    healedMon: topHealedMon?.name?.toLowerCase() || null
+    healedMon: topHealedMon?.name?.toLowerCase() || null,
+    topDamage: topDamageMon || null,
+    topKOs: topKOsMon || null,
+    topTaken: topTakenMon || null,
+    topHealed: topHealedMon || null
   };
 
   function getMonLeaderTags(monName) {
@@ -8909,6 +9254,7 @@ function calculateTeamOfTheSeason(t) {
     empty: firstTeam.length === 0 && (!seasonMvp),
     totalGames: allReplays.length,
     pokemonCount: list.length,
+    pokemonList: list,
     seasonMvp,
     finalsMvp,
     majorAwards,
@@ -12865,8 +13211,80 @@ function topCutSection(t, preview){
   </div>`;
 }
 
+function getCoachAccoladesForTournament(t, coachName, tots, fin, inTopCut){
+  let accolades = [];
+  let place = fin?.place || 999;
+  let label = fin?.label || '';
+
+  // Finish honors
+  if (t.champion === coachName || place === 1) {
+    accolades.push({ icon: '👑', label: 'Champion', cls: 'gold' });
+  } else if (place === 2 || label.toLowerCase().includes('runner')) {
+    accolades.push({ icon: '🥈', label: 'Runner-Up', cls: 'silver' });
+  } else if (place === 3 || label.toLowerCase().includes('3rd')) {
+    accolades.push({ icon: '🥉', label: '3rd Place', cls: 'bronze' });
+  } else if (inTopCut && place < 100) {
+    let topCutLabel = place === 4 ? 'Top 4' : (label || ('Top ' + (place <= 6 ? 6 : 8)));
+    accolades.push({ icon: '⚔️', label: topCutLabel, cls: 'qualify' });
+  }
+
+  if (!tots || tots.empty) return accolades;
+
+  let normCoach = (coachName || '').toLowerCase().trim();
+
+  // Major awards
+  if (tots.majorAwards?.mvp && tots.majorAwards.mvp.coach?.toLowerCase().trim() === normCoach) {
+    accolades.push({ icon: '🏆', label: `Season MVP: ${tots.majorAwards.mvp.name}`, cls: 'gold' });
+  }
+  if (tots.majorAwards?.finalsMvp && tots.majorAwards.finalsMvp.coach?.toLowerCase().trim() === normCoach) {
+    accolades.push({ icon: '🌟', label: `Finals MVP: ${tots.majorAwards.finalsMvp.name}`, cls: 'gold' });
+  }
+
+  // Statistical leaders
+  if (tots.leaders) {
+    if (tots.leaders.topKOs && tots.leaders.topKOs.coach?.toLowerCase().trim() === normCoach) {
+      accolades.push({ icon: '⚔️', label: `Most KOs: ${tots.leaders.topKOs.name}`, cls: 'stat' });
+    }
+    if (tots.leaders.topDamage && tots.leaders.topDamage.coach?.toLowerCase().trim() === normCoach && (!tots.leaders.topKOs || tots.leaders.topDamage.name !== tots.leaders.topKOs.name)) {
+      accolades.push({ icon: '💥', label: `Most Dmg: ${tots.leaders.topDamage.name}`, cls: 'stat' });
+    }
+    if (tots.leaders.topTaken && tots.leaders.topTaken.coach?.toLowerCase().trim() === normCoach) {
+      accolades.push({ icon: '🛡️', label: `Most Tanked: ${tots.leaders.topTaken.name}`, cls: 'stat' });
+    }
+  }
+
+  // All-League teams (deduped across tiers for the same Pokemon)
+  let seenMons = new Set();
+  (tots.firstTeam || []).forEach(slot => {
+    if (slot.mon?.coach?.toLowerCase().trim() === normCoach && !seenMons.has(slot.mon.name)) {
+      seenMons.add(slot.mon.name);
+      accolades.push({ icon: '🥇', label: `1st Team: ${slot.mon.name}`, cls: 'tots1' });
+    }
+  });
+
+  (tots.secondTeam || []).forEach(slot => {
+    if (slot.mon?.coach?.toLowerCase().trim() === normCoach && !seenMons.has(slot.mon.name)) {
+      seenMons.add(slot.mon.name);
+      accolades.push({ icon: '🥈', label: `2nd Team: ${slot.mon.name}`, cls: 'tots2' });
+    }
+  });
+
+  (tots.thirdTeam || []).forEach(slot => {
+    if (slot.mon?.coach?.toLowerCase().trim() === normCoach && !seenMons.has(slot.mon.name)) {
+      seenMons.add(slot.mon.name);
+      accolades.push({ icon: '🥉', label: `3rd Team: ${slot.mon.name}`, cls: 'tots3' });
+    }
+  });
+
+  return accolades;
+}
+
 function tournamentRatingProgressionSection(t){
-  if(!t || !t.players || !t.players.length || t.status !== 'COMPLETE') return '';
+  return '';
+}
+
+function renderTournamentProgressionTabHtml(t){
+  if(!t || !t.players || !t.players.length) return '';
   let sortedT = (typeof sortedTournamentsChronological === 'function') ? sortedTournamentsChronological() : [];
   let tIdx = sortedT.findIndex(x => x.id === t.id);
   let isPastT = (t.status === 'COMPLETE');
@@ -12881,6 +13299,7 @@ function tournamentRatingProgressionSection(t){
     qualifiersList = t.topCutCache.participants.map(pt => typeof pt === 'string' ? pt : (pt?.name || pt?.p));
   }
   let qualifiersSet = new Set(qualifiersList.filter(isKnownPlayer));
+  let tots = (typeof calculateTeamOfTheSeason === 'function') ? calculateTeamOfTheSeason(t) : null;
 
   let allPlayers = Array.from(new Set(t.players)).filter(isKnownPlayer);
 
@@ -12897,8 +13316,10 @@ function tournamentRatingProgressionSection(t){
       : (inTopCut ? calculatePlayerOVR(p) : gOvr);
 
     let diff = inTopCut ? (fOvr.ovr - gOvr.ovr) : null;
-    let pFace = profilePictures[p] ? `url('${esc(profilePictures[p])}')` : (teamCovers[p] ? `url('${esc(teamCovers[p])}')` : fallbackArt(p));
-    let pLetter = (profilePictures[p] || teamCovers[p]) ? '' : esc((p || '?')[0]);
+    let coverArt = (typeof teamCovers === 'object' && teamCovers[p]) || '';
+    let pfpArt = (typeof profilePictures === 'object' && profilePictures[p]) || '';
+    let bannerArt = coverArt || pfpArt || '';
+    let accolades = getCoachAccoladesForTournament(t, p, tots, fin, inTopCut);
 
     return {
       p,
@@ -12909,8 +13330,8 @@ function tournamentRatingProgressionSection(t){
       fOvr,
       diff,
       team: teamName(t, p),
-      face: pFace,
-      letter: pLetter
+      bannerArt,
+      accolades
     };
   });
 
@@ -12919,64 +13340,120 @@ function tournamentRatingProgressionSection(t){
     return a.place - b.place || b.fOvr.ovr - a.fOvr.ovr || a.p.localeCompare(b.p);
   });
 
-  return `<section class="section" style="margin-top:28px">
-    <div class="tc-section-header">
-      <h3><span style="color:#ffd166">📊</span> Rating Progression</h3>
-    </div>
-    <div class="card table-wrap" style="overflow-x:auto">
-      <table class="standings tc-playoff-table">
-        <thead>
-          <tr>
-            <th style="width:70px;text-align:center">#</th>
-            <th style="text-align:center">
-              <div style="width:240px;margin:0 auto;text-align:left;font-size:9px;font-weight:800;letter-spacing:.8px;text-transform:uppercase;color:#8e8d96">TRAINER / TEAM</div>
-            </th>
-            <th style="width:110px;text-align:center;white-space:nowrap" title="Coach rating at conclusion of Group Stage">Group OVR</th>
-            <th style="width:110px;text-align:center;white-space:nowrap" title="Final coach rating after tournament conclusion">Final OVR</th>
-            <th style="width:90px;text-align:center;white-space:nowrap" title="Rating growth from Group Stage to Top Cut">Growth</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${playerStats.map((qs, qIdx) => {
-            let medalIcon = qs.place === 1 ? '👑 ' : (qs.place === 2 ? '🥈 ' : (qs.place === 3 ? '🥉 ' : ''));
-            let rowCls = qs.place === 1 ? 'gold' : (qs.place === 2 ? 'silver' : (qs.place === 3 ? 'bronze' : ''));
-            let rankColor = qs.place === 1 ? '#ffd166' : (qs.place === 2 ? '#d5d5e2' : (qs.place === 3 ? '#d4986a' : '#8e8c95'));
+  let cardsHtml = playerStats.map((ps, qIdx) => {
+    let place = ps.place;
+    let isChamp = (t.champion === ps.p || place === 1);
+    let isRunnerUp = (!isChamp && (place === 2 || ps.label.toLowerCase().includes('runner')));
+    let isThird = (!isChamp && !isRunnerUp && (place === 3 || ps.label.toLowerCase().includes('3rd')));
+    let isTopCut = ps.inTopCut && place < 100;
 
-            let growthHtml = '-';
-            if(qs.inTopCut && qs.diff !== null){
-              if(qs.diff > 0){
-                growthHtml = `<span style="font-size:13px;font-weight:900;color:#53e89c">+${qs.diff}</span>`;
-              } else if(qs.diff < 0){
-                growthHtml = `<span style="font-size:13px;font-weight:900;color:#ff8e95">${qs.diff}</span>`;
-              } else {
-                growthHtml = `<span style="font-size:13px;font-weight:700;color:#8e8c95">0</span>`;
-              }
-            } else {
-              growthHtml = `<span style="font-size:14px;font-weight:700;color:#6e6c75">-</span>`;
-            }
+    let tierClass = isChamp ? 'champ-tier'
+      : (isRunnerUp ? 'runnerup-tier'
+      : (isThird ? 'third-tier'
+      : (isTopCut ? 'qualify-tier' : 'standard-tier')));
 
-            return `<tr class="${rowCls}">
-              <td style="text-align:center;font-weight:900;color:${rankColor};white-space:nowrap">
-                ${medalIcon}${qs.label || (qIdx + 1)}
-              </td>
-              <td style="text-align:center">
-                <div class="player-cell-wrap" style="width:240px;margin:0 auto;display:flex;align-items:center;gap:10px;text-align:left">
-                  <span class="avatar mini" style="background-image:${qs.face};width:24px;height:24px;font-size:10px;border-radius:50%;flex:none;border:1px solid rgba(255,255,255,0.2);display:grid;place-items:center">${qs.letter}</span>
-                  <div style="min-width:0;text-align:left">
-                    <div>${playerLink(qs.p)}</div>
-                    <span class="team" style="font-size:10px;margin-top:1px">${esc(qs.team)}</span>
-                  </div>
+    let rankIcon = isChamp ? '👑' : (isRunnerUp ? '🥈' : (isThird ? '🥉' : (isTopCut ? '⚔️' : '')));
+    let rankLabel = isChamp ? '1ST'
+      : (isRunnerUp ? '2ND'
+      : (isThird ? '3RD'
+      : (place === 4 ? 'TOP 4' : (ps.label || ((qIdx + 1) + 'TH')))));
+
+    let bannerBgStyle = ps.bannerArt
+      ? `background-image:linear-gradient(90deg,rgba(14,14,20,0.94) 0%,rgba(14,14,20,0.80) 50%,rgba(14,14,20,0.92) 100%),url('${esc(ps.bannerArt)}');background-size:cover;background-position:center;`
+      : `background:linear-gradient(90deg,#151520 0%,#111118 100%);`;
+
+    let growthHtml = '';
+    if(ps.diff !== null) {
+      if(ps.diff > 0) {
+        growthHtml = `<span class="prog-growth pos" title="Rating gain through Top Cut">+${ps.diff}</span>`;
+      } else if(ps.diff < 0) {
+        growthHtml = `<span class="prog-growth neg" title="Rating decline through Top Cut">${ps.diff}</span>`;
+      } else {
+        growthHtml = `<span class="prog-growth zero" title="Rating unchanged in Top Cut">0</span>`;
+      }
+    } else {
+      growthHtml = `<span class="prog-growth none" title="Group Stage exit">—</span>`;
+    }
+
+    return `
+      <div class="prog-card ${tierClass}">
+        <div class="prog-card-top">
+          <div class="prog-rank-badge ${tierClass}">
+            ${rankIcon ? `<span class="prog-rank-icon">${rankIcon}</span>` : ''}
+            <span class="prog-rank-num">${esc(rankLabel)}</span>
+          </div>
+          <div class="prog-center-wrap" style="${bannerBgStyle}">
+            <div class="prog-center-content">
+              <div class="prog-coach-row">
+                <button type="button" class="prog-coach-name" onclick="openProfile('${jsArg(ps.p)}')">${esc(ps.p)}</button>
+                ${ps.team ? `<span class="prog-team-name">${esc(ps.team)}</span>` : ''}
+              </div>
+              ${ps.accolades.length > 0 ? `
+                <div class="prog-accolades">
+                  ${ps.accolades.map(acc => `
+                    <span class="prog-accolade-chip ${acc.cls}">
+                      <span class="prog-chip-icon">${acc.icon}</span>
+                      <span class="prog-chip-text">${esc(acc.label)}</span>
+                    </span>
+                  `).join('')}
                 </div>
-              </td>
-              <td style="text-align:center">${qs.gOvr.badgeHtml}</td>
-              <td style="text-align:center">${qs.fOvr.badgeHtml}</td>
-              <td style="text-align:center;white-space:nowrap">${growthHtml}</td>
-            </tr>`;
-          }).join('')}
-        </tbody>
-      </table>
+              ` : `
+                <div class="prog-no-accolades">Group Stage Competitor</div>
+              `}
+            </div>
+          </div>
+        </div>
+        <div class="prog-ovr-module">
+          <div class="prog-ovr-box">
+            <div class="prog-ovr-lbl" title="Coach rating at conclusion of Group Stage">GROUP OVR</div>
+            <div class="prog-ovr-val">${ps.gOvr.badgeHtml}</div>
+          </div>
+          <div class="prog-ovr-arrow">➔</div>
+          <div class="prog-ovr-box">
+            <div class="prog-ovr-lbl" title="Final coach rating after tournament conclusion">FINAL OVR</div>
+            <div class="prog-ovr-val">${ps.fOvr.badgeHtml}</div>
+          </div>
+          <div class="prog-growth-box">
+            <div class="prog-ovr-lbl" title="Rating growth from Group Stage to Top Cut">GROWTH</div>
+            <div class="prog-growth-val">${growthHtml}</div>
+          </div>
+        </div>
+      </div>
+    `;
+  }).join('');
+
+  return `
+    <div style="max-width:1200px;margin:0 auto;display:flex;flex-direction:column;gap:16px">
+      <!-- Progression Header Showcase Banner -->
+      <div class="card" style="padding:22px 26px;background:linear-gradient(135deg,rgba(255,209,102,0.08) 0%,#15151f 50%,#0f0f15 100%);border:1px solid rgba(255,209,102,0.25);border-radius:14px;box-shadow:0 8px 32px rgba(0,0,0,0.45)">
+        <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px">
+          <div>
+            <div style="font:800 11px 'Barlow Condensed';letter-spacing:1.2px;color:#ffd166;text-transform:uppercase;display:flex;align-items:center;gap:6px">
+              <span>📊</span> POSTSEASON RATING EVOLUTION • ${esc(t.season || t.name)}
+            </div>
+            <h2 style="margin:4px 0 0;font:900 26px 'Barlow Condensed';letter-spacing:.6px;background:linear-gradient(135deg,#ffffff 0%,#ffd166 60%,#f59e0b 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent">
+              Tournament Progression &amp; Accolades
+            </h2>
+            <p style="margin:4px 0 0;font-size:12px;color:#94a3b8;max-width:650px;line-height:1.45">
+              Tracking coach rating progression from the regular season through the playoffs, alongside official tournament honors and Pokémon awards.
+            </p>
+          </div>
+          <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+            <div style="display:flex;align-items:center;gap:6px;background:#181824;padding:6px 14px;border-radius:20px;border:1px solid #2e2e42;font-size:11px;color:#8e8c95">
+              <span style="color:#ffd166;font-weight:900">${playerStats.length}</span> Coaches
+              <span style="color:#444">·</span>
+              <span style="color:#4ade80;font-weight:900">${playerStats.filter(p => p.inTopCut).length}</span> Playoff Qualifiers
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Progression Cards List -->
+      <div class="prog-cards-list">
+        ${cardsHtml}
+      </div>
     </div>
-  </section>`;
+  `;
 }
 
 function mountTopCutViewer(){}
@@ -20218,12 +20695,12 @@ function Standings(){
   ) : '';
 
   if(isSwiss){
-    return head('Standings', t.name + ' · Swiss System Stage', controls) + `<div class="card table-wrap bcast-card-wrap" style="max-width:100%">${standingTable(t, 'Swiss Stage')}</div><p class="sub">Swiss ranking order: <b>Match Wins (W-L) → Buchholz Strength of Schedule (BUCH) → Game Differential (DIFF) → Game Wins (GW) → Head-to-Head</b>.</p>` + renderTournamentAwardsStandingsBannerHtml(t) + tournamentRatingProgressionSection(t);
+    return head('Standings', t.name + ' · Swiss System Stage', controls) + `<div class="card table-wrap bcast-card-wrap" style="max-width:100%">${standingTable(t, 'Swiss Stage')}</div><p class="sub">Swiss ranking order: <b>Match Wins (W-L) → Buchholz Strength of Schedule (BUCH) → Game Differential (DIFF) → Game Wins (GW) → Head-to-Head</b>.</p>` + renderTournamentAwardsStandingsBannerHtml(t);
   }
 
   let criteria = getStandingsCriteria(t);
   let orderDesc = criteria.map(c => `${STANDING_METRICS[c]?.name || c.toUpperCase()} (${STANDING_METRICS[c]?.label || c.toUpperCase()})`).join(' → ');
-  return head('Standings', t.name + ' · group stage', controls) + `<div class="bcast-groups-grid ${groups.length > 1 ? 'two-groups' : 'single-group'}">${groups.map(g => `<div class="card table-wrap bcast-card-wrap">${standingTable(t, g)}</div>`).join('')}</div>` + renderTournamentAwardsStandingsBannerHtml(t) + tournamentRatingProgressionSection(t);
+  return head('Standings', t.name + ' · group stage', controls) + `<div class="bcast-groups-grid ${groups.length > 1 ? 'two-groups' : 'single-group'}">${groups.map(g => `<div class="card table-wrap bcast-card-wrap">${standingTable(t, g)}</div>`).join('')}</div>` + renderTournamentAwardsStandingsBannerHtml(t);
 }
 
 function matchPlayerName(p){return `<button class="player-link match-hover-name" onclick="openProfile('${jsArg(p)}')" onmouseenter="highlightMatches('${jsArg(p)}',true)" onmouseleave="highlightMatches('',false)">${esc(p)}</button>`}
@@ -27790,25 +28267,26 @@ function tournamentDetail(){
   let isFinished = String(t.status || '').toUpperCase() === 'COMPLETE' || t.phase === 'complete' || t.phase === 'completed';
   let availableTabs = hasDraft 
     ? (isFinished 
-        ? ['Standings', 'Draft', 'Teams', stage1TabName, 'Top Cut', 'Awards', 'Predictions'] 
+        ? ['Standings', 'Draft', 'Teams', stage1TabName, 'Top Cut', 'Awards', 'Progression', 'Predictions'] 
         : ['Standings', 'Draft', 'Teams', stage1TabName, 'Top Cut', 'Predictions'])
     : (isFinished 
-        ? ['Standings', 'Teams', stage1TabName, 'Top Cut', 'Awards', 'Predictions'] 
+        ? ['Standings', 'Teams', stage1TabName, 'Top Cut', 'Awards', 'Progression', 'Predictions'] 
         : ['Standings', 'Teams', stage1TabName, 'Top Cut', 'Predictions']);
 
   if(!availableTabs.includes(detailTab)){
     if(detailTab === 'Group Stage' && isSwiss) detailTab = 'Swiss Stage';
     else if(detailTab === 'Swiss Stage' && !isSwiss) detailTab = 'Group Stage';
-    else if(detailTab === 'Awards' && !isFinished) detailTab = isDraftOngoing ? 'Draft' : 'Standings';
+    else if((detailTab === 'Awards' || detailTab === 'Progression') && !isFinished) detailTab = isDraftOngoing ? 'Draft' : 'Standings';
     else detailTab = isDraftOngoing ? 'Draft' : 'Standings';
   }
 
   let content=detailTab==='Draft'?DraftRostersView(t)
     :detailTab==='Teams'?renderTournamentTeamsTabHtml(t)
-    :detailTab==='Standings'?(isDraftOngoing ? renderDraftLockedStandings(t, true) : (isSwiss ? `<div class="card table-wrap bcast-card-wrap" style="max-width:100%">${standingTable(t,'Swiss Stage')}</div>` : `<div class="bcast-groups-grid ${groups.length>1?'two-groups':'single-group'}">${groups.map(g=>`<div class="card table-wrap bcast-card-wrap" style="align-self:start">${standingTable(t,g)}</div>`).join('')}</div>`) + tournamentRatingProgressionSection(t))
+    :detailTab==='Standings'?(isDraftOngoing ? renderDraftLockedStandings(t, true) : (isSwiss ? `<div class="card table-wrap bcast-card-wrap" style="max-width:100%">${standingTable(t,'Swiss Stage')}</div>` : `<div class="bcast-groups-grid ${groups.length>1?'two-groups':'single-group'}">${groups.map(g=>`<div class="card table-wrap bcast-card-wrap" style="align-self:start">${standingTable(t,g)}</div>`).join('')}</div>`))
     :detailTab===stage1TabName?(isDraftOngoing ? renderDraftLockedMatches(t, true) : matchesView(t,false))
     :detailTab==='Top Cut'?(isDraftOngoing ? renderDraftLockedTopCut(t, true) : topCutSection(t,!t.bracketManagerData))
     :detailTab==='Awards'?renderTournamentAwardsTabHtml(t)
+    :detailTab==='Progression'?renderTournamentProgressionTabHtml(t)
     :detailTab==='Predictions'?(isDraftOngoing ? renderDraftLockedPredictions(t, true) : predictions(t))
     :predictions(t);
   let canManage = canManageTournament(t);

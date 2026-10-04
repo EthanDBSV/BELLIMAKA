@@ -3,6 +3,20 @@
 All notable changes to the Bellimaka Pokémon Draft League site are documented here.
 Format: `v[MAJOR].[MINOR].[PATCH]` — Major = big new systems, Minor = new features, Patch = bug fixes / small improvements.
 
+## [v1.3.0] — 2026-10-04
+
+### Added
+- **Dedicated Postseason Tournament Progression & Accolades Showcase** — Overhauled the postseason progression presentation by removing the legacy rating progression table from the Standings view and creating a dedicated **Progression** tab in completed tournament archives positioned between Awards and Predictions:
+  - **Dedicated Postseason Navigation Tab**: Seamlessly integrated the Progression tab into the tournament navigation suite for all completed tournaments, serving as a dedicated postseason conclusion recap alongside the Awards tab.
+  - **TV Broadcast Showcase Cards**: Replaced the outdated rating table with sleek, full-width TV broadcast cards for each tournament coach, featuring team cover backdrop art, dark vignette overlays, and gold/silver/bronze prestige tier borders.
+  - **Prestige Tier & Rank Badges**: Distinctive illuminated rank badges highlighting the tournament champion (`👑 1ST`), runner-up (`🥈 2ND`), 3rd place finisher (`🥉 3RD`), Top Cut playoff qualifiers (`⚔️ TOP 4` / `TOP 8`), and regular season competitors.
+  - **Comprehensive Accolades Showcase**: Dynamically highlights all tournament accolades and honors earned by the coach and their Pokémon squad during the event, including tournament champion, runner-up, and playoff finish honors, Season MVP, Finals MVP, statistical leaders (Most KOs, Most Damage, Most Tanked), and All-Tournament 1st, 2nd, and 3rd Team selections.
+  - **Postseason Rating Evolution Module**: Clear side-by-side progression badges comparing Group Stage OVR to Final Postseason OVR with glowing rating growth pills (`+X` emerald gain, `-X` crimson decline, `0` neutral, or `—` for regular season finishes).
+  - **Responsive Mobile-First Two-Tier Architecture**: Re-engineered progression card layouts with responsive two-tier flex stacking, ensuring rank, coach names, accolades, and rating badges remain crystal clear without clipping or squishing on small screens.
+  - **De-Cluttered Standings View**: Completely removed the outdated rating progression table from the base Standings view in both Swiss and Group Stage tournaments, keeping in-season standings clean and focused on active qualification races.
+
+---
+
 ## [v1.2.0] — 2026-10-03
 
 ### Added
