@@ -6,6 +6,13 @@ Format: `v[MAJOR].[MINOR].[PATCH]` — Major = big new systems, Minor = new feat
 ## [v1.2.0] — 2026-10-03
 
 ### Added
+- **World Cup TV Broadcast Standings Cards** — Completely revolutionized Group Stage and Swiss Stage standings into a high-energy TV-broadcast graphic format inspired by international tournament presentations:
+  - **Modular Card Graphic Format**: Replaced legacy static data tables with broadcast graphic cards featuring sleek header branding, stage icons, and dynamic playoff qualification tags.
+  - **Team Cover Art Banner Backdrops**: Replaced plain table rows with wide team banners showcasing high-res custom team cover artwork (or rich algorithmic hue gradients) under dark glass vignettes, stamped with bold embossed team typography, coach links, coach avatar thumbnails, and coach OVR rating badges.
+  - **Core Broadcast Quartet Stat Cubes**: Integrated segmented recessed stat cubes (`[RECORD]`, `[DIFF]`, `[GW]`, `[STATUS]` for groups, plus `[BUCH]` strength of schedule for Swiss) with metallic borders and high-contrast color coding for net differentials (`+` emerald, `-` crimson).
+  - **Multi-Tier Metallic Border Glows**: Implemented tiered border illumination and prestige rank badges distinguishing the #1 seed (Radiant Gold glow and golden leader badge), advancing playoff seeds (Emerald metallic border and qualification badge), active bubble contenders (Amber border), and mathematically eliminated squads (Crimson border).
+  - **Illuminated Qualification Cutoff Demarcation**: Pinned dynamic neon demarcation dividers (`TOP {cut} ADVANCE CUTOFF`) directly between advancing and non-advancing seeds.
+  - **Fluid Responsive Stacking**: Engineered fluid multi-column desktop layouts side-by-side with proportional stat cubes and compact mobile viewports (`<650px`) cleanly preserving all 4 stat cubes with zero horizontal scroll.
 - **Broadcast Clash Banner for Primetime Matchups** — Completely redesigned the Primetime Matchup hero card into a futuristic, high-energy esports broadcast clash graphic utilizing 100% of available stage space:
   - **Metallic Gradient Rectangle Outline**: Framed the banner in a clean rounded rectangle (`border-radius: 10px`) highlighted by a vibrant metallic gradient outline (crimson-to-gold for regular season, prestige gold for Top Cut playoffs) and dynamic ambient glow.
   - **Unified Broadcast Canvas**: Replaced disruptive diagonal split lines with a unified, clean backdrop presentation showcasing custom uploaded matchup artwork with a dark gradient underlay.
