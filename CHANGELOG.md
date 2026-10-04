@@ -6,20 +6,22 @@ Format: `v[MAJOR].[MINOR].[PATCH]` — Major = big new systems, Minor = new feat
 ## [v1.2.0] — 2026-10-03
 
 ### Added
-- **Cyber-Esports Angled Chamfered Broadcast Banner for Primetime Matchups** — Completely redesigned the Primetime Matchup hero card into a futuristic, high-energy cyber-esports clash broadcast banner utilizing 100% of available stage space:
-  - **Beveled Geometric Silhouette**: Replaced the conventional rounded rectangle with a cyber-esports frame featuring precision 45-degree angled corner chamfers (`clip-path: polygon(...)`), metallic border accents, and dynamic division ambient glow (electric crimson for regular season, prestige gold for Top Cut playoffs).
-  - **Dual-Team Cover Diagonal Split**: Sourced backgrounds directly from the opposing teams' custom covers and artwork, cleanly partitioned by complementary diagonal polygon masks (`clip-path: polygon(...)`) with an angled metallic energy seam at the center clash divide, preserving uploaded custom matchup covers as a subtle global underlay.
-  - **Inward-Facing Battle Lineup & Star Pokémon Showcase**: Integrated an authentic Pokémon face-off staging where outer flanks feature enlarged coach avatars, team logos, and records, while inner flanks showcase 3 star Pokémon sprites staged facing inward toward each other across the diagonal divide.
+- **Cyber-Esports Angled Chamfered Broadcast Banner for Primetime Matchups** — Completely redesigned the Primetime Matchup hero card into a futuristic, high-energy cyber-esports broadcast clash graphic utilizing 100% of available stage space:
+  - **Beveled Geometric Silhouette**: Enclosed the banner in a cyber-esports frame featuring precision 45-degree angled corner chamfers (`clip-path: polygon(...)`), metallic border accents, and dynamic ambient glow (electric crimson for regular season, prestige gold for Top Cut playoffs).
+  - **Unified Broadcast Canvas**: Replaced disruptive diagonal split lines with a unified, clean backdrop presentation showcasing custom uploaded matchup artwork with a dark gradient underlay.
+  - **Horizontal-Axis Centerline Staging**: Staged coach avatars, Pokémon cards, and the center score/VS hub along an identical horizontal centerline, ensuring coach profile pictures feel completely level with the Pokémon and score.
+  - **Symmetrical Top & Bottom Broadcast Subbars**: Reorganized team and coach metadata into sleek broadcast subbars—housing team names and coach names in the top subbar with mirror symmetry, and team records in the bottom subbar flanking pagination controls.
+  - **Unified Site Typography**: Styled coach and team names in the top subbar with the site's signature condensed bold aesthetic (`'Barlow Condensed', sans-serif`, uppercase), perfectly matching global league styling.
   - **Context-Aware Roster & Battle Performer Resolution**: In unplayed upcoming matches, the lineup highlights top drafted picks and tier aces; in completed fixtures, it automatically showcases top battle performers and starters parsed directly from match replay telemetry.
   - **One-Click Commissioner Feature Pinning**: Added an inline pin toggle button (`📌 PIN FEATURE` / `📌 PINNED`) enabling commissioners and moderators to lock any marquee fixture as the #1 spotlight card, with instant unpin toggling to restore automated hype ordering.
-  - **Horizontal-Axis Center Clash Hub**: Streamlined the center area to sit on the exact same horizontal axis as the team stars, featuring only the bold final series score bug for completed games or the metallic `VS` clash emblem for upcoming fixtures, opening the comprehensive Match Replay Hub and Boxscore modal on click.
+  - **Centered Clash Score Hub**: Cleanly centered the series score dash (`-`) evenly between series scores, eliminating redundant status badges while preserving one-click navigation to the Match Replay Hub and Boxscore modal.
 
 ### Improved
 - **Clean Center Staging & Text De-Cluttering** — Eliminated extraneous labels in the center hub:
   - **Redundant Status Elimination**: Removed the duplicate "FINAL" badge and "BEST OF 3" format pill from the center hub since status is already clearly designated in the top-right header tag.
   - **Agnostic Round Flow**: Removed arbitrary round numbering text to reflect flexible league scheduling where fixtures are contested in organic order.
 - **Custom Mega Sprite Resolution & Automated Error Recovery** — Hardened Showdown sprite resolution for custom and non-standard Megas:
-  - **Animated & Pixel Art Fallbacks**: Expanded `ANIMATED_ONLY_SPRITES` and `GEN5_ONLY_MEGAS` to include custom and Legends forms lacking standard 3D HOME renders, directing them to working Showdown GIF and Gen 5 assets.
+  - **Animated & Pixel Art Fallbacks**: Expanded `ANIMATED_ONLY_SPRITES` and `GEN5_ONLY_MEGAS` to include custom and Legends forms (such as Mega Crabominable, Mega Eelektross, Mega Falinks, etc.) lacking standard 3D HOME renders, directing them to working Showdown GIF and Gen 5 assets.
   - **Fail-Safe Stage Fallback**: Equipped battle stage sprite elements with automated multi-tier error handlers (`handleSpriteError`) and transparent text masking, ensuring missing assets seamlessly downgrade without exposing broken image alt text.
 - **Smart Active-Round Prioritization for Primetime Selection** — Upgraded the match selection algorithm to prioritize active unplayed games:
   - **Active Round Weighting**: Automatically detects the current active unplayed round of group play and elevates marquee matchups from that round first, factoring in combined team win records, team power ratings (OVR), and divisional rivalry closeness before falling back to completed thrillers.
