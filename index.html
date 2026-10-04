@@ -2122,14 +2122,18 @@ details[open] > .past-tourney-summary .past-chevron{transform:rotate(180deg);col
   border-color: rgba(142, 140, 149, 0.3);
 }
 
+/* Column Subbar - Perfectly mirrors .bcast-stand-row structure */
 .bcast-cols-subbar {
+  display: block;
+  padding: 8px 12px;
+  background: rgba(10, 10, 14, 0.7);
+  border-bottom: 1px solid #242434;
+}
+.bcast-cols-subbar-inner {
   display: flex;
-  justify-content: space-between;
   align-items: center;
-  padding: 6px 20px;
-  background: rgba(10, 10, 14, 0.65);
-  border-bottom: 1px solid #222230;
   gap: 8px;
+  padding: 0 8px;
 }
 .bcast-subbar-team {
   display: flex;
@@ -2140,26 +2144,42 @@ details[open] > .past-tourney-summary .past-chevron{transform:rotate(180deg);col
 }
 .bcast-subbar-stats {
   display: grid;
-  grid-template-columns: 56px 50px 46px 84px;
-  gap: 6px;
-  text-align: center;
+  align-items: center;
+  gap: 5px;
   flex-shrink: 0;
 }
-.bcast-subbar-stats.swiss {
-  grid-template-columns: 52px 46px 46px 42px 82px;
-  gap: 5px;
-}
+
 .bcast-col-lbl {
-  font: 800 10px 'Barlow Condensed', sans-serif;
+  font: 800 12px/1 'Barlow Condensed', sans-serif;
   letter-spacing: 0.8px;
-  color: #7f7d8a;
+  color: #a4a2b0;
   text-transform: uppercase;
   user-select: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  min-width: 0;
+  box-sizing: border-box;
 }
 .bcast-col-lbl.rank-lbl {
   width: 28px;
-  text-align: center;
+  justify-content: center;
   flex-shrink: 0;
+}
+.bcast-col-lbl.team-lbl {
+  justify-content: flex-start;
+  padding-left: 2px;
+}
+.bcast-col-lbl.bcast-col-status {
+  width: 78px;
+  justify-content: center;
+  background: transparent !important;
+  color: #a4a2b0 !important;
+  border: none !important;
+  border-radius: 0 !important;
+  padding: 0 !important;
+  box-shadow: none !important;
 }
 
 .bcast-rows-list {
@@ -2309,14 +2329,9 @@ details[open] > .past-tourney-summary .past-chevron{transform:rotate(180deg);col
 /* Stat Cubes */
 .bcast-stat-cubes {
   display: grid;
-  grid-template-columns: 56px 50px 46px 84px;
-  gap: 6px;
   align-items: center;
-  flex-shrink: 0;
-}
-.bcast-stat-cubes.swiss {
-  grid-template-columns: 52px 46px 46px 42px 82px;
   gap: 5px;
+  flex-shrink: 0;
 }
 .bcast-cube {
   height: 38px;
@@ -2328,11 +2343,13 @@ details[open] > .past-tourney-summary .past-chevron{transform:rotate(180deg);col
   border: 1px solid #262635;
   border-radius: 4px;
   box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.55);
+  box-sizing: border-box;
 }
 .bcast-cube-val {
   font: 900 15px/1 'Barlow Condensed', sans-serif;
   color: #f5f3f0;
   letter-spacing: 0.3px;
+  text-align: center;
 }
 .bcast-cube-val.pos {
   color: #4ade80;
@@ -2346,10 +2363,12 @@ details[open] > .past-tourney-summary .past-chevron{transform:rotate(180deg);col
 .bcast-cube-val.sos-val {
   color: #ffd166;
 }
-.bcast-cube.status {
-  background: transparent;
-  border: none;
-  box-shadow: none;
+.bcast-cube.bcast-cube-status {
+  width: 78px;
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  padding: 0 !important;
 }
 
 /* Status Pills */
@@ -2360,33 +2379,39 @@ details[open] > .past-tourney-summary .past-chevron{transform:rotate(180deg);col
   width: 100%;
   height: 26px;
   border-radius: 4px;
-  font: 900 11px 'Barlow Condensed', sans-serif;
+  font: 900 11px/1 'Barlow Condensed', sans-serif;
   letter-spacing: 0.6px;
   text-transform: uppercase;
-  line-height: 1;
   text-align: center;
   user-select: none;
+  box-sizing: border-box;
+  white-space: nowrap;
 }
 .bcast-status-pill.clinched {
-  background: linear-gradient(135deg, #123e24 0%, #1c5e37 100%);
+  background: linear-gradient(135deg, #134626 0%, #1e6438 100%);
   color: #7df0aa;
-  border: 1px solid #2e8b52;
-  box-shadow: 0 0 10px rgba(74, 222, 128, 0.25);
+  border: 1px solid #2ea05b;
+  box-shadow: 0 0 12px rgba(74, 222, 128, 0.3);
+  font-weight: 900;
 }
 .bcast-status-pill.incut {
-  background: rgba(34, 197, 94, 0.15);
-  color: #4ade80;
-  border: 1px solid rgba(34, 197, 94, 0.4);
+  background: rgba(14, 165, 233, 0.16);
+  color: #38bdf8;
+  border: 1px solid rgba(56, 189, 248, 0.5);
+  box-shadow: 0 0 10px rgba(56, 189, 248, 0.2);
+  font-weight: 900;
 }
 .bcast-status-pill.hunt {
-  background: rgba(245, 158, 11, 0.15);
+  background: rgba(245, 158, 11, 0.14);
   color: #ffd166;
-  border: 1px solid rgba(245, 158, 11, 0.4);
+  border: 1px solid rgba(245, 158, 11, 0.42);
+  box-shadow: 0 0 8px rgba(245, 158, 11, 0.15);
 }
 .bcast-status-pill.eliminated {
-  background: rgba(239, 68, 68, 0.15);
+  background: rgba(239, 68, 68, 0.14);
   color: #ff8a90;
-  border: 1px solid rgba(239, 68, 68, 0.35);
+  border: 1px solid rgba(239, 68, 68, 0.38);
+  box-shadow: 0 0 8px rgba(239, 68, 68, 0.12);
 }
 
 /* Qualification Cutoff Divider */
@@ -2418,29 +2443,35 @@ details[open] > .past-tourney-summary .past-chevron{transform:rotate(180deg);col
 /* Responsive Fluid Stacking */
 @media (max-width: 650px) {
   .bcast-cols-subbar {
-    padding: 4px 10px;
+    padding: 6px 8px;
   }
-  .bcast-subbar-stats {
-    grid-template-columns: 46px 42px 38px 70px;
-    gap: 4px;
+  .bcast-cols-subbar-inner {
+    padding: 0 4px;
+    gap: 6px;
   }
-  .bcast-subbar-stats.swiss {
-    grid-template-columns: 42px 38px 38px 34px 68px;
-    gap: 3px;
+  .bcast-subbar-team {
+    gap: 6px;
   }
+  .bcast-stand-row {
+    padding: 4px 6px;
+    gap: 6px;
+  }
+  .bcast-subbar-stats,
   .bcast-stat-cubes {
-    grid-template-columns: 46px 42px 38px 70px;
-    gap: 4px;
-  }
-  .bcast-stat-cubes.swiss {
-    grid-template-columns: 42px 38px 38px 34px 68px;
     gap: 3px;
+  }
+  .bcast-col-lbl {
+    font-size: 10px;
   }
   .bcast-cube {
     height: 32px;
   }
   .bcast-cube-val {
     font-size: 13px;
+  }
+  .bcast-col-lbl.bcast-col-status,
+  .bcast-cube.bcast-cube-status {
+    width: 66px !important;
   }
   .bcast-status-pill {
     font-size: 9px;
@@ -19407,6 +19438,26 @@ function standingTable(t, g){
   let isPastT = (t && t.status === 'COMPLETE' && tIdx >= 0);
   let { lossesToEliminate, isEliminationStyle } = isSwiss ? getSwissThresholds(t) : {};
 
+  // Active criteria configuration
+  const CRIT_COL_CONFIG = {
+    wl:   { label: 'RECORD', width: '52px', title: 'Match Record (Wins - Losses)' },
+    gw:   { label: 'GW',     width: '42px', title: 'Total Games Won' },
+    gd:   { label: 'DIFF',   width: '46px', title: 'Game Differential (Net Games: GW - GL)' },
+    h2h:  { label: 'H2H',    width: '42px', title: 'Head-to-Head Wins' },
+    gl:   { label: 'GL',     width: '42px', title: 'Fewest Games Lost' },
+    gpct: { label: 'GW%',    width: '46px', title: 'Game Win Percentage' },
+    sos:  { label: 'SOS',    width: '44px', title: 'Strength of Schedule' },
+    buch: { label: 'BUCH',   width: '46px', title: "Buchholz / Strength of Schedule (Opponents' Match Wins)" }
+  };
+
+  let criteriaList = isSwiss ? ['wl', 'buch', 'gd', 'gw'] : getStandingsCriteria(t);
+  let critCols = criteriaList.map(critId => {
+    let conf = CRIT_COL_CONFIG[critId] || { label: critId.toUpperCase(), width: '44px', title: critId.toUpperCase() };
+    return { id: critId, ...conf };
+  });
+
+  let gridTrackStyle = `${critCols.map(c => c.width).join(' ')} 78px`;
+
   let rowsHtml = [];
   list.forEach((x, i) => {
     let p = x.p;
@@ -19420,10 +19471,10 @@ function standingTable(t, g){
 
     if(isSwiss){
       if(t.phase === 'topcut' || t.status === 'COMPLETE'){
-        statusTag = i < cut ? '<span class="bcast-status-pill clinched">ADVANCED</span>' : '<span class="bcast-status-pill eliminated">ELIMINATED</span>';
+        statusTag = i < cut ? '<span class="bcast-status-pill clinched">✓ ADVANCED</span>' : '<span class="bcast-status-pill eliminated">ELIMINATED</span>';
         statusClass = i < cut ? 'clinched' : 'eliminated';
       } else if(i < cut && x.status === 'clinched'){
-        statusTag = '<span class="bcast-status-pill clinched">CLINCHED</span>';
+        statusTag = '<span class="bcast-status-pill clinched">✓ CLINCHED</span>';
         statusClass = 'clinched';
       } else if(x.status === 'eliminated' || (i >= cut && (x.l >= lossesToEliminate || (isEliminationStyle && x.l >= lossesToEliminate)))){
         statusTag = '<span class="bcast-status-pill eliminated">ELIMINATED</span>';
@@ -19437,10 +19488,10 @@ function standingTable(t, g){
       let eliminated = isMathematicallyEliminated(t, p);
 
       if(t.phase === 'topcut' || t.status === 'COMPLETE'){
-        statusTag = i < cut ? '<span class="bcast-status-pill clinched">ADVANCED</span>' : '<span class="bcast-status-pill eliminated">ELIMINATED</span>';
+        statusTag = i < cut ? '<span class="bcast-status-pill clinched">✓ ADVANCED</span>' : '<span class="bcast-status-pill eliminated">ELIMINATED</span>';
         statusClass = i < cut ? 'clinched' : 'eliminated';
       } else if(clinched){
-        statusTag = '<span class="bcast-status-pill clinched">CLINCHED</span>';
+        statusTag = '<span class="bcast-status-pill clinched">✓ CLINCHED</span>';
         statusClass = 'clinched';
       } else if(eliminated){
         statusTag = '<span class="bcast-status-pill eliminated">ELIMINATED</span>';
@@ -19456,9 +19507,6 @@ function standingTable(t, g){
     else if(i < cut) tierClass = 'qualify-tier';
     else if(statusClass === 'eliminated') tierClass = 'elim-tier';
 
-    let diff = x.diff !== undefined ? x.diff : (x.gw - x.gl);
-    let diffStr = (diff > 0 ? '+' : '') + diff;
-
     let coverArt = (typeof teamCovers === 'object' && teamCovers[p]) || '';
     let pfpArt = (typeof profilePictures === 'object' && profilePictures[p]) || '';
     let bannerArt = coverArt || pfpArt;
@@ -19466,40 +19514,43 @@ function standingTable(t, g){
       ? `background-image:linear-gradient(90deg,rgba(12,12,18,0.92) 0%,rgba(12,12,18,0.62) 45%,rgba(12,12,18,0.92) 100%),url('${esc(bannerArt)}');background-size:cover;background-position:center;`
       : `background:${fallbackArt(p)};`;
 
-    let cubesHtml = isSwiss ? `
-      <div class="bcast-stat-cubes swiss">
-        <div class="bcast-cube rec" title="Match Record (Wins - Losses)">
-          <span class="bcast-cube-val">${x.w}-${x.l}</span>
+    // Dynamic cubes for each active criterion
+    let cubesHtml = critCols.map(col => {
+      let critId = col.id;
+      let valHtml = '';
+      if(critId === 'wl'){
+        valHtml = `<span class="bcast-cube-val">${x.w}-${x.l}</span>`;
+      } else if(critId === 'gw'){
+        valHtml = `<span class="bcast-cube-val">${x.gw}</span>`;
+      } else if(critId === 'gd'){
+        let diff = x.diff !== undefined ? x.diff : (x.gw - x.gl);
+        let diffStr = (diff > 0 ? '+' : '') + diff;
+        valHtml = `<span class="bcast-cube-val ${diff > 0 ? 'pos' : (diff < 0 ? 'neg' : 'zero')}">${diffStr}</span>`;
+      } else if(critId === 'h2h'){
+        let hVal = x.h2hWins !== undefined ? x.h2hWins : (x.h2h !== undefined ? x.h2h : 0);
+        valHtml = `<span class="bcast-cube-val">${hVal}</span>`;
+      } else if(critId === 'gl'){
+        valHtml = `<span class="bcast-cube-val">${x.gl}</span>`;
+      } else if(critId === 'gpct'){
+        let tot = x.gw + x.gl;
+        let pct = tot > 0 ? Math.round((x.gw / tot) * 100) + '%' : '0%';
+        valHtml = `<span class="bcast-cube-val">${pct}</span>`;
+      } else if(critId === 'sos'){
+        valHtml = `<span class="bcast-cube-val sos-val">${x.sos || 0}</span>`;
+      } else if(critId === 'buch'){
+        valHtml = `<span class="bcast-cube-val sos-val">${x.buch || x.sos || 0}</span>`;
+      } else {
+        let m = STANDING_METRICS[critId];
+        let cellContent = m && typeof m.format === 'function' ? m.format(x) : (x[critId] ?? '—');
+        valHtml = `<span class="bcast-cube-val">${cellContent}</span>`;
+      }
+
+      return `
+        <div class="bcast-cube cube-${esc(critId)}" style="width:${col.width}" title="${esc(col.title)}">
+          ${valHtml}
         </div>
-        <div class="bcast-cube buch" title="Buchholz / SOS (Opponents' Match Wins)">
-          <span class="bcast-cube-val sos-val">${x.buch || x.sos || 0}</span>
-        </div>
-        <div class="bcast-cube diff" title="Game Differential (Net Games)">
-          <span class="bcast-cube-val ${diff > 0 ? 'pos' : (diff < 0 ? 'neg' : 'zero')}">${diffStr}</span>
-        </div>
-        <div class="bcast-cube gw" title="Game Wins">
-          <span class="bcast-cube-val">${x.gw}</span>
-        </div>
-        <div class="bcast-cube status">
-          ${statusTag}
-        </div>
-      </div>
-    ` : `
-      <div class="bcast-stat-cubes">
-        <div class="bcast-cube rec" title="Match Record (Wins - Losses)">
-          <span class="bcast-cube-val">${x.w}-${x.l}</span>
-        </div>
-        <div class="bcast-cube diff" title="Game Differential (Net Games)">
-          <span class="bcast-cube-val ${diff > 0 ? 'pos' : (diff < 0 ? 'neg' : 'zero')}">${diffStr}</span>
-        </div>
-        <div class="bcast-cube gw" title="Game Wins">
-          <span class="bcast-cube-val">${x.gw}</span>
-        </div>
-        <div class="bcast-cube status">
-          ${statusTag}
-        </div>
-      </div>
-    `;
+      `;
+    }).join('');
 
     rowsHtml.push(`
       <div class="bcast-stand-row ${tierClass}">
@@ -19516,7 +19567,12 @@ function standingTable(t, g){
           </div>
         </div>
 
-        ${cubesHtml}
+        <div class="bcast-stat-cubes" style="grid-template-columns:${gridTrackStyle}">
+          ${cubesHtml}
+          <div class="bcast-cube bcast-cube-status">
+            ${statusTag}
+          </div>
+        </div>
       </div>
     `);
 
@@ -19537,34 +19593,9 @@ function standingTable(t, g){
     ? (isSwiss ? 'FINAL SWISS STANDINGS' : 'FINAL GROUP STANDINGS')
     : (isSwiss ? `TOP ${cut} ADVANCE TO PLAYOFFS` : `TOP ${cut} ADVANCE`);
 
-  let subbarHtml = isSwiss ? `
-    <div class="bcast-cols-subbar swiss">
-      <div class="bcast-subbar-team">
-        <span class="bcast-col-lbl rank-lbl">#</span>
-        <span class="bcast-col-lbl">TEAM / COACH</span>
-      </div>
-      <div class="bcast-subbar-stats swiss">
-        <span class="bcast-col-lbl rec">RECORD</span>
-        <span class="bcast-col-lbl buch">BUCH</span>
-        <span class="bcast-col-lbl diff">DIFF</span>
-        <span class="bcast-col-lbl gw">GW</span>
-        <span class="bcast-col-lbl status">STATUS</span>
-      </div>
-    </div>
-  ` : `
-    <div class="bcast-cols-subbar">
-      <div class="bcast-subbar-team">
-        <span class="bcast-col-lbl rank-lbl">#</span>
-        <span class="bcast-col-lbl">TEAM / COACH</span>
-      </div>
-      <div class="bcast-subbar-stats">
-        <span class="bcast-col-lbl rec">RECORD</span>
-        <span class="bcast-col-lbl diff">DIFF</span>
-        <span class="bcast-col-lbl gw">GW</span>
-        <span class="bcast-col-lbl status">STATUS</span>
-      </div>
-    </div>
-  `;
+  let headerColsHtml = critCols.map(col => `
+    <span class="bcast-col-lbl col-${esc(col.id)}" style="width:${col.width}" title="${esc(col.title)}">${esc(col.label)}</span>
+  `).join('');
 
   return `
     <div class="bcast-group-card ${isSwiss ? 'swiss-card' : ''}">
@@ -19576,7 +19607,18 @@ function standingTable(t, g){
         <span class="bcast-advance-tag ${isPastT ? 'final' : ''}">${advanceTagText}</span>
       </div>
 
-      ${subbarHtml}
+      <div class="bcast-cols-subbar">
+        <div class="bcast-cols-subbar-inner">
+          <div class="bcast-subbar-team">
+            <span class="bcast-col-lbl rank-lbl">#</span>
+            <span class="bcast-col-lbl team-lbl">TEAM / COACH</span>
+          </div>
+          <div class="bcast-subbar-stats" style="grid-template-columns:${gridTrackStyle}">
+            ${headerColsHtml}
+            <span class="bcast-col-lbl bcast-col-status">STATUS</span>
+          </div>
+        </div>
+      </div>
 
       <div class="bcast-rows-list">
         ${rowsHtml.join('')}
