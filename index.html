@@ -2075,6 +2075,23 @@ details[open] > .past-tourney-summary .past-chevron{transform:rotate(180deg);col
   padding: 0 !important;
   overflow: visible !important;
 }
+.bcast-groups-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 16px;
+  align-items: start;
+}
+.bcast-groups-grid.two-groups {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+@media (max-width: 900px) {
+  .bcast-groups-grid.two-groups {
+    grid-template-columns: 1fr !important;
+  }
+}
+.bcast-cube-lbl {
+  display: none;
+}
 .bcast-group-head {
   display: flex;
   justify-content: space-between;
@@ -2406,63 +2423,104 @@ details[open] > .past-tourney-summary .past-chevron{transform:rotate(180deg);col
 
 /* Responsive Fluid Stacking */
 @media (max-width: 650px) {
-  .bcast-cols-subbar {
-    padding: 6px 8px;
+  .bcast-group-head {
+    padding: 10px 12px;
   }
-  .bcast-cols-subbar-inner {
-    padding: 0 4px;
-    gap: 6px;
-  }
-  .bcast-subbar-team {
-    gap: 6px;
-  }
-  .bcast-stand-row {
-    padding: 5px 6px;
-    gap: 6px;
-  }
-  .bcast-subbar-stats,
-  .bcast-stat-cubes {
-    gap: 3px;
-  }
-  .bcast-col-lbl {
-    font-size: 10px;
-  }
-  .bcast-cube {
-    height: 48px;
-  }
-  .bcast-cube-val {
-    font-size: 14px;
-  }
-  .bcast-col-lbl.bcast-col-status,
-  .bcast-cube.bcast-cube-status {
-    width: 66px !important;
-  }
-  .bcast-status-pill {
-    font-size: 9px;
-    height: 24px;
-    padding: 0 2px;
-  }
-  .bcast-team-banner {
-    height: 48px;
-    padding: 0 8px;
-  }
-  .bcast-team-name {
-    font-size: 14px;
-  }
-  .bcast-coach-name {
-    font-size: 10px;
-  }
-  .bcast-rank-badge {
-    width: 26px;
-    height: 48px;
+  .bcast-group-title {
     font-size: 15px;
   }
-  .bcast-rank-badge.leader {
-    font-size: 16px;
+  .bcast-advance-tag {
+    font-size: 9.5px;
+    padding: 3px 7px;
   }
+
+  .bcast-cols-subbar {
+    display: none !important;
+  }
+
+  .bcast-stand-row {
+    display: grid !important;
+    grid-template-areas:
+      "rank banner"
+      "stats stats" !important;
+    grid-template-columns: 34px 1fr !important;
+    gap: 7px 8px !important;
+    padding: 7px 8px !important;
+  }
+
+  .bcast-rank-badge {
+    grid-area: rank !important;
+    width: 34px !important;
+    height: 48px !important;
+    font-size: 18px !important;
+    border-radius: 5px !important;
+  }
+  .bcast-rank-badge.leader {
+    font-size: 20px !important;
+  }
+
+  .bcast-team-banner {
+    grid-area: banner !important;
+    height: 48px !important;
+    padding: 0 10px !important;
+    border-radius: 5px !important;
+  }
+  .bcast-team-name {
+    font-size: 15px !important;
+    line-height: 1.15 !important;
+  }
+  .bcast-coach-name {
+    font-size: 11px !important;
+    line-height: 1.1 !important;
+  }
+
+  .bcast-stat-cubes {
+    grid-area: stats !important;
+    display: flex !important;
+    gap: 4px !important;
+    width: 100% !important;
+  }
+
+  .bcast-cube {
+    flex: 1 !important;
+    min-width: 0 !important;
+    width: auto !important;
+    height: 38px !important;
+    padding: 2px 2px !important;
+    border-radius: 4px !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 1px !important;
+  }
+  .bcast-cube-lbl {
+    display: block !important;
+    font: 800 8.5px/1 'Barlow Condensed', sans-serif !important;
+    letter-spacing: 0.5px !important;
+    color: #858392 !important;
+    text-transform: uppercase !important;
+  }
+  .bcast-cube-val {
+    font-size: 13.5px !important;
+    line-height: 1 !important;
+  }
+
+  .bcast-cube.bcast-cube-status {
+    flex: 1.3 !important;
+    min-width: 0 !important;
+    width: auto !important;
+  }
+  .bcast-status-pill {
+    height: 24px !important;
+    font-size: 9.5px !important;
+    padding: 0 3px !important;
+    letter-spacing: 0.4px !important;
+  }
+
   .bcast-rows-list {
-    padding: 8px 6px;
-    gap: 6px;
+    padding: 8px 6px !important;
+    gap: 7px !important;
   }
 }
 /* ------------------------------------------------------------ End Broadcast Standings ------------------------------------------------------------ */
@@ -19506,8 +19564,11 @@ function standingTable(t, g){
         valHtml = `<span class="bcast-cube-val">${cellContent}</span>`;
       }
 
+      let shortLabel = critId === 'wl' ? 'REC' : esc(col.label);
+
       return `
         <div class="bcast-cube cube-${esc(critId)}" style="width:${col.width}" title="${esc(col.title)}">
+          <span class="bcast-cube-lbl">${shortLabel}</span>
           ${valHtml}
         </div>
       `;
@@ -19529,6 +19590,7 @@ function standingTable(t, g){
         <div class="bcast-stat-cubes" style="grid-template-columns:${gridTrackStyle}">
           ${cubesHtml}
           <div class="bcast-cube bcast-cube-status">
+            <span class="bcast-cube-lbl">STATUS</span>
             ${statusTag}
           </div>
         </div>
@@ -20161,7 +20223,7 @@ function Standings(){
 
   let criteria = getStandingsCriteria(t);
   let orderDesc = criteria.map(c => `${STANDING_METRICS[c]?.name || c.toUpperCase()} (${STANDING_METRICS[c]?.label || c.toUpperCase()})`).join(' → ');
-  return head('Standings', t.name + ' · group stage', controls) + `<div style="display:grid;grid-template-columns:repeat(${groups.length > 1 ? 2 : 1},minmax(0,1fr));gap:15px">${groups.map(g => `<div class="card table-wrap bcast-card-wrap">${standingTable(t, g)}</div>`).join('')}</div>` + renderTournamentAwardsStandingsBannerHtml(t) + tournamentRatingProgressionSection(t);
+  return head('Standings', t.name + ' · group stage', controls) + `<div class="bcast-groups-grid ${groups.length > 1 ? 'two-groups' : 'single-group'}">${groups.map(g => `<div class="card table-wrap bcast-card-wrap">${standingTable(t, g)}</div>`).join('')}</div>` + renderTournamentAwardsStandingsBannerHtml(t) + tournamentRatingProgressionSection(t);
 }
 
 function matchPlayerName(p){return `<button class="player-link match-hover-name" onclick="openProfile('${jsArg(p)}')" onmouseenter="highlightMatches('${jsArg(p)}',true)" onmouseleave="highlightMatches('',false)">${esc(p)}</button>`}
@@ -27743,7 +27805,7 @@ function tournamentDetail(){
 
   let content=detailTab==='Draft'?DraftRostersView(t)
     :detailTab==='Teams'?renderTournamentTeamsTabHtml(t)
-    :detailTab==='Standings'?(isDraftOngoing ? renderDraftLockedStandings(t, true) : (isSwiss ? `<div class="card table-wrap bcast-card-wrap" style="max-width:100%">${standingTable(t,'Swiss Stage')}</div>` : `<div style="display:grid;grid-template-columns:repeat(${groups.length>1?2:1},minmax(0,1fr));gap:16px;align-items:start">${groups.map(g=>`<div class="card table-wrap bcast-card-wrap" style="align-self:start">${standingTable(t,g)}</div>`).join('')}</div>`) + tournamentRatingProgressionSection(t))
+    :detailTab==='Standings'?(isDraftOngoing ? renderDraftLockedStandings(t, true) : (isSwiss ? `<div class="card table-wrap bcast-card-wrap" style="max-width:100%">${standingTable(t,'Swiss Stage')}</div>` : `<div class="bcast-groups-grid ${groups.length>1?'two-groups':'single-group'}">${groups.map(g=>`<div class="card table-wrap bcast-card-wrap" style="align-self:start">${standingTable(t,g)}</div>`).join('')}</div>`) + tournamentRatingProgressionSection(t))
     :detailTab===stage1TabName?(isDraftOngoing ? renderDraftLockedMatches(t, true) : matchesView(t,false))
     :detailTab==='Top Cut'?(isDraftOngoing ? renderDraftLockedTopCut(t, true) : topCutSection(t,!t.bracketManagerData))
     :detailTab==='Awards'?renderTournamentAwardsTabHtml(t)
