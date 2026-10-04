@@ -3,6 +3,22 @@
 All notable changes to the Bellimaka Pokémon Draft League site are documented here.
 Format: `v[MAJOR].[MINOR].[PATCH]` — Major = big new systems, Minor = new features, Patch = bug fixes / small improvements.
 
+## [v2.0.1] — 2026-10-04
+
+### Improved
+- **Home Page In-Season Showcase & Primetime Matchup Mobile Refinement** — Eliminated awkward vertical stacking and overlapping elements on the Home page on mobile devices:
+  - **Structured Two-Tier Hero Button Grid**: Reorganized the ongoing tournament hero card action buttons into a clean two-tier layout—placing primary match and leaderboard links as full-width 50/50 split buttons on row 1, with commissioner editing controls neatly side-by-side on row 2.
+  - **Fluid Hero Title Sizing**: Adjusted responsive title clamping (`clamp(26px, 7.5vw, 38px)`) and compact padding to keep the hero banner balanced without consuming excessive vertical space.
+  - **De-Cluttered Primetime Header Subbar**: Re-architected the marquee matchup banner header on mobile screens to separate division titles and match status onto line 1, reserving line 2 for commissioner feature pinning and cover tools.
+  - **Avatars & Carousel Arrow Clearance**: Provided dedicated 44px stage padding and 8px arrow anchoring so carousel navigation buttons (`‹` / `›`) never collide with or obscure coach avatars.
+  - **Vertical Team & Coach Typographic Stacking**: Stacked team names above coach names cleanly in the clash arena to prevent text clipping and truncation on narrow screens.
+- **Records Page Streamlined Mobile Leaderboard & Accolades Modal** — Overhauled the Hall of Fame Leaderboard for small screens to fit without horizontal scrolling:
+  - **Zero-Scroll Mobile Table Layout**: Streamlined table columns on mobile (`<= 768px`) to fit cleanly within the viewport without horizontal scrolling, prioritizing Rank, Trainer / Team, OVR Rating, Career W-L, and Win %.
+  - **Interactive Coach Badges Modal**: Replaced the overflowing vertical stack of badge pills with a compact tap-friendly pill counter (`🏅 N Badges`), opening a dedicated modal that showcases the coach's full collection of unlocked achievements, icons, tier badges, and requirement descriptions.
+  - **Responsive Milestone Stat Cards**: Streamlined the top Hall of Fame record cards (`.hof-grid`) into a single-column card stack on mobile screens for comfortable vertical browsing.
+
+---
+
 ## [v2.0.0] — 2026-10-04
 
 ### Added
