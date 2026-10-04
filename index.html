@@ -394,23 +394,30 @@
 .matchup-hero-backdrop{position:absolute;inset:0;background-size:cover;background-position:center;border-radius:inherit;overflow:hidden;pointer-events:none;z-index:0}
 
 /* Top Broadcast Header Subbar */
-.matchup-hero-banner{background:rgba(12,12,18,0.85);backdrop-filter:blur(8px);padding:8px 18px;display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:12px;border-bottom:1px solid rgba(255,255,255,0.08);position:relative;z-index:4}
-.primetime-top-team{display:flex;align-items:center;gap:7px;min-width:0;font:800 13px/1.2 'Barlow Condensed',sans-serif;letter-spacing:.5px;text-transform:uppercase}
-.primetime-top-team.left{justify-content:flex-start}
-.primetime-top-team.right{justify-content:flex-end}
-.primetime-top-center{display:flex;align-items:center;gap:6px;justify-content:center}
-.primetime-team-name{color:#e2e0e8;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:160px;font-weight:800}
-.primetime-dot{color:#6c6a78;font-size:11px}
-.primetime-coach-name{color:#ffd166;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.primetime-top-team .player-link{font:800 13px/1.2 'Barlow Condensed',sans-serif!important;color:#ffd166!important;letter-spacing:.5px;text-transform:uppercase;border:0;background:none;padding:0;cursor:pointer}
-.primetime-top-team .player-link:hover{color:#ff9fa6!important;text-decoration:underline}
-.primetime-header-actions{display:flex;align-items:center;gap:6px;margin-left:8px;flex-shrink:0}
+.matchup-hero-banner{background:rgba(12,12,18,0.85);backdrop-filter:blur(8px);padding:7px 18px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid rgba(255,255,255,0.08);position:relative;z-index:4}
+.primetime-top-center{display:flex;align-items:center;gap:6px}
+.primetime-header-actions{display:flex;align-items:center;gap:6px;flex-shrink:0}
 
-/* Main Battle Stage: All elements on identical horizontal centerline */
-.primetime-battle-stage{position:relative;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 24px;z-index:3;flex:1}
-.primetime-flank{display:flex;align-items:center;gap:12px;min-width:0}
-.primetime-flank.left{flex-direction:row;justify-content:flex-start}
-.primetime-flank.right{flex-direction:row-reverse;justify-content:flex-start}
+/* Main Battle Stage: Centered arena, flanks inward, generous arrow clearance */
+.primetime-battle-stage{position:relative;display:flex;align-items:center;justify-content:center;gap:clamp(20px,3.5vw,36px);padding:18px 56px;z-index:3;flex:1}
+.primetime-flank{display:flex;flex-direction:column;gap:7px;min-width:0}
+.primetime-flank.left{align-items:flex-start}
+.primetime-flank.right{align-items:flex-end}
+
+/* Team name & Coach directly above the middle showcase line */
+.primetime-flank-header{display:flex;align-items:center;gap:6px;min-width:0;font:800 13px/1.2 'Barlow Condensed',sans-serif;letter-spacing:.6px;text-transform:uppercase}
+.primetime-flank-header.left{justify-content:flex-start}
+.primetime-flank-header.right{justify-content:flex-end}
+.primetime-flank-header .primetime-team-name{color:#e2e0e8;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:145px;font-weight:800}
+.primetime-flank-header .primetime-dot{color:#6c6a78;font-size:11px}
+.primetime-flank-header .primetime-coach-name{color:#ffd166;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.primetime-flank-header .player-link{font:800 13px/1.2 'Barlow Condensed',sans-serif!important;color:#ffd166!important;letter-spacing:.6px;text-transform:uppercase;border:0;background:none;padding:0;cursor:pointer}
+.primetime-flank-header .player-link:hover{color:#ff9fa6!important;text-decoration:underline}
+
+/* The middle showcase line: Avatar & Pokémon cards */
+.primetime-flank-row{display:flex;align-items:center;gap:10px}
+.primetime-flank-row.left{flex-direction:row}
+.primetime-flank-row.right{flex-direction:row-reverse}
 
 .primetime-avatar-wrap{position:relative;cursor:pointer;transition:transform .18s ease;display:flex;align-items:center;justify-content:center;flex-shrink:0}
 .primetime-avatar-wrap:hover{transform:scale(1.08)}
@@ -418,30 +425,38 @@
 .primetime-avatar.is-winner{border-color:#4ade80!important;box-shadow:0 0 18px rgba(74,222,128,0.45),0 6px 18px rgba(0,0,0,0.65)}
 
 .primetime-mons-cluster{display:flex;align-items:center;gap:6px}
-.primetime-flank.left .primetime-mons-cluster{justify-content:flex-end}
-.primetime-flank.right .primetime-mons-cluster{justify-content:flex-end;flex-direction:row-reverse}
+.primetime-flank-row.left .primetime-mons-cluster{justify-content:flex-start}
+.primetime-flank-row.right .primetime-mons-cluster{justify-content:flex-start;flex-direction:row-reverse}
 .primetime-mon-card{position:relative;width:44px;height:56px;border-radius:8px;background:radial-gradient(circle at 50% 40%,rgba(255,255,255,0.08) 0%,rgba(14,14,22,0.88) 80%);border:1px solid rgba(255,255,255,0.12);display:grid;place-items:center;box-shadow:0 4px 12px rgba(0,0,0,0.5),inset 0 0 10px rgba(0,0,0,0.6);transition:transform .18s ease,border-color .18s ease,box-shadow .18s ease;cursor:default}
 .primetime-mon-card:hover{transform:translateY(-3px) scale(1.08);border-color:rgba(255,209,102,0.45);box-shadow:0 8px 20px rgba(0,0,0,0.7),0 0 12px rgba(255,209,102,0.25);z-index:6}
 .primetime-mon-img{width:42px;height:42px;object-fit:contain;filter:drop-shadow(0 4px 8px rgba(0,0,0,0.85));transition:transform .18s ease;color:transparent}
-.primetime-flank.left .primetime-mon-img{transform:scaleX(-1)}
+.primetime-flank-row.left .primetime-mon-img{transform:scaleX(-1)}
+
+/* Record directly below the middle showcase line */
+.primetime-flank-footer{display:flex;align-items:center;gap:6px;font:900 17px/1.1 'Barlow Condensed',sans-serif;letter-spacing:.8px}
+.primetime-flank-footer.left{justify-content:flex-start}
+.primetime-flank-footer.right{justify-content:flex-end}
+.primetime-flank-footer .primetime-record-label{font:800 10px 'Barlow Condensed',sans-serif;color:#858392;letter-spacing:.8px;text-transform:uppercase}
 
 /* Center Hub on Exact Horizontal Centerline */
-.primetime-center-hub{display:flex;align-items:center;justify-content:center;padding:6px 16px;cursor:pointer;border-radius:8px;transition:transform .15s ease,background .15s ease;min-width:90px;flex-shrink:0}
-.primetime-center-hub:hover{transform:scale(1.08);background:rgba(255,255,255,0.06)}
-.primetime-score-row{display:flex;align-items:center;justify-content:center;gap:10px;font:900 36px/1 'Barlow Condensed',sans-serif;text-shadow:0 2px 14px rgba(0,0,0,0.9)}
+.primetime-center-hub{display:flex;align-items:center;justify-content:center;padding:6px 12px;cursor:pointer;border-radius:8px;transition:transform .15s ease;flex-shrink:0}
+.primetime-center-hub:hover{transform:scale(1.08)}
+.primetime-score-row{display:flex;align-items:center;justify-content:center;gap:8px;font:900 36px/1 'Barlow Condensed',sans-serif;text-shadow:0 2px 14px rgba(0,0,0,0.9)}
 .primetime-score-val{min-width:28px;text-align:center;display:inline-block}
 .primetime-score-val.winner{color:#4ade80;text-shadow:0 0 18px rgba(74,222,128,0.55)}
 .primetime-score-val.loser{color:#7e7d8a}
 .primetime-score-dash{color:#555462;font-size:24px;line-height:1;margin:0 2px;display:inline-flex;align-items:center;justify-content:center}
-.primetime-vs-emblem{width:42px;height:42px;clip-path:polygon(50% 0%,100% 50%,50% 100%,0% 50%);background:linear-gradient(135deg,#ef3038,#ff9f1c);display:grid;place-items:center;font:900 16px 'Barlow Condensed',sans-serif;color:#fff;box-shadow:0 0 20px rgba(239,48,56,0.6);border:2px solid #ffffff40}
-.matchup-hero-outer.top-cut-glow .primetime-vs-emblem{background:linear-gradient(135deg,#ffd166,#f59e0b);box-shadow:0 0 20px rgba(255,209,102,0.6)}
+
+/* Chamfered Cyber-Shield VS Emblem */
+.primetime-vs-emblem{position:relative;width:44px;height:44px;clip-path:polygon(8px 0,calc(100% - 8px) 0,100% 8px,100% calc(100% - 8px),calc(100% - 8px) 100%,8px 100%,0 calc(100% - 8px),0 8px);background:linear-gradient(135deg,#24141c 0%,#15141f 55%,#1c1218 100%);display:grid;place-items:center;font:900 17px/1 'Barlow Condensed',sans-serif;font-style:italic;letter-spacing:1px;color:#fff;box-shadow:0 0 18px rgba(239,48,56,0.45),inset 0 0 12px rgba(239,48,56,0.22);border:1.5px solid rgba(239,48,56,0.75);transition:all .2s ease;user-select:none}
+.primetime-vs-emblem::before{content:'';position:absolute;inset:2px;clip-path:inherit;background:radial-gradient(circle at 50% 50%,rgba(239,48,56,0.25) 0%,transparent 70%);pointer-events:none}
+.matchup-hero-outer.top-cut-glow .primetime-vs-emblem{background:linear-gradient(135deg,#2a1e12 0%,#1a1722 55%,#261910 100%);border-color:rgba(255,209,102,0.8);box-shadow:0 0 18px rgba(255,209,102,0.45),inset 0 0 12px rgba(255,209,102,0.22)}
+.matchup-hero-outer.top-cut-glow .primetime-vs-emblem::before{background:radial-gradient(circle at 50% 50%,rgba(255,209,102,0.25) 0%,transparent 70%)}
+.primetime-center-hub:hover .primetime-vs-emblem{transform:scale(1.1);border-color:#ff4b54;box-shadow:0 0 24px rgba(239,48,56,0.7),inset 0 0 14px rgba(239,48,56,0.4)}
+.matchup-hero-outer.top-cut-glow .primetime-center-hub:hover .primetime-vs-emblem{border-color:#ffd166;box-shadow:0 0 24px rgba(255,209,102,0.7),inset 0 0 14px rgba(255,209,102,0.4)}
 
 /* Bottom Broadcast Subbar */
-.matchup-hero-foot{background:rgba(10,10,16,0.88);border-top:1px solid rgba(255,255,255,0.06);padding:6px 20px;display:grid;grid-template-columns:1fr auto 1fr;align-items:center;position:relative;z-index:4}
-.primetime-bottom-record{font:900 20px/1 'Barlow Condensed',sans-serif;letter-spacing:.8px;display:flex;align-items:center;gap:6px}
-.primetime-bottom-record.left{justify-content:flex-start}
-.primetime-bottom-record.right{justify-content:flex-end}
-.primetime-record-label{font:800 10px 'Barlow Condensed',sans-serif;color:#858392;letter-spacing:.8px;text-transform:uppercase}
+.matchup-hero-foot{background:rgba(10,10,16,0.88);border-top:1px solid rgba(255,255,255,0.06);padding:6px 18px;display:flex;align-items:center;justify-content:center;position:relative;z-index:4}
 .primetime-dots-wrap{display:flex;align-items:center;gap:6px;justify-content:center}
 
 .primetime-pin-btn{background:rgba(0,0,0,0.55);border:1px solid rgba(255,255,255,0.22);color:#c8c6ce;font:800 10px 'Barlow Condensed',sans-serif;letter-spacing:.6px;padding:3px 8px;border-radius:4px;cursor:pointer;display:inline-flex;align-items:center;gap:4px;transition:all .15s ease}
@@ -449,11 +464,11 @@
 .primetime-pin-btn.active{border-color:var(--amber);color:#ffd166;background:rgba(255,209,102,0.18);box-shadow:0 0 8px rgba(255,209,102,0.3)}
 .matchup-nav-arrow{position:absolute;top:50%;transform:translateY(-50%);width:28px;height:28px;border-radius:50%;background:rgba(18,18,24,0.7);border:1px solid rgba(255,255,255,0.15);color:#c8c6ce;font-size:16px;line-height:1;display:grid;place-items:center;cursor:pointer;z-index:5;transition:all .15s ease;backdrop-filter:blur(4px);padding:0}
 .matchup-nav-arrow:hover{background:rgba(239,48,56,0.4);border-color:var(--red);color:#fff;transform:translateY(-50%) scale(1.1)}
-.matchup-nav-arrow.left{left:6px}
-.matchup-nav-arrow.right{right:6px}
+.matchup-nav-arrow.left{left:14px}
+.matchup-nav-arrow.right{right:14px}
 
-@media(max-width:768px){.primetime-mon-card{width:38px;height:48px}.primetime-mon-img{width:34px;height:34px}.primetime-avatar{width:48px;height:48px}.primetime-score-row{font-size:26px}.primetime-top-team{font-size:11px}.primetime-team-name{max-width:90px}}
-@media(max-width:540px){.primetime-mons-cluster{display:none}}
+@media(max-width:768px){.primetime-battle-stage{padding:14px 38px;gap:16px}.primetime-mon-card{width:38px;height:48px}.primetime-mon-img{width:34px;height:34px}.primetime-avatar{width:48px;height:48px}.primetime-score-row{font-size:26px}.primetime-flank-header{font-size:11px}.primetime-flank-header .primetime-team-name{max-width:90px}.primetime-flank-footer{font-size:14px}}
+@media(max-width:540px){.primetime-mons-cluster{display:none}.primetime-battle-stage{padding:12px 32px;gap:12px}}
 /* ------------------------------------------------------------ Modern In-Season Hero & Showcase ------------------------------------------------------------ */
 .in-season-hero{display:grid;grid-template-columns:1.15fr 0.85fr;gap:18px;align-items:stretch}
 .tourney-hero-card{position:relative;overflow:hidden;display:flex;flex-direction:column;justify-content:space-between;padding:26px 24px;background:linear-gradient(135deg,#1b1216 0%,#15151c 60%,#11141c 100%);border:1px solid #4a2832;border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,0.55),0 0 16px rgba(239,48,56,0.12);min-height:430px;height:100%}
@@ -15605,46 +15620,48 @@ function matchupOfTheWeekCard(t){
       <aside class="card matchup-hero-card" onmouseenter="pauseFeaturedAutoplay()" onmouseleave="resumeFeaturedAutoplay(${total})">
         ${globalUnderlay}
 
-        <!-- Top Header Subbar -->
+        <!-- Top Broadcast Header Subbar -->
         <div class="matchup-hero-banner">
-          <div class="primetime-top-team left">
-            <span class="primetime-team-name" title="${esc(t1Name)}">${esc(t1Name)}</span>
-            <span class="primetime-dot">•</span>
-            <span class="primetime-coach-name">${playerLink(p1)}</span>
-          </div>
-
           <div class="primetime-top-center">
             <span style="font-size:12px">${isPlayed ? '⚡' : (isTopCut ? '🏆' : '🔥')}</span>
             <span class="eyebrow" style="color:#ffd166;margin:0;letter-spacing:1px">${esc(item.group || 'PRIMETIME MATCHUP')}</span>
           </div>
 
-          <div class="primetime-top-team right">
-            <span class="primetime-coach-name">${playerLink(p2)}</span>
-            <span class="primetime-dot">•</span>
-            <span class="primetime-team-name" title="${esc(t2Name)}">${esc(t2Name)}</span>
-            <div class="primetime-header-actions">
-              ${pinBtnHtml}
-              <span class="tag" style="background:#00000070;border:1px solid #ffffff25;font-size:9px;font-weight:900;letter-spacing:1px;color:${isPlayed ? '#7df0aa' : (isTopCut ? '#ffd166' : '#ff9fa6')};padding:2px 7px;border-radius:4px">${isPlayed ? 'FINAL SCORE' : (item.isTopCut ? 'TOP CUT' : 'PRIMETIME')}</span>
-              ${isMod ? `<button class="cover-edit" style="position:static;padding:2px 7px;font-size:10px" onclick="event.stopPropagation();openPrimetimeCoverEditor()">Edit cover</button>` : ''}
-            </div>
+          <div class="primetime-header-actions">
+            ${pinBtnHtml}
+            <span class="tag" style="background:#00000070;border:1px solid #ffffff25;font-size:9px;font-weight:900;letter-spacing:1px;color:${isPlayed ? '#7df0aa' : (isTopCut ? '#ffd166' : '#ff9fa6')};padding:2px 7px;border-radius:4px">${isPlayed ? 'FINAL SCORE' : (item.isTopCut ? 'TOP CUT' : 'PRIMETIME')}</span>
+            ${isMod ? `<button class="cover-edit" style="position:static;padding:2px 7px;font-size:10px" onclick="event.stopPropagation();openPrimetimeCoverEditor()">Edit cover</button>` : ''}
           </div>
         </div>
 
-        <!-- Main Battle Stage: All elements along horizontal centerline -->
+        <!-- Main Battle Stage: Centered arena, flanks inward, generous arrow clearance -->
         <div class="primetime-battle-stage">
           ${total > 1 ? `
             <button class="matchup-nav-arrow left" onclick="event.stopPropagation();cycleFeaturedMatch(-1, ${total})" title="Previous Matchup">‹</button>
           ` : ''}
 
-          <!-- Team 1 Flank (Coach Avatar + Inward Mons) -->
+          <!-- Team 1 Flank (Name Above, Middle Lineup, Record Below) -->
           <div class="primetime-flank left">
-            <div class="primetime-avatar-wrap" onclick="openProfile('${jsArg(p1)}')">
-              <span class="primetime-avatar ${p1Won ? 'is-winner' : ''}" style="background-image:${face1};border-color:${p1Won ? '#4ade80' : ovr1.color}">${letter1}</span>
-              <span style="position:absolute;bottom:-3px;right:-3px;transform:scale(0.85);transform-origin:bottom right">${ovr1.badgeHtml}</span>
+            <div class="primetime-flank-header left">
+              <span class="primetime-team-name" title="${esc(t1Name)}">${esc(t1Name)}</span>
+              <span class="primetime-dot">•</span>
+              <span class="primetime-coach-name">${playerLink(p1)}</span>
             </div>
 
-            <div class="primetime-mons-cluster">
-              ${renderMonCards(mons1, true)}
+            <div class="primetime-flank-row left">
+              <div class="primetime-avatar-wrap" onclick="openProfile('${jsArg(p1)}')">
+                <span class="primetime-avatar ${p1Won ? 'is-winner' : ''}" style="background-image:${face1};border-color:${p1Won ? '#4ade80' : ovr1.color}">${letter1}</span>
+                <span style="position:absolute;bottom:-3px;right:-3px;transform:scale(0.85);transform-origin:bottom right">${ovr1.badgeHtml}</span>
+              </div>
+
+              <div class="primetime-mons-cluster">
+                ${renderMonCards(mons1, true)}
+              </div>
+            </div>
+
+            <div class="primetime-flank-footer left" style="color:${p1Won ? '#4ade80' : '#ffd166'}">
+              <span class="primetime-record-label">RECORD</span>
+              <span>${esc(rec1)}</span>
             </div>
           </div>
 
@@ -15661,15 +15678,28 @@ function matchupOfTheWeekCard(t){
             `}
           </div>
 
-          <!-- Team 2 Flank (Inward Mons + Coach Avatar) -->
+          <!-- Team 2 Flank (Name Above, Middle Lineup, Record Below) -->
           <div class="primetime-flank right">
-            <div class="primetime-avatar-wrap" onclick="openProfile('${jsArg(p2)}')">
-              <span class="primetime-avatar ${p2Won ? 'is-winner' : ''}" style="background-image:${face2};border-color:${p2Won ? '#4ade80' : ovr2.color}">${letter2}</span>
-              <span style="position:absolute;bottom:-3px;right:-3px;transform:scale(0.85);transform-origin:bottom right">${ovr2.badgeHtml}</span>
+            <div class="primetime-flank-header right">
+              <span class="primetime-coach-name">${playerLink(p2)}</span>
+              <span class="primetime-dot">•</span>
+              <span class="primetime-team-name" title="${esc(t2Name)}">${esc(t2Name)}</span>
             </div>
 
-            <div class="primetime-mons-cluster">
-              ${renderMonCards(mons2, false)}
+            <div class="primetime-flank-row right">
+              <div class="primetime-avatar-wrap" onclick="openProfile('${jsArg(p2)}')">
+                <span class="primetime-avatar ${p2Won ? 'is-winner' : ''}" style="background-image:${face2};border-color:${p2Won ? '#4ade80' : ovr2.color}">${letter2}</span>
+                <span style="position:absolute;bottom:-3px;right:-3px;transform:scale(0.85);transform-origin:bottom right">${ovr2.badgeHtml}</span>
+              </div>
+
+              <div class="primetime-mons-cluster">
+                ${renderMonCards(mons2, false)}
+              </div>
+            </div>
+
+            <div class="primetime-flank-footer right" style="color:${p2Won ? '#4ade80' : '#ffd166'}">
+              <span>${esc(rec2)}</span>
+              <span class="primetime-record-label">RECORD</span>
             </div>
           </div>
 
@@ -15680,20 +15710,10 @@ function matchupOfTheWeekCard(t){
 
         <!-- Bottom Broadcast Subbar -->
         <div class="matchup-hero-foot">
-          <div class="primetime-bottom-record left" style="color:${p1Won ? '#4ade80' : '#ffd166'}">
-            <span class="primetime-record-label">RECORD</span>
-            <span>${esc(rec1)}</span>
-          </div>
-
           <div class="primetime-dots-wrap">
             ${total > 1 ? Array.from({length: total}, (_, i) => `
               <span onclick="setFeaturedMatch(${i})" style="width:${i === curIdx ? '20px' : '6px'};height:5px;border-radius:3px;background:${i === curIdx ? (isTopCut ? 'var(--amber)' : 'var(--red)') : '#ffffff25'};cursor:pointer;transition:all .2s ease"></span>
             `).join('') : `<span style="font-size:10px;color:#8e8c95;text-transform:uppercase;letter-spacing:1px;font-weight:700">Spotlight Matchup</span>`}
-          </div>
-
-          <div class="primetime-bottom-record right" style="color:${p2Won ? '#4ade80' : '#ffd166'}">
-            <span>${esc(rec2)}</span>
-            <span class="primetime-record-label">RECORD</span>
           </div>
         </div>
       </aside>
