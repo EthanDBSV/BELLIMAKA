@@ -2865,8 +2865,426 @@ details[open] > .past-tourney-summary .past-chevron{transform:rotate(180deg);col
   }
 }
 /* ------------------------------------------------------------ End Tournament Progression Showcase ------------------------------------------------------------ */
+
+/* ------------------------------------------------------------ v2.0.0 Universal Mobile Experience System ------------------------------------------------------------ */
+html, body {
+  overflow-x: hidden;
+  max-width: 100vw;
+}
+.shell {
+  overflow-x: hidden;
+  max-width: 100%;
+}
+body.mobile-nav-open {
+  overflow: hidden;
+}
+
+/* Mobile Menu Button - hidden on desktop */
+.mobile-menu-btn {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  background: #181820;
+  border: 1px solid #323240;
+  border-radius: 8px;
+  color: #f5f3f0;
+  cursor: pointer;
+  padding: 0;
+  margin-left: auto;
+  transition: all .16s ease;
+  flex-shrink: 0;
+}
+.mobile-menu-btn:hover {
+  background: #242430;
+  border-color: var(--red);
+  color: #fff;
+}
+.mobile-menu-btn svg {
+  display: block;
+}
+
+/* Slide-out Mobile Navigation Drawer */
+.mobile-drawer {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  visibility: hidden;
+  pointer-events: none;
+  transition: visibility 0.25s;
+}
+.mobile-drawer.open {
+  visibility: visible;
+  pointer-events: auto;
+}
+.mobile-drawer-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(8, 8, 12, 0.75);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  opacity: 0;
+  transition: opacity 0.25s ease;
+}
+.mobile-drawer.open .mobile-drawer-backdrop {
+  opacity: 1;
+}
+.mobile-drawer-content {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: min(320px, 84vw);
+  background: #111116;
+  border-left: 1px solid #282834;
+  box-shadow: -10px 0 35px rgba(0, 0, 0, 0.85);
+  display: flex;
+  flex-direction: column;
+  padding: 18px 16px;
+  gap: 14px;
+  transform: translateX(100%);
+  transition: transform 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  box-sizing: border-box;
+}
+.mobile-drawer.open .mobile-drawer-content {
+  transform: translateX(0);
+}
+.mobile-drawer-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #22222d;
+  flex-shrink: 0;
+}
+.mobile-drawer-header .brand {
+  font: 800 22px 'Barlow Condensed', sans-serif;
+  gap: 10px;
+}
+.mobile-drawer-close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  background: #181822;
+  border: 1px solid #30303e;
+  border-radius: 6px;
+  color: #a09fa8;
+  font-size: 16px;
+  font-weight: 800;
+  cursor: pointer;
+  transition: all .15s ease;
+  padding: 0;
+}
+.mobile-drawer-close:hover {
+  background: rgba(239, 48, 56, 0.16);
+  border-color: var(--red);
+  color: #fff;
+}
+.mobile-drawer-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex: 1;
+  overflow-y: auto;
+  padding-right: 2px;
+}
+.mobile-nav-link {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  text-align: left;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  padding: 10px 14px;
+  font: 800 15px 'Barlow Condensed', sans-serif;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: #a09fa8;
+  cursor: pointer;
+  transition: all .14s ease;
+  box-sizing: border-box;
+}
+.mobile-nav-link:hover {
+  background: #1b1b24;
+  color: #fff;
+  border-color: #2b2b38;
+}
+.mobile-nav-link.active {
+  background: var(--red);
+  color: #fff;
+  border-color: var(--red);
+  box-shadow: 0 2px 10px rgba(239, 48, 56, 0.35);
+}
+.mobile-drawer-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-top: 14px;
+  border-top: 1px solid #22222d;
+  flex-shrink: 0;
+}
+
+/* Breakpoint: <= 900px Mobile Topbar Transformation */
+@media (max-width: 900px) {
+  .topbar {
+    min-height: 56px !important;
+    height: 56px !important;
+    padding: 0 14px !important;
+    flex-wrap: nowrap !important;
+    gap: 10px !important;
+    justify-content: space-between !important;
+    box-sizing: border-box !important;
+  }
+  .topbar .brand {
+    font-size: 22px !important;
+    gap: 8px !important;
+  }
+  .topbar .bellimaka-logo {
+    width: 30px !important;
+    height: 30px !important;
+  }
+  .topbar .nav,
+  .topbar #topbarActions {
+    display: none !important;
+  }
+  .mobile-menu-btn {
+    display: flex !important;
+  }
+}
+
+/* Breakpoint: <= 900px Tournament Archives Mobile Optimization */
+@media (max-width: 900px) {
+  .archive {
+    grid-template-columns: 1fr !important;
+    gap: 14px !important;
+    width: 100% !important;
+  }
+  .archive-card {
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+    aspect-ratio: auto !important;
+    min-height: 190px !important;
+    padding: 18px 14px 16px !important;
+  }
+  .archive-card .archive-title {
+    font-size: clamp(20px, 5.8vw, 26px) !important;
+    line-height: 1.05 !important;
+    word-break: break-word;
+  }
+  .archive-card .archive-season-badge {
+    top: 12px !important;
+    left: 14px !important;
+    font-size: 9px !important;
+    padding: 4px 10px !important;
+  }
+  .archive-stats {
+    gap: 16px !important;
+    margin-top: 10px !important;
+    flex-wrap: wrap !important;
+  }
+  .archive .cover-edit {
+    right: 10px !important;
+    bottom: 10px !important;
+    font-size: 9px !important;
+    padding: 5px 8px !important;
+    max-width: fit-content;
+  }
+}
+
+/* Breakpoint: Team Sheets 5x2 Sprite Grid Responsive Scaling */
+@media (max-width: 900px) {
+  .teams {
+    grid-template-columns: 1fr !important;
+    gap: 14px !important;
+    width: 100% !important;
+  }
+}
+@media (max-width: 600px) {
+  .team-showcase-card {
+    border-radius: 10px !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+  }
+  .team-card {
+    padding: 12px 10px !important;
+    box-sizing: border-box !important;
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+  .team-card-head {
+    padding: 8px 6px 6px !important;
+  }
+  .team-card-name {
+    font-size: 17px !important;
+  }
+  .team-card-coach {
+    font-size: 11px !important;
+  }
+  .team-card-sprites-box {
+    width: 100% !important;
+    box-sizing: border-box !important;
+  }
+  .team-card-sprites-grid {
+    grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
+    gap: 6px 4px !important;
+    padding: 8px 6px !important;
+    min-height: auto !important;
+    box-sizing: border-box !important;
+    width: 100% !important;
+  }
+  .team-card-sprite-slot {
+    height: 52px !important;
+    width: 100% !important;
+    min-width: 0 !important;
+  }
+  .team-card-sprite-img {
+    width: 44px !important;
+    height: 44px !important;
+    max-width: 100% !important;
+  }
+  .team-card-sprite-empty {
+    width: 36px !important;
+    height: 36px !important;
+    font-size: 9px !important;
+  }
+  .team-card-view-btn {
+    padding: 7px 12px !important;
+    font-size: 11px !important;
+    width: 100% !important;
+    justify-content: center !important;
+  }
+}
+@media (max-width: 380px) {
+  .team-card-sprites-grid {
+    gap: 4px 2px !important;
+    padding: 6px 3px !important;
+  }
+  .team-card-sprite-slot {
+    height: 46px !important;
+  }
+  .team-card-sprite-img {
+    width: 38px !important;
+    height: 38px !important;
+  }
+  .team-card-sprite-empty {
+    width: 30px !important;
+    height: 30px !important;
+    font-size: 8px !important;
+  }
+}
+
+/* Breakpoint: Matches Section Full-Width Responsive Mobile Layout */
+@media (max-width: 768px) {
+  .match-controls-bar {
+    padding: 10px 12px !important;
+    gap: 10px !important;
+    box-sizing: border-box !important;
+  }
+  .match-filter-tabs {
+    display: flex !important;
+    flex-wrap: nowrap !important;
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    gap: 6px !important;
+    width: 100% !important;
+    padding-bottom: 2px !important;
+  }
+  .match-filter-tabs::-webkit-scrollbar {
+    display: none;
+  }
+  .m-tab {
+    flex-shrink: 0 !important;
+    white-space: nowrap !important;
+  }
+  .match-player-filter-bar {
+    display: flex !important;
+    flex-wrap: nowrap !important;
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    gap: 8px !important;
+    padding: 6px 2px 8px !important;
+    margin-top: 10px !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+  }
+  .match-player-filter-bar::-webkit-scrollbar {
+    display: none;
+  }
+  .match-player-filter-bar > span {
+    flex-shrink: 0 !important;
+    white-space: nowrap !important;
+  }
+  .m-player-chip {
+    flex-shrink: 0 !important;
+    white-space: nowrap !important;
+    padding: 5px 11px !important;
+    font-size: 12px !important;
+  }
+  .match-grid-modern {
+    grid-template-columns: 1fr !important;
+    gap: 12px !important;
+    width: 100% !important;
+  }
+  .m-card {
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+  }
+  .m-card-body {
+    padding: 10px 10px !important;
+  }
+  .m-slot {
+    padding: 8px 10px !important;
+    gap: 8px !important;
+  }
+  .m-slot-avatar {
+    width: 28px !important;
+    height: 28px !important;
+    font-size: 12px !important;
+  }
+  .m-slot-name {
+    font-size: 15px !important;
+  }
+  .m-slot-input {
+    width: 44px !important;
+    height: 34px !important;
+    font-size: 18px !important;
+  }
+  .m-slot-score {
+    width: 40px !important;
+    height: 34px !important;
+    font-size: 17px !important;
+  }
+  .m-card-foot {
+    flex-wrap: wrap !important;
+    gap: 8px !important;
+    padding: 8px 10px !important;
+  }
+  .m-card-foot .btn, .m-card-foot .btn-sm, .m-card-foot .save {
+    min-width: 0 !important;
+    max-width: 100% !important;
+  }
+  .m-replay-bar {
+    flex-wrap: wrap !important;
+    gap: 6px !important;
+  }
+  .replay-pills-group {
+    flex-wrap: wrap !important;
+  }
+}
+/* ------------------------------------------------------------ End v2.0.0 Universal Mobile Experience System ------------------------------------------------------------ */
 </style>
-<body><div class="shell"><header class="topbar"><div class="brand" onclick="go('Home')"><img src="bellimaka_logo.jpg" class="bellimaka-logo" alt="Bellimaka"><span style="letter-spacing:1px">BELLIMAKA</span></div><nav class="nav" id="nav"></nav><div id="topbarActions" style="display:flex;align-items:center;gap:8px;margin-left:auto"><button class="account" onclick="go('Account')"><span class="mode-dot"></span><span id="accountText">Sign in</span></button></div></header><main class="page" id="app"></main></div><div id="modal"></div>
+<body><div class="shell"><header class="topbar"><div class="brand" onclick="go('Home')"><img src="bellimaka_logo.jpg" class="bellimaka-logo" alt="Bellimaka"><span style="letter-spacing:1px">BELLIMAKA</span></div><nav class="nav" id="nav"></nav><div id="topbarActions" style="display:flex;align-items:center;gap:8px;margin-left:auto"><button class="account" onclick="go('Account')"><span class="mode-dot"></span><span id="accountText">Sign in</span></button></div><button class="mobile-menu-btn" id="mobileMenuBtn" onclick="toggleMobileNav(event)" aria-label="Open Navigation Menu"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg></button></header><div id="mobileDrawer" class="mobile-drawer" aria-hidden="true"><div class="mobile-drawer-backdrop" onclick="closeMobileNav()"></div><div class="mobile-drawer-content"><div class="mobile-drawer-header"><div class="brand" onclick="closeMobileNav(); go('Home');"><img src="bellimaka_logo.jpg" class="bellimaka-logo" alt="Bellimaka"><span style="letter-spacing:1px">BELLIMAKA</span></div><button class="mobile-drawer-close" onclick="closeMobileNav()" aria-label="Close Navigation Menu">✕</button></div><div class="mobile-drawer-nav" id="mobileDrawerNav"></div><div class="mobile-drawer-actions" id="mobileDrawerActions"></div></div></div><main class="page" id="app"></main></div><div id="modal"></div>
 <script>
 const SVG_SWORD_GREY = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:4px;flex-shrink:0"><polyline points="14.5 17.5 3 6 3 3 6 3 17.5 14.5"></polyline><line x1="13" y1="19" x2="19" y2="13"></line><line x1="16" y1="16" x2="20" y2="20"></line><line x1="19" y1="21" x2="21" y2="19"></line></svg>`;
 const SVG_SHIELD_GREY = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:4px;flex-shrink:0"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>`;
@@ -3705,8 +4123,36 @@ window.setModerator = function(v){ moderator = Boolean(v); window.moderator = Bo
 function save(){localStorage.setItem('draftdex-cut',cut);localStorage.setItem('draftdex-board',boardLink)}
 
 function head(title,over,action=''){return `<div class="page-head"><div><div class="eyebrow">${over}</div><h1>${title}</h1></div>${action}</div>`}
+function toggleMobileNav(e){
+  if(e) e.stopPropagation();
+  let drawer = document.getElementById('mobileDrawer');
+  if(!drawer) return;
+  let isOpen = drawer.classList.contains('open');
+  if(isOpen){
+    closeMobileNav();
+  } else {
+    drawer.classList.add('open');
+    drawer.setAttribute('aria-hidden', 'false');
+    document.body.classList.add('mobile-nav-open');
+  }
+}
+function closeMobileNav(){
+  let drawer = document.getElementById('mobileDrawer');
+  if(!drawer) return;
+  drawer.classList.remove('open');
+  drawer.setAttribute('aria-hidden', 'true');
+  document.body.classList.remove('mobile-nav-open');
+}
+window.addEventListener('keydown', function(e){
+  if(e.key === 'Escape') closeMobileNav();
+});
+
 function nav(){
-  document.querySelector('#nav').innerHTML=tabs.map(t=>`<button class="${current===t?'active':''}" onclick="go('${t}')">${t}</button>`).join('');
+  let navHtml = tabs.map(t=>`<button class="${current===t?'active':''}" onclick="go('${t}')">${t}</button>`).join('');
+  let deskNav = document.querySelector('#nav');
+  if(deskNav) deskNav.innerHTML = navHtml;
+  let mobNav = document.querySelector('#mobileDrawerNav');
+  if(mobNav) mobNav.innerHTML = tabs.map(t=>`<button class="mobile-nav-link ${current===t?'active':''}" onclick="closeMobileNav(); go('${t}')">${t}</button>`).join('');
   if(typeof renderTopNavExtras === 'function') renderTopNavExtras();
 }
 function go(t,updateHash=true){
@@ -10806,7 +11252,7 @@ function getAccountDisplayText(){
 
 function renderTopNavExtras(){
   let wrap = document.querySelector('#topbarActions');
-  if(!wrap) return;
+  let mobWrap = document.querySelector('#mobileDrawerActions');
   let isSandbox = isSandboxMode();
   let sandboxBtn = '';
   if(moderator){
@@ -10825,14 +11271,38 @@ function renderTopNavExtras(){
       <span>Discord</span>
     </button>` : '';
 
-  wrap.innerHTML = `
-    ${discordBtn}
-    ${sandboxBtn}
-    <button class="account" onclick="go('Account')">
-      <span class="mode-dot" style="${isSandbox && moderator ? 'background:#a855f7;box-shadow:0 0 9px #a855f7' : ''}"></span>
-      <span id="accountText">${esc(userLabel)}</span>
-    </button>
-  `;
+  if(wrap){
+    wrap.innerHTML = `
+      ${discordBtn}
+      ${sandboxBtn}
+      <button class="account" onclick="go('Account')">
+        <span class="mode-dot" style="${isSandbox && moderator ? 'background:#a855f7;box-shadow:0 0 9px #a855f7' : ''}"></span>
+        <span id="accountText">${esc(userLabel)}</span>
+      </button>
+    `;
+  }
+
+  if(mobWrap){
+    let mobDiscord = moderator ? `<button class="btn ghost btn-sm" onclick="closeMobileNav(); openDiscordSettingsModal()" title="Discord 24/7 Webhook & Alerts" style="padding:9px 12px;font-size:12px;border-radius:8px;border-color:#5865F2;color:#7983f5;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:6px;width:100%">
+        <svg style="width:14px;height:14px;fill:currentColor" viewBox="0 0 24 24"><path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.057 19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028c.462-.63.874-1.295 1.226-1.994.021-.041.001-.09-.041-.106a13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.929 1.793 8.18 1.793 12.061 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.894.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.028zM8.02 15.33c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.956-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.956 2.418-2.157 2.418zm7.975 0c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.955-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.946 2.418-2.157 2.418z"/></svg>
+        <span>Discord</span>
+      </button>` : '';
+    let mobSandbox = (moderator && isSandbox)
+      ? `<button class="btn ghost btn-sm" onclick="closeMobileNav(); openSandboxModal()" title="Sandbox Active" style="background:#2b1b36;border:1px solid #a855f7;color:#e9d5ff;padding:9px 12px;font-size:12px;border-radius:8px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:6px;width:100%;font-weight:800">
+          <span style="font-size:14px">🧪</span> <span>Sandbox Active</span>
+        </button>`
+      : (moderator ? `<button class="btn ghost btn-sm" onclick="closeMobileNav(); openSandboxModal()" title="Open Test Lab" style="padding:9px 12px;font-size:12px;border-radius:8px;border-color:#3a3a46;color:#a09fa8;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:6px;width:100%">
+          <span style="font-size:14px">🧪</span> <span>Test Lab</span>
+        </button>` : '');
+    mobWrap.innerHTML = `
+      <button class="account" style="width:100%;justify-content:center;padding:10px 14px;font-size:13px;border-radius:8px;margin:0" onclick="closeMobileNav(); go('Account')">
+        <span class="mode-dot" style="${isSandbox && moderator ? 'background:#a855f7;box-shadow:0 0 9px #a855f7' : ''}"></span>
+        <span id="accountTextMobile">${esc(userLabel)}</span>
+      </button>
+      ${mobDiscord}
+      ${mobSandbox}
+    `;
+  }
 }
 
 function toggleSandboxMode(){
@@ -17233,7 +17703,7 @@ function tournamentCard(t){
 
 function Tournaments(){
   let sorted = sortedTournamentsChronological();
-  return head('Tournaments','League archive',moderator?`<button class="btn" onclick="openCreator()">+ New tournament</button>`:'')+`<div class="archive">${sorted.map(t=>`<div style="position:relative">${tournamentCard(t)}${moderator?`<button class="cover-edit" onclick="event.stopPropagation();openCoverEditor('${t.id}')">Edit cover</button>`:''}</div>`).join('')}</div>`;
+  return head('Tournaments','League archive',moderator?`<button class="btn" onclick="openCreator()">+ New tournament</button>`:'')+`<div class="archive">${sorted.map(t=>`<div style="position:relative;width:100%;min-width:0;box-sizing:border-box">${tournamentCard(t)}${moderator?`<button class="cover-edit" onclick="event.stopPropagation();openCoverEditor('${t.id}')">Edit cover</button>`:''}</div>`).join('')}</div>`;
 }
 
 

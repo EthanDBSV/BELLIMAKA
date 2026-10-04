@@ -3,6 +3,34 @@
 All notable changes to the Bellimaka Pokémon Draft League site are documented here.
 Format: `v[MAJOR].[MINOR].[PATCH]` — Major = big new systems, Minor = new features, Patch = bug fixes / small improvements.
 
+## [v2.0.0] — 2026-10-04
+
+### Added
+- **Mobile Navigation Drawer & Ultra-Slim Responsive Header** — Completely modernized the global topbar navigation experience for mobile and tablet devices (`<= 900px`):
+  - **Sleek Single-Row Mobile Header**: Transformed the topbar from a cramped 3-to-4 row wrapping banner (~180px tall) into a clean, uniform 56px sticky header, saving massive vertical screen real estate on mobile devices.
+  - **Dedicated Mobile Hamburger Menu Trigger**: Introduced an animated, accessible hamburger menu button (`☰`) in the top-right header corner with keyboard support and touch-friendly tap targets.
+  - **Slide-Out Mobile Drawer Canvas**: Integrated a native slide-out navigation drawer featuring a dark frosted glass backdrop blur overlay (`rgba(8, 8, 12, 0.75)` with `backdrop-filter: blur(6px)`), smooth cubic-bezier slide transitions, and full viewport height access.
+  - **Synchronized Mobile Route Navigation**: Seamlessly renders all league tabs into full-width vertical navigation tiles with active route indicator states, automatically closing the drawer upon selecting any route or pressing `Escape`.
+  - **Dedicated Mobile Action Panel**: Moved account access, Discord webhook alerts, and commissioner test lab tools into a dedicated footer module within the mobile drawer, preventing topbar clutter on smaller displays.
+
+### Improved
+- **Tournament Archives Mobile Native Cards** — Redesigned the tournament archive directory on mobile screens to eliminate horizontal screen overflow and awkward button cutoffs:
+  - **Full-Width Single-Column Stack**: Converted the archive grid into a responsive single-column layout on screens `<= 900px`, allowing tournament cards to fill 100% of available mobile viewport width.
+  - **Adaptive Fluid Card Height & Typography**: Replaced rigid aspect ratios with flexible card heights and fluid title sizing (`clamp(20px, 5.8vw, 26px)`), ensuring multi-line tournament titles wrap naturally without clipping.
+  - **Contained Cover Management Button**: Anchored the commissioner cover editor trigger safely within the lower-right boundary of the card, preventing it from overflowing the right edge of mobile screens.
+- **Team Sheets Responsive 5×2 Roster Grid** — Resolved roster slot cutoff issues on mobile screens where the 5th Pokémon in each row was clipped past the edge:
+  - **Proportional Slot & Sprite Scaling**: Scaled roster slots down from 74px to 52px (and 46px on ultra-compact devices) with proportional 44px Pokémon sprite assets, ensuring all 10 Pokémon in the 5×2 grid fit seamlessly on mobile devices down to 320px width.
+  - **Full-Width Card Architecture**: Reinforced `.teams-showcase-grid` and `.team-showcase-card` with strict `box-sizing: border-box` and zero-overflow containers, guaranteeing coach cards adapt fluidly across all phone screen sizes.
+  - **Streamlined Card Header & Action Button**: Refined coach metadata, avatar badges, and draft count chips with compact padding and full-width view roster buttons.
+- **Matches Section Responsive Mobile Layout & Horizontal Filter Bar** — Overhauled the match center for small screens to prevent coach filters and match cards from overflowing:
+  - **Single-Row Horizontal Scroll Coach Filter Bar**: Transformed the multi-row wrapping coach chips into a sleek, touch-friendly horizontal scroll pill bar with smooth scrolling and hidden scrollbars, reducing vertical height by over 70%.
+  - **Horizontal Scroll Stage Filter Tabs**: Converted tournament round and stage filter tabs into a smooth single-row horizontal scroll bar for swift touch navigation across divisions and weeks.
+  - **Full-Width Responsive Match Cards**: Overrode desktop `minmax(390px, 1fr)` grid constraints on mobile (`<= 768px`) with `1fr` single-column cards, preventing fixture cards and score inputs from clipping past the screen edge.
+  - **Adaptive Match Card Footers & Replay Pills**: Enabled natural flex-wrapping on score editing buttons, match submission controls, and Showdown replay pills so action buttons never overflow on narrow screens.
+- **Universal Viewport Containment** — Hardened global layout rules across `html`, `body`, and the application shell with `overflow-x: hidden` and `max-width: 100vw`, eliminating rogue horizontal page jitter and ensuring a solid native app-like mobile experience.
+
+---
+
 ## [v1.3.0] — 2026-10-04
 
 ### Added
