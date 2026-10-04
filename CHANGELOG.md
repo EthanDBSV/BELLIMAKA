@@ -6,12 +6,12 @@ Format: `v[MAJOR].[MINOR].[PATCH]` — Major = big new systems, Minor = new feat
 ## [v1.2.0] — 2026-10-03
 
 ### Added
-- **Cyber-Esports Angled Chamfered Broadcast Banner for Primetime Matchups** — Completely redesigned the Primetime Matchup hero card into a futuristic, high-energy cyber-esports broadcast clash graphic utilizing 100% of available stage space:
-  - **Beveled Geometric Silhouette**: Enclosed the banner in a cyber-esports frame featuring precision 45-degree angled corner chamfers (`clip-path: polygon(...)`), metallic border accents, and dynamic ambient glow (electric crimson for regular season, prestige gold for Top Cut playoffs).
+- **Broadcast Clash Banner for Primetime Matchups** — Completely redesigned the Primetime Matchup hero card into a futuristic, high-energy esports broadcast clash graphic utilizing 100% of available stage space:
+  - **Metallic Gradient Rectangle Outline**: Framed the banner in a clean rounded rectangle (`border-radius: 10px`) highlighted by a vibrant metallic gradient outline (crimson-to-gold for regular season, prestige gold for Top Cut playoffs) and dynamic ambient glow.
   - **Unified Broadcast Canvas**: Replaced disruptive diagonal split lines with a unified, clean backdrop presentation showcasing custom uploaded matchup artwork with a dark gradient underlay.
   - **Team Flank Stacks & Centered Horizontal Staging**: Reorganized each team into a cohesive vertical flank stack—placing the team and coach name directly above the middle lineup, the coach avatar and Pokémon showcase cards in the middle row, and team records directly below the lineup.
   - **Centered Arena & Outer Navigation Clearance**: Pulled both team flanks inward toward the center clash hub (`justify-content: center` with balanced gap), eliminating large voids around the center hub while guaranteeing generous clearance between coach avatars and outer navigation arrows (`‹` / `›`).
-  - **Chamfered Cyber-Shield VS Emblem**: Replaced the dated diamond shape with an 8-sided chamfered cyber-shield matching the outer card's 45-degree corner angles, finished with obsidian glass, metallic borders, neon energy glow, and sharp italic typography.
+  - **Large Floating Typographic VS Emblem**: Removed the enclosed box shape around the central clash badge in favor of an energetic, prominent floating typographic "VS" (`font: 900 32px 'Barlow Condensed'`) with metallic gradient coloring and radiant neon drop-shadows.
   - **Symmetrical Broadcast Header & Pagination Footer**: Streamlined the top bar to house division metadata and commissioner controls, and focused the bottom subbar purely on match pagination dots.
   - **Unified Site Typography**: Styled coach and team names with the site's signature condensed bold aesthetic (`'Barlow Condensed', sans-serif`, uppercase), perfectly matching global league styling.
   - **Context-Aware Roster & Battle Performer Resolution**: In unplayed upcoming matches, the lineup highlights top drafted picks and tier aces; in completed fixtures, it automatically showcases top battle performers and starters parsed directly from match replay telemetry.
