@@ -3,6 +3,16 @@
 All notable changes to the Bellimaka Pokémon Draft League site are documented here.
 Format: `v[MAJOR].[MINOR].[PATCH]` — Major = big new systems, Minor = new features, Patch = bug fixes / small improvements.
 
+## [v2.2.1] — 2026-10-04
+
+### Improved
+- **Primetime Matchup Typography, Grunge Scratches & Static Hashtag Ribbons** — Refined the College Football broadcast graphic based on user alignment:
+  - **'Another Danger' Marker Typography**: Re-styled team names in the aggressive hand-drawn marker aesthetic using `@font-face` prioritization for `local('Another Danger')` / `local('Another Danger Slanted')`, coupled with Google Fonts `Permanent Marker` and `Barlow Condensed` fallbacks for cross-device support. Styled with athletic forward slant, metallic chrome gradients, and crisp high-contrast drop shadows.
+  - **Authentic Stadium Grunge & Scratch Texture Overlay**: Implemented `getCfbScratchOverlayHtml()` generating high-detail vector diagonal slash scrapes, claw gouges, micro-scuffs, and stadium dust specks with `mix-blend-mode: overlay`. Enhanced background color saturation with radial spotlight flares and micro woven cross-hatch grit for an authentic athletic arena feel.
+  - **Static High-Legibility Hashtag Ribbons in Agency FB**: Converted the scrolling hashtag ribbons to static, non-moving banners utilizing `Agency FB Bold Condensed` (`'Agency FB', 'Barlow Condensed'`) for clean, effortless legibility across desktop and mobile, with repeating hashtags and star separators (`#CoachNation ★ #CoachNation...`) spanning the bar cleanly without motion fatigue.
+
+---
+
 ## [v2.2.0] — 2026-10-04
 
 ### Added
