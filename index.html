@@ -3970,14 +3970,17 @@ body.mobile-nav-open {
 /* ------------------------------------------------------------ End v2.0.0 Universal Mobile Experience System ------------------------------------------------------------ */
 
 /* ------------------------------------------------------------ v2.1.0 Mobile Experience & Modernized Guides System ------------------------------------------------------------ */
-/* Prediction Ballot Modal Mobile Styling */
+/* Prediction Ballot Modal Mobile & Desktop Styling */
+.ballot-modal-wrap {
+  padding: 12px !important;
+}
 .ballot-view-modal {
-  width: 1350px;
-  max-width: 96vw;
-  max-height: 92vh;
+  width: min(1650px, calc(100vw - 24px)) !important;
+  max-width: calc(100vw - 24px) !important;
+  max-height: 94vh !important;
   display: flex;
   flex-direction: column;
-  padding: 24px 28px;
+  padding: 20px 24px;
   background: #0d0e12;
   border: 1px solid #282a36;
   border-radius: 12px;
@@ -3991,6 +3994,9 @@ body.mobile-nav-open {
   gap: 12px;
 }
 @media (max-width: 680px) {
+  .ballot-modal-wrap {
+    padding: 0 !important;
+  }
   .ballot-view-modal {
     width: 100vw !important;
     max-width: 100vw !important;
@@ -27285,77 +27291,9 @@ function renderBallotModalScrollContent(){
 
     let handledKeys = new Set();
     handledKeys.add('champion');
+    handledKeys.add('champion:outright');
+    handledKeys.add(champQuestion);
     handledKeys.add(canonicalPredictionEventKey(champQuestion));
-
-    if(isPlayoff){
-      let cutModel = typeof getTournamentTopCutModel === 'function' ? getTournamentTopCutModel(t) : null;
-      let allCutMatches = cutModel ? [
-        ...(cutModel.wbRounds || []).flatMap(r => r.matches),
-        ...(cutModel.lbRounds || []).flatMap(r => r.matches),
-        ...(cutModel.gfMatches || [])
-      ] : [];
-      allCutMatches.forEach(m => {
-        let p1 = (m.p1 || 'TBD').trim(), p2 = (m.p2 || 'TBD').trim();
-        handledKeys.add('bracket:' + (m.id || '').toLowerCase());
-        handledKeys.add('draftdex-bpick-' + m.id);
-        handledKeys.add('Top Cut Bracket Match · ' + m.id);
-        handledKeys.add(canonicalPredictionEventKey('draftdex-bpick-' + m.id));
-        handledKeys.add(canonicalPredictionEventKey('Top Cut Bracket Match · ' + m.id));
-        if(p1 !== 'TBD' && p2 !== 'TBD'){
-          handledKeys.add('cut:' + [p1, p2].sort((a,b) => a.localeCompare(b)).join(' vs '));
-          handledKeys.add('Top Cut · Who wins: ' + p1 + ' vs ' + p2);
-          handledKeys.add('Top Cut · Who wins: ' + p2 + ' vs ' + p1);
-          handledKeys.add(canonicalPredictionEventKey('Top Cut · Who wins: ' + p1 + ' vs ' + p2));
-        }
-      });
-
-      let otherPicks = deduped.filter(r => !handledKeys.has(canonicalPredictionEventKey(r.prediction_key)) && !handledKeys.has(r.prediction_key));
-      let otherHtml = otherPicks.length ? `
-        <section class="pred-section">
-          <div class="section-head" style="margin-bottom:10px">
-            <div>
-              <div class="eyebrow" style="color:var(--amber);margin-bottom:2px">BONUS / CUSTOM OUTCOMES</div>
-              <h2 style="margin:0;font:800 20px 'Barlow Condensed'">ADDITIONAL PREDICTIONS (${otherPicks.length})</h2>
-            </div>
-          </div>
-          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:8px">
-            ${otherPicks.map(r => {
-              let outcome = predictionOutcome(t, r.prediction_key);
-              let isHit = outcome.answer != null && outcome.answer === r.selection;
-              let isMiss = outcome.answer != null && outcome.answer !== r.selection;
-              let badge = '';
-              if(outcome.answer == null){
-                badge = '<span class="tag hunt" style="font-size:9px;background:#3b2a14;color:#ffd166;border:1px solid #63471f">⏳ PENDING</span>';
-              } else if(isHit){
-                badge = `<span class="tag safe" style="font-size:9px;background:#153b29;color:#77e8a8;border:1px solid #235c40">✓ HIT (+${outcome.value} PTS)</span>`;
-              } else {
-                badge = '<span class="tag out" style="font-size:9px;background:#491a20;color:#fa8a90;border:1px solid #6b242e">✗ MISSED</span>';
-              }
-              return `
-                <div class="card" style="padding:10px 12px;background:#121217;border:1px solid ${isHit ? '#235c40' : (isMiss ? '#4a242a' : '#282833')}">
-                  <div style="font-size:11px;font-weight:700;color:#aaa;margin-bottom:6px">${esc(r.prediction_key)}</div>
-                  <div style="display:flex;justify-content:space-between;align-items:center">
-                    <span style="font-size:13px;font-weight:800;color:#ffd166">${esc(r.selection)}</span>
-                    ${badge}
-                  </div>
-                </div>
-              `;
-            }).join('')}
-          </div>
-        </section>
-      ` : '';
-
-      return `
-        <!-- Champion Outright Picker (100 PTS) -->
-        ${renderBallotChampionShowcase(t, champQuestion)}
-
-        <!-- Top Cut Prediction Bracket -->
-        ${topCutPredictionBracket(t)}
-
-        <!-- Additional Predictions if any -->
-        ${otherHtml}
-      `;
-    }
 
     let isSwiss = getStage1Format(t) === 'swiss';
     let groups = typeof groupsOf === 'function' ? groupsOf(t) : {};
@@ -27387,8 +27325,10 @@ function renderBallotModalScrollContent(){
       return true;
     });
 
+    // Mark groups and regular season games as handled
     groupsList.forEach(g => {
       handledKeys.add('group:' + g.trim().toLowerCase());
+      handledKeys.add('Who will top ' + g + '?');
       handledKeys.add(canonicalPredictionEventKey('Who will top ' + g + '?'));
     });
     games.forEach(m => {
@@ -27396,9 +27336,42 @@ function renderBallotModalScrollContent(){
       handledKeys.add('match:' + [p1, p2].sort((a,b) => a.localeCompare(b)).join(' vs '));
       handledKeys.add('match:' + p1 + ' vs ' + p2);
       handledKeys.add('match:' + p2 + ' vs ' + p1);
+      handledKeys.add('Who wins: ' + p1 + ' vs ' + p2);
+      handledKeys.add('Who wins: ' + p2 + ' vs ' + p1);
       handledKeys.add(canonicalPredictionEventKey('Who wins: ' + p1 + ' vs ' + p2));
       handledKeys.add(canonicalPredictionEventKey('Who wins: ' + p2 + ' vs ' + p1));
     });
+
+    if(isPlayoff){
+      let cutModel = typeof getTournamentTopCutModel === 'function' ? getTournamentTopCutModel(t) : null;
+      let allCutMatches = cutModel ? [
+        ...(cutModel.wbRounds || []).flatMap(r => r.matches),
+        ...(cutModel.lbRounds || []).flatMap(r => r.matches),
+        ...(cutModel.gfMatches || [])
+      ] : [];
+      allCutMatches.forEach(m => {
+        let p1 = (m.p1 || 'TBD').trim(), p2 = (m.p2 || 'TBD').trim();
+        handledKeys.add('bracket:' + (m.id || '').toLowerCase());
+        handledKeys.add('draftdex-bpick-' + m.id);
+        handledKeys.add('Top Cut Bracket Match · ' + m.id);
+        handledKeys.add(canonicalPredictionEventKey('draftdex-bpick-' + m.id));
+        handledKeys.add(canonicalPredictionEventKey('Top Cut Bracket Match · ' + m.id));
+        if(p1 !== 'TBD' && p2 !== 'TBD'){
+          handledKeys.add('cut:' + [p1, p2].sort((a,b) => a.localeCompare(b)).join(' vs '));
+          handledKeys.add('Top Cut · Who wins: ' + p1 + ' vs ' + p2);
+          handledKeys.add('Top Cut · Who wins: ' + p2 + ' vs ' + p1);
+          handledKeys.add(canonicalPredictionEventKey('Top Cut · Who wins: ' + p1 + ' vs ' + p2));
+        }
+      });
+      // Explicitly ensure finals / reset matches are covered
+      ['gf1', 'gf2'].forEach(gfId => {
+        handledKeys.add('bracket:' + gfId);
+        handledKeys.add('draftdex-bpick-' + gfId);
+        handledKeys.add('Top Cut Bracket Match · ' + gfId);
+        handledKeys.add(canonicalPredictionEventKey('draftdex-bpick-' + gfId));
+        handledKeys.add(canonicalPredictionEventKey('Top Cut Bracket Match · ' + gfId));
+      });
+    }
 
     let otherPicks = deduped.filter(r => !handledKeys.has(canonicalPredictionEventKey(r.prediction_key)) && !handledKeys.has(r.prediction_key));
     let otherHtml = otherPicks.length ? `
@@ -27435,6 +27408,57 @@ function renderBallotModalScrollContent(){
         </div>
       </section>
     ` : '';
+
+    if(isPlayoff){
+      return `
+        <!-- 1. Champion Outright Picker (100 PTS) -->
+        ${renderBallotChampionShowcase(t, champQuestion)}
+
+        <!-- 2. Top Cut Prediction Bracket (20 PTS each) -->
+        ${topCutPredictionBracket(t)}
+
+        <!-- 3. Regular Season Archive Section -->
+        <section class="pred-section" style="margin-top:10px;padding-top:24px;border-top:1px solid #282a36">
+          <div class="tc-section-header" style="margin-bottom:18px">
+            <h3 style="font-size:22px"><span style="color:var(--amber)">📜</span> Regular Season Archive</h3>
+            <span style="font-size:10px;font-weight:800;letter-spacing:.8px;color:#8e8c95;text-transform:uppercase">Completed Group Stage Predictions</span>
+          </div>
+
+          <!-- Division / Group Leaders (45 PTS each) -->
+          ${!isSwiss && groupsList.length ? renderBallotGroupWinners(t, groups) : ''}
+
+          <!-- Individual Match Pick'ems (8 PTS each) -->
+          <div style="margin-top:20px">
+            <div class="section-head" style="margin-bottom:12px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
+              <div>
+                <div class="eyebrow" style="color:var(--red);margin-bottom:2px">8 PTS EACH · HEAD-TO-HEAD MATCHUPS</div>
+                <h2 style="margin:0;font:800 24px 'Barlow Condensed'">${predRound === 'all' ? 'MATCH PICK\'EMS' : esc(predRound.toUpperCase())}</h2>
+              </div>
+              <!-- Round & Status Filter Bar -->
+              <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+                <span style="font-size:11px;font-weight:800;color:#8e8c95;letter-spacing:.6px;text-transform:uppercase;margin-right:2px">${isSwiss ? 'Round:' : 'Group:'}</span>
+                <button class="m-tab ${predRound === 'all' ? 'active' : ''}" style="padding:4px 10px;font-size:11px" onclick="setBallotFilter('round','all')">All</button>
+                ${roundList.map(r => `
+                  <button class="m-tab ${predRound === r ? 'active' : ''}" style="padding:4px 10px;font-size:11px" onclick="setBallotFilter('round','${jsArg(r)}')">${esc(r)}</button>
+                `).join('')}
+                <div style="width:1px;height:18px;background:#333;margin:0 4px"></div>
+                <button class="m-tab ${predStatus === 'all' ? 'active' : ''}" style="padding:4px 8px;font-size:10px" onclick="setBallotFilter('status','all')">All (${games.length})</button>
+                <button class="m-tab ${predStatus === 'pending' ? 'active' : ''}" style="padding:4px 8px;font-size:10px" onclick="setBallotFilter('status','pending')">Open</button>
+                <button class="m-tab ${predStatus === 'decided' ? 'active' : ''}" style="padding:4px 8px;font-size:10px" onclick="setBallotFilter('status','decided')">Decided</button>
+              </div>
+            </div>
+            ${filteredGames.length ? `
+              <div class="pred-compact-grid">
+                ${filteredGames.map(m => compactMatchPredictionCard(t, m, true)).join('')}
+              </div>
+            ` : '<div class="card empty"><p class="sub">No fixtures matching current filter.</p></div>'}
+          </div>
+        </section>
+
+        <!-- 4. Additional Predictions if any -->
+        ${otherHtml}
+      `;
+    }
 
     return `
       <!-- 1. Champion Outright Picker (100 PTS) -->
@@ -27592,7 +27616,7 @@ async function openUserPredictionsModal(usernameOrId, tournamentId){
   if(!modalEl) return;
 
   modalEl.innerHTML = `
-    <div class="modal-wrap" onclick="if(event.target===this)closeModal()">
+    <div class="modal-wrap ballot-modal-wrap" onclick="if(event.target===this)closeModal()">
       <div class="modal ballot-view-modal">
         <div class="modal-head" style="margin-bottom:18px;padding-bottom:14px;border-bottom:1px solid #2a2a36">
           <div style="display:flex;align-items:center;gap:12px">
@@ -28389,8 +28413,46 @@ function predictions(t=activeT()){
       <!-- Main Column: All Pick'em Sections -->
       <div style="display:flex;flex-direction:column;gap:26px;min-width:0">
         ${isPlayoff ? `
-          <!-- Playoff Phase: Only the Top Cut Prediction Bracket appears -->
+          <!-- Playoff Phase: Top Cut Prediction Bracket & Regular Season Archive -->
           ${topCutPredictionBracket(t)}
+
+          <!-- Regular Season Archive -->
+          <section class="pred-section" style="margin-top:10px;padding-top:24px;border-top:1px solid #282a36">
+            <div class="tc-section-header" style="margin-bottom:18px">
+              <h3 style="font-size:22px"><span style="color:var(--amber)">📜</span> Regular Season Archive</h3>
+              <span style="font-size:10px;font-weight:800;letter-spacing:.8px;color:#8e8c95;text-transform:uppercase">Completed Group Stage Predictions</span>
+            </div>
+
+            <!-- Division / Group Leaders (45 PTS each) -->
+            ${!isSwiss && groupsList.length ? renderGroupWinnersPredictionPicker(t, groups, true) : ''}
+
+            <!-- Individual Match Pick'ems (8 PTS each) -->
+            <div style="margin-top:20px">
+              <div class="section-head" style="margin-bottom:12px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
+                <div>
+                  <div class="eyebrow" style="color:var(--red);margin-bottom:2px">8 PTS EACH · HEAD-TO-HEAD MATCHUPS</div>
+                  <h2 style="margin:0;font:800 24px 'Barlow Condensed'">${predRound === 'all' ? 'MATCH PICK\'EMS' : esc(predRound.toUpperCase())}</h2>
+                </div>
+                <!-- Round & Status Filter Bar -->
+                <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+                  <span style="font-size:11px;font-weight:800;color:#8e8c95;letter-spacing:.6px;text-transform:uppercase;margin-right:2px">${isSwiss ? 'Round:' : 'Group:'}</span>
+                  <button class="m-tab ${predRound === 'all' ? 'active' : ''}" style="padding:4px 10px;font-size:11px" onclick="window.predRoundTab='all';render()">All</button>
+                  ${roundList.map(r => `
+                    <button class="m-tab ${predRound === r ? 'active' : ''}" style="padding:4px 10px;font-size:11px" onclick="window.predRoundTab='${r}';render()">${esc(r)}</button>
+                  `).join('')}
+                  <div style="width:1px;height:18px;background:#333;margin:0 4px"></div>
+                  <button class="m-tab ${predStatus === 'all' ? 'active' : ''}" style="padding:4px 8px;font-size:10px" onclick="window.predStatusTab='all';render()">All (${games.length})</button>
+                  <button class="m-tab ${predStatus === 'pending' ? 'active' : ''}" style="padding:4px 8px;font-size:10px" onclick="window.predStatusTab='pending';render()">Open</button>
+                  <button class="m-tab ${predStatus === 'decided' ? 'active' : ''}" style="padding:4px 8px;font-size:10px" onclick="window.predStatusTab='decided';render()">Decided</button>
+                </div>
+              </div>
+              ${filteredGames.length ? `
+                <div class="pred-compact-grid">
+                  ${filteredGames.map(m => compactMatchPredictionCard(t, m, true)).join('')}
+                </div>
+              ` : '<div class="card empty"><p class="sub">No fixtures matching current filter.</p></div>'}
+            </div>
+          </section>
         ` : `
           <!-- Group / Swiss Phase: Champion, Group Leaders & Match Pick'ems -->
           <!-- 1. Champion Outright Picker (100 PTS) -->

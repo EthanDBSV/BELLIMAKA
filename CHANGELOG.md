@@ -3,6 +3,19 @@
 All notable changes to the Bellimaka Pokémon Draft League site are documented here.
 Format: `v[MAJOR].[MINOR].[PATCH]` — Major = big new systems, Minor = new features, Patch = bug fixes / small improvements.
 
+## [v2.2.8] — 2026-10-04
+
+### Added & Improved
+- **Prediction Ballot Ultra-Wide Viewport & Regular Season Archive**:
+  - **Expanded Ballot Modal Sizing**: Expanded the prediction ballot modal window (`.ballot-view-modal`) from a cramped 1350px / 96vw to an ultra-wide format (`width: min(1650px, calc(100vw - 24px)) !important; max-width: calc(100vw - 24px) !important; max-height: 94vh !important;`). All 4 rounds of the Top Cut Bracket (Quarterfinals, Semifinals, Winners Final, and Grand Finals) now fit comfortably side-by-side on desktop displays without horizontal scrollbars, while narrower screens retain smooth horizontal scrolling.
+  - **Restructured Regular Season Archive Section**: In playoff and top-cut tournament phases, replaced the generic "Additional Predictions (23)" card dump with an authentic "📜 Regular Season Archive" presentation matching group-stage formatting:
+    - **Group Stage Winners (45 PTS each)**: Rendered in dedicated two-column division showcase cards displaying the chosen trainer's avatar, team name, and hit/miss/pending outcome badge.
+    - **Match Pick'ems (8 PTS each)**: Rendered in the full match pick'em grid using `compactMatchPredictionCard` with interactive Group filter tabs (`All`, `Group A`, `Group B`) and Status filter tabs (`All`, `Open`, `Decided`).
+    - **Clean Custom Predictions**: Correctly registered all bracket fixtures (including bracket reset `gf2`) and group stage fixtures so that only genuine extra bonus prop bets appear in the custom outcomes section.
+  - **Main Predictions Tab Parity**: Brought identical Regular Season Archive section parity to the main predictions tab during Playoff phases.
+
+---
+
 ## [v2.2.7] — 2026-10-04
 
 ### Fixed & Improved
