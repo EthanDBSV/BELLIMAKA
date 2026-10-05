@@ -20619,16 +20619,7 @@ function evaluateStandingsForMatches(members, matchesList, criteria, t) {
     });
   }
   let list = Object.values(s);
-  list.sort((a, b) => {
-    for (let critId of critList) {
-      let metric = metrics[critId];
-      if (metric && typeof metric.compare === 'function') {
-        let diff = metric.compare(a, b);
-        if (diff !== 0) return diff;
-      }
-    }
-    return a.p.localeCompare(b.p);
-  });
+  list = sortStandingsWithCriteria(list, critList, metrics);
   return list;
 }
 
@@ -22213,6 +22204,106 @@ function getStandingsCriteria(t){
   return ['wl', 'gw', 'gd', 'h2h'];
 }
 
+function sortStandingsWithCriteria(teamsList, criteriaList, metricsMap) {
+  if (!teamsList || teamsList.length <= 1) return teamsList ? [...teamsList] : [];
+
+  function breakTies(tiedPool, critIndex) {
+    if (tiedPool.length <= 1 || critIndex >= criteriaList.length) {
+      return tiedPool.slice().sort((a, b) => a.p.localeCompare(b.p));
+    }
+
+    let critId = criteriaList[critIndex];
+    let metric = metricsMap[critId];
+
+    if (critId === 'h2h') {
+      if (tiedPool.length === 2) {
+        let a = tiedPool[0], b = tiedPool[1];
+        let ah = a.results ? a.results[b.p] : undefined;
+        let bh = b.results ? b.results[a.p] : undefined;
+        if (ah !== undefined && bh !== undefined && ah !== bh) {
+          return ah > bh ? [a, b] : [b, a];
+        }
+        return breakTies(tiedPool, critIndex + 1);
+      } else {
+        // Multi-way tie (3+ teams): evaluate mini-round-robin head-to-head records against each other within tiedPool
+        let poolSet = new Set(tiedPool.map(x => x.p));
+        let h2hWinsMap = {};
+        tiedPool.forEach(x => {
+          let w = 0;
+          if (x.results) {
+            poolSet.forEach(opp => {
+              if (opp !== x.p && x.results[opp] === 1) w++;
+            });
+          }
+          h2hWinsMap[x.p] = w;
+        });
+
+        let uniqueWins = new Set(Object.values(h2hWinsMap));
+        if (uniqueWins.size === 1) {
+          // All tied teams have the exact same H2H record against each other (e.g. 1-1-1 circular tie)
+          // H2H is inconclusive — proceed to next criteria for the tied pool!
+          return breakTies(tiedPool, critIndex + 1);
+        }
+
+        let buckets = {};
+        tiedPool.forEach(x => {
+          let w = h2hWinsMap[x.p];
+          if (!buckets[w]) buckets[w] = [];
+          buckets[w].push(x);
+        });
+
+        let sortedWinCounts = Object.keys(buckets).map(Number).sort((a, b) => b - a);
+        let result = [];
+        sortedWinCounts.forEach(winCount => {
+          let subPool = buckets[winCount];
+          if (subPool.length === 1) {
+            result.push(subPool[0]);
+          } else {
+            // Recurse on tied sub-pool
+            result.push(...breakTies(subPool, critIndex));
+          }
+        });
+        return result;
+      }
+    }
+
+    // Scalar metric comparison
+    let sorted = [...tiedPool].sort((a, b) => {
+      if (metric && typeof metric.compare === 'function') {
+        return metric.compare(a, b);
+      }
+      return 0;
+    });
+
+    let clusters = [];
+    let currentCluster = [sorted[0]];
+    for (let i = 1; i < sorted.length; i++) {
+      let prev = sorted[i - 1];
+      let curr = sorted[i];
+      let diff = metric && typeof metric.compare === 'function' ? metric.compare(prev, curr) : 0;
+      if (diff === 0) {
+        currentCluster.push(curr);
+      } else {
+        clusters.push(currentCluster);
+        currentCluster = [curr];
+      }
+    }
+    clusters.push(currentCluster);
+
+    let result = [];
+    for (let cluster of clusters) {
+      if (cluster.length === 1) {
+        result.push(cluster[0]);
+      } else {
+        result.push(...breakTies(cluster, critIndex + 1));
+      }
+    }
+    return result;
+  }
+
+  return breakTies(teamsList, 0);
+}
+
 function getStand(t=activeT(),group=null){
   if(getStage1Format(t) === 'swiss') return getSwissStand(t);
   let buckets=groupsOf(t),g=group||Object.keys(buckets)[0],members=buckets[g]||t.players,s={};
@@ -22264,16 +22355,7 @@ function getStand(t=activeT(),group=null){
     });
   }
 
-  list.sort((a,b)=>{
-    for(let critId of criteria){
-      let metric = STANDING_METRICS[critId];
-      if(metric && typeof metric.compare === 'function'){
-        let diff = metric.compare(a, b);
-        if(diff !== 0) return diff;
-      }
-    }
-    return a.p.localeCompare(b.p);
-  });
+  list = sortStandingsWithCriteria(list, criteria, STANDING_METRICS);
 
   let manual=t.manualStandings?.[g];
   if(Array.isArray(manual)&&manual.length===list.length&&manual.every(p=>members.includes(p))){

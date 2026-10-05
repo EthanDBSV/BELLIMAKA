@@ -3,6 +3,16 @@
 All notable changes to the Bellimaka Pokémon Draft League site are documented here.
 Format: `v[MAJOR].[MINOR].[PATCH]` — Major = big new systems, Minor = new features, Patch = bug fixes / small improvements.
 
+## [v2.2.3] — 2026-10-04
+
+### Fixed
+- **Multi-Way Head-to-Head Tiebreaker Resolution & Circular Tie Fallthrough**:
+  - **Mini-Round-Robin Multi-Way Tie Engine (`sortStandingsWithCriteria`)**: Resolved a critical tiebreaker flaw where a standard binary sort comparison caused circular multi-way ties (e.g. 3-way circular head-to-head cycles where A beat B, B beat C, and C beat A) to incorrectly favor individual pairwise results without recognizing that the entire tied pool was inconclusive.
+  - **Automatic Fallthrough to Subsequent Tiebreakers**: When 3 or more trainers are tied across prior criteria (e.g. 3-1 match record, +3 game differential), the system now calculates the mini-round-robin head-to-head win count exclusively among matches between the tied trainers. If all tied trainers have the identical head-to-head record (e.g. 1-1 against each other), Head-to-Head is properly recognized as inconclusive, and the ranking automatically falls through to the next configured tiebreaker (such as Faint Ratio `FR`).
+  - **Accurate Group B Seeding**: Correctly resolves the Group B 3-way tie between Max (FR 1.43), Ozy (FR 1.29), and Dao Ming (FR 1.08), placing Max at #1, Ozy at #2, and Dao Ming at #3.
+
+---
+
 ## [v2.2.2] — 2026-10-04
 
 ### Added & Improved
