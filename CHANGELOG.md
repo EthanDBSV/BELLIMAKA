@@ -3,6 +3,22 @@
 All notable changes to the Bellimaka Pokémon Draft League site are documented here.
 Format: `v[MAJOR].[MINOR].[PATCH]` — Major = big new systems, Minor = new features, Patch = bug fixes / small improvements.
 
+## [v2.2.0] — 2026-10-04
+
+### Added
+- **College Football ESPN Primetime Matchup Broadcast Graphic Overhaul** — Completely redesigned the marquee Primetime Matchup hero card into a bold, high-impact college football television broadcast graphic inspired by major ESPN / ABC prime-time clash presentations:
+  - **Stacked Top-and-Bottom Split Stage**: Restructured the clash arena into two stacked team tiers with an alternating zig-zag layout (Team 1 on top with metallic title and record on left, giant circular logo on right; Team 2 on bottom with giant circular logo on left, metallic title and record on right).
+  - **Chiseled 3D Metallic Chrome Team Typography**: Rendered team names in massive, bold athletic block typography with specular chrome gradients (`linear-gradient(180deg, #fff, #94a3b8, #cbd5e1)`), heavy drop shadows, and bevel highlights for authentic ESPN broadcast styling.
+  - **Oversized 3D Embossed Circular Team Medallions**: Replaced the small round avatars with massive circular 3D team emblems featuring multi-layer chrome bevel rims, deep drop shadows, and vibrant team-colored ambient glows that bleed toward the stadium edges.
+  - **Continuous Animated Hashtag Ticker Ribbons**: Integrated sleek edge-to-edge ticker tape ribbons along the top and bottom borders displaying continuous, smooth-scrolling `#Hashtags` separated by glowing stars (`#EthanNation ★ #EthanNation...`). Automatically pauses on hover for easy inspection.
+  - **Coach Broadcast Branding & Hashtag Profile Editor**: Added a dedicated moderator card to the Coach Profile modal in the space previously occupied by the retired team covers tool:
+    - **Custom Team Hashtag Field**: Allows commissioners to customize individual coach slogans (e.g., `#RollTide`, `#HoothootNation`, `#DawgMentality`), automatically defaulting to `#${CoachName}Nation` when left blank.
+    - **Primary Team Color Picker & Auto-Extraction**: Provides an interactive HTML color picker with an "Auto-Extract" button that analyzes uploaded coach avatars to sample their dominant vibrant color via off-screen canvas analysis, with automatic fallback to the coach's brand hue.
+  - **Metallic Dividing Seam & Center Matchup Badge**: Pinned a heavy metallic pill badge directly over the central dividing seam displaying the bold athletic series score (e.g., `2 - 0`) without distracting status labels for completed matches, or a glowing `VS` crest for upcoming clashes. Clicking the badge seamlessly opens the Match Boxscore & Replay Hub modal.
+  - **Streamlined Team Record Integration**: Retained team season records (`RECORD 3-1`) neatly docked alongside coach links and OVR rating badges, keeping the focus entirely on the broadcast clash without sprite clutter.
+
+---
+
 ## [v2.1.2] — 2026-10-04
 
 ### Added

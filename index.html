@@ -383,6 +383,298 @@
 .mon-chip:hover .swap-icon{opacity:1;transform:scale(1.15)}
 .mon-chip.historic{border-left-color:#6366f1;background:linear-gradient(135deg,#191924,#13131c)}
 .mon-chip.historic img{filter:drop-shadow(0 2px 4px rgba(0,0,0,0.6))}
+/* ==========================================================================
+   COLLEGE FOOTBALL ESPN PRIMETIME MATCHUP BROADCAST GRAPHIC
+   ========================================================================== */
+.primetime-cfb-stage {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  border-radius: 9px;
+  overflow: hidden;
+  box-shadow: inset 0 0 40px rgba(0, 0, 0, 0.7);
+  background: #09090e;
+  isolation: isolate;
+}
+
+.primetime-cfb-half {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  min-height: 122px;
+  overflow: hidden;
+  transition: all 0.25s ease;
+}
+
+.primetime-cfb-half.top {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.primetime-cfb-half.bottom {
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+/* Ticker ribbon */
+.primetime-ticker-bar {
+  display: flex;
+  align-items: center;
+  height: 20px;
+  background: rgba(0, 0, 0, 0.65);
+  backdrop-filter: blur(6px);
+  overflow: hidden;
+  position: relative;
+  z-index: 2;
+  user-select: none;
+}
+.primetime-ticker-bar.top {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+}
+.primetime-ticker-bar.bottom {
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
+}
+.primetime-ticker-track {
+  display: flex;
+  width: max-content;
+  will-change: transform;
+}
+.primetime-ticker-content {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding-right: 14px;
+  font: 900 10.5px/1 'Barlow Condensed', sans-serif;
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.85);
+  animation: cfb-ticker-scroll 24s linear infinite;
+}
+.primetime-cfb-stage:hover .primetime-ticker-content {
+  animation-play-state: paused;
+}
+.primetime-ticker-content .ticker-star {
+  color: rgba(255, 255, 255, 0.35);
+  font-size: 8px;
+}
+@keyframes cfb-ticker-scroll {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-100%); }
+}
+
+/* Content rows */
+.primetime-cfb-content {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 34px;
+  gap: 20px;
+  flex: 1;
+  z-index: 2;
+}
+
+.primetime-cfb-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+  flex: 1;
+}
+.primetime-cfb-info.left {
+  align-items: flex-start;
+  text-align: left;
+}
+.primetime-cfb-info.right {
+  align-items: flex-end;
+  text-align: right;
+}
+
+/* Metallic Team Name */
+.primetime-cfb-team-name {
+  font: 900 clamp(20px, 3.4vw, 34px)/1.05 'Barlow Condensed', sans-serif;
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+  background: linear-gradient(180deg, #ffffff 0%, #f1f5f9 35%, #94a3b8 50%, #f8fafc 54%, #cbd5e1 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.95)) drop-shadow(0 0 1px rgba(255, 255, 255, 0.6));
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+
+.primetime-cfb-sub-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.primetime-cfb-sub-row.left {
+  justify-content: flex-start;
+}
+.primetime-cfb-sub-row.right {
+  justify-content: flex-end;
+}
+
+.primetime-cfb-coach-tag {
+  font: 800 13px 'Barlow Condensed', sans-serif;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+  color: #ffd166 !important;
+}
+.primetime-cfb-coach-tag .player-link {
+  font: 800 13px 'Barlow Condensed', sans-serif !important;
+  color: #ffd166 !important;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+  border: 0;
+  background: none;
+  padding: 0;
+  cursor: pointer;
+}
+.primetime-cfb-coach-tag .player-link:hover {
+  color: #fff !important;
+  text-decoration: underline;
+}
+
+.primetime-cfb-record-pill {
+  font: 900 11px/1 'Barlow Condensed', sans-serif;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+  padding: 2.5px 7px;
+  border-radius: 4px;
+  background: rgba(0, 0, 0, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  color: #e2e8f0;
+}
+
+/* Giant 3D Embossed Circular Logo */
+.primetime-cfb-logo-wrap {
+  position: relative;
+  flex-shrink: 0;
+  cursor: pointer;
+  transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.primetime-cfb-logo-wrap:hover {
+  transform: scale(1.08);
+}
+.primetime-cfb-logo {
+  width: clamp(74px, 10.5vw, 98px);
+  height: clamp(74px, 10.5vw, 98px);
+  border-radius: 50%;
+  background-size: cover;
+  background-position: center;
+  border: 3.5px solid #ffffff;
+  box-shadow:
+    inset 0 2px 6px rgba(255, 255, 255, 0.9),
+    inset 0 -3px 8px rgba(0, 0, 0, 0.65),
+    0 10px 24px rgba(0, 0, 0, 0.75),
+    0 0 20px rgba(255, 255, 255, 0.2);
+  display: grid;
+  place-items: center;
+  font: 900 32px 'Barlow Condensed', sans-serif;
+  color: #fff;
+  transition: box-shadow 0.2s ease;
+}
+.primetime-cfb-logo.winner {
+  border-color: #4ade80 !important;
+  box-shadow:
+    inset 0 2px 6px rgba(255, 255, 255, 0.9),
+    0 0 22px rgba(74, 222, 128, 0.6),
+    0 10px 24px rgba(0, 0, 0, 0.75) !important;
+}
+
+/* Center Seam & Center Matchup Badge */
+.primetime-cfb-seam {
+  position: relative;
+  height: 2px;
+  background: linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.55) 30%, rgba(255, 255, 255, 0.85) 50%, rgba(255, 255, 255, 0.55) 70%, transparent 100%);
+  z-index: 6;
+  width: 100%;
+}
+.primetime-cfb-center-badge {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: linear-gradient(180deg, #2a2a3c 0%, #12121a 100%);
+  border: 1.5px solid rgba(255, 255, 255, 0.6);
+  border-radius: 20px;
+  padding: 3px 14px;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.85), inset 0 1px 2px rgba(255, 255, 255, 0.5);
+  cursor: pointer;
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
+  user-select: none;
+}
+.primetime-cfb-center-badge:hover {
+  transform: translate(-50%, -50%) scale(1.12);
+  border-color: #ffd166;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.95), 0 0 14px rgba(255, 209, 102, 0.4);
+}
+.primetime-cfb-score-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font: 900 24px/1 'Barlow Condensed', sans-serif;
+  letter-spacing: 1px;
+}
+.primetime-cfb-score-val {
+  min-width: 18px;
+  text-align: center;
+  color: #fff;
+}
+.primetime-cfb-score-val.winner {
+  color: #4ade80;
+  text-shadow: 0 0 12px rgba(74, 222, 128, 0.6);
+}
+.primetime-cfb-score-val.loser {
+  color: #888694;
+}
+.primetime-cfb-score-dash {
+  color: #646272;
+  font-size: 16px;
+}
+.primetime-cfb-vs-badge {
+  font: 900 17px/1 'Barlow Condensed', sans-serif;
+  font-style: italic;
+  letter-spacing: 1px;
+  background: linear-gradient(135deg, #ffffff 0%, #ffd166 60%, #ff8a90 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.8));
+}
+
+@media (max-width: 640px) {
+  .primetime-cfb-content {
+    padding: 10px 16px;
+    gap: 12px;
+  }
+  .primetime-cfb-team-name {
+    font-size: clamp(17px, 4.5vw, 22px);
+  }
+  .primetime-cfb-logo {
+    width: 62px;
+    height: 62px;
+  }
+  .primetime-cfb-coach-tag {
+    font-size: 11px;
+  }
+  .primetime-cfb-record-pill {
+    font-size: 10px;
+    padding: 2px 5px;
+  }
+  .primetime-cfb-half {
+    min-height: 105px;
+  }
+  .primetime-cfb-score-row {
+    font-size: 20px;
+  }
+}
 /* ------------------------------------------------------------ Cyber-Esports Angled Chamfered PRIMETIME Broadcast Graphic ------------------------------------------------------------ */
 .matchup-hero-outer{position:relative;filter:drop-shadow(0 10px 28px rgba(0,0,0,0.65)) drop-shadow(0 0 16px rgba(239,48,56,0.18));transition:filter .2s ease;border-radius:10px}
 .matchup-hero-outer:hover{filter:drop-shadow(0 12px 32px rgba(0,0,0,0.75)) drop-shadow(0 0 24px rgba(239,48,56,0.28))}
@@ -5009,6 +5301,133 @@ function openTournament(id, tab = 'Standings'){
 const teamHistory={};
 const teamCovers={};
 const profilePictures={};
+const coachHashtags={};
+const coachThemeColors={};
+const _extractedColorsCache={};
+
+function hexToRgba(hex, alpha = 1) {
+  if(!hex || typeof hex !== 'string') return `rgba(239,48,56,${alpha})`;
+  let c = hex.replace('#', '');
+  if(c.length === 3) c = c.split('').map(x => x + x).join('');
+  let num = parseInt(c, 16);
+  if(isNaN(num)) return `rgba(239,48,56,${alpha})`;
+  let r = (num >> 16) & 255;
+  let g = (num >> 8) & 255;
+  let b = num & 255;
+  return `rgba(${r},${g},${b},${alpha})`;
+}
+
+function hslToHex(h, s, l) {
+  l /= 100;
+  const a = s * Math.min(l, 1 - l) / 100;
+  const f = n => {
+    const k = (n + h / 30) % 12;
+    const color = l - a * Math.max(Math.min(k - 3, 9 - k, 1), -1);
+    return Math.round(255 * color).toString(16).padStart(2, '0');
+  };
+  return `#${f(0)}${f(8)}${f(4)}`;
+}
+
+function extractDominantColorFromImg(src, cacheKey) {
+  if(!src || typeof document === 'undefined') return;
+  if(_extractedColorsCache[cacheKey]) return _extractedColorsCache[cacheKey];
+  let img = new Image();
+  img.crossOrigin = 'Anonymous';
+  img.onload = function() {
+    try {
+      let canvas = document.createElement('canvas');
+      canvas.width = 16;
+      canvas.height = 16;
+      let ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0, 16, 16);
+      let data = ctx.getImageData(0, 0, 16, 16).data;
+      let bestR = 120, bestG = 20, bestB = 30, bestScore = -1;
+      for (let i = 0; i < data.length; i += 4) {
+        let r = data[i], g = data[i+1], b = data[i+2], a = data[i+3];
+        if (a < 128) continue;
+        let max = Math.max(r, g, b), min = Math.min(r, g, b);
+        let sat = max === 0 ? 0 : (max - min) / max;
+        let lum = (max + min) / 510;
+        if (lum < 0.12 || lum > 0.88 || sat < 0.15) continue;
+        let score = sat * (1 - Math.abs(lum - 0.5));
+        if (score > bestScore) {
+          bestScore = score;
+          bestR = r; bestG = g; bestB = b;
+        }
+      }
+      if (bestScore > 0) {
+        let hex = '#' + [bestR, bestG, bestB].map(x => x.toString(16).padStart(2, '0')).join('');
+        _extractedColorsCache[cacheKey] = hex;
+        let el = document.querySelector(`.primetime-cfb-half[data-coach="${cacheKey}"]`);
+        if(el) {
+          el.style.setProperty('--team-color', hex);
+        }
+      }
+    } catch(e) {}
+  };
+  img.src = src;
+}
+
+function getCoachHashtag(p) {
+  if(!p) return '#BellimakaNation';
+  let custom = coachHashtags[p] || (typeof profiles === 'object' && profiles[p]?.hashtag);
+  if(custom && String(custom).trim()) {
+    let val = String(custom).trim();
+    return val.startsWith('#') ? val : `#${val}`;
+  }
+  let clean = p.replace(/[^a-zA-Z0-9]/g, '');
+  return `#${clean || 'Coach'}Nation`;
+}
+
+function getCoachPrimaryColor(p) {
+  if(!p) return '#ef3038';
+  if(coachThemeColors[p]) return coachThemeColors[p];
+  if(typeof profiles === 'object' && profiles[p]?.themeColor) return profiles[p].themeColor;
+  if(_extractedColorsCache[p]) return _extractedColorsCache[p];
+  if(typeof profilePictures === 'object' && profilePictures[p]) {
+    extractDominantColorFromImg(profilePictures[p], p);
+  }
+  return hslToHex((typeof hueOf === 'function' ? hueOf(p || 'team') : 0), 65, 36);
+}
+
+function saveCoachBranding(p) {
+  if(!p || (!moderator && !window.moderator)) return;
+  let tagInput = document.querySelector('#coachHashtagInput_' + jsArg(p));
+  let colorInput = document.querySelector('#coachColorInput_' + jsArg(p));
+  let val = tagInput ? tagInput.value.trim() : '';
+  if(val) {
+    if(!val.startsWith('#')) val = '#' + val;
+    coachHashtags[p] = val;
+    if(profiles[p]) profiles[p].hashtag = val;
+  } else {
+    delete coachHashtags[p];
+    if(profiles[p]) delete profiles[p].hashtag;
+  }
+  let col = colorInput ? colorInput.value : '';
+  if(col) {
+    coachThemeColors[p] = col;
+    if(profiles[p]) profiles[p].themeColor = col;
+  }
+  persistLeague();
+  if(typeof showDraftToast === 'function') {
+    showDraftToast(`✓ Saved broadcast branding for ${p}!`);
+  }
+  openProfile(p);
+  render();
+}
+
+function resetCoachThemeColor(p) {
+  if(!p || (!moderator && !window.moderator)) return;
+  delete coachThemeColors[p];
+  if(profiles[p]) delete profiles[p].themeColor;
+  delete _extractedColorsCache[p];
+  if(profilePictures[p]) {
+    extractDominantColorFromImg(profilePictures[p], p);
+  }
+  persistLeague();
+  openProfile(p);
+  render();
+}
 const pulsePanelImages={};
 function ongoingT(){return Object.values(tournamentData).find(t=>t.status==='ONGOING')||null}
 function activeT(){return tournamentData[viewTournament]||ongoingT()||Object.values(tournamentData)[0]||null}
@@ -5959,6 +6378,10 @@ try{
   if(savedCovers)Object.assign(teamCovers,savedCovers);
   let savedPics=JSON.parse(localStorage.getItem('draftdex-profilepics')||'null');
   if(savedPics)Object.assign(profilePictures,savedPics);
+  let savedHashtags=JSON.parse(localStorage.getItem('draftdex-coach-hashtags')||'null');
+  if(savedHashtags)Object.assign(coachHashtags,savedHashtags);
+  let savedColors=JSON.parse(localStorage.getItem('draftdex-coach-colors')||'null');
+  if(savedColors)Object.assign(coachThemeColors,savedColors);
   // Auto-convert any team covers into profile pictures
   let convertedAnyCovers = false;
   Object.keys(teamCovers).forEach(k => {
@@ -5968,7 +6391,9 @@ try{
     }
   });
   if(convertedAnyCovers){
-    try{ localStorage.setItem('draftdex-profilepics', JSON.stringify(profilePictures)); }catch(e){}
+    try{ localStorage.setItem('draftdex-profilepics', JSON.stringify(profilePictures));
+    localStorage.setItem('draftdex-coach-hashtags', JSON.stringify(coachHashtags));
+    localStorage.setItem('draftdex-coach-colors', JSON.stringify(coachThemeColors)); }catch(e){}
   }
   let savedPulse=JSON.parse(localStorage.getItem('draftdex-pulsepanels')||'null');
   if(savedPulse)Object.assign(pulsePanelImages,savedPulse);
@@ -6434,7 +6859,26 @@ function Predictions(){
 
 function historyTournamentOptions(){let past=Object.values(tournamentData).filter(t=>t.status==='COMPLETE');return past.length?past.map(t=>`<option value="${t.name} · ${t.season}">${t.name} · ${t.season}</option>`).join(''):'<option>No completed tournaments yet</option>'}
 
-function openProfile(p){let q=ensureProfile(p);document.querySelector('#modal').innerHTML=`<div class="modal-wrap" onclick="if(event.target===this)closeModal()"><div class="modal"><div class="modal-head"><div><div class="eyebrow">Player profile · linked account</div><h2>${p}</h2></div><button class="close" onclick="closeModal()">×</button></div><div class="profile-layout" style="margin-top:18px"><aside class="card profile-card"><div class="avatar" style="background:${profileArt(p)}">${profilePictures[p]||teamCovers[p]?``:p[0]}</div><div class="profile-name">${p}</div><div class="mini-stats"><div><b>${q.cups.length}x</b><span>Champion</span></div><div><b>${q.tops}x</b><span>Top Cut</span></div><div><b>${q.record}</b><span>All-time W-L</span></div></div>${q.cups.length?`<div style="margin-top:14px"><div class="card-title">Championships</div>${q.cups.map(c=>`<div class="sub" style="margin-top:4px">🏆 ${c}</div>`).join('')}</div>`:''}${moderator?`<div class="card" style="padding:14px;margin-top:14px;background:#111116;border-color:#32323a"><div class="eyebrow">Profile picture</div><div class="sub" style="margin-top:6px">Update the coach profile picture used across the site.</div><div class="creator-actions" style="justify-content:flex-start;flex-wrap:wrap"><button class="btn ghost" onclick="openProfilePictureEditor('${p}')">Edit profile picture</button></div></div>`:''}</aside><section class="card roster-editor"><div class="card-title">Current roster</div>${moderator?`<div class="poke-search"><input id="newMon" placeholder="Search / add a Pokémon"><button class="btn" onclick="addMon('${p}')">Add</button></div>`:''}<div class="roster-edit-list" id="rosterList">${rosterList(p)}</div><div class="section"><div class="card-title">Team history</div>${historyList(p)}${moderator?`<div class="card" style="padding:14px;margin-top:12px"><div class="field"><label>Previous tournament</label><select id="historyTournament">${historyTournamentOptions()}</select></div><div class="field"><label>Team name in that tournament</label><input id="historyTeam" placeholder="e.g. Obsidian Owls"></div><button class="btn ghost" style="margin-top:12px" onclick="addHistoryTeam('${p}')">+ Add historical team</button></div>`:''}</div></section></div></div></div>`}
+function openProfile(p){let q=ensureProfile(p);document.querySelector('#modal').innerHTML=`<div class="modal-wrap" onclick="if(event.target===this)closeModal()"><div class="modal"><div class="modal-head"><div><div class="eyebrow">Player profile · linked account</div><h2>${p}</h2></div><button class="close" onclick="closeModal()">×</button></div><div class="profile-layout" style="margin-top:18px"><aside class="card profile-card"><div class="avatar" style="background:${profileArt(p)}">${profilePictures[p]||teamCovers[p]?``:p[0]}</div><div class="profile-name">${p}</div><div class="mini-stats"><div><b>${q.cups.length}x</b><span>Champion</span></div><div><b>${q.tops}x</b><span>Top Cut</span></div><div><b>${q.record}</b><span>All-time W-L</span></div></div>${q.cups.length?`<div style="margin-top:14px"><div class="card-title">Championships</div>${q.cups.map(c=>`<div class="sub" style="margin-top:4px">🏆 ${c}</div>`).join('')}</div>`:''}${moderator?`<div class="card" style="padding:14px;margin-top:14px;background:#111116;border-color:#32323a"><div class="eyebrow">Profile picture</div><div class="sub" style="margin-top:6px">Update the coach profile picture used across the site.</div><div class="creator-actions" style="justify-content:flex-start;flex-wrap:wrap"><button class="btn ghost" onclick="openProfilePictureEditor('${p}')">Edit profile picture</button></div></div>
+    <div class="card" style="padding:14px;margin-top:14px;background:#111116;border-color:#32323a">
+      <div class="eyebrow" style="color:var(--amber)">Broadcast Branding & Hashtag</div>
+      <div class="sub" style="margin-top:4px;font-size:11px">Configure team hashtag ribbon and primary broadcast color for Primetime Matchups.</div>
+      <div style="margin-top:10px;display:flex;flex-direction:column;gap:10px">
+        <div>
+          <label style="font:800 11px 'Barlow Condensed';color:#8e8c95;letter-spacing:.5px;text-transform:uppercase;display:block;margin-bottom:4px">Team Hashtag</label>
+          <input id="coachHashtagInput_${jsArg(p)}" value="${esc(coachHashtags[p] || profiles[p]?.hashtag || '')}" placeholder="#${esc(p.replace(/\s+/g, ''))}Nation" style="width:100%;box-sizing:border-box;background:#0c0c11;border:1px solid #2d2d3a;border-radius:6px;padding:6px 10px;color:#f5f3f0;font:800 13px 'Barlow Condensed'" />
+        </div>
+        <div>
+          <label style="font:800 11px 'Barlow Condensed';color:#8e8c95;letter-spacing:.5px;text-transform:uppercase;display:block;margin-bottom:4px">Primary Team Color</label>
+          <div style="display:flex;align-items:center;gap:10px">
+            <input type="color" id="coachColorInput_${jsArg(p)}" value="${esc(getCoachPrimaryColor(p))}" oninput="document.querySelector('#coachColorLabel_${jsArg(p)}').textContent=this.value" style="width:38px;height:34px;padding:2px;background:#0c0c11;border:1px solid #2d2d3a;border-radius:6px;cursor:pointer" />
+            <span style="font:800 13px 'Barlow Condensed';color:#cbd5e1" id="coachColorLabel_${jsArg(p)}">${esc(getCoachPrimaryColor(p))}</span>
+            <button class="btn ghost btn-sm" style="font-size:10px;padding:4px 9px;margin-left:auto" onclick="resetCoachThemeColor('${jsArg(p)}')">Auto-Extract</button>
+          </div>
+        </div>
+        <button class="btn btn-sm" style="background:var(--red);color:#fff;font-weight:800;margin-top:4px" onclick="saveCoachBranding('${jsArg(p)}')">Save Branding</button>
+      </div>
+    </div>`:''}</aside><section class="card roster-editor"><div class="card-title">Current roster</div>${moderator?`<div class="poke-search"><input id="newMon" placeholder="Search / add a Pokémon"><button class="btn" onclick="addMon('${p}')">Add</button></div>`:''}<div class="roster-edit-list" id="rosterList">${rosterList(p)}</div><div class="section"><div class="card-title">Team history</div>${historyList(p)}${moderator?`<div class="card" style="padding:14px;margin-top:12px"><div class="field"><label>Previous tournament</label><select id="historyTournament">${historyTournamentOptions()}</select></div><div class="field"><label>Team name in that tournament</label><input id="historyTeam" placeholder="e.g. Obsidian Owls"></div><button class="btn ghost" style="margin-top:12px" onclick="addHistoryTeam('${p}')">+ Add historical team</button></div>`:''}</div></section></div></div></div>`}
 function addHistoryTeam(p){let tournament=document.querySelector('#historyTournament').value,team=document.querySelector('#historyTeam').value.trim()||'Unnamed team';if(tournament==='No completed tournaments yet'){alert('Complete a tournament first.');return}teamHistory[p]??=[];teamHistory[p].push({tournament,team,pokemon:[]});persistLeague();openProfile(p)}
 
 function createTournament(){
@@ -17797,6 +18241,14 @@ function getMatchupShowcasePokemon(tourn, m, coach) {
 function togglePinPrimetimeMatch(tournamentId, matchIdentifier) {
   let t = (tournamentId && tournamentData[tournamentId]) || activeT() || ongoingT();
   let isMod = Boolean(moderator || window.moderator || (typeof canManageTournament === 'function' && canManageTournament(t)));
+
+  let hashtag1 = getCoachHashtag(p1);
+  let hashtag2 = getCoachHashtag(p2);
+  let color1 = getCoachPrimaryColor(p1);
+  let color2 = getCoachPrimaryColor(p2);
+
+  let tickerItems1 = Array(8).fill(`<span>${esc(hashtag1)}</span><span class="ticker-star">★</span>`).join('');
+  let tickerItems2 = Array(8).fill(`<span>${esc(hashtag2)}</span><span class="ticker-star">★</span>`).join('');
   if(!t || !isMod) return;
   if(t.pinnedPrimetimeMatch === matchIdentifier) {
     delete t.pinnedPrimetimeMatch;
@@ -18075,72 +18527,78 @@ function matchupOfTheWeekCard(t){
           ` : ''}
         </div>
 
-        <!-- Main Battle Stage: Centered arena, flanks inward, generous arrow clearance -->
-        <div class="primetime-battle-stage">
+        <!-- College Football ESPN Stacked Broadcast Stage -->
+        <div class="primetime-cfb-stage">
           ${total > 1 ? `
             <button class="matchup-nav-arrow left" onclick="event.stopPropagation();cycleFeaturedMatch(-1, ${total})" title="Previous Matchup">‹</button>
           ` : ''}
 
-          <!-- Team 1 Flank (Name Above, Middle Lineup, Record Below) -->
-          <div class="primetime-flank left">
-            <div class="primetime-flank-header left">
-              <span class="primetime-team-name" title="${esc(t1Name)}">${esc(t1Name)}</span>
-              <span class="primetime-dot">•</span>
-              <span class="primetime-coach-name">${playerLink(p1)}</span>
-            </div>
-
-            <div class="primetime-flank-row left">
-              <div class="primetime-avatar-wrap" onclick="openProfile('${jsArg(p1)}')">
-                <span class="primetime-avatar ${p1Won ? 'is-winner' : ''}" style="background-image:${face1};border-color:${p1Won ? '#4ade80' : ovr1.color}">${letter1}</span>
-                <span style="position:absolute;bottom:-3px;right:-3px;transform:scale(0.85);transform-origin:bottom right">${ovr1.badgeHtml}</span>
-              </div>
-
-              <div class="primetime-mons-cluster">
-                ${renderMonCards(mons1, true)}
+          <!-- Top Half (Team 1) -->
+          <div class="primetime-cfb-half top" data-coach="${esc(p1)}" style="background:radial-gradient(ellipse at 85% 50%, ${hexToRgba(color1, 0.45)} 0%, transparent 70%), linear-gradient(135deg, ${hexToRgba(color1, 0.32)} 0%, #0d0c13 85%);">
+            <div class="primetime-ticker-bar top">
+              <div class="primetime-ticker-track">
+                <div class="primetime-ticker-content">${tickerItems1}</div>
+                <div class="primetime-ticker-content" aria-hidden="true">${tickerItems1}</div>
               </div>
             </div>
 
-            <div class="primetime-flank-footer left" style="color:${p1Won ? '#4ade80' : '#ffd166'}">
-              <span class="primetime-record-label">RECORD</span>
-              <span>${esc(rec1)}</span>
+            <div class="primetime-cfb-content top">
+              <div class="primetime-cfb-info left">
+                <div class="primetime-cfb-team-name left" title="${esc(t1Name)}">${esc(t1Name)}</div>
+                <div class="primetime-cfb-sub-row left">
+                  <span class="primetime-cfb-coach-tag">${playerLink(p1)}</span>
+                  <span class="primetime-cfb-ovr-wrap">${ovr1.badgeHtml}</span>
+                  <span class="primetime-cfb-record-pill">RECORD ${esc(rec1)}</span>
+                </div>
+              </div>
+
+              <div class="primetime-cfb-logo-wrap right" onclick="openProfile('${jsArg(p1)}')" title="View ${esc(p1)} profile">
+                <div class="primetime-cfb-logo ${p1Won ? 'winner' : ''}" style="background-image:${face1};box-shadow:inset 0 2px 6px rgba(255,255,255,0.9), inset 0 -3px 8px rgba(0,0,0,0.65), 0 10px 24px rgba(0,0,0,0.75), 0 0 20px ${hexToRgba(color1, 0.55)};">
+                  ${letter1}
+                </div>
+              </div>
             </div>
           </div>
 
-          <!-- Center Clash Hub (Score / VS) -->
-          <div class="primetime-center-hub" ${matchClickAttr} title="Click to view Match Boxscore & Replays">
-            ${isPlayed ? `
-              <div class="primetime-score-row">
-                <span class="primetime-score-val ${p1Won ? 'winner' : (p2Won ? 'loser' : '')}">${sA ?? 0}</span>
-                <span class="primetime-score-dash">-</span>
-                <span class="primetime-score-val ${p2Won ? 'winner' : (p1Won ? 'loser' : '')}">${sB ?? 0}</span>
-              </div>
-            ` : `
-              <div class="primetime-vs-emblem">VS</div>
-            `}
+          <!-- Center Seam & Score / VS Badge -->
+          <div class="primetime-cfb-seam">
+            <div class="primetime-cfb-center-badge" ${matchClickAttr} title="Click to view Match Boxscore & Replays">
+              ${isPlayed ? `
+                <div class="primetime-cfb-score-row">
+                  <span class="primetime-cfb-score-val ${p1Won ? 'winner' : (p2Won ? 'loser' : '')}">${sA ?? 0}</span>
+                  <span class="primetime-cfb-score-dash">-</span>
+                  <span class="primetime-cfb-score-val ${p2Won ? 'winner' : (p1Won ? 'loser' : '')}">${sB ?? 0}</span>
+                </div>
+              ` : `
+                <div class="primetime-cfb-vs-badge">VS</div>
+              `}
+            </div>
           </div>
 
-          <!-- Team 2 Flank (Name Above, Middle Lineup, Record Below) -->
-          <div class="primetime-flank right">
-            <div class="primetime-flank-header right">
-              <span class="primetime-coach-name">${playerLink(p2)}</span>
-              <span class="primetime-dot">•</span>
-              <span class="primetime-team-name" title="${esc(t2Name)}">${esc(t2Name)}</span>
-            </div>
-
-            <div class="primetime-flank-row right">
-              <div class="primetime-avatar-wrap" onclick="openProfile('${jsArg(p2)}')">
-                <span class="primetime-avatar ${p2Won ? 'is-winner' : ''}" style="background-image:${face2};border-color:${p2Won ? '#4ade80' : ovr2.color}">${letter2}</span>
-                <span style="position:absolute;bottom:-3px;right:-3px;transform:scale(0.85);transform-origin:bottom right">${ovr2.badgeHtml}</span>
+          <!-- Bottom Half (Team 2) -->
+          <div class="primetime-cfb-half bottom" data-coach="${esc(p2)}" style="background:radial-gradient(ellipse at 15% 50%, ${hexToRgba(color2, 0.45)} 0%, transparent 70%), linear-gradient(135deg, #0d0c13 15%, ${hexToRgba(color2, 0.32)} 100%);">
+            <div class="primetime-cfb-content bottom">
+              <div class="primetime-cfb-logo-wrap left" onclick="openProfile('${jsArg(p2)}')" title="View ${esc(p2)} profile">
+                <div class="primetime-cfb-logo ${p2Won ? 'winner' : ''}" style="background-image:${face2};box-shadow:inset 0 2px 6px rgba(255,255,255,0.9), inset 0 -3px 8px rgba(0,0,0,0.65), 0 10px 24px rgba(0,0,0,0.75), 0 0 20px ${hexToRgba(color2, 0.55)};">
+                  ${letter2}
+                </div>
               </div>
 
-              <div class="primetime-mons-cluster">
-                ${renderMonCards(mons2, false)}
+              <div class="primetime-cfb-info right">
+                <div class="primetime-cfb-team-name right" title="${esc(t2Name)}">${esc(t2Name)}</div>
+                <div class="primetime-cfb-sub-row right">
+                  <span class="primetime-cfb-record-pill">${esc(rec2)} RECORD</span>
+                  <span class="primetime-cfb-ovr-wrap">${ovr2.badgeHtml}</span>
+                  <span class="primetime-cfb-coach-tag">${playerLink(p2)}</span>
+                </div>
               </div>
             </div>
 
-            <div class="primetime-flank-footer right" style="color:${p2Won ? '#4ade80' : '#ffd166'}">
-              <span>${esc(rec2)}</span>
-              <span class="primetime-record-label">RECORD</span>
+            <div class="primetime-ticker-bar bottom">
+              <div class="primetime-ticker-track">
+                <div class="primetime-ticker-content">${tickerItems2}</div>
+                <div class="primetime-ticker-content" aria-hidden="true">${tickerItems2}</div>
+              </div>
             </div>
           </div>
 
