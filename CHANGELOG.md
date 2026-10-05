@@ -3,6 +3,16 @@
 All notable changes to the Bellimaka Pokémon Draft League site are documented here.
 Format: `v[MAJOR].[MINOR].[PATCH]` — Major = big new systems, Minor = new features, Patch = bug fixes / small improvements.
 
+## [v2.2.2] — 2026-10-04
+
+### Added & Improved
+- **Broadcast Branding Profile Editor & Primetime Visual Cleanup**:
+  - **Broadcast Branding Moderator Tool**: Added a dedicated `🎨 Broadcast Branding` button directly in the empty slot next to `Link account` inside the Trainer Profile's Moderator Tools grid. Clicking it opens a focused modal editor (`openBroadcastBrandingEditor`) featuring a live broadcast preview card, hashtag input (with default `#${CoachName}Nation`), native color picker with manual hex entry, `⚡ Auto-Extract` color analysis from the trainer's avatar, and quick Save/Cancel actions.
+  - **OVR Removal from Primetime Cover**: Completely removed the circular OVR rating badges from the Primetime hero card to maintain a clean, athletic broadcast look matching television presentations.
+  - **Enlarged Coach Name & Season Record**: Scaled up the coach link typography to 16.5px with gold/amber styling and enlarged the season record pill to 13px with a 1.5px metallic border and drop shadow, establishing a clear visual hierarchy underneath the team name.
+
+---
+
 ## [v2.2.1] — 2026-10-04
 
 ### Improved

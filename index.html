@@ -560,8 +560,9 @@
 .primetime-cfb-sub-row {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
   flex-wrap: wrap;
+  margin-top: 5px;
 }
 .primetime-cfb-sub-row.left {
   justify-content: flex-start;
@@ -571,15 +572,15 @@
 }
 
 .primetime-cfb-coach-tag {
-  font: 800 13px 'Barlow Condensed', sans-serif;
-  letter-spacing: 0.8px;
+  font: 800 16.5px/1 'Barlow Condensed', sans-serif;
+  letter-spacing: 1px;
   text-transform: uppercase;
   color: #ffd166 !important;
 }
 .primetime-cfb-coach-tag .player-link {
-  font: 800 13px 'Barlow Condensed', sans-serif !important;
+  font: 800 16.5px/1 'Barlow Condensed', sans-serif !important;
   color: #ffd166 !important;
-  letter-spacing: 0.8px;
+  letter-spacing: 1px;
   text-transform: uppercase;
   border: 0;
   background: none;
@@ -592,14 +593,15 @@
 }
 
 .primetime-cfb-record-pill {
-  font: 900 11px/1 'Barlow Condensed', sans-serif;
-  letter-spacing: 0.8px;
+  font: 900 13px/1 'Barlow Condensed', sans-serif;
+  letter-spacing: 1px;
   text-transform: uppercase;
-  padding: 2.5px 7px;
-  border-radius: 4px;
-  background: rgba(0, 0, 0, 0.6);
-  border: 1px solid rgba(255, 255, 255, 0.16);
-  color: #e2e8f0;
+  padding: 3.5px 9px;
+  border-radius: 5px;
+  background: rgba(0, 0, 0, 0.65);
+  border: 1.5px solid rgba(255, 255, 255, 0.22);
+  color: #f1f5f9;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.5);
 }
 
 /* Giant 3D Embossed Circular Logo */
@@ -722,12 +724,13 @@
     width: 62px;
     height: 62px;
   }
-  .primetime-cfb-coach-tag {
-    font-size: 11px;
+  .primetime-cfb-coach-tag,
+  .primetime-cfb-coach-tag .player-link {
+    font-size: 14.5px !important;
   }
   .primetime-cfb-record-pill {
-    font-size: 10px;
-    padding: 2px 5px;
+    font-size: 11.5px;
+    padding: 2.5px 7px;
   }
   .primetime-cfb-half {
     min-height: 105px;
@@ -5389,7 +5392,7 @@ function hslToHex(h, s, l) {
   return `#${f(0)}${f(8)}${f(4)}`;
 }
 
-function extractDominantColorFromImg(src, cacheKey) {
+function extractDominantColorFromImg(src, cacheKey, callback) {
   if(!src || typeof document === 'undefined') return;
   if(_extractedColorsCache[cacheKey]) return _extractedColorsCache[cacheKey];
   let img = new Image();
@@ -5418,7 +5421,7 @@ function extractDominantColorFromImg(src, cacheKey) {
       }
       if (bestScore > 0) {
         let hex = '#' + [bestR, bestG, bestB].map(x => x.toString(16).padStart(2, '0')).join('');
-        _extractedColorsCache[cacheKey] = hex;
+        _extractedColorsCache[cacheKey] = hex; if(typeof callback === "function") callback(hex);
         let el = document.querySelector(`.primetime-cfb-half[data-coach="${cacheKey}"]`);
         if(el) {
           el.style.setProperty('--team-color', hex);
@@ -5533,6 +5536,161 @@ function getCfbScratchOverlayHtml() {
       </g>
     </svg>
   </div>`;
+}
+
+
+function openBroadcastBrandingEditor(p) {
+  if (!p || (!moderator && !window.moderator)) return;
+  let currentTag = getCoachHashtag(p);
+  let currentColor = getCoachPrimaryColor(p);
+  let tName = (typeof teamName === 'function' && typeof currentTournament === 'function' && currentTournament() ? teamName(currentTournament(), p) : '') || profiles[p]?.team || `${p}'s Team`;
+  let pic = profilePictures[p] || teamCovers[p] || '';
+  let avatarFace = pic ? `background-image:url('${esc(pic)}');` : fallbackArt(p);
+  let letter = pic ? '' : esc(p[0]);
+
+  document.querySelector('#modal').innerHTML = `
+    <div class="modal-wrap" onclick="if(event.target===this)openProfile('${jsArg(p)}')">
+      <div class="modal" style="max-width:560px">
+        <div class="modal-head">
+          <div>
+            <div class="eyebrow" style="color:var(--amber)">ESPN Broadcast Styling</div>
+            <h2>Broadcast Branding · ${esc(p)}</h2>
+          </div>
+          <button class="close" onclick="openProfile('${jsArg(p)}')">×</button>
+        </div>
+        <p class="sub" style="margin:4px 0 16px">Customize ${esc(p)}'s team hashtag and dominant broadcast color for Primetime Matchup hero cards.</p>
+
+        <!-- Live Preview Card -->
+        <div style="margin-bottom:18px">
+          <div class="eyebrow" style="margin-bottom:6px;color:#94a3b8">Live Broadcast Preview</div>
+          <div id="bbLivePreview" style="position:relative;border-radius:8px;overflow:hidden;border:1px solid rgba(255,255,255,0.12);background:radial-gradient(ellipse at 80% 45%, ${hexToRgba(currentColor, 0.75)} 0%, ${hexToRgba(currentColor, 0.35)} 55%, #08070c 95%), linear-gradient(135deg, ${hexToRgba(currentColor, 0.40)} 0%, #0c0b11 100%);">
+            <div style="height:22px;background:rgba(0,0,0,0.72);display:flex;align-items:center;justify-content:center;overflow:hidden;padding:0 8px;border-bottom:1px solid rgba(255,255,255,0.12)">
+              <div id="bbLiveRibbon" style="display:flex;align-items:center;gap:10px;white-space:nowrap;font-family:'Agency FB', 'Barlow Condensed', sans-serif;font-weight:700;font-stretch:condensed;font-size:13px;letter-spacing:2px;color:rgba(255,255,255,0.92);text-transform:uppercase">
+                <span>${esc(currentTag)}</span><span style="color:rgba(255,255,255,0.4);font-size:9px">★</span>
+                <span>${esc(currentTag)}</span><span style="color:rgba(255,255,255,0.4);font-size:9px">★</span>
+                <span>${esc(currentTag)}</span><span style="color:rgba(255,255,255,0.4);font-size:9px">★</span>
+                <span>${esc(currentTag)}</span>
+              </div>
+            </div>
+            ${typeof getCfbScratchOverlayHtml === 'function' ? getCfbScratchOverlayHtml() : ''}
+            <div style="position:relative;z-index:2;display:flex;align-items:center;justify-content:space-between;padding:14px 18px;gap:12px">
+              <div>
+                <div id="bbLiveTeam" style="font-family:'Another Danger', 'Permanent Marker', 'Barlow Condensed', sans-serif;font-weight:900;font-style:italic;font-size:22px;letter-spacing:1.5px;text-transform:uppercase;background:linear-gradient(180deg,#fff 0%,#f1f5f9 35%,#cbd5e1 65%,#94a3b8 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;filter:drop-shadow(0 2px 4px rgba(0,0,0,0.9))">${esc(tName)}</div>
+                <div style="display:flex;align-items:center;gap:8px;margin-top:4px">
+                  <span style="font:800 15px 'Barlow Condensed';color:#ffd166;text-transform:uppercase">${esc(p)}</span>
+                  <span style="font:900 12px/1 'Barlow Condensed';padding:3px 7px;border-radius:4px;background:rgba(0,0,0,0.6);border:1.5px solid rgba(255,255,255,0.22);color:#e2e8f0;text-transform:uppercase">RECORD 3-1</span>
+                </div>
+              </div>
+              <div id="bbLiveLogo" style="width:58px;height:58px;border-radius:50%;border:3px solid #fff;${avatarFace}background-size:cover;background-position:center;box-shadow:inset 0 2px 5px rgba(255,255,255,0.9), 0 6px 16px rgba(0,0,0,0.7), 0 0 16px ${hexToRgba(currentColor, 0.6)};display:grid;place-items:center;font:900 24px 'Barlow Condensed';color:#fff;flex-shrink:0">
+                ${letter}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div style="display:flex;flex-direction:column;gap:14px;background:#15151c;padding:16px;border-radius:8px;border:1px solid #2d2d38">
+          <div>
+            <label style="font:800 11px 'Barlow Condensed';color:#aaa;letter-spacing:1px;text-transform:uppercase;display:block;margin-bottom:5px">Team Hashtag</label>
+            <input id="bbHashtagInput" value="${esc(coachHashtags[p] || profiles[p]?.hashtag || '')}" placeholder="#${esc(p.replace(/\s+/g, ''))}Nation" style="width:100%;box-sizing:border-box;background:#0c0c11;border:1px solid #383846;border-radius:6px;padding:9px 12px;color:#f5f3f0;font:800 14px 'Barlow Condensed';letter-spacing:0.8px" oninput="updateBbLivePreview('${jsArg(p)}')" />
+            <div style="font-size:11px;color:#7e7c85;margin-top:4px">Shown on the Primetime ribbon. Leave blank to default to #${esc(p.replace(/\s+/g, ''))}Nation.</div>
+          </div>
+
+          <div>
+            <label style="font:800 11px 'Barlow Condensed';color:#aaa;letter-spacing:1px;text-transform:uppercase;display:block;margin-bottom:5px">Primary Team Broadcast Color</label>
+            <div style="display:flex;align-items:center;gap:10px">
+              <input type="color" id="bbColorInput" value="${esc(currentColor)}" style="width:44px;height:38px;padding:2px;background:#0c0c11;border:1px solid #383846;border-radius:6px;cursor:pointer" oninput="updateBbLivePreview('${jsArg(p)}')" />
+              <input type="text" id="bbColorText" value="${esc(currentColor)}" style="width:90px;background:#0c0c11;border:1px solid #383846;border-radius:6px;padding:8px 10px;font:800 13px 'Barlow Condensed';color:#fff" oninput="document.querySelector('#bbColorInput').value=this.value;updateBbLivePreview('${jsArg(p)}')" />
+              <button class="btn ghost btn-sm" style="margin-left:auto;font-size:11px;padding:7px 12px;display:flex;align-items:center;gap:5px" onclick="triggerBbAutoExtract('${jsArg(p)}')">
+                <span>⚡</span> Auto-Extract
+              </button>
+            </div>
+            <div style="font-size:11px;color:#7e7c85;margin-top:4px">Extracts dominant vibrant color from coach avatar, or pick manually.</div>
+          </div>
+        </div>
+
+        <div style="display:flex;justify-content:flex-end;align-items:center;gap:10px;margin-top:20px">
+          <button class="btn ghost" onclick="openProfile('${jsArg(p)}')">Cancel</button>
+          <button class="btn" style="background:var(--red);color:#fff;font-weight:800;padding:10px 20px" onclick="saveBroadcastBrandingModal('${jsArg(p)}')">Save Branding</button>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function updateBbLivePreview(p) {
+  let tagInput = document.querySelector('#bbHashtagInput');
+  let colInput = document.querySelector('#bbColorInput');
+  let textInput = document.querySelector('#bbColorText');
+  let preview = document.querySelector('#bbLivePreview');
+  let ribbon = document.querySelector('#bbLiveRibbon');
+  let logo = document.querySelector('#bbLiveLogo');
+  if (!preview) return;
+
+  let tag = (tagInput ? tagInput.value.trim() : '') || `#${p.replace(/\s+/g, '')}Nation`;
+  if (!tag.startsWith('#')) tag = '#' + tag;
+  let col = colInput ? colInput.value : '#ef3038';
+  if (textInput && textInput !== document.activeElement) textInput.value = col;
+
+  preview.style.background = `radial-gradient(ellipse at 80% 45%, ${hexToRgba(col, 0.75)} 0%, ${hexToRgba(col, 0.35)} 55%, #08070c 95%), linear-gradient(135deg, ${hexToRgba(col, 0.40)} 0%, #0c0b11 100%)`;
+  if (logo) logo.style.boxShadow = `inset 0 2px 5px rgba(255,255,255,0.9), 0 6px 16px rgba(0,0,0,0.7), 0 0 16px ${hexToRgba(col, 0.6)}`;
+  if (ribbon) {
+    ribbon.innerHTML = `
+      <span>${esc(tag)}</span><span style="color:rgba(255,255,255,0.4);font-size:9px">★</span>
+      <span>${esc(tag)}</span><span style="color:rgba(255,255,255,0.4);font-size:9px">★</span>
+      <span>${esc(tag)}</span><span style="color:rgba(255,255,255,0.4);font-size:9px">★</span>
+      <span>${esc(tag)}</span>
+    `;
+  }
+}
+
+function triggerBbAutoExtract(p) {
+  if (!p) return;
+  if (typeof profilePictures === 'object' && profilePictures[p]) {
+    extractDominantColorFromImg(profilePictures[p], p, (extracted) => {
+      let colInput = document.querySelector('#bbColorInput');
+      let textInput = document.querySelector('#bbColorText');
+      if (colInput && extracted) {
+        colInput.value = extracted;
+        if (textInput) textInput.value = extracted;
+        updateBbLivePreview(p);
+      }
+    });
+  } else {
+    let fallbackCol = hslToHex((typeof hueOf === 'function' ? hueOf(p || 'team') : 0), 65, 36);
+    let colInput = document.querySelector('#bbColorInput');
+    let textInput = document.querySelector('#bbColorText');
+    if (colInput) {
+      colInput.value = fallbackCol;
+      if (textInput) textInput.value = fallbackCol;
+      updateBbLivePreview(p);
+    }
+  }
+}
+
+function saveBroadcastBrandingModal(p) {
+  if (!p || (!moderator && !window.moderator)) return;
+  let tagInput = document.querySelector('#bbHashtagInput');
+  let colInput = document.querySelector('#bbColorInput');
+  let val = tagInput ? tagInput.value.trim() : '';
+  if (val) {
+    if (!val.startsWith('#')) val = '#' + val;
+    coachHashtags[p] = val;
+    if (profiles[p]) profiles[p].hashtag = val;
+  } else {
+    delete coachHashtags[p];
+    if (profiles[p]) delete profiles[p].hashtag;
+  }
+  let col = colInput ? colInput.value : '';
+  if (col) {
+    coachThemeColors[p] = col;
+    if (profiles[p]) profiles[p].themeColor = col;
+  }
+  persistLeague();
+  if (typeof showDraftToast === 'function') {
+    showDraftToast(`✓ Saved broadcast branding for ${p}!`);
+  }
+  openProfile(p);
+  if (typeof render === 'function') render();
 }
 
 function resetCoachThemeColor(p) {
@@ -18664,7 +18822,6 @@ function matchupOfTheWeekCard(t){
                 <div class="primetime-cfb-team-name left" title="${esc(t1Name)}">${esc(t1Name)}</div>
                 <div class="primetime-cfb-sub-row left">
                   <span class="primetime-cfb-coach-tag">${playerLink(p1)}</span>
-                  <span class="primetime-cfb-ovr-wrap">${ovr1.badgeHtml}</span>
                   <span class="primetime-cfb-record-pill">RECORD ${esc(rec1)}</span>
                 </div>
               </div>
@@ -18707,7 +18864,6 @@ function matchupOfTheWeekCard(t){
                 <div class="primetime-cfb-team-name right" title="${esc(t2Name)}">${esc(t2Name)}</div>
                 <div class="primetime-cfb-sub-row right">
                   <span class="primetime-cfb-record-pill">${esc(rec2)} RECORD</span>
-                  <span class="primetime-cfb-ovr-wrap">${ovr2.badgeHtml}</span>
                   <span class="primetime-cfb-coach-tag">${playerLink(p2)}</span>
                 </div>
               </div>
@@ -24621,6 +24777,7 @@ function openProfile(p){
               <button class="btn ghost btn-sm" onclick="openProfilePictureEditor('${jsArg(p)}')">Edit profile picture</button>
               <button class="btn ghost btn-sm" onclick="editProfile('${jsArg(p)}', true)">Edit Profile</button>
               <button class="btn ghost btn-sm" onclick="openAccountLinks('${jsArg(p)}')">Link account</button>
+              <button class="btn ghost btn-sm" style="color:#7dd3fc;border-color:#1e3a5f" onclick="openBroadcastBrandingEditor('${jsArg(p)}')">🎨 Broadcast Branding</button>
               <button class="btn ghost btn-sm" style="color:var(--amber);border-color:#5e4a1a;grid-column:1/-1" onclick="cleanAndSyncRostersPrompt()">🧹 Clean Active Rosters</button>
             </div>
           </div>
