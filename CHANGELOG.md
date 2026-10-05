@@ -3,6 +3,15 @@
 All notable changes to the Bellimaka Pokémon Draft League site are documented here.
 Format: `v[MAJOR].[MINOR].[PATCH]` — Major = big new systems, Minor = new features, Patch = bug fixes / small improvements.
 
+## [v2.2.6] — 2026-10-04
+
+### Changed
+- **Top Cut Bracket Match Visual Polish & Strip Removal**:
+  - **Eliminated Clashing Vertical Side Strips**: Removed the jarring 4px thick colored vertical left borders (`#a855f7` purple/pink in Winners Bracket and `#ef3038` red in Losers Bracket) from `.tc-match-card`. Cards now feature a sleek, uniform, rounded 1px dark border all around (`#2e2e3c`) with `overflow: hidden`.
+  - **Clean Selection Highlighting**: Removed the inner 3px vertical border-left from `.tc-slot.picked` and `.tc-slot.hit`. Selecting a trainer now smoothly displays the red horizontal gradient glow (`linear-gradient(90deg, rgba(239,48,56,0.22), transparent)`), gold trainer typography, and glowing gold pick checkbox without any clashing or protruding vertical color bars on the edge of the card.
+
+---
+
 ## [v2.2.5] — 2026-10-04
 
 ### Fixed
