@@ -3,6 +3,16 @@
 All notable changes to the Bellimaka Pokémon Draft League site are documented here.
 Format: `v[MAJOR].[MINOR].[PATCH]` — Major = big new systems, Minor = new features, Patch = bug fixes / small improvements.
 
+## [v2.2.7] — 2026-10-04
+
+### Fixed & Improved
+- **Top Cut Bracket Match Card Colored Side Walls Restored**:
+  - **Restored Colored Side Wall Borders**: Restored the distinct 4px thick colored vertical left borders on `.tc-match-card` (`#a855f7` purple for Winners Bracket, `#ef3038` red for Losers Bracket, and `#ffd166` gold for Grand Finals) to maintain clean visual distinction across bracket sections.
+  - **Fixed Hover/Selection Offset Gap**: Eliminated `transform: translateX(2px)` from `.tc-slot.interactive:hover`. Row hover states now highlight with a smooth background illumination (`rgba(255,255,255,0.06)`) without shifting horizontally, ensuring the background color stays completely flush against the card's colored left side wall with zero uncolored gaps on the left and zero protruding edges on the right.
+  - **Border-Radius Clipping**: Maintained `overflow: hidden` on match cards so inner slot rows clip seamlessly to the card's 9px rounded corners.
+
+---
+
 ## [v2.2.6] — 2026-10-04
 
 ### Changed
