@@ -3,6 +3,20 @@
 All notable changes to the Bellimaka Pokémon Draft League site are documented here.
 Format: `v[MAJOR].[MINOR].[PATCH]` — Major = big new systems, Minor = new features, Patch = bug fixes / small improvements.
 
+## [v2.1.2] — 2026-10-04
+
+### Added
+- **Group Stage Faint Ratio (FR) Replay Tiebreaker System** — Introduced a new advanced tiebreaker metric that integrates directly with the Pokémon Showdown replay analyzer to rank trainers by combat efficiency:
+  - **Faint Ratio Calculation (`Faints Dealt ÷ Faints Taken`)**: Measures the total number of opponent Pokémon knocked out divided by a trainer's own fainted Pokémon across all verified group replays.
+  - **Automatic 4-Faint Forfeit Penalization & Award Engine**: If a trainer forfeits or loses due to inactivity in a replay, or if the game ends prematurely before 4 Pokémon have fainted for the losing side, the forfeiting trainer is assessed 4 fainted Pokémon total (all 4 Pokémon fainted) and 4 faints dealt are awarded to the winning trainer. Any Pokémon lost by the winner prior to the forfeit are accurately credited as faints taken against the winner.
+  - **Undefeated Infinity Tier & Zero-Taken Tiebreakers**: Undefeated trainers who lost zero Pokémon (`faintsTaken === 0`) are granted top priority (`∞`), with ties between undefeated trainers broken by total faints dealt. Inactive or unplayed trainers (`0/0`) safely default to `0.00`.
+  - **Replay Verification Safeguards**: Only verified, attached Showdown replays contribute towards the Faint Ratio; games missing parsed logs safely contribute 0 faints dealt and 0 taken without distorting records.
+  - **Interactive Standings Table & Tooltip Integration**: Displays a dedicated `FR` stat cube in the group standings table with decimal ratio display (e.g., `1.75` or `∞`) and hover tooltips showing exact combat counts (`X faints dealt / Y taken`).
+  - **Tiebreaker Priority Modal Configuration**: Registered under `STANDING_METRICS`, allowing tournament commissioners to add `FR`, promote/demote its priority level, or remove it in the Tiebreaker & Ranking Priority Editor modal (`openTiebreakerEditor`), while preserving the standard `['wl', 'gw', 'gd', 'h2h']` default priority.
+  - **Standings Ranking Order Subtitle**: Added dynamic criteria priority display (`Group ranking order: Metric 1 → Metric 2 → ...`) beneath the group standings grid matching the Swiss System display.
+
+---
+
 ## [v2.1.1] — 2026-10-04
 
 ### Improved

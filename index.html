@@ -19847,7 +19847,7 @@ function isGroupComplete(t,g){let ms=groupMatches(t,g);return ms.length>0&&ms.ev
 
 function evaluateStandingsForMatches(members, matchesList, criteria, t) {
   let s = {};
-  members.forEach(p => s[p] = { p, w: 0, l: 0, gw: 0, gl: 0, h2h: 0, h2hWins: 0, results: {} });
+  members.forEach(p => s[p] = { p, w: 0, l: 0, gw: 0, gl: 0, h2h: 0, h2hWins: 0, faintsDealt: 0, faintsTaken: 0, results: {} });
   matchesList.forEach(m => {
     let a = s[m.a], b = s[m.b];
     if (!a || !b) return;
@@ -19870,6 +19870,24 @@ function evaluateStandingsForMatches(members, matchesList, criteria, t) {
     }}
   };
   let critList = (typeof getStandingsCriteria === 'function') ? getStandingsCriteria(t) : (criteria || ['wl', 'gw', 'gd', 'h2h']);
+  if(critList.includes('fr')){
+    matchesList.forEach(m => {
+      let replays = Array.isArray(m.replays) ? m.replays : [];
+      replays.forEach(r => {
+        let fRes = (typeof getReplayGameFaints === 'function') ? getReplayGameFaints(r, m, t) : null;
+        if(!fRes) return;
+        let p1 = m.a || m.p1, p2 = m.b || m.p2;
+        if(s[p1] && fRes[p1]){
+          s[p1].faintsDealt = (s[p1].faintsDealt || 0) + (fRes[p1].dealt || 0);
+          s[p1].faintsTaken = (s[p1].faintsTaken || 0) + (fRes[p1].taken || 0);
+        }
+        if(s[p2] && fRes[p2]){
+          s[p2].faintsDealt = (s[p2].faintsDealt || 0) + (fRes[p2].dealt || 0);
+          s[p2].faintsTaken = (s[p2].faintsTaken || 0) + (fRes[p2].taken || 0);
+        }
+      });
+    });
+  }
   let list = Object.values(s);
   list.sort((a, b) => {
     for (let critId of critList) {
@@ -21276,7 +21294,104 @@ function matchesView(t=activeT(), editable=canManageTournament(t)){
     }).join('')}
   </div>`;
 }
+function getReplayGameFaints(r, m, t){
+  if(!r) return null;
+  let stats = r.stats;
+  let p1 = m?.a || m?.p1 || '';
+  let p2 = m?.b || m?.p2 || '';
+  if((!stats || !stats.pokemon || (typeof stats.pokemon === 'object' && Object.keys(stats.pokemon).length === 0))){
+    let logText = (typeof r.log === 'string' && r.log.length > 20) ? r.log : null;
+    if(!logText && typeof window !== 'undefined' && window._replayLogCache){
+      let g = r.game || 1;
+      let repId = r.id || '';
+      logText = (repId && window._replayLogCache[repId]) ||
+        (t?.id && window._replayLogCache[`${t.id}_${p1}_${p2}_g${g}`]) ||
+        (t?.id && window._replayLogCache[`${t.id}_${p2}_${p1}_g${g}`]) ||
+        (t?.name && window._replayLogCache[`${t.name}_${p1}_${p2}_g${g}`]) ||
+        (t?.name && window._replayLogCache[`${t.name}_${p2}_${p1}_g${g}`]);
+    }
+    if(logText && typeof parseShowdownBattleLog === 'function'){
+      stats = parseShowdownBattleLog(logText, {
+        id: r.id,
+        game: r.game || 1,
+        match: m,
+        coach1: p1,
+        coach2: p2,
+        tournament: t,
+        manualSwapped: r.swapped
+      });
+      if(stats) r.stats = stats;
+    }
+  }
+  if(!stats || !stats.pokemon) return null;
+
+  let p1Actual = 0;
+  let p2Actual = 0;
+  let pList = Array.isArray(stats.pokemon) ? stats.pokemon : Object.values(stats.pokemon || {});
+  let norm = s => String(s || '').trim().toLowerCase();
+  for(let p of pList){
+    if(p.brought === false) continue;
+    if(p.fainted){
+      let coach = p.coach;
+      if(norm(coach) !== norm(p1) && norm(coach) !== norm(p2)){
+        if(p.side === 'p1') coach = stats.coachP1 || p1;
+        else if(p.side === 'p2') coach = stats.coachP2 || p2;
+      }
+      if(norm(coach) === norm(p1)) p1Actual++;
+      else if(norm(coach) === norm(p2)) p2Actual++;
+    }
+  }
+
+  let winner = r.winnerCoach || stats.winnerCoach;
+  if(!winner && stats.winner){
+    let rawWin = norm(stats.winner);
+    if(rawWin === norm(stats.player1)) winner = stats.coachP1 || p1;
+    else if(rawWin === norm(stats.player2)) winner = stats.coachP2 || p2;
+  }
+
+  if(norm(winner) === norm(p1)){
+    return {
+      [p1]: { dealt: 4, taken: p1Actual },
+      [p2]: { dealt: p1Actual, taken: 4 }
+    };
+  } else if(norm(winner) === norm(p2)){
+    return {
+      [p1]: { dealt: p2Actual, taken: 4 },
+      [p2]: { dealt: 4, taken: p2Actual }
+    };
+  }
+
+  return {
+    [p1]: { dealt: p2Actual, taken: p1Actual },
+    [p2]: { dealt: p1Actual, taken: p2Actual }
+  };
+}
+
 var STANDING_METRICS = {
+  fr: {
+    id: 'fr',
+    label: 'FR',
+    name: 'Faint Ratio',
+    shortDesc: 'Faints Dealt ÷ Faints Taken',
+    desc: 'Opponent Pokémon fainted divided by own Pokémon fainted (4 faints on forfeit)',
+    compare: (a, b) => {
+      let rA = (!a.faintsTaken) ? ((a.faintsDealt > 0) ? Infinity : 0) : (a.faintsDealt / a.faintsTaken);
+      let rB = (!b.faintsTaken) ? ((b.faintsDealt > 0) ? Infinity : 0) : (b.faintsDealt / b.faintsTaken);
+      if(rA === Infinity && rB === Infinity){
+        return (b.faintsDealt || 0) - (a.faintsDealt || 0);
+      }
+      if(rA === Infinity) return -1;
+      if(rB === Infinity) return 1;
+      if(rA !== rB) return rB - rA;
+      return (b.faintsDealt || 0) - (a.faintsDealt || 0);
+    },
+    format: (x) => {
+      let dealt = x.faintsDealt || 0;
+      let taken = x.faintsTaken || 0;
+      let valStr = taken === 0 ? (dealt > 0 ? '∞' : '0.00') : (dealt / taken).toFixed(2);
+      return `<span title="${dealt} faints dealt / ${taken} taken">${valStr}</span>`;
+    }
+  },
   wl: {
     id: 'wl',
     label: 'W-L',
@@ -21371,7 +21486,7 @@ function getStandingsCriteria(t){
 function getStand(t=activeT(),group=null){
   if(getStage1Format(t) === 'swiss') return getSwissStand(t);
   let buckets=groupsOf(t),g=group||Object.keys(buckets)[0],members=buckets[g]||t.players,s={};
-  members.forEach(p=>s[p]={p,w:0,l:0,gw:0,gl:0,h2h:0,h2hWins:0,sos:0,results:{}});
+  members.forEach(p=>s[p]={p,w:0,l:0,gw:0,gl:0,h2h:0,h2hWins:0,sos:0,faintsDealt:0,faintsTaken:0,results:{}});
   let matches = groupMatches(t,g).filter(m=>m.as!==''&&m.as!=null&&m.bs!==''&&m.bs!=null);
   matches.forEach(m=>{
     let a=s[m.a],b=s[m.b];
@@ -21387,6 +21502,7 @@ function getStand(t=activeT(),group=null){
   let list=Object.values(s);
   let criteria = getStandingsCriteria(t);
   let needsSos = criteria.includes('sos');
+  let needsFr = criteria.includes('fr');
 
   if(needsSos){
     list.forEach(item => {
@@ -21396,6 +21512,25 @@ function getStand(t=activeT(),group=null){
         else if(m.b === item.p && s[m.a]) oppWins += s[m.a].w;
       });
       item.sos = oppWins;
+    });
+  }
+
+  if(needsFr){
+    matches.forEach(m => {
+      let replays = Array.isArray(m.replays) ? m.replays : [];
+      replays.forEach(r => {
+        let fRes = getReplayGameFaints(r, m, t);
+        if(!fRes) return;
+        let p1 = m.a || m.p1, p2 = m.b || m.p2;
+        if(s[p1] && fRes[p1]){
+          s[p1].faintsDealt = (s[p1].faintsDealt || 0) + (fRes[p1].dealt || 0);
+          s[p1].faintsTaken = (s[p1].faintsTaken || 0) + (fRes[p1].taken || 0);
+        }
+        if(s[p2] && fRes[p2]){
+          s[p2].faintsDealt = (s[p2].faintsDealt || 0) + (fRes[p2].dealt || 0);
+          s[p2].faintsTaken = (s[p2].faintsTaken || 0) + (fRes[p2].taken || 0);
+        }
+      });
     });
   }
 
@@ -21447,7 +21582,8 @@ function standingTable(t, g){
     gl:   { label: 'GL',     width: '42px', title: 'Fewest Games Lost' },
     gpct: { label: 'GW%',    width: '46px', title: 'Game Win Percentage' },
     sos:  { label: 'SOS',    width: '44px', title: 'Strength of Schedule' },
-    buch: { label: 'BUCH',   width: '46px', title: "Buchholz / Strength of Schedule (Opponents' Match Wins)" }
+    buch: { label: 'BUCH',   width: '46px', title: "Buchholz / Strength of Schedule (Opponents' Match Wins)" },
+    fr:   { label: 'FR',     width: '46px', title: 'Faint Ratio (Opponent Pokémon Fainted ÷ Own Pokémon Fainted)' }
   };
 
   let criteriaList = isSwiss ? ['wl', 'buch', 'gd', 'gw'] : getStandingsCriteria(t);
@@ -21536,6 +21672,11 @@ function standingTable(t, g){
         valHtml = `<span class="bcast-cube-val sos-val">${x.sos || 0}</span>`;
       } else if(critId === 'buch'){
         valHtml = `<span class="bcast-cube-val sos-val">${x.buch || x.sos || 0}</span>`;
+      } else if(critId === 'fr'){
+        let dealt = x.faintsDealt || 0;
+        let taken = x.faintsTaken || 0;
+        let valStr = taken === 0 ? (dealt > 0 ? '∞' : '0.00') : (dealt / taken).toFixed(2);
+        valHtml = `<span class="bcast-cube-val" title="${dealt} faints dealt / ${taken} taken">${valStr}</span>`;
       } else {
         let m = STANDING_METRICS[critId];
         let cellContent = m && typeof m.format === 'function' ? m.format(x) : (x[critId] ?? '—');
@@ -22201,7 +22342,7 @@ function Standings(){
 
   let criteria = getStandingsCriteria(t);
   let orderDesc = criteria.map(c => `${STANDING_METRICS[c]?.name || c.toUpperCase()} (${STANDING_METRICS[c]?.label || c.toUpperCase()})`).join(' → ');
-  return head('Standings', t.name + ' · group stage', controls) + `<div class="bcast-groups-grid ${groups.length > 1 ? 'two-groups' : 'single-group'}">${groups.map(g => `<div class="card table-wrap bcast-card-wrap">${standingTable(t, g)}</div>`).join('')}</div>` + renderTournamentAwardsStandingsBannerHtml(t);
+  return head('Standings', t.name + ' · group stage', controls) + `<div class="bcast-groups-grid ${groups.length > 1 ? 'two-groups' : 'single-group'}">${groups.map(g => `<div class="card table-wrap bcast-card-wrap">${standingTable(t, g)}</div>`).join('')}</div>` + `<p class="sub" style="margin-top:12px">Group ranking order: <b>${orderDesc}</b>.</p>` + renderTournamentAwardsStandingsBannerHtml(t);
 }
 
 function matchPlayerName(p){return `<button class="player-link match-hover-name" onclick="openProfile('${jsArg(p)}')" onmouseenter="highlightMatches('${jsArg(p)}',true)" onmouseleave="highlightMatches('',false)">${esc(p)}</button>`}
