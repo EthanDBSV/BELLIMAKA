@@ -14821,9 +14821,9 @@ function getTournamentTopCutModel(t){
     }
     wbRounds.push({ title:'Winners Final', name:'Round 3', matches:wb3Matches });
 
-    let qf1Loser = wb1Matches[0].loser || (wb1Matches[0].p2 === 'BYE' ? 'BYE' : 'Loser QF 1');
+    let qf1Loser = wb1Matches[0].loser || ((wb1Matches[0].p2 === 'BYE' || wb1Matches[0].originP2 === 'BYE' || !wb1Matches[0].p2 || qualifiers.length <= 7) ? 'BYE' : 'Loser QF 1');
     let qf2Loser = wb1Matches[1].loser || 'Loser QF 2';
-    let qf3Loser = wb1Matches[2].loser || (wb1Matches[2].p2 === 'BYE' ? 'BYE' : 'Loser QF 3');
+    let qf3Loser = wb1Matches[2].loser || ((wb1Matches[2].p2 === 'BYE' || wb1Matches[2].originP2 === 'BYE' || !wb1Matches[2].p2 || qualifiers.length <= 6) ? 'BYE' : 'Loser QF 3');
     let qf4Loser = wb1Matches[3].loser || 'Loser QF 4';
 
     let lb1Matches = [
@@ -14834,18 +14834,30 @@ function getTournamentTopCutModel(t){
       let sm = findStageMatch(bmd, 2, 1, num);
       if(sm){
         applyStageMatch(lb1Matches[idx], sm);
-      } else if((lb1Matches[idx].p1 === 'BYE' || !lb1Matches[idx].p1) && lb1Matches[idx].p2 && isKnownPlayer(lb1Matches[idx].p2)){
-        lb1Matches[idx].isDone = true;
-        lb1Matches[idx].winner = lb1Matches[idx].p2;
-        lb1Matches[idx].loser = null;
-        lb1Matches[idx].s1 = 0;
-        lb1Matches[idx].s2 = 2;
-      } else if((lb1Matches[idx].p2 === 'BYE' || !lb1Matches[idx].p2) && lb1Matches[idx].p1 && isKnownPlayer(lb1Matches[idx].p1)){
-        lb1Matches[idx].isDone = true;
-        lb1Matches[idx].winner = lb1Matches[idx].p1;
-        lb1Matches[idx].loser = null;
-        lb1Matches[idx].s1 = 2;
-        lb1Matches[idx].s2 = 0;
+      }
+      let m = lb1Matches[idx];
+      let p1IsReal = isKnownPlayer(m.p1);
+      let p2IsReal = isKnownPlayer(m.p2);
+      let p1IsBye = m.p1 === 'BYE' || m.originP1 === 'BYE' || !m.p1 || (idx === 0 && qualifiers.length <= 7) || (idx === 1 && qualifiers.length <= 6);
+      let p2IsBye = m.p2 === 'BYE' || m.originP2 === 'BYE' || !m.p2;
+
+      if(p1IsBye && !m.p1) m.p1 = 'BYE';
+      if(p2IsBye && !m.p2) m.p2 = 'BYE';
+
+      if(!m.isDone){
+        if(p2IsReal && p1IsBye){
+          m.isDone = true;
+          m.winner = m.p2;
+          m.loser = null;
+          m.s1 = 0;
+          m.s2 = 2;
+        } else if(p1IsReal && p2IsBye){
+          m.isDone = true;
+          m.winner = m.p1;
+          m.loser = null;
+          m.s1 = 2;
+          m.s2 = 0;
+        }
       }
     });
     lbRounds.push({ title:'LB Round 1', name:'Round 1', matches:lb1Matches });
@@ -14857,7 +14869,12 @@ function getTournamentTopCutModel(t){
     [1, 2].forEach((num, idx)=>{
       let sm = findStageMatch(bmd, 2, 2, num);
       if(sm){
+        let prevP1 = lb2Matches[idx].p1;
         applyStageMatch(lb2Matches[idx], sm);
+        if(!lb2Matches[idx].p1 && prevP1 && isKnownPlayer(prevP1)){
+          lb2Matches[idx].p1 = prevP1;
+          lb2Matches[idx].a = prevP1;
+        }
       }
     });
     lbRounds.push({ title:'LB Round 2', name:'Round 2', matches:lb2Matches });
@@ -27900,10 +27917,35 @@ function topCutPredictionBracket(t){
         }
       }
 
-      let pick = getBracketMatchPick(m.id, p1, p2);
-      let isDone = m.isDone && m.winner;
-      let winner = (pick === p1 || pick === p2) ? pick : (isDone ? m.winner : null);
-      let loser = winner ? (winner === p1 ? p2 : p1) : null;
+      let p1IsReal = isKnownPlayer(p1);
+      let p2IsReal = isKnownPlayer(p2);
+      let p1IsBye = (p1 === 'BYE' || m.originP1 === 'BYE' || (!p1 && m.originP1 === 'BYE'));
+      let p2IsBye = (p2 === 'BYE' || m.originP2 === 'BYE' || (!p2 && m.originP2 === 'BYE'));
+
+      let isByeAdvance = false;
+      let pick = '';
+      let isDone = false;
+      let winner = null;
+      let loser = null;
+
+      if(p2IsReal && p1IsBye){
+        p1 = 'BYE';
+        winner = p2;
+        loser = null;
+        isDone = true;
+        isByeAdvance = true;
+      } else if(p1IsReal && p2IsBye){
+        p2 = 'BYE';
+        winner = p1;
+        loser = null;
+        isDone = true;
+        isByeAdvance = true;
+      } else {
+        pick = getBracketMatchPick(m.id, p1, p2);
+        isDone = Boolean(m.isDone && m.winner);
+        winner = (pick === p1 || pick === p2) ? pick : (isDone ? m.winner : null);
+        loser = winner ? (winner === p1 ? p2 : p1) : null;
+      }
 
       predMap[m.id] = {
         id: m.id,
@@ -27915,6 +27957,7 @@ function topCutPredictionBracket(t){
         winner,
         loser,
         isDone,
+        isByeAdvance,
         officialWinner: m.winner,
         originP1: m.originP1,
         originP2: m.originP2
@@ -27928,13 +27971,23 @@ function topCutPredictionBracket(t){
       let p1 = m.p1;
       let p2 = m.p2;
 
+      let feed1IsBye = false;
+      let feed2IsBye = false;
+
       if(count === 8){
         if(rIdx === 0){ // LB R1 (lb1, lb2)
           let wbFeed1 = predMap['wb' + (mIdx * 2 + 1)];
           let wbFeed2 = predMap['wb' + (mIdx * 2 + 2)];
+
+          feed1IsBye = !isKnownPlayer(wbFeed1?.loser) && (wbFeed1?.isDone || wbFeed1?.p2 === 'BYE' || wbFeed1?.originP2 === 'BYE' || !wbFeed1?.p2 || m.originP1 === 'BYE' || (mIdx === 0 && model.qualifiers?.length <= 7) || (mIdx === 1 && model.qualifiers?.length <= 6));
+          feed2IsBye = !isKnownPlayer(wbFeed2?.loser) && (wbFeed2?.isDone || wbFeed2?.p2 === 'BYE' || wbFeed2?.originP2 === 'BYE' || !wbFeed2?.p2 || m.originP2 === 'BYE');
+
           if(wbFeed1?.loser) p1 = wbFeed1.loser;
+          else if(feed1IsBye) p1 = 'BYE';
+
           if(wbFeed2?.loser) p2 = wbFeed2.loser;
-          if(p1 === 'BYE' && p2 && p2 !== 'BYE') p1 = p2;
+          else if(feed2IsBye) p2 = 'BYE';
+
         } else if(rIdx === 1){ // LB R2 (lb3, lb4)
           let lbFeed = predMap['lb' + (mIdx + 1)];
           let wbFeed = predMap['wb' + (6 - mIdx)]; // wb6 / wb5
@@ -27955,8 +28008,15 @@ function topCutPredictionBracket(t){
         if(rIdx === 0){ // LB R1 (lb1)
           let wbFeed1 = predMap['wb1'];
           let wbFeed2 = predMap['wb2'];
+          feed1IsBye = !isKnownPlayer(wbFeed1?.loser) && (wbFeed1?.isDone || wbFeed1?.p2 === 'BYE' || wbFeed1?.originP2 === 'BYE' || !wbFeed1?.p2 || m.originP1 === 'BYE');
+          feed2IsBye = !isKnownPlayer(wbFeed2?.loser) && (wbFeed2?.isDone || wbFeed2?.p2 === 'BYE' || wbFeed2?.originP2 === 'BYE' || !wbFeed2?.p2 || m.originP2 === 'BYE');
+
           if(wbFeed1?.loser) p1 = wbFeed1.loser;
+          else if(feed1IsBye) p1 = 'BYE';
+
           if(wbFeed2?.loser) p2 = wbFeed2.loser;
+          else if(feed2IsBye) p2 = 'BYE';
+
         } else if(rIdx === 1){ // Losers Final (lb2)
           let lbFeed = predMap['lb1'];
           let wfFeed = predMap['wb3']; // Loser of Winners Final!
@@ -27965,10 +28025,35 @@ function topCutPredictionBracket(t){
         }
       }
 
-      let pick = getBracketMatchPick(m.id, p1, p2);
-      let isDone = m.isDone && m.winner;
-      let winner = (pick === p1 || pick === p2) ? pick : (isDone ? m.winner : null);
-      let loser = winner ? (winner === p1 ? p2 : p1) : null;
+      let p1IsReal = isKnownPlayer(p1);
+      let p2IsReal = isKnownPlayer(p2);
+      let p1IsBye = (p1 === 'BYE' || m.originP1 === 'BYE' || feed1IsBye);
+      let p2IsBye = (p2 === 'BYE' || m.originP2 === 'BYE' || feed2IsBye);
+
+      let isByeAdvance = false;
+      let pick = '';
+      let isDone = false;
+      let winner = null;
+      let loser = null;
+
+      if(p2IsReal && p1IsBye){
+        p1 = 'BYE';
+        winner = p2;
+        loser = null;
+        isDone = true;
+        isByeAdvance = true;
+      } else if(p1IsReal && p2IsBye){
+        p2 = 'BYE';
+        winner = p1;
+        loser = null;
+        isDone = true;
+        isByeAdvance = true;
+      } else {
+        pick = getBracketMatchPick(m.id, p1, p2);
+        isDone = Boolean(m.isDone && m.winner);
+        winner = (pick === p1 || pick === p2) ? pick : (isDone ? m.winner : null);
+        loser = winner ? (winner === p1 ? p2 : p1) : null;
+      }
 
       predMap[m.id] = {
         id: m.id,
@@ -27980,6 +28065,7 @@ function topCutPredictionBracket(t){
         winner,
         loser,
         isDone,
+        isByeAdvance,
         officialWinner: m.winner,
         originP1: m.originP1,
         originP2: m.originP2
@@ -28057,7 +28143,8 @@ function topCutPredictionBracket(t){
     }
 
     let isPicked = (mObj.chosen === pName);
-    let isHit = mObj.isDone && mObj.officialWinner === pName && isPicked;
+    let isByeWinner = Boolean(mObj.isDone && mObj.winner === pName && (mObj.isByeAdvance || !isOpponentReal));
+    let isHit = mObj.isDone && mObj.officialWinner === pName && (isPicked || isByeWinner);
     let isMiss = mObj.isDone && mObj.officialWinner && mObj.officialWinner !== pName && isPicked;
 
     let ovrObj = calculatePlayerOVR(pName);
@@ -28067,9 +28154,9 @@ function topCutPredictionBracket(t){
 
     let isClickable = !mObj.isDone && isReal && isOpponentReal && !(typeof window !== 'undefined' && window._viewingBallotPickMap);
 
-    return `<div class="tc-slot ${isClickable ? 'interactive' : ''} ${isPicked ? 'picked' : ''} ${isHit ? 'hit' : (isMiss ? 'miss' : '')}"
+    return `<div class="tc-slot ${isClickable ? 'interactive' : ''} ${(isPicked || isByeWinner) ? 'picked' : ''} ${isHit ? 'hit' : (isMiss ? 'miss' : '')}"
       ${isClickable ? `onclick="saveBracketPredictionPick('${jsArg(mId)}', '${jsArg(pName)}', this, '${jsArg(t.id)}')"` : ''}
-      title="${mObj.isDone ? 'Match complete' : (!isOpponentReal ? 'Waiting for opponent' : (isPicked ? 'Click to unselect ' + esc(pName) : 'Click to pick ' + esc(pName) + ' to advance'))}">
+      title="${mObj.isDone ? (isByeWinner ? 'Advances automatically via BYE' : 'Match complete') : (!isOpponentReal ? 'Waiting for opponent' : (isPicked ? 'Click to unselect ' + esc(pName) : 'Click to pick ' + esc(pName) + ' to advance'))}">
       <span class="tc-slot-seed">${seed ? `#${seed}` : ''}</span>
       <div class="tc-slot-info">
         <span class="mrow-face" style="background-image:${faceArt};background-size:cover;background-position:center;width:24px;height:24px;font-size:10px;border-radius:50%;flex:none;display:grid;place-items:center;border:2px solid ${ovrObj.color}">${faceLetter}</span>
@@ -28079,7 +28166,7 @@ function topCutPredictionBracket(t){
         </div>
       </div>
       <div class="tc-slot-pickbox">
-        ${isHit ? '✓' : (isMiss ? '✗' : (isPicked ? '✓' : ''))}
+        ${isHit ? '✓' : (isMiss ? '✗' : ((isPicked || isByeWinner) ? '✓' : ''))}
       </div>
     </div>`;
   }
@@ -28118,7 +28205,7 @@ function topCutPredictionBracket(t){
                     return `<div class="tc-match-card tc-wb-card ${mObj.isDone ? 'completed' : ''} ${isPast ? 'is-past' : ''}">
                       <div class="tc-match-head">
                         <span>${esc(m.title)}</span>
-                        <span style="color:${mObj.chosen ? '#ffd166' : '#8e8c95'}">${mObj.isDone ? 'FINAL' : (mObj.chosen ? 'PICKED' : 'OPEN')}</span>
+                        <span style="color:${mObj.isByeAdvance ? '#4bdd91' : (mObj.chosen ? '#ffd166' : '#8e8c95')}">${mObj.isByeAdvance ? 'BYE ADVANCE' : (mObj.isDone ? 'FINAL' : (mObj.chosen ? 'PICKED' : 'OPEN'))}</span>
                       </div>
                       ${renderInteractivePredSlot(mObj, true)}
                       ${renderInteractivePredSlot(mObj, false)}
@@ -28174,7 +28261,7 @@ function topCutPredictionBracket(t){
                       return `<div class="tc-match-card tc-lb-card ${mObj.isDone ? 'completed' : ''} ${isPast ? 'is-past' : ''}">
                         <div class="tc-match-head">
                           <span>${esc(m.title)}</span>
-                          <span style="color:${mObj.chosen ? '#ffd166' : '#8e8c95'}">${mObj.isDone ? 'FINAL' : (mObj.chosen ? 'PICKED' : 'OPEN')}</span>
+                          <span style="color:${mObj.isByeAdvance ? '#4bdd91' : (mObj.chosen ? '#ffd166' : '#8e8c95')}">${mObj.isByeAdvance ? 'BYE ADVANCE' : (mObj.isDone ? 'FINAL' : (mObj.chosen ? 'PICKED' : 'OPEN'))}</span>
                         </div>
                         ${renderInteractivePredSlot(mObj, true)}
                         ${renderInteractivePredSlot(mObj, false)}
@@ -28737,7 +28824,8 @@ function calculateLeagueRecords(forceRefresh = false){
           ...(topCutModel.gfMatches || [])
         ];
         allBracketMatches.forEach(bm => {
-          if(bm.isDone && bm.winner){
+          let isByeMatch = (bm.originP1 === 'BYE' || bm.originP2 === 'BYE' || bm.p1 === 'BYE' || bm.p2 === 'BYE' || !isKnownPlayer(bm.p1) || !isKnownPlayer(bm.p2));
+          if(!isByeMatch && bm.isDone && bm.winner){
             totalSettledKeys.push('draftdex-bpick-' + bm.id);
           }
         });

@@ -3,6 +3,18 @@
 All notable changes to the Bellimaka Pokémon Draft League site are documented here.
 Format: `v[MAJOR].[MINOR].[PATCH]` — Major = big new systems, Minor = new features, Patch = bug fixes / small improvements.
 
+## [v2.2.5] — 2026-10-04
+
+### Fixed
+- **Top Cut Prediction Bracket BYE Auto-Advancement & LB Progression**:
+  - **Automatic LB Round 1 BYE Progression**: In double-elimination brackets with byes (such as a 6-player bracket where Seeds 1 & 2 receive opening byes into Semifinals), the opening Losers Bracket fixtures (`lb1` and `lb2`) naturally pair the dropping WB Quarterfinal losers against byes. Resolved the defect where `predMap` left these LB Round 1 fixtures as unpickable `OPEN` matchups without a winner, permanently deadlocking users from completing downstream rounds.
+  - **Dynamic Downstream Feeder Flow**: Known players paired against a BYE in LB Round 1 (e.g. Jace and Dao Ming) now automatically advance with `BYE ADVANCE` status and a checkmark, instantly populating into LB Round 2 to face the dropping WB Semifinal losers (e.g. Jace vs Max, Dao Ming vs Yamac).
+  - **Full Bracket Predictability**: Downstream rounds (LB Semifinals, Losers Final, and Championship Final) now smoothly open and update as predictions are made, allowing users to predict all matches to the Grand Finals and select a Projected Champion.
+  - **Real Bracket Model Sync (`getTournamentTopCutModel`)**: Synchronized LB Round 1 BYE auto-advancement into the tournament bracket model so live bracket progression handles bye-rounds seamlessly without getting stuck on unplayable feeder slots.
+  - **Oracle Badge Safeguard**: Filtered out unpickable BYE matches from `totalSettledKeys` so users are not penalized on perfect prediction achievements.
+
+---
+
 ## [v2.2.4] — 2026-10-04
 
 ### Fixed
