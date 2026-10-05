@@ -18241,14 +18241,6 @@ function getMatchupShowcasePokemon(tourn, m, coach) {
 function togglePinPrimetimeMatch(tournamentId, matchIdentifier) {
   let t = (tournamentId && tournamentData[tournamentId]) || activeT() || ongoingT();
   let isMod = Boolean(moderator || window.moderator || (typeof canManageTournament === 'function' && canManageTournament(t)));
-
-  let hashtag1 = getCoachHashtag(p1);
-  let hashtag2 = getCoachHashtag(p2);
-  let color1 = getCoachPrimaryColor(p1);
-  let color2 = getCoachPrimaryColor(p2);
-
-  let tickerItems1 = Array(8).fill(`<span>${esc(hashtag1)}</span><span class="ticker-star">★</span>`).join('');
-  let tickerItems2 = Array(8).fill(`<span>${esc(hashtag2)}</span><span class="ticker-star">★</span>`).join('');
   if(!t || !isMod) return;
   if(t.pinnedPrimetimeMatch === matchIdentifier) {
     delete t.pinnedPrimetimeMatch;
@@ -18488,6 +18480,14 @@ function matchupOfTheWeekCard(t){
   ` : '';
 
   let isMod = Boolean(moderator || window.moderator || (typeof canManageTournament === 'function' && canManageTournament(t)));
+
+  let hashtag1 = getCoachHashtag(p1);
+  let hashtag2 = getCoachHashtag(p2);
+  let color1 = getCoachPrimaryColor(p1);
+  let color2 = getCoachPrimaryColor(p2);
+
+  let tickerItems1 = Array(8).fill(`<span>${esc(hashtag1)}</span><span class="ticker-star">★</span>`).join('');
+  let tickerItems2 = Array(8).fill(`<span>${esc(hashtag2)}</span><span class="ticker-star">★</span>`).join('');
 
   let pinBtnHtml = isMod ? `
     <button class="primetime-pin-btn ${item.isPinned ? 'active' : ''}" onclick="event.stopPropagation();togglePinPrimetimeMatch('${jsArg(t.id)}', '${jsArg(item.matchId)}')" title="${item.isPinned ? 'Click to unpin (restore auto ordering)' : 'Pin as #1 Spotlight Match'}">
