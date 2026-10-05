@@ -563,6 +563,8 @@ details[open] > .past-tourney-summary .past-chevron{transform:rotate(180deg);col
 .acct-mode-strip{display:flex;gap:8px;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;flex-wrap:nowrap}
 .acct-mode-strip::-webkit-scrollbar{display:none}
 .acct-mode-tab{flex-shrink:0;white-space:nowrap;display:inline-flex;align-items:center;gap:6px}
+.acct-tab-mob{display:none}
+.acct-tab-desk{display:inline}
 
 .acct-stats-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:16px}
 .acct-stat-card{background:#121217;border:1px solid #282834;border-radius:8px;padding:10px 14px;text-align:center}
@@ -570,7 +572,7 @@ details[open] > .past-tourney-summary .past-chevron{transform:rotate(180deg);col
 .acct-stat-lbl{font-size:10px;font-weight:800;color:#8e8c95;text-transform:uppercase;letter-spacing:.5px;margin-top:2px}
 
 .acct-filter-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;gap:8px;flex-wrap:wrap}
-.acct-filter-strip{display:flex;gap:6px;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;flex-wrap:nowrap}
+.acct-filter-strip{display:flex;gap:6px;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;flex-wrap:nowrap;max-width:100%}
 .acct-filter-strip::-webkit-scrollbar{display:none}
 .acct-filter-strip button{flex-shrink:0;white-space:nowrap}
 
@@ -599,26 +601,66 @@ details[open] > .past-tourney-summary .past-chevron{transform:rotate(180deg);col
 .acct-tool-card button{margin-top:auto;width:100%}
 
 @media(max-width:768px){
-  .acct-grid{grid-template-columns:1fr!important;gap:12px!important}
-  .acct-user-card{padding:12px 14px!important;gap:8px!important;border-radius:10px!important}
+  .acct-tab-mob{display:inline!important}
+  .acct-tab-desk{display:none!important}
+  .acct-grid{grid-template-columns:1fr!important;gap:12px!important;width:100%!important;box-sizing:border-box!important}
+  .acct-user-card{padding:12px 14px!important;gap:10px!important;border-radius:10px!important;width:100%!important;box-sizing:border-box!important}
   .acct-user-desktop-content{display:none!important}
-  .acct-user-mobile-bar{display:flex!important;align-items:center!important;justify-content:space-between!important;gap:10px!important;width:100%!important}
-  .acct-mobile-user-info{display:flex!important;align-items:center!important;gap:10px!important;min-width:0!important;flex:1!important}
-  .acct-mobile-avatar{width:44px!important;height:44px!important;font-size:18px!important;border-radius:50%!important;border:2px solid #ffffff20!important;flex:none!important;display:grid!important;place-items:center!important}
-  .acct-mobile-actions{display:flex!important;align-items:center!important;gap:6px!important;flex-shrink:0!important}
-  .acct-mobile-mod-strip{display:block!important;width:100%!important;margin-top:6px!important}
-  .acct-hub-card{padding:12px 12px!important;border-radius:10px!important}
-  .acct-hub-header{margin-bottom:12px!important;padding-bottom:10px!important}
+
+  .acct-user-mobile-bar{display:flex!important;flex-direction:column!important;gap:10px!important;width:100%!important;box-sizing:border-box!important}
+  .acct-mobile-user-row{display:flex!important;align-items:center!important;gap:12px!important;width:100%!important}
+  .acct-mobile-avatar{width:46px!important;height:46px!important;font-size:19px!important;border-radius:50%!important;border:2px solid #ffffff20!important;flex:none!important;display:grid!important;place-items:center!important}
+  .acct-mobile-user-meta{min-width:0!important;flex:1!important}
+  .acct-mobile-name-line{display:flex!important;align-items:center!important;gap:6px!important;flex-wrap:wrap!important}
+  .acct-mobile-username{font:800 clamp(19px,5vw,23px) 'Barlow Condensed'!important;margin:0!important;letter-spacing:.4px!important;color:#f5f3f0!important;line-height:1.2!important}
+  .acct-mobile-team-line{font-size:11px!important;color:#9d9ba4!important;margin-top:2px!important;overflow:hidden!important;text-overflow:ellipsis!important;white-space:nowrap!important}
+
+  .acct-mobile-actions{display:grid!important;grid-template-columns:1fr 1fr!important;gap:8px!important;width:100%!important;box-sizing:border-box!important}
+  .acct-mobile-actions.has-one{grid-template-columns:1fr!important}
+  .acct-mobile-btn{width:100%!important;padding:7px 10px!important;font-size:11px!important;font-weight:700!important;border-radius:6px!important;display:inline-flex!important;align-items:center!important;justify-content:center!important;gap:5px!important}
+  .acct-mobile-signout{color:#ff9ba1!important;border-color:#4a242a!important;background:#201417!important}
+  .acct-mobile-signout:hover{background:#32191e!important;border-color:#732832!important}
+
+  .acct-mobile-mod-strip{display:block!important;width:100%!important}
+  .acct-mobile-mod-btn{width:100%!important;font-size:11px!important;padding:7px 10px!important;border-radius:6px!important;font-weight:700!important}
+
+  .acct-hub-card{padding:12px 12px!important;border-radius:10px!important;width:100%!important;box-sizing:border-box!important}
+  .acct-hub-header{display:block!important;margin-bottom:12px!important;padding-bottom:10px!important;width:100%!important}
   .acct-hub-header .acct-profile-link-btn{display:none!important}
+
+  .acct-mode-strip{
+    display:grid!important;
+    grid-auto-flow:column!important;
+    grid-auto-columns:1fr!important;
+    gap:6px!important;
+    width:100%!important;
+    max-width:100%!important;
+    overflow:visible!important;
+  }
+  .acct-mode-tab{
+    width:100%!important;
+    min-width:0!important;
+    padding:8px 3px!important;
+    font-size:clamp(10px,2.8vw,11px)!important;
+    font-weight:700!important;
+    justify-content:center!important;
+    text-align:center!important;
+    white-space:nowrap!important;
+    overflow:hidden!important;
+    text-overflow:ellipsis!important;
+    border-radius:6px!important;
+    gap:4px!important;
+  }
+
   .acct-stats-grid{grid-template-columns:repeat(2,1fr)!important;gap:8px!important;margin-bottom:14px!important}
   .acct-stat-card{padding:8px 10px!important}
   .acct-stat-val{font-size:clamp(18px,5.2vw,22px)!important}
-  .acct-tools-grid{grid-template-columns:1fr!important;gap:10px!important}
-  .acct-tool-card{min-height:auto!important;padding:12px 14px!important}
+  .acct-tools-grid{grid-template-columns:1fr!important;gap:10px!important;width:100%!important}
+  .acct-tool-card{min-height:auto!important;padding:12px 14px!important;width:100%!important;box-sizing:border-box!important}
   .acct-match-row{padding:8px 10px!important;gap:6px!important}
   .acct-match-score{padding:3px 8px!important;gap:5px!important}
   .acct-match-score .score-num{font-size:18px!important}
-  .acct-pred-grid{grid-template-columns:1fr!important}
+  .acct-pred-grid{grid-template-columns:1fr!important;width:100%!important}
 }
 /* ------------------------------------------------------------ Badges & Hall of Fame ------------------------------------------------------------ */
 .badge-pill{display:inline-flex;align-items:center;gap:5px;font-size:10px;font-weight:800;letter-spacing:.5px;padding:3px 8px;border-radius:4px;white-space:nowrap;cursor:default;transition:transform .12s}
@@ -25368,30 +25410,34 @@ function Account(){
       <aside class="card acct-user-card">
         <!-- Mobile Compact Banner (visible <= 768px) -->
         <div class="acct-user-mobile-bar">
-          <div class="acct-mobile-user-info">
+          <div class="acct-mobile-user-row">
             <div class="avatar acct-mobile-avatar" style="background-image:${faceArt};background-size:cover;background-position:center;">${faceLetter}</div>
-            <div style="min-width:0;flex:1">
-              <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
-                <h2 style="font:800 clamp(18px, 4.8vw, 22px) 'Barlow Condensed';margin:0;letter-spacing:.4px;color:#f5f3f0;line-height:1.2">${esc(username)}</h2>
+            <div class="acct-mobile-user-meta">
+              <div class="acct-mobile-name-line">
+                <h2 class="acct-mobile-username">${esc(username)}</h2>
                 ${isActualMod ? `<span class="tag" style="background:#3b1319;color:#ff8e95;border:1px solid #6b242e;font-size:9px;padding:2px 6px">👑 Mod</span>` : `<span class="tag" style="background:#162c1e;color:#7df0aa;border:1px solid #2f5c3b;font-size:9px;padding:2px 6px">🎮 Player</span>`}
               </div>
-              <div style="font-size:11px;color:#9d9ba4;margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
+              <div class="acct-mobile-team-line">
                 ${mine ? `<span style="color:var(--amber);font-weight:700">🎮 ${esc(mine)}</span> · <span>${myTeam}</span>` : '<span>Unlinked Account</span>'}
               </div>
             </div>
           </div>
-          <div class="acct-mobile-actions">
+
+          <div class="acct-mobile-actions ${(mine || isActualMod) ? 'has-two' : 'has-one'}">
             ${mine ? `
-              <button class="btn ghost btn-sm" style="padding:4px 9px!important;font-size:11px!important" onclick="openProfile('${jsArg(mine)}')">Profile →</button>
-            ` : ''}
-            <button class="btn ghost btn-sm acct-mobile-signout" style="padding:4px 9px!important;font-size:11px!important;color:#ff9ba1;border-color:#4a242a" onclick="signOut(this)">Sign Out</button>
+              <button class="btn ghost btn-sm acct-mobile-btn" onclick="openProfile('${jsArg(mine)}')">👤 View Profile</button>
+            ` : (isActualMod ? `
+              <button class="btn ghost btn-sm acct-mobile-btn" style="color:var(--amber);border-color:#5e4a1a" onclick="openAccountLinks('${jsArg(username)}')">🔗 Link Profile</button>
+            ` : '')}
+            <button class="btn ghost btn-sm acct-mobile-btn acct-mobile-signout" onclick="signOut(this)">🚪 Sign Out</button>
           </div>
+
+          ${isActualMod ? `
+            <div class="acct-mobile-mod-strip">
+              <button class="btn ${moderator ? '' : 'ghost'} btn-sm acct-mobile-mod-btn" onclick="toggleModerator()">${moderator ? '👑 Moderator Tools: ON' : '👁️ Spectator Preview: ON'}</button>
+            </div>
+          ` : ''}
         </div>
-        ${isActualMod ? `
-          <div class="acct-mobile-mod-strip">
-            <button class="btn ${moderator ? '' : 'ghost'} btn-sm" style="width:100%;font-size:11px;padding:5px 8px;border-radius:4px" onclick="toggleModerator()">${moderator ? '👑 Moderator Tools: ON' : '👁️ Spectator Preview: ON'}</button>
-          </div>
-        ` : ''}
 
         <!-- Desktop Sidebar Layout (visible > 768px) -->
         <div class="acct-user-desktop-content">
@@ -25443,10 +25489,19 @@ function Account(){
       <section class="card acct-hub-card">
         <div class="acct-hub-header">
           <div class="acct-mode-strip">
-            <button class="btn ${currentTab === 'matches' ? '' : 'ghost'} btn-sm acct-mode-tab" onclick="window.accountTab='matches';render()">⚔️ Match History ${mine ? `(${matchHistory.length})` : ''}</button>
-            <button class="btn ${currentTab === 'predictions' ? '' : 'ghost'} btn-sm" onclick="window.accountTab='predictions';render()">🎯 Prediction History ${predHistory.length ? `(${predHistory.length})` : ''}</button>
+            <button class="btn ${currentTab === 'matches' ? '' : 'ghost'} btn-sm acct-mode-tab" onclick="window.accountTab='matches';render()">
+              <span class="acct-tab-desk">⚔️ Match History ${mine ? `(${matchHistory.length})` : ''}</span>
+              <span class="acct-tab-mob">⚔️ Matches ${mine ? `(${matchHistory.length})` : ''}</span>
+            </button>
+            <button class="btn ${currentTab === 'predictions' ? '' : 'ghost'} btn-sm acct-mode-tab" onclick="window.accountTab='predictions';render()">
+              <span class="acct-tab-desk">🎯 Prediction History ${predHistory.length ? `(${predHistory.length})` : ''}</span>
+              <span class="acct-tab-mob">🎯 Picks ${predHistory.length ? `(${predHistory.length})` : ''}</span>
+            </button>
             ${moderator ? `
-              <button class="btn ${currentTab === 'moderator' ? '' : 'ghost'} btn-sm acct-mode-tab" style="color:var(--amber);border-color:#5e4a1a" onclick="window.accountTab='moderator';render()">👑 Moderator Tools</button>
+              <button class="btn ${currentTab === 'moderator' ? '' : 'ghost'} btn-sm acct-mode-tab" style="${currentTab === 'moderator' ? 'background:linear-gradient(135deg,#c48816,#f59e0b);color:#000;border-color:#ffd166;font-weight:900;' : 'color:var(--amber);border-color:#5e4a1a'}" onclick="window.accountTab='moderator';render()">
+                <span class="acct-tab-desk">👑 Moderator Tools</span>
+                <span class="acct-tab-mob">👑 Mod Tools</span>
+              </button>
             ` : ''}
           </div>
 
