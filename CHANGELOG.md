@@ -3,6 +3,18 @@
 All notable changes to the Bellimaka Pokémon Draft League site are documented here.
 Format: `v[MAJOR].[MINOR].[PATCH]` — Major = big new systems, Minor = new features, Patch = bug fixes / small improvements.
 
+## [v2.1.1] — 2026-10-04
+
+### Improved
+- **Account View Mobile Responsive Overhaul** — Completely redesigned the Account hub view on mobile screens (`<= 768px`) to resolve horizontal and vertical cutoffs, cramped layouts, and obscured statistics:
+  - **Compact Unified Mobile Header**: Replaced the bulky, screen-filling 350px profile sidebar on mobile with a streamlined 44px avatar header card containing coach name, team pill, quick profile shortcut (`Profile →`), and sign-out button, bringing career statistics immediately above the fold.
+  - **Symmetrical 2×2 Career Stat Grid**: Replaced the rigid multi-column stats banner with a balanced 2-column by 2-row grid (`repeat(2, 1fr)`) with fluid typography (`clamp(18px, 5.2vw, 22px)`), completely eliminating horizontal cutoffs where `Championships 1 🏆` and `Top Cut Finishes` were previously clipped off-screen to the right.
+  - **Touch-Scrollable Mode Tabs & Match Filter Chips**: Transformed mode navigation tabs (`⚔️ Match History`, `🎯 Prediction History`, `👑 Moderator Tools`) and match filter chips (`All`, `Wins`, `Losses`, `Top Cut`) into clean, single-row touch-scrollable horizontal strips (`overflow-x: auto`) with hidden scrollbars, preventing multi-line wrapping and layout distortion.
+  - **Streamlined 3-Column Clash Match Rows**: Optimized head-to-head match rows on mobile with compact 28px avatars, fluid coach name truncation, and centered scoreboard pills (`acct-match-score`), ensuring full visibility without awkward text wrapping.
+  - **Responsive Moderator Controls & Prediction Grids**: Added an inline moderator mode toggle bar for mobile and switched prediction pick cards to single-column stacking (`.acct-pred-grid`) on mobile screens.
+
+---
+
 ## [v2.1.0] — 2026-10-04
 
 ### Added
