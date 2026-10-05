@@ -3,6 +3,16 @@
 All notable changes to the Bellimaka Pokémon Draft League site are documented here.
 Format: `v[MAJOR].[MINOR].[PATCH]` — Major = big new systems, Minor = new features, Patch = bug fixes / small improvements.
 
+## [v2.2.4] — 2026-10-04
+
+### Fixed
+- **Top Cut Playoff Primetime Matchup Detection & Fallthrough Prevention**:
+  - **Accurate Playoff Phase Condition**: Corrected `getFeaturedMatchups(t)` where an erroneous check for non-existent property `t.topCut` caused the top cut playoffs branch to always evaluate to `false`, causing the site to fall through to completed regular season group fixtures. Replaced with comprehensive playoff state detection (`t.phase === 'topcut' || t.status === 'COMPLETE' || Boolean(t.bracketManagerData) || t.phase === 'complete'`).
+  - **Top Cut Match Prioritization**: Automatically prioritizes uncompleted / upcoming playoff fixtures (Quarterfinals, Semifinals, etc.) with gold `TOP CUT` status badges and round subtitles, ensuring upcoming bracket clashes are featured on the home stage.
+  - **Group Stage Leak Prevention**: Added strict phase-gate isolation ensuring completed group-stage matches can never be displayed in the featured spotlight card once the tournament has transitioned into Top Cut or Playoffs.
+
+---
+
 ## [v2.2.3] — 2026-10-04
 
 ### Fixed

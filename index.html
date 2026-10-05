@@ -18541,7 +18541,8 @@ function getFeaturedMatchups(t){
   let pinnedId = t.pinnedPrimetimeMatch != null ? String(t.pinnedPrimetimeMatch) : '';
 
   // 1. Top cut playoffs
-  if(t.phase === 'topcut' && t.topCut){
+  let isTopCutPhase = (t.phase === 'topcut' || t.status === 'COMPLETE' || Boolean(t.bracketManagerData) || t.phase === 'complete');
+  if(isTopCutPhase){
     let tcMatches = [];
     if(typeof getTournamentTopCutModel === 'function'){
       let mod = getTournamentTopCutModel(t);
@@ -18610,6 +18611,9 @@ function getFeaturedMatchups(t){
           return items.slice(0, 5);
         }
       }
+    }
+    if(t.phase === 'topcut' || t.status === 'COMPLETE' || t.phase === 'complete'){
+      return [];
     }
   }
 
