@@ -3,6 +3,20 @@
 All notable changes to the Bellimaka Pokémon Draft League site are documented here.
 Format: `v[MAJOR].[MINOR].[PATCH]` — Major = big new systems, Minor = new features, Patch = bug fixes / small improvements.
 
+## [v2.3.7] — 2026-10-06
+
+- **Authoritative Cloud State Hydration & Stale Cache Recovery**:
+  - **Unconditional Initial Boot Cloud Sync**:
+    - Overhauled `shouldApply(incoming, force)` to ensure initial boot syncs and non-moderator sessions unconditionally accept authoritative cloud tournament data from Cloudflare Worker.
+    - Fixed the desync bug where local browser storage with bumped revision counters or newer clock timestamps would falsely reject authoritative cloud state, causing the site to display a stale pre-playoffs snapshot (Ethan vs Gavin).
+  - **Top Cut Playoff Metrics & Recent Results Alignment**:
+    - Resolved `completedTopCutMatches` counter so playoff fixtures accurately reflect completed Top Cut matches (`1 / 10`) and display current playoff results (`Ethan vs Dao Ming`) in Recent Results.
+  - **Cloudflare Worker Response Streaming (Error 1102 Fix)**:
+    - Stream raw KV JSON directly from Cloudflare KV without expensive `JSON.parse` and `JSON.stringify` cycles, eliminating Cloudflare CPU timeout errors.
+  - **On-Demand Resync Utility**:
+    - Exposed `window.forceSyncLeague()` to immediately fetch and render the latest cloud state.
+
+---
 ## [v2.3.6] — 2026-10-06
 
 - **Header Logo & Browser Tab Favicon Bulletproofing**:

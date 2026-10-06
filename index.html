@@ -15109,7 +15109,7 @@ async function announceMatchScoreToDiscord(t, matchData, isTopCut = false){
 var knownRev = Number(localStorage.getItem('draftdex-rev')) || 0;
 var lastLocalUpdate = Number(localStorage.getItem('draftdex-updated-at')) || 0;
 var syncTimer = null, lastSentSnapshot = '';
-function shouldApply(incoming){
+function shouldApply(incoming, force = false){
   if(!incoming || typeof incoming !== 'object') return false;
   if(!incoming.tournaments && !incoming.profiles && !incoming.accountLinks) return false;
 
@@ -15118,10 +15118,10 @@ function shouldApply(incoming){
   let hasLocalData = Object.keys(tournamentData).length > 0;
 
 
-  // 1. Initial boot or session startup sync: always accept authoritative cloud state if valid
-  if(!window._initialCloudSyncCompleted){
+  // 1. Initial boot, forced sync, or non-moderator viewer: ALWAYS accept authoritative cloud state if valid
+  if(force || !window._initialCloudSyncCompleted || !moderator){
     window._initialCloudSyncCompleted = true;
-    if(incomingRev >= knownRev || !hasLocalData || !lastLocalUpdate || (incomingTime && incomingTime >= (lastLocalUpdate - 2000))){
+    if(incoming.tournaments && Object.keys(incoming.tournaments).length > 0){
       knownRev = Math.max(knownRev, incomingRev);
       lastLocalUpdate = Math.max(lastLocalUpdate, incomingTime || Date.now());
       try {
@@ -15193,7 +15193,7 @@ function shouldApply(incoming){
 
   // 3. If local client has no pending unpushed edits in flight: accept ONLY if cloud revision or timestamp is newer!
   if(syncTimer === null){
-    if(incomingRev > knownRev || (incomingTime && incomingTime > lastLocalUpdate)){
+    if(incomingRev > knownRev || (incomingTime && incomingTime > lastLocalUpdate) || !moderator){
       knownRev = Math.max(knownRev, incomingRev);
       lastLocalUpdate = Math.max(lastLocalUpdate, incomingTime || Date.now());
       try {
@@ -17393,6 +17393,8 @@ function applySharedState(data){
   }
 }
 window.applySharedState = applySharedState;
+window.syncFromCloud = syncFromCloud;
+window.forceSyncLeague = async function(){ await syncFromCloud(true); render(); };
 var supabaseInited=false;
 var draftRealtimeChannel=null;
 var draftPollTimer=null;
@@ -17839,7 +17841,7 @@ async function syncFromCloud(force = false){
       lastFullStateSyncTime = Date.now();
       if(res.ok){
         let incoming = await res.json();
-        if(incoming && shouldApply(incoming)){
+        if(incoming && shouldApply(incoming, force)){
           applySharedState(incoming);
           let incomingTime = Number(incoming.updatedAt || 0);
           if(incomingTime){
@@ -17898,7 +17900,7 @@ async function syncFromCloud(force = false){
 
     if(!error && data?.data){
       let incoming = data.data;
-      if(shouldApply(incoming)){
+      if(shouldApply(incoming, force)){
         applySharedState(incoming);
         if(data.updated_at){
           let cloudTime = new Date(data.updated_at).getTime();
@@ -20327,6 +20329,9 @@ function Home(){
       totalTopCutMatches = (mod.allBracketMatches || []).length;
       completedTopCutMatches = (mod.completedList || []).length;
     }
+  }
+  if(!completedTopCutMatches && t.topCutCache?.results?.length){
+    completedTopCutMatches = t.topCutCache.results.length;
   }
   if(!totalTopCutMatches){
     if(t.topCutCache?.results?.length){
