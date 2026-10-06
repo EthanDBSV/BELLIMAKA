@@ -3,6 +3,15 @@
 All notable changes to the Bellimaka Pokémon Draft League site are documented here.
 Format: `v[MAJOR].[MINOR].[PATCH]` — Major = big new systems, Minor = new features, Patch = bug fixes / small improvements.
 
+## [v2.3.9] — 2026-10-06
+
+- **Primetime Team Name Equal Sizing & Balanced Diagonal Stagger**:
+  - **Matched 2nd-Line Font Size**: Promoted `.primetime-cfb-team-name-l2` to match `.primetime-cfb-team-name-l1` font size at `clamp(28px, 4.2vw, 42px)` on desktop and `clamp(20px, 5.4vw, 26px)` on mobile.
+  - **Unified Visual Styling**: Upgraded Line 2 to 900 font weight, full silver-white gradient highlight, 2px letter-spacing, and dual drop-shadow effects with tightened vertical spacing (`margin-top: 0`).
+  - **Inward Diagonal Stagger Alignment**: Configured balanced inward diagonal stepping matching the card slant angle (top card steps right with `padding-left: clamp(16px, 3.2vw, 36px)`, bottom card steps left with `padding-right: clamp(16px, 3.2vw, 36px)`).
+  - **Live Studio Branding Modal Sync**: Updated live editor preview (`#bbLiveTeamL2`) from 16px to 26px to match the active match spotlight card.
+
+---
 ## [v2.3.8] — 2026-10-06
 
 - **Logo Placement Alignment & Asset Separation**:
