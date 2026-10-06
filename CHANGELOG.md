@@ -20,6 +20,12 @@ Format: `v[MAJOR].[MINOR].[PATCH]` — Major = big new systems, Minor = new feat
     - Updated `openAddReplayModal` to identify previously uploaded playoff games and display overwrite indicators.
     - Upgraded Top Cut awards calculation to use `getMatchTopCutReplays` instead of legacy direct property checks.
 
+  - **Call Stack Recursion Prevention & Reentrancy Guard**:
+    - Resolved `Uncaught RangeError: Maximum call stack size exceeded` triggered at line 15411 during Top Cut model resolution.
+    - Eliminated circular calls where `isReplayListForCoaches` and `getMatchTopCutReplayKey` re-invoked `getTournamentTopCutModel` while the model was already computing bracket matches.
+    - Implemented a strict reentrancy guard (`_inGetTournamentTopCutModel`) with a `try...finally` block inside `getTournamentTopCutModel(t)` to ensure recursive calls safely abort and never blow the call stack.
+    - Swapped external helper calls inside `getTournamentTopCutModel` for direct property inspection on `t.topCutReplays` and raw bracket participant metadata.
+
 ---
 
 ## [v2.3.2] — 2026-10-05
