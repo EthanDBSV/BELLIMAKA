@@ -3,6 +3,25 @@
 All notable changes to the Bellimaka Pokémon Draft League site are documented here.
 Format: `v[MAJOR].[MINOR].[PATCH]` — Major = big new systems, Minor = new features, Patch = bug fixes / small improvements.
 
+## [v2.3.3] — 2026-10-05
+
+### Fixed & Improved
+- **Top Cut Playoff Replays & Recent Results Integration**:
+  - **Recent Results Playoff Replays Display**:
+    - Fixed playoff matches in "RECENT RESULTS" (`allResults(t)` on the Home page) displaying only `+` instead of full replay pills (`▶ 1`, `▶ 2`, `▶ 3`) and the box score button (`📊`).
+    - Resolved root cause where `allResults` discarded match metadata (`replays`, `actualMatchId`, `matchId`, `id`, `tournamentId`) and prioritized stripped `t.topCutCache.results` over the full bracket model.
+    - Overhauled `allResults(t)` to prioritize `getTournamentTopCutModel(t).completedList`, preserve full match metadata, attach replays via `getMatchTopCutReplays`, and ensure `tournamentId` is retained on all returned matches.
+    - Top cut match cards rendered via `matchCard(m)` now immediately display all game replay buttons (`▶ 1`, `▶ 2`, `▶ 3`) alongside the box score button (`📊`) and add button (`+`).
+    - Clicking any replay button or clicking the match card body directly launches the Showdown Replay Hub modal with video playback and box score statistics.
+  - **Playoff Replay Key & Association Engine**:
+    - Introduced `getMatchTopCutReplays(t, m, matchKey)` and `getMatchTopCutReplayKey(t, m, matchKey)` with multi-tier resolution across `actualMatchId`, `matchId`, `id`, prefixed `tc_` keys, and participant coach matching.
+    - Synchronized `findTournamentMatch` so bracket matches can be located seamlessly by participant coaches even without explicit `tc_` prefixes.
+    - Updated `saveReplayToMatch` to store `p1` and `p2` on replay objects and index `t.topCutReplays` by both raw and `tc_`-prefixed match identifiers.
+    - Updated `openAddReplayModal` to identify previously uploaded playoff games and display overwrite indicators.
+    - Upgraded Top Cut awards calculation to use `getMatchTopCutReplays` instead of legacy direct property checks.
+
+---
+
 ## [v2.3.2] — 2026-10-05
 
 ### Fixed & Improved

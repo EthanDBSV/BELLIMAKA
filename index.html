@@ -9377,16 +9377,145 @@ function parseShowdownBattleLog(logText, meta = {}) {
   return result;
 }
 
+function isReplayListForCoaches(list, p1, p2, t, k) {
+  if(!Array.isArray(list) || !list.length || !p1 || !p2) return false;
+  let c1 = String(p1).toLowerCase().trim();
+  let c2 = String(p2).toLowerCase().trim();
+  
+  // 1. Direct check on replays in the list
+  for(let r of list) {
+    if(!r) continue;
+    let rp1 = String(r.p1 || r.coach1 || r.stats?.coachP1 || r.stats?.coach1 || '').toLowerCase().trim();
+    let rp2 = String(r.p2 || r.coach2 || r.stats?.coachP2 || r.stats?.coach2 || '').toLowerCase().trim();
+    if(rp1 && rp2) {
+      if((rp1 === c1 && rp2 === c2) || (rp1 === c2 && rp2 === c1)) return true;
+      if(typeof isCoachMatch === 'function' && 
+         ((isCoachMatch(rp1, c1, t) && isCoachMatch(rp2, c2, t)) || 
+          (isCoachMatch(rp1, c2, t) && isCoachMatch(rp2, c1, t)))) return true;
+    }
+    // 2. Check title (e.g. "Game 1: Ethan vs Dao Ming")
+    let title = String(r.title || '').toLowerCase();
+    if(title.includes(c1) && title.includes(c2)) return true;
+    if(typeof isCoachMatch === 'function' && 
+       ((title.includes(c1) || isCoachMatch(title, c1, t)) && 
+        (title.includes(c2) || isCoachMatch(title, c2, t)))) return true;
+  }
+
+  // 3. Check bracket match with ID k in t.bracketManagerData or getTournamentTopCutModel
+  if(t && k != null) {
+    let cleanK = String(k).replace(/^tc_/, '');
+    if(t.bracketManagerData?.match && t.bracketManagerData?.participant) {
+      let bMatch = t.bracketManagerData.match.find(m => String(m.id) === cleanK);
+      if(bMatch) {
+        let nameOf = id => t.bracketManagerData.participant.find(p => p.id === id)?.name || '';
+        let bp1 = String(nameOf(bMatch.opponent1?.id) || '').toLowerCase().trim();
+        let bp2 = String(nameOf(bMatch.opponent2?.id) || '').toLowerCase().trim();
+        if(bp1 && bp2 && ((bp1 === c1 && bp2 === c2) || (bp1 === c2 && bp2 === c1))) return true;
+      }
+    }
+    if(typeof getTournamentTopCutModel === 'function') {
+      let mod = getTournamentTopCutModel(t);
+      if(mod?.allBracketMatches) {
+        let bm = mod.allBracketMatches.find(m => String(m.actualMatchId) === cleanK || String(m.id) === cleanK);
+        if(bm && bm.p1 && bm.p2) {
+          let bmp1 = String(bm.p1).toLowerCase().trim();
+          let bmp2 = String(bm.p2).toLowerCase().trim();
+          if((bmp1 === c1 && bmp2 === c2) || (bmp1 === c2 && bmp2 === c1)) return true;
+        }
+      }
+    }
+  }
+
+  return false;
+}
+
+function getMatchTopCutReplays(t, m, matchKey) {
+  if(!t || !m) return [];
+  if(Array.isArray(m.replays) && m.replays.length > 0) return m.replays;
+  if(!t.topCutReplays || typeof t.topCutReplays !== 'object') return [];
+
+  let keys = [
+    matchKey,
+    matchKey ? String(matchKey).replace(/^tc_/, '') : null,
+    matchKey ? ('tc_' + String(matchKey).replace(/^tc_/, '')) : null,
+    m.actualMatchId != null ? String(m.actualMatchId) : null,
+    m.actualMatchId != null ? ('tc_' + m.actualMatchId) : null,
+    m.matchId != null ? String(m.matchId) : null,
+    m.matchId != null ? ('tc_' + m.matchId) : null,
+    m.id != null ? String(m.id) : null,
+    m.id != null ? ('tc_' + m.id) : null,
+  ].filter(Boolean);
+
+  for(let k of keys){
+    let list = t.topCutReplays[k];
+    if(Array.isArray(list) && list.length > 0) return list;
+  }
+
+  // Fallback: match by coaches
+  let p1 = m.p1 || m.a;
+  let p2 = m.p2 || m.b;
+  if(p1 && p2){
+    for(let k in t.topCutReplays){
+      let list = t.topCutReplays[k];
+      if(isReplayListForCoaches(list, p1, p2, t, k)){
+        return list;
+      }
+    }
+  }
+
+  return [];
+}
+
+function getMatchTopCutReplayKey(t, m, matchKey) {
+  if(matchKey && String(matchKey).startsWith('tc_') && !matchKey.includes('_vs_')) return matchKey;
+  let tcId = m?.actualMatchId ?? m?.matchId;
+  if(tcId != null) return 'tc_' + tcId;
+  if(m?.id != null && m?.isTopCut) return String(m.id).startsWith('tc_') ? m.id : ('tc_' + m.id);
+
+  let p1 = m?.p1 || m?.a;
+  let p2 = m?.p2 || m?.b;
+  if(t?.topCutReplays && p1 && p2) {
+    for(let k in t.topCutReplays) {
+      let list = t.topCutReplays[k];
+      if(isReplayListForCoaches(list, p1, p2, t, k)) {
+        return String(k).startsWith('tc_') ? k : ('tc_' + k);
+      }
+    }
+  }
+  if(t && p1 && p2 && typeof getTournamentTopCutModel === 'function') {
+    let mod = getTournamentTopCutModel(t);
+    let all = mod?.allBracketMatches || [];
+    let bm = all.find(b => {
+      let bp1 = b.p1 || b.a;
+      let bp2 = b.p2 || b.b;
+      return (bp1 === p1 && bp2 === p2) || (bp1 === p2 && bp2 === p1);
+    });
+    if(bm) {
+      let bid = bm.actualMatchId ?? bm.id;
+      if(bid != null) return String(bid).startsWith('tc_') ? bid : ('tc_' + bid);
+    }
+  }
+  return matchKey || (m?.isTopCut ? `tc_${p1}_vs_${p2}` : `${p1}_vs_${p2}`);
+}
+
 function getMatchKey(m, index) {
   if(!m) return '';
-  if(m.actualMatchId != null) return 'tc_' + m.actualMatchId;
-  if(m.isTopCut && m.id != null) return 'tc_' + m.id;
+  let tcId = m.actualMatchId ?? (m.isTopCut ? (m.matchId ?? m.id) : null);
+  if(tcId != null) {
+    let s = String(tcId);
+    return s.startsWith('tc_') ? s : 'tc_' + s;
+  }
+
+  let a = (m.a || m.p1 || 'p1').trim().replace(/[^a-zA-Z0-9_-]/g, '_');
+  let b = (m.b || m.p2 || 'p2').trim().replace(/[^a-zA-Z0-9_-]/g, '_');
+
+  if(m.isTopCut) {
+    return `tc_${a}_vs_${b}`;
+  }
 
   let grp = (m.group || '').trim().replace(/[^a-zA-Z0-9_-]/g, '_');
   let round = (m.round || '').trim().replace(/[^a-zA-Z0-9_-]/g, '_');
   let id = (m.id != null && m.id !== '') ? String(m.id).trim().replace(/[^a-zA-Z0-9_-]/g, '_') : '';
-  let a = (m.a || m.p1 || 'p1').trim().replace(/[^a-zA-Z0-9_-]/g, '_');
-  let b = (m.b || m.p2 || 'p2').trim().replace(/[^a-zA-Z0-9_-]/g, '_');
 
   let parts = [];
   if(grp) parts.push(`grp_${grp}`);
@@ -9481,6 +9610,9 @@ function enrichTopCutMatch(matchObj, t, tcId, key) {
                (key ? t.topCutReplays[key] : null) ||
                (matchObj.id != null ? t.topCutReplays[matchObj.id] : null) ||
                (matchObj.id != null ? t.topCutReplays['tc_' + matchObj.id] : null);
+    if(!reps && typeof getMatchTopCutReplays === 'function'){
+      reps = getMatchTopCutReplays(t, matchObj, key);
+    }
     if(reps && (!matchObj.replays || matchObj.replays.length === 0)){
       matchObj.replays = reps;
     }
@@ -9593,7 +9725,8 @@ function findTournamentMatch(t, matchKey, index) {
           mKeyStr === kId ||
           mKeyStr === rawIdStr ||
           mKeyStr === bmIdStr ||
-          (mKeyStr.startsWith('tc_') && pMatch)
+          (mKeyStr.startsWith('tc_') && pMatch) ||
+          pMatch
         ){
           enrichTopCutMatch(bm, t, bm.actualMatchId, mKeyStr);
           return { match: bm, isTopCut: true, tcMatchId: bm.actualMatchId || bm.id };
@@ -9663,31 +9796,20 @@ function handleMatchCardReplayClick(e, tId, matchKey, hasReplays) {
 
 function renderReplayPillsHtml(m, t, matchKey, canManage, isCompact = false) {
   if(!m) return '';
+  if(!t) t = (m.tournamentId && tournamentData[m.tournamentId]) || activeT() || ongoingT();
+  if(m.isTopCut) {
+    matchKey = getMatchTopCutReplayKey(t, m, matchKey);
+  }
   let replays = (Array.isArray(m.replays) && m.replays.length)
     ? m.replays
-    : ((t?.topCutReplays && (
-        t.topCutReplays[matchKey] ||
-        t.topCutReplays[m.id] ||
-        t.topCutReplays['tc_' + m.id] ||
-        t.topCutReplays[m.actualMatchId] ||
-        t.topCutReplays['tc_' + m.actualMatchId] ||
-        t.topCutReplays[m.matchId] ||
-        t.topCutReplays['tc_' + m.matchId]
-      )) || []);
+    : ((m.isTopCut || t?.topCutReplays) ? getMatchTopCutReplays(t, m, matchKey) : ((t?.replays && matchKey && t.replays[matchKey]) || []));
 
-  if(!replays.length && t?.topCutReplays && (m.p1 || m.a) && (m.p2 || m.b)){
-    let p1 = m.p1 || m.a;
-    let p2 = m.p2 || m.b;
-    for(let k in t.topCutReplays){
-      let list = t.topCutReplays[k];
-      if(Array.isArray(list) && list.length){
-        let r0 = list[0];
-        if(r0 && ((r0.p1 === p1 && r0.p2 === p2) || (r0.p1 === p2 && r0.p2 === p1))){
-          replays = list;
-          break;
-        }
-      }
-    }
+  if(!replays.length && t?.topCutReplays){
+    replays = getMatchTopCutReplays(t, m, matchKey);
+  }
+
+  if(replays.length && (!m.replays || !m.replays.length)){
+    m.replays = replays;
   }
 
   let hasReplays = replays.length > 0;
@@ -9760,6 +9882,10 @@ async function ensureReplayLog(tournamentId, matchKey, gameNum = 1) {
       (m.id != null && (t.topCutReplays[m.id] || t.topCutReplays['tc_' + m.id]))
     )) || []
   );
+  if(!replays.length && (mInfo.isTopCut || m.isTopCut || t?.topCutReplays)){
+    replays = getMatchTopCutReplays(t, m, matchKey);
+    if(replays.length) m.replays = replays;
+  }
   let replay = replays.find(r => r.game === gameNum) || replays[0];
   if(!replay) return null;
 
@@ -9911,6 +10037,9 @@ function openMatchReplayHubModal(tournamentId, matchKey, activeGameNum = 1, acti
       (m.matchId != null && (t.topCutReplays[m.matchId] || t.topCutReplays['tc_' + m.matchId]))
     )) || []
   );
+  if(!replays.length && (mInfo.isTopCut || m.isTopCut || t?.topCutReplays)){
+    replays = getMatchTopCutReplays(t, m, matchKey);
+  }
   if((!m.replays || !m.replays.length) && replays.length){
     m.replays = replays;
   }
@@ -10835,12 +10964,16 @@ function saveReplayToMatch(tournamentId, matchKey, gameNum, replayData, finalize
 
   m.replays = m.replays.filter(r => r.game !== gameNum);
 
+  let p1Name = m.a || m.p1 || 'Player 1';
+  let p2Name = m.b || m.p2 || 'Player 2';
   let winnerCoach = replayData.winnerCoach || replayData.stats?.winnerCoach || '';
 
   m.replays.push({
     id: replayData.id || `replay_${Date.now()}_g${gameNum}`,
     game: gameNum,
-    title: replayData.title || `Game ${gameNum}: ${m.a || m.p1} vs ${m.b || m.p2}`,
+    p1: p1Name,
+    p2: p2Name,
+    title: replayData.title || `Game ${gameNum}: ${p1Name} vs ${p2Name}`,
     format: replayData.format || t.name || '',
     date: replayData.date || new Date().toISOString().split('T')[0],
     log: replayData.log,
@@ -10855,12 +10988,18 @@ function saveReplayToMatch(tournamentId, matchKey, gameNum, replayData, finalize
     t.topCutReplays = t.topCutReplays || {};
     t.topCutReplays[mInfo.tcMatchId] = m.replays;
     t.topCutReplays['tc_' + mInfo.tcMatchId] = m.replays;
+    if(m.id != null){
+      t.topCutReplays[m.id] = m.replays;
+      t.topCutReplays['tc_' + m.id] = m.replays;
+    }
+    if(m.actualMatchId != null){
+      t.topCutReplays[m.actualMatchId] = m.replays;
+      t.topCutReplays['tc_' + m.actualMatchId] = m.replays;
+    }
   }
 
   // Automatic Verifiable Score Insertion
   let isUnscored = (m.as === '' || m.as == null || m.bs === '' || m.bs == null);
-  let p1Name = m.a || m.p1;
-  let p2Name = m.b || m.p2;
 
   let aWins = 0;
   let bWins = 0;
@@ -10994,7 +11133,12 @@ function openAddReplayModal(tournamentId, matchKey, defaultGame = 1) {
   let m = mInfo.match;
   let p1 = m.a || m.p1 || 'Player 1';
   let p2 = m.b || m.p2 || 'Player 2';
-  let replays = Array.isArray(m.replays) ? m.replays : [];
+  let replays = (Array.isArray(m.replays) && m.replays.length)
+    ? m.replays
+    : ((mInfo.isTopCut || m.isTopCut || t?.topCutReplays) ? getMatchTopCutReplays(t, m, matchKey) : ((t?.replays && matchKey && t.replays[matchKey]) || []));
+  if(replays.length && (!m.replays || !m.replays.length)){
+    m.replays = replays;
+  }
   let isMod = Boolean(moderator || canManageTournament(t));
   let p1HasSd = Boolean(profiles[p1]?.showdownUser || (profiles[p1]?.showdownUsernames && profiles[p1].showdownUsernames.length));
   let p2HasSd = Boolean(profiles[p2]?.showdownUser || (profiles[p2]?.showdownUsernames && profiles[p2].showdownUsernames.length));
@@ -11183,10 +11327,19 @@ function matchCard(m,latest=false){
   let label = labelText;
   let mIdx = (t && Array.isArray(t.matches)) ? t.matches.indexOf(m) : -1;
   let mKey = getMatchKey(m, mIdx >= 0 ? mIdx : undefined);
-  let hasReplays = Array.isArray(m.replays) && m.replays.length > 0;
+  if(isTopCut){
+    mKey = getMatchTopCutReplayKey(t, m, mKey);
+  }
+  let replays = (Array.isArray(m.replays) && m.replays.length)
+    ? m.replays
+    : (isTopCut ? getMatchTopCutReplays(t, m, mKey) : ((t?.replays && mKey && t.replays[mKey]) || []));
+  if(replays.length && (!m.replays || !m.replays.length)){
+    m.replays = replays;
+  }
+  let hasReplays = replays.length > 0;
 
   return `
-    <article class="card modern-match-card ${latest ? 'latest-highlight' : ''}" onclick="handleMatchCardReplayClick(event, '${t.id}', '${jsArg(mKey)}', ${hasReplays})" style="padding:0;${theme.cardBg}border-radius:10px;overflow:hidden;position:relative;min-height:172px;display:flex;flex-direction:column;justify-content:space-between;cursor:pointer" title="${hasReplays ? 'Click to watch match replays & box score' : 'Click to add battle replay'}">
+    <article class="card modern-match-card ${latest ? 'latest-highlight' : ''}" onclick="handleMatchCardReplayClick(event, '${t?.id || ''}', '${jsArg(mKey)}', ${hasReplays})" style="padding:0;${theme.cardBg}border-radius:10px;overflow:hidden;position:relative;min-height:172px;display:flex;flex-direction:column;justify-content:space-between;cursor:pointer" title="${hasReplays ? 'Click to watch match replays & box score' : 'Click to add battle replay'}">
       <div style="padding:11px 16px;${theme.headerBg}display:flex;justify-content:space-between;align-items:center;gap:8px">
         <span style="font:800 11px 'Barlow Condensed';letter-spacing:1px;text-transform:uppercase;color:${theme.headerColor};display:flex;align-items:center;gap:6px">
           <span>${theme.icon}</span> <span>${esc(label)}</span>
@@ -15627,24 +15780,32 @@ function getTournamentTopCutModel(t){
   let allBracketMatches = [...wbRounds.flatMap(r=>r.matches), ...lbRounds.flatMap(r=>r.matches), ...gfMatches];
   allBracketMatches.forEach(bm => {
     bm.isTopCut = true;
+    bm.tournamentId = t.id;
     if(bm.p1 && !bm.a) bm.a = bm.p1;
     if(bm.p2 && !bm.b) bm.b = bm.p2;
     if(bm.p1 && seedMap[bm.p1]) bm.p1Seed = seedMap[bm.p1];
     if(bm.p2 && seedMap[bm.p2]) bm.p2Seed = seedMap[bm.p2];
-    if(t?.topCutReplays && bm.actualMatchId != null){
-      let reps = t.topCutReplays[bm.actualMatchId] || t.topCutReplays['tc_' + bm.actualMatchId];
-      if(reps && (!bm.replays || bm.replays.length === 0)){
-        bm.replays = reps;
-      }
+    let reps = (Array.isArray(bm.replays) && bm.replays.length) ? bm.replays : null;
+    if(!reps && typeof getMatchTopCutReplays === 'function'){
+      reps = getMatchTopCutReplays(t, bm);
+    }
+    if(reps && reps.length){
+      bm.replays = reps;
     }
   });
   let completedList = allBracketMatches.filter(m => m.isDone && isKnownPlayer(m.p1) && isKnownPlayer(m.p2) && m.s1 != null && m.s2 != null);
 
   if(!completedList.length && t.topCutCache?.results?.length){
     t.topCutCache.results.forEach(res=>{
+      let tcId = res.matchId ?? res.id;
+      let reps = (typeof getMatchTopCutReplays === 'function') ? getMatchTopCutReplays(t, { ...res, actualMatchId: tcId, matchId: tcId }) : [];
       completedList.push({
         title: res.title || 'Playoff Match',
         p1: res.p1, p2: res.p2, s1: res.s1, s2: res.s2,
+        a: res.p1, b: res.p2, as: res.s1, bs: res.s2,
+        id: tcId, actualMatchId: tcId, matchId: tcId,
+        tournamentId: t.id,
+        replays: reps,
         winner: res.s1 > res.s2 ? res.p1 : res.p2,
         loser: res.s1 > res.s2 ? res.p2 : res.p1,
         isDone: true
@@ -17868,32 +18029,100 @@ document.addEventListener('click',e=>{let box=e.target.closest?.('[data-match-fi
 
 
 function allResults(t){
+  if(!t) return [];
   let group = (t.matches || []).filter(m => m.as !== '' && m.bs !== '' && m.as != null && m.bs != null).map(m => {
     let topCutFlag = (m.isTopCut === true) || Boolean(m.group && m.group.toLowerCase().includes('playoff'));
     return {
       ...m,
+      tournamentId: m.tournamentId || t.id,
       isTopCut: topCutFlag,
       label: m.label || (topCutFlag ? (m.round || 'Playoffs') : (m.group || (m.round ? (String(m.round).toLowerCase().startsWith('round') ? m.round : `Round ${m.round}`) : 'Group Stage')))
     };
   });
-  let topMatches = (t.topCutCache?.results || []);
-  if(!topMatches.length && typeof getTournamentTopCutModel === 'function'){
+
+  let rawTopCutMatches = [];
+  if(typeof getTournamentTopCutModel === 'function'){
     let mod = getTournamentTopCutModel(t);
     if(mod?.completedList?.length){
-      topMatches = mod.completedList;
+      rawTopCutMatches = [...mod.completedList];
     }
   }
-  let top = topMatches.map(m => ({
-    a: m.p1,
-    b: m.p2,
-    as: m.s1,
-    bs: m.s2,
-    isTopCut: true,
-    label: m.title || 'Playoffs',
-    completedAt: m.completedAt || Date.now(),
-    date: m.completedAt ? new Date(m.completedAt).toLocaleString() : ''
-  }));
-  return [...group, ...top].sort((a,b) => (b.completedAt || Date.parse(b.date) || 0) - (a.completedAt || Date.parse(a.date) || 0));
+
+  if(t.topCutCache?.results?.length){
+    t.topCutCache.results.forEach(res => {
+      let p1 = res.p1 || res.a;
+      let p2 = res.p2 || res.b;
+      let tcId = res.actualMatchId ?? res.matchId ?? res.id;
+      let alreadyExists = rawTopCutMatches.some(m => {
+        let mp1 = m.p1 || m.a;
+        let mp2 = m.p2 || m.b;
+        let mid = m.actualMatchId ?? m.matchId ?? m.id;
+        if(tcId != null && mid != null && String(tcId) === String(mid)) return true;
+        return (mp1 === p1 && mp2 === p2) || (mp1 === p2 && mp2 === p1);
+      });
+      if(!alreadyExists){
+        rawTopCutMatches.push(res);
+      }
+    });
+  }
+
+  let top = rawTopCutMatches.map(m => {
+    let p1 = m.p1 || m.a;
+    let p2 = m.p2 || m.b;
+    let s1 = m.s1 ?? m.as ?? '-';
+    let s2 = m.s2 ?? m.bs ?? '-';
+    let tcId = m.actualMatchId ?? m.matchId ?? m.id;
+    let matchKey = (tcId != null) ? ('tc_' + tcId) : ((m.id != null) ? ('tc_' + m.id) : ('tc_' + p1 + '_vs_' + p2));
+
+    let replays = (Array.isArray(m.replays) && m.replays.length)
+      ? m.replays
+      : ((typeof getMatchTopCutReplays === 'function') ? getMatchTopCutReplays(t, { ...m, actualMatchId: tcId, matchId: tcId, p1, p2 }, matchKey) : []);
+
+    let completedAt = m.completedAt || (t.topCutMatchTimestamps && tcId != null ? t.topCutMatchTimestamps[tcId] : null);
+    if(!completedAt && replays.length){
+      for(let r of replays){
+        if(r.id && typeof r.id === 'string'){
+          let matchTime = r.id.match(/replay_(\d{12,14})/);
+          if(matchTime){ completedAt = parseInt(matchTime[1], 10); break; }
+        }
+        if(r.date){
+          let parsed = Date.parse(r.date);
+          if(!isNaN(parsed) && parsed > 0){ completedAt = parsed; break; }
+        }
+      }
+    }
+    if(!completedAt) completedAt = Date.now();
+
+    return {
+      ...m,
+      p1,
+      p2,
+      a: p1,
+      b: p2,
+      s1,
+      s2,
+      as: s1,
+      bs: s2,
+      id: m.id || tcId,
+      matchId: tcId,
+      actualMatchId: tcId,
+      tournamentId: m.tournamentId || t.id,
+      replays: replays,
+      isTopCut: true,
+      label: m.title || m.roundTitle || m.label || 'Playoffs',
+      completedAt: completedAt,
+      date: m.date || (completedAt ? new Date(completedAt).toLocaleString() : '')
+    };
+  });
+
+  let filteredGroup = group.filter(gm => {
+    if(!gm.isTopCut) return true;
+    let gp1 = gm.p1 || gm.a;
+    let gp2 = gm.p2 || gm.b;
+    return !top.some(tm => (tm.p1 === gp1 && tm.p2 === gp2) || (tm.p1 === gp2 && tm.p2 === gp1));
+  });
+
+  return [...filteredGroup, ...top].sort((a,b) => (b.completedAt || Date.parse(b.date) || 0) - (a.completedAt || Date.parse(a.date) || 0));
 }
 
 async function pick(el){
@@ -26490,28 +26719,14 @@ function getPlayerMatchHistory(p){
         }
       }
 
+      let matchKey = (tcId != null) ? ('tc_' + tcId) : ((m.id != null) ? ('tc_' + m.id) : ('tc_' + p1 + '_vs_' + p2));
       let tcReplays = (Array.isArray(m.replays) && m.replays.length) ? m.replays : null;
-      if(!tcReplays && t.topCutReplays){
-        tcReplays = (tcId != null ? (t.topCutReplays[tcId] || t.topCutReplays['tc_' + tcId]) : null) ||
-                    (m.id != null ? (t.topCutReplays[m.id] || t.topCutReplays['tc_' + m.id]) : null);
+      if(!tcReplays && typeof getMatchTopCutReplays === 'function'){
+        tcReplays = getMatchTopCutReplays(t, { ...m, actualMatchId: tcId, matchId: tcId, p1, p2 }, matchKey);
       }
-      if(!tcReplays && matchingBm?.replays?.length){
+      if((!tcReplays || !tcReplays.length) && matchingBm?.replays?.length){
         tcReplays = matchingBm.replays;
       }
-      if(!tcReplays && t.topCutReplays){
-        for(let k in t.topCutReplays){
-          let rList = t.topCutReplays[k];
-          if(Array.isArray(rList) && rList.length){
-            let r0 = rList[0];
-            if(r0 && ((r0.p1 === p1 && r0.p2 === p2) || (r0.p1 === p2 && r0.p2 === p1))){
-              tcReplays = rList;
-              break;
-            }
-          }
-        }
-      }
-
-      let matchKey = (tcId != null) ? ('tc_' + tcId) : ((m.id != null) ? ('tc_' + m.id) : ('tc_' + p1 + '_vs_' + p2));
 
       let rawMatch = {
         ...m,
