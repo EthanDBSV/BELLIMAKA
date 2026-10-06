@@ -5,15 +5,15 @@ Format: `v[MAJOR].[MINOR].[PATCH]` — Major = big new systems, Minor = new feat
 
 ## [v2.3.5] — 2026-10-06
 
-- **Ticker Ribbon Alignment & Hinting Fix (Raised 'E' Elimination)**:
-  - Identified root cause of the raised 'E' in `#DARKESTDAY`: In `AgencyFB-Bold.ttf`, TrueType font hinting instructions at non-integer `13.5px` font size snapped the wide horizontal roof of `E` to a pixel ceiling 1px higher than neighboring letters `K`, `S`, `T`, and `D`.
-  - Upgraded the hashtag ticker banner (`.primetime-ticker-static` and `#bbLiveRibbon`) to `Barlow Condensed` at clean integer `14px` (`font-weight: 800`). All letters now share a mathematically uniform cap-height and baseline with zero 1px rendering jumps.
+- **Ticker Ribbon Alignment (Agency FB at 15px)**:
+  - Preserved **Agency FB** as the dedicated font for the hashtag ticker ribbon (`.primetime-ticker-static` and `#bbLiveRibbon`).
+  - Set `font-size: 15px` with `letter-spacing: 2px` to smooth out font hinting, maintaining authentic broadcast aesthetics.
 
-- **Team Name Glyph Clipping & Cropping Elimination**:
-  - Fixed root cause of cropped tops (such as the top stroke of Jace's Korean team name "고양시" being cut off flat) and cropped edges with italic/display fonts:
-    1. Replaced restrictive sub-1.0 line-height (`line-height: 0.95` on L1 and `1` on L2) with `line-height: 1.18` (1.15 for L2), giving Korean Hangul, accents, and tall ascenders full vertical headroom.
-    2. Added horizontal and vertical padding buffer (`padding: 6px 16px`) with compensating negative margins (`margin: -6px -16px`), ensuring italic slants, brush flourishes, and drop-shadows never hit the `overflow: hidden` boundary.
-    3. Added `overflow: visible` to `.primetime-cfb-team-name-group` so text overshoots are preserved without displacing neighboring components.
+- **Full Real Team Name Display (Zero Ellipsis & Zero Clipping)**:
+  - Eliminated the `text-overflow: ellipsis` truncation issue that caused names to cut off with ellipses (e.g. "NETANY...", "고...").
+  - Configured `overflow: visible` with responsive font sizing (`clamp(28px, 4.2vw, 42px)` for L1 and `clamp(16px, 2.6vw, 23px)` for L2), ensuring full real names always display completely.
+  - Adjusted line-height to `1.16` (L1) and `1.14` (L2) with micro-padding so tall Hangul characters (like Jace's "고양시"), accents, and italic slant edges never get clipped at the top or sides.
+  - Preserved the staggered 2-line collegiate broadcast layout.
 
 - **Saphifen Font Remapping & Comprehensive Character Support**:
   - **Full Support for Numbers, Letters, and Accents**:
