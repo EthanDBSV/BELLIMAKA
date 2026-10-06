@@ -3,6 +3,17 @@
 All notable changes to the Bellimaka Pokémon Draft League site are documented here.
 Format: `v[MAJOR].[MINOR].[PATCH]` — Major = big new systems, Minor = new features, Patch = bug fixes / small improvements.
 
+## [v2.3.11] — 2026-10-06
+
+- **Agency FB Record Font & Centered Vertical Breathing Room**:
+  - **Agency FB Typography for Records**: Switched `.primetime-cfb-record-line` to `Agency FB` (`font-weight: 800; font-size: clamp(21px, 3.0vw, 26px); letter-spacing: 2.2px`), delivering clean, collegiate, broadcast-grade number styling.
+  - **Eliminated Top Glyph Cropping**: Added `padding-top: 6px`, `padding-bottom: 4px`, and `line-height: 1.25` so tall parentheses and digits never get shaved or clipped by text gradients or bounding boxes.
+  - **Centered Card Spacing (Cleared Outer Banners)**:
+    - Expanded `.primetime-cfb-half` min-height to `178px` (`138px` on mobile).
+    - Increased top card padding to `46px` on top (`34px` on mobile), shifting the team name down and away from the top hashtag ribbon.
+    - Increased bottom card padding to `46px` on bottom (`34px` on mobile), shifting the record line up and away from the bottom hashtag ribbon.
+
+---
 ## [v2.3.10] — 2026-10-06
 
 - **Streamlined Primetime Card & Saphifen Record Line**:
