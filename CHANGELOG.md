@@ -3,6 +3,16 @@
 All notable changes to the Bellimaka Pokémon Draft League site are documented here.
 Format: `v[MAJOR].[MINOR].[PATCH]` — Major = big new systems, Minor = new features, Patch = bug fixes / small improvements.
 
+## [v2.3.10] — 2026-10-06
+
+- **Streamlined Primetime Card & Saphifen Record Line**:
+  - **Removed Redundant Badges**: Removed the amber coach name tag, career overall badge (`OVR`), and black record pill badge from both top and bottom match spotlight cards for a cleaner, bolder collegiate broadcast look.
+  - **New Saphifen (Wins - Losses) Typography**: Introduced `.primetime-cfb-record-line` displaying records in `Saphifen` font (e.g. `(3 - 1)` / `(4 - 1)`).
+  - **High-Contrast Gold with Heavy Dark Outline**: Styled the record text in amber/gold (`#ffd166`) with dual deep drop-shadows and outline protection, ensuring 100% legibility on light and yellow card backgrounds.
+  - **Step 3 Staircase Diagonal Stagger**: Positioned the record line directly below the team names, following the diagonal card slant as Step 3 (`padding-left: clamp(32px, 6.4vw, 72px)` on top card, `padding-right: clamp(32px, 6.4vw, 72px)` on bottom card).
+  - **Live Studio Branding Modal Sync**: Updated live editor preview (`#bbLiveRecord`) to mirror the new 3-step typographic format.
+
+---
 ## [v2.3.9] — 2026-10-06
 
 - **Primetime Team Name Equal Sizing & Balanced Diagonal Stagger**:

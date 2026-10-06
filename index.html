@@ -1014,6 +1014,35 @@
   padding-right: clamp(16px, 3.2vw, 36px);
 }
 
+.primetime-cfb-record-line {
+  font-family: 'Saphifen', 'Agression', 'Aggression', 'Agency FB', 'Impact', 'Another Danger', 'Malgun Gothic', 'Arial Black', 'Barlow Condensed', sans-serif;
+  font-weight: 900;
+  font-style: italic;
+  font-size: clamp(18px, 2.6vw, 22px);
+  line-height: 1.14;
+  letter-spacing: 2px;
+  background: linear-gradient(180deg, #ffe58f 0%, #ffd166 45%, #e6a817 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.95)) drop-shadow(0 0 5px rgba(0, 0, 0, 0.9));
+  text-shadow: 0 2px 5px rgba(0, 0, 0, 0.95);
+  white-space: nowrap;
+  overflow: visible;
+  margin-top: 4px;
+}
+.primetime-cfb-team-name-group.left .primetime-cfb-record-line.step3 {
+  padding-left: clamp(32px, 6.4vw, 72px);
+}
+.primetime-cfb-team-name-group.left .primetime-cfb-record-line.step2 {
+  padding-left: clamp(16px, 3.2vw, 36px);
+}
+.primetime-cfb-team-name-group.right .primetime-cfb-record-line.step3 {
+  padding-right: clamp(32px, 6.4vw, 72px);
+}
+.primetime-cfb-team-name-group.right .primetime-cfb-record-line.step2 {
+  padding-right: clamp(16px, 3.2vw, 36px);
+}
+
 /* Fallback for single-line usage */
 .primetime-cfb-team-name {
   font-family: 'Saphifen', 'Agression', 'Aggression', 'Agency FB', 'Impact', 'Another Danger', 'Malgun Gothic', 'Barlow Condensed', sans-serif;
@@ -1229,6 +1258,22 @@
     padding-left: 14px;
   }
   .primetime-cfb-team-name-group.right .primetime-cfb-team-name-l2 {
+    padding-right: 14px;
+  }
+  .primetime-cfb-record-line {
+    font-size: clamp(14px, 3.8vw, 17px);
+    letter-spacing: 1.5px;
+  }
+  .primetime-cfb-team-name-group.left .primetime-cfb-record-line.step3 {
+    padding-left: 28px;
+  }
+  .primetime-cfb-team-name-group.left .primetime-cfb-record-line.step2 {
+    padding-left: 14px;
+  }
+  .primetime-cfb-team-name-group.right .primetime-cfb-record-line.step3 {
+    padding-right: 28px;
+  }
+  .primetime-cfb-team-name-group.right .primetime-cfb-record-line.step2 {
     padding-right: 14px;
   }
   .primetime-cfb-logo {
@@ -6317,11 +6362,7 @@ function openBroadcastBrandingEditor(p) {
                 <div id="bbLiveTeamGroup" class="primetime-cfb-team-name-group left">
                   <div id="bbLiveTeamL1" class="primetime-cfb-team-name-l1" style="font-size:26px">${esc(cleanDisplayTeamName(displayL1))}</div>
                   <div id="bbLiveTeamL2" class="primetime-cfb-team-name-l2" style="font-size:26px;padding-left:18px;display:${displayL2 ? 'block' : 'none'}">${esc(cleanDisplayTeamName(displayL2))}</div>
-                </div>
-                <div style="display:flex;align-items:center;gap:8px;margin-top:5px;flex-wrap:wrap">
-                  <span style="font:800 15px 'Barlow Condensed';color:#ffd166;text-transform:uppercase">${esc(p)}</span>
-                  <span class="primetime-cfb-ovr-pill"><span class="ovr-lbl">OVR</span><span class="ovr-num">${liveOvr}</span></span>
-                  <span class="primetime-cfb-record-pill">RECORD 3-1</span>
+                  <div id="bbLiveRecord" class="primetime-cfb-record-line ${displayL2 ? 'step3' : 'step2'}" style="font-size:18px;padding-left:${displayL2 ? '36px' : '18px'}">(3 - 1)</div>
                 </div>
               </div>
             </div>
@@ -6405,6 +6446,11 @@ function updateBbLivePreview(p) {
   if (l2El) {
     l2El.textContent = cleanL2;
     l2El.style.display = cleanL2 ? 'block' : 'none';
+  }
+  let recEl = document.querySelector('#bbLiveRecord');
+  if (recEl) {
+    recEl.className = `primetime-cfb-record-line ${cleanL2 ? 'step3' : 'step2'}`;
+    recEl.style.paddingLeft = cleanL2 ? '36px' : '18px';
   }
 
   let tag = (tagInput ? tagInput.value.trim() : '') || `#${p.replace(/\s+/g, '')}Nation`;
@@ -19957,6 +20003,15 @@ function setFeaturedMatch(idx){
   startFeaturedMatchAutoplay(list.length);
 }
 
+function formatRecordParen(rec){
+  let raw = String(rec || '0-0').trim();
+  let parts = raw.split('-');
+  if(parts.length === 2){
+    return `(${parts[0].trim()} - ${parts[1].trim()})`;
+  }
+  return `(${raw})`;
+}
+
 function matchupOfTheWeekCard(t){
   let list = getFeaturedMatchups(t);
   if(!list.length){
@@ -20113,11 +20168,7 @@ function matchupOfTheWeekCard(t){
                 <div class="primetime-cfb-team-name-group left" title="${esc(t1Name)}">
                   <div class="primetime-cfb-team-name-l1">${esc(nameSplit1.line1)}</div>
                   ${nameSplit1.line2 ? `<div class="primetime-cfb-team-name-l2">${esc(nameSplit1.line2)}</div>` : ''}
-                </div>
-                <div class="primetime-cfb-sub-row left">
-                  <span class="primetime-cfb-coach-tag">${playerLink(p1)}</span>
-                  ${ovrVal1 ? `<span class="primetime-cfb-ovr-pill" title="Player Career OVR: ${ovrVal1}"><span class="ovr-lbl">OVR</span><span class="ovr-num">${ovrVal1}</span></span>` : ''}
-                  <span class="primetime-cfb-record-pill">RECORD ${esc(rec1)}</span>
+                  <div class="primetime-cfb-record-line ${nameSplit1.line2 ? 'step3' : 'step2'}">${esc(formatRecordParen(rec1))}</div>
                 </div>
               </div>
 
@@ -20177,11 +20228,7 @@ function matchupOfTheWeekCard(t){
                 <div class="primetime-cfb-team-name-group right" title="${esc(t2Name)}">
                   <div class="primetime-cfb-team-name-l1">${esc(nameSplit2.line1)}</div>
                   ${nameSplit2.line2 ? `<div class="primetime-cfb-team-name-l2">${esc(nameSplit2.line2)}</div>` : ''}
-                </div>
-                <div class="primetime-cfb-sub-row right">
-                  <span class="primetime-cfb-record-pill">${esc(rec2)} RECORD</span>
-                  ${ovrVal2 ? `<span class="primetime-cfb-ovr-pill" title="Player Career OVR: ${ovrVal2}"><span class="ovr-lbl">OVR</span><span class="ovr-num">${ovrVal2}</span></span>` : ''}
-                  <span class="primetime-cfb-coach-tag">${playerLink(p2)}</span>
+                  <div class="primetime-cfb-record-line ${nameSplit2.line2 ? 'step3' : 'step2'}">${esc(formatRecordParen(rec2))}</div>
                 </div>
               </div>
             </div>
