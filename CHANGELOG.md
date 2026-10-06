@@ -3,6 +3,14 @@
 All notable changes to the Bellimaka Pokémon Draft League site are documented here.
 Format: `v[MAJOR].[MINOR].[PATCH]` — Major = big new systems, Minor = new features, Patch = bug fixes / small improvements.
 
+## [v2.3.13] — 2026-10-06
+
+- **Continuous Radiant Gold Border & Primetime Cover Cleanup**:
+  - **Continuous Luminous Gold Border**: Replaced the previous brown-fading diagonal gradient (`#6e461f` / `#2a2230`) across all Primetime matchup spotlight cards with a continuous, vibrant multi-stop gold metallic frame (`#ffd166` to `#ffeaa7` to `#f59e0b`). Both side walls now remain bright, crisp, and high-contrast without fading into the dark background.
+  - **Seamless Border Contact (Removed Dark Seam)**: Applied `border: none !important;` to `.matchup-hero-card` to eliminate the inherited 1px dark slate `--line` border, allowing the team background and ribbons to meet the gold frame directly without any dark gap.
+  - **Removed "Edit cover" & Unused Cover Storage**: Removed the obsolete `[Edit cover]` button from the Primetime matchup header subbar and eliminated unused background cover overlay logic, keeping the header clean with only the `[📌 PIN FEATURE]` control.
+
+---
 ## [v2.3.12] — 2026-10-06
 
 - **Avatar-Curved Floating Records & Main Tournament Cover Aspect Restoration**:

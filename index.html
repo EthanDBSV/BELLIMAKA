@@ -1310,13 +1310,13 @@
   }
 }
 /* ------------------------------------------------------------ Cyber-Esports Angled Chamfered PRIMETIME Broadcast Graphic ------------------------------------------------------------ */
-.matchup-hero-outer{position:relative;filter:drop-shadow(0 10px 28px rgba(0,0,0,0.65)) drop-shadow(0 0 16px rgba(239,48,56,0.18));transition:filter .2s ease;border-radius:10px}
-.matchup-hero-outer:hover{filter:drop-shadow(0 12px 32px rgba(0,0,0,0.75)) drop-shadow(0 0 24px rgba(239,48,56,0.28))}
-.matchup-hero-outer.top-cut-glow{filter:drop-shadow(0 10px 28px rgba(0,0,0,0.65)) drop-shadow(0 0 18px rgba(255,209,102,0.22))}
-.matchup-hero-outer.top-cut-glow:hover{filter:drop-shadow(0 12px 32px rgba(0,0,0,0.75)) drop-shadow(0 0 26px rgba(255,209,102,0.32))}
-.matchup-hero-frame{position:relative;border-radius:10px;padding:1.5px;background:linear-gradient(135deg,#ef3038 0%,#4a2834 35%,#2a2a3c 65%,#ffd166 100%);transition:background .2s ease}
-.matchup-hero-outer.top-cut-glow .matchup-hero-frame{background:linear-gradient(135deg,#ffd166 0%,#6e461f 35%,#2a2230 65%,#f59e0b 100%)}
-.matchup-hero-card{position:relative;border-radius:9px;background:linear-gradient(135deg,#131118 0%,#0e0e15 50%,#0c0f18 100%);display:flex;flex-direction:column;justify-content:space-between;min-height:236px;overflow:hidden;contain:paint;isolation:isolate}
+.matchup-hero-outer{position:relative;filter:drop-shadow(0 10px 28px rgba(0,0,0,0.65)) drop-shadow(0 0 16px rgba(255,209,102,0.22));transition:filter .2s ease;border-radius:10px}
+.matchup-hero-outer:hover{filter:drop-shadow(0 12px 32px rgba(0,0,0,0.75)) drop-shadow(0 0 26px rgba(255,209,102,0.38))}
+.matchup-hero-outer.top-cut-glow{filter:drop-shadow(0 10px 28px rgba(0,0,0,0.65)) drop-shadow(0 0 20px rgba(255,209,102,0.30))}
+.matchup-hero-outer.top-cut-glow:hover{filter:drop-shadow(0 12px 32px rgba(0,0,0,0.75)) drop-shadow(0 0 30px rgba(255,209,102,0.45))}
+.matchup-hero-frame{position:relative;border-radius:10px;padding:1.5px;background:linear-gradient(135deg,#ffd166 0%,#ffeaa7 25%,#ffd166 50%,#f59e0b 75%,#ffd166 100%);box-shadow:0 0 12px rgba(255,209,102,0.20);transition:background .2s ease,box-shadow .2s ease}
+.matchup-hero-outer.top-cut-glow .matchup-hero-frame{background:linear-gradient(135deg,#ffd166 0%,#fff3c4 25%,#ffd166 50%,#f59e0b 75%,#ffd166 100%);box-shadow:0 0 16px rgba(255,209,102,0.35)}
+.matchup-hero-card{position:relative;border:none!important;border-radius:9px;background:linear-gradient(135deg,#131118 0%,#0e0e15 50%,#0c0f18 100%);display:flex;flex-direction:column;justify-content:space-between;min-height:236px;overflow:hidden;contain:paint;isolation:isolate}
 .matchup-hero-backdrop{position:absolute;inset:0;background-size:cover;background-position:center;border-radius:inherit;overflow:hidden;pointer-events:none;z-index:0}
 
 /* Top Broadcast Header Subbar */
@@ -20047,20 +20047,11 @@ function matchupOfTheWeekCard(t){
 
   let isTopCut = (t.phase === 'topcut' || item.isTopCut);
 
-  let primetimeCover = mRef.coverImage || pulsePanelImages.primetime || pulsePanelImages.global;
-  if(!primetimeCover){
-    try { primetimeCover = localStorage.getItem('draftdex-primetime-cover') || ''; } catch(e){}
-  }
-
   let mons1 = getMatchupShowcasePokemon(t, mRef, p1);
   let mons2 = getMatchupShowcasePokemon(t, mRef, p2);
 
   let matchKey = (typeof getMatchKey === 'function' ? getMatchKey(mRef, item.matchIndex) : '') || item.matchId || '';
   let matchClickAttr = matchKey ? `onclick="event.stopPropagation();openMatchReplayHubModal('${jsArg(t.id)}', '${jsArg(matchKey)}', 1, 'stats')"` : '';
-
-  let globalUnderlay = primetimeCover ? `
-    <div class="matchup-hero-backdrop" style="background-image:linear-gradient(135deg,${isTopCut ? 'rgba(38,18,22,0.90)' : 'rgba(24,10,16,0.90)'} 0%,rgba(10,10,15,0.94) 100%),url('${esc(primetimeCover)}');opacity:0.42"></div>
-  ` : '';
 
   let isMod = Boolean(moderator || window.moderator || (typeof canManageTournament === 'function' && canManageTournament(t)));
 
@@ -20119,8 +20110,6 @@ function matchupOfTheWeekCard(t){
   return `<div class="matchup-hero-outer ${isTopCut ? 'top-cut-glow' : ''}">
     <div class="matchup-hero-frame">
       <aside class="card matchup-hero-card" onmouseenter="pauseFeaturedAutoplay()" onmouseleave="resumeFeaturedAutoplay(${total})">
-        ${globalUnderlay}
-
         <!-- Top Broadcast Header Subbar -->
         <div class="matchup-hero-banner">
           <div class="primetime-top-center">
@@ -20131,10 +20120,9 @@ function matchupOfTheWeekCard(t){
             <span class="tag primetime-status-tag" style="background:#00000070;border:1px solid #ffffff25;font-size:9px;font-weight:900;letter-spacing:1px;color:${isPlayed ? '#7df0aa' : (isTopCut ? '#ffd166' : '#ff9fa6')};padding:2px 7px;border-radius:4px">${isPlayed ? 'FINAL SCORE' : (item.isTopCut ? 'TOP CUT' : 'PRIMETIME')}</span>
           </div>
 
-          ${(pinBtnHtml || isMod) ? `
+          ${pinBtnHtml ? `
             <div class="primetime-header-actions">
               ${pinBtnHtml}
-              ${isMod ? `<button class="cover-edit" style="position:static;padding:2px 7px;font-size:10px" onclick="event.stopPropagation();openPrimetimeCoverEditor()">Edit cover</button>` : ''}
             </div>
           ` : ''}
         </div>
