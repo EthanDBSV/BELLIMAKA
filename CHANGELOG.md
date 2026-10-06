@@ -3,6 +3,25 @@
 All notable changes to the Bellimaka Pokémon Draft League site are documented here.
 Format: `v[MAJOR].[MINOR].[PATCH]` — Major = big new systems, Minor = new features, Patch = bug fixes / small improvements.
 
+## [v2.3.5] — 2026-10-06
+
+### Fixed & Improved
+- **Agression Font Number Rendering & Unicode Range Routing**:
+  - **Missing Numbers & Digits Fix (e.g. "5 Espurrs in A trenchcoat")**:
+    - Identified root cause where the demo release of `Agression` (and `Another Danger`) had glyphs for digits 1, 3, 5, and 6 with zero contour outlines (0 bytes) yet preserved active `cmap` character table pointers, causing the browser to render an invisible empty space instead of triggering CSS fallback.
+    - Added `unicode-range: U+0000-002F, U+003A-FFFF;` to all `@font-face` declarations for `'Agression'`, `'Aggression'`, and `'Another Danger'`. This cleanly excludes ASCII digits `0`–`9` from the font while preserving all Latin letters, accents, symbols, and punctuation.
+    - Updated the Primetime team name font stack (`.primetime-cfb-team-name-l1`, `.primetime-cfb-team-name-l2`, `.primetime-cfb-team-name`) to prioritize `'Agency FB'` and `'Impact'` for numbers. Team names with digits (such as "5 Espurrs in A trenchcoat" or "Team 1") now render bold, full-featured numbers seamlessly alongside the aggressive distressed lettering of `Agression`.
+
+- **Unified Asset Consolidation (`Fonts & Logos/`)**:
+  - **Comprehensive Path Rewiring**:
+    - Re-routed all fonts, brand logos, background textures, and fallback assets to the consolidated `Fonts & Logos/` directory:
+      - Fonts: `Agression.otf`, `Agression.ttf`, `AgencyFB-Bold.ttf`, `Another Danger Slanted - Demo.otf`.
+      - Logos & Icons: `bellimaka_logo.png` (favicon), `bellimaka_logo.jpg` (topbar & mobile navigation), `iconNotFound.png` (Pokéball fallback sprite & Add Pokémon modal).
+      - Textures: `cfb-splash-texture.jpg` (Primetime matchup graphic grunge overlay).
+    - Applied URL-encoded fallbacks (`Fonts%20%26%20Logos/` and `Fonts & Logos/`) across CSS `@font-face`, `background-image`, HTML `<link>` / `<img>`, and JavaScript sprite handlers in both `index.html` and `index.dev.html`.
+
+---
+
 ## [v2.3.4] — 2026-10-05
 
 ### Fixed & Improved
