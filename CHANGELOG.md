@@ -3,6 +3,21 @@
 All notable changes to the Bellimaka Pokémon Draft League site are documented here.
 Format: `v[MAJOR].[MINOR].[PATCH]` — Major = big new systems, Minor = new features, Patch = bug fixes / small improvements.
 
+## [v2.3.8] — 2026-10-06
+
+- **Logo Placement Alignment & Asset Separation**:
+  - **Top-Left Site Header Brand**: Assigned `bellimaka_logo.jpg` (the cartoon Darumaka badge) to the top navigation header banner (`.brand`) and mobile navigation drawer.
+  - **Browser Tab Header (Favicon)**: Assigned `bellimaka_logo.png` (transparent background) with cache-busted `?v=2.3.8` query parameters to browser tab favicon, shortcut icon, and apple-touch-icon tags in `<head>`.
+  - **Multi-Tier Fallback Resilience**: Updated `handleLogoError()` fallback sequence to prioritize JPG paths before falling back to PNG and root directory assets.
+
+- **Moderator Mode Refresh Persistence**:
+  - Fixed moderator mode state restore so that refreshing in spectator or player mode (`draftdex-mod-mode: 'off'`) respects user preference instead of reactivating moderator mode unconditionally.
+
+- **Zero-Flash Account Screen Hydration**:
+  - Synchronously restored `sessionUser` and `window.currentAccount` from `draftdex-cf-session` at initial script parse time prior to the first synchronous render.
+  - Eliminated the brief flash of the Sign In / Trainer Portal form when refreshing or directly loading the 'Your Account' screen.
+
+---
 ## [v2.3.7] — 2026-10-06
 
 - **Authoritative Cloud State Hydration & Stale Cache Recovery**:
