@@ -3,6 +3,34 @@
 All notable changes to the Bellimaka Pokémon Draft League site are documented here.
 Format: `v[MAJOR].[MINOR].[PATCH]` — Major = big new systems, Minor = new features, Patch = bug fixes / small improvements.
 
+## [v2.3.4] — 2026-10-05
+
+### Fixed & Improved
+- **ESPN Primetime Spotlight Visual Enhancements**:
+  - **Full Box Corner Color Saturation**:
+    - Eliminated dark, murky corners across the Primetime card halves by removing the 40px dark inset shadow (`box-shadow: inset 0 0 40px rgba(0, 0, 0, 0.7)`) from `.primetime-cfb-stage`.
+    - Removed the darkening corner radial vignette in `.primetime-cfb-half::before`.
+    - Adjusted gradient color stops in `getBattlewornBg(color, isTop)` so coach and team colors saturate fully edge-to-edge into all corners with rich color uniformity.
+    - Balanced the grunge splash layer opacity from `0.82` to `0.35` so background textures complement rather than diminish team colors at the edges.
+  - **Consistent Solid Center Seam Divider Line**:
+    - Resolved the horizontal seam divider losing color and fading from white in the center to black/transparent at the sides.
+    - Updated `.primetime-cfb-seam` to a solid, edge-to-edge white line (`#ffffff`, 2.5px height) with a subtle broadcast glow (`box-shadow: 0 0 6px rgba(255, 255, 255, 0.45)`), ensuring a single, solid color all the way across.
+  - **Winner vs. Loser Visual Distinction**:
+    - Added dynamic `.is-winner` and `.is-loser` state styling to `.primetime-cfb-half` for completed matches.
+    - The losing team's half is automatically faded and greyed out (`filter: grayscale(0.58) brightness(0.68) contrast(0.92); opacity: 0.72`), highlighting the outcome clearly while remaining interactively readable on hover.
+    - The winning team's half stays vibrant and features a bold broadcast victory badge (`👑 WINNER`) with emerald green gradient styling, gold text shadow, and outer glow in their sub-row.
+    - Losing team halves feature a clean, subdued `FINAL` badge.
+
+- **Double Elimination Losers Bracket Progression Fix**:
+  - **LB Round 2 Match 2 Self-Play Elimination**:
+    - Fixed a bug where LB Round 2 Match 2 displayed Ethan playing himself (`#2A Ethan` vs `#2A Ethan`) with replays attached instead of waiting for the loser of WB Semi 1.
+    - Corrected slot alignment in `lb2Matches` for Double Elimination (`count === 8`) so opponent 1 accurately maps to `wb2Matches[0]?.loser` (`Loser WB Semi 1`) and opponent 2 maps to `lb1Matches[1]?.winner` (`Winner LB R1.2`, Ethan).
+    - Hardened stage match resolution with fallback to unplayed origin labels (`originP1` / `originP2`), ensuring slots stay as `"Loser of WB Semi 1"` until WB Semifinal 1 concludes.
+    - Implemented self-play conflict guards (`if(isKnownPlayer(m.p1) && m.p1 === m.p2)`) across `lb2Matches`, `lb3Matches`, `lb4Matches`, `gfMatches`, and globally across `allBracketMatches.forEach` to ensure a player can never be paired against themselves site-wide.
+    - Guarded replay attribution in `isReplayListForCoaches` to prevent replays from attaching to identical coaches.
+
+---
+
 ## [v2.3.3] — 2026-10-05
 
 ### Fixed & Improved

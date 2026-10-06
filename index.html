@@ -511,7 +511,7 @@
   width: 100%;
   border-radius: 9px;
   overflow: hidden;
-  box-shadow: inset 0 0 40px rgba(0, 0, 0, 0.7);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.55);
   background: #09090e;
   isolation: isolate;
 }
@@ -530,7 +530,7 @@
   content: '';
   position: absolute;
   inset: 0;
-  background: radial-gradient(circle at 50% 50%, transparent 40%, rgba(0, 0, 0, 0.28) 100%);
+  background: none;
   pointer-events: none;
   z-index: 1;
 }
@@ -538,15 +538,63 @@
 .primetime-cfb-half.top {
   border-top-left-radius: 9px;
   border-top-right-radius: 9px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
   z-index: 2;
 }
 
 .primetime-cfb-half.bottom {
   border-bottom-left-radius: 9px;
   border-bottom-right-radius: 9px;
-  border-top: 1px solid rgba(255, 255, 255, 0.12);
   z-index: 2;
+}
+
+/* Primetime Winner & Loser Distinctions */
+.primetime-cfb-half.is-winner {
+  position: relative;
+  filter: brightness(1.05) saturate(1.1);
+}
+.primetime-cfb-half.is-loser {
+  filter: grayscale(0.58) brightness(0.68) contrast(0.92);
+  opacity: 0.72;
+  transition: filter 0.25s ease, opacity 0.25s ease;
+}
+.primetime-cfb-half.is-loser:hover {
+  filter: grayscale(0.25) brightness(0.82) contrast(0.96);
+  opacity: 0.88;
+}
+.primetime-cfb-half.is-loser .primetime-cfb-logo {
+  filter: grayscale(0.4) contrast(0.9);
+  opacity: 0.75;
+}
+
+.primetime-cfb-winner-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: linear-gradient(135deg, #22c55e 0%, #15803d 100%);
+  color: #ffffff;
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  padding: 2px 8px;
+  border-radius: 4px;
+  box-shadow: 0 0 12px rgba(34, 197, 94, 0.65), inset 0 1px 1px rgba(255, 255, 255, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
+}
+
+.primetime-cfb-loser-badge {
+  display: inline-flex;
+  align-items: center;
+  background: rgba(0, 0, 0, 0.45);
+  color: #9ca3af;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+  padding: 2px 6px;
+  border-radius: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
 }
 
 /* Color Splash Grunge Screenprint Texture Layer */
@@ -562,7 +610,7 @@
   background-position: center;
   filter: grayscale(1) contrast(1.75) brightness(1.15);
   mix-blend-mode: overlay;
-  opacity: 0.82;
+  opacity: 0.35;
 }
 .primetime-cfb-half.top .primetime-cfb-splash-layer {
   transform: scaleX(1);
@@ -978,8 +1026,9 @@
 /* Center Seam & Center Matchup Badge */
 .primetime-cfb-seam {
   position: relative;
-  height: 2px;
-  background: linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.6) 25%, rgba(255, 255, 255, 0.95) 50%, rgba(255, 255, 255, 0.6) 75%, transparent 100%);
+  height: 2.5px;
+  background: #ffffff;
+  box-shadow: 0 0 6px rgba(255, 255, 255, 0.45);
   z-index: 6;
   width: 100%;
 }
@@ -5844,12 +5893,12 @@ function getBannerTextColor(hex) {
 
 function getBattlewornBg(color, isTop) {
   let base = color || '#881c24';
-  let lightSplash = hexToLighterShade(base, 0.36);
-  let deepEdge = hexToDarkerShade(base, 0.40);
+  let lightSplash = hexToLighterShade(base, 0.18);
+  let deepEdge = hexToDarkerShade(base, 0.10);
   if (isTop) {
-    return `linear-gradient(125deg, ${lightSplash} 0%, ${base} 40%, ${deepEdge} 100%)`;
+    return `linear-gradient(125deg, ${lightSplash} 0%, ${base} 45%, ${deepEdge} 100%)`;
   } else {
-    return `linear-gradient(305deg, ${lightSplash} 0%, ${base} 40%, ${deepEdge} 100%)`;
+    return `linear-gradient(305deg, ${lightSplash} 0%, ${base} 45%, ${deepEdge} 100%)`;
   }
 }
 
@@ -9381,6 +9430,7 @@ function isReplayListForCoaches(list, p1, p2, t, k) {
   if(!Array.isArray(list) || !list.length || !p1 || !p2) return false;
   let c1 = String(p1).toLowerCase().trim();
   let c2 = String(p2).toLowerCase().trim();
+  if(!c1 || !c2 || c1 === c2) return false;
   
   // 1. Direct check on replays in the list
   for(let r of list) {
@@ -15666,17 +15716,35 @@ function getTournamentTopCutModel(t){
 
     let lb2Matches = [
       { id:'lb3', title:'LB Round 2 · Match 1', p1:lb1Matches[0]?.winner||'Winner LB R1.1', p2:wb2Matches[1]?.loser||'Loser WB Semi 2', originP1:'Winner of LB R1.1', originP2:'Loser of WB Semi 2' },
-      { id:'lb4', title:'LB Round 2 · Match 2', p1:lb1Matches[1]?.winner||'Winner LB R1.2', p2:wb2Matches[0]?.loser||'Loser WB Semi 1', originP1:'Winner of LB R1.2', originP2:'Loser of WB Semi 1' }
+      { id:'lb4', title:'LB Round 2 · Match 2', p1:wb2Matches[0]?.loser||'Loser WB Semi 1', p2:lb1Matches[1]?.winner||'Winner LB R1.2', originP1:'Loser of WB Semi 1', originP2:'Winner of LB R1.2' }
     ];
     [1, 2].forEach((num, idx)=>{
       let sm = findStageMatch(bmd, 2, 2, num);
       if(sm){
-        let prevP1 = lb2Matches[idx].p1;
         applyStageMatch(lb2Matches[idx], sm);
-        if(!lb2Matches[idx].p1 && prevP1 && isKnownPlayer(prevP1)){
-          lb2Matches[idx].p1 = prevP1;
-          lb2Matches[idx].a = prevP1;
+      }
+      let m = lb2Matches[idx];
+      let expectedP1 = (idx === 0 ? lb1Matches[0]?.winner : wb2Matches[0]?.loser);
+      let expectedP2 = (idx === 0 ? wb2Matches[1]?.loser : lb1Matches[1]?.winner);
+      if(!m.p1 || !isKnownPlayer(m.p1)){
+        m.p1 = (expectedP1 && isKnownPlayer(expectedP1)) ? expectedP1 : (m.originP1 || 'TBD');
+        m.a = m.p1;
+      }
+      if(!m.p2 || !isKnownPlayer(m.p2)){
+        m.p2 = (expectedP2 && isKnownPlayer(expectedP2)) ? expectedP2 : (m.originP2 || 'TBD');
+        m.b = m.p2;
+      }
+      if(isKnownPlayer(m.p1) && m.p1 === m.p2){
+        if(idx === 1){
+          m.p1 = m.originP1 || 'Loser of WB Semi 1';
+          m.a = m.p1;
+        } else {
+          m.p2 = m.originP2 || 'Loser of WB Semi 2';
+          m.b = m.p2;
         }
+        m.isDone = false;
+        m.winner = null;
+        m.loser = null;
       }
     });
     lbRounds.push({ title:'LB Round 2', name:'Round 2', matches:lb2Matches });
@@ -15688,6 +15756,21 @@ function getTournamentTopCutModel(t){
     if(smLb3){
       applyStageMatch(lb3Matches[0], smLb3);
     }
+    if(!lb3Matches[0].p1 || !isKnownPlayer(lb3Matches[0].p1)){
+      lb3Matches[0].p1 = (lb2Matches[0]?.winner && isKnownPlayer(lb2Matches[0]?.winner)) ? lb2Matches[0].winner : lb3Matches[0].originP1;
+      lb3Matches[0].a = lb3Matches[0].p1;
+    }
+    if(!lb3Matches[0].p2 || !isKnownPlayer(lb3Matches[0].p2)){
+      lb3Matches[0].p2 = (lb2Matches[1]?.winner && isKnownPlayer(lb2Matches[1]?.winner)) ? lb2Matches[1].winner : lb3Matches[0].originP2;
+      lb3Matches[0].b = lb3Matches[0].p2;
+    }
+    if(isKnownPlayer(lb3Matches[0].p1) && lb3Matches[0].p1 === lb3Matches[0].p2){
+      lb3Matches[0].p1 = lb3Matches[0].originP1;
+      lb3Matches[0].a = lb3Matches[0].p1;
+      lb3Matches[0].isDone = false;
+      lb3Matches[0].winner = null;
+      lb3Matches[0].loser = null;
+    }
     lbRounds.push({ title:'Losers Semifinal', name:'Round 3', matches:lb3Matches });
 
     let lb4Matches = [
@@ -15697,12 +15780,42 @@ function getTournamentTopCutModel(t){
     if(smLb4){
       applyStageMatch(lb4Matches[0], smLb4);
     }
+    if(!lb4Matches[0].p1 || !isKnownPlayer(lb4Matches[0].p1)){
+      lb4Matches[0].p1 = (wb3Matches[0]?.loser && isKnownPlayer(wb3Matches[0]?.loser)) ? wb3Matches[0].loser : lb4Matches[0].originP1;
+      lb4Matches[0].a = lb4Matches[0].p1;
+    }
+    if(!lb4Matches[0].p2 || !isKnownPlayer(lb4Matches[0].p2)){
+      lb4Matches[0].p2 = (lb3Matches[0]?.winner && isKnownPlayer(lb3Matches[0]?.winner)) ? lb3Matches[0].winner : lb4Matches[0].originP2;
+      lb4Matches[0].b = lb4Matches[0].p2;
+    }
+    if(isKnownPlayer(lb4Matches[0].p1) && lb4Matches[0].p1 === lb4Matches[0].p2){
+      lb4Matches[0].p1 = lb4Matches[0].originP1;
+      lb4Matches[0].a = lb4Matches[0].p1;
+      lb4Matches[0].isDone = false;
+      lb4Matches[0].winner = null;
+      lb4Matches[0].loser = null;
+    }
     lbRounds.push({ title:'Losers Final', name:'Round 4', matches:lb4Matches });
 
     let gf1Match = { id:'gf1', title:'Grand Finals', p1:wb3Matches[0].winner||'WB Champion', p2:lb4Matches[0].winner||'LB Champion', originP1:'WB Champion', originP2:'LB Champion' };
     let smGf = findStageMatch(bmd, 3, 1, 1);
     if(smGf){
       applyStageMatch(gf1Match, smGf);
+    }
+    if(!gf1Match.p1 || !isKnownPlayer(gf1Match.p1)){
+      gf1Match.p1 = (wb3Matches[0]?.winner && isKnownPlayer(wb3Matches[0]?.winner)) ? wb3Matches[0].winner : gf1Match.originP1;
+      gf1Match.a = gf1Match.p1;
+    }
+    if(!gf1Match.p2 || !isKnownPlayer(gf1Match.p2)){
+      gf1Match.p2 = (lb4Matches[0]?.winner && isKnownPlayer(lb4Matches[0]?.winner)) ? lb4Matches[0].winner : gf1Match.originP2;
+      gf1Match.b = gf1Match.p2;
+    }
+    if(isKnownPlayer(gf1Match.p1) && gf1Match.p1 === gf1Match.p2){
+      gf1Match.p2 = gf1Match.originP2;
+      gf1Match.b = gf1Match.p2;
+      gf1Match.isDone = false;
+      gf1Match.winner = null;
+      gf1Match.loser = null;
     }
     gfMatches.push(gf1Match);
 
@@ -15796,6 +15909,13 @@ function getTournamentTopCutModel(t){
   allBracketMatches.forEach(bm => {
     bm.isTopCut = true;
     bm.tournamentId = t.id;
+    if(isKnownPlayer(bm.p1) && bm.p1 === bm.p2){
+      bm.p1 = bm.originP1 || 'TBD';
+      bm.a = bm.p1;
+      bm.isDone = false;
+      bm.winner = null;
+      bm.loser = null;
+    }
     if(bm.p1 && !bm.a) bm.a = bm.p1;
     if(bm.p2 && !bm.b) bm.b = bm.p2;
     if(bm.p1 && seedMap[bm.p1]) bm.p1Seed = seedMap[bm.p1];
@@ -19757,6 +19877,8 @@ function matchupOfTheWeekCard(t){
   let bannerTextCol2 = getBannerTextColor(color2);
   let bgTop = getBattlewornBg(color1, true);
   let bgBottom = getBattlewornBg(color2, false);
+  let topStatusClass = isPlayed ? (p1Won ? 'is-winner' : (p2Won ? 'is-loser' : '')) : '';
+  let bottomStatusClass = isPlayed ? (p2Won ? 'is-winner' : (p1Won ? 'is-loser' : '')) : '';
 
   let tickerItems1 = Array(16).fill(`<span>${esc(hashtag1)}</span><span class="ticker-star">★</span>`).join('');
   let tickerItems2 = Array(16).fill(`<span>${esc(hashtag2)}</span><span class="ticker-star">★</span>`).join('');
@@ -19827,7 +19949,7 @@ function matchupOfTheWeekCard(t){
           ` : ''}
 
           <!-- Top Half (Team 1) -->
-          <div class="primetime-cfb-half top" data-coach="${esc(p1)}" style="background:${bgTop};">
+          <div class="primetime-cfb-half top ${topStatusClass}" data-coach="${esc(p1)}" style="background:${bgTop};">
             <div class="primetime-ticker-bar top" style="background:${bannerColor1};color:${bannerTextCol1};">
               <div class="primetime-ticker-static" style="color:${bannerTextCol1};">${tickerItems1}</div>
             </div>
@@ -19841,6 +19963,7 @@ function matchupOfTheWeekCard(t){
                 </div>
                 <div class="primetime-cfb-sub-row left">
                   <span class="primetime-cfb-coach-tag">${playerLink(p1)}</span>
+                  ${p1Won ? `<span class="primetime-cfb-winner-badge">👑 WINNER</span>` : (p2Won ? `<span class="primetime-cfb-loser-badge">FINAL</span>` : '')}
                   ${ovrVal1 ? `<span class="primetime-cfb-ovr-pill" title="Player Career OVR: ${ovrVal1}"><span class="ovr-lbl">OVR</span><span class="ovr-num">${ovrVal1}</span></span>` : ''}
                   <span class="primetime-cfb-record-pill">RECORD ${esc(rec1)}</span>
                 </div>
@@ -19879,7 +20002,7 @@ function matchupOfTheWeekCard(t){
           </div>
 
           <!-- Bottom Half (Team 2) -->
-          <div class="primetime-cfb-half bottom" data-coach="${esc(p2)}" style="background:${bgBottom};">
+          <div class="primetime-cfb-half bottom ${bottomStatusClass}" data-coach="${esc(p2)}" style="background:${bgBottom};">
             ${getCfbScratchOverlayHtml()}
 
             <div class="primetime-cfb-logo-wrap bottom-left" onclick="openProfile('${jsArg(p2)}')" title="View ${esc(p2)} profile">
@@ -19906,6 +20029,7 @@ function matchupOfTheWeekCard(t){
                 <div class="primetime-cfb-sub-row right">
                   <span class="primetime-cfb-record-pill">${esc(rec2)} RECORD</span>
                   ${ovrVal2 ? `<span class="primetime-cfb-ovr-pill" title="Player Career OVR: ${ovrVal2}"><span class="ovr-lbl">OVR</span><span class="ovr-num">${ovrVal2}</span></span>` : ''}
+                  ${p2Won ? `<span class="primetime-cfb-winner-badge">👑 WINNER</span>` : (p1Won ? `<span class="primetime-cfb-loser-badge">FINAL</span>` : '')}
                   <span class="primetime-cfb-coach-tag">${playerLink(p2)}</span>
                 </div>
               </div>
