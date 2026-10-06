@@ -14828,317 +14828,374 @@ async function generateMatchCardDataUrl(data){
       try { await document.fonts.ready; } catch(e){}
     }
 
-    let canvas = document.createElement('canvas');
-    canvas.width = 760;
-    canvas.height = 300;
-    let ctx = canvas.getContext('2d');
+    const w = 900;
+    const h = 450;
+    const bannerH = 42;
+    const halfH = (h - bannerH) / 2; // 204px
+    const seamY = bannerH + halfH;    // 246px
+
+    const canvas = document.createElement('canvas');
+    canvas.width = w;
+    canvas.height = h;
+    const ctx = canvas.getContext('2d');
     if(!ctx) return null;
-    let w = canvas.width, h = canvas.height;
 
-    // Resolve images
-    let coverUrl = data.coverImage
-      || (typeof pulsePanelImages !== 'undefined' ? (pulsePanelImages.primetime || pulsePanelImages.global) : '')
-      || '';
-    if(!coverUrl && typeof localStorage !== 'undefined'){
-      try { coverUrl = localStorage.getItem('draftdex-primetime-cover') || ''; } catch(e){}
-    }
+    const p1 = data.p1 || 'Player 1';
+    const p2 = data.p2 || 'Player 2';
+    const s1 = data.s1 != null ? Number(data.s1) : null;
+    const s2 = data.s2 != null ? Number(data.s2) : null;
+    const isPlayed = (s1 != null && s2 != null && !isNaN(s1) && !isNaN(s2));
+    const p1Won = isPlayed && (s1 > s2);
+    const p2Won = isPlayed && (s2 > s1);
 
-    let p1ImgUrl = data.p1Photo
-      || (typeof profilePictures !== 'undefined' ? profilePictures[data.p1] : '')
-      || (typeof teamCovers !== 'undefined' ? teamCovers[data.p1] : '')
+    const t = (typeof state !== 'undefined' && state.tournaments) ? (state.tournaments[state.currentTournamentId] || Object.values(state.tournaments)[0]) : null;
+
+    const color1 = (typeof getCoachPrimaryColor === 'function' ? getCoachPrimaryColor(p1) : '#124866') || '#124866';
+    const color2 = (typeof getCoachPrimaryColor === 'function' ? getCoachPrimaryColor(p2) : '#2e4a36') || '#2e4a36';
+
+    const hashtag1 = (typeof getCoachHashtag === 'function' ? getCoachHashtag(p1) : '#BELLIMAKA') || '#BELLIMAKA';
+    const hashtag2 = (typeof getCoachHashtag === 'function' ? getCoachHashtag(p2) : '#BELLIMAKA') || '#BELLIMAKA';
+
+    const bannerCol1 = (typeof getBannerShade === 'function' ? getBannerShade(color1) : color1) || color1;
+    const bannerCol2 = (typeof getBannerShade === 'function' ? getBannerShade(color2) : color2) || color2;
+    const bannerTxt1 = (typeof getBannerTextColor === 'function' ? getBannerTextColor(color1) : '#fff') || '#fff';
+    const bannerTxt2 = (typeof getBannerTextColor === 'function' ? getBannerTextColor(color2) : '#fff') || '#fff';
+
+    let split1 = (typeof getCoachNameSplit === 'function') ? getCoachNameSplit(p1, t) : { line1: data.p1Team || p1, line2: '' };
+    let split2 = (typeof getCoachNameSplit === 'function') ? getCoachNameSplit(p2, t) : { line1: data.p2Team || p2, line2: '' };
+    if(!split1.line1) split1.line1 = data.p1Team || p1;
+    if(!split2.line1) split2.line1 = data.p2Team || p2;
+
+    const rec1 = data.rec1 ? formatRecordParen(data.rec1) : (typeof tournamentRecord === 'function' && t ? formatRecordParen(tournamentRecord(t, p1)) : '(0 - 0)');
+    const rec2 = data.rec2 ? formatRecordParen(data.rec2) : (typeof tournamentRecord === 'function' && t ? formatRecordParen(tournamentRecord(t, p2)) : '(0 - 0)');
+
+    const p1ImgUrl = data.p1Photo
+      || (typeof profilePictures !== 'undefined' ? profilePictures[p1] : '')
+      || (typeof teamCovers !== 'undefined' ? teamCovers[p1] : '')
       || '';
-    let p2ImgUrl = data.p2Photo
-      || (typeof profilePictures !== 'undefined' ? profilePictures[data.p2] : '')
-      || (typeof teamCovers !== 'undefined' ? teamCovers[data.p2] : '')
+    const p2ImgUrl = data.p2Photo
+      || (typeof profilePictures !== 'undefined' ? profilePictures[p2] : '')
+      || (typeof teamCovers !== 'undefined' ? teamCovers[p2] : '')
       || '';
 
-    function loadImg(url, timeoutMs = 2000){
+    function loadImg(url, timeoutMs = 2500){
       if(!url || typeof url !== 'string') return Promise.resolve(null);
       return new Promise(resolve => {
         let done = false;
-        let t = setTimeout(() => {
-          if(!done){ done = true; resolve(null); }
-        }, timeoutMs);
+        let timer = setTimeout(() => { if(!done){ done = true; resolve(null); } }, timeoutMs);
         let img = new Image();
         if(!url.startsWith('data:') && !url.startsWith('blob:')){
           img.crossOrigin = 'anonymous';
         }
-        img.onload = () => {
-          if(!done){ done = true; clearTimeout(t); resolve(img); }
-        };
-        img.onerror = () => {
-          if(!done){ done = true; clearTimeout(t); resolve(null); }
-        };
+        img.onload = () => { if(!done){ done = true; clearTimeout(timer); resolve(img); } };
+        img.onerror = () => { if(!done){ done = true; clearTimeout(timer); resolve(null); } };
         img.src = url;
       });
     }
 
-    let [bgImg, img1, img2] = await Promise.all([
-      loadImg(coverUrl),
+    const [img1, img2, texImg] = await Promise.all([
       loadImg(p1ImgUrl),
-      loadImg(p2ImgUrl)
+      loadImg(p2ImgUrl),
+      loadImg('Fonts%20%26%20Logos/cfb-splash-texture.jpg')
     ]);
 
-    // Rounded card clipping for the entire canvas
+    // 1. Overall outer card clipping (rounded rectangle)
     ctx.save();
     ctx.beginPath();
-    if(typeof ctx.roundRect === 'function') ctx.roundRect(0, 0, w, h, 10);
-    else ctx.rect(0, 0, w, h);
+    ctx.roundRect(0, 0, w, h, 14);
     ctx.clip();
 
-    // 1. Base dark background
-    let baseGrad = ctx.createLinearGradient(0, 0, w, h);
-    baseGrad.addColorStop(0, '#1f1116');
-    baseGrad.addColorStop(0.5, '#13131a');
-    baseGrad.addColorStop(1, '#121622');
-    ctx.fillStyle = baseGrad;
+    // 2. Base dark broadcast backing
+    ctx.fillStyle = '#0c0c12';
     ctx.fillRect(0, 0, w, h);
 
-    // 2. Cover image if available
-    if(bgImg){
-      let bw = bgImg.naturalWidth || bgImg.width || 1;
-      let bh = bgImg.naturalHeight || bgImg.height || 1;
-      let scale = Math.max(w / bw, h / bh);
-      let sw = bw * scale;
-      let sh = bh * scale;
-      let sx = (w - sw) / 2;
-      let sy = (h - sh) / 2;
-      ctx.drawImage(bgImg, sx, sy, sw, sh);
+    // 3. Helper to render each half into an offscreen canvas
+    function renderHalf(isTop, coachName, split, color, bannerCol, bannerTxt, hashtag, avatarImg, recStr, isWinner, isLoser){
+      const hc = document.createElement('canvas');
+      hc.width = w;
+      hc.height = halfH;
+      const hctx = hc.getContext('2d');
 
-      // Dark vignette / theme tint matching website
-      let overlay = ctx.createLinearGradient(0, 0, w, h);
-      if(data.isTopCut){
-        overlay.addColorStop(0, 'rgba(46, 20, 24, 0.88)');
-        overlay.addColorStop(0.5, 'rgba(24, 14, 22, 0.92)');
-        overlay.addColorStop(1, 'rgba(13, 13, 18, 0.94)');
-      } else {
-        overlay.addColorStop(0, 'rgba(32, 12, 18, 0.88)');
-        overlay.addColorStop(0.5, 'rgba(18, 12, 18, 0.92)');
-        overlay.addColorStop(1, 'rgba(13, 13, 18, 0.94)');
+      // Battleworn background gradient
+      let lightSplash = (typeof hexToLighterShade === 'function') ? hexToLighterShade(color, 0.24) : color;
+      let deepEdge = (typeof hexToDarkerShade === 'function') ? hexToDarkerShade(color, 0.10) : color;
+      let bgGrad = hctx.createLinearGradient(0, isTop ? 0 : halfH, w, isTop ? halfH : 0);
+      bgGrad.addColorStop(0, lightSplash);
+      bgGrad.addColorStop(0.40, color);
+      bgGrad.addColorStop(1, deepEdge);
+      hctx.fillStyle = bgGrad;
+      hctx.fillRect(0, 0, w, halfH);
+
+      // Texture overlay if available
+      if(texImg){
+        hctx.save();
+        hctx.globalAlpha = 0.35;
+        hctx.globalCompositeOperation = 'overlay';
+        hctx.drawImage(texImg, 0, 0, w, halfH);
+        hctx.restore();
       }
-      ctx.fillStyle = overlay;
-      ctx.fillRect(0, 0, w, h);
+
+      // Hashtag ribbon bar
+      const ribbonY = isTop ? 10 : (halfH - 34);
+      hctx.fillStyle = bannerCol;
+      hctx.fillRect(0, ribbonY, w, 24);
+      hctx.strokeStyle = 'rgba(255, 255, 255, 0.45)';
+      hctx.lineWidth = 1;
+      hctx.beginPath();
+      hctx.moveTo(0, ribbonY);
+      hctx.lineTo(w, ribbonY);
+      hctx.moveTo(0, ribbonY + 24);
+      hctx.lineTo(w, ribbonY + 24);
+      hctx.stroke();
+
+      // Ribbon text
+      hctx.save();
+      hctx.beginPath();
+      hctx.rect(0, ribbonY, w, 24);
+      hctx.clip();
+      hctx.font = '800 15px \"Agency FB\", \"Barlow Condensed\", sans-serif';
+      hctx.fillStyle = bannerTxt;
+      hctx.textBaseline = 'middle';
+      hctx.textAlign = 'center';
+      hctx.shadowColor = 'rgba(0, 0, 0, 0.65)';
+      hctx.shadowBlur = 4;
+      let ribbonRepeats = 12;
+      let ribbonStr = Array(ribbonRepeats).fill(hashtag.toUpperCase() + '   ★   ').join('');
+      hctx.fillText(ribbonStr, w / 2, ribbonY + 12);
+      hctx.restore();
+
+      // Team Name in Saphifen (Prominent broadcast typography)
+      hctx.save();
+      hctx.font = '900 44px \"Saphifen\", sans-serif';
+      hctx.fillStyle = '#ffffff';
+      hctx.shadowColor = 'rgba(0, 0, 0, 0.95)';
+      hctx.shadowBlur = 12;
+      hctx.shadowOffsetX = 0;
+      hctx.shadowOffsetY = 4;
+
+      if(isTop){
+        hctx.textAlign = 'left';
+        if(split.line2){
+          hctx.textBaseline = 'top';
+          hctx.fillText(split.line1, 42, 48);
+          hctx.fillText(split.line2, 78, 98);
+        } else {
+          hctx.textBaseline = 'middle';
+          hctx.fillText(split.line1, 42, halfH / 2 + 10);
+        }
+      } else {
+        hctx.textAlign = 'right';
+        if(split.line2){
+          hctx.textBaseline = 'bottom';
+          hctx.fillText(split.line2, w - 42, halfH - 46);
+          hctx.fillText(split.line1, w - 78, halfH - 96);
+        } else {
+          hctx.textBaseline = 'middle';
+          hctx.fillText(split.line1, w - 42, halfH / 2 - 10);
+        }
+      }
+      hctx.restore();
+
+      // Coach Avatar Circle
+      const avR = 54;
+      const avCx = isTop ? (w - 105) : 105;
+      const avCy = isTop ? 106 : 98;
+
+      // Outer glow for winner avatar
+      if(isWinner){
+        hctx.save();
+        hctx.shadowColor = 'rgba(74, 222, 128, 0.85)';
+        hctx.shadowBlur = 28;
+        hctx.beginPath();
+        hctx.arc(avCx, avCy, avR + 4, 0, Math.PI * 2);
+        hctx.fillStyle = 'rgba(74, 222, 128, 0.25)';
+        hctx.fill();
+        hctx.restore();
+      }
+
+      // Draw Avatar Image / Fallback
+      hctx.save();
+      hctx.beginPath();
+      hctx.arc(avCx, avCy, avR, 0, Math.PI * 2);
+      hctx.clip();
+      if(avatarImg){
+        let iw = avatarImg.naturalWidth || avatarImg.width || 1;
+        let ih = avatarImg.naturalHeight || avatarImg.height || 1;
+        let scale = Math.max((avR * 2) / iw, (avR * 2) / ih);
+        let dw = iw * scale, dh = ih * scale;
+        hctx.drawImage(avatarImg, avCx - dw / 2, avCy - dh / 2, dw, dh);
+      } else {
+        let g = hctx.createLinearGradient(avCx - avR, avCy - avR, avCx + avR, avCy + avR);
+        g.addColorStop(0, '#f14449');
+        g.addColorStop(1, '#6e1826');
+        hctx.fillStyle = g;
+        hctx.fillRect(avCx - avR, avCy - avR, avR * 2, avR * 2);
+        hctx.fillStyle = '#ffffff';
+        hctx.font = '900 38px \"Barlow Condensed\", sans-serif';
+        hctx.textAlign = 'center';
+        hctx.textBaseline = 'middle';
+        hctx.fillText((coachName || '?')[0].toUpperCase(), avCx, avCy);
+      }
+      hctx.restore();
+
+      // Avatar Border Ring
+      hctx.beginPath();
+      hctx.arc(avCx, avCy, avR, 0, Math.PI * 2);
+      hctx.strokeStyle = isWinner ? '#4ade80' : 'rgba(255, 255, 255, 0.8)';
+      hctx.lineWidth = isWinner ? 4.5 : 3.5;
+      hctx.stroke();
+
+      // Curved Floating Record Pill Badge (Agency FB)
+      const pillY = isTop ? (avCy + avR - 4) : (avCy - avR + 4);
+      hctx.save();
+      hctx.font = '900 17px \"Agency FB\", \"Barlow Condensed\", sans-serif';
+      let recW = hctx.measureText(recStr).width + 18;
+      let recH = 24;
+      let recX = avCx - recW / 2;
+      let recYPos = pillY - recH / 2;
+
+      // Dark pill backing with gold border
+      hctx.fillStyle = 'rgba(10, 10, 18, 0.94)';
+      hctx.shadowColor = 'rgba(0, 0, 0, 0.9)';
+      hctx.shadowBlur = 10;
+      hctx.beginPath();
+      hctx.roundRect(recX, recYPos, recW, recH, 12);
+      hctx.fill();
+
+      hctx.strokeStyle = 'rgba(255, 209, 102, 0.65)';
+      hctx.lineWidth = 1.3;
+      hctx.stroke();
+
+      // Gold text
+      hctx.fillStyle = '#ffd166';
+      hctx.textAlign = 'center';
+      hctx.textBaseline = 'middle';
+      hctx.fillText(recStr, avCx, pillY);
+      hctx.restore();
+
+      return hc;
     }
 
-    // 3. Top Banner Bar
-    let bannerH = 38;
-    ctx.fillStyle = 'rgba(0, 0, 0, 0.45)';
+    // 4. Render Top Half
+    const topCanvas = renderHalf(true, p1, split1, color1, bannerCol1, bannerTxt1, hashtag1, img1, rec1, p1Won, p2Won);
+    ctx.save();
+    if(p2Won){
+      // LOSER FADE OUT
+      ctx.filter = 'grayscale(60%) brightness(65%) contrast(92%)';
+    }
+    ctx.drawImage(topCanvas, 0, bannerH);
+    ctx.restore();
+
+    // 5. Render Bottom Half
+    const btmCanvas = renderHalf(false, p2, split2, color2, bannerCol2, bannerTxt2, hashtag2, img2, rec2, p2Won, p1Won);
+    ctx.save();
+    if(p1Won){
+      // LOSER FADE OUT
+      ctx.filter = 'grayscale(60%) brightness(65%) contrast(92%)';
+    }
+    ctx.drawImage(btmCanvas, 0, seamY);
+    ctx.restore();
+
+    // 6. Top Header Subbar
+    ctx.fillStyle = 'rgba(12, 12, 18, 0.94)';
     ctx.fillRect(0, 0, w, bannerH);
     ctx.strokeStyle = 'rgba(255, 255, 255, 0.08)';
+    ctx.lineWidth = 1;
     ctx.beginPath();
     ctx.moveTo(0, bannerH);
     ctx.lineTo(w, bannerH);
     ctx.stroke();
 
-    // Banner Stage / Division Text
-    ctx.font = '800 12px "Barlow Condensed", sans-serif';
-    ctx.fillStyle = '#ff9f1c';
+    // Stage text
+    ctx.font = '800 14px \"Barlow Condensed\", sans-serif';
+    ctx.fillStyle = '#ffd166';
     ctx.textAlign = 'left';
     ctx.textBaseline = 'middle';
-    ctx.fillText('⚡', 16, bannerH / 2);
-
-    ctx.fillStyle = '#ffd166';
-    let stageTitle = (data.stage || 'GROUP STAGE').toUpperCase();
-    if(/^GROUP\s+[A-Z]$/i.test(stageTitle)){
-      stageTitle += ' DIVISION';
-    }
-    if(data.isTopCut && data.roundLabel && !stageTitle.includes(data.roundLabel.toUpperCase())){
+    let stageTitle = (data.stage || (data.isTopCut ? 'TOP CUT PLAYOFFS' : 'PRIMETIME MATCHUP')).toUpperCase();
+    if(data.roundLabel && !stageTitle.includes(data.roundLabel.toUpperCase())){
       stageTitle += ' • ' + data.roundLabel.toUpperCase();
     }
-    ctx.fillText(stageTitle, 34, bannerH / 2 + 0.5);
+    ctx.fillText('⚡ ' + stageTitle, 22, bannerH / 2 + 1);
 
-    // Banner Pill Badge: FINAL SCORE
-    let pillW = 86, pillH = 22, pillX = w - pillW - 16, pillY = (bannerH - pillH) / 2;
-    ctx.fillStyle = 'rgba(0, 0, 0, 0.65)';
+    // Final score tag in top bar
+    let tagW = 90, tagH = 23, tagX = w - tagW - 20, tagY = (bannerH - tagH) / 2;
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
     ctx.beginPath();
-    if(typeof ctx.roundRect === 'function') ctx.roundRect(pillX, pillY, pillW, pillH, 4);
-    else ctx.rect(pillX, pillY, pillW, pillH);
+    ctx.roundRect(tagX, tagY, tagW, tagH, 4);
     ctx.fill();
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.18)';
+    ctx.strokeStyle = 'rgba(125, 240, 170, 0.35)';
     ctx.lineWidth = 1;
     ctx.stroke();
 
-    ctx.font = '900 10px "Barlow Condensed", sans-serif';
+    ctx.font = '900 11px \"Barlow Condensed\", sans-serif';
     ctx.fillStyle = '#7df0aa';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText('FINAL SCORE', pillX + pillW / 2, pillY + pillH / 2 + 0.5);
+    ctx.fillText('FINAL SCORE', tagX + tagW / 2, tagY + tagH / 2 + 0.5);
 
-    // 4. Center Score & FINAL (Enlarged and bold for Discord readability)
-    let p1Won = +data.s1 > +data.s2;
-    let p2Won = +data.s2 > +data.s1;
-
-    let scoreY = 158;
-    // Left score
-    ctx.textAlign = 'right';
-    ctx.textBaseline = 'middle';
-    ctx.font = '900 48px "Barlow Condensed", sans-serif';
-    ctx.fillStyle = p1Won ? '#4ade80' : '#8e8c98';
-    ctx.fillText(String(data.s1 ?? 0), w / 2 - 20, scoreY);
-
-    // Dash
-    ctx.textAlign = 'center';
-    ctx.font = '900 28px "Barlow Condensed", sans-serif';
-    ctx.fillStyle = '#6b6a78';
-    ctx.fillText('-', w / 2, scoreY - 2);
-
-    // Right score
-    ctx.textAlign = 'left';
-    ctx.font = '900 48px "Barlow Condensed", sans-serif';
-    ctx.fillStyle = p2Won ? '#4ade80' : '#8e8c98';
-    ctx.fillText(String(data.s2 ?? 0), w / 2 + 20, scoreY);
-
-    // FINAL label
-    ctx.textAlign = 'center';
-    ctx.font = '900 12px "Barlow Condensed", sans-serif';
-    ctx.fillStyle = '#7df0aa';
-    ctx.fillText('FINAL', w / 2, scoreY + 34);
-
-    // 5. Coaches (Left & Right)
-    function drawCoach(c, cx, avatarImg){
-      let cy = 108;
-      let r = 35;
-
-      // Outer glow for winner
-      if(c.won){
-        ctx.save();
-        ctx.shadowColor = 'rgba(74, 222, 128, 0.35)';
-        ctx.shadowBlur = 18;
-        ctx.beginPath();
-        ctx.arc(cx, cy, r, 0, Math.PI * 2);
-        ctx.fillStyle = 'rgba(74, 222, 128, 0.1)';
-        ctx.fill();
-        ctx.restore();
-      }
-
-      // Avatar circle clip
-      ctx.save();
-      ctx.beginPath();
-      ctx.arc(cx, cy, r, 0, Math.PI * 2);
-      ctx.closePath();
-      ctx.clip();
-
-      if(avatarImg){
-        let iw = avatarImg.naturalWidth || avatarImg.width || 1;
-        let ih = avatarImg.naturalHeight || avatarImg.height || 1;
-        let scale = Math.max((r * 2) / iw, (r * 2) / ih);
-        let dw = iw * scale, dh = ih * scale;
-        ctx.drawImage(avatarImg, cx - dw / 2, cy - dh / 2, dw, dh);
-      } else {
-        let grad = ctx.createLinearGradient(cx - r, cy - r, cx + r, cy + r);
-        grad.addColorStop(0, '#f14449');
-        grad.addColorStop(1, '#6e1826');
-        ctx.fillStyle = grad;
-        ctx.fill();
-
-        ctx.fillStyle = '#ffffff';
-        ctx.font = '900 26px "Barlow Condensed", sans-serif';
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillText((c.name || '?')[0].toUpperCase(), cx, cy);
-      }
-      ctx.restore();
-
-      // Avatar border ring
-      ctx.beginPath();
-      ctx.arc(cx, cy, r, 0, Math.PI * 2);
-      ctx.strokeStyle = c.won ? '#4ade80' : (c.ovrColor || '#ffd166');
-      ctx.lineWidth = 2.5;
-      ctx.stroke();
-
-      // OVR Badge (Bottom Right of Avatar)
-      if(c.ovr){
-        let bW = 34, bH = 18, bX = cx + 13, bY = cy + 14;
-        let bGrad = ctx.createLinearGradient(bX, bY, bX + bW, bY + bH);
-        let borderCol = '#ffe066';
-        if(c.tier === 'elite'){
-          bGrad.addColorStop(0, '#ef3038'); bGrad.addColorStop(1, '#b51821');
-          borderCol = '#ff8087';
-        } else if(c.tier === 'silver'){
-          bGrad.addColorStop(0, '#6d7185'); bGrad.addColorStop(1, '#464957');
-          borderCol = '#a8abb9';
-        } else if(c.tier === 'bronze'){
-          bGrad.addColorStop(0, '#8c542a'); bGrad.addColorStop(1, '#543015');
-          borderCol = '#b87747';
-        } else {
-          // Gold / Diamond
-          bGrad.addColorStop(0, '#e6b800'); bGrad.addColorStop(1, '#a68000');
-          borderCol = '#ffe066';
-        }
-
-        ctx.fillStyle = bGrad;
-        ctx.beginPath();
-        if(typeof ctx.roundRect === 'function') ctx.roundRect(bX, bY, bW, bH, 4);
-        else ctx.rect(bX, bY, bW, bH);
-        ctx.fill();
-        ctx.strokeStyle = borderCol;
-        ctx.lineWidth = 1;
-        ctx.stroke();
-
-        ctx.font = '900 12px "Barlow Condensed", sans-serif';
-        ctx.fillStyle = '#ffffff';
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillText(String(c.ovr), bX + bW / 2, bY + bH / 2 + 0.5);
-      }
-
-      // Record text (aligned with center score)
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.font = '900 32px "Barlow Condensed", sans-serif';
-      ctx.fillStyle = c.won ? '#4ade80' : '#ffd166';
-      ctx.fillText(c.rec || (c.won ? 'WIN' : 'LOSS'), cx, 175);
-
-      // Team Name
-      ctx.font = '800 14px "Barlow Condensed", sans-serif';
-      ctx.fillStyle = '#e2e0e8';
-      let tName = c.team || '';
-      if(tName.length > 22) tName = tName.slice(0, 20) + '...';
-      ctx.fillText(tName, cx, 205);
-
-      // Coach Name
-      ctx.font = '800 13px "Barlow Condensed", sans-serif';
-      ctx.fillStyle = '#ffffff';
-      ctx.fillText(c.name || '', cx, 227);
-    }
-
-    // Draw Left Coach
-    drawCoach({
-      name: data.p1,
-      team: data.p1Team,
-      rec: data.rec1,
-      ovr: data.ovr1,
-      ovrColor: data.ovrColor1,
-      tier: data.ovrTier1,
-      won: p1Won
-    }, 190, img1);
-
-    // Draw Right Coach
-    drawCoach({
-      name: data.p2,
-      team: data.p2Team,
-      rec: data.rec2,
-      ovr: data.ovr2,
-      ovrColor: data.ovrColor2,
-      tier: data.ovrTier2,
-      won: p2Won
-    }, w - 190, img2);
-
-    // 8. Card Outer Border
-    ctx.restore(); // restore clipping
+    // 7. Center Dividing Seam & Score Pill Badge
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.28)';
+    ctx.lineWidth = 1.5;
     ctx.beginPath();
-    if(typeof ctx.roundRect === 'function') ctx.roundRect(0, 0, w, h, 10);
-    else ctx.rect(0, 0, w, h);
-    ctx.strokeStyle = data.isTopCut ? '#5c3a1e' : '#4a2834';
+    ctx.moveTo(0, seamY);
+    ctx.lineTo(w, seamY);
+    ctx.stroke();
+
+    // Score Capsule
+    const capW = 130, capH = 42;
+    const capX = (w - capW) / 2;
+    const capY = seamY - capH / 2;
+
+    ctx.save();
+    ctx.shadowColor = 'rgba(0, 0, 0, 0.88)';
+    ctx.shadowBlur = 18;
+    ctx.fillStyle = 'rgba(14, 14, 22, 0.96)';
+    ctx.beginPath();
+    ctx.roundRect(capX, capY, capW, capH, 21);
+    ctx.fill();
+
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.32)';
     ctx.lineWidth = 1.5;
     ctx.stroke();
 
-    try {
-      return canvas.toDataURL('image/png');
-    } catch(err) {
-      console.warn('Canvas toDataURL security error:', err);
-      return null;
-    }
+    // Score numbers (Barlow Condensed for super clean, legible score numbers)
+    ctx.font = '900 30px \"Barlow Condensed\", sans-serif';
+    ctx.textBaseline = 'middle';
+
+    // Left score (s1)
+    ctx.textAlign = 'right';
+    ctx.fillStyle = p1Won ? '#4ade80' : (p2Won ? '#7a7884' : '#ffd166');
+    ctx.fillText(String(s1 ?? 0), w / 2 - 16, seamY + 1);
+
+    // Dash
+    ctx.textAlign = 'center';
+    ctx.font = '800 22px \"Barlow Condensed\", sans-serif';
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.45)';
+    ctx.fillText('-', w / 2, seamY);
+
+    // Right score (s2)
+    ctx.textAlign = 'left';
+    ctx.font = '900 30px \"Barlow Condensed\", sans-serif';
+    ctx.fillStyle = p2Won ? '#4ade80' : (p1Won ? '#7a7884' : '#ffd166');
+    ctx.fillText(String(s2 ?? 0), w / 2 + 16, seamY + 1);
+    ctx.restore();
+
+    // 8. Outer Gold Frame Stroke (Continuous Radiant Gold Border)
+    ctx.restore(); // restore clipping
+    const goldGrad = ctx.createLinearGradient(0, 0, w, h);
+    goldGrad.addColorStop(0, '#ffd166');
+    goldGrad.addColorStop(0.25, '#ffeaa7');
+    goldGrad.addColorStop(0.5, '#ffd166');
+    goldGrad.addColorStop(0.75, '#f59e0b');
+    goldGrad.addColorStop(1, '#ffd166');
+
+    ctx.strokeStyle = goldGrad;
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.roundRect(1.5, 1.5, w - 3, h - 3, 14);
+    ctx.stroke();
+
+    return canvas.toDataURL('image/png');
   } catch(e) {
     console.warn('Could not generate match card image:', e);
     return null;

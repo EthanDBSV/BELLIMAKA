@@ -3,6 +3,16 @@
 All notable changes to the Bellimaka Pokémon Draft League site are documented here.
 Format: `v[MAJOR].[MINOR].[PATCH]` — Major = big new systems, Minor = new features, Patch = bug fixes / small improvements.
 
+## [v2.3.14] — 2026-10-06
+
+- **Primetime-Matched Discord Webhook Match Result Graphics**:
+  - **Broadcast-Grade Card Rendering**: Completely redesigned `generateMatchCardDataUrl()` to generate high-resolution (900x450, 2:1) match result graphics for Discord webhooks that match the website's Primetime card design to a T.
+  - **Loser Defeat Fadeout**: Implemented authentic desaturation and darkening (`grayscale(60%) brightness(65%) contrast(92%)`) on the defeated coach's half, dynamically contrasting with the bright, saturated winning half.
+  - **Luminous Gold Border & Top Subbar**: Framed the Discord card with the new multi-stop metallic radiant gold border (`#ffd166` to `#ffeaa7` to `#f59e0b`) and a clean broadcast header featuring the stage name and green `FINAL SCORE` badge.
+  - **Curved Agency FB Records & Staggered Saphifen Typography**: Rendered the team names in staggered bold `Saphifen` and coach avatars with glowing winner rings and floating gold `Agency FB` record pill badges anchored along the avatar curves.
+  - **Center Score Capsule**: Centered floating dark pill seam badge with vibrant green winning score digits in `Barlow Condensed` and faded loser digits.
+
+---
 ## [v2.3.13] — 2026-10-06
 
 - **Continuous Radiant Gold Border & Primetime Cover Cleanup**:
