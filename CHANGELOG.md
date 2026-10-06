@@ -11,24 +11,30 @@ Format: `v[MAJOR].[MINOR].[PATCH]` — Major = big new systems, Minor = new feat
     - Embedded `'Another Danger'` referencing `Another Danger Slanted - Demo.otf` for authentic distressed sports team name typography.
     - Embedded `'Agency FB'` referencing `AgencyFB-Bold.ttf` for condensed broadcast hashtag ribbon text.
     - Configured relative font URLs and local fallbacks for seamless cross-platform rendering on both local development and GitHub Pages.
-  - **Team-Colored Hashtag Ribbons**:
-    - Replaced generic solid black hashtag ribbons with dynamic, team-colored banners tinted a few shades lighter and more vibrant than the primary team color (`getBannerShade` / `getBannerTextColor`).
-    - Styled ribbons with crisp high-contrast broadcast pin-lines (`border-top: 1px solid rgba(255,255,255,0.45)` and `border-bottom: 1.5px solid rgba(0,0,0,0.5)`).
+  - **Team-Colored Inset Hashtag Ribbons**:
+    - Replaced generic solid black ribbons with dynamic, team-colored banners tinted a few shades lighter and richly saturated (`getBannerShade` / `getBannerTextColor`).
+    - Inset ribbons by 8px (`top: 8px` / `bottom: 8px`, `6px` on mobile) leaving an authentic strip of team-colored background above and below each ribbon.
+    - Styled ribbons with broadcast-grade double white pin-stripe border rules (`border-top: 1px solid rgba(255,255,255,0.5)` and `border-bottom: 1px solid rgba(255,255,255,0.4)`).
     - Set ribbon typography to uppercase bold `'Agency FB'` with clean star dividers (`★`).
-  - **Layering & Z-Index (Ribbons Underneath Logos)**:
-    - Ribbons now run continuously along the absolute top and bottom edges at `z-index: 2`.
-    - Team logos are elevated to `z-index: 5`, allowing the logos to overlap on top of the ribbons and seam while the banners pass smoothly underneath.
-  - **Giant Out-Of-Frame Logos**:
-    - Enlarged team logo medallions to giant broadcast proportions (`clamp(130px, 16.5vw, 175px)` on desktop, `clamp(84px, 20vw, 105px)` on mobile) with 4px bright metallic borders and multi-layered depth drop-shadows.
-    - Applied negative offsets so the top-right and bottom-left logos bleed dramatically past the ribbons and card borders, clipped cleanly by the card frame (`overflow: hidden; border-radius: 9px`).
-  - **Pure Team Color + Battleworn Texture**:
-    - Eliminated dark metallic diagonal carbon stripes from `.primetime-cfb-half::before`, replacing them with soft radial depth vignettes.
-    - Upgraded backgrounds to rich, saturated pure team-color radial gradients (`getBattlewornBg`) preserving team vibrancy from edge to edge without murky gray/black washes.
-    - Enhanced `getCfbScratchOverlayHtml` with authentic battle-tested cuts, dark recessed gouges, chalky distressed scuff abrasions, and weathered flecks with overlay blend mode.
+  - **Layering & Z-Index (Ribbons Underneath Giant Cutoff Logos)**:
+    - Ribbons run continuously across the card at `z-index: 2`.
+    - Team logos are positioned as direct children of the half containers at `z-index: 5`, allowing the logos to overlap directly over the ribbons and center seam while the ribbons pass smoothly underneath.
+  - **Giant Out-Of-Frame Logos with Boundary Cutoff**:
+    - Enlarged team logo medallions to giant broadcast proportions (`clamp(155px, 20vw, 195px)` on desktop, `clamp(105px, 26vw, 130px)` on mobile) with 4.5px crisp white borders, inner bevels, and drop-shadows.
+    - Cut off ~20–25% of the logos off-screen against the outer corners (`.top-right` right: `clamp(-38px, -4.5vw, -50px)`, top: `clamp(-18px, -2.2vw, -28px)`; `.bottom-left` left: `clamp(-38px, -4.5vw, -50px)`, bottom: `clamp(-18px, -2.2vw, -28px)`), clipped cleanly by the card frame (`overflow: hidden; border-radius: 9px`).
+  - **Authentic Chipped Paint & Peeling Wall Texture**:
+    - Completely removed all diagonal straight slash lines that imparted a brushed-metal feel.
+    - Implemented authentic chipped paint flakes using irregular polygon chips (`<polygon points="...">`) with dark substrate pits and white flaked paint lip highlights.
+    - Added organic meandering and branching hairline paint cracks with dual-pass dark fissure depths and light primer highlights.
+    - Added chipped paint notches along the center divider seam replicating real painted broadcast stage wear.
+    - Shifted radial background gradients (`getBattlewornBg`) to rich, pure painted wall tones without glaring center specular hotspots.
+  - **Font Accent & Apostrophe Normalization (`cleanDisplayTeamName`)**:
+    - Auto-normalizes Latin diacritics and apostrophes (e.g., `HÀ NỘI` -> `HA NOI`, `NETANYAHU'S` -> `NETANYAHUS`, `POKÉMON` -> `POKEMON`) so all Latin team names render seamlessly without character gaps or missing glyphs in `'Another Danger'`.
+    - Preserves Korean Hangul syllables (e.g., `고양시`) and CJK ideographs via NFC recomposition, falling back to bold italic athletic typography.
   - **Two-Line Team Names & Broadcast Studio Split**:
     - Split team names into two staggered lines: Line 1 (`.primetime-cfb-team-name-l1`) for City / State / Prefix, and Line 2 (`.primetime-cfb-team-name-l2`) for Mascot / Nickname in 'Another Danger' font with staggered indent depth.
     - Added dedicated "Line 1 · City / Prefix" and "Line 2 · Mascot / Nickname" inputs to the Broadcast Branding editor (`openBroadcastBrandingEditor`), with smart auto-split fallback.
-    - Added real-time live preview updating team names, ribbon tints, font faces, and battleworn textures as inputs change, with full persistence to `localStorage` and `persistLeague()`.
+    - Upgraded the Studio Live Preview modal to reflect the new inset ribbon, chipped paint overlay, and corner logo cutoff.
     - Added a direct "📺 Studio" button in coach profile cards for quick one-click access.
 
 ---

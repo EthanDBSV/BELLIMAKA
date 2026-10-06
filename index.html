@@ -521,7 +521,7 @@
   display: flex;
   flex-direction: column;
   justify-content: center;
-  min-height: 136px;
+  min-height: 145px;
   overflow: visible;
   transition: all 0.25s ease;
   isolation: isolate;
@@ -530,7 +530,7 @@
   content: '';
   position: absolute;
   inset: 0;
-  background: radial-gradient(circle at 50% 50%, transparent 40%, rgba(0, 0, 0, 0.38) 100%);
+  background: radial-gradient(circle at 50% 50%, transparent 40%, rgba(0, 0, 0, 0.32) 100%);
   pointer-events: none;
   z-index: 1;
 }
@@ -545,7 +545,7 @@
   z-index: 2;
 }
 
-/* Background Scratch & Distressed Grunge Texture Overlay */
+/* Background Chipped Paint & Distressed Wall Peeling Overlay */
 .primetime-cfb-scratches {
   position: absolute;
   inset: 0;
@@ -554,7 +554,7 @@
   pointer-events: none;
   z-index: 1;
   mix-blend-mode: overlay;
-  opacity: 0.95;
+  opacity: 0.96;
 }
 .primetime-cfb-scratches svg {
   width: 100%;
@@ -562,7 +562,7 @@
   display: block;
 }
 
-/* Authentic ESPN Colored Hashtag Ribbon (Layered Underneath Logos) */
+/* Authentic Inset Colored Hashtag Ribbon (Layered Underneath Logos with Margins) */
 .primetime-ticker-bar {
   display: flex;
   align-items: center;
@@ -577,16 +577,16 @@
   overflow: hidden;
 }
 .primetime-ticker-bar.top {
-  top: 0;
-  border-top: 1px solid rgba(255, 255, 255, 0.45);
-  border-bottom: 1.5px solid rgba(0, 0, 0, 0.5);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
+  top: 8px;
+  border-top: 1px solid rgba(255, 255, 255, 0.5);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.4);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
 }
 .primetime-ticker-bar.bottom {
-  bottom: 0;
-  border-top: 1.5px solid rgba(0, 0, 0, 0.5);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.45);
-  box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.35);
+  bottom: 8px;
+  border-top: 1px solid rgba(255, 255, 255, 0.4);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.5);
+  box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.4);
 }
 .primetime-ticker-static {
   display: flex;
@@ -612,21 +612,22 @@
   transform: translateY(-0.5px);
 }
 
-/* Content rows with clearance for top/bottom ribbons */
+/* Content rows with clearance for inset ribbons & giant overlapping corner logos */
 .primetime-cfb-content {
   position: relative;
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 20px;
-  flex: 1;
+  width: 100%;
+  box-sizing: border-box;
   z-index: 4;
 }
 .primetime-cfb-content.top {
-  padding: 26px 36px 14px 36px;
+  padding: 38px 24px 16px 28px;
+  justify-content: flex-start;
 }
 .primetime-cfb-content.bottom {
-  padding: 14px 36px 26px 36px;
+  padding: 16px 28px 38px 24px;
+  justify-content: flex-end;
 }
 
 .primetime-cfb-info {
@@ -634,16 +635,17 @@
   flex-direction: column;
   gap: 3px;
   min-width: 0;
-  flex: 1;
   z-index: 4;
 }
 .primetime-cfb-info.left {
   align-items: flex-start;
   text-align: left;
+  max-width: calc(100% - 150px);
 }
 .primetime-cfb-info.right {
   align-items: flex-end;
   text-align: right;
+  max-width: calc(100% - 150px);
 }
 
 /* Two-Line ESPN Broadcast Team Name Group */
@@ -663,7 +665,7 @@
 }
 
 .primetime-cfb-team-name-l1 {
-  font-family: 'Another Danger', 'Barlow Condensed', sans-serif;
+  font-family: 'Another Danger', 'Impact', 'Malgun Gothic', 'Arial Black', 'Barlow Condensed', sans-serif;
   font-weight: 900;
   font-style: italic;
   font-size: clamp(28px, 4.5vw, 42px);
@@ -681,7 +683,7 @@
 }
 
 .primetime-cfb-team-name-l2 {
-  font-family: 'Another Danger', 'Barlow Condensed', sans-serif;
+  font-family: 'Another Danger', 'Impact', 'Malgun Gothic', 'Arial Black', 'Barlow Condensed', sans-serif;
   font-weight: 800;
   font-style: italic;
   font-size: clamp(16px, 2.7vw, 24px);
@@ -708,7 +710,7 @@
 
 /* Fallback for single-line usage */
 .primetime-cfb-team-name {
-  font-family: 'Another Danger', 'Barlow Condensed', sans-serif;
+  font-family: 'Another Danger', 'Impact', 'Malgun Gothic', 'Barlow Condensed', sans-serif;
   font-weight: 900;
   font-style: italic;
   font-size: clamp(23px, 4vw, 36px);
@@ -772,9 +774,9 @@
   box-shadow: 0 2px 5px rgba(0, 0, 0, 0.5);
 }
 
-/* Giant Out-Of-Frame 3D Embossed Broadcast Logo */
+/* Giant Out-Of-Frame 3D Embossed Broadcast Logo (~20-25% Bleed Off-Screen) */
 .primetime-cfb-logo-wrap {
-  position: relative;
+  position: absolute;
   flex-shrink: 0;
   cursor: pointer;
   transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
@@ -783,41 +785,41 @@
   justify-content: center;
   z-index: 5;
 }
-.primetime-cfb-logo-wrap.right {
-  margin-right: -16px;
-  margin-top: -10px;
+.primetime-cfb-logo-wrap.top-right {
+  right: clamp(-38px, -4.5vw, -50px);
+  top: clamp(-18px, -2.2vw, -28px);
 }
-.primetime-cfb-logo-wrap.left {
-  margin-left: -16px;
-  margin-bottom: -10px;
+.primetime-cfb-logo-wrap.bottom-left {
+  left: clamp(-38px, -4.5vw, -50px);
+  bottom: clamp(-18px, -2.2vw, -28px);
 }
 .primetime-cfb-logo-wrap:hover {
-  transform: scale(1.06);
+  transform: scale(1.05);
 }
 .primetime-cfb-logo {
-  width: clamp(130px, 16.5vw, 175px);
-  height: clamp(130px, 16.5vw, 175px);
+  width: clamp(155px, 20vw, 195px);
+  height: clamp(155px, 20vw, 195px);
   border-radius: 50%;
   background-size: cover;
   background-position: center;
-  border: 4px solid #ffffff;
+  border: 4.5px solid #ffffff;
   box-shadow:
-    inset 0 2px 6px rgba(255, 255, 255, 0.95),
-    inset 0 -3px 8px rgba(0, 0, 0, 0.7),
-    0 12px 28px rgba(0, 0, 0, 0.85),
-    0 0 24px rgba(255, 255, 255, 0.25);
+    inset 0 3px 8px rgba(255, 255, 255, 0.95),
+    inset 0 -4px 10px rgba(0, 0, 0, 0.7),
+    0 14px 32px rgba(0, 0, 0, 0.85),
+    0 0 26px rgba(255, 255, 255, 0.25);
   display: grid;
   place-items: center;
-  font: 900 44px 'Barlow Condensed', sans-serif;
+  font: 900 48px 'Barlow Condensed', sans-serif;
   color: #fff;
   transition: box-shadow 0.2s ease;
 }
 .primetime-cfb-logo.winner {
   border-color: #4ade80 !important;
   box-shadow:
-    inset 0 2px 6px rgba(255, 255, 255, 0.95),
-    0 0 26px rgba(74, 222, 128, 0.75),
-    0 12px 28px rgba(0, 0, 0, 0.85) !important;
+    inset 0 3px 8px rgba(255, 255, 255, 0.95),
+    0 0 30px rgba(74, 222, 128, 0.8),
+    0 14px 32px rgba(0, 0, 0, 0.85) !important;
 }
 
 /* Center Seam & Center Matchup Badge */
@@ -882,13 +884,18 @@
 }
 
 @media (max-width: 640px) {
+  .primetime-cfb-half {
+    min-height: 120px;
+  }
   .primetime-cfb-content.top {
-    padding: 22px 14px 10px 14px;
-    gap: 12px;
+    padding: 30px 14px 12px 16px;
   }
   .primetime-cfb-content.bottom {
-    padding: 10px 14px 22px 14px;
-    gap: 12px;
+    padding: 12px 16px 30px 14px;
+  }
+  .primetime-cfb-info.left,
+  .primetime-cfb-info.right {
+    max-width: calc(100% - 95px);
   }
   .primetime-cfb-team-name-l1 {
     font-size: clamp(20px, 5.4vw, 26px);
@@ -905,20 +912,27 @@
     padding-right: 4px;
   }
   .primetime-cfb-logo {
-    width: clamp(84px, 20vw, 105px);
-    height: clamp(84px, 20vw, 105px);
-    font-size: 30px;
+    width: clamp(105px, 26vw, 130px);
+    height: clamp(105px, 26vw, 130px);
+    font-size: 34px;
+    border-width: 3.5px;
   }
-  .primetime-cfb-logo-wrap.right {
-    margin-right: -10px;
-    margin-top: -6px;
+  .primetime-cfb-logo-wrap.top-right {
+    right: -24px;
+    top: -14px;
   }
-  .primetime-cfb-logo-wrap.left {
-    margin-left: -10px;
-    margin-bottom: -6px;
+  .primetime-cfb-logo-wrap.bottom-left {
+    left: -24px;
+    bottom: -14px;
   }
   .primetime-ticker-bar {
     height: 20px;
+  }
+  .primetime-ticker-bar.top {
+    top: 6px;
+  }
+  .primetime-ticker-bar.bottom {
+    bottom: 6px;
   }
   .primetime-ticker-static {
     font-size: 11.5px;
@@ -932,9 +946,6 @@
   .primetime-cfb-record-pill {
     font-size: 11px;
     padding: 2.5px 7px;
-  }
-  .primetime-cfb-half {
-    min-height: 112px;
   }
   .primetime-cfb-score-row {
     font-size: 20px;
@@ -5614,28 +5625,40 @@ function hexToLighterShade(hex, factor = 0.2) {
   return '#' + [r, g, b].map(x => x.toString(16).padStart(2, '0')).join('');
 }
 
-function getBannerShade(hex) {
-  if (!hex || typeof hex !== 'string') return '#38384a';
+function hexToHsl(hex) {
+  if (!hex || typeof hex !== 'string') return [0, 0, 50];
   let c = hex.replace('#', '');
   if (c.length === 3) c = c.split('').map(x => x + x).join('');
-  let num = parseInt(c, 16);
-  if (isNaN(num)) return '#38384a';
-  let r = (num >> 16) & 255;
-  let g = (num >> 8) & 255;
-  let b = num & 255;
-  let lum = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
-  let lr, lg, lb;
-  if (lum > 0.72) {
-    lr = Math.max(0, Math.round(r * 0.82));
-    lg = Math.max(0, Math.round(g * 0.82));
-    lb = Math.max(0, Math.round(b * 0.82));
-  } else {
-    let boost = lum < 0.2 ? 0.38 : 0.28;
-    lr = Math.min(255, Math.round(r + (255 - r) * boost));
-    lg = Math.min(255, Math.round(g + (255 - g) * boost));
-    lb = Math.min(255, Math.round(b + (255 - b) * boost));
+  let n = parseInt(c, 16);
+  if (isNaN(n)) return [0, 0, 50];
+  let r = ((n >> 16) & 255) / 255;
+  let g = ((n >> 8) & 255) / 255;
+  let b = (n & 255) / 255;
+  let max = Math.max(r, g, b), min = Math.min(r, g, b);
+  let h = 0, s = 0, l = (max + min) / 2;
+  if (max !== min) {
+    let d = max - min;
+    s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+    switch (max) {
+      case r: h = (g - b) / d + (g < b ? 6 : 0); break;
+      case g: h = (b - r) / d + 2; break;
+      case b: h = (r - g) / d + 4; break;
+    }
+    h /= 6;
   }
-  return '#' + [lr, lg, lb].map(x => x.toString(16).padStart(2, '0')).join('');
+  return [h * 360, s * 100, l * 100];
+}
+
+function getBannerShade(hex) {
+  if (!hex || typeof hex !== 'string') return '#38384a';
+  try {
+    let [h, s, l] = hexToHsl(hex);
+    let targetL = l > 65 ? Math.max(20, l - 22) : Math.min(62, l + 14);
+    let targetS = Math.min(100, Math.max(45, s * 1.08));
+    return hslToHex(h, targetS, targetL);
+  } catch (e) {
+    return hex;
+  }
 }
 
 function getBannerTextColor(hex) {
@@ -5652,14 +5675,13 @@ function getBannerTextColor(hex) {
 }
 
 function getBattlewornBg(color, isTop) {
-  let light = hexToLighterShade(color, 0.18);
-  let base = color;
-  let shadow = hexToDarkerShade(color, 0.38);
-  let deepEdge = hexToDarkerShade(color, 0.60);
+  let base = color || '#881c24';
+  let slightDark = hexToDarkerShade(base, 0.16);
+  let deepEdge = hexToDarkerShade(base, 0.36);
   if (isTop) {
-    return `radial-gradient(ellipse at 82% 50%, ${light} 0%, ${base} 45%, ${shadow} 80%, ${deepEdge} 100%), linear-gradient(180deg, rgba(0,0,0,0.18) 0%, transparent 40%, rgba(0,0,0,0.28) 100%)`;
+    return `radial-gradient(ellipse at 50% 60%, ${base} 0%, ${slightDark} 72%, ${deepEdge} 100%)`;
   } else {
-    return `radial-gradient(ellipse at 18% 50%, ${light} 0%, ${base} 45%, ${shadow} 80%, ${deepEdge} 100%), linear-gradient(180deg, rgba(0,0,0,0.28) 0%, transparent 60%, rgba(0,0,0,0.18) 100%)`;
+    return `radial-gradient(ellipse at 50% 40%, ${base} 0%, ${slightDark} 72%, ${deepEdge} 100%)`;
   }
 }
 
@@ -5736,18 +5758,30 @@ function getCoachPrimaryColor(p) {
   return hslToHex((typeof hueOf === 'function' ? hueOf(p || 'team') : 0), 65, 36);
 }
 
+function cleanDisplayTeamName(str) {
+  if (!str || typeof str !== 'string') return '';
+  let s = str.trim();
+  // Strip curly quotes, primes, and accents commonly typed as apostrophes
+  s = s.replace(/[\u2018\u2019\u0027\u0060\u00B4]/g, '');
+  // Decompose accented Latin characters to base + combining diacritics and strip combining diacritics, then recompose NFC to preserve Korean/CJK syllables
+  s = s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').normalize('NFC');
+  // Collapse whitespace
+  s = s.replace(/\s+/g, ' ').trim();
+  return s;
+}
+
 function getCoachNameSplit(p, t, forceAuto = false) {
   if (!forceAuto) {
     if (coachNameLines[p] && (coachNameLines[p].line1 || coachNameLines[p].line2)) {
       return {
-        line1: coachNameLines[p].line1 || '',
-        line2: coachNameLines[p].line2 || ''
+        line1: cleanDisplayTeamName(coachNameLines[p].line1 || ''),
+        line2: cleanDisplayTeamName(coachNameLines[p].line2 || '')
       };
     }
     if (typeof profiles === 'object' && profiles[p] && (profiles[p].nameLine1 || profiles[p].nameLine2)) {
       return {
-        line1: profiles[p].nameLine1 || '',
-        line2: profiles[p].nameLine2 || ''
+        line1: cleanDisplayTeamName(profiles[p].nameLine1 || ''),
+        line2: cleanDisplayTeamName(profiles[p].nameLine2 || '')
       };
     }
   }
@@ -5760,7 +5794,7 @@ function getCoachNameSplit(p, t, forceAuto = false) {
   }
   if (!full) full = p ? `${p}'s Team` : 'Team';
 
-  full = String(full).trim();
+  full = cleanDisplayTeamName(full);
   let parts = full.split(/\s+/);
   if (parts.length <= 1) {
     return { line1: full, line2: '' };
@@ -5799,57 +5833,94 @@ function saveCoachBranding(p) {
 function getCfbScratchOverlayHtml() {
   return `<div class="primetime-cfb-scratches" aria-hidden="true">
     <svg viewBox="0 0 1000 320" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
-      <defs>
-        <linearGradient id="cfbScratchGrad1" x1="0%" y1="0%" x2="100%" y2="0%">
-          <stop offset="0%" stop-color="#ffffff" stop-opacity="0.10"/>
-          <stop offset="50%" stop-color="#ffffff" stop-opacity="0.60"/>
-          <stop offset="100%" stop-color="#ffffff" stop-opacity="0.10"/>
-        </linearGradient>
-      </defs>
-      <!-- Dark depth gouges -->
-      <g stroke="#000000" stroke-linecap="round" fill="none" opacity="0.45">
-        <path d="M41,26 L161,196 M166,191 L211,241" stroke-width="1.6"/>
-        <path d="M251,281 L381,81 M376,96 L421,36" stroke-width="1.8"/>
-        <path d="M491,291 L611,61 M606,81 L651,21" stroke-width="1.7"/>
-        <path d="M721,276 L841,46 M836,66 L891,16" stroke-width="1.8"/>
-        <path d="M111,141 L136,176 M119,139 L143,173" stroke-width="1.2"/>
-        <path d="M421,111 L451,151 M429,109 L459,149" stroke-width="1.3"/>
-        <path d="M681,131 L711,181 M690,128 L719,178" stroke-width="1.2"/>
-        <path d="M31,71 L96,69 M191,121 L271,118" stroke-width="1.2"/>
-        <path d="M581,141 L671,139 M751,91 L831,89" stroke-width="1.2"/>
-        <path d="M881,221 L961,219 M931,225 L981,223" stroke-width="1.2"/>
+      <!-- Soft mottled patina / subtle uneven wall paint wear -->
+      <g fill="#000000" opacity="0.14">
+        <path d="M70,40 Q130,25 180,60 Q210,95 150,120 Q90,110 65,75 Z"/>
+        <path d="M420,180 Q480,160 540,195 Q570,240 510,270 Q440,260 410,215 Z"/>
+        <path d="M780,50 Q850,30 910,75 Q930,120 870,140 Q800,130 770,85 Z"/>
+        <path d="M280,210 Q330,190 380,225 Q400,260 350,280 Q300,270 270,240 Z"/>
       </g>
-      <!-- Crisp highlight scratches -->
-      <g stroke="url(#cfbScratchGrad1)" stroke-linecap="round" fill="none">
-        <path d="M40,25 L160,195 M165,190 L210,240" stroke-width="1.4" opacity="0.9"/>
-        <path d="M85,15 L145,95" stroke-width="0.9" opacity="0.6"/>
-        <path d="M250,280 L380,80 M375,95 L420,35" stroke-width="1.6" opacity="0.95"/>
-        <path d="M280,260 L320,200" stroke-width="0.8" opacity="0.5"/>
-        <path d="M490,290 L610,60 M605,80 L650,20" stroke-width="1.5" opacity="0.9"/>
-        <path d="M520,270 L550,220" stroke-width="0.8" opacity="0.6"/>
-        <path d="M720,275 L840,45 M835,65 L890,15" stroke-width="1.7" opacity="0.95"/>
-        <path d="M760,250 L810,170" stroke-width="1.0" opacity="0.7"/>
-        <path d="M110,140 L135,175 M118,138 L142,172 M126,142 L150,174" stroke-width="1.0" opacity="0.75"/>
-        <path d="M420,110 L450,150 M428,108 L458,148 M436,112 L464,152" stroke-width="1.2" opacity="0.8"/>
-        <path d="M680,130 L710,180 M689,127 L718,177 M697,133 L726,181" stroke-width="1.1" opacity="0.75"/>
-        <path d="M860,110 L885,145 M868,107 L893,142 M876,111 L901,146" stroke-width="0.9" opacity="0.65"/>
-        <path d="M30,70 L95,68 M80,72 L120,70" stroke-width="0.9" opacity="0.55"/>
-        <path d="M190,120 L270,117 M250,122 L310,119" stroke-width="1.0" opacity="0.65"/>
-        <path d="M340,210 L430,208 M410,214 L470,212" stroke-width="0.9" opacity="0.6"/>
-        <path d="M580,140 L670,138 M650,142 L710,140" stroke-width="1.1" opacity="0.7"/>
-        <path d="M750,90 L830,88 M810,94 L870,92" stroke-width="0.9" opacity="0.6"/>
-        <path d="M880,220 L960,218 M930,224 L980,222" stroke-width="0.9" opacity="0.55"/>
-        <path d="M70,220 L90,250 M140,40 L155,60 M220,160 L235,180 M480,40 L495,60 M640,220 L655,245 M920,60 L935,80" stroke-width="1.3" opacity="0.85"/>
-        <path d="M310,45 L328,68 M570,230 L588,255 M790,115 L805,135" stroke-width="1.2" opacity="0.8"/>
+
+      <!-- Organic Peeling Hairline Cracks (Branching, Jagged Fissures) -->
+      <!-- Dark fissure depth -->
+      <g stroke="#000000" stroke-linecap="round" stroke-linejoin="round" fill="none" opacity="0.48">
+        <path d="M135,35 Q145,55 140,75 Q135,90 148,110 T152,140 M140,75 Q125,85 118,98 T110,115" stroke-width="1.3"/>
+        <path d="M360,250 Q370,225 365,200 Q358,180 372,160 T385,130 M365,200 Q350,190 342,175" stroke-width="1.4"/>
+        <path d="M620,40 Q630,65 625,90 Q618,110 635,135 T640,170 M625,90 Q645,100 655,118" stroke-width="1.3"/>
+        <path d="M840,240 Q855,215 848,190 Q840,170 858,145 T865,115 M848,190 Q830,180 820,165" stroke-width="1.4"/>
+        <path d="M240,120 Q260,135 285,130 Q310,125 330,140 M285,130 Q295,145 305,155" stroke-width="1.2"/>
+        <path d="M710,190 Q735,205 760,198 Q785,190 810,208 M760,198 Q772,215 780,228" stroke-width="1.2"/>
+        <path d="M480,70 Q500,82 525,78 Q548,72 570,88 M525,78 Q535,92 542,105" stroke-width="1.1"/>
       </g>
-      <!-- Weathered specks -->
-      <g fill="#ffffff" opacity="0.55">
-        <circle cx="60" cy="120" r="1.3"/><circle cx="180" cy="60" r="1.0"/><circle cx="230" cy="220" r="1.2"/>
-        <circle cx="320" cy="140" r="0.9"/><circle cx="460" cy="80" r="1.4"/><circle cx="540" cy="210" r="1.1"/>
-        <circle cx="670" cy="70" r="1.3"/><circle cx="780" cy="190" r="1.0"/><circle cx="850" cy="130" r="1.5"/>
-        <circle cx="930" cy="90" r="1.1"/><circle cx="120" cy="260" r="0.9"/><circle cx="410" cy="250" r="1.2"/>
-        <circle cx="620" cy="260" r="1.0"/><circle cx="890" cy="260" r="1.3"/><circle cx="280" cy="40" r="0.9"/>
-        <circle cx="510" cy="160" r="1.1"/><circle cx="730" cy="30" r="1.2"/><circle cx="950" cy="180" r="1.0"/>
+      <!-- White peeled primer edge highlight -->
+      <g stroke="#ffffff" stroke-linecap="round" stroke-linejoin="round" fill="none" opacity="0.32">
+        <path d="M136,36 Q146,56 141,76 Q136,91 149,111 T153,141" stroke-width="0.9"/>
+        <path d="M361,251 Q371,226 366,201 Q359,181 373,161 T386,131" stroke-width="0.9"/>
+        <path d="M621,41 Q631,66 626,91 Q619,111 636,136 T641,171" stroke-width="0.9"/>
+        <path d="M841,241 Q856,216 849,191 Q841,171 859,146 T866,116" stroke-width="0.9"/>
+        <path d="M241,121 Q261,136 286,131 Q311,126 331,141" stroke-width="0.8"/>
+        <path d="M711,191 Q736,206 761,199 Q786,191 811,209" stroke-width="0.8"/>
+      </g>
+
+      <!-- Chipped Paint Flakes (Irregular Polygon Chips Revealing Primer/Substrate) -->
+      <!-- Dark chipped craters -->
+      <g fill="#000000" opacity="0.55">
+        <polygon points="92,85 104,82 108,89 101,95 89,92"/>
+        <polygon points="175,185 186,180 192,188 184,195 172,190"/>
+        <polygon points="295,65 308,60 315,69 306,76 292,72"/>
+        <polygon points="445,145 458,140 464,151 454,158 442,152"/>
+        <polygon points="535,230 548,225 554,235 544,242 531,238"/>
+        <polygon points="685,95 698,90 705,101 694,108 682,102"/>
+        <polygon points="765,160 779,154 786,166 774,174 761,168"/>
+        <polygon points="895,75 909,70 916,81 905,88 891,82"/>
+        <polygon points="940,210 952,206 957,215 948,221 937,217"/>
+        <polygon points="60,240 71,236 76,244 68,249 58,245"/>
+        <polygon points="220,270 231,266 236,274 227,279 217,275"/>
+        <polygon points="380,45 391,41 396,49 388,54 378,50"/>
+        <!-- Flakes along the center seam boundary -->
+        <polygon points="150,314 162,310 166,318 158,320 148,318"/>
+        <polygon points="320,312 334,308 338,317 329,320 318,317"/>
+        <polygon points="510,313 524,309 528,318 518,320 507,317"/>
+        <polygon points="730,312 744,308 748,317 739,320 728,317"/>
+        <polygon points="870,314 882,310 886,318 878,320 868,318"/>
+      </g>
+      <!-- Light chipped paint rim (light catching the flaked edges) -->
+      <g fill="#ffffff" opacity="0.38">
+        <polygon points="90,83 103,80 106,84 99,86 89,84"/>
+        <polygon points="173,183 184,178 188,182 181,185 170,183"/>
+        <polygon points="293,63 306,58 310,63 303,66 290,64"/>
+        <polygon points="443,143 456,138 460,143 451,147 439,145"/>
+        <polygon points="533,228 546,223 550,227 541,231 528,229"/>
+        <polygon points="683,93 696,88 700,93 691,97 679,95"/>
+        <polygon points="763,158 777,152 781,157 771,162 758,160"/>
+        <polygon points="893,73 907,68 911,73 902,77 888,75"/>
+        <polygon points="938,208 950,204 953,208 945,212 934,210"/>
+        <!-- Seam highlight flecks -->
+        <polygon points="149,312 161,308 163,311 156,313 147,311"/>
+        <polygon points="319,310 333,306 335,309 327,312 316,310"/>
+        <polygon points="509,311 523,307 525,310 516,313 505,311"/>
+        <polygon points="729,310 743,306 745,309 737,312 726,310"/>
+      </g>
+
+      <!-- Weathered Paint Micro-Flecks & Pitted Specks -->
+      <!-- White flaked primer specks -->
+      <g fill="#ffffff" opacity="0.45">
+        <circle cx="55" cy="65" r="1.1"/><circle cx="85" cy="145" r="0.8"/><circle cx="125" cy="215" r="1.3"/>
+        <circle cx="195" cy="45" r="0.9"/><circle cx="235" cy="115" r="1.2"/><circle cx="275" cy="185" r="0.7"/>
+        <circle cx="345" cy="85" r="1.4"/><circle cx="415" cy="135" r="0.8"/><circle cx="475" cy="225" r="1.1"/>
+        <circle cx="555" cy="55" r="1.3"/><circle cx="595" cy="165" r="0.8"/><circle cx="665" cy="245" r="1.2"/>
+        <circle cx="735" cy="65" r="1.0"/><circle cx="805" cy="125" r="1.4"/><circle cx="845" cy="205" r="0.8"/>
+        <circle cx="915" cy="145" r="1.2"/><circle cx="965" cy="85" r="0.9"/><circle cx="975" cy="255" r="1.1"/>
+        <circle cx="160" cy="275" r="1.0"/><circle cx="490" cy="105" r="1.2"/><circle cx="715" cy="275" r="0.8"/>
+      </g>
+      <!-- Dark pit specks (craters where paint has pitted) -->
+      <g fill="#000000" opacity="0.40">
+        <circle cx="58" cy="67" r="1.3"/><circle cx="87" cy="147" r="1.0"/><circle cx="127" cy="217" r="1.5"/>
+        <circle cx="197" cy="47" r="1.1"/><circle cx="237" cy="117" r="1.4"/><circle cx="277" cy="187" r="0.9"/>
+        <circle cx="347" cy="87" r="1.6"/><circle cx="417" cy="137" r="1.0"/><circle cx="477" cy="227" r="1.3"/>
+        <circle cx="557" cy="57" r="1.5"/><circle cx="597" cy="167" r="1.0"/><circle cx="667" cy="247" r="1.4"/>
+        <circle cx="737" cy="67" r="1.2"/><circle cx="807" cy="127" r="1.6"/><circle cx="847" cy="207" r="1.0"/>
+        <circle cx="917" cy="147" r="1.4"/><circle cx="967" cy="87" r="1.1"/><circle cx="977" cy="257" r="1.3"/>
       </g>
     </svg>
   </div>`;
@@ -5888,10 +5959,10 @@ function openBroadcastBrandingEditor(p) {
         <!-- Live Preview Card -->
         <div style="margin-bottom:18px">
           <div class="eyebrow" style="margin-bottom:6px;color:#94a3b8">Live Broadcast Graphic Preview</div>
-          <div id="bbLivePreview" style="position:relative;border-radius:9px;overflow:hidden;border:1px solid rgba(255,255,255,0.18);background:${battleBg};isolation:isolate;box-shadow:0 8px 24px rgba(0,0,0,0.6)">
-            <!-- Top Hashtag Ribbon -->
-            <div id="bbLiveRibbonBar" style="position:absolute;top:0;left:0;right:0;height:24px;background:${bannerCol};color:${bannerTextCol};display:flex;align-items:center;justify-content:center;overflow:hidden;padding:0 10px;border-top:1px solid rgba(255,255,255,0.45);border-bottom:1.5px solid rgba(0,0,0,0.5);box-shadow:0 2px 8px rgba(0,0,0,0.35);z-index:2">
-              <div id="bbLiveRibbon" style="display:flex;align-items:center;gap:12px;white-space:nowrap;font-family:'Agency FB', 'Barlow Condensed', sans-serif;font-weight:700;font-size:13.5px;letter-spacing:2.2px;color:${bannerTextCol};text-transform:uppercase;text-shadow:0 1px 2px rgba(0,0,0,0.7)">
+          <div id="bbLivePreview" style="position:relative;border-radius:9px;overflow:hidden;border:1px solid rgba(255,255,255,0.18);background:${battleBg};isolation:isolate;box-shadow:0 8px 24px rgba(0,0,0,0.6);min-height:135px">
+            <!-- Top Hashtag Ribbon Inset by 6px -->
+            <div id="bbLiveRibbonBar" style="position:absolute;top:6px;left:0;right:0;height:22px;background:${bannerCol};color:${bannerTextCol};display:flex;align-items:center;justify-content:center;overflow:hidden;padding:0 10px;border-top:1px solid rgba(255,255,255,0.45);border-bottom:1.5px solid rgba(0,0,0,0.45);box-shadow:0 2px 8px rgba(0,0,0,0.35);z-index:2">
+              <div id="bbLiveRibbon" style="display:flex;align-items:center;gap:12px;white-space:nowrap;font-family:'Agency FB', 'Barlow Condensed', sans-serif;font-weight:700;font-size:13px;letter-spacing:2px;color:${bannerTextCol};text-transform:uppercase;text-shadow:0 1px 2px rgba(0,0,0,0.7)">
                 <span>${esc(currentTag)}</span><span style="opacity:0.65;font-size:8.5px">★</span>
                 <span>${esc(currentTag)}</span><span style="opacity:0.65;font-size:8.5px">★</span>
                 <span>${esc(currentTag)}</span><span style="opacity:0.65;font-size:8.5px">★</span>
@@ -5900,20 +5971,21 @@ function openBroadcastBrandingEditor(p) {
             </div>
             ${typeof getCfbScratchOverlayHtml === 'function' ? getCfbScratchOverlayHtml() : ''}
             
-            <div style="position:relative;z-index:4;display:flex;align-items:center;justify-content:space-between;padding:26px 20px 14px 20px;gap:14px">
+            <div style="position:relative;z-index:4;display:flex;align-items:center;padding:34px 18px 16px 20px;max-width:calc(100% - 95px)">
               <div style="min-width:0;flex:1">
                 <div id="bbLiveTeamGroup" class="primetime-cfb-team-name-group left">
-                  <div id="bbLiveTeamL1" class="primetime-cfb-team-name-l1" style="font-size:26px">${esc(displayL1)}</div>
-                  <div id="bbLiveTeamL2" class="primetime-cfb-team-name-l2" style="font-size:16px;padding-left:18px;display:${displayL2 ? 'block' : 'none'}">${esc(displayL2)}</div>
+                  <div id="bbLiveTeamL1" class="primetime-cfb-team-name-l1" style="font-size:26px">${esc(cleanDisplayTeamName(displayL1))}</div>
+                  <div id="bbLiveTeamL2" class="primetime-cfb-team-name-l2" style="font-size:16px;padding-left:18px;display:${displayL2 ? 'block' : 'none'}">${esc(cleanDisplayTeamName(displayL2))}</div>
                 </div>
                 <div style="display:flex;align-items:center;gap:8px;margin-top:5px">
                   <span style="font:800 15px 'Barlow Condensed';color:#ffd166;text-transform:uppercase">${esc(p)}</span>
                   <span style="font:900 12px/1 'Barlow Condensed';padding:3px 7px;border-radius:4px;background:rgba(0,0,0,0.6);border:1.5px solid rgba(255,255,255,0.22);color:#e2e8f0;text-transform:uppercase">RECORD 3-1</span>
                 </div>
               </div>
-              <div id="bbLiveLogo" style="width:84px;height:84px;border-radius:50%;border:3.5px solid #fff;${avatarFace}background-size:cover;background-position:center;box-shadow:inset 0 2px 6px rgba(255,255,255,0.95), 0 10px 24px rgba(0,0,0,0.8), 0 0 20px ${hexToRgba(currentColor, 0.65)};display:grid;place-items:center;font:900 28px 'Barlow Condensed';color:#fff;flex-shrink:0;z-index:5;margin-right:-8px;margin-top:-8px">
-                ${letter}
-              </div>
+            </div>
+            <!-- Giant Corner Logo Cutoff -->
+            <div id="bbLiveLogo" style="position:absolute;right:-26px;top:-14px;width:115px;height:115px;border-radius:50%;border:4px solid #fff;${avatarFace}background-size:cover;background-position:center;box-shadow:inset 0 2px 6px rgba(255,255,255,0.95), 0 10px 24px rgba(0,0,0,0.8), 0 0 20px ${hexToRgba(currentColor, 0.65)};display:grid;place-items:center;font:900 36px 'Barlow Condensed';color:#fff;z-index:5">
+              ${letter}
             </div>
           </div>
         </div>
@@ -5985,10 +6057,12 @@ function updateBbLivePreview(p) {
     l2 = autoSplit.line2;
   }
 
-  if (l1El) l1El.textContent = l1;
+  let cleanL1 = cleanDisplayTeamName(l1);
+  let cleanL2 = cleanDisplayTeamName(l2);
+  if (l1El) l1El.textContent = cleanL1;
   if (l2El) {
-    l2El.textContent = l2;
-    l2El.style.display = l2 ? 'block' : 'none';
+    l2El.textContent = cleanL2;
+    l2El.style.display = cleanL2 ? 'block' : 'none';
   }
 
   let tag = (tagInput ? tagInput.value.trim() : '') || `#${p.replace(/\s+/g, '')}Nation`;
@@ -19264,11 +19338,11 @@ function matchupOfTheWeekCard(t){
                   <span class="primetime-cfb-record-pill">RECORD ${esc(rec1)}</span>
                 </div>
               </div>
+            </div>
 
-              <div class="primetime-cfb-logo-wrap right" onclick="openProfile('${jsArg(p1)}')" title="View ${esc(p1)} profile">
-                <div class="primetime-cfb-logo ${p1Won ? 'winner' : ''}" style="background-image:${face1};box-shadow:inset 0 2px 6px rgba(255,255,255,0.95), inset 0 -3px 8px rgba(0,0,0,0.7), 0 12px 28px rgba(0,0,0,0.85), 0 0 24px ${hexToRgba(color1, 0.65)};">
-                  ${letter1}
-                </div>
+            <div class="primetime-cfb-logo-wrap top-right" onclick="openProfile('${jsArg(p1)}')" title="View ${esc(p1)} profile">
+              <div class="primetime-cfb-logo ${p1Won ? 'winner' : ''}" style="background-image:${face1};box-shadow:inset 0 2px 6px rgba(255,255,255,0.95), inset 0 -3px 8px rgba(0,0,0,0.7), 0 12px 28px rgba(0,0,0,0.85), 0 0 24px ${hexToRgba(color1, 0.65)};">
+                ${letter1}
               </div>
             </div>
           </div>
@@ -19292,13 +19366,13 @@ function matchupOfTheWeekCard(t){
           <div class="primetime-cfb-half bottom" data-coach="${esc(p2)}" style="background:${bgBottom};">
             ${getCfbScratchOverlayHtml()}
 
-            <div class="primetime-cfb-content bottom">
-              <div class="primetime-cfb-logo-wrap left" onclick="openProfile('${jsArg(p2)}')" title="View ${esc(p2)} profile">
-                <div class="primetime-cfb-logo ${p2Won ? 'winner' : ''}" style="background-image:${face2};box-shadow:inset 0 2px 6px rgba(255,255,255,0.95), inset 0 -3px 8px rgba(0,0,0,0.7), 0 12px 28px rgba(0,0,0,0.85), 0 0 24px ${hexToRgba(color2, 0.65)};">
-                  ${letter2}
-                </div>
+            <div class="primetime-cfb-logo-wrap bottom-left" onclick="openProfile('${jsArg(p2)}')" title="View ${esc(p2)} profile">
+              <div class="primetime-cfb-logo ${p2Won ? 'winner' : ''}" style="background-image:${face2};box-shadow:inset 0 2px 6px rgba(255,255,255,0.95), inset 0 -3px 8px rgba(0,0,0,0.7), 0 12px 28px rgba(0,0,0,0.85), 0 0 24px ${hexToRgba(color2, 0.65)};">
+                ${letter2}
               </div>
+            </div>
 
+            <div class="primetime-cfb-content bottom">
               <div class="primetime-cfb-info right">
                 <div class="primetime-cfb-team-name-group right" title="${esc(t2Name)}">
                   <div class="primetime-cfb-team-name-l1">${esc(nameSplit2.line1)}</div>
