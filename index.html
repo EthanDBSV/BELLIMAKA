@@ -27646,12 +27646,34 @@ async function openUserPredictionsModal(usernameOrId, tournamentId){
 
 /* ------------------------------------------------------------ 3. MODERN PREDICTIONS & PICK'EMS ------------------------------------------------------------ */
 
+function isTopCutPredictionLocked(t, model = null){
+  if(!t) return false;
+  if(t.status === 'COMPLETE') return true;
+  let m = model || (typeof getTournamentTopCutModel === 'function' ? getTournamentTopCutModel(t) : null);
+  if(!m) return false;
+  if(m.completedList && m.completedList.length > 0) return true;
+  let allMatches = [
+    ...(m.wbRounds || []).flatMap(r => r.matches || []),
+    ...(m.lbRounds || []).flatMap(r => r.matches || []),
+    ...(m.gfMatches || [])
+  ];
+  return allMatches.some(match => {
+    if(!match || !match.isDone || match.isByeAdvance) return false;
+    let p1 = (match.p1 || '').trim();
+    let p2 = (match.p2 || '').trim();
+    if(p1 === 'BYE' || p2 === 'BYE') return false;
+    if(!isKnownPlayer(p1) || !isKnownPlayer(p2)) return false;
+    return Boolean(match.winner || (match.s1 != null && match.s2 != null));
+  });
+}
+
 function savePredictionPick(question, choice, el, tourneyId){
   let t = (tourneyId && tournamentData[tourneyId]) || 
           (typeof viewTournament !== 'undefined' && viewTournament && tournamentData[viewTournament]) || 
           activeT() || 
           ongoingT();
   if(!t || !question || !choice) return;
+  if((question.startsWith('Top Cut Bracket Match · ') || question.startsWith('draftdex-bpick-')) && isTopCutPredictionLocked(t)) return;
 
   let currentPick = savedPick(t, question);
   let isTogglingOff = (currentPick === choice);
@@ -27903,6 +27925,7 @@ function compactMatchPredictionCard(t, m, forceLocked = false){
 function topCutPredictionBracket(t){
   let model = getTournamentTopCutModel(t);
   if(!model) return '<div class="card empty"><p class="sub">Top Cut bracket data unavailable.</p></div>';
+  let isBracketLocked = isTopCutPredictionLocked(t, model);
 
   function getBracketMatchPick(mId, p1, p2){
     let explicitPick = savedPick(t, 'draftdex-bpick-' + mId);
@@ -28177,11 +28200,11 @@ function topCutPredictionBracket(t){
     let faceLetter = (profilePictures[pName] || teamCovers[pName]) ? '' : esc((pName || '?')[0]);
     let teamStr = teamName(t, pName);
 
-    let isClickable = !mObj.isDone && isReal && isOpponentReal && !(typeof window !== 'undefined' && window._viewingBallotPickMap);
+    let isClickable = !isBracketLocked && !mObj.isDone && isReal && isOpponentReal && !(typeof window !== 'undefined' && window._viewingBallotPickMap);
 
     return `<div class="tc-slot ${isClickable ? 'interactive' : ''} ${(isPicked || isByeWinner) ? 'picked' : ''} ${isHit ? 'hit' : (isMiss ? 'miss' : '')}"
       ${isClickable ? `onclick="saveBracketPredictionPick('${jsArg(mId)}', '${jsArg(pName)}', this, '${jsArg(t.id)}')"` : ''}
-      title="${mObj.isDone ? (isByeWinner ? 'Advances automatically via BYE' : 'Match complete') : (!isOpponentReal ? 'Waiting for opponent' : (isPicked ? 'Click to unselect ' + esc(pName) : 'Click to pick ' + esc(pName) + ' to advance'))}">
+      title="${isBracketLocked ? (isPicked ? esc(pName) + ' (Picked — Bracket Locked)' : esc(pName) + ' (Bracket Locked)') : (mObj.isDone ? (isByeWinner ? 'Advances automatically via BYE' : 'Match complete') : (!isOpponentReal ? 'Waiting for opponent' : (isPicked ? 'Click to unselect ' + esc(pName) : 'Click to pick ' + esc(pName) + ' to advance')))}">
       <span class="tc-slot-seed">${seed ? `#${seed}` : ''}</span>
       <div class="tc-slot-info">
         <span class="mrow-face" style="background-image:${faceArt};background-size:cover;background-position:center;width:24px;height:24px;font-size:10px;border-radius:50%;flex:none;display:grid;place-items:center;border:2px solid ${ovrObj.color}">${faceLetter}</span>
@@ -28202,7 +28225,7 @@ function topCutPredictionBracket(t){
         <div>
           <div class="eyebrow" style="color:#ffd166;margin-bottom:2px">20 PTS PER MATCH · FULL BRACKET PREDICTION</div>
           <div style="font:900 24px 'Barlow Condensed';letter-spacing:.6px;color:#f5f3f0;text-transform:uppercase">Top Cut Prediction Bracket</div>
-          <p class="sub" style="margin:4px 0 0">Click any trainer to advance them to the next round. Click again to unselect.</p>
+          <p class="sub" style="margin:4px 0 0">${isBracketLocked ? 'Picks locked — Playoff matches underway.' : ((typeof window !== 'undefined' && window._viewingBallotPickMap) ? 'Viewing submitted bracket picks and playoff progression.' : 'Click any trainer to advance them to the next round. Click again to unselect.')}</p>
         </div>
         <div class="card" style="padding:8px 16px;background:#0d0d13;border-color:#3a2028;text-align:center">
           <div style="font-size:9px;font-weight:800;color:#ffd166;letter-spacing:1px;text-transform:uppercase">Projected Champion</div>
@@ -28309,6 +28332,7 @@ function saveBracketPredictionPick(mId, choice, el, tourneyId){
           activeT() || 
           ongoingT();
   if(!t || !mId || !choice) return;
+  if(isTopCutPredictionLocked(t)) return;
 
   let bpickKey = 'draftdex-bpick-' + mId;
   let currentPick = savedPick(t, bpickKey);

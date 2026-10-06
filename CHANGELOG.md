@@ -3,6 +3,16 @@
 All notable changes to the Bellimaka Pokémon Draft League site are documented here.
 Format: `v[MAJOR].[MINOR].[PATCH]` — Major = big new systems, Minor = new features, Patch = bug fixes / small improvements.
 
+## [v2.2.9] — 2026-10-05
+
+### Added & Improved
+- **Top Cut Prediction Bracket Universal Lock**:
+  - **First-Match Universal Lock (`isTopCutPredictionLocked`)**: The entire Top Cut prediction bracket now locks automatically as soon as the first non-BYE playoff match is completed with a winner recorded. This prevents downstream prediction alteration once live playoff matches are underway and preserves the competitive integrity of chained bracket prediction points.
+  - **Subtle Read-Only State**: When locked, all trainer rows smoothly transition to read-only mode (`isClickable = false`), removing the pointing cursor and hover glow while displaying informative locked tooltips and updating the bracket subtitle to `"Picks locked — Playoff matches underway."`.
+  - **Universal Guard**: Enforced the lock guard across both `saveBracketPredictionPick` and `savePredictionPick` strictly for all users, including moderators.
+
+---
+
 ## [v2.2.8] — 2026-10-04
 
 ### Added & Improved
