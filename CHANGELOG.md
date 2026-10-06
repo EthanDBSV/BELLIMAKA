@@ -3,6 +3,36 @@
 All notable changes to the Bellimaka Pokémon Draft League site are documented here.
 Format: `v[MAJOR].[MINOR].[PATCH]` — Major = big new systems, Minor = new features, Patch = bug fixes / small improvements.
 
+## [v2.3.0] — 2026-10-05
+
+### Added & Improved
+- **ESPN Primetime Spotlight Matchup Graphic Overhaul**:
+  - **Local Font Files Integration (`@font-face`)**:
+    - Embedded `'Another Danger'` referencing `Another Danger Slanted - Demo.otf` for authentic distressed sports team name typography.
+    - Embedded `'Agency FB'` referencing `AgencyFB-Bold.ttf` for condensed broadcast hashtag ribbon text.
+    - Configured relative font URLs and local fallbacks for seamless cross-platform rendering on both local development and GitHub Pages.
+  - **Team-Colored Hashtag Ribbons**:
+    - Replaced generic solid black hashtag ribbons with dynamic, team-colored banners tinted a few shades lighter and more vibrant than the primary team color (`getBannerShade` / `getBannerTextColor`).
+    - Styled ribbons with crisp high-contrast broadcast pin-lines (`border-top: 1px solid rgba(255,255,255,0.45)` and `border-bottom: 1.5px solid rgba(0,0,0,0.5)`).
+    - Set ribbon typography to uppercase bold `'Agency FB'` with clean star dividers (`★`).
+  - **Layering & Z-Index (Ribbons Underneath Logos)**:
+    - Ribbons now run continuously along the absolute top and bottom edges at `z-index: 2`.
+    - Team logos are elevated to `z-index: 5`, allowing the logos to overlap on top of the ribbons and seam while the banners pass smoothly underneath.
+  - **Giant Out-Of-Frame Logos**:
+    - Enlarged team logo medallions to giant broadcast proportions (`clamp(130px, 16.5vw, 175px)` on desktop, `clamp(84px, 20vw, 105px)` on mobile) with 4px bright metallic borders and multi-layered depth drop-shadows.
+    - Applied negative offsets so the top-right and bottom-left logos bleed dramatically past the ribbons and card borders, clipped cleanly by the card frame (`overflow: hidden; border-radius: 9px`).
+  - **Pure Team Color + Battleworn Texture**:
+    - Eliminated dark metallic diagonal carbon stripes from `.primetime-cfb-half::before`, replacing them with soft radial depth vignettes.
+    - Upgraded backgrounds to rich, saturated pure team-color radial gradients (`getBattlewornBg`) preserving team vibrancy from edge to edge without murky gray/black washes.
+    - Enhanced `getCfbScratchOverlayHtml` with authentic battle-tested cuts, dark recessed gouges, chalky distressed scuff abrasions, and weathered flecks with overlay blend mode.
+  - **Two-Line Team Names & Broadcast Studio Split**:
+    - Split team names into two staggered lines: Line 1 (`.primetime-cfb-team-name-l1`) for City / State / Prefix, and Line 2 (`.primetime-cfb-team-name-l2`) for Mascot / Nickname in 'Another Danger' font with staggered indent depth.
+    - Added dedicated "Line 1 · City / Prefix" and "Line 2 · Mascot / Nickname" inputs to the Broadcast Branding editor (`openBroadcastBrandingEditor`), with smart auto-split fallback.
+    - Added real-time live preview updating team names, ribbon tints, font faces, and battleworn textures as inputs change, with full persistence to `localStorage` and `persistLeague()`.
+    - Added a direct "📺 Studio" button in coach profile cards for quick one-click access.
+
+---
+
 ## [v2.2.9] — 2026-10-05
 
 ### Added & Improved
