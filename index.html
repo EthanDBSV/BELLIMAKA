@@ -655,10 +655,10 @@
   gap: clamp(14px, 2.4vw, 28px);
 }
 .primetime-cfb-content.top {
-  padding: 36px clamp(130px, 17vw, 165px) 14px 28px;
+  padding: 34px clamp(140px, 16vw, 168px) 14px 28px;
 }
 .primetime-cfb-content.bottom {
-  padding: 14px 28px 36px clamp(130px, 17vw, 165px);
+  padding: 14px 28px 34px clamp(140px, 16vw, 168px);
 }
 
 .primetime-cfb-info {
@@ -719,8 +719,10 @@
   border-radius: 7px;
   background: linear-gradient(180deg, rgba(255, 255, 255, 0.12) 0%, rgba(10, 10, 16, 0.85) 60%, rgba(0, 0, 0, 0.95) 100%);
   border: 1.5px solid rgba(255, 255, 255, 0.22);
-  display: grid;
-  place-items: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.65), inset 0 1px 2px rgba(255, 255, 255, 0.35);
   transition: transform 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease;
   cursor: default;
@@ -732,22 +734,71 @@
   z-index: 6;
 }
 .primetime-cfb-mon-img {
-  width: 38px;
-  height: 38px;
+  width: 36px;
+  height: 36px;
   object-fit: contain;
   filter: drop-shadow(0 3px 6px rgba(0, 0, 0, 0.9));
   transition: transform 0.18s ease;
 }
-.primetime-cfb-ovr-pill {
-  font: 900 12px/1 'Barlow Condensed', sans-serif;
-  letter-spacing: 1px;
+.primetime-mon-stat-badge {
+  position: absolute;
+  bottom: -4px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font: 900 8.5px/1 'Barlow Condensed', sans-serif;
+  letter-spacing: 0.6px;
   text-transform: uppercase;
-  padding: 3.5px 8px;
-  border-radius: 5px;
-  background: linear-gradient(135deg, rgba(255, 209, 102, 0.3) 0%, rgba(0, 0, 0, 0.7) 100%);
-  border: 1.5px solid rgba(255, 209, 102, 0.6);
+  padding: 1.5px 4px;
+  border-radius: 3.5px;
+  background: #090910;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  color: #f1f5f9;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.85);
+  white-space: nowrap;
+  pointer-events: none;
+  z-index: 2;
+}
+.primetime-mon-stat-badge.kills {
+  border-color: rgba(74, 222, 128, 0.75);
+  color: #4ade80;
+  background: #06150a;
+}
+.primetime-mon-stat-badge.impact {
+  border-color: rgba(255, 209, 102, 0.75);
   color: #ffd166;
-  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.5);
+  background: #181306;
+}
+
+/* Solid high-contrast opaque OVR pill visible on all light and dark backgrounds */
+.primetime-cfb-ovr-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 3.5px;
+  font-family: 'Barlow Condensed', sans-serif;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+  padding: 3px 7.5px;
+  border-radius: 5px;
+  background: #09090f;
+  border: 1.5px solid #ffd166;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.85), inset 0 1px 1px rgba(255, 255, 255, 0.2);
+  user-select: none;
+  flex-shrink: 0;
+}
+.primetime-cfb-ovr-pill .ovr-lbl {
+  font-size: 10px;
+  font-weight: 800;
+  color: #cbd5e1;
+  letter-spacing: 0.6px;
+}
+.primetime-cfb-ovr-pill .ovr-num {
+  font-size: 13.5px;
+  font-weight: 900;
+  color: #ffd166;
+  text-shadow: 0 0 6px rgba(255, 209, 102, 0.5);
 }
 
 /* Two-Line ESPN Broadcast Team Name Group */
@@ -870,15 +921,17 @@
   text-transform: uppercase;
   padding: 3.5px 9px;
   border-radius: 5px;
-  background: rgba(0, 0, 0, 0.65);
-  border: 1.5px solid rgba(255, 255, 255, 0.22);
-  color: #f1f5f9;
-  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.5);
+  background: #09090f;
+  border: 1.5px solid rgba(255, 255, 255, 0.35);
+  color: #f8fafc;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.8);
 }
 
-/* Giant Out-Of-Frame 3D Embossed Broadcast Logo (~20% Bleed Off-Screen, Contained to Half) */
+/* Fully In-Frame 3D Embossed Broadcast Logo */
 .primetime-cfb-logo-wrap {
   position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
   flex-shrink: 0;
   cursor: pointer;
   transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
@@ -888,31 +941,29 @@
   z-index: 5;
 }
 .primetime-cfb-logo-wrap.top-right {
-  right: clamp(-24px, -3vw, -36px);
-  top: clamp(-10px, -1.2vw, -16px);
+  right: clamp(16px, 2.2vw, 28px);
 }
 .primetime-cfb-logo-wrap.bottom-left {
-  left: clamp(-24px, -3vw, -36px);
-  bottom: clamp(-10px, -1.2vw, -16px);
+  left: clamp(16px, 2.2vw, 28px);
 }
 .primetime-cfb-logo-wrap:hover {
-  transform: scale(1.05);
+  transform: translateY(-50%) scale(1.06);
 }
 .primetime-cfb-logo {
-  width: clamp(140px, 17vw, 170px);
-  height: clamp(140px, 17vw, 170px);
+  width: clamp(118px, 14.5vw, 136px);
+  height: clamp(118px, 14.5vw, 136px);
   border-radius: 50%;
   background-size: cover;
   background-position: center;
-  border: 4.5px solid #ffffff;
+  border: 4px solid #ffffff;
   box-shadow:
     inset 0 3px 8px rgba(255, 255, 255, 0.95),
     inset 0 -4px 10px rgba(0, 0, 0, 0.7),
-    0 14px 32px rgba(0, 0, 0, 0.85),
-    0 0 26px rgba(255, 255, 255, 0.25);
+    0 12px 28px rgba(0, 0, 0, 0.85),
+    0 0 22px rgba(255, 255, 255, 0.25);
   display: grid;
   place-items: center;
-  font: 900 44px 'Barlow Condensed', sans-serif;
+  font: 900 40px 'Barlow Condensed', sans-serif;
   color: #fff;
   transition: box-shadow 0.2s ease;
 }
@@ -1004,11 +1055,11 @@
     min-height: 125px;
   }
   .primetime-cfb-content.top {
-    padding: 28px 85px 10px 14px;
+    padding: 26px 105px 10px 14px;
     gap: 10px;
   }
   .primetime-cfb-content.bottom {
-    padding: 10px 14px 28px 85px;
+    padding: 10px 14px 26px 105px;
     gap: 10px;
   }
   .primetime-cfb-center-showcase {
@@ -1029,18 +1080,18 @@
     padding-right: 4px;
   }
   .primetime-cfb-logo {
-    width: clamp(95px, 24vw, 115px);
-    height: clamp(95px, 24vw, 115px);
-    font-size: 30px;
-    border-width: 3.5px;
+    width: clamp(82px, 19vw, 94px);
+    height: clamp(82px, 19vw, 94px);
+    font-size: 26px;
+    border-width: 3px;
   }
   .primetime-cfb-logo-wrap.top-right {
-    right: -16px;
-    top: -8px;
+    right: 12px;
+    top: 50%;
   }
   .primetime-cfb-logo-wrap.bottom-left {
-    left: -16px;
-    bottom: -8px;
+    left: 12px;
+    top: 50%;
   }
   .primetime-ticker-bar {
     height: 19px;
@@ -6047,6 +6098,8 @@ function openBroadcastBrandingEditor(p) {
   let avatarFace = pic ? `background-image:url('${esc(pic)}');` : fallbackArt(p);
   let letter = pic ? '' : esc(p[0]);
 
+  let liveOvr = (typeof calculatePlayerOVR === 'function' ? calculatePlayerOVR(p)?.ovr : null) || 88;
+
   document.querySelector('#modal').innerHTML = `
     <div class="modal-wrap" onclick="if(event.target===this)openProfile('${jsArg(p)}')">
       <div class="modal" style="max-width:580px">
@@ -6074,20 +6127,21 @@ function openBroadcastBrandingEditor(p) {
             </div>
             ${typeof getCfbScratchOverlayHtml === 'function' ? getCfbScratchOverlayHtml() : ''}
             
-            <div style="position:relative;z-index:4;display:flex;align-items:center;padding:34px 18px 16px 20px;max-width:calc(100% - 95px)">
+            <div style="position:relative;z-index:4;display:flex;align-items:center;padding:34px 18px 16px 20px;max-width:calc(100% - 120px)">
               <div style="min-width:0;flex:1">
                 <div id="bbLiveTeamGroup" class="primetime-cfb-team-name-group left">
                   <div id="bbLiveTeamL1" class="primetime-cfb-team-name-l1" style="font-size:26px">${esc(cleanDisplayTeamName(displayL1))}</div>
                   <div id="bbLiveTeamL2" class="primetime-cfb-team-name-l2" style="font-size:16px;padding-left:18px;display:${displayL2 ? 'block' : 'none'}">${esc(cleanDisplayTeamName(displayL2))}</div>
                 </div>
-                <div style="display:flex;align-items:center;gap:8px;margin-top:5px">
+                <div style="display:flex;align-items:center;gap:8px;margin-top:5px;flex-wrap:wrap">
                   <span style="font:800 15px 'Barlow Condensed';color:#ffd166;text-transform:uppercase">${esc(p)}</span>
-                  <span style="font:900 12px/1 'Barlow Condensed';padding:3px 7px;border-radius:4px;background:rgba(0,0,0,0.6);border:1.5px solid rgba(255,255,255,0.22);color:#e2e8f0;text-transform:uppercase">RECORD 3-1</span>
+                  <span class="primetime-cfb-ovr-pill"><span class="ovr-lbl">OVR</span><span class="ovr-num">${liveOvr}</span></span>
+                  <span class="primetime-cfb-record-pill">RECORD 3-1</span>
                 </div>
               </div>
             </div>
-            <!-- Giant Corner Logo Cutoff -->
-            <div id="bbLiveLogo" style="position:absolute;right:-26px;top:-14px;width:115px;height:115px;border-radius:50%;border:4px solid #fff;${avatarFace}background-size:cover;background-position:center;box-shadow:inset 0 2px 6px rgba(255,255,255,0.95), 0 10px 24px rgba(0,0,0,0.8), 0 0 20px ${hexToRgba(currentColor, 0.65)};display:grid;place-items:center;font:900 36px 'Barlow Condensed';color:#fff;z-index:5">
+            <!-- In-Frame Corner Logo -->
+            <div id="bbLiveLogo" style="position:absolute;right:18px;top:50%;transform:translateY(-50%);width:92px;height:92px;border-radius:50%;border:3.5px solid #fff;${avatarFace}background-size:cover;background-position:center;box-shadow:inset 0 2px 6px rgba(255,255,255,0.95), 0 10px 24px rgba(0,0,0,0.8), 0 0 20px ${hexToRgba(currentColor, 0.65)};display:grid;place-items:center;font:900 32px 'Barlow Condensed';color:#fff;z-index:5">
               ${letter}
             </div>
           </div>
@@ -19052,62 +19106,134 @@ function normalizeBaseSpecies(name) {
 
 function getMatchupShowcasePokemon(tourn, m, coach) {
   if(!tourn || !coach) return [];
-  let replays = m?.replays || [];
   let finalMons = [];
   let seen = new Set();
 
-  if(replays.length) {
-    let monScoreMap = {};
-    replays.forEach(r => {
+  // 1. If this match has replays, extract performers from this specific match
+  let matchReplays = m?.replays || [];
+  let matchMonMap = {};
+  if(matchReplays.length) {
+    matchReplays.forEach(r => {
       let mons = r?.stats?.pokemon || [];
       if(!Array.isArray(mons) && typeof mons === 'object') mons = Object.values(mons);
       mons.forEach(p => {
         let pCoach = (p.coach || '').toLowerCase();
         let cCoach = coach.toLowerCase();
-        if(pCoach === cCoach) {
+        if(pCoach === cCoach || (typeof isCoachMatch === 'function' && isCoachMatch(p.coach, coach, tourn))) {
           let name = p.name;
           if(!name) return;
           let bk = normalizeBaseSpecies(name);
-          if(!monScoreMap[bk]) {
-            monScoreMap[bk] = { name: name, kills: 0, damage: 0, games: 0 };
+          let kills = p.kills || 0;
+          let dmg = p.damageDealt || 0;
+          let imp = p.impactScore != null ? p.impactScore : (kills * 150 + Math.round(dmg) + (p.fainted ? 0 : 75) + Math.round((p.hpHealed || 0) * 0.5));
+          if(!matchMonMap[bk]) {
+            matchMonMap[bk] = {
+              name: name,
+              kills: kills,
+              damage: dmg,
+              impact: imp,
+              games: 1
+            };
           } else {
+            matchMonMap[bk].kills += kills;
+            matchMonMap[bk].damage += dmg;
+            matchMonMap[bk].impact += imp;
+            matchMonMap[bk].games += 1;
             if(name.toLowerCase().includes('mega') || name.toLowerCase().includes('therian') || name.toLowerCase().includes('paldea') || name.toLowerCase().includes('hisui') || name.toLowerCase().includes('galar') || name.toLowerCase().includes('alola')) {
-              monScoreMap[bk].name = name;
+              matchMonMap[bk].name = name;
             }
           }
-          monScoreMap[bk].kills += (p.kills || 0);
-          monScoreMap[bk].damage += (p.damageDealt || 0);
-          monScoreMap[bk].games += 1;
         }
       });
     });
-    let scoredList = Object.values(monScoreMap);
-    scoredList.sort((a, b) => (b.kills * 20 + b.damage * 0.05 + b.games * 5) - (a.kills * 20 + a.damage * 0.05 + a.games * 5));
-    scoredList.forEach(item => {
+  }
+
+  // 2. Fetch coach's full-season tournament stats map (evaluates all matches)
+  let seasonStatsMap = {};
+  try {
+    if(typeof getTournamentPokemonStatsMap === 'function') {
+      seasonStatsMap = getTournamentPokemonStatsMap(tourn, coach) || {};
+    }
+  } catch(e) {}
+
+  // Aggregate unique Pokemon with tournament stats for this coach
+  let seasonList = [];
+  let seasonSeenBk = new Set();
+  let uniqueStatObjs = Array.from(new Set(Object.values(seasonStatsMap)));
+  uniqueStatObjs.forEach(s => {
+    if(!s || !s.name || s.games <= 0) return;
+    let bk = normalizeBaseSpecies(s.name);
+    if(!seasonSeenBk.has(bk)) {
+      seasonSeenBk.add(bk);
+      let totalKills = s.kills || 0;
+      let totalDmg = s.dmg || 0;
+      let totalImpact = (s.impact && s.impact > 0) ? s.impact : ((totalKills * 150) + Math.round(totalDmg) + (s.games * 50));
+      seasonList.push({
+        name: s.name,
+        kills: totalKills,
+        damage: totalDmg,
+        impact: totalImpact,
+        avgImpact: s.avgImpactScore || (totalImpact / Math.max(1, s.games)),
+        games: s.games
+      });
+    }
+  });
+
+  // Sort season performers primarily by Impact Score, then kills & damage
+  seasonList.sort((a, b) => {
+    let scoreA = (a.impact || 0) * 1.0 + (a.kills || 0) * 75 + (a.damage || 0) * 0.12;
+    let scoreB = (b.impact || 0) * 1.0 + (b.kills || 0) * 75 + (b.damage || 0) * 0.12;
+    if(scoreB !== scoreA) return scoreB - scoreA;
+    if((b.kills || 0) !== (a.kills || 0)) return (b.kills || 0) - (a.kills || 0);
+    return (b.games || 0) - (a.games || 0);
+  });
+
+  // If this match was played, prioritize this match's top performers first
+  if(Object.keys(matchMonMap).length) {
+    let matchScored = Object.values(matchMonMap);
+    matchScored.sort((a, b) => {
+      let sa = (a.impact || 0) + (a.kills || 0) * 60;
+      let sb = (b.impact || 0) + (b.kills || 0) * 60;
+      return sb - sa;
+    });
+    matchScored.forEach(item => {
       let bk = normalizeBaseSpecies(item.name);
       if(!seen.has(bk) && finalMons.length < 4) {
         seen.add(bk);
-        finalMons.push(item.name);
+        finalMons.push(item);
       }
     });
   }
 
-  // Backfill with top draft picks if under 4
+  // Next, add the coach's top tournament impact leaders
+  seasonList.forEach(item => {
+    let bk = normalizeBaseSpecies(item.name);
+    if(!seen.has(bk) && finalMons.length < 4) {
+      seen.add(bk);
+      finalMons.push(item);
+    }
+  });
+
+  // 3. Backfill with draft picks if under 4 (e.g. early season or unused roster mons)
   if(finalMons.length < 4) {
     let drafted = [];
     if(tourn.draftData?.picks && Array.isArray(tourn.draftData.picks)) {
-      let coachPicks = tourn.draftData.picks.filter(p => (p.player || p.coach || '').toLowerCase() === coach.toLowerCase());
+      let coachPicks = tourn.draftData.picks.filter(p => (p.player || p.coach || '').toLowerCase() === coach.toLowerCase() || (typeof isCoachMatch === 'function' && isCoachMatch(p.player || p.coach, coach, tourn)));
       coachPicks.sort((a, b) => (a.round || a.pickNumber || 0) - (b.round || b.pickNumber || 0));
       drafted = coachPicks.map(p => p.pokemon || p.name);
     }
-    if(!drafted.length && tourn.rosters?.[coach] && Array.isArray(tourn.rosters[coach])) {
-      drafted = tourn.rosters[coach].map(r => typeof r === 'string' ? r : (r.pokemon || r.name || ''));
+    if(!drafted.length && tourn.rosters) {
+      let rList = tourn.rosters[coach] || Object.entries(tourn.rosters).find(([k]) => typeof isCoachMatch === 'function' && isCoachMatch(k, coach, tourn))?.[1];
+      if(Array.isArray(rList)) {
+        drafted = rList.map(r => typeof r === 'string' ? r : (r.pokemon || r.name || ''));
+      }
     }
     for(let d of drafted) {
+      if(!d) continue;
       let bk = normalizeBaseSpecies(d);
       if(!seen.has(bk) && finalMons.length < 4) {
         seen.add(bk);
-        finalMons.push(d);
+        finalMons.push({ name: d, kills: 0, damage: 0, impact: 0, games: 0 });
       }
     }
   }
@@ -19387,15 +19513,29 @@ function matchupOfTheWeekCard(t){
     </button>
   ` : '';
 
+  let hasStats1 = mons1.some(m => typeof m === 'object' && ((m.kills || 0) > 0 || (m.impact || 0) > 0 || (m.damage || 0) > 0));
+  let hasStats2 = mons2.some(m => typeof m === 'object' && ((m.kills || 0) > 0 || (m.impact || 0) > 0 || (m.damage || 0) > 0));
+
   let renderMonCards = (mons, isLeft) => {
     let list = Array.isArray(mons) ? mons.filter(Boolean) : [];
     if(!list.length) {
-      return [1, 2, 3].map(() => `<div class="primetime-mon-card" style="opacity:0.35"><span style="font-size:14px;color:rgba(255,255,255,0.6)">★</span></div>`).join('');
+      return [1, 2, 3].map(() => `<div class="primetime-cfb-mon-card primetime-mon-card" style="opacity:0.35"><span style="font-size:14px;color:rgba(255,255,255,0.6)">★</span></div>`).join('');
     }
-    return list.slice(0, 4).map(name => {
+    return list.slice(0, 4).map(item => {
+      let name = typeof item === 'object' ? (item.name || '') : String(item || '');
+      let kills = typeof item === 'object' ? (item.kills || 0) : 0;
+      let impact = typeof item === 'object' ? (item.impact || 0) : 0;
       let spr = (typeof monSprite === 'function') ? monSprite(name) : (typeof pokeSprite === 'function' ? pokeSprite(name) : '');
-      return `<div class="primetime-mon-card" title="${esc(name)}">
-        <img class="primetime-mon-img" src="${esc(spr)}" alt="${esc(name)}" loading="lazy" onerror="handleSpriteError(this)" />
+      let badgeHtml = '';
+      if(kills > 0) {
+        badgeHtml = `<span class="primetime-mon-stat-badge kills">${kills} KO</span>`;
+      } else if(impact > 0) {
+        badgeHtml = `<span class="primetime-mon-stat-badge impact">⚡${Math.round(impact)}</span>`;
+      }
+      let tooltip = name + (kills > 0 ? ` · ${kills} KO` : '') + (impact > 0 ? ` · Impact: ${Math.round(impact)}` : '');
+      return `<div class="primetime-cfb-mon-card primetime-mon-card" title="${esc(tooltip)}">
+        <img class="primetime-cfb-mon-img primetime-mon-img" src="${esc(spr)}" alt="${esc(name)}" loading="lazy" onerror="handleSpriteError(this)" />
+        ${badgeHtml}
       </div>`;
     }).join('');
   };
@@ -19444,14 +19584,14 @@ function matchupOfTheWeekCard(t){
                 </div>
                 <div class="primetime-cfb-sub-row left">
                   <span class="primetime-cfb-coach-tag">${playerLink(p1)}</span>
-                  ${ovrVal1 ? `<span class="primetime-cfb-ovr-pill">OVR ${ovrVal1}</span>` : ''}
+                  ${ovrVal1 ? `<span class="primetime-cfb-ovr-pill" title="Player Career OVR: ${ovrVal1}"><span class="ovr-lbl">OVR</span><span class="ovr-num">${ovrVal1}</span></span>` : ''}
                   <span class="primetime-cfb-record-pill">RECORD ${esc(rec1)}</span>
                 </div>
               </div>
 
               <div class="primetime-cfb-center-showcase top">
                 <div class="primetime-cfb-showcase-title">
-                  <span class="primetime-showcase-bolt">⚡</span> ${isPlayed ? 'KEY PERFORMERS' : 'ROSTER SPOTLIGHT'}
+                  <span class="primetime-showcase-bolt">⚡</span> ${isPlayed ? 'KEY PERFORMERS' : (hasStats1 ? 'IMPACT LEADERS' : 'ROSTER SPOTLIGHT')}
                 </div>
                 <div class="primetime-cfb-mons-strip">
                   ${renderMonCards(mons1, true)}
@@ -19494,7 +19634,7 @@ function matchupOfTheWeekCard(t){
             <div class="primetime-cfb-content bottom">
               <div class="primetime-cfb-center-showcase bottom">
                 <div class="primetime-cfb-showcase-title">
-                  <span class="primetime-showcase-bolt">⚡</span> ${isPlayed ? 'KEY PERFORMERS' : 'ROSTER SPOTLIGHT'}
+                  <span class="primetime-showcase-bolt">⚡</span> ${isPlayed ? 'KEY PERFORMERS' : (hasStats2 ? 'IMPACT LEADERS' : 'ROSTER SPOTLIGHT')}
                 </div>
                 <div class="primetime-cfb-mons-strip">
                   ${renderMonCards(mons2, false)}
@@ -19508,7 +19648,7 @@ function matchupOfTheWeekCard(t){
                 </div>
                 <div class="primetime-cfb-sub-row right">
                   <span class="primetime-cfb-record-pill">${esc(rec2)} RECORD</span>
-                  ${ovrVal2 ? `<span class="primetime-cfb-ovr-pill">OVR ${ovrVal2}</span>` : ''}
+                  ${ovrVal2 ? `<span class="primetime-cfb-ovr-pill" title="Player Career OVR: ${ovrVal2}"><span class="ovr-lbl">OVR</span><span class="ovr-num">${ovrVal2}</span></span>` : ''}
                   <span class="primetime-cfb-coach-tag">${playerLink(p2)}</span>
                 </div>
               </div>

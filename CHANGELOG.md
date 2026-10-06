@@ -3,6 +3,26 @@
 All notable changes to the Bellimaka Pokémon Draft League site are documented here.
 Format: `v[MAJOR].[MINOR].[PATCH]` — Major = big new systems, Minor = new features, Patch = bug fixes / small improvements.
 
+## [v2.3.2] — 2026-10-05
+
+### Fixed & Improved
+- **ESPN Primetime Spotlight: In-Frame Logos, High-Contrast OVR Badges & Impact-Driven Showcase**:
+  - **Fully In-Frame Team Logos**:
+    - Centered circular team/coach logos vertically (`top: 50%; transform: translateY(-50%)`) and inset them from the outer frame edges (`clamp(16px, 2.2vw, 28px)` on desktop, `12px` on mobile).
+    - Adjusted logo diameter to `clamp(118px, 14.5vw, 136px)` so circular profile pictures and logos remain 100% within the frame without being awkwardly clipped or cut off at container corners.
+    - Synchronized Broadcast Branding Studio live preview modal (`#bbLiveLogo`) to accurately match the in-frame placement.
+  - **High-Contrast Career OVR & Record Badges**:
+    - Completely redesigned the overall rating pill (`.primetime-cfb-ovr-pill`) with an opaque pitch-black (`#09090f`) background, solid `#ffd166` gold border, outer shadow, and distinct two-part typography (`.ovr-lbl` in light slate `#cbd5e1`, `.ovr-num` in bold glowing gold `#ffd166`).
+    - Guaranteed crisp readability across all light, neon, pastel, or dark coach theme backgrounds (e.g., cyan, bright yellow, pastel green).
+    - Enhanced `.primetime-cfb-record-pill` with solid dark backing for unified broadcast badge aesthetics.
+  - **Impact Score & Performance-Driven Roster Spotlight**:
+    - Overhauled `getMatchupShowcasePokemon(tourn, m, coach)` to dynamically identify each coach's top performers based on real tournament match stats (`getTournamentPokemonStatsMap`) rather than arbitrarily picking the first 4 drafted Pokémon.
+    - Ranks Pokémon via a composite impact formula (`impact * 1.0 + kills * 75 + damage * 0.12`), taking into account official tournament Impact Scores, kills, and damage dealt across all season and playoff replays.
+    - Displays kill count (`X KO`) or Impact Score (`⚡Y`) badges (`.primetime-mon-stat-badge`) directly on Pokémon spotlight cards with detailed tooltip breakdowns.
+    - Dynamically labels the center showcase as `"⚡ KEY PERFORMERS"` for finished matches, `"⚡ IMPACT LEADERS"` for upcoming matches with season stats, and `"ROSTER SPOTLIGHT"` for early-season drafts.
+
+---
+
 ## [v2.3.1] — 2026-10-05
 
 ### Fixed & Improved
