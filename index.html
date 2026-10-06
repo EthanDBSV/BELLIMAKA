@@ -657,7 +657,7 @@
   display: flex;
   flex-direction: column;
   justify-content: center;
-  min-height: 178px;
+  min-height: 150px;
   overflow: hidden;
   border-radius: 0;
   transition: all 0.25s ease;
@@ -806,10 +806,10 @@
   gap: clamp(14px, 2.4vw, 28px);
 }
 .primetime-cfb-content.top {
-  padding: 46px clamp(140px, 16vw, 168px) 14px 28px;
+  padding: 34px clamp(140px, 16vw, 168px) 14px 28px;
 }
 .primetime-cfb-content.bottom {
-  padding: 14px 28px 46px clamp(140px, 16vw, 168px);
+  padding: 14px 28px 34px clamp(140px, 16vw, 168px);
 }
 
 .primetime-cfb-info {
@@ -1015,37 +1015,30 @@
   padding-right: clamp(16px, 3.2vw, 36px);
 }
 
-.primetime-cfb-record-line {
+.primetime-cfb-avatar-record {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
   font-family: 'Agency FB', 'Barlow Condensed', sans-serif;
-  font-weight: 800;
-  font-size: clamp(21px, 3.0vw, 26px);
-  line-height: 1.25;
-  letter-spacing: 2.2px;
-  text-transform: uppercase;
+  font-weight: 900;
+  font-size: clamp(14px, 1.8vw, 16px);
+  letter-spacing: 1.5px;
+  line-height: 1;
   color: #ffd166;
-  background: linear-gradient(180deg, #ffffff 0%, #ffe58f 32%, #ffd166 65%, #e6a817 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.95)) drop-shadow(0 0 6px rgba(0, 0, 0, 0.9));
-  text-shadow: 0 2px 5px rgba(0, 0, 0, 0.95);
+  background: rgba(10, 10, 18, 0.88);
+  border: 1px solid rgba(255, 209, 102, 0.45);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.8), 0 0 8px rgba(255, 209, 102, 0.2);
+  border-radius: 999px;
   white-space: nowrap;
-  overflow: visible;
-  margin-top: 3px;
-  padding-top: 6px;
-  padding-bottom: 4px;
-  display: block;
+  pointer-events: none;
+  z-index: 6;
+  padding: 3px 8px;
 }
-.primetime-cfb-team-name-group.left .primetime-cfb-record-line.step3 {
-  padding-left: clamp(32px, 6.4vw, 72px);
+.primetime-cfb-logo-wrap.top-right .primetime-cfb-avatar-record {
+  bottom: -8px;
 }
-.primetime-cfb-team-name-group.left .primetime-cfb-record-line.step2 {
-  padding-left: clamp(16px, 3.2vw, 36px);
-}
-.primetime-cfb-team-name-group.right .primetime-cfb-record-line.step3 {
-  padding-right: clamp(32px, 6.4vw, 72px);
-}
-.primetime-cfb-team-name-group.right .primetime-cfb-record-line.step2 {
-  padding-right: clamp(16px, 3.2vw, 36px);
+.primetime-cfb-logo-wrap.bottom-left .primetime-cfb-avatar-record {
+  top: -8px;
 }
 
 /* Fallback for single-line usage */
@@ -1238,14 +1231,14 @@
 
 @media (max-width: 640px) {
   .primetime-cfb-half {
-    min-height: 138px;
+    min-height: 125px;
   }
   .primetime-cfb-content.top {
-    padding: 34px 105px 8px 14px;
+    padding: 26px 105px 10px 14px;
     gap: 10px;
   }
   .primetime-cfb-content.bottom {
-    padding: 8px 14px 34px 105px;
+    padding: 10px 14px 26px 105px;
     gap: 10px;
   }
   .primetime-cfb-center-showcase {
@@ -1265,23 +1258,16 @@
   .primetime-cfb-team-name-group.right .primetime-cfb-team-name-l2 {
     padding-right: 14px;
   }
-  .primetime-cfb-record-line {
-    font-size: clamp(16px, 4.2vw, 20px);
-    letter-spacing: 1.8px;
-    padding-top: 4px;
-    padding-bottom: 3px;
+  .primetime-cfb-avatar-record {
+    font-size: clamp(12px, 3.2vw, 14px);
+    letter-spacing: 1.2px;
+    padding: 2px 6px;
   }
-  .primetime-cfb-team-name-group.left .primetime-cfb-record-line.step3 {
-    padding-left: 28px;
+  .primetime-cfb-logo-wrap.top-right .primetime-cfb-avatar-record {
+    bottom: -6px;
   }
-  .primetime-cfb-team-name-group.left .primetime-cfb-record-line.step2 {
-    padding-left: 14px;
-  }
-  .primetime-cfb-team-name-group.right .primetime-cfb-record-line.step3 {
-    padding-right: 28px;
-  }
-  .primetime-cfb-team-name-group.right .primetime-cfb-record-line.step2 {
-    padding-right: 14px;
+  .primetime-cfb-logo-wrap.bottom-left .primetime-cfb-avatar-record {
+    top: -6px;
   }
   .primetime-cfb-logo {
     width: clamp(82px, 19vw, 94px);
@@ -6369,13 +6355,13 @@ function openBroadcastBrandingEditor(p) {
                 <div id="bbLiveTeamGroup" class="primetime-cfb-team-name-group left">
                   <div id="bbLiveTeamL1" class="primetime-cfb-team-name-l1" style="font-size:26px">${esc(cleanDisplayTeamName(displayL1))}</div>
                   <div id="bbLiveTeamL2" class="primetime-cfb-team-name-l2" style="font-size:26px;padding-left:18px;display:${displayL2 ? 'block' : 'none'}">${esc(cleanDisplayTeamName(displayL2))}</div>
-                  <div id="bbLiveRecord" class="primetime-cfb-record-line ${displayL2 ? 'step3' : 'step2'}" style="font-size:18px;padding-left:${displayL2 ? '36px' : '18px'}">(3 - 1)</div>
                 </div>
               </div>
             </div>
             <!-- In-Frame Corner Logo -->
             <div id="bbLiveLogo" style="position:absolute;right:18px;top:50%;transform:translateY(-50%);width:92px;height:92px;border-radius:50%;border:3.5px solid #fff;${avatarFace}background-size:cover;background-position:center;box-shadow:inset 0 2px 6px rgba(255,255,255,0.95), 0 10px 24px rgba(0,0,0,0.8), 0 0 20px ${hexToRgba(currentColor, 0.65)};display:grid;place-items:center;font:900 32px 'Barlow Condensed';color:#fff;z-index:5">
               ${letter}
+              <div class="primetime-cfb-avatar-record" style="bottom:-6px;font-size:15px">(3 - 1)</div>
             </div>
           </div>
         </div>
@@ -6454,11 +6440,7 @@ function updateBbLivePreview(p) {
     l2El.textContent = cleanL2;
     l2El.style.display = cleanL2 ? 'block' : 'none';
   }
-  let recEl = document.querySelector('#bbLiveRecord');
-  if (recEl) {
-    recEl.className = `primetime-cfb-record-line ${cleanL2 ? 'step3' : 'step2'}`;
-    recEl.style.paddingLeft = cleanL2 ? '36px' : '18px';
-  }
+
 
   let tag = (tagInput ? tagInput.value.trim() : '') || `#${p.replace(/\s+/g, '')}Nation`;
   if (!tag.startsWith('#')) tag = '#' + tag;
@@ -20175,7 +20157,6 @@ function matchupOfTheWeekCard(t){
                 <div class="primetime-cfb-team-name-group left" title="${esc(t1Name)}">
                   <div class="primetime-cfb-team-name-l1">${esc(nameSplit1.line1)}</div>
                   ${nameSplit1.line2 ? `<div class="primetime-cfb-team-name-l2">${esc(nameSplit1.line2)}</div>` : ''}
-                  <div class="primetime-cfb-record-line ${nameSplit1.line2 ? 'step3' : 'step2'}">${esc(formatRecordParen(rec1))}</div>
                 </div>
               </div>
 
@@ -20193,6 +20174,7 @@ function matchupOfTheWeekCard(t){
               <div class="primetime-cfb-logo ${p1Won ? 'winner' : ''}" style="background-image:${face1};box-shadow:inset 0 2px 6px rgba(255,255,255,0.95), inset 0 -3px 8px rgba(0,0,0,0.7), 0 12px 28px rgba(0,0,0,0.85), 0 0 24px ${hexToRgba(color1, 0.65)};">
                 ${letter1}
               </div>
+              <div class="primetime-cfb-avatar-record">${esc(formatRecordParen(rec1))}</div>
             </div>
           </div>
 
@@ -20219,6 +20201,7 @@ function matchupOfTheWeekCard(t){
               <div class="primetime-cfb-logo ${p2Won ? 'winner' : ''}" style="background-image:${face2};box-shadow:inset 0 2px 6px rgba(255,255,255,0.95), inset 0 -3px 8px rgba(0,0,0,0.7), 0 12px 28px rgba(0,0,0,0.85), 0 0 24px ${hexToRgba(color2, 0.65)};">
                 ${letter2}
               </div>
+              <div class="primetime-cfb-avatar-record">${esc(formatRecordParen(rec2))}</div>
             </div>
 
             <div class="primetime-cfb-content bottom">
@@ -20235,7 +20218,6 @@ function matchupOfTheWeekCard(t){
                 <div class="primetime-cfb-team-name-group right" title="${esc(t2Name)}">
                   <div class="primetime-cfb-team-name-l1">${esc(nameSplit2.line1)}</div>
                   ${nameSplit2.line2 ? `<div class="primetime-cfb-team-name-l2">${esc(nameSplit2.line2)}</div>` : ''}
-                  <div class="primetime-cfb-record-line ${nameSplit2.line2 ? 'step3' : 'step2'}">${esc(formatRecordParen(rec2))}</div>
                 </div>
               </div>
             </div>

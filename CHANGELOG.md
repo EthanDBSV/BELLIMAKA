@@ -3,6 +3,16 @@
 All notable changes to the Bellimaka Pokémon Draft League site are documented here.
 Format: `v[MAJOR].[MINOR].[PATCH]` — Major = big new systems, Minor = new features, Patch = bug fixes / small improvements.
 
+## [v2.3.12] — 2026-10-06
+
+- **Avatar-Curved Floating Records & Main Tournament Cover Aspect Restoration**:
+  - **Avatar Curve Record Anchoring**: Relocated the `(wins - losses)` record text directly onto each coach's circular avatar in floating bold gold `Agency FB` with deep dual drop-shadows:
+    - Top Player (Coach 1): Anchored at the **bottom curve** of the avatar circle (`bottom: -8px`), pointing inwards toward the center seam.
+    - Bottom Player (Coach 2): Anchored at the **top curve** of the avatar circle (`top: -8px`), pointing inwards toward the center seam.
+  - **Restored Compact Card Height (Eliminated Cover Image Stretching)**: Reverted `.primetime-cfb-half` minimum height from 178px back to 150px (125px on mobile), preventing the right-hand sidebar from over-expanding and allowing the tournament hero cover photo (Blastoise) to display in its natural, unstretched aspect ratio.
+  - **Pristine 2-Line Team Names (Zero Clipping)**: Returned the team name block to a clean 2-line layout with diagonal stagger, providing generous vertical breathing room with zero risk of banner collision or top glyph clipping.
+
+---
 ## [v2.3.11] — 2026-10-06
 
 - **Agency FB Record Font & Centered Vertical Breathing Room**:
