@@ -3,6 +3,15 @@
 All notable changes to the Bellimaka Pokémon Draft League site are documented here.
 Format: `v[MAJOR].[MINOR].[PATCH]` — Major = big new systems, Minor = new features, Patch = bug fixes / small improvements.
 
+## [v2.3.16] — 2026-10-06
+
+- **Discord Match Card Single-Line Large Team Names & Auto-Fit**:
+  - **Single-Line Max Impact Typography**: Replaced the 2-line split team names on the Discord webhook match card graphic (`generateMatchCardDataUrl`) with commanding single-line team names in `Saphifen`, filling the wide open middle broadcast space left vacant by the absence of the team Pokémon highlight strip.
+  - **Dynamic Auto-Fit Font Scaling**: Configured a bold `62px` base font size with intelligent auto-fit downscaling (min `36px`) constrained to a safe `630px` width boundary, ensuring extra-long team names never collide with the coach avatar while maximizing presence and impact across the canvas.
+  - **Balanced Broadcast Diagonal Anchoring**: Positioned the top team name left-aligned (`x = 42px`) and the bottom team name right-aligned (`x = w - 42px = 858px`), perfectly centered vertically between the hashtag ribbons and center seam.
+  - **Clean Single Parentheses Record Fix**: Updated `formatRecordParen()` to strip any existing parentheses before formatting, eliminating accidental double-parentheses (e.g. `((4 - 1))` -> `(4 - 1)`).
+
+---
 ## [v2.3.15] — 2026-10-06
 
 - **Interactive Discord Message & Embed Preview Modal**:

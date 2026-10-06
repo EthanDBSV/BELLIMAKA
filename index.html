@@ -14905,8 +14905,8 @@ async function renderDiscordPreviewContent(){
         s2: s2,
         p1Team: p1Team,
         p2Team: p2Team,
-        rec1: '(4 - 1)',
-        rec2: '(2 - 3)',
+        rec1: '4-1',
+        rec2: '2-3',
         stage: isTopCut ? 'TOP CUT PLAYOFFS' : 'WB QUARTERFINAL 2',
         roundLabel: isTopCut ? 'Semifinals' : 'Round 3',
         p1Photo: p1Photo,
@@ -15324,10 +15324,8 @@ async function generateMatchCardDataUrl(data){
     const bannerTxt1 = (typeof getBannerTextColor === 'function' ? getBannerTextColor(color1) : '#fff') || '#fff';
     const bannerTxt2 = (typeof getBannerTextColor === 'function' ? getBannerTextColor(color2) : '#fff') || '#fff';
 
-    let split1 = (typeof getCoachNameSplit === 'function') ? getCoachNameSplit(p1, t) : { line1: data.p1Team || p1, line2: '' };
-    let split2 = (typeof getCoachNameSplit === 'function') ? getCoachNameSplit(p2, t) : { line1: data.p2Team || p2, line2: '' };
-    if(!split1.line1) split1.line1 = data.p1Team || p1;
-    if(!split2.line1) split2.line1 = data.p2Team || p2;
+    let tName1 = data.p1Team || (typeof teamName === 'function' ? teamName(t, p1) : '') || p1;
+    let tName2 = data.p2Team || (typeof teamName === 'function' ? teamName(t, p2) : '') || p2;
 
     const rec1 = data.rec1 ? formatRecordParen(data.rec1) : (typeof tournamentRecord === 'function' && t ? formatRecordParen(tournamentRecord(t, p1)) : '(0 - 0)');
     const rec2 = data.rec2 ? formatRecordParen(data.rec2) : (typeof tournamentRecord === 'function' && t ? formatRecordParen(tournamentRecord(t, p2)) : '(0 - 0)');
@@ -15373,7 +15371,7 @@ async function generateMatchCardDataUrl(data){
     ctx.fillRect(0, 0, w, h);
 
     // 3. Helper to render each half into an offscreen canvas
-    function renderHalf(isTop, coachName, split, color, bannerCol, bannerTxt, hashtag, avatarImg, recStr, isWinner, isLoser){
+    function renderHalf(isTop, coachName, teamTitle, color, bannerCol, bannerTxt, hashtag, avatarImg, recStr, isWinner, isLoser){
       const hc = document.createElement('canvas');
       hc.width = w;
       hc.height = halfH;
@@ -15427,35 +15425,35 @@ async function generateMatchCardDataUrl(data){
       hctx.fillText(ribbonStr, w / 2, ribbonY + 12);
       hctx.restore();
 
-      // Team Name in Saphifen (Prominent broadcast typography)
+      // Team Name in Saphifen (Single-line Max Impact, fills middle broadcast arena)
       hctx.save();
-      hctx.font = '900 44px \"Saphifen\", sans-serif';
+      const baseFontSize = 62;
+      const minFontSize = 36;
+      const maxTextW = 630; // keeps generous buffer before the coach avatar
+
+      hctx.font = `900 ${baseFontSize}px "Saphifen", sans-serif`;
+      let measuredW = hctx.measureText(teamTitle).width;
+      let actualFontSize = baseFontSize;
+      if(measuredW > maxTextW && measuredW > 0){
+        actualFontSize = Math.max(minFontSize, Math.floor(baseFontSize * (maxTextW / measuredW)));
+        hctx.font = `900 ${actualFontSize}px "Saphifen", sans-serif`;
+      }
+
       hctx.fillStyle = '#ffffff';
       hctx.shadowColor = 'rgba(0, 0, 0, 0.95)';
-      hctx.shadowBlur = 12;
+      hctx.shadowBlur = 14;
       hctx.shadowOffsetX = 0;
       hctx.shadowOffsetY = 4;
+      hctx.textBaseline = 'middle';
 
       if(isTop){
+        // Anchored Left at x=42, extending into middle
         hctx.textAlign = 'left';
-        if(split.line2){
-          hctx.textBaseline = 'top';
-          hctx.fillText(split.line1, 42, 48);
-          hctx.fillText(split.line2, 78, 98);
-        } else {
-          hctx.textBaseline = 'middle';
-          hctx.fillText(split.line1, 42, halfH / 2 + 10);
-        }
+        hctx.fillText(teamTitle, 42, 108);
       } else {
+        // Anchored Right at x=w-42, extending into middle
         hctx.textAlign = 'right';
-        if(split.line2){
-          hctx.textBaseline = 'bottom';
-          hctx.fillText(split.line2, w - 42, halfH - 46);
-          hctx.fillText(split.line1, w - 78, halfH - 96);
-        } else {
-          hctx.textBaseline = 'middle';
-          hctx.fillText(split.line1, w - 42, halfH / 2 - 10);
-        }
+        hctx.fillText(teamTitle, w - 42, 96);
       }
       hctx.restore();
 
@@ -15540,7 +15538,7 @@ async function generateMatchCardDataUrl(data){
     }
 
     // 4. Render Top Half
-    const topCanvas = renderHalf(true, p1, split1, color1, bannerCol1, bannerTxt1, hashtag1, img1, rec1, p1Won, p2Won);
+    const topCanvas = renderHalf(true, p1, tName1, color1, bannerCol1, bannerTxt1, hashtag1, img1, rec1, p1Won, p2Won);
     ctx.save();
     if(p2Won){
       // LOSER FADE OUT
@@ -15550,7 +15548,7 @@ async function generateMatchCardDataUrl(data){
     ctx.restore();
 
     // 5. Render Bottom Half
-    const btmCanvas = renderHalf(false, p2, split2, color2, bannerCol2, bannerTxt2, hashtag2, img2, rec2, p2Won, p1Won);
+    const btmCanvas = renderHalf(false, p2, tName2, color2, bannerCol2, bannerTxt2, hashtag2, img2, rec2, p2Won, p1Won);
     ctx.save();
     if(p1Won){
       // LOSER FADE OUT
@@ -20513,7 +20511,7 @@ function setFeaturedMatch(idx){
 }
 
 function formatRecordParen(rec){
-  let raw = String(rec || '0-0').trim();
+  let raw = String(rec || '0-0').replace(/[()]/g, '').trim();
   let parts = raw.split('-');
   if(parts.length === 2){
     return `(${parts[0].trim()} - ${parts[1].trim()})`;
