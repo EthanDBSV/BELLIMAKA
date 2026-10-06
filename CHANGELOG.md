@@ -6,11 +6,11 @@ Format: `v[MAJOR].[MINOR].[PATCH]` — Major = big new systems, Minor = new feat
 ## [v2.3.5] — 2026-10-06
 
 ### Fixed & Improved
-- **Agression Font Number Rendering & Unicode Range Routing**:
-  - **Missing Numbers & Digits Fix (e.g. "5 Espurrs in A trenchcoat")**:
-    - Identified root cause where the demo release of `Agression` (and `Another Danger`) had glyphs for digits 1, 3, 5, and 6 with zero contour outlines (0 bytes) yet preserved active `cmap` character table pointers, causing the browser to render an invisible empty space instead of triggering CSS fallback.
-    - Added `unicode-range: U+0000-002F, U+003A-FFFF;` to all `@font-face` declarations for `'Agression'`, `'Aggression'`, and `'Another Danger'`. This cleanly excludes ASCII digits `0`–`9` from the font while preserving all Latin letters, accents, symbols, and punctuation.
-    - Updated the Primetime team name font stack (`.primetime-cfb-team-name-l1`, `.primetime-cfb-team-name-l2`, `.primetime-cfb-team-name`) to prioritize `'Agency FB'` and `'Impact'` for numbers. Team names with digits (such as "5 Espurrs in A trenchcoat" or "Team 1") now render bold, full-featured numbers seamlessly alongside the aggressive distressed lettering of `Agression`.
+- **Saphifen Font Remapping & Comprehensive Character Support**:
+  - **Full Support for Numbers, Letters, and Accents**:
+    - Remapped `@font-face` definitions for `'Saphifen'`, `'Agression'`, and `'Aggression'` to `Fonts & Logos/Saphifen.otf` and `Fonts & Logos/Saphifen.ttf`.
+    - `Saphifen` includes complete vector contours for all digits `0`–`9`, uppercase `A`–`Z`, lowercase `a`–`z`, and Latin accented characters (e.g. `é`, `è`, `à`, `ñ`), guaranteeing names like "5 Espurrs in A trenchcoat" render without missing numbers or fallback gaps.
+    - Updated Primetime team name font stacks (`.primetime-cfb-team-name-l1`, `.primetime-cfb-team-name-l2`, and `.primetime-cfb-team-name`) to lead with `'Saphifen'`.
 
 - **Unified Asset Consolidation (`Fonts & Logos/`)**:
   - **Comprehensive Path Rewiring**:
