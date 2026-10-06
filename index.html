@@ -1,4 +1,4 @@
-<!doctype html>
+﻿<!doctype html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
@@ -15602,43 +15602,44 @@ async function generateMatchCardDataUrl(data){
     ctx.lineTo(w, seamY);
     ctx.stroke();
 
-    // Score Capsule
-    const capW = 130, capH = 42;
+    // Score Capsule (Enlarged for high-visibility readability in Discord chat)
+    const capW = 180, capH = 60;
     const capX = (w - capW) / 2;
     const capY = seamY - capH / 2;
 
     ctx.save();
-    ctx.shadowColor = 'rgba(0, 0, 0, 0.88)';
-    ctx.shadowBlur = 18;
-    ctx.fillStyle = 'rgba(14, 14, 22, 0.96)';
+    ctx.shadowColor = 'rgba(0, 0, 0, 0.92)';
+    ctx.shadowBlur = 22;
+    ctx.fillStyle = 'rgba(12, 12, 18, 0.97)';
     ctx.beginPath();
-    ctx.roundRect(capX, capY, capW, capH, 21);
+    ctx.roundRect(capX, capY, capW, capH, capH / 2);
     ctx.fill();
 
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.32)';
-    ctx.lineWidth = 1.5;
+    // Subtle inner stroke for crisp broadcast depth
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.38)';
+    ctx.lineWidth = 2;
     ctx.stroke();
 
-    // Score numbers (Barlow Condensed for super clean, legible score numbers)
-    ctx.font = '900 30px \"Barlow Condensed\", sans-serif';
+    // Score numbers (Barlow Condensed for high-legibility bold numbers)
+    ctx.font = '900 46px "Barlow Condensed", sans-serif';
     ctx.textBaseline = 'middle';
 
     // Left score (s1)
     ctx.textAlign = 'right';
     ctx.fillStyle = p1Won ? '#4ade80' : (p2Won ? '#7a7884' : '#ffd166');
-    ctx.fillText(String(s1 ?? 0), w / 2 - 16, seamY + 1);
+    ctx.fillText(String(s1 ?? 0), w / 2 - 22, seamY + 1.5);
 
     // Dash
     ctx.textAlign = 'center';
-    ctx.font = '800 22px \"Barlow Condensed\", sans-serif';
+    ctx.font = '800 32px "Barlow Condensed", sans-serif';
     ctx.fillStyle = 'rgba(255, 255, 255, 0.45)';
     ctx.fillText('-', w / 2, seamY);
 
     // Right score (s2)
     ctx.textAlign = 'left';
-    ctx.font = '900 30px \"Barlow Condensed\", sans-serif';
+    ctx.font = '900 46px "Barlow Condensed", sans-serif';
     ctx.fillStyle = p2Won ? '#4ade80' : (p1Won ? '#7a7884' : '#ffd166');
-    ctx.fillText(String(s2 ?? 0), w / 2 + 16, seamY + 1);
+    ctx.fillText(String(s2 ?? 0), w / 2 + 22, seamY + 1.5);
     ctx.restore();
 
     // 8. Outer Gold Frame Stroke (Continuous Radiant Gold Border)

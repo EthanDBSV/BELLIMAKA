@@ -9,6 +9,7 @@ Format: `v[MAJOR].[MINOR].[PATCH]` — Major = big new systems, Minor = new feat
   - **Single-Line Max Impact Typography**: Replaced the 2-line split team names on the Discord webhook match card graphic (`generateMatchCardDataUrl`) with commanding single-line team names in `Saphifen`, filling the wide open middle broadcast space left vacant by the absence of the team Pokémon highlight strip.
   - **Dynamic Auto-Fit Font Scaling**: Configured a bold `62px` base font size with intelligent auto-fit downscaling (min `36px`) constrained to a safe `630px` width boundary, ensuring extra-long team names never collide with the coach avatar while maximizing presence and impact across the canvas.
   - **Balanced Broadcast Diagonal Anchoring**: Positioned the top team name left-aligned (`x = 42px`) and the bottom team name right-aligned (`x = w - 42px = 858px`), perfectly centered vertically between the hashtag ribbons and center seam.
+  - **Enlarged High-Visibility Score Pill**: Expanded the center score pill capsule from `130x42px` to a commanding `180x60px` with a 30px pill radius, crisp 2px border stroke, and boosted score typography (`46px` bold scores, `32px` dash) for instant legibility in small Discord webhook embed views.
   - **Clean Single Parentheses Record Fix**: Updated `formatRecordParen()` to strip any existing parentheses before formatting, eliminating accidental double-parentheses (e.g. `((4 - 1))` -> `(4 - 1)`).
 
 ---
