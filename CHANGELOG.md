@@ -3,6 +3,29 @@
 All notable changes to the Bellimaka Pokémon Draft League site are documented here.
 Format: `v[MAJOR].[MINOR].[PATCH]` — Major = big new systems, Minor = new features, Patch = bug fixes / small improvements.
 
+## [v2.3.1] — 2026-10-05
+
+### Fixed & Improved
+- **ESPN Primetime Spotlight: Frame Rearrangement, Seam Bleed Fix & Color Splash Texture**:
+  - **Center Seam Containment & Bleed Elimination**:
+    - Fixed the bottom profile picture (e.g., Gible) bleeding across the horizontal center seam line into the top team's row.
+    - Set `overflow: hidden` and dedicated corner border radii (`border-top-left-radius: 9px; border-top-right-radius: 9px` on top; `border-bottom-left-radius: 9px; border-bottom-right-radius: 9px` on bottom) on `.primetime-cfb-half`.
+    - This physically prevents any logo from ever crossing the seam line vertically into the other half, while cleanly preserving the ~20% outer-corner cutoff against the exterior frame.
+  - **Center Void Elimination & Active Roster Showcase**:
+    - Eliminated the massive empty void in the middle of each team's row between the team name and the corner logo.
+    - Rearranged the layout into a purposeful, high-energy 3-part broadcast presentation: `[ Team Name Info ]` — `[ ⚡ Key Performers Roster Strip ]` — `[ Corner Cutoff Logo ]`.
+    - Rendered `.primetime-cfb-center-showcase` containing up to 4 Pokémon performer mini-cards with hover lift and team glow effects (`renderMonCards` via `getMatchupShowcasePokemon`), with fallback placeholders for unplayed matchups.
+    - Added coach overall rating pills (`.primetime-cfb-ovr-pill`, e.g. `OVR 88`) next to coach tags.
+    - Added responsive tablet (`@media (max-width: 880px)`) and mobile (`@media (max-width: 640px)`) rules to dynamically adapt card count and spacing.
+  - **Authentic Diagonal Color Splash Background Texture**:
+    - Purged the dark blob stains and floating rock polygons from the background.
+    - Replicated the authentic diagonal color splash and screenprint grit texture from user reference `media_1791252556221.jpg`:
+      - Integrated `cfb-splash-texture.jpg` as an independent `.primetime-cfb-splash-layer` overlay (`mix-blend-mode: overlay`) with opposing diagonal orientation per half.
+      - Generated dynamic two-tone directional background gradients (`linear-gradient(125deg...)` for top, `305deg` for bottom) in `getBattlewornBg`.
+      - Augmented with high-contrast dry-brush scrape slashes and 60+ aerosol paint splatter particles in `getCfbScratchOverlayHtml`.
+
+---
+
 ## [v2.3.0] — 2026-10-05
 
 ### Added & Improved
