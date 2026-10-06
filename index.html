@@ -4,7 +4,11 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover" />
   <title>Bellimaka</title>
-  <link rel="icon" type="image/png" href="Fonts%20%26%20Logos/bellimaka_logo.png">
+  <link rel="icon" type="image/x-icon" href="favicon.ico?v=2.3.6">
+  <link rel="icon" type="image/png" sizes="32x32" href="Fonts%20%26%20Logos/bellimaka_logo.png?v=2.3.6">
+  <link rel="icon" type="image/png" sizes="32x32" href="bellimaka_logo.png?v=2.3.6">
+  <link rel="shortcut icon" type="image/png" href="Fonts%20%26%20Logos/bellimaka_logo.png?v=2.3.6">
+  <link rel="apple-touch-icon" href="Fonts%20%26%20Logos/bellimaka_logo.png?v=2.3.6">
   <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;500;600;700;800;900&family=DM+Sans:wght@400;500;600;700&family=Permanent+Marker&display=swap" rel="stylesheet">
   <style>
@@ -4945,7 +4949,7 @@ body.mobile-nav-open {
 }
 /* ------------------------------------------------------------ End v2.1.0 Mobile Experience & Modernized Guides System ------------------------------------------------------------ */
 </style>
-<body><div class="shell"><header class="topbar"><div class="brand" onclick="go('Home')"><img src="Fonts%20%26%20Logos/bellimaka_logo.jpg" class="bellimaka-logo" alt="Bellimaka"><span style="letter-spacing:1px">BELLIMAKA</span></div><nav class="nav" id="nav"></nav><div id="topbarActions" style="display:flex;align-items:center;gap:8px;margin-left:auto"><button class="account" onclick="go('Account')"><span class="mode-dot"></span><span id="accountText">Sign in</span></button></div><button class="mobile-menu-btn" id="mobileMenuBtn" onclick="toggleMobileNav(event)" aria-label="Open Navigation Menu"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg></button></header><div id="mobileDrawer" class="mobile-drawer" aria-hidden="true"><div class="mobile-drawer-backdrop" onclick="closeMobileNav()"></div><div class="mobile-drawer-content"><div class="mobile-drawer-header"><div class="brand" onclick="closeMobileNav(); go('Home');"><img src="Fonts%20%26%20Logos/bellimaka_logo.jpg" class="bellimaka-logo" alt="Bellimaka"><span style="letter-spacing:1px">BELLIMAKA</span></div><button class="mobile-drawer-close" onclick="closeMobileNav()" aria-label="Close Navigation Menu">✕</button></div><div class="mobile-drawer-nav" id="mobileDrawerNav"></div><div class="mobile-drawer-actions" id="mobileDrawerActions"></div></div></div><main class="page" id="app"></main></div><div id="modal"></div>
+<body><div class="shell"><header class="topbar"><div class="brand" onclick="go('Home')"><img src="Fonts%20%26%20Logos/bellimaka_logo.png" onerror="handleLogoError(this)" class="bellimaka-logo" alt="Bellimaka"><span style="letter-spacing:1px">BELLIMAKA</span></div><nav class="nav" id="nav"></nav><div id="topbarActions" style="display:flex;align-items:center;gap:8px;margin-left:auto"><button class="account" onclick="go('Account')"><span class="mode-dot"></span><span id="accountText">Sign in</span></button></div><button class="mobile-menu-btn" id="mobileMenuBtn" onclick="toggleMobileNav(event)" aria-label="Open Navigation Menu"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg></button></header><div id="mobileDrawer" class="mobile-drawer" aria-hidden="true"><div class="mobile-drawer-backdrop" onclick="closeMobileNav()"></div><div class="mobile-drawer-content"><div class="mobile-drawer-header"><div class="brand" onclick="closeMobileNav(); go('Home');"><img src="Fonts%20%26%20Logos/bellimaka_logo.png" onerror="handleLogoError(this)" class="bellimaka-logo" alt="Bellimaka"><span style="letter-spacing:1px">BELLIMAKA</span></div><button class="mobile-drawer-close" onclick="closeMobileNav()" aria-label="Close Navigation Menu">✕</button></div><div class="mobile-drawer-nav" id="mobileDrawerNav"></div><div class="mobile-drawer-actions" id="mobileDrawerActions"></div></div></div><main class="page" id="app"></main></div><div id="modal"></div>
 <script>
 const SVG_SWORD_GREY = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:4px;flex-shrink:0"><polyline points="14.5 17.5 3 6 3 3 6 3 17.5 14.5"></polyline><line x1="13" y1="19" x2="19" y2="13"></line><line x1="16" y1="16" x2="20" y2="20"></line><line x1="19" y1="21" x2="21" y2="19"></line></svg>`;
 const SVG_SHIELD_GREY = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:4px;flex-shrink:0"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>`;
@@ -5032,7 +5036,25 @@ function toggleSpriteStylePreference() {
   }
 }
 
-function handleSpriteError(img){
+function handleLogoError(img) {
+  if(!img) return;
+  const fallbacks = [
+    "Fonts & Logos/bellimaka_logo.png",
+    "Fonts%20%26%20Logos/bellimaka_logo.jpg",
+    "Fonts & Logos/bellimaka_logo.jpg",
+    "bellimaka_logo.png",
+    "bellimaka_logo.jpg"
+  ];
+  let idx = +(img.dataset.logoFallbackIdx || 0);
+  if(idx < fallbacks.length) {
+    img.dataset.logoFallbackIdx = idx + 1;
+    img.src = fallbacks[idx];
+  } else {
+    img.onerror = null;
+  }
+}
+
+function handleSpriteError(img) {
   if(!img) return;
   let src = img.src || '';
   if(src.endsWith('iconNotFound.png') || src.includes('iconNotFound.png')){
@@ -19135,7 +19157,7 @@ function selectAllCreatorPlayers(check){
   updateCreatorSelectedCount();
 }
 
-document.querySelector('.brand').innerHTML='<img src="Fonts%20%26%20Logos/bellimaka_logo.jpg" class="bellimaka-logo" alt="Bellimaka"><span style="letter-spacing:1px">BELLIMAKA</span>';
+document.querySelector('.brand').innerHTML='<img src="Fonts%20%26%20Logos/bellimaka_logo.png" onerror="handleLogoError(this)" class="bellimaka-logo" alt="Bellimaka"><span style="letter-spacing:1px">BELLIMAKA</span>';
 
 function openBoardLink(){if(!boardLink||!/^https?:\/\//i.test(boardLink)){alert('Save a valid Draft Board link first.');return}location.assign(boardLink)}
 
@@ -25086,7 +25108,7 @@ const LEAGUE={
 (function brandLeague(){
   document.title='Bellimaka';
   let brand=document.querySelector('.brand');
-  if(brand)brand.innerHTML=`<img src="Fonts%20%26%20Logos/bellimaka_logo.jpg" class="bellimaka-logo" alt="Bellimaka"><span style="letter-spacing:1px">${esc(LEAGUE.wordmark)}</span>`;
+  if(brand)brand.innerHTML=`<img src="Fonts%20%26%20Logos/bellimaka_logo.png" onerror="handleLogoError(this)" class="bellimaka-logo" alt="Bellimaka"><span style="letter-spacing:1px">${esc(LEAGUE.wordmark)}</span>`;
 })();
 /* ------------------------------------------------------------ 1. PLAYER PROFILES ------------------------------------------------------------ */
 

@@ -3,6 +3,17 @@
 All notable changes to the Bellimaka Pokémon Draft League site are documented here.
 Format: `v[MAJOR].[MINOR].[PATCH]` — Major = big new systems, Minor = new features, Patch = bug fixes / small improvements.
 
+## [v2.3.6] — 2026-10-06
+
+- **Header Logo & Browser Tab Favicon Bulletproofing**:
+  - **Favicon Multi-Format & Root Discovery**:
+    - Added `<link rel="icon" type="image/x-icon" href="favicon.ico?v=2.3.6">`, `<link rel="icon" type="image/png" sizes="32x32" href="Fonts%20%26%20Logos/bellimaka_logo.png?v=2.3.6">`, and `<link rel="shortcut icon">` with cache-busting version query string `?v=2.3.6` to bypass sticky browser tab favicon caching.
+    - Placed `favicon.ico` and `bellimaka_logo.png` directly into the repository root for automatic browser `/favicon.ico` discovery.
+  - **Multi-Stage Resilient Header Logo Fallback**:
+    - Standardized `.brand` header logos in the topbar and mobile drawer to use `bellimaka_logo.png`.
+    - Implemented an automated multi-stage fallback handler (`handleLogoError`) that sequentially tries URL-encoded and unencoded paths across both PNG and JPG formats (`Fonts & Logos/` and root) to guarantee the logo loads in every environment (local file system, live server, GitHub Pages).
+
+---
 ## [v2.3.5] — 2026-10-06
 
 - **Ticker Ribbon Alignment (Agency FB at 15px)**:
