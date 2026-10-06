@@ -5,7 +5,16 @@ Format: `v[MAJOR].[MINOR].[PATCH]` — Major = big new systems, Minor = new feat
 
 ## [v2.3.5] — 2026-10-06
 
-### Fixed & Improved
+- **Ticker Ribbon Alignment & Hinting Fix (Raised 'E' Elimination)**:
+  - Identified root cause of the raised 'E' in `#DARKESTDAY`: In `AgencyFB-Bold.ttf`, TrueType font hinting instructions at non-integer `13.5px` font size snapped the wide horizontal roof of `E` to a pixel ceiling 1px higher than neighboring letters `K`, `S`, `T`, and `D`.
+  - Upgraded the hashtag ticker banner (`.primetime-ticker-static` and `#bbLiveRibbon`) to `Barlow Condensed` at clean integer `14px` (`font-weight: 800`). All letters now share a mathematically uniform cap-height and baseline with zero 1px rendering jumps.
+
+- **Team Name Glyph Clipping & Cropping Elimination**:
+  - Fixed root cause of cropped tops (such as the top stroke of Jace's Korean team name "고양시" being cut off flat) and cropped edges with italic/display fonts:
+    1. Replaced restrictive sub-1.0 line-height (`line-height: 0.95` on L1 and `1` on L2) with `line-height: 1.18` (1.15 for L2), giving Korean Hangul, accents, and tall ascenders full vertical headroom.
+    2. Added horizontal and vertical padding buffer (`padding: 6px 16px`) with compensating negative margins (`margin: -6px -16px`), ensuring italic slants, brush flourishes, and drop-shadows never hit the `overflow: hidden` boundary.
+    3. Added `overflow: visible` to `.primetime-cfb-team-name-group` so text overshoots are preserved without displacing neighboring components.
+
 - **Saphifen Font Remapping & Comprehensive Character Support**:
   - **Full Support for Numbers, Letters, and Accents**:
     - Remapped `@font-face` definitions for `'Saphifen'`, `'Agression'`, and `'Aggression'` to `Fonts & Logos/Saphifen.otf` and `Fonts & Logos/Saphifen.ttf`.
