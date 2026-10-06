@@ -3,6 +3,22 @@
 All notable changes to the Bellimaka Pokémon Draft League site are documented here.
 Format: `v[MAJOR].[MINOR].[PATCH]` — Major = big new systems, Minor = new features, Patch = bug fixes / small improvements.
 
+## [v2.3.15] — 2026-10-06
+
+- **Interactive Discord Message & Embed Preview Modal**:
+  - **Live Discord Announcer Simulation**: Clicking "Test Scores" or "Test Draft" in the Discord Webhook Settings Modal now opens an authentic interactive Discord dark-mode client preview popup modal, allowing moderators to visually verify how announcements and embeds look in Discord.
+  - **Primetime Match Card Preview (#match-results)**:
+    - Renders the high-resolution 900x450 Primetime graphic on the fly via `generateMatchCardDataUrl()`, showcasing the metallic gold frame, Barlow Condensed score pill, Saphifen team names, winner green glow ring, and authentic loser defeat fadeout.
+    - **Interactive Scenario Switcher**: Added one-click scenario toggles (`🏆 Player 1 Wins (2-0)`, `🏆 Player 2 Wins (0-2)`, `🤝 Tie (1-1)`) and stage toggles (Group Stage vs Top Cut Playoffs) that regenerate and update the graphic in real time.
+    - Displays Discord bot header (`Bellimaka Bot` with blue `[BOT]` badge and timestamp), match result headline, and red `#EF3038` sidebar embed.
+  - **Live Draft Pick Preview (#draft-room)**:
+    - Renders live draft announcements with Pokémon Showdown sprites, roster progress, cost, pick number, remaining budget, and highlighted Discord `@pings` on the clock.
+    - Includes interactive sample pick selector (Ethan drafting Meowscarada, Ozy drafting Iron Valiant, Jace drafting Garchomp, and Draft Complete final pick).
+  - **Dual Action Bar & Form State Persistence**:
+    - Added "📤 Send Real Test to Discord" button directly inside the preview modal with instant delivery status feedback.
+    - Added "← Back to Settings" navigation that preserves any typed webhook URLs or coach Discord IDs in memory (`_tempDiscordConfig`) without losing user input.
+
+---
 ## [v2.3.14] — 2026-10-06
 
 - **Primetime-Matched Discord Webhook Match Result Graphics**:

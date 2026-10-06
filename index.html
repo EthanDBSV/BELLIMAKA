@@ -14538,6 +14538,16 @@ async function openDiscordSettingsModal(){
   if(!cfg) {
     cfg = { webhookUrl: '', draftWebhookUrl: '', scoreWebhookUrl: '', coachDiscordIds: {}, announcePicks: true, announceScores: true, announceTopCut: true };
   }
+  if(window._tempDiscordConfig){
+    cfg = {
+      ...cfg,
+      ...window._tempDiscordConfig,
+      coachDiscordIds: {
+        ...(cfg.coachDiscordIds || {}),
+        ...(window._tempDiscordConfig.coachDiscordIds || {})
+      }
+    };
+  }
 
   // Gather all known league coaches
   let allCoaches = Object.keys(profiles || {});
@@ -14598,7 +14608,7 @@ async function openDiscordSettingsModal(){
             </label>
             <div style="display:flex;gap:8px">
               <input id="discordDraftWebhookUrl" type="text" placeholder="https://discord.com/api/webhooks/..." value="${esc(cfg.draftWebhookUrl || '')}" style="flex:1;background:#0c0c0f;border:1px solid #3a3a44;border-radius:5px;padding:8px 12px;color:white;font-size:12px;font-family:monospace">
-              <button class="btn ghost btn-sm" onclick="testDiscordWebhook('draft')" style="white-space:nowrap;padding:7px 12px;border-color:#5865F2;color:#7983f5">🔔 Test Draft</button>
+              <button class="btn ghost btn-sm" onclick="testDiscordWebhook('draft')" style="white-space:nowrap;padding:7px 12px;border-color:#5865F2;color:#7983f5">👁️ Test Draft</button>
             </div>
           </div>
 
@@ -14610,7 +14620,7 @@ async function openDiscordSettingsModal(){
             </label>
             <div style="display:flex;gap:8px">
               <input id="discordScoreWebhookUrl" type="text" placeholder="https://discord.com/api/webhooks/..." value="${esc(cfg.scoreWebhookUrl || '')}" style="flex:1;background:#0c0c0f;border:1px solid #3a3a44;border-radius:5px;padding:8px 12px;color:white;font-size:12px;font-family:monospace">
-              <button class="btn ghost btn-sm" onclick="testDiscordWebhook('score')" style="white-space:nowrap;padding:7px 12px;border-color:#5865F2;color:#7983f5">🔔 Test Scores</button>
+              <button class="btn ghost btn-sm" onclick="testDiscordWebhook('score')" style="white-space:nowrap;padding:7px 12px;border-color:#5865F2;color:#7983f5">👁️ Test Scores</button>
             </div>
           </div>
 
@@ -14622,7 +14632,7 @@ async function openDiscordSettingsModal(){
             </label>
             <div style="display:flex;gap:8px">
               <input id="discordWebhookUrl" type="text" placeholder="https://discord.com/api/webhooks/..." value="${esc(cfg.webhookUrl || '')}" style="flex:1;background:#0c0c0f;border:1px solid #3a3a44;border-radius:5px;padding:8px 12px;color:white;font-size:12px;font-family:monospace">
-              <button class="btn ghost btn-sm" onclick="testDiscordWebhook('general')" style="white-space:nowrap;padding:7px 12px;border-color:#5865F2;color:#7983f5">🔔 Test General</button>
+              <button class="btn ghost btn-sm" onclick="testDiscordWebhook('general')" style="white-space:nowrap;padding:7px 12px;border-color:#5865F2;color:#7983f5">👁️ Test General</button>
             </div>
           </div>
 
@@ -14676,25 +14686,475 @@ async function openDiscordSettingsModal(){
   `;
 }
 
-async function testDiscordWebhook(channel = 'general'){
-  let inputId = channel === 'draft' ? '#discordDraftWebhookUrl' : (channel === 'score' ? '#discordScoreWebhookUrl' : '#discordWebhookUrl');
-  let urlInput = document.querySelector(inputId);
-  let statusEl = document.querySelector('#discordTestStatus');
-  let url = (urlInput?.value || '').trim();
+var _tempDiscordConfig = null;
+var _discordPreviewState = {
+  tab: 'score',
+  scoreScenario: 'p1win',
+  stage: 'group',
+  draftSampleIndex: 0
+};
 
-  // If specific channel input is empty, fallback to general webhook
-  if(!url && channel !== 'general'){
-    url = (document.querySelector('#discordWebhookUrl')?.value || '').trim();
+function captureDiscordSettingsInputs(){
+  try {
+    let draftWebhookUrl = (document.querySelector('#discordDraftWebhookUrl')?.value || '').trim();
+    let scoreWebhookUrl = (document.querySelector('#discordScoreWebhookUrl')?.value || '').trim();
+    let webhookUrl = (document.querySelector('#discordWebhookUrl')?.value || '').trim();
+    let coachDiscordIds = (_tempDiscordConfig?.coachDiscordIds) ? { ..._tempDiscordConfig.coachDiscordIds } : {};
+    document.querySelectorAll('.discord-coach-id-input').forEach(inp => {
+      let coach = inp.getAttribute('data-coach');
+      let val = (inp.value || '').trim();
+      if(coach) coachDiscordIds[coach] = val;
+    });
+    let announcePicks = document.querySelector('#discordTogglePicks')?.checked ?? true;
+    let announceScores = document.querySelector('#discordToggleScores')?.checked ?? true;
+    let announceTopCut = document.querySelector('#discordToggleTopCut')?.checked ?? true;
+    _tempDiscordConfig = {
+      draftWebhookUrl,
+      scoreWebhookUrl,
+      webhookUrl,
+      coachDiscordIds,
+      announcePicks,
+      announceScores,
+      announceTopCut
+    };
+  } catch(e){
+    console.warn('captureDiscordSettingsInputs error:', e);
+  }
+}
+
+function returnToDiscordSettingsModal(){
+  openDiscordSettingsModal();
+}
+
+async function testDiscordWebhook(channel = 'general'){
+  captureDiscordSettingsInputs();
+  openDiscordPreviewModal(channel === 'general' ? 'score' : channel);
+}
+
+async function openDiscordPreviewModal(initialTab = 'score'){
+  captureDiscordSettingsInputs();
+  if(!_discordPreviewState){
+    _discordPreviewState = {
+      tab: initialTab === 'draft' ? 'draft' : 'score',
+      scoreScenario: 'p1win',
+      stage: 'group',
+      draftSampleIndex: 0
+    };
+  } else if(initialTab) {
+    _discordPreviewState.tab = (initialTab === 'draft' ? 'draft' : 'score');
   }
 
+  let modalEl = document.querySelector('#modal');
+  if(!modalEl) return;
+
+  modalEl.innerHTML = `
+    <div class="modal-wrap">
+      <div class="modal" style="max-width:760px;padding:0;overflow:hidden;background:#18191c;border:1px solid #36393f;box-shadow:0 14px 40px rgba(0,0,0,0.7)">
+        <!-- Header Bar -->
+        <div style="padding:14px 20px;border-bottom:1px solid #282b30;display:flex;justify-content:space-between;align-items:center;background:#1e1f22">
+          <div>
+            <div class="eyebrow" style="color:#5865F2;display:flex;align-items:center;gap:6px;font-size:11px">
+              <svg style="width:13px;height:13px;fill:currentColor" viewBox="0 0 24 24"><path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.057 19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028c.462-.63.874-1.295 1.226-1.994.021-.041.001-.09-.041-.106a13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.929 1.793 8.18 1.793 12.061 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.894.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.028zM8.02 15.33c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.956-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.956 2.418-2.157 2.418zm7.975 0c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.955-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.946 2.418-2.157 2.418z"/></svg>
+              <span>Live Discord Announcer Simulation</span>
+            </div>
+            <h2 style="margin:2px 0 0;font-size:18px">Discord Message Preview</h2>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px">
+            <button class="btn ghost btn-sm" onclick="returnToDiscordSettingsModal()" style="padding:6px 12px;font-size:12px">← Back to Settings</button>
+            <button class="close" onclick="closeModal()" style="font-size:22px;line-height:1">×</button>
+          </div>
+        </div>
+
+        <!-- Channel Navigation Tabs -->
+        <div style="display:flex;gap:8px;padding:8px 20px 0;background:#1e1f22;border-bottom:1px solid #2b2d31">
+          <button class="btn btn-sm" onclick="switchDiscordPreviewTab('score')" id="tabDiscordScoreBtn" style="border-radius:6px 6px 0 0;font-size:12px;padding:8px 16px;${_discordPreviewState.tab==='score' ? 'background:#5865F2;border-color:#5865F2;color:#fff;font-weight:700' : 'background:transparent;border-color:transparent;color:#949ba4'}">⚔️ Match Results (#match-results)</button>
+          <button class="btn btn-sm" onclick="switchDiscordPreviewTab('draft')" id="tabDiscordDraftBtn" style="border-radius:6px 6px 0 0;font-size:12px;padding:8px 16px;${_discordPreviewState.tab==='draft' ? 'background:#5865F2;border-color:#5865F2;color:#fff;font-weight:700' : 'background:transparent;border-color:transparent;color:#949ba4'}">🎯 Draft Picks (#draft-room)</button>
+        </div>
+
+        <!-- Body Area -->
+        <div id="discordPreviewBody" style="padding:16px 20px;max-height:calc(85vh - 165px);overflow-y:auto">
+          <!-- Populated by renderDiscordPreviewContent() -->
+        </div>
+
+        <!-- Footer Action Bar -->
+        <div style="padding:12px 20px;background:#1e1f22;border-top:1px solid #2b2d31;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px">
+          <div id="discordPreviewTestStatus" style="font-size:12px;color:#949ba4;min-height:18px;flex:1"></div>
+          <div style="display:flex;gap:10px;align-items:center">
+            <button class="btn ghost btn-sm" onclick="returnToDiscordSettingsModal()" style="font-size:12px">← Back to Settings</button>
+            <button id="discordPreviewSendBtn" class="btn btn-sm" onclick="sendRealDiscordTest(_discordPreviewState.tab)" style="background:#5865F2;border-color:#5865F2;color:#fff;font-size:12px;font-weight:700">📤 Send Real Test to Discord</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+
+  renderDiscordPreviewContent();
+}
+
+async function renderDiscordPreviewContent(){
+  let bodyEl = document.querySelector('#discordPreviewBody');
+  if(!bodyEl) return;
+
+  let t = ongoingT() || activeT() || (typeof tournamentData !== 'undefined' ? Object.values(tournamentData)[0] : null);
+  let tourneyName = t?.name || 'Season 4: Bentonville Regional';
+
+  if(_discordPreviewState.tab === 'score'){
+    let coaches = (t?.players && t.players.length >= 2) ? t.players : ['Ozy', 'Jace'];
+    let p1 = coaches[0] || 'Ozy';
+    let p2 = coaches[1] || 'Jace';
+    let p1Team = (typeof teamName === 'function' ? teamName(t, p1) : '') || 'Netanyahus Ninetails';
+    let p2Team = (typeof teamName === 'function' ? teamName(t, p2) : '') || '고양시 G.O.A.T.S';
+
+    let scenario = _discordPreviewState.scoreScenario;
+    let isTopCut = _discordPreviewState.stage === 'playoffs';
+    let s1 = 2, s2 = 0;
+    if(scenario === 'p2win'){ s1 = 0; s2 = 2; }
+    else if(scenario === 'tie'){ s1 = 1; s2 = 1; }
+
+    let isTie = (s1 === s2);
+    let winner = s1 > s2 ? p1 : (s2 > s1 ? p2 : null);
+    let loser = winner === p1 ? p2 : p1;
+    let winScore = winner === p1 ? s1 : s2;
+    let loseScore = winner === p1 ? s2 : s1;
+
+    let contentText = isTie
+      ? `⚔️ <strong style="color:#fff">MATCH RESULT:</strong> <strong style="color:#fff">${esc(p1)}</strong> and <strong style="color:#fff">${esc(p2)}</strong> tied ${s1}-${s2}!`
+      : `⚔️ <strong style="color:#fff">MATCH RESULT:</strong> <strong style="color:#fff">${esc(winner)}</strong> defeats <strong style="color:#fff">${esc(loser)}</strong> ${winScore}-${loseScore}!`;
+
+    bodyEl.innerHTML = `
+      <!-- Simulation Controls -->
+      <div style="background:#141419;border:1px solid #2b2b36;border-radius:8px;padding:10px 14px;margin-bottom:14px;display:flex;flex-direction:column;gap:8px">
+        <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px">
+          <div style="font-size:11px;font-weight:700;color:#7983f5;text-transform:uppercase;letter-spacing:0.5px">Interactive Simulation Controls</div>
+          <div style="font-size:11px;color:#8f8d97">Toggle outcome to inspect winner border and loser defeat fadeout:</div>
+        </div>
+        <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center">
+          <div style="font-size:11px;color:#8f8d97;font-weight:600">Scenario:</div>
+          <button class="btn btn-sm ${scenario==='p1win'?'':'ghost'}" onclick="setDiscordScoreScenario('p1win')" style="padding:4px 10px;font-size:11px">${scenario==='p1win'?'✓ ':''}🏆 ${esc(p1)} Wins (2-0)</button>
+          <button class="btn btn-sm ${scenario==='p2win'?'':'ghost'}" onclick="setDiscordScoreScenario('p2win')" style="padding:4px 10px;font-size:11px">${scenario==='p2win'?'✓ ':''}🏆 ${esc(p2)} Wins (0-2)</button>
+          <button class="btn btn-sm ${scenario==='tie'?'':'ghost'}" onclick="setDiscordScoreScenario('tie')" style="padding:4px 10px;font-size:11px">${scenario==='tie'?'✓ ':''}🤝 Tie (1-1)</button>
+          <div style="width:1px;height:18px;background:#383844;margin:0 4px"></div>
+          <div style="font-size:11px;color:#8f8d97;font-weight:600">Stage:</div>
+          <button class="btn btn-sm ${!isTopCut?'':'ghost'}" onclick="setDiscordScoreStage('group')" style="padding:4px 10px;font-size:11px">${!isTopCut?'✓ ':''}Group Stage</button>
+          <button class="btn btn-sm ${isTopCut?'':'ghost'}" onclick="setDiscordScoreStage('playoffs')" style="padding:4px 10px;font-size:11px">${isTopCut?'✓ ':''}Top Cut Playoffs</button>
+        </div>
+      </div>
+
+      <!-- Discord Window Mockup -->
+      <div style="background:#313338;border:1px solid #1e1f22;border-radius:8px;overflow:hidden;box-shadow:0 8px 24px rgba(0,0,0,0.5);font-family:'gg sans','Noto Sans','Helvetica Neue',Helvetica,Arial,sans-serif">
+        <!-- Channel Header -->
+        <div style="background:#2b2d31;padding:10px 16px;border-bottom:1px solid #1f2023;display:flex;align-items:center;justify-content:space-between">
+          <div style="display:flex;align-items:center;gap:8px">
+            <span style="color:#80848e;font-size:18px;font-weight:800;line-height:1">#</span>
+            <span style="color:#f2f3f5;font-size:14px;font-weight:700">match-results</span>
+            <span style="color:#4e5058;margin:0 4px">|</span>
+            <span style="color:#949ba4;font-size:12px">Final match scores & official tournament coverage</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:6px">
+            <span style="width:8px;height:8px;border-radius:50%;background:#23a55a;display:inline-block"></span>
+            <span style="color:#949ba4;font-size:11px;font-weight:600">Connected</span>
+          </div>
+        </div>
+
+        <!-- Chat Message Content -->
+        <div style="padding:16px;display:flex;gap:14px;align-items:flex-start">
+          <!-- Bot Avatar -->
+          <div style="width:40px;height:40px;border-radius:50%;background:#ef3038;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 6px rgba(0,0,0,0.4);flex-shrink:0">
+            <svg style="width:22px;height:22px;fill:white" viewBox="0 0 24 24"><path d="M12 2a10 10 0 0 0-10 10 10 10 0 0 0 10 10 10 10 0 0 0 10-10A10 10 0 0 0 12 2zm0 2c4.08 0 7.45 3.05 7.94 7h-4.04a4 4 0 0 0-7.8 0H4.06C4.55 7.05 7.92 4 12 4zm0 6a2 2 0 1 1 0 4 2 2 0 0 1 0-4zm0 10c-4.08 0-7.45-3.05-7.94-7h4.04a4 4 0 0 0 7.8 0h4.04c-.49 3.95-3.86 7-7.94 7z"/></svg>
+          </div>
+
+          <!-- Message Body -->
+          <div style="flex:1;min-width:0">
+            <!-- Author Line -->
+            <div style="display:flex;align-items:baseline;gap:6px;margin-bottom:4px">
+              <span style="color:#f2f3f5;font-weight:600;font-size:14px">Bellimaka Bot</span>
+              <span style="background:#5865f2;color:#ffffff;font-size:10px;font-weight:700;padding:1px 4.5px;border-radius:3px;line-height:13px;text-transform:uppercase;vertical-align:middle">BOT</span>
+              <span style="color:#949ba4;font-size:11px;margin-left:4px">Today at 3:15 PM</span>
+            </div>
+
+            <!-- Content Text -->
+            <div style="color:#dbdee1;font-size:13.5px;margin-bottom:8px">
+              ${contentText}
+            </div>
+
+            <!-- Embed Card -->
+            <div style="background:#2b2d31;border-left:4px solid #ef3038;border-radius:0 4px 4px 0;padding:12px 14px;max-width:580px;box-shadow:0 1px 4px rgba(0,0,0,0.25)">
+              <div id="discordPreviewImgWrap" style="min-height:180px;display:flex;align-items:center;justify-content:center;background:#1e1f22;border-radius:6px;overflow:hidden">
+                <div style="text-align:center;padding:24px;color:#949ba4">
+                  <div style="font-size:22px;margin-bottom:6px">🎨</div>
+                  <div style="font-size:12px;font-weight:600">Rendering 900x450 Primetime Match Graphic...</div>
+                </div>
+              </div>
+              <div style="display:flex;align-items:center;gap:6px;margin-top:10px;font-size:11px;color:#949ba4">
+                <span>Bellimaka Pokemon League • ${esc(tourneyName)} • Today at 3:15 PM</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+
+    // Asynchronously generate the card with generateMatchCardDataUrl
+    try {
+      let p1Photo = (typeof profilePictures !== 'undefined' ? profilePictures[p1] : '') || '';
+      let p2Photo = (typeof profilePictures !== 'undefined' ? profilePictures[p2] : '') || '';
+      let cardData = {
+        p1: p1,
+        p2: p2,
+        s1: s1,
+        s2: s2,
+        p1Team: p1Team,
+        p2Team: p2Team,
+        rec1: '(4 - 1)',
+        rec2: '(2 - 3)',
+        stage: isTopCut ? 'TOP CUT PLAYOFFS' : 'WB QUARTERFINAL 2',
+        roundLabel: isTopCut ? 'Semifinals' : 'Round 3',
+        p1Photo: p1Photo,
+        p2Photo: p2Photo,
+        isTopCut: isTopCut
+      };
+      let dataUrl = await generateMatchCardDataUrl(cardData);
+      let imgWrap = document.querySelector('#discordPreviewImgWrap');
+      if(imgWrap && dataUrl){
+        imgWrap.innerHTML = `<img src="${dataUrl}" style="width:100%;height:auto;display:block;border-radius:6px;border:1px solid rgba(255,255,255,0.06);box-shadow:0 4px 14px rgba(0,0,0,0.4)" alt="Discord Match Result Graphic">`;
+      }
+    } catch(err){
+      console.warn('Preview match card render error:', err);
+    }
+  } else {
+    // Draft Pick Preview
+    let draftSamples = [
+      {
+        coach: 'Ethan',
+        pokemon: 'Meowscarada',
+        cost: 18,
+        round: 3,
+        pickNum: 22,
+        teamCount: 3,
+        maxSlots: 10,
+        budgetLeft: 62,
+        nextCoach: 'Max',
+        isComplete: false
+      },
+      {
+        coach: 'Ozy',
+        pokemon: 'Iron Valiant',
+        cost: 19,
+        round: 2,
+        pickNum: 14,
+        teamCount: 2,
+        maxSlots: 10,
+        budgetLeft: 78,
+        nextCoach: 'Jace',
+        isComplete: false
+      },
+      {
+        coach: 'Jace',
+        pokemon: 'Garchomp',
+        cost: 17,
+        round: 4,
+        pickNum: 31,
+        teamCount: 4,
+        maxSlots: 10,
+        budgetLeft: 45,
+        nextCoach: 'Dao Ming',
+        isComplete: false
+      },
+      {
+        coach: 'Max',
+        pokemon: 'Corviknight',
+        cost: 15,
+        round: 10,
+        pickNum: 80,
+        teamCount: 10,
+        maxSlots: 10,
+        budgetLeft: 2,
+        nextCoach: null,
+        isComplete: true
+      }
+    ];
+
+    let sampleIdx = _discordPreviewState.draftSampleIndex || 0;
+    if(sampleIdx < 0 || sampleIdx >= draftSamples.length) sampleIdx = 0;
+    let s = draftSamples[sampleIdx];
+
+    let cleanMon = s.pokemon.toLowerCase().replace(/[^a-z0-9]/g, '');
+    let spriteUrl = (typeof pokeSprite === 'function' ? pokeSprite(s.pokemon) : '') || `https://play.pokemonshowdown.com/sprites/gen5/${cleanMon}.png`;
+
+    let sampleButtons = draftSamples.map((samp, idx) => {
+      let isSel = idx === sampleIdx;
+      return `<button class="btn btn-sm ${isSel ? '' : 'ghost'}" onclick="setDiscordDraftSample(${idx})" style="padding:4px 10px;font-size:11px">${isSel ? '✓ ' : ''}${samp.isComplete ? '🏁 Final Pick' : `${samp.coach}: ${samp.pokemon}`}</button>`;
+    }).join(' ');
+
+    let contentText = s.isComplete
+      ? `<strong style="color:#fff">${esc(s.coach)}</strong> drafted <strong style="color:#fff">${esc(s.pokemon)}</strong>!<br><br>🏁 <strong style="color:#fff">THE DRAFT IS OFFICIALLY COMPLETE!</strong> Congratulations to all coaches on assembling their rosters!`
+      : `<strong style="color:#fff">${esc(s.coach)}</strong> drafted <strong style="color:#fff">${esc(s.pokemon)}</strong>!<br><br>⏰ <strong style="color:#fff">ON THE CLOCK:</strong> <span style="background:rgba(88,101,242,0.3);color:#c9cdfb;font-weight:500;padding:2px 6px;border-radius:3px;font-size:13px">@${esc(s.nextCoach)}</span> — you are on the clock for <strong style="color:#fff">Round ${s.round} (Pick #${s.pickNum})</strong>!`;
+
+    bodyEl.innerHTML = `
+      <!-- Simulation Controls -->
+      <div style="background:#141419;border:1px solid #2b2b36;border-radius:8px;padding:10px 14px;margin-bottom:14px;display:flex;flex-direction:column;gap:8px">
+        <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px">
+          <div style="font-size:11px;font-weight:700;color:#7983f5;text-transform:uppercase;letter-spacing:0.5px">Interactive Simulation Controls</div>
+          <div style="font-size:11px;color:#8f8d97">Select a sample pick to test sprite, on-the-clock mention & embed fields:</div>
+        </div>
+        <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center">
+          <div style="font-size:11px;color:#8f8d97;font-weight:600">Sample:</div>
+          ${sampleButtons}
+        </div>
+      </div>
+
+      <!-- Discord Window Mockup -->
+      <div style="background:#313338;border:1px solid #1e1f22;border-radius:8px;overflow:hidden;box-shadow:0 8px 24px rgba(0,0,0,0.5);font-family:'gg sans','Noto Sans','Helvetica Neue',Helvetica,Arial,sans-serif">
+        <!-- Channel Header -->
+        <div style="background:#2b2d31;padding:10px 16px;border-bottom:1px solid #1f2023;display:flex;align-items:center;justify-content:space-between">
+          <div style="display:flex;align-items:center;gap:8px">
+            <span style="color:#80848e;font-size:18px;font-weight:800;line-height:1">#</span>
+            <span style="color:#f2f3f5;font-size:14px;font-weight:700">draft-room</span>
+            <span style="color:#4e5058;margin:0 4px">|</span>
+            <span style="color:#949ba4;font-size:12px">Live draft picks, roster updates & coach clock alerts</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:6px">
+            <span style="width:8px;height:8px;border-radius:50%;background:#23a55a;display:inline-block"></span>
+            <span style="color:#949ba4;font-size:11px;font-weight:600">Connected</span>
+          </div>
+        </div>
+
+        <!-- Chat Message Content -->
+        <div style="padding:16px;display:flex;gap:14px;align-items:flex-start">
+          <!-- Bot Avatar -->
+          <div style="width:40px;height:40px;border-radius:50%;background:#ef3038;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 6px rgba(0,0,0,0.4);flex-shrink:0">
+            <svg style="width:22px;height:22px;fill:white" viewBox="0 0 24 24"><path d="M12 2a10 10 0 0 0-10 10 10 10 0 0 0 10 10 10 10 0 0 0 10-10A10 10 0 0 0 12 2zm0 2c4.08 0 7.45 3.05 7.94 7h-4.04a4 4 0 0 0-7.8 0H4.06C4.55 7.05 7.92 4 12 4zm0 6a2 2 0 1 1 0 4 2 2 0 0 1 0-4zm0 10c-4.08 0-7.45-3.05-7.94-7h4.04a4 4 0 0 0 7.8 0h4.04c-.49 3.95-3.86 7-7.94 7z"/></svg>
+          </div>
+
+          <!-- Message Body -->
+          <div style="flex:1;min-width:0">
+            <!-- Author Line -->
+            <div style="display:flex;align-items:baseline;gap:6px;margin-bottom:4px">
+              <span style="color:#f2f3f5;font-weight:600;font-size:14px">Bellimaka Bot</span>
+              <span style="background:#5865f2;color:#ffffff;font-size:10px;font-weight:700;padding:1px 4.5px;border-radius:3px;line-height:13px;text-transform:uppercase;vertical-align:middle">BOT</span>
+              <span style="color:#949ba4;font-size:11px;margin-left:4px">Today at 3:18 PM</span>
+            </div>
+
+            <!-- Content Text -->
+            <div style="color:#dbdee1;font-size:13.5px;margin-bottom:10px;line-height:1.45">
+              ${contentText}
+            </div>
+
+            <!-- Embed Card -->
+            <div style="background:#2b2d31;border-left:4px solid #ef3038;border-radius:0 4px 4px 0;padding:14px 16px;max-width:540px;box-shadow:0 1px 4px rgba(0,0,0,0.25)">
+              <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px">
+                <div style="flex:1">
+                  <div style="color:#00a8fc;font-weight:700;font-size:14px;margin-bottom:4px">🏆 ${esc(tourneyName)} — Round ${s.round}, Pick #${s.pickNum}</div>
+                  <div style="color:#dbdee1;font-size:13px;margin-bottom:12px"><strong style="color:#fff">${esc(s.coach)}</strong> drafted <strong style="color:#fff">${esc(s.pokemon)}</strong>! 🎉</div>
+                </div>
+                <div style="flex-shrink:0;width:64px;height:64px;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.2);border-radius:6px;border:1px solid rgba(255,255,255,0.05)">
+                  <img src="${spriteUrl}" style="max-width:58px;max-height:58px;image-rendering:pixelated;filter:drop-shadow(0 2px 5px rgba(0,0,0,0.5))" alt="${esc(s.pokemon)}">
+                </div>
+              </div>
+
+              <!-- Field Grid -->
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px 14px;margin-top:4px">
+                <div>
+                  <div style="font-size:11px;font-weight:700;color:#949ba4;text-transform:uppercase;margin-bottom:2px">Cost</div>
+                  <div style="font-size:13px;font-weight:600;color:#dbdee1">${s.cost} pts</div>
+                </div>
+                <div>
+                  <div style="font-size:11px;font-weight:700;color:#949ba4;text-transform:uppercase;margin-bottom:2px">Pick #</div>
+                  <div style="font-size:13px;font-weight:600;color:#dbdee1">Round ${s.round} (#${s.pickNum})</div>
+                </div>
+                <div>
+                  <div style="font-size:11px;font-weight:700;color:#949ba4;text-transform:uppercase;margin-bottom:2px">Roster Progress</div>
+                  <div style="font-size:13px;font-weight:600;color:#dbdee1">${s.teamCount} / ${s.maxSlots} Pokémon</div>
+                </div>
+                <div>
+                  <div style="font-size:11px;font-weight:700;color:#949ba4;text-transform:uppercase;margin-bottom:2px">Budget Left</div>
+                  <div style="font-size:13px;font-weight:600;color:#dbdee1">${s.budgetLeft} pts</div>
+                </div>
+                <div style="grid-column:1/-1">
+                  <div style="font-size:11px;font-weight:700;color:#949ba4;text-transform:uppercase;margin-bottom:3px">⏰ On The Clock</div>
+                  <div>${s.isComplete ? '<span style="color:#53e89c;font-weight:700;font-size:12px">Draft Completed 🏁</span>' : `<span style="background:rgba(88,101,242,0.3);color:#c9cdfb;font-weight:500;padding:2px 6px;border-radius:3px;font-size:13px">@${esc(s.nextCoach)}</span>`}</div>
+                </div>
+              </div>
+
+              <!-- Embed Footer -->
+              <div style="display:flex;align-items:center;gap:6px;margin-top:12px;font-size:11px;color:#949ba4">
+                <span>Bellimaka Pokemon League • Live Draft • Today at 3:18 PM</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+}
+
+function switchDiscordPreviewTab(tab){
+  _discordPreviewState.tab = tab;
+  let scoreBtn = document.querySelector('#tabDiscordScoreBtn');
+  let draftBtn = document.querySelector('#tabDiscordDraftBtn');
+  if(scoreBtn){
+    scoreBtn.style.background = tab === 'score' ? '#5865F2' : 'transparent';
+    scoreBtn.style.borderColor = tab === 'score' ? '#5865F2' : 'transparent';
+    scoreBtn.style.color = tab === 'score' ? '#fff' : '#949ba4';
+    scoreBtn.style.fontWeight = tab === 'score' ? '700' : 'normal';
+  }
+  if(draftBtn){
+    draftBtn.style.background = tab === 'draft' ? '#5865F2' : 'transparent';
+    draftBtn.style.borderColor = tab === 'draft' ? '#5865F2' : 'transparent';
+    draftBtn.style.color = tab === 'draft' ? '#fff' : '#949ba4';
+    draftBtn.style.fontWeight = tab === 'draft' ? '700' : 'normal';
+  }
+  let sendBtn = document.querySelector('#discordPreviewSendBtn');
+  if(sendBtn){
+    sendBtn.setAttribute('onclick', `sendRealDiscordTest('${tab}')`);
+  }
+  let statusEl = document.querySelector('#discordPreviewTestStatus');
+  if(statusEl) statusEl.innerHTML = '';
+  renderDiscordPreviewContent();
+}
+
+function setDiscordScoreScenario(scenario){
+  _discordPreviewState.scoreScenario = scenario;
+  renderDiscordPreviewContent();
+}
+
+function setDiscordScoreStage(stage){
+  _discordPreviewState.stage = stage;
+  renderDiscordPreviewContent();
+}
+
+function setDiscordDraftSample(idx){
+  _discordPreviewState.draftSampleIndex = idx;
+  renderDiscordPreviewContent();
+}
+
+async function sendRealDiscordTest(channel = 'score'){
+  let url = '';
+  if(_tempDiscordConfig){
+    if(channel === 'draft') url = _tempDiscordConfig.draftWebhookUrl || _tempDiscordConfig.webhookUrl;
+    else if(channel === 'score') url = _tempDiscordConfig.scoreWebhookUrl || _tempDiscordConfig.webhookUrl;
+    else url = _tempDiscordConfig.webhookUrl || _tempDiscordConfig.draftWebhookUrl || _tempDiscordConfig.scoreWebhookUrl;
+  }
+  if(!url){
+    let cfg = await fetchDiscordConfig();
+    if(cfg){
+      if(channel === 'draft') url = cfg.draftWebhookUrl || cfg.webhookUrl;
+      else if(channel === 'score') url = cfg.scoreWebhookUrl || cfg.webhookUrl;
+      else url = cfg.webhookUrl || cfg.draftWebhookUrl || cfg.scoreWebhookUrl;
+    }
+  }
+
+  let statusEl = document.querySelector('#discordPreviewTestStatus');
+  let btn = document.querySelector('#discordPreviewSendBtn');
   let label = channel === 'draft' ? 'Draft Picks' : (channel === 'score' ? 'Match Scores' : 'General');
 
   if(!url){
-    if(statusEl) statusEl.innerHTML = `<span style="color:#fa8a90">⚠️ Please enter a Webhook URL for <b>${label}</b> first.</span>`;
+    if(statusEl) statusEl.innerHTML = `<span style="color:#fa8a90;font-size:12px">⚠️ No Webhook URL entered for <b>${esc(label)}</b> yet. Click <b>"← Back to Settings"</b> to enter your webhook URL.</span>`;
     return;
   }
 
-  if(statusEl) statusEl.innerHTML = `<span style="color:#aaa">Sending test alert to <b>${label}</b> channel...</span>`;
+  if(btn){ btn.disabled = true; btn.innerText = '⏳ Sending...'; }
+  if(statusEl) statusEl.innerHTML = `<span style="color:#aaa;font-size:12px">⏳ Sending test message to your <b>${esc(label)}</b> Discord channel...</span>`;
 
   try {
     let cfUrl = getCloudflareUrl();
@@ -14705,12 +15165,14 @@ async function testDiscordWebhook(channel = 'general'){
     });
     let data = await res.json();
     if(res.ok && data.success){
-      if(statusEl) statusEl.innerHTML = `<span style="color:#53e89c">✅ Success! Test message sent to your <b>${label}</b> Discord channel. Check Discord!</span>`;
+      if(statusEl) statusEl.innerHTML = `<span style="color:#53e89c;font-size:12px">✅ Success! Test alert delivered to your <b>${esc(label)}</b> Discord channel. Check Discord!</span>`;
     } else {
-      if(statusEl) statusEl.innerHTML = `<span style="color:#fa8a90">❌ Error: ${esc(data.error || 'Failed to post webhook')}</span>`;
+      if(statusEl) statusEl.innerHTML = `<span style="color:#fa8a90;font-size:12px">❌ Error: ${esc(data.error || 'Failed to post webhook')}</span>`;
     }
   } catch(e){
-    if(statusEl) statusEl.innerHTML = `<span style="color:#fa8a90">❌ Connection Error: ${esc(e.message)}</span>`;
+    if(statusEl) statusEl.innerHTML = `<span style="color:#fa8a90;font-size:12px">❌ Connection Error: ${esc(e.message)}</span>`;
+  } finally {
+    if(btn){ btn.disabled = false; btn.innerText = '📤 Send Real Test to Discord'; }
   }
 }
 
@@ -14762,6 +15224,7 @@ async function saveDiscordSettings(){
     let data = await res.json();
     if(res.ok && data.success){
       cachedDiscordConfig = data.config;
+      _tempDiscordConfig = null;
       closeModal();
       showDraftToast('✅ Discord Integration Settings Saved!');
     } else {
