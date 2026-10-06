@@ -12,14 +12,22 @@ Format: `v[MAJOR].[MINOR].[PATCH]` — Major = big new systems, Minor = new feat
     - Removed the darkening corner radial vignette in `.primetime-cfb-half::before`.
     - Adjusted gradient color stops in `getBattlewornBg(color, isTop)` so coach and team colors saturate fully edge-to-edge into all corners with rich color uniformity.
     - Balanced the grunge splash layer opacity from `0.82` to `0.35` so background textures complement rather than diminish team colors at the edges.
+  - **Square Team Color Box Corners**:
+    - Eliminated inner rounded corners on the Primetime matchup cards by setting `border-radius: 0` on `.primetime-cfb-stage` and both `.primetime-cfb-half` team sections.
+    - Team color backgrounds now extend as crisp, flush rectangular blocks without any rounded corners exposing dark gaps.
+  - **Uncrowded Sub-Row Layout & Winner Tag Removal**:
+    - Removed the redundant `👑 WINNER` and `FINAL` badges from the coach sub-rows, eliminating text overflow and preventing pills from crowding or shifting into Pokémon cards and avatar logos.
+    - Preserved the clean, high-contrast faded styling on the loser (`.is-loser`) as the sole, elegant outcome indicator.
+  - **Agression Font Integration (Numbers & Accents Support)**:
+    - Added `@font-face` definitions for the newly added `Agression.otf` and `Agression.ttf` font files (supporting both `'Agression'` and `'Aggression'` font-family names).
+    - Swapped out `'Another Danger'` in `.primetime-cfb-team-name-l1`, `l2`, and single-line team names for `'Agression'`, delivering superior character coverage for digits (e.g. "Team 1") and accented international characters (e.g. Vietnamese Hà Nội, Spanish, French).
   - **Consistent Solid Center Seam Divider Line**:
     - Resolved the horizontal seam divider losing color and fading from white in the center to black/transparent at the sides.
     - Updated `.primetime-cfb-seam` to a solid, edge-to-edge white line (`#ffffff`, 2.5px height) with a subtle broadcast glow (`box-shadow: 0 0 6px rgba(255, 255, 255, 0.45)`), ensuring a single, solid color all the way across.
   - **Winner vs. Loser Visual Distinction**:
     - Added dynamic `.is-winner` and `.is-loser` state styling to `.primetime-cfb-half` for completed matches.
     - The losing team's half is automatically faded and greyed out (`filter: grayscale(0.58) brightness(0.68) contrast(0.92); opacity: 0.72`), highlighting the outcome clearly while remaining interactively readable on hover.
-    - The winning team's half stays vibrant and features a bold broadcast victory badge (`👑 WINNER`) with emerald green gradient styling, gold text shadow, and outer glow in their sub-row.
-    - Losing team halves feature a clean, subdued `FINAL` badge.
+    - The winning team's half stays vibrant (`filter: brightness(1.05) saturate(1.1)`) with winning score glow in the center seam.
 
 - **Double Elimination Losers Bracket Progression Fix**:
   - **LB Round 2 Match 2 Self-Play Elimination**:
