@@ -6154,10 +6154,10 @@ function getCoachPrimaryColor(p) {
 function cleanDisplayTeamName(str) {
   if (!str || typeof str !== 'string') return '';
   let s = str.trim();
-  // Standardize curly quotes, primes, and accents typed as apostrophes to standard single quote
-  s = s.replace(/[\u2018\u2019\u0060\u00B4]/g, "'");
-  // Normalize Unicode to canonical composition (NFC) while preserving accents & international characters
-  s = s.normalize('NFC');
+  // Strip curly quotes, primes, and accents commonly typed as apostrophes
+  s = s.replace(/[\u2018\u2019\u0027\u0060\u00B4]/g, '');
+  // Decompose accented Latin characters to base + combining diacritics and strip combining diacritics, then recompose NFC to preserve Korean/CJK syllables
+  s = s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').normalize('NFC');
   // Collapse whitespace
   s = s.replace(/\s+/g, ' ').trim();
   return s;
@@ -6166,30 +6166,16 @@ function cleanDisplayTeamName(str) {
 function getCoachNameSplit(p, t, forceAuto = false) {
   if (!forceAuto) {
     if (coachNameLines[p] && (coachNameLines[p].line1 || coachNameLines[p].line2)) {
-      let l1 = cleanDisplayTeamName(coachNameLines[p].line1 || '');
-      let l2 = cleanDisplayTeamName(coachNameLines[p].line2 || '');
-      let fullTeam = (t && typeof teamName === 'function') ? teamName(t, p) : (profiles[p]?.team || '');
-      if (fullTeam && fullTeam.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase() === `${l1} ${l2}`.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()) {
-        let autoWithAccents = getCoachNameSplit(p, t, true);
-        if (autoWithAccents.line1 && autoWithAccents.line2) {
-          l1 = autoWithAccents.line1;
-          l2 = autoWithAccents.line2;
-        }
-      }
-      return { line1: l1, line2: l2 };
+      return {
+        line1: cleanDisplayTeamName(coachNameLines[p].line1 || ''),
+        line2: cleanDisplayTeamName(coachNameLines[p].line2 || '')
+      };
     }
     if (typeof profiles === 'object' && profiles[p] && (profiles[p].nameLine1 || profiles[p].nameLine2)) {
-      let l1 = cleanDisplayTeamName(profiles[p].nameLine1 || '');
-      let l2 = cleanDisplayTeamName(profiles[p].nameLine2 || '');
-      let fullTeam = (t && typeof teamName === 'function') ? teamName(t, p) : (profiles[p]?.team || '');
-      if (fullTeam && fullTeam.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase() === `${l1} ${l2}`.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()) {
-        let autoWithAccents = getCoachNameSplit(p, t, true);
-        if (autoWithAccents.line1 && autoWithAccents.line2) {
-          l1 = autoWithAccents.line1;
-          l2 = autoWithAccents.line2;
-        }
-      }
-      return { line1: l1, line2: l2 };
+      return {
+        line1: cleanDisplayTeamName(profiles[p].nameLine1 || ''),
+        line2: cleanDisplayTeamName(profiles[p].nameLine2 || '')
+      };
     }
   }
   let full = '';
@@ -6395,7 +6381,7 @@ function openBroadcastBrandingEditor(p) {
                 <input id="bbNameL2Input" value="${esc(savedSplit.line2 || '')}" placeholder="${esc(autoSplit.line2)}" style="width:100%;box-sizing:border-box;background:#0c0c11;border:1px solid #383846;border-radius:6px;padding:8px 10px;color:#f5f3f0;font:800 13.5px 'Barlow Condensed';letter-spacing:0.8px" oninput="updateBbLivePreview('${jsArg(p)}')" />
               </div>
             </div>
-            <div style="font-size:11px;color:#7e7c85;margin-top:5px">Splits team name across 2 staggered lines in 'Saphifen' font. Leave blank to auto-split (e.g. "${esc(autoSplit.line1)}" & "${esc(autoSplit.line2)}").</div>
+            <div style="font-size:11px;color:#7e7c85;margin-top:5px">Splits team name across 2 staggered lines in 'Agression' font. Leave blank to auto-split (e.g. "${esc(autoSplit.line1)}" & "${esc(autoSplit.line2)}").</div>
           </div>
 
           <div>

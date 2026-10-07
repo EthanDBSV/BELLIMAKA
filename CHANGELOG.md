@@ -5,15 +5,6 @@ Format: `v[MAJOR].[MINOR].[PATCH]` — Major = major system overhauls, Minor = n
 
 ---
 
-## [v2.3.17] — 2026-10-07
-
-### Native Accented & International Team Typography
-- **Preserved Diacritics & Accented Characters**: Removed the legacy character-stripping fallback that converted accented team names to romanized ASCII, allowing international characters (such as *Hà Nội*, *Pokémon*, or *São Paulo*) to render natively in the athletic broadcast brush font.
-- **Accented Name-Split Synchronization**: Updated automated marquee and broadcast banner name splitters to preserve diacritics across multi-line team displays, automatically syncing accented titles between the website spotlight cards and Discord announcement graphics.
-- **Punctuation & Quote Normalization**: Standardized curly quotes and primes into clean single quotes while preserving intentional apostrophes across all broadcast headings.
-
----
-
 ## [v2.3.16] — 2026-10-06
 
 ### Discord Match Card Typography & High-Visibility Score Pill
