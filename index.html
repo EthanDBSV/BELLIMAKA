@@ -1,4 +1,4 @@
-﻿<!doctype html>
+<!doctype html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
@@ -28849,9 +28849,10 @@ async function renderPredictionLeaders(t, forceFresh = false){
     }
 
     if(board.length && board[0].pts > 0){
-      let topUser = board[0].u;
+      let topUser = (typeof getCoachForUserId === 'function' ? getCoachForUserId(board[0].u) : null) || board[0].u;
       if(t.predictionKing !== topUser){
         t.predictionKing = topUser;
+        if(typeof persistLeague === 'function') persistLeague();
       }
     }
     if(typeof rebuildAllPlayerStats === 'function') rebuildAllPlayerStats();
@@ -28950,9 +28951,10 @@ async function renderPredictionLeaders(t, forceFresh = false){
   }
 
   if(board.length && board[0].pts > 0){
-    let topUser = board[0].u;
+    let topUser = (typeof getCoachForUserId === 'function' ? getCoachForUserId(board[0].u) : null) || board[0].u;
     if(t.predictionKing !== topUser){
       t.predictionKing = topUser;
+      if(typeof persistLeague === 'function') persistLeague();
     }
   }
   if(typeof rebuildAllPlayerStats === 'function') rebuildAllPlayerStats();
@@ -30718,17 +30720,25 @@ function calculateLeagueRecords(forceRefresh = false){
         }
 
         // Prediction King: Top prediction score in a tournament with predictions scored
-        let pk = t.predictionKing || t.predictionLeader || t.predictionWinner;
         let tCache = predictionScoresCache[t.id] || (typeof loadCachedPredictionScores === 'function' ? loadCachedPredictionScores(t.id) : null);
-        if(!pk && tCache?.rows?.length){
+        let pkPlayers = [];
+        if(tCache?.rows?.length){
           let { rows: board } = scorePredictionRows(t, tCache.rows, id => getCoachForUserId(id));
           if(board.length && board[0].pts > 0){
-            pk = getCoachForUserId(board[0].u);
-            t.predictionKing = pk;
+            let topPts = board[0].pts;
+            let topWinners = board.filter(b => b.pts === topPts).map(b => (typeof getCoachForUserId === 'function' ? getCoachForUserId(b.u) : null) || b.u).filter(Boolean);
+            pkPlayers = [...new Set(topWinners)];
+            if(pkPlayers.length && t.predictionKing !== pkPlayers[0]){
+              t.predictionKing = pkPlayers[0];
+            }
           }
         }
-        let pkPlayer = pk ? getCoachForUserId(pk) : null;
-        if(pkPlayer === p){
+        if(!pkPlayers.length){
+          let pk = t.predictionKing || t.predictionLeader || t.predictionWinner;
+          let pkP = pk ? ((typeof getCoachForUserId === 'function' ? getCoachForUserId(pk) : null) || pk) : null;
+          if(pkP) pkPlayers = [pkP];
+        }
+        if(pkPlayers.includes(p)){
           if(!statsByPlayer[p].badges.some(b => b.id === 'prediction-king-' + t.id)){
             statsByPlayer[p].badges.push({
               id: 'prediction-king-' + t.id,
@@ -30778,12 +30788,15 @@ function calculateLeagueRecords(forceRefresh = false){
           
           let pRowMap = {};
           pRows.forEach(r => {
+            let cKey = typeof canonicalPredictionEventKey === 'function' ? canonicalPredictionEventKey(r.prediction_key) : r.prediction_key;
+            pRowMap[cKey] = r.selection;
             pRowMap[r.prediction_key] = r.selection;
           });
 
           // Must have predicted every settled prediction in the tournament and gotten 100% right
           let allCorrect = totalSettledKeys.every(k => {
-            let userChoice = pRowMap[k] || (k.startsWith('draftdex-bpick-') ? pRowMap['Top Cut Bracket Match · ' + k.slice(15)] : null);
+            let cKey = typeof canonicalPredictionEventKey === 'function' ? canonicalPredictionEventKey(k) : k;
+            let userChoice = pRowMap[cKey] || pRowMap[k] || (k.startsWith('draftdex-bpick-') ? pRowMap['Top Cut Bracket Match · ' + k.slice(15)] : null);
             if(!userChoice) return false;
             let outcome = predictionOutcome(t, k);
             return outcome.answer != null && outcome.answer === userChoice;

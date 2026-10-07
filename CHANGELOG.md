@@ -17,6 +17,7 @@ Format: `v[MAJOR].[MINOR].[PATCH]` — Major = major system overhauls, Minor = n
 - **Dynamic Playoff Score Tracking**: Ensured the prediction leaderboard immediately updates and recalculates as tournament playoff matches conclude, eliminating stale standings and keeping points fully aligned between personal prediction ballots and public rankings.
 - **Universal Bracket Match Recognition**: Enhanced tournament bracket prediction matching to reliably recognize and award points for playoff series regardless of internal bracket separators or match numbering formats.
 - **Unified Ballot Consolidation**: Synchronized pick deduplication so all picks submitted under linked player profiles and usernames combine seamlessly into one accurate leaderboard total.
+- **Dynamic Prediction Accolades & Badges**: Rebuilt the Hall of Fame badge evaluation engine to dynamically score tournament prediction standings in real time, ensuring tournament honors like Prediction King seamlessly follow live playoff points and align with all-time career records.
 
 ---
 
