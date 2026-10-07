@@ -11,7 +11,8 @@ Format: `v[MAJOR].[MINOR].[PATCH]` — Major = major system overhauls, Minor = n
 - **Single-Line Team Titles**: Streamlined team names on Discord match announcement cards into a single, bold line to fill the center broadcast area with clean, balanced spacing.
 - **Smart Title Auto-Fitting**: Configured dynamic font scaling so exceptionally long team names automatically resize to fit comfortably without crowding coach avatars.
 - **Enlarged High-Visibility Score Pill**: Expanded the center score pill into a significantly larger capsule with bold, high-contrast numbers for effortless reading at smaller Discord preview sizes.
-- **Clean Record Badges**: Standardized win-loss records on avatar badges to ensure clean, consistent formatting without duplicate parentheses.
+- **Reliable Broadcast Font Preloading**: Ensured custom athletic brush typography (*Saphifen*) reliably renders across all tabs and match completion contexts with proactive font-face preloading and memory-cached drawing safeguards.
+- **Clean Record Badges & Subtitle Encoding**: Standardized win-loss records on avatar badges and sanitized match stage headers to eliminate encoding artifacts and ensure crisp bullet separators.
 
 ### Playoff Prediction Leaderboard Synchronization
 - **Dynamic Playoff Score Tracking**: Ensured the prediction leaderboard immediately updates and recalculates as tournament playoff matches conclude, eliminating stale standings and keeping points fully aligned between personal prediction ballots and public rankings.
