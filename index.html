@@ -17413,6 +17413,9 @@ async function saveTopCutScore(matchId){
   t.bracketManagerData = JSON.parse(JSON.stringify(h.storage.data));
   await refreshTopCutCache(t);
   persistLeague();
+  if(typeof renderPredictionLeaders === 'function'){
+    renderPredictionLeaders(t, true);
+  }
   closeModal();
   render();
 
@@ -25479,14 +25482,16 @@ function canonicalPredictionEventKey(key){
   if(/^Who will be the .* Champion\?$/i.test(key)) return 'champion';
   let top = key.match(/^Who will top (.+)\?$/i);
   if(top) return 'group:' + top[1].trim().toLowerCase();
-  let bSlot = key.match(/^(?:draftdex-bpick-|Top Cut Bracket Match · )(.+)$/i);
+  // Robustly handle any separator (dot, bullet, unicode bullet, dash, spaces) between Match and slot id
+  let bSlot = key.match(/^(?:draftdex-bpick-|Top Cut Bracket Match\s*[\S\s]*?\s*)(wb\d+|lb\d+|gf\d+|[a-z0-9_]+)$/i) ||
+              key.match(/^(?:draftdex-bpick-|Top Cut Bracket Match[^\w]+)(.+)$/i);
   if(bSlot) return 'bracket:' + bSlot[1].trim().toLowerCase();
-  let cut = key.match(/^Top Cut · Who wins: (.+) vs (.+)$/i);
+  let cut = key.match(/^Top Cut\s*[\S\s]*?\s*Who wins:\s*(.+)\s+vs\s+(.+)$/i);
   if(cut){
     let p = [cut[1].trim(), cut[2].trim()].sort((a,b) => a.localeCompare(b));
     return 'cut:' + p[0] + ' vs ' + p[1];
   }
-  let vs = key.match(/^Who wins: (.+) vs (.+)$/i);
+  let vs = key.match(/^Who wins:\s*(.+)\s+vs\s+(.+)$/i);
   if(vs){
     let p = [vs[1].trim(), vs[2].trim()].sort((a,b) => a.localeCompare(b));
     return 'match:' + p[0] + ' vs ' + p[1];
@@ -25499,7 +25504,8 @@ function deduplicatePredictionRows(rows){
   let userPicks = {};
   rows.forEach(r => {
     if(!r || !r.prediction_key) return;
-    let uid = r.user_id || 'Player';
+    let coach = typeof getCoachForUserId === 'function' ? getCoachForUserId(r.user_id) : null;
+    let uid = coach || r.user_id || 'Player';
     if(!userPicks[uid]) userPicks[uid] = new Map();
     let cKey = canonicalPredictionEventKey(r.prediction_key);
     let existing = userPicks[uid].get(cKey);
@@ -28415,13 +28421,14 @@ function predictionOutcome(t, key){
     } catch(e){ return { value: 45, answer: null }; }
   }
 
-  // Bracket Slot Predictions (draftdex-bpick-wb1, Top Cut Bracket Match · wb1, etc.)
-  let bSlot = key.match(/^(?:draftdex-bpick-|Top Cut Bracket Match · )(.+)$/);
+  // Bracket Slot Predictions (draftdex-bpick-wb1, Top Cut Bracket Match Â· wb1, etc.)
+  let bSlot = key.match(/^(?:draftdex-bpick-|Top Cut Bracket Match\s*[\S\s]*?\s*)(wb\d+|lb\d+|gf\d+|[a-z0-9_]+)$/i) ||
+              key.match(/^(?:draftdex-bpick-|Top Cut Bracket Match[^\w]+)(.+)$/i);
   if(bSlot){
-    let slotId = bSlot[1];
+    let slotId = bSlot[1].trim().toLowerCase();
     let model = getTournamentTopCutModel(t);
     let allBracketMatches = [...(model?.wbRounds || []).flatMap(r => r.matches), ...(model?.lbRounds || []).flatMap(r => r.matches), ...(model?.gfMatches || [])];
-    let bm = allBracketMatches.find(m => m.id === slotId);
+    let bm = allBracketMatches.find(m => (m.id || '').toLowerCase() === slotId);
     if(bm && bm.isDone && bm.winner && isKnownPlayer(bm.winner)){
       return { value: 20, answer: bm.winner };
     }
@@ -28429,11 +28436,12 @@ function predictionOutcome(t, key){
   }
 
   /* Top Cut questions carry a prefix so a bracket rematch of a group pairing can never be scored against the group result */
-  let cut = key.match(/^Top Cut · Who wins: (.+) vs (.+)$/);
+  let cut = key.match(/^Top Cut\s*[\S\s]*?\s*Who wins:\s*(.+)\s+vs\s+(.+)$/i);
   if(cut){
     let model = getTournamentTopCutModel(t);
     let allBracketMatches = [...(model?.wbRounds || []).flatMap(r => r.matches), ...(model?.lbRounds || []).flatMap(r => r.matches), ...(model?.gfMatches || [])];
-    let bm = allBracketMatches.find(x => (x.p1 === cut[1] && x.p2 === cut[2]) || (x.p1 === cut[2] && x.p2 === cut[1]));
+    let p1 = cut[1].trim(), p2 = cut[2].trim();
+    let bm = allBracketMatches.find(x => (x.p1 === p1 && x.p2 === p2) || (x.p1 === p2 && x.p2 === p1));
     if(bm && bm.isDone && bm.winner) return { value: 20, answer: bm.winner };
     return { value: 20, answer: null };
   }
@@ -28501,8 +28509,31 @@ try {
 } catch(e){}
 
 function getTournamentMatchFingerprint(t){
-  if(!t || !t.matches) return '';
-  return (t.matches || []).map(m => (m.id||'') + ':' + (m.as ?? '') + '-' + (m.bs ?? '')).join(';') + ':' + (t.champion || '');
+  if(!t) return '';
+  let parts = [];
+  if(t.matches && t.matches.length){
+    parts.push((t.matches || []).map(m => (m.id||'') + ':' + (m.as ?? '') + '-' + (m.bs ?? '')).join(';'));
+  }
+  // Include Top Cut playoff matches so leaderboard re-scores dynamically upon bracket results
+  if(t.topCutCache?.results && t.topCutCache.results.length){
+    parts.push('tc:' + t.topCutCache.results.map(r => (r.matchId ?? r.id ?? '') + ':' + (r.s1 ?? '') + '-' + (r.s2 ?? '') + ':' + (r.winner ?? '')).join(';'));
+  }
+  if(t.bracketManagerData?.match && t.bracketManagerData.match.length){
+    parts.push('bm:' + t.bracketManagerData.match.map(m => (m.id ?? '') + ':' + (m.opponent1?.score ?? '') + '-' + (m.opponent2?.score ?? '') + ':' + (m.opponent1?.result ?? '')).join(';'));
+  }
+  if(typeof getTournamentTopCutModel === 'function'){
+    try {
+      let model = getTournamentTopCutModel(t);
+      if(model){
+        let allMatches = [...(model.wbRounds || []).flatMap(r => r.matches), ...(model.lbRounds || []).flatMap(r => r.matches), ...(model.gfMatches || [])];
+        if(allMatches.length){
+          parts.push('model:' + allMatches.map(m => (m.id ?? '') + ':' + (m.s1 ?? '') + '-' + (m.s2 ?? '') + ':' + (m.winner ?? '') + ':' + (m.isDone ? '1' : '0')).join(';'));
+        }
+      }
+    } catch(e){}
+  }
+  parts.push('champ:' + (t.champion || ''));
+  return parts.join('|');
 }
 
 function loadCachedPredictionScores(tournamentId){

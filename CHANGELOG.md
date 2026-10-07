@@ -13,6 +13,11 @@ Format: `v[MAJOR].[MINOR].[PATCH]` — Major = major system overhauls, Minor = n
 - **Enlarged High-Visibility Score Pill**: Expanded the center score pill into a significantly larger capsule with bold, high-contrast numbers for effortless reading at smaller Discord preview sizes.
 - **Clean Record Badges**: Standardized win-loss records on avatar badges to ensure clean, consistent formatting without duplicate parentheses.
 
+### Playoff Prediction Leaderboard Synchronization
+- **Dynamic Playoff Score Tracking**: Ensured the prediction leaderboard immediately updates and recalculates as tournament playoff matches conclude, eliminating stale standings and keeping points fully aligned between personal prediction ballots and public rankings.
+- **Universal Bracket Match Recognition**: Enhanced tournament bracket prediction matching to reliably recognize and award points for playoff series regardless of internal bracket separators or match numbering formats.
+- **Unified Ballot Consolidation**: Synchronized pick deduplication so all picks submitted under linked player profiles and usernames combine seamlessly into one accurate leaderboard total.
+
 ---
 
 ## [v2.3.15] — 2026-10-06
