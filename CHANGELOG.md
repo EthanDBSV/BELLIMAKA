@@ -7,6 +7,20 @@ Format: `v[MAJOR].[MINOR].[PATCH]` — Major = major system overhauls, Minor = n
 
 ## [v2.3.17] — 2026-10-08
 
+### Tournament Creator & Archive Edit Hub Overhaul
+- **5-Step Tabbed Tournament Creator**: Redesigned the monolithic "Create Tournament" modal into an intuitive, tabbed multi-step wizard:
+  - *1. Details & Dates*: Tournament title, season number, custom badge label, regulation description, and scheduling dates.
+  - *2. Format & Rules*: Opening stage architecture (Round Robin groups or Swiss System), playoff top cut formats (Double or Single Elimination), group counts, qualification thresholds, and Swiss pairing pool rules.
+  - *3. Coaches & Staff*: Tournament Director moderator permission picker, coach participant checklist with real-time selection counter, and comma-separated new profile generation.
+  - *4. Draft Setup*: Live Showdown Draft Room toggle, coach point budgets, roster size round limits, and one-click offseason/custom draft board import status.
+  - *5. Cover Artwork*: 16:9 widescreen showcase banner dropzone, interactive crop and framing tool, and live tournament card mockup preview.
+  - *Persistent Action Footer*: Seamless `← Back`, `Step X of 5`, `Next →`, and constant `+ Create Tournament` action across all tabs with automatic validation tab-jumping if participants are missing.
+- **Categorized 2-Column Edit Tournament Hub**: Replaced the cluttered vertical wall of 10 generic buttons with a modern, categorized visual cards dashboard:
+  - *Tournament & Media*: Tournament Details & Director permissions, 16:9 Showcase Cover Image & Banner, and Resync Stats & Records (for completed seasons).
+  - *Rosters & Brackets*: Players & Teams manager, Arrange & Draw Groups (with playoff lock indicators), Qualification Cutoff line, and Tiebreakers & Columns criteria.
+  - *Draft Engine*: Draft Board & Pool importer, Snake Order & Sequence, and Pokémon Point Costs editor.
+  - *Responsive Mobile Behavior*: Automatically stacks into a clean 1-column mobile card view on small viewports with custom scrollbars.
+
 ### Mobile Team Sheet Responsiveness & Navigation Cleanup
 - **Mobile Team Sheet Card Auto-Fitting**: Redesigned mobile team sheet Pokémon cards with a compact horizontal layout (scaled sprites, streamlined gaps, and wrapping stat badges) so draft point costs remain fully visible on screen without horizontal clipping.
 - **Compact Empty Slot Alignment**: Balanced empty roster slots on mobile with proportional sizing and icons to match filled roster entries.
