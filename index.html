@@ -4810,6 +4810,103 @@ body.mobile-nav-open {
     width: 100% !important;
     justify-content: center !important;
   }
+
+  /* Compact Mobile Team Sheet Pokémon Cards */
+  .team-detail-roster-grid {
+    grid-template-columns: 1fr !important;
+    gap: 10px !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+  }
+  .team-detail-mon-row {
+    padding: 10px 12px !important;
+    gap: 10px !important;
+    min-height: 80px !important;
+    box-sizing: border-box !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    overflow: hidden !important;
+  }
+  .team-detail-mon-left {
+    gap: 10px !important;
+    min-width: 0 !important;
+    flex: 1 1 auto !important;
+  }
+  .team-detail-mon-sprite {
+    width: 58px !important;
+    height: 58px !important;
+    flex: none !important;
+  }
+  .team-detail-mon-info {
+    min-width: 0 !important;
+    flex: 1 1 auto !important;
+    overflow: hidden !important;
+  }
+  .team-detail-mon-name {
+    font-size: 19px !important;
+    line-height: 1.1 !important;
+  }
+  .team-detail-type-row {
+    gap: 4px !important;
+    margin-top: 3px !important;
+  }
+  .team-detail-type-row .team-type-badge {
+    font-size: 9.5px !important;
+    padding: 2px 6px !important;
+    letter-spacing: 0.5px !important;
+  }
+  .team-detail-stat-strip {
+    gap: 4px 6px !important;
+    margin-top: 5px !important;
+  }
+  .team-detail-stat-strip > span {
+    font-size: 9.5px !important;
+    padding: 2px 6px !important;
+  }
+  .team-detail-stat-strip small {
+    font-size: 8.5px !important;
+  }
+  .team-detail-mon-right {
+    min-width: 44px !important;
+    flex: none !important;
+    text-align: right !important;
+  }
+  .team-detail-mon-cost {
+    font-size: 24px !important;
+    line-height: 1 !important;
+    min-width: 24px !important;
+  }
+  .team-detail-mon-cost-label {
+    font-size: 8.5px !important;
+    letter-spacing: 0.5px !important;
+    white-space: nowrap !important;
+  }
+  .team-detail-empty-slot {
+    padding: 10px 12px !important;
+    min-height: 80px !important;
+    gap: 10px !important;
+    box-sizing: border-box !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    overflow: hidden !important;
+  }
+  .team-detail-empty-inner {
+    gap: 12px !important;
+  }
+  .team-detail-empty-icon {
+    width: 44px !important;
+    height: 44px !important;
+    font-size: 18px !important;
+  }
+  .team-detail-empty-title {
+    font-size: 18px !important;
+  }
+  .team-detail-empty-sub {
+    font-size: 11px !important;
+  }
+  .team-detail-empty-dash {
+    font-size: 22px !important;
+  }
 }
 
 /* Player Profile Modal Responsive Experience */
@@ -10448,9 +10545,6 @@ function openMatchReplayHubModal(tournamentId, matchKey, activeGameNum = 1, acti
             </h2>
           </div>
           <div style="display:flex;align-items:center;gap:8px;flex-shrink:0">
-            <button class="btn ghost btn-sm replay-dl-btn" style="padding:5px 11px;font-size:11px;display:inline-flex;align-items:center;gap:6px" onclick="downloadReplayHtmlFile('${t?.id}','${jsArg(matchKey)}',${activeGameNum})">
-              <span>⬇</span> <span class="dl-text">Download .html</span>
-            </button>
             <button class="close" onclick="closeModal()">×</button>
           </div>
         </div>
@@ -26809,9 +26903,6 @@ function openProfile(p){
         </div>
       </section>
     </div>
-    <div style="margin-top:20px;text-align:center">
-      <button class="btn ghost" style="width:100%;max-width:280px;padding:8px 16px;font-size:12px;font-weight:700" onclick="closeModal()">← Back to League</button>
-    </div>
   </div>
   ${getPokemonDatalistHtml()}
 </div></div>`
@@ -33331,7 +33422,7 @@ function TeamRosterDetailView(t, p){
                     `}
                   </div>
                 </div>
-                <div style="text-align:right;flex:none">
+                <div class="team-detail-mon-right" style="text-align:right;flex:none">
                   ${canManageTournament(t) ? `
                     <div class="team-detail-mon-cost" onclick="promptEditPokemonCost('${jsArg(t.id)}', '${jsArg(s.monName)}', ${s.cost})" title="Click to edit draft points" style="cursor:pointer;transition:all .15s" onmouseover="this.style.color='#ffd166';this.style.transform='scale(1.08)'" onmouseout="this.style.color='';this.style.transform=''">
                       ${esc(s.costDisplay)} <span style="font-size:10px;opacity:0.6;margin-left:2px">✎</span>
@@ -33339,32 +33430,25 @@ function TeamRosterDetailView(t, p){
                   ` : `
                     <div class="team-detail-mon-cost" title="Draft Cost / Value">${esc(s.costDisplay)}</div>
                   `}
-                  <div style="font-size:10px;font-weight:800;letter-spacing:1px;color:#8e8c95;text-transform:uppercase;margin-top:2px">DRAFT PTS</div>
+                  <div class="team-detail-mon-cost-label" style="font-size:10px;font-weight:800;letter-spacing:1px;color:#8e8c95;text-transform:uppercase;margin-top:2px">DRAFT PTS</div>
                 </div>
               </div>
             `;
           } else {
             return `
               <div class="team-detail-empty-slot">
-                <div style="display:flex;align-items:center;gap:18px">
-                  <span style="width:68px;height:68px;border-radius:50%;border:1.5px dashed #3e3e56;display:grid;place-items:center;color:#555468;font-size:24px;flex:none;background:rgba(255,255,255,0.02)">◓</span>
-                  <div>
-                    <span style="font:800 22px 'Barlow Condensed';letter-spacing:0.8px;color:#7e7c8e;text-transform:uppercase">Slot ${s.slotNum} · Open</span>
-                    <div style="font-size:12px;color:#555468;letter-spacing:0.5px;margin-top:3px">Unassigned Roster Pick</div>
+                <div class="team-detail-empty-inner" style="display:flex;align-items:center;gap:18px;min-width:0">
+                  <span class="team-detail-empty-icon" style="width:68px;height:68px;border-radius:50%;border:1.5px dashed #3e3e56;display:grid;place-items:center;color:#555468;font-size:24px;flex:none;background:rgba(255,255,255,0.02)">◓</span>
+                  <div style="min-width:0">
+                    <span class="team-detail-empty-title" style="font:800 22px 'Barlow Condensed';letter-spacing:0.8px;color:#7e7c8e;text-transform:uppercase;display:block">Slot ${s.slotNum} · Open</span>
+                    <div class="team-detail-empty-sub" style="font-size:12px;color:#555468;letter-spacing:0.5px;margin-top:3px">Unassigned Roster Pick</div>
                   </div>
                 </div>
-                <span style="font:900 28px 'Barlow Condensed';color:#3e3d4c">—</span>
+                <span class="team-detail-empty-dash" style="font:900 28px 'Barlow Condensed';color:#3e3d4c;flex:none">—</span>
               </div>
             `;
           }
         }).join('')}
-      </div>
-
-      <!-- Bottom Return Button -->
-      <div style="margin-top:20px;text-align:center">
-        <button class="btn ghost" onclick="closeTeamRosterView()" style="display:inline-flex;align-items:center;gap:6px;padding:8px 20px;font-weight:800;font-size:12px;border-color:#38384a;color:#c0beca;cursor:pointer">
-          ← ALL COACHES
-        </button>
       </div>
     </div>
   `;

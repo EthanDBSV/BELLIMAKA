@@ -5,6 +5,18 @@ Format: `v[MAJOR].[MINOR].[PATCH]` — Major = major system overhauls, Minor = n
 
 ---
 
+## [v2.3.17] — 2026-10-08
+
+### Mobile Team Sheet Responsiveness & Navigation Cleanup
+- **Mobile Team Sheet Card Auto-Fitting**: Redesigned mobile team sheet Pokémon cards with a compact horizontal layout (scaled sprites, streamlined gaps, and wrapping stat badges) so draft point costs remain fully visible on screen without horizontal clipping.
+- **Compact Empty Slot Alignment**: Balanced empty roster slots on mobile with proportional sizing and icons to match filled roster entries.
+- **Streamlined Navigation & Modal Cleanups**:
+  - Removed the redundant bottom "All Coaches" return button from team sheets on both mobile and desktop, keeping navigation centered on the top back button.
+  - Removed the redundant "Back to League" button at the bottom of player profile modals to reduce modal scroll clutter.
+  - Removed the duplicate top-right "Download .html" button in the replay viewer modal header, keeping the dedicated red replay download button in the footer.
+
+---
+
 ## [v2.3.16] — 2026-10-06
 
 ### Discord Match Card Typography & High-Visibility Score Pill
