@@ -12,6 +12,7 @@ Format: `v[MAJOR].[MINOR].[PATCH]` — Major = major system overhauls, Minor = n
 - **Smart Title Auto-Fitting**: Configured dynamic font scaling so exceptionally long team names automatically resize to fit comfortably without crowding coach avatars.
 - **Enlarged High-Visibility Score Pill**: Expanded the center score pill into a significantly larger capsule with bold, high-contrast numbers for effortless reading at smaller Discord preview sizes.
 - **Reliable Broadcast Font Preloading**: Ensured custom athletic brush typography (*Saphifen*) reliably renders across all tabs and match completion contexts with proactive font-face preloading and memory-cached drawing safeguards.
+- **Universal Romanization Fallback on Match Cards**: Integrated site-wide text normalization for Discord match cards, converting accented international letters to standard Roman characters (e.g. *HA NOI HOOTHOOTS*) and stripping punctuation so every letter renders seamlessly in the custom athletic brush font without awkward system font glyph substitutions.
 - **Clean Record Badges & Subtitle Encoding**: Standardized win-loss records on avatar badges and sanitized match stage headers to eliminate encoding artifacts and ensure crisp bullet separators.
 
 ### Playoff Prediction Leaderboard Synchronization

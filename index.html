@@ -15470,7 +15470,7 @@ async function generateMatchCardDataUrl(data){
       const minFontSize = 32;
       const maxTextW = 630; // keeps generous buffer before the coach avatar
 
-      let displayTitle = (teamTitle || '').toUpperCase();
+      let displayTitle = (typeof cleanDisplayTeamName === 'function' ? cleanDisplayTeamName(teamTitle) : (teamTitle || '')).toUpperCase();
       const fontStack = '"Saphifen", "Agression", "Aggression", "Agency FB", "Impact", "Another Danger", "Arial Black", "Barlow Condensed", sans-serif';
       hctx.font = `italic 900 ${baseFontSize}px ${fontStack}`;
       let measuredW = hctx.measureText(displayTitle).width;
