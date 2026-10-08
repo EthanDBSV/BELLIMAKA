@@ -7,6 +7,11 @@ Format: `v[MAJOR].[MINOR].[PATCH]` — Major = major system overhauls, Minor = n
 
 ## [v2.3.17] — 2026-10-08
 
+### Playoff Top Cut Bracket Replay Match Isolation
+- **Strict Match Identity Isolation**: Fixed an issue where bracket matches between coaches who meet multiple times in a double-elimination tournament (such as Upper Bracket and Lower Bracket / Grand Finals) shared or bled replays.
+- **Unplayed Match Safeguards**: Prevented unplayed or unscored bracket matches (`!m.isDone`) from borrowing completed replays or box score links via coach-name fallback scanning.
+- **Direct Match ID Precedence**: Updated `getMatchTopCutReplays`, `getMatchTopCutReplayKey`, `findTournamentMatch`, and `getTournamentTopCutModel` so replays are strictly keyed by exact match IDs (`actualMatchId` / `id`), ensuring completed Upper Bracket matches retain their full replay series while upcoming Lower Bracket rematches remain clean with only the add replay action.
+
 ### Tournament Creator & Archive Edit Hub Overhaul
 - **5-Step Tabbed Tournament Creator**: Redesigned the monolithic "Create Tournament" modal into an intuitive, tabbed multi-step wizard:
   - *1. Details & Dates*: Tournament title, season number, custom badge label, regulation description, and scheduling dates.

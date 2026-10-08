@@ -9933,6 +9933,8 @@ function getMatchTopCutReplays(t, m, matchKey) {
   if(Array.isArray(m.replays) && m.replays.length > 0) return m.replays;
   if(!t.topCutReplays || typeof t.topCutReplays !== 'object') return [];
 
+  let hasMatchId = (m.actualMatchId != null || m.matchId != null || m.id != null || (matchKey && !String(matchKey).includes('_vs_')));
+
   let keys = [
     matchKey,
     matchKey ? String(matchKey).replace(/^tc_/, '') : null,
@@ -9950,14 +9952,21 @@ function getMatchTopCutReplays(t, m, matchKey) {
     if(Array.isArray(list) && list.length > 0) return list;
   }
 
-  // Fallback: match by coaches
-  let p1 = m.p1 || m.a;
-  let p2 = m.p2 || m.b;
-  if(p1 && p2){
-    for(let k in t.topCutReplays){
-      let list = t.topCutReplays[k];
-      if(isReplayListForCoaches(list, p1, p2, t, k)){
-        return list;
+  // Fallback by coaches: ONLY for matches without a distinct match ID and that are completed / have scores.
+  // Never borrow replays from another match ID or for an unplayed match.
+  let isDone = m.isDone || (m.s1 != null && m.s2 != null) || (m.as != null && m.bs != null && m.as !== '' && m.bs !== '');
+  if(!hasMatchId && isDone){
+    let p1 = m.p1 || m.a;
+    let p2 = m.p2 || m.b;
+    if(p1 && p2){
+      let myIdStr = String(m.actualMatchId ?? m.matchId ?? m.id ?? '');
+      for(let k in t.topCutReplays){
+        let cleanK = String(k).replace(/^tc_/, '');
+        if(t.bracketManagerData?.match?.some(b => String(b.id) === cleanK && String(b.id) !== myIdStr)) continue;
+        let list = t.topCutReplays[k];
+        if(isReplayListForCoaches(list, p1, p2, t, k)){
+          return list;
+        }
       }
     }
   }
@@ -9973,7 +9982,27 @@ function getMatchTopCutReplayKey(t, m, matchKey) {
 
   let p1 = m?.p1 || m?.a;
   let p2 = m?.p2 || m?.b;
-  if(t?.topCutReplays && p1 && p2) {
+  let isDone = m?.isDone || (m?.s1 != null && m?.s2 != null) || (m?.as != null && m?.bs != null && m?.as !== '' && m?.bs !== '');
+
+  if(t?.bracketManagerData?.match && t?.bracketManagerData?.participant && p1 && p2){
+    let bmd = t.bracketManagerData;
+    let nameOf = id => bmd.participant.find(p => p.id === id)?.name;
+    let bMatches = bmd.match.filter(b => {
+      let op1 = nameOf(b.opponent1?.id);
+      let op2 = nameOf(b.opponent2?.id);
+      return (op1 === p1 && op2 === p2) || (op1 === p2 && op2 === p1);
+    });
+    if(bMatches.length === 1 && bMatches[0].id != null){
+      return 'tc_' + bMatches[0].id;
+    } else if(bMatches.length > 1){
+      let target = isDone
+        ? (bMatches.find(b => b.status === 4 || b.status === 5) || bMatches[0])
+        : (bMatches.find(b => b.status === 2 || b.status === 0 || b.status === 1) || bMatches[bMatches.length - 1]);
+      if(target && target.id != null) return 'tc_' + target.id;
+    }
+  }
+
+  if(isDone && t?.topCutReplays && p1 && p2) {
     for(let k in t.topCutReplays) {
       let list = t.topCutReplays[k];
       if(isReplayListForCoaches(list, p1, p2, t, k)) {
@@ -9981,16 +10010,7 @@ function getMatchTopCutReplayKey(t, m, matchKey) {
       }
     }
   }
-  if(t?.bracketManagerData?.match && t?.bracketManagerData?.participant && p1 && p2){
-    let bmd = t.bracketManagerData;
-    let nameOf = id => bmd.participant.find(p => p.id === id)?.name;
-    let bm = bmd.match.find(b => {
-      let op1 = nameOf(b.opponent1?.id);
-      let op2 = nameOf(b.opponent2?.id);
-      return (op1 === p1 && op2 === p2) || (op1 === p2 && op2 === p1);
-    });
-    if(bm && bm.id != null) return 'tc_' + bm.id;
-  }
+
   if(Array.isArray(t?.topCutCache?.results) && p1 && p2){
     let cRes = t.topCutCache.results.find(res => (res.p1 === p1 && res.p2 === p2) || (res.p1 === p2 && res.p2 === p1));
     let cid = cRes?.actualMatchId ?? cRes?.matchId ?? cRes?.id;
@@ -9999,13 +10019,17 @@ function getMatchTopCutReplayKey(t, m, matchKey) {
   if(t && p1 && p2 && !_inGetTournamentTopCutModel && typeof getTournamentTopCutModel === 'function') {
     let mod = getTournamentTopCutModel(t);
     let all = mod?.allBracketMatches || [];
-    let bm = all.find(b => {
+    let bMatches = all.filter(b => {
       let bp1 = b.p1 || b.a;
       let bp2 = b.p2 || b.b;
       return (bp1 === p1 && bp2 === p2) || (bp1 === p2 && bp2 === p1);
     });
-    if(bm) {
-      let bid = bm.actualMatchId ?? bm.id;
+    if(bMatches.length === 1) {
+      let bid = bMatches[0].actualMatchId ?? bMatches[0].id;
+      if(bid != null) return String(bid).startsWith('tc_') ? bid : ('tc_' + bid);
+    } else if(bMatches.length > 1) {
+      let target = isDone ? (bMatches.find(b => b.isDone) || bMatches[0]) : (bMatches.find(b => !b.isDone) || bMatches[bMatches.length - 1]);
+      let bid = target?.actualMatchId ?? target?.id;
       if(bid != null) return String(bid).startsWith('tc_') ? bid : ('tc_' + bid);
     }
   }
@@ -10222,28 +10246,56 @@ function findTournamentMatch(t, matchKey, index) {
         ...(tcModel.lbRounds || []).flatMap(r => r.matches || []),
         ...(tcModel.gfMatches || [])
       ];
+
+      // Pass 1: Exact ID matching
       for(let bm of allBracketMatches){
         let kActual = bm.actualMatchId != null ? ('tc_' + bm.actualMatchId) : null;
         let kId = bm.id ? ('tc_' + bm.id) : null;
         let rawIdStr = bm.actualMatchId != null ? String(bm.actualMatchId) : null;
         let bmIdStr = bm.id ? String(bm.id) : null;
-
-        let p1Clean = (bm.p1 || '').trim().replace(/[^a-zA-Z0-9_-]/g, '_');
-        let p2Clean = (bm.p2 || '').trim().replace(/[^a-zA-Z0-9_-]/g, '_');
-        let isKnown = p => (typeof isKnownPlayer === 'function' ? isKnownPlayer(p) : (p && !String(p).startsWith('Seed #') && !String(p).startsWith('Winner') && !String(p).startsWith('Loser') && p !== 'BYE' && p !== 'TBD'));
-        let pMatch = (p1Clean && p2Clean && isKnown(bm.p1) && isKnown(bm.p2)) &&
-          (mKeyStr.includes(`${p1Clean}_vs_${p2Clean}`) || mKeyStr.includes(`${p2Clean}_vs_${p1Clean}`));
-
         if(
           mKeyStr === kActual ||
           mKeyStr === kId ||
           mKeyStr === rawIdStr ||
-          mKeyStr === bmIdStr ||
-          (mKeyStr.startsWith('tc_') && pMatch) ||
-          pMatch
+          mKeyStr === bmIdStr
         ){
           enrichTopCutMatch(bm, t, bm.actualMatchId, mKeyStr);
           return { match: bm, isTopCut: true, tcMatchId: bm.actualMatchId || bm.id };
+        }
+      }
+
+      // Pass 2: Coach name fallback matching (only if not an exact numeric/slot ID)
+      let isNumericOrSlotId = /^tc_\d+$/i.test(mKeyStr) || /^\d+$/.test(mKeyStr) || /^tc_(wb|lb|gf|qf|sf)\d*$/i.test(mKeyStr);
+      if(!isNumericOrSlotId){
+        let candidateMatches = [];
+        for(let bm of allBracketMatches){
+          let p1Clean = (bm.p1 || '').trim().replace(/[^a-zA-Z0-9_-]/g, '_');
+          let p2Clean = (bm.p2 || '').trim().replace(/[^a-zA-Z0-9_-]/g, '_');
+          let isKnown = p => (typeof isKnownPlayer === 'function' ? isKnownPlayer(p) : (p && !String(p).startsWith('Seed #') && !String(p).startsWith('Winner') && !String(p).startsWith('Loser') && p !== 'BYE' && p !== 'TBD'));
+          let pMatch = (p1Clean && p2Clean && isKnown(bm.p1) && isKnown(bm.p2)) &&
+            (mKeyStr.includes(`${p1Clean}_vs_${p2Clean}`) || mKeyStr.includes(`${p2Clean}_vs_${p1Clean}`));
+          if(pMatch){
+            candidateMatches.push(bm);
+          }
+        }
+        if(candidateMatches.length === 1){
+          let bm = candidateMatches[0];
+          enrichTopCutMatch(bm, t, bm.actualMatchId, mKeyStr);
+          return { match: bm, isTopCut: true, tcMatchId: bm.actualMatchId || bm.id };
+        } else if(candidateMatches.length > 1){
+          let mLower = mKeyStr.toLowerCase();
+          let roundMatch = candidateMatches.find(bm => {
+            let title = String(bm.title || '').toLowerCase();
+            let id = String(bm.id || '').toLowerCase();
+            return (mLower.includes('loser') && (title.includes('loser') || id.includes('lb'))) ||
+                   (mLower.includes('lb') && (title.includes('loser') || id.includes('lb'))) ||
+                   (mLower.includes('winner') && (title.includes('winner') || id.includes('wb'))) ||
+                   (mLower.includes('wb') && (title.includes('winner') || id.includes('wb'))) ||
+                   (mLower.includes('grand') && (title.includes('grand') || id.includes('gf')));
+          });
+          let chosen = roundMatch || candidateMatches.find(bm => !bm.isDone) || candidateMatches[0];
+          enrichTopCutMatch(chosen, t, chosen.actualMatchId, mKeyStr);
+          return { match: chosen, isTopCut: true, tcMatchId: chosen.actualMatchId || chosen.id };
         }
       }
     }
@@ -16944,10 +16996,19 @@ function getTournamentTopCutModel(t){
     if(bm.p2 && seedMap[bm.p2]) bm.p2Seed = seedMap[bm.p2];
     let reps = (Array.isArray(bm.replays) && bm.replays.length) ? bm.replays : null;
     if(!reps && t.topCutReplays){
+      let hasMatchId = (bm.actualMatchId != null || bm.id != null);
       reps = (bm.actualMatchId != null ? (t.topCutReplays[bm.actualMatchId] || t.topCutReplays['tc_' + bm.actualMatchId]) : null) ||
              (bm.id != null ? (t.topCutReplays[bm.id] || t.topCutReplays['tc_' + bm.id]) : null);
-      if(!reps && bm.p1 && bm.p2){
+      if(!reps && !hasMatchId && bm.isDone && bm.p1 && bm.p2){
         for(let k in t.topCutReplays){
+          let cleanK = String(k).replace(/^tc_/, '');
+          let belongsToOther = allBracketMatches.some(other =>
+            other !== bm && (
+              (other.actualMatchId != null && String(other.actualMatchId) === cleanK) ||
+              (other.id != null && String(other.id) === cleanK)
+            )
+          );
+          if(belongsToOther) continue;
           let list = t.topCutReplays[k];
           if(Array.isArray(list) && list.length && isReplayListForCoaches(list, bm.p1, bm.p2, t, k)){
             reps = list;
@@ -28064,7 +28125,7 @@ function getPlayerMatchHistory(p){
       if(allBracketMatches.length){
         matchingBm = allBracketMatches.find(b =>
           (tcId != null && (b.actualMatchId === tcId || b.id === tcId || String(b.actualMatchId) === String(tcId) || String(b.id) === String(tcId))) ||
-          ((b.p1 === p1 && b.p2 === p2) || (b.p1 === p2 && b.p2 === p1))
+          (tcId == null && ((b.p1 === p1 && b.p2 === p2) || (b.p1 === p2 && b.p2 === p1)))
         );
         if(matchingBm && tcId == null){
           tcId = matchingBm.actualMatchId != null ? matchingBm.actualMatchId : matchingBm.id;
