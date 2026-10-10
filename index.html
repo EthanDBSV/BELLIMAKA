@@ -6093,19 +6093,35 @@ window.onerror = function(msg, url, line, col, error) {
     app.innerHTML = `<div class="card empty" style="border-color:#ff4b54;margin:24px"><div class="card-title" style="color:#ff4b54">Website Error</div><p class="sub">Line ${line}: ${esc(msg)}</p></div>`;
   }
 };
+function tabToHash(t){
+  if(t === 'Top Cut') return 'TopCut';
+  if(t === 'Playoff Odds') return 'PlayoffOdds';
+  if(t === 'Tournament Detail') return 'TournamentDetail';
+  return encodeURIComponent(t || 'Home');
+}
+function hashToTab(h){
+  if(!h) return 'Home';
+  let clean = decodeURIComponent(h).replace(/^#/,'').trim();
+  let lower = clean.toLowerCase().replace(/[\s\-_]/g, '');
+  if(lower === 'topcut') return 'Top Cut';
+  if(lower === 'playoffodds' || lower === 'playoffs') return 'Playoff Odds';
+  if(lower === 'tournamentdetail') return 'Tournament Detail';
+  if(clean === 'Draft Board' || clean === 'Draft Tools') return 'Draft';
+  return clean || 'Home';
+}
 const tabs=['Home','Standings','Teams','Draft','Matches','Top Cut','Playoff Odds','Predictions','Records','Tournaments'];
 let current=(()=>{
   try{
-    let hash=decodeURIComponent(window.location.hash.replace(/^#/,'')||'');
-    if(hash)return (hash==='Draft Board'||hash==='Draft Tools')?'Draft':hash;
+    let hash=window.location.hash.replace(/^#/,'')||'';
+    if(hash) return hashToTab(hash);
     let saved=localStorage.getItem('draftdex-active-tab');
-    if(saved)return (saved==='Draft Board'||saved==='Draft Tools')?'Draft':saved;
+    if(saved) return hashToTab(saved);
   }catch(e){}
   return 'Home';
 })(),viewTournament=localStorage.getItem('draftdex-view-tournament')||null,detailTab=localStorage.getItem('draftdex-detail-tab')||'Standings',matchFilterPlayers=[];
 try {
   let _qp = new URLSearchParams(window.location.search);
-  if(_qp.get('tab')) current = _qp.get('tab');
+  if(_qp.get('tab')) current = hashToTab(_qp.get('tab'));
   if(_qp.get('tourney')) viewTournament = _qp.get('tourney');
   if(_qp.get('detailTab')) detailTab = _qp.get('detailTab');
   if(_qp.get('coach')) window.selectedTeamRosterCoach = _qp.get('coach');
@@ -6196,11 +6212,12 @@ function nav(){
 }
 function go(t,updateHash=true){
   if(t !== 'Teams') window.selectedTeamRosterCoach = null;
-  current=(t==='Draft Board'||t==='Draft Tools')?'Draft':t;
+  current=hashToTab(t);
   try{
     localStorage.setItem('draftdex-active-tab',current);
-    if(updateHash&&window.location.hash!=='#'+encodeURIComponent(current)){
-      history.replaceState(null,'','#'+encodeURIComponent(current));
+    let targetHash = '#' + tabToHash(current);
+    if(updateHash && window.location.hash !== targetHash){
+      history.replaceState(null,'',targetHash);
     }
   }catch(e){}
   if(current==='Predictions'){
@@ -6241,7 +6258,7 @@ function openTournament(id, tab = 'Standings'){
     localStorage.setItem('draftdex-active-tab','Tournament Detail');
     localStorage.setItem('draftdex-view-tournament',id);
     localStorage.setItem('draftdex-detail-tab',detailTab);
-    history.replaceState(null,'','#'+encodeURIComponent('Tournament Detail'));
+    history.replaceState(null,'','#'+tabToHash('Tournament Detail'));
   }catch(e){}
   render();
 }
@@ -26201,11 +26218,12 @@ tabs.length=0;
 tabs.push('Home','Standings','Teams','Draft','Matches','Top Cut','Playoff Odds','Predictions','Records','Tournaments');
 function go(tab, updateHash=true){
   if(tab !== 'Teams') window.selectedTeamRosterCoach = null;
-  current=(tab==='Draft Board'||tab==='Draft Tools')?'Draft':tab;
+  current=hashToTab(tab);
   try{
     localStorage.setItem('draftdex-active-tab', current);
-    if(updateHash && window.location.hash !== '#'+encodeURIComponent(current)){
-      history.replaceState(null, '', '#'+encodeURIComponent(current));
+    let targetHash = '#' + tabToHash(current);
+    if(updateHash && window.location.hash !== targetHash){
+      history.replaceState(null, '', targetHash);
     }
   }catch(e){}
   try{render();scrollTo(0,0)}
@@ -26216,8 +26234,9 @@ function go(tab, updateHash=true){
 }
 window.addEventListener('hashchange', ()=>{
   try{
-    let h=decodeURIComponent(window.location.hash.replace(/^#/,'')||'');
-    if(h && h!==current){go(h, false);}
+    let h=window.location.hash.replace(/^#/,'')||'';
+    let tab = hashToTab(h);
+    if(tab && tab!==current){go(tab, false);}
   }catch(e){}
 });
 function render(){
