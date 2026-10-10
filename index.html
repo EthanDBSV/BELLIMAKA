@@ -143,13 +143,18 @@
 .tc-slot.loser{opacity:0.6}
 .tc-slot-seed{font-size:10px;font-weight:800;color:#7e7c85;min-width:18px;text-align:center}
 .tc-slot.winner .tc-slot-seed{color:#ffd166}
-.tc-slot-info{display:flex;align-items:center;gap:8px;min-width:0}
+.tc-slot-info{display:flex;align-items:center;gap:8px;min-width:0;cursor:pointer;border-radius:4px;padding:2px 4px;margin:-2px -4px;transition:all .12s ease}
+.tc-slot-info:hover{background:rgba(255,255,255,0.08)}
+.tc-slot-info:hover .player-link{color:#ff777d!important;text-decoration:underline}
+.tc-slot-info:hover .mrow-face{transform:scale(1.08);transition:transform .12s ease}
 .tc-slot-name{font:800 13px 'Barlow Condensed';letter-spacing:.3px;color:#f5f3f0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .tc-slot.winner .tc-slot-name{color:#4bdd91;font-weight:900}
 .tc-slot.tbd{background:#0e0e13;opacity:0.75}
 .tc-slot-tbd{font-size:11px;color:#75737e;font-style:italic;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.tc-slot-score{font:900 15px 'Barlow Condensed';color:#f5f3f0;min-width:20px;text-align:center;padding:2px 6px;border-radius:3px;background:#0b0b0f}
+.tc-slot-score{font:900 15px 'Barlow Condensed';color:#f5f3f0;min-width:20px;text-align:center;padding:2px 6px;border-radius:3px;background:#0b0b0f;transition:all .12s ease}
 .tc-slot.winner .tc-slot-score{background:#143822;color:#4bdd91;border:1px solid #28683f}
+.tc-match-card.clickable .tc-slot-score:hover{background:#232332;border-color:var(--amber);color:#ffd166;transform:scale(1.05)}
+.tc-match-card.clickable .tc-match-head:hover{background:#14141e;color:#fff}
 .tc-slot.interactive{cursor:pointer;transition:background .12s}
 .tc-slot.interactive:hover{background:rgba(255,255,255,0.06)}
 .tc-slot.picked{background:linear-gradient(90deg,rgba(239,48,56,0.22),transparent)!important;border-left:none!important}
@@ -8530,7 +8535,7 @@ function topScore(i){let t=ongoingT(),m=t.topCutMatches[i],a=document.querySelec
 
 
 
-function playerLink(p){return `<button class="player-link" onclick="openProfile('${jsArg(p)}')" onmouseenter="highlightMatches('${jsArg(p)}', true)" onmouseleave="highlightMatches('', false)">${esc(p)}</button>`}
+function playerLink(p){return `<button class="player-link" onclick="event.stopPropagation();openProfile('${jsArg(p)}')" onmouseenter="highlightMatches('${jsArg(p)}', true)" onmouseleave="highlightMatches('', false)">${esc(p)}</button>`}
 
 /* ==========================================================================
    SHOWDOWN REPLAY & MATCH BOX SCORE ENGINE
@@ -10369,7 +10374,7 @@ function canManageMatchReplays(t, m) {
 
 function handleMatchCardReplayClick(e, tId, matchKey, hasReplays) {
   if(!e || !e.target) return;
-  if(e.target.closest('input, button, select, a, .player-link, .replay-pill, .replay-add-btn, .replay-yt-btn, .replay-mini-add-btn')) return;
+  if(e.target.closest('input, button, select, a, .player-link, .m-slot-avatar, .avatar, .tc-slot-info, .mrow-face, .replay-pill, .replay-add-btn, .replay-yt-btn, .replay-mini-add-btn')) return;
   if(hasReplays) {
     openMatchReplayHubModal(tId, matchKey, 1, 'watch');
   } else {
@@ -11980,7 +11985,7 @@ function matchCard(m,latest=false){
         <!-- Team 1 -->
         <div style="display:flex;align-items:center;justify-content:space-between;padding:7px 10px;border-radius:6px;background:${p1Won ? theme.winBg : 'transparent'};border:1px solid ${p1Won ? theme.winBorder : 'transparent'};transition:all .15s ease">
           <div style="display:flex;align-items:center;gap:10px;min-width:0">
-            <span class="avatar mini" style="background-image:${p1Face};background-size:cover;background-position:center;width:30px;height:30px;font-size:11px;border-radius:50%;border:${p1Won ? `2px solid ${theme.winAvatarBorder}` : '1px solid #33333f'};display:grid;place-items:center;box-shadow:${p1Won ? theme.winGlow : 'none'};flex:none">${p1Letter}</span>
+            <span class="avatar mini" onclick="event.stopPropagation();openProfile('${jsArg(p1)}')" style="cursor:pointer;background-image:${p1Face};background-size:cover;background-position:center;width:30px;height:30px;font-size:11px;border-radius:50%;border:${p1Won ? `2px solid ${theme.winAvatarBorder}` : '1px solid #33333f'};display:grid;place-items:center;box-shadow:${p1Won ? theme.winGlow : 'none'};flex:none" title="View ${esc(p1)}'s profile">${p1Letter}</span>
             <div style="min-width:0">
               <div style="display:flex;align-items:center;gap:6px">
                 <span style="font:800 15px 'Barlow Condensed';letter-spacing:.3px;color:${p1Won ? '#ffffff' : '#9d9ba6'}">${playerLink(p1)}</span>
@@ -11997,7 +12002,7 @@ function matchCard(m,latest=false){
         <!-- Team 2 -->
         <div style="display:flex;align-items:center;justify-content:space-between;padding:7px 10px;border-radius:6px;background:${p2Won ? theme.winBg : 'transparent'};border:1px solid ${p2Won ? theme.winBorder : 'transparent'};transition:all .15s ease">
           <div style="display:flex;align-items:center;gap:10px;min-width:0">
-            <span class="avatar mini" style="background-image:${p2Face};background-size:cover;background-position:center;width:30px;height:30px;font-size:11px;border-radius:50%;border:${p2Won ? `2px solid ${theme.winAvatarBorder}` : '1px solid #33333f'};display:grid;place-items:center;box-shadow:${p2Won ? theme.winGlow : 'none'};flex:none">${p2Letter}</span>
+            <span class="avatar mini" onclick="event.stopPropagation();openProfile('${jsArg(p2)}')" style="cursor:pointer;background-image:${p2Face};background-size:cover;background-position:center;width:30px;height:30px;font-size:11px;border-radius:50%;border:${p2Won ? `2px solid ${theme.winAvatarBorder}` : '1px solid #33333f'};display:grid;place-items:center;box-shadow:${p2Won ? theme.winGlow : 'none'};flex:none" title="View ${esc(p2)}'s profile">${p2Letter}</span>
             <div style="min-width:0">
               <div style="display:flex;align-items:center;gap:6px">
                 <span style="font:800 15px 'Barlow Condensed';letter-spacing:.3px;color:${p2Won ? '#ffffff' : '#9d9ba6'}">${playerLink(p2)}</span>
@@ -17374,7 +17379,7 @@ function topCutSection(t, preview){
 
     return `<div class="tc-slot ${isWinner?'winner':''} ${isLoser?'loser':''}">
       <span class="tc-slot-seed">${effSeed ? `#${effSeed}` : ''}</span>
-      <div class="tc-slot-info">
+      <div class="tc-slot-info" onclick="event.stopPropagation();openProfile('${jsArg(pName)}')" title="View ${esc(pName)}'s profile">
         <span class="mrow-face" style="background-image:${faceArt};background-size:cover;background-position:center;width:24px;height:24px;font-size:10px;border-radius:50%;flex:none;display:grid;place-items:center;border:2px solid ${ovrObj.color}">${faceLetter}</span>
         <div style="min-width:0">
           <div class="tc-slot-name">${playerLink(pName)}</div>
@@ -17393,7 +17398,7 @@ function topCutSection(t, preview){
 
     let isReady = isKnownPlayer(m.p1) && isKnownPlayer(m.p2);
     let isClickable = isModEditable && m.actualMatchId != null && isReady;
-    let clickAttr = isClickable ? `onclick="openTopCutScoreModal(${m.actualMatchId})" style="cursor:pointer" title="Click to enter or edit match score"` : '';
+    let clickAttr = isClickable ? `onclick="handleTopCutCardClick(event, ${m.actualMatchId})" style="cursor:pointer" title="Click to enter or edit match score"` : '';
 
     let headerBadge = '';
     if(m.isDone){
@@ -17779,6 +17784,12 @@ function renderTournamentProgressionTabHtml(t){
 }
 
 function mountTopCutViewer(){}
+
+function handleTopCutCardClick(e, matchId){
+  if(!e || !e.target) return;
+  if(e.target.closest('button, a, input, select, .player-link, .tc-slot-info, .mrow-face, .m-bracket-replays, .replay-yt-btn, .replay-mini-add-btn')) return;
+  openTopCutScoreModal(matchId);
+}
 
 async function openTopCutScoreModal(matchId){
   matchId = typeof matchId === 'string' && !isNaN(+matchId) ? +matchId : matchId;
@@ -24209,7 +24220,7 @@ function renderMatchRow(m, i, t){
     </div>
     <div class="m-card-body">
       <div class="m-slot ${aWon ? 'winner' : (bWon ? 'loser' : '')}">
-        <span class="m-slot-avatar" style="background-image:${aFace}">${aLetter}</span>
+        <span class="m-slot-avatar" ${a !== 'BYE' ? `onclick="event.stopPropagation();openProfile('${jsArg(a)}')" style="cursor:pointer;background-image:${aFace}" title="View ${esc(a)}'s profile"` : `style="background-image:${aFace}"`}>${aLetter}</span>
         <div class="m-slot-info">
           <div class="m-slot-name-row">
             <span class="m-slot-name">${aNameHtml}${aRec}</span>
@@ -24224,7 +24235,7 @@ function renderMatchRow(m, i, t){
       </div>
 
       <div class="m-slot ${bWon ? 'winner' : (aWon ? 'loser' : '')}">
-        <span class="m-slot-avatar" style="background-image:${bFace}">${bLetter}</span>
+        <span class="m-slot-avatar" ${b !== 'BYE' ? `onclick="event.stopPropagation();openProfile('${jsArg(b)}')" style="cursor:pointer;background-image:${bFace}" title="View ${esc(b)}'s profile"` : `style="background-image:${bFace}"`}>${bLetter}</span>
         <div class="m-slot-info">
           <div class="m-slot-name-row">
             <span class="m-slot-name">${bNameHtml}${bRec}</span>
