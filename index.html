@@ -29068,14 +29068,19 @@ function scorePredictionRows(t,rows,nameOf){
   };
 }
 
-let predictionScoresCache = {}; // tournament_id -> { rows, accounts, html, timestamp, fingerprint }
+const PRED_CACHE_VERSION = 'v20261010_fresh';
+let predictionScoresCache = {}; // tournament_id -> { rows, accounts, html, timestamp, fingerprint, version }
 try {
   for(let i = 0; i < localStorage.length; i++){
     let k = localStorage.key(i);
     if(k && k.startsWith('draftdex-pred-leaders-')){
       let tid = k.slice('draftdex-pred-leaders-'.length);
       let val = JSON.parse(localStorage.getItem(k));
-      if(val && val.rows) predictionScoresCache[tid] = val;
+      if(val && val.rows && val.version === PRED_CACHE_VERSION){
+        predictionScoresCache[tid] = val;
+      } else {
+        localStorage.removeItem(k);
+      }
     }
   }
 } catch(e){}
@@ -29110,24 +29115,27 @@ function getTournamentMatchFingerprint(t){
 
 function loadCachedPredictionScores(tournamentId){
   if(!tournamentId) return null;
-  if(predictionScoresCache[tournamentId] && predictionScoresCache[tournamentId].html) {
+  if(predictionScoresCache[tournamentId] && predictionScoresCache[tournamentId].html && predictionScoresCache[tournamentId].version === PRED_CACHE_VERSION) {
     return predictionScoresCache[tournamentId];
   }
   try {
     let raw = localStorage.getItem('draftdex-pred-leaders-' + tournamentId);
     if(raw){
       let parsed = JSON.parse(raw);
-      if(parsed && parsed.html){
+      if(parsed && parsed.html && parsed.version === PRED_CACHE_VERSION){
         predictionScoresCache[tournamentId] = parsed;
         return parsed;
+      } else {
+        localStorage.removeItem('draftdex-pred-leaders-' + tournamentId);
       }
     }
   } catch(e){}
-  return predictionScoresCache[tournamentId] || null;
+  return null;
 }
 
 function saveCachedPredictionScores(tournamentId, data){
   if(!tournamentId || !data) return;
+  data.version = PRED_CACHE_VERSION;
   predictionScoresCache[tournamentId] = data;
   try {
     localStorage.setItem('draftdex-pred-leaders-' + tournamentId, JSON.stringify({
@@ -29135,7 +29143,8 @@ function saveCachedPredictionScores(tournamentId, data){
       accounts: data.accounts || [],
       html: data.html || '',
       fingerprint: data.fingerprint || '',
-      timestamp: data.timestamp || Date.now()
+      timestamp: data.timestamp || Date.now(),
+      version: PRED_CACHE_VERSION
     }));
   } catch(e){}
 }
@@ -29388,7 +29397,7 @@ async function renderPredictionLeaders(t, forceFresh = false){
   let isCorrupt = cached?.html && /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i.test(cached.html);
 
   // 1. STATIONARY CHECK: If not forced, not corrupt, and match scores haven't changed, keep it completely stationary!
-  if(!forceFresh && !isCorrupt && cached && cached.html && cached.fingerprint === currentFingerprint){
+  if(!forceFresh && !isCorrupt && cached && cached.html && cached.fingerprint === currentFingerprint && cached.version === PRED_CACHE_VERSION){
     if(host && host.innerHTML !== cached.html){
       host.innerHTML = cached.html;
     }
