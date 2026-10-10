@@ -5,6 +5,17 @@ Format: `v[MAJOR].[MINOR].[PATCH]` — Major = major system overhauls, Minor = n
 
 ---
 
+## [v2.4.0] — 2026-10-10
+
+### Instant Site Performance & On-Demand Replay Streaming
+- **Ultra-Fast Site Loading**: Decoupled full Pokémon Showdown battle logs from the main league database, reducing initial site loading times by over 70% and eliminating browser storage limits.
+- **On-Demand Replay Streaming**: Match replays, battle logs, and detailed box scores now load on demand only when you choose to watch them, keeping the rest of the site lightweight and responsive.
+- **Smooth Replay Previews**: Added instant loading animations to the replay hub so you know exactly when a match is loading without any frozen screens.
+- **Smart Local Replay Caching**: Replays you watch are automatically saved to your device for instant playback on repeat visits with zero extra data usage.
+- **Instant League Records & Awards**: All player career statistics, Team of the Season honors, and tournament awards continue to calculate and display instantly across all seasons.
+
+---
+
 ## [v2.3.17] — 2026-10-08
 
 ### Playoff Top Cut Bracket Replay Match Isolation

@@ -4,11 +4,11 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover" />
   <title>Bellimaka</title>
-  <link rel="icon" type="image/png" sizes="32x32" href="Fonts%20%26%20Logos/bellimaka_logo.png?v=2.3.8">
-  <link rel="icon" type="image/png" sizes="16x16" href="Fonts%20%26%20Logos/bellimaka_logo.png?v=2.3.8">
-  <link rel="shortcut icon" type="image/png" href="Fonts%20%26%20Logos/bellimaka_logo.png?v=2.3.8">
-  <link rel="apple-touch-icon" href="Fonts%20%26%20Logos/bellimaka_logo.png?v=2.3.8">
-  <link rel="icon" type="image/x-icon" href="favicon.ico?v=2.3.8">
+  <link rel="icon" type="image/png" sizes="32x32" href="Fonts%20%26%20Logos/bellimaka_logo.png?v=2.4.0">
+  <link rel="icon" type="image/png" sizes="16x16" href="Fonts%20%26%20Logos/bellimaka_logo.png?v=2.4.0">
+  <link rel="shortcut icon" type="image/png" href="Fonts%20%26%20Logos/bellimaka_logo.png?v=2.4.0">
+  <link rel="apple-touch-icon" href="Fonts%20%26%20Logos/bellimaka_logo.png?v=2.4.0">
+  <link rel="icon" type="image/x-icon" href="favicon.ico?v=2.4.0">
   <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;500;600;700;800;900&family=DM+Sans:wght@400;500;600;700&family=Permanent+Marker&display=swap" rel="stylesheet">
   <link rel="preload" href="Fonts%20%26%20Logos/Saphifen.otf" as="font" type="font/otf" crossorigin>
@@ -10436,6 +10436,21 @@ function renderReplayPillsHtml(m, t, matchKey, canManage, isCompact = false) {
   </div>`;
 }
 
+async function saveReplayLogToCloud(replayId, logText){
+  if(!replayId || !logText) return;
+  let cfUrl = typeof getCloudflareUrl === 'function' ? getCloudflareUrl() : '';
+  if(!cfUrl) return;
+  try {
+    await fetch(`${cfUrl}/api/replay`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: replayId, log: logText })
+    });
+  } catch(e){
+    console.warn('Draftdex: failed to push on-demand replay to cloud:', e);
+  }
+}
+
 async function ensureReplayLog(tournamentId, matchKey, gameNum = 1) {
   let t = (tournamentId && tournamentData[tournamentId]) || activeT() || ongoingT();
   let mInfo = findTournamentMatch(t, matchKey);
@@ -10490,7 +10505,33 @@ async function ensureReplayLog(tournamentId, matchKey, gameNum = 1) {
     }
   } catch(e){}
 
-  // 3. Fetch authoritative cloud state
+  // 3. Fetch on-demand replay log from dedicated Cloudflare endpoint
+  try {
+    let cfUrl = typeof getCloudflareUrl === 'function' ? getCloudflareUrl() : '';
+    if(cfUrl && repId) {
+      let res = await fetch(`${cfUrl}/api/replay?id=${encodeURIComponent(repId)}`);
+      if(res.ok) {
+        let repData = await res.json();
+        if(repData && repData.log && repData.log.length > 20) {
+          replay.log = repData.log;
+          if(!window._replayLogCache) window._replayLogCache = {};
+          window._replayLogCache[repId] = repData.log;
+          if(key1) window._replayLogCache[key1] = repData.log;
+          try {
+            let dbLogs = (await idbGet('replay_logs')) || {};
+            dbLogs[repId] = repData.log;
+            if(key1) dbLogs[key1] = repData.log;
+            await idbSet('replay_logs', dbLogs);
+          } catch(err){}
+          return repData.log;
+        }
+      }
+    }
+  } catch(e) {
+    console.warn('Draftdex: on-demand replay fetch error:', e);
+  }
+
+  // 4. Fallback for legacy state
   try {
     let cfUrl = typeof getCloudflareUrl === 'function' ? getCloudflareUrl() : '';
     if(cfUrl) {
@@ -10506,8 +10547,13 @@ async function ensureReplayLog(tournamentId, matchKey, gameNum = 1) {
             if(cReplay && cReplay.log && cReplay.log.length > 20) {
               replay.log = cReplay.log;
               if(!replay.stats && cReplay.stats) replay.stats = cReplay.stats;
-              if(window._replayLogCache) window._replayLogCache[repId || key1] = replay.log;
-              saveTournamentLogsToIndexedDB(cloudState.tournaments);
+              if(!window._replayLogCache) window._replayLogCache = {};
+              window._replayLogCache[repId || key1] = replay.log;
+              try {
+                let dbLogs = (await idbGet('replay_logs')) || {};
+                dbLogs[repId || key1] = replay.log;
+                await idbSet('replay_logs', dbLogs);
+              } catch(err){}
               return replay.log;
             }
           }
@@ -10515,7 +10561,7 @@ async function ensureReplayLog(tournamentId, matchKey, gameNum = 1) {
       }
     }
   } catch(e) {
-    console.warn('Draftdex: ensureReplayLog cloud fetch error:', e);
+    console.warn('Draftdex: ensureReplayLog cloud fallback error:', e);
   }
 
   return null;
@@ -19051,7 +19097,7 @@ async function flushSync(){
     cleanTournaments[tId] = clone;
   });
 
-  // Safety guard: ensure cleanTournaments never pushes stripped empty logs to cloud
+  // Ensure stats are computed & save logs to on-demand cloud storage before stripping from sync payload
   Object.entries(cleanTournaments).forEach(([tId, t]) => {
     let tName = t.name || tId;
     if(Array.isArray(t.matches)){
@@ -19069,18 +19115,10 @@ async function flushSync(){
             if(!r.log || typeof r.log !== 'string' || r.log.length < 20){
               let p1 = m.a || m.p1 || '';
               let p2 = m.b || m.p2 || '';
-              let p1Low = p1 ? p1.toLowerCase() : '';
-              let p2Low = p2 ? p2.toLowerCase() : '';
               let g = r.game || 1;
               let cached = (r.id && window._replayLogCache?.[r.id]) ||
                 window._replayLogCache?.[`${tId}_${p1}_${p2}_g${g}`] ||
-                window._replayLogCache?.[`${tId}_${p2}_${p1}_g${g}`] ||
-                window._replayLogCache?.[`${tName}_${p1}_${p2}_g${g}`] ||
-                window._replayLogCache?.[`${tName}_${p2}_${p1}_g${g}`] ||
-                (p1Low && p2Low && window._replayLogCache?.[`${tId}_${p1Low}_${p2Low}_g${g}`]) ||
-                (p1Low && p2Low && window._replayLogCache?.[`${tId}_${p2Low}_${p1Low}_g${g}`]) ||
-                (p1Low && p2Low && window._replayLogCache?.[`${tName}_${p1Low}_${p2Low}_g${g}`]) ||
-                (p1Low && p2Low && window._replayLogCache?.[`${tName}_${p2Low}_${p1Low}_g${g}`]);
+                window._replayLogCache?.[`${tName}_${p1}_${p2}_g${g}`];
               if(cached && cached.length > 20) {
                 r.log = cached;
                 if(origR && (!origR.log || origR.log.length < 20)) origR.log = cached;
@@ -19104,6 +19142,11 @@ async function flushSync(){
                 if(origR) origR.stats = parsed;
               }
             }
+            if(r.log && r.log.length > 20){
+              r.hasLog = true;
+              saveReplayLogToCloud(r.id, r.log);
+              delete r.log; // Decouple heavy log from main state
+            }
           });
         }
       });
@@ -19118,12 +19161,9 @@ async function flushSync(){
               r.stats = origR.stats;
             }
             if(!r.log || typeof r.log !== 'string' || r.log.length < 20){
-              let kLow = k ? k.toLowerCase() : '';
               let cached = (r.id && window._replayLogCache?.[r.id]) ||
                 window._replayLogCache?.[`${tId}_tc_${k}_g${r.game || 1}`] ||
-                window._replayLogCache?.[`${tName}_tc_${k}_g${r.game || 1}`] ||
-                (kLow && window._replayLogCache?.[`${tId}_tc_${kLow}_g${r.game || 1}`]) ||
-                (kLow && window._replayLogCache?.[`${tName}_tc_${kLow}_g${r.game || 1}`]);
+                window._replayLogCache?.[`${tName}_tc_${k}_g${r.game || 1}`];
               if(cached && cached.length > 20) {
                 r.log = cached;
                 if(origR && (!origR.log || origR.log.length < 20)) origR.log = cached;
@@ -19136,10 +19176,6 @@ async function flushSync(){
               let tcMatch = (typeof findTournamentMatch === 'function') ? findTournamentMatch(t, k)?.match : null;
               let tcCoach1 = r.coach1 || origR?.coach1 || tcMatch?.a || tcMatch?.p1 || '';
               let tcCoach2 = r.coach2 || origR?.coach2 || tcMatch?.b || tcMatch?.p2 || '';
-              if(tcCoach1 && !r.coach1) r.coach1 = tcCoach1;
-              if(tcCoach2 && !r.coach2) r.coach2 = tcCoach2;
-              if(origR && tcCoach1 && !origR.coach1) origR.coach1 = tcCoach1;
-              if(origR && tcCoach2 && !origR.coach2) origR.coach2 = tcCoach2;
               let parsed = parseShowdownBattleLog(r.log, {
                 id: r.id,
                 game: r.game,
@@ -19153,6 +19189,11 @@ async function flushSync(){
                 r.stats = parsed;
                 if(origR) origR.stats = parsed;
               }
+            }
+            if(r.log && r.log.length > 20){
+              r.hasLog = true;
+              saveReplayLogToCloud(r.id, r.log);
+              delete r.log; // Decouple heavy log from main state
             }
           });
         }
