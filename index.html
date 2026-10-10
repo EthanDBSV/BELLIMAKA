@@ -30413,6 +30413,71 @@ function compactMatchPredictionCard(t, m, forceLocked = false){
   </article>`;
 }
 
+function getLatestBracketUpdatedTimestamp(t){
+  if(!t) return null;
+  // 1. If viewing a specific user's ballot modal:
+  let ballotData = (typeof window !== 'undefined' && window._currentBallotData) ? window._currentBallotData : null;
+  if(ballotData && Array.isArray(ballotData.deduped)){
+    let maxTs = 0;
+    ballotData.deduped.forEach(r => {
+      if(!r || !r.prediction_key || !r.updated_at) return;
+      let k = r.prediction_key;
+      let isBracket = k.startsWith('draftdex-bpick-') || 
+                      k.startsWith('Top Cut Bracket Match') || 
+                      k.startsWith('Top Cut · ') ||
+                      /^(wb\d+|lb\d+|gf\d+)$/i.test(k) ||
+                      (typeof canonicalPredictionEventKey === 'function' && /^bracket:/i.test(canonicalPredictionEventKey(k)));
+      if(isBracket){
+        let ts = new Date(r.updated_at).getTime();
+        if(!isNaN(ts) && ts > maxTs) maxTs = ts;
+      }
+    });
+    return maxTs > 0 ? maxTs : null;
+  }
+
+  // 2. Otherwise (viewing own bracket on main Predictions page):
+  let cached = (typeof predictionScoresCache !== 'undefined' && predictionScoresCache[t.id]) || (typeof loadCachedPredictionScores === 'function' ? loadCachedPredictionScores(t.id) : null);
+  let effectiveUsername = window.currentAccount?.username || (sessionUser?.user_metadata?.username) || 'You';
+  let meKeys = [sessionUser?.id, window.currentAccount?.username, sessionUser?.username, (typeof myPlayer === 'function' ? myPlayer() : null)].filter(Boolean);
+
+  if(cached && Array.isArray(cached.rows)){
+    let maxTs = 0;
+    cached.rows.filter(r => meKeys.includes(r.user_id)).forEach(r => {
+      if(!r || !r.prediction_key || !r.updated_at) return;
+      let k = r.prediction_key;
+      let isBracket = k.startsWith('draftdex-bpick-') || 
+                      k.startsWith('Top Cut Bracket Match') || 
+                      k.startsWith('Top Cut · ') ||
+                      /^(wb\d+|lb\d+|gf\d+)$/i.test(k) ||
+                      (typeof canonicalPredictionEventKey === 'function' && /^bracket:/i.test(canonicalPredictionEventKey(k)));
+      if(isBracket){
+        let ts = new Date(r.updated_at).getTime();
+        if(!isNaN(ts) && ts > maxTs) maxTs = ts;
+      }
+    });
+    return maxTs > 0 ? maxTs : null;
+  }
+  return null;
+}
+
+function formatBracketTimestamp(ts){
+  if(!ts) return 'No bracket picks submitted';
+  let d = new Date(ts);
+  if(isNaN(d.getTime())) return 'No bracket picks submitted';
+
+  let datePart = d.toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric'
+  });
+  let timePart = d.toLocaleTimeString('en-US', {
+    hour: 'numeric',
+    minute: '2-digit',
+    hour12: true
+  });
+  return `Last Updated at ${datePart}, ${timePart}`;
+}
+
 function topCutPredictionBracket(t){
   let model = getTournamentTopCutModel(t);
   if(!model) return '<div class="card empty"><p class="sub">Top Cut bracket data unavailable.</p></div>';
@@ -30710,13 +30775,18 @@ function topCutPredictionBracket(t){
     </div>`;
   }
 
+  let bracketUpdatedTs = getLatestBracketUpdatedTimestamp(t);
+  let bracketSubtitle = (isBracketLocked || (typeof window !== 'undefined' && window._viewingBallotPickMap))
+    ? formatBracketTimestamp(bracketUpdatedTs)
+    : 'Click any trainer to advance them to the next round. Click again to unselect.';
+
   return `<div class="tc-container">
     <div class="card" style="padding:18px 22px;background:linear-gradient(135deg,#1f1318 0%,#15151c 60%,#10131d 100%);border-color:#5c242d;margin-bottom:14px">
       <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px">
         <div>
           <div class="eyebrow" style="color:#ffd166;margin-bottom:2px">20 PTS PER MATCH · FULL BRACKET PREDICTION</div>
           <div style="font:900 24px 'Barlow Condensed';letter-spacing:.6px;color:#f5f3f0;text-transform:uppercase">Top Cut Prediction Bracket</div>
-          <p class="sub" style="margin:4px 0 0">${isBracketLocked ? 'Picks locked — Playoff matches underway.' : ((typeof window !== 'undefined' && window._viewingBallotPickMap) ? 'Viewing submitted bracket picks and playoff progression.' : 'Click any trainer to advance them to the next round. Click again to unselect.')}</p>
+          <p class="sub" style="margin:4px 0 0">${esc(bracketSubtitle)}</p>
         </div>
         <div class="card" style="padding:8px 16px;background:#0d0d13;border-color:#3a2028;text-align:center">
           <div style="font-size:9px;font-weight:800;color:#ffd166;letter-spacing:1px;text-transform:uppercase">Projected Champion</div>
