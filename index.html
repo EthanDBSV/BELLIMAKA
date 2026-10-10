@@ -19381,6 +19381,8 @@ let predictionSyncQueuePromise = Promise.resolve();
 
 async function syncPredictionRecord(tournamentId, key, choice, isDelete = false){
   if(isSandboxMode() || !sessionUser || !tournamentId) return;
+  let t = (tournamentData && tournamentData[tournamentId]) || (typeof ongoingT === 'function' && ongoingT());
+  if(t && typeof isPredictionQuestionLocked === 'function' && isPredictionQuestionLocked(t, key)) return;
   let bType = getBackendType();
   if(bType === 'local') return;
 
@@ -26111,6 +26113,20 @@ function savedPick(t, question){
       return '';
     }
     let id = t?.id || (typeof viewTournament !== 'undefined' && viewTournament) || ongoingT()?.id || '';
+    let isQuesLocked = (t && typeof isPredictionQuestionLocked === 'function') ? isPredictionQuestionLocked(t, question) : false;
+
+    // If question is locked and cloud cache exists, prioritize ground-truth cloud cache over local device storage!
+    let userKey = sessionUser?.id || window.currentAccount?.username || (typeof myPlayer === 'function' ? myPlayer() : null);
+    let userAlt = window.currentAccount?.username || sessionUser?.username;
+    if(isQuesLocked && id && typeof predictionScoresCache !== 'undefined' && predictionScoresCache[id]?.rows && (userKey || userAlt)){
+      let cTarget = typeof canonicalPredictionEventKey === 'function' ? canonicalPredictionEventKey(question) : question;
+      let row = predictionScoresCache[id].rows.find(r =>
+        (r.user_id === userKey || (userAlt && r.user_id === userAlt) || r.user_id === 'local_user') &&
+        ((typeof canonicalPredictionEventKey === 'function' ? canonicalPredictionEventKey(r.prediction_key) : r.prediction_key) === cTarget)
+      );
+      if(row?.selection) return row.selection;
+    }
+
     let hit = id ? localStorage.getItem('draftdex-pick-' + id + '-' + question) : null;
     if(hit) return hit;
     if(question && question.startsWith('Top Cut · ') && id){
@@ -26128,8 +26144,6 @@ function savedPick(t, question){
       if(hit) return hit;
     }
     // Cross-device / Cloud fallback: Check predictionScoresCache for current logged-in coach
-    let userKey = sessionUser?.id || window.currentAccount?.username || (typeof myPlayer === 'function' ? myPlayer() : null);
-    let userAlt = window.currentAccount?.username || sessionUser?.username;
     if(id && typeof predictionScoresCache !== 'undefined' && predictionScoresCache[id]?.rows && (userKey || userAlt)){
       let cTarget = typeof canonicalPredictionEventKey === 'function' ? canonicalPredictionEventKey(question) : question;
       let row = predictionScoresCache[id].rows.find(r =>
@@ -29226,9 +29240,14 @@ async function syncLocalPicksToCloud(tournamentId, force = false){
     // 3. Find any local picks in localStorage that are MISSING or DIFFERENT in Cloudflare KV
     let localRows = getLocalPredictionRows(tournamentId);
     let picksToPush = [];
+    let tourneyObj = (tournamentData && tournamentData[tournamentId]) || (typeof ongoingT === 'function' && ongoingT());
 
     for(let lr of localRows){
       if(!lr.prediction_key || !lr.selection) continue;
+      // Never push or sync any prediction if the question is locked
+      if(tourneyObj && typeof isPredictionQuestionLocked === 'function' && isPredictionQuestionLocked(tourneyObj, lr.prediction_key)){
+        continue;
+      }
       let lrTarget = canonicalPredictionEventKey(lr.prediction_key);
       let match = myCloudPicks.find(r => canonicalPredictionEventKey(r.prediction_key) === lrTarget);
       if(!match || match.selection !== lr.selection){
@@ -29468,6 +29487,10 @@ async function renderPredictionLeaders(t, forceFresh = false){
   // Merge local predictions from localStorage for the active user so points are always calculated
   let localRows = getLocalPredictionRows(t.id);
   localRows.forEach(lr => {
+    // If the question is locked, never allow unsynced local client changes to tamper with score
+    if(t && typeof isPredictionQuestionLocked === 'function' && isPredictionQuestionLocked(t, lr.prediction_key)){
+      return;
+    }
     let lrTarget = canonicalPredictionEventKey(lr.prediction_key);
     let matchIdx = rows.findIndex(r => (r.user_id === currentUserId || r.user_id === sessionUser?.id || r.user_id === 'local_user') && canonicalPredictionEventKey(r.prediction_key) === lrTarget);
     if(matchIdx >= 0){
@@ -29964,6 +29987,10 @@ async function openUserPredictionsModal(usernameOrId, tournamentId){
     if(typeof getLocalPredictionRows === 'function'){
       let localRows = getLocalPredictionRows(t.id);
       localRows.forEach(lr => {
+        // If the question is locked, never let unsynced local client changes alter the ballot
+        if(t && typeof isPredictionQuestionLocked === 'function' && isPredictionQuestionLocked(t, lr.prediction_key)){
+          return;
+        }
         let lrTarget = canonicalPredictionEventKey(lr.prediction_key);
         let matchIdx = userRows.findIndex(r => canonicalPredictionEventKey(r.prediction_key) === lrTarget);
         if(matchIdx >= 0){
@@ -30058,9 +30085,52 @@ async function openUserPredictionsModal(usernameOrId, tournamentId){
 
 /* ------------------------------------------------------------ 3. MODERN PREDICTIONS & PICK'EMS ------------------------------------------------------------ */
 
+function isPredictionQuestionLocked(t, question){
+  if(!t || !question) return false;
+  if(t.status === 'COMPLETE') return true;
+
+  // 1. Bracket Match / Top Cut Playoff questions
+  if(question.startsWith('Top Cut Bracket Match') || question.startsWith('draftdex-bpick-') || question.startsWith('Top Cut · ')){
+    return isTopCutPredictionLocked(t);
+  }
+
+  // 2. Champion outright pick: Locks once ANY tournament match has completed or scored
+  if(/^Who will be the .* Champion\?$/i.test(question) || question === 'champion' || question === 'champion:outright'){
+    if(t.champion && t.champion !== 'TBD' && t.champion !== 'BYE') return true;
+    let anyPlayed = (t.matches || []).some(m => (m.as !== '' && m.as != null && m.bs !== '' && m.bs != null) || m.isDone);
+    if(anyPlayed) return true;
+    if(t.phase === 'topcut' || Boolean(t.bracketManagerData)) return true;
+    return false;
+  }
+
+  // 3. Group / Division outcome pick: Locks once all matches in that group are settled or tournament enters topcut
+  let top = question.match(/^Who will top (.+)\?$/i);
+  if(top){
+    if(t.phase === 'topcut' || t.status === 'COMPLETE') return true;
+    let g = top[1].trim();
+    let gMatches = (t.matches || []).filter(m => (m.group || 'Group A') === g);
+    let done = gMatches.length > 0 && gMatches.every(m => m.as !== '' && m.as != null && m.bs !== '' && m.bs != null);
+    return done;
+  }
+
+  // 4. Individual regular season match: Locks once that specific match has scores or is marked done
+  let vs = question.match(/^Who wins:\s*(.+)\s+vs\s+(.+)$/i);
+  if(vs){
+    let p1 = vs[1].trim(), p2 = vs[2].trim();
+    let m = (t.matches || []).find(x => (x.a === p1 && x.b === p2) || (x.a === p2 && x.b === p1));
+    if(m && ((m.as !== '' && m.as != null && m.bs !== '' && m.bs != null) || m.isDone || m.a === 'BYE' || m.b === 'BYE')){
+      return true;
+    }
+  }
+
+  return false;
+}
+
 function isTopCutPredictionLocked(t, model = null){
   if(!t) return false;
   if(t.status === 'COMPLETE') return true;
+  // If tournament has progressed into topcut phase, lock picks
+  if(t.phase === 'topcut') return true;
   let m = model || (typeof getTournamentTopCutModel === 'function' ? getTournamentTopCutModel(t) : null);
   if(!m) return false;
   if(m.completedList && m.completedList.length > 0) return true;
@@ -30085,7 +30155,7 @@ function savePredictionPick(question, choice, el, tourneyId){
           activeT() || 
           ongoingT();
   if(!t || !question || !choice) return;
-  if((question.startsWith('Top Cut Bracket Match · ') || question.startsWith('draftdex-bpick-')) && isTopCutPredictionLocked(t)) return;
+  if(isPredictionQuestionLocked(t, question)) return;
 
   let currentPick = savedPick(t, question);
   let isTogglingOff = (currentPick === choice);
@@ -34270,6 +34340,20 @@ function savedPick(t, question){
       return '';
     }
     let id = t?.id || (typeof viewTournament !== 'undefined' && viewTournament) || ongoingT()?.id || '';
+    let isQuesLocked = (t && typeof isPredictionQuestionLocked === 'function') ? isPredictionQuestionLocked(t, question) : false;
+
+    // If question is locked and cloud cache exists, prioritize ground-truth cloud cache over local device storage!
+    let userKey = sessionUser?.id || window.currentAccount?.username || (typeof myPlayer === 'function' ? myPlayer() : null);
+    let userAlt = window.currentAccount?.username || sessionUser?.username;
+    if(isQuesLocked && id && typeof predictionScoresCache !== 'undefined' && predictionScoresCache[id]?.rows && (userKey || userAlt)){
+      let cTarget = typeof canonicalPredictionEventKey === 'function' ? canonicalPredictionEventKey(question) : question;
+      let row = predictionScoresCache[id].rows.find(r =>
+        (r.user_id === userKey || (userAlt && r.user_id === userAlt) || r.user_id === 'local_user') &&
+        ((typeof canonicalPredictionEventKey === 'function' ? canonicalPredictionEventKey(r.prediction_key) : r.prediction_key) === cTarget)
+      );
+      if(row?.selection) return row.selection;
+    }
+
     let hit = id ? localStorage.getItem('draftdex-pick-' + id + '-' + question) : null;
     if(hit) return hit;
     if(question && question.startsWith('Top Cut · ') && id){
@@ -34287,8 +34371,6 @@ function savedPick(t, question){
       if(hit) return hit;
     }
     // Cross-device / Cloud fallback: Check predictionScoresCache for current logged-in coach
-    let userKey = sessionUser?.id || window.currentAccount?.username || (typeof myPlayer === 'function' ? myPlayer() : null);
-    let userAlt = window.currentAccount?.username || sessionUser?.username;
     if(id && typeof predictionScoresCache !== 'undefined' && predictionScoresCache[id]?.rows && (userKey || userAlt)){
       let cTarget = typeof canonicalPredictionEventKey === 'function' ? canonicalPredictionEventKey(question) : question;
       let row = predictionScoresCache[id].rows.find(r =>
