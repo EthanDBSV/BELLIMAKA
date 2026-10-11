@@ -3,6 +3,26 @@
 All notable changes to the Bellimaka Pokémon Draft League platform are documented here.
 Format: `v[MAJOR].[MINOR].[PATCH]` — Major = major system overhauls, Minor = new features, Patch = bug fixes and visual improvements.
 
+## [v2.4.2] — 2026-10-10
+
+### Support & Utility Impact Scoring Overhaul
+- **Dedicated Credit for Support Play**: Introduced comprehensive Impact Score recognition for non-damaging utility moves, ensuring dedicated support Pokémon receive proper credit alongside offensive sweepers.
+- **Support Action Categories**:
+  - *Status Conditions*: Inflicting primary status conditions (Sleep, Burn, Paralysis, Toxic, Poison, Freeze) on opponents.
+  - *Speed Control & Team Defense*: Setting Tailwind, Trick Room, Reflect, Light Screen, and Aurora Veil.
+  - *Redirection & Protection*: Redirecting attacks (Follow Me, Rage Powder, Ally Switch) and team-wide shielding (Wide Guard, Quick Guard).
+  - *Stat Disruption & Entry Abilities*: Weakening opponents via Intimidate, Speed drops, and stat-reducing moves.
+  - *Field Control & Entry Hazards*: Setting Hazards (Stealth Rock, Sticky Web, Spikes, Toxic Spikes) and active Weather or Terrain.
+- **Diminishing Returns & Anti-Stall Caps**: Support contributions scale with diminishing returns for repeated applications and a sensible per-battle cap, ensuring balanced ratings and preventing endless stall point accumulation.
+- **Enriched Box Score Breakdown**:
+  - Hovering over a Pokémon's Impact score in the replay box score now reveals an itemized breakdown of exact support points and key actions earned (e.g. `Support: +75 [Tailwind, Burn]`).
+  - Active support actions (like Intimidate, Flinches, and Speed Drops) display as distinct purple utility badges alongside recorded moves.
+  - The Game MVP showcase card highlights support points and utility contributions for match-defining support performances.
+  - Replay box score summaries now track each team's total Support Points alongside KOs, Damage Dealt, and Healing.
+- **Coach Team Sheet Utility Recognition**:
+  - Pokémon with recorded support contributions feature a distinct purple `Supp` badge on coach team sheets showcasing both total support points and per-game averages.
+  - All tournament MVP calculations, Team of the Season honors, and playoff awards automatically incorporate support contributions.
+
 ---
 
 ## [v2.4.1] — 2026-10-10

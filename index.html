@@ -4,11 +4,11 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover" />
   <title>Bellimaka</title>
-  <link rel="icon" type="image/png" sizes="32x32" href="Fonts%20%26%20Logos/bellimaka_logo.png?v=2.4.1">
-  <link rel="icon" type="image/png" sizes="16x16" href="Fonts%20%26%20Logos/bellimaka_logo.png?v=2.4.1">
-  <link rel="shortcut icon" type="image/png" href="Fonts%20%26%20Logos/bellimaka_logo.png?v=2.4.1">
-  <link rel="apple-touch-icon" href="Fonts%20%26%20Logos/bellimaka_logo.png?v=2.4.1">
-  <link rel="icon" type="image/x-icon" href="favicon.ico?v=2.4.1">
+  <link rel="icon" type="image/png" sizes="32x32" href="Fonts%20%26%20Logos/bellimaka_logo.png?v=2.4.2">
+  <link rel="icon" type="image/png" sizes="16x16" href="Fonts%20%26%20Logos/bellimaka_logo.png?v=2.4.2">
+  <link rel="shortcut icon" type="image/png" href="Fonts%20%26%20Logos/bellimaka_logo.png?v=2.4.2">
+  <link rel="apple-touch-icon" href="Fonts%20%26%20Logos/bellimaka_logo.png?v=2.4.2">
+  <link rel="icon" type="image/x-icon" href="favicon.ico?v=2.4.2">
   <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;500;600;700;800;900&family=DM+Sans:wght@400;500;600;700&family=Permanent+Marker&display=swap" rel="stylesheet">
   <link rel="preload" href="Fonts%20%26%20Logos/Saphifen.otf" as="font" type="font/otf" crossorigin>
@@ -7678,7 +7678,7 @@ async function hydrateTournamentsFromIndexedDB() {
                   }
                   let hasStatsNow = lr.stats && lr.stats.pokemon && (Array.isArray(lr.stats.pokemon) ? lr.stats.pokemon.length > 0 : Object.keys(lr.stats.pokemon).length > 0);
                   let hasBadCoaches = hasStatsNow && (Array.isArray(lr.stats.pokemon) ? lr.stats.pokemon : Object.values(lr.stats.pokemon)).some(p => !p.coach || p.coach.toLowerCase().startsWith('player '));
-                  if((!hasStatsNow || !lr.stats.version || lr.stats.version < 8 || hasBadCoaches) && lr.log && typeof lr.log === 'string' && lr.log.includes('|')) {
+                  if((!hasStatsNow || !lr.stats.version || lr.stats.version < 9 || hasBadCoaches) && lr.log && typeof lr.log === 'string' && lr.log.includes('|')) {
                     let parsed = parseShowdownBattleLog(lr.log, {
                       id: lr.id,
                       game: lr.game,
@@ -7730,7 +7730,7 @@ async function hydrateTournamentsFromIndexedDB() {
                 }
                 let hasStatsNow = lr.stats && lr.stats.pokemon && (Array.isArray(lr.stats.pokemon) ? lr.stats.pokemon.length > 0 : Object.keys(lr.stats.pokemon).length > 0);
                 let hasBadCoaches = hasStatsNow && (Array.isArray(lr.stats.pokemon) ? lr.stats.pokemon : Object.values(lr.stats.pokemon)).some(p => !p.coach || p.coach.toLowerCase().startsWith('player '));
-                if((!hasStatsNow || !lr.stats.version || lr.stats.version < 8 || hasBadCoaches) && lr.log && typeof lr.log === 'string' && lr.log.includes('|')) {
+                if((!hasStatsNow || !lr.stats.version || lr.stats.version < 9 || hasBadCoaches) && lr.log && typeof lr.log === 'string' && lr.log.includes('|')) {
                   let tcMatch = (typeof findTournamentMatch === 'function') ? findTournamentMatch(locT, k)?.match : null;
                   let tcCoach1 = lr.coach1 || tcMatch?.a || tcMatch?.p1 || '';
                   let tcCoach2 = lr.coach2 || tcMatch?.b || tcMatch?.p2 || '';
@@ -9267,13 +9267,37 @@ function parseShowdownBattleLog(logText, meta = {}) {
     pokemon: {},
     teamPreview: { p1: [], p2: [] },
     mvp: null,
-    version: 8
+    version: 9
   };
 
   let activeSlots = {};
   let lastAttackerSlot = null;
   let lastMove = null;
   let currentTurn = 0;
+
+  function awardSupport(pObj, actionKey, label, pts1, pts2, maxPts) {
+    if(!pObj) return;
+    if(!pObj.supportScore) pObj.supportScore = 0;
+    if(!pObj.supportActions) pObj.supportActions = [];
+    if(!pObj._supportCounts) pObj._supportCounts = {};
+    let count = pObj._supportCounts[actionKey] || 0;
+    let pts = count === 0 ? pts1 : (count === 1 ? pts2 : 0);
+    if(pts > 0) {
+      let currentEarned = pObj._supportCounts[actionKey + '_pts'] || 0;
+      if(currentEarned + pts > maxPts) {
+        pts = Math.max(0, maxPts - currentEarned);
+      }
+      if(pts > 0) {
+        pObj.supportScore += pts;
+        pObj.supportScore = Math.min(250, pObj.supportScore);
+        pObj._supportCounts[actionKey] = count + 1;
+        pObj._supportCounts[actionKey + '_pts'] = currentEarned + pts;
+        if(!pObj.supportActions.includes(label)) {
+          pObj.supportActions.push(label);
+        }
+      }
+    }
+  }
 
   for(let rawLine of lines){
     let line = rawLine.trim();
@@ -9342,6 +9366,8 @@ function parseShowdownBattleLog(logText, meta = {}) {
           damageDealt: 0,
           damageTaken: 0,
           hpHealed: 0,
+          supportScore: 0,
+          supportActions: [],
           tera: null,
           fainted: false,
           faintTurn: null,
@@ -9380,6 +9406,8 @@ function parseShowdownBattleLog(logText, meta = {}) {
           damageDealt: pObj.damageDealt,
           damageTaken: pObj.damageTaken,
           hpHealed: pObj.hpHealed,
+          supportScore: pObj.supportScore || 0,
+          supportActions: [...(pObj.supportActions || [])],
           moves: [...pObj.moves],
           killedMons: [...pObj.killedMons]
         },
@@ -9399,12 +9427,13 @@ function parseShowdownBattleLog(logText, meta = {}) {
       let currentSlot = activeSlots[slot];
       if(currentSlot && currentSlot.pObj){
         let fakePObj = currentSlot.pObj;
-        let snapshot = currentSlot.switchSnapshot || { kills: 0, damageDealt: 0, damageTaken: 0, hpHealed: 0, moves: [], killedMons: [] };
+        let snapshot = currentSlot.switchSnapshot || { kills: 0, damageDealt: 0, damageTaken: 0, hpHealed: 0, supportScore: 0, supportActions: [], moves: [], killedMons: [] };
 
         let deltaKills = Math.max(0, (fakePObj.kills || 0) - (snapshot.kills || 0));
         let deltaDamageDealt = Math.max(0, (fakePObj.damageDealt || 0) - (snapshot.damageDealt || 0));
         let deltaDamageTaken = Math.max(0, (fakePObj.damageTaken || 0) - (snapshot.damageTaken || 0));
         let deltaHpHealed = Math.max(0, (fakePObj.hpHealed || 0) - (snapshot.hpHealed || 0));
+        let deltaSupportScore = Math.max(0, (fakePObj.supportScore || 0) - (snapshot.supportScore || 0));
         let newMoves = (fakePObj.moves || []).filter(m => !(snapshot.moves || []).includes(m));
         let newKilledMons = (fakePObj.killedMons || []).slice((snapshot.killedMons || []).length);
 
@@ -9413,6 +9442,8 @@ function parseShowdownBattleLog(logText, meta = {}) {
         fakePObj.damageDealt = Math.max(0, (fakePObj.damageDealt || 0) - deltaDamageDealt);
         fakePObj.damageTaken = Math.max(0, (fakePObj.damageTaken || 0) - deltaDamageTaken);
         fakePObj.hpHealed = Math.max(0, (fakePObj.hpHealed || 0) - deltaHpHealed);
+        fakePObj.supportScore = Math.max(0, (fakePObj.supportScore || 0) - deltaSupportScore);
+        fakePObj.supportActions = (snapshot.supportActions || []).slice();
         fakePObj.moves = (snapshot.moves || []).slice();
         fakePObj.killedMons = (snapshot.killedMons || []).slice();
         fakePObj.switchCount = Math.max(0, (fakePObj.switchCount || 1) - 1);
@@ -9449,6 +9480,8 @@ function parseShowdownBattleLog(logText, meta = {}) {
             damageDealt: 0,
             damageTaken: 0,
             hpHealed: 0,
+            supportScore: 0,
+            supportActions: [],
             tera: null,
             fainted: false,
             faintTurn: null,
@@ -9489,6 +9522,7 @@ function parseShowdownBattleLog(logText, meta = {}) {
         zoroPObj.damageDealt += deltaDamageDealt;
         zoroPObj.damageTaken += scaledDeltaDamageTaken;
         zoroPObj.hpHealed += scaledDeltaHpHealed;
+        zoroPObj.supportScore = (zoroPObj.supportScore || 0) + deltaSupportScore;
         newMoves.forEach(mv => {
           if(!zoroPObj.moves.includes(mv)){
             zoroPObj.moves.push(mv);
@@ -9513,6 +9547,8 @@ function parseShowdownBattleLog(logText, meta = {}) {
             damageDealt: zoroPObj.damageDealt,
             damageTaken: zoroPObj.damageTaken,
             hpHealed: zoroPObj.hpHealed,
+            supportScore: zoroPObj.supportScore || 0,
+            supportActions: [...(zoroPObj.supportActions || [])],
             moves: [...zoroPObj.moves],
             killedMons: [...zoroPObj.killedMons]
           },
@@ -9644,8 +9680,19 @@ function parseShowdownBattleLog(logText, meta = {}) {
       lastMove = moveName;
       if(activeSlots[slot]){
         let pObj = activeSlots[slot].pObj || result.pokemon[activeSlots[slot].key];
-        if(pObj && !pObj.moves.includes(moveName)){
-          pObj.moves.push(moveName);
+        if(pObj){
+          if(!pObj.moves.includes(moveName)){
+            pObj.moves.push(moveName);
+          }
+          if(['Follow Me', 'Rage Powder', 'Spotlight', 'Ally Switch'].includes(moveName)){
+            awardSupport(pObj, 'protect_redirect', 'Redirection', 35, 25, 75);
+          } else if(['Wide Guard', 'Quick Guard'].includes(moveName)){
+            awardSupport(pObj, 'protect_teamguard', 'Team Guard', 30, 20, 50);
+          } else if(moveName === 'Helping Hand'){
+            awardSupport(pObj, 'support_helpinghand', 'Helping Hand', 30, 20, 50);
+          } else if(['Taunt', 'Encore', 'Torment', 'Disable', 'Spite', 'Haze', 'Clear Smog'].includes(moveName)){
+            awardSupport(pObj, 'disrupt_control', moveName, 30, 20, 50);
+          }
         }
       }
     } else if(cmd === '-damage'){
@@ -9738,6 +9785,107 @@ function parseShowdownBattleLog(logText, meta = {}) {
               attObj.killedMons.push(pObj ? pObj.name : target.name);
             }
           }
+        }
+      }
+    } else if(cmd === '-status'){
+      let targetSlot = (parts[2] || '').split(':')[0].trim();
+      let targetSide = targetSlot.slice(0, 2);
+      let statusType = (parts[3] || '').trim();
+      let fromClause = parts[4] || '';
+      let ofPart = parts.find(p => p && p.startsWith('[of] '));
+      let ofSlot = ofPart ? ofPart.replace('[of] ', '').trim().split(':')[0] : null;
+      let effectiveSlot = ofSlot || lastAttackerSlot;
+
+      if(effectiveSlot && activeSlots[effectiveSlot]){
+        let attacker = activeSlots[effectiveSlot];
+        if(attacker.side !== targetSide && !fromClause.includes('item:') && lastMove !== 'Rest'){
+          let attObj = attacker.pObj || result.pokemon[attacker.key];
+          if(statusType === 'slp'){
+            awardSupport(attObj, 'status_slp', 'Sleep', 50, 30, 80);
+          } else if(statusType === 'brn'){
+            awardSupport(attObj, 'status_brn', 'Burn', 45, 30, 75);
+          } else if(statusType === 'par'){
+            awardSupport(attObj, 'status_par', 'Paralysis', 45, 30, 75);
+          } else if(statusType === 'tox'){
+            awardSupport(attObj, 'status_tox', 'Toxic', 40, 25, 65);
+          } else if(statusType === 'psn'){
+            awardSupport(attObj, 'status_psn', 'Poison', 35, 20, 55);
+          } else if(statusType === 'frz'){
+            awardSupport(attObj, 'status_frz', 'Freeze', 45, 0, 45);
+          }
+        }
+      }
+    } else if(cmd === '-sidestart'){
+      let effect = parts[3] || '';
+      if(lastAttackerSlot && activeSlots[lastAttackerSlot]){
+        let attacker = activeSlots[lastAttackerSlot];
+        let attObj = attacker.pObj || result.pokemon[attacker.key];
+        if(effect.includes('Tailwind')){
+          awardSupport(attObj, 'speed_tailwind', 'Tailwind', 45, 30, 75);
+        } else if(effect.includes('Reflect')){
+          awardSupport(attObj, 'screen_reflect', 'Reflect', 40, 25, 65);
+        } else if(effect.includes('Light Screen')){
+          awardSupport(attObj, 'screen_lightscreen', 'Light Screen', 40, 25, 65);
+        } else if(effect.includes('Aurora Veil')){
+          awardSupport(attObj, 'screen_auroraveil', 'Aurora Veil', 50, 25, 75);
+        } else if(effect.includes('Stealth Rock')){
+          awardSupport(attObj, 'hazard_sr', 'Stealth Rock', 35, 20, 55);
+        } else if(effect.includes('Sticky Web')){
+          awardSupport(attObj, 'hazard_web', 'Sticky Web', 35, 20, 55);
+        } else if(effect.includes('Toxic Spikes')){
+          awardSupport(attObj, 'hazard_tspikes', 'Toxic Spikes', 35, 20, 55);
+        } else if(effect.includes('Spikes')){
+          awardSupport(attObj, 'hazard_spikes', 'Spikes', 30, 20, 50);
+        }
+      }
+    } else if(cmd === '-fieldstart'){
+      let effect = parts[2] || '';
+      if(lastAttackerSlot && activeSlots[lastAttackerSlot]){
+        let attacker = activeSlots[lastAttackerSlot];
+        let attObj = attacker.pObj || result.pokemon[attacker.key];
+        if(effect.includes('Trick Room')){
+          awardSupport(attObj, 'speed_trickroom', 'Trick Room', 45, 30, 75);
+        } else if(effect.includes('Terrain')){
+          awardSupport(attObj, 'field_terrain', 'Terrain', 30, 20, 50);
+        }
+      }
+    } else if(cmd === '-weather'){
+      let fromClause = parts[3] || '';
+      if(fromClause.includes('move:') && lastAttackerSlot && activeSlots[lastAttackerSlot]){
+        let attacker = activeSlots[lastAttackerSlot];
+        let attObj = attacker.pObj || result.pokemon[attacker.key];
+        awardSupport(attObj, 'field_weather', 'Weather', 30, 20, 50);
+      }
+    } else if(cmd === '-unboost'){
+      let targetSlot = (parts[2] || '').split(':')[0].trim();
+      let targetSide = targetSlot.slice(0, 2);
+      let stat = (parts[3] || '').trim();
+      let ofPart = parts.find(p => p && p.startsWith('[of] '));
+      let ofSlot = ofPart ? ofPart.replace('[of] ', '').trim().split(':')[0] : null;
+      let sourceSlot = ofSlot || lastAttackerSlot;
+
+      if(sourceSlot && activeSlots[sourceSlot]){
+        let source = activeSlots[sourceSlot];
+        if(source.side !== targetSide){
+          let sourceObj = source.pObj || result.pokemon[source.key];
+          let fullLine = parts.join('|');
+          if(fullLine.includes('Intimidate')){
+            awardSupport(sourceObj, 'stat_intimidate', 'Intimidate', 20, 20, 60);
+          } else if(stat === 'spe'){
+            awardSupport(sourceObj, 'speed_drop', 'Speed Drop', 25, 20, 65);
+          } else {
+            awardSupport(sourceObj, 'stat_drop', 'Stat Drop', 20, 15, 60);
+          }
+        }
+      }
+    } else if(cmd === 'cant'){
+      let reason = (parts[3] || '').trim();
+      if(reason === 'flinch' && lastAttackerSlot && activeSlots[lastAttackerSlot]){
+        let targetSlot = (parts[2] || '').split(':')[0].trim();
+        let attacker = activeSlots[lastAttackerSlot];
+        if(attacker.side !== targetSlot.slice(0, 2)){
+          let attObj = attacker.pObj || result.pokemon[attacker.key];
+          awardSupport(attObj, 'disrupt_flinch', 'Flinch', 25, 15, 40);
         }
       }
     }
@@ -9887,7 +10035,7 @@ function parseShowdownBattleLog(logText, meta = {}) {
   let mvpMon = null;
   for(let key in result.pokemon){
     let p = result.pokemon[key];
-    let score = (p.kills * 150) + Math.round(p.damageDealt) + (p.fainted ? 0 : 75) + Math.round(p.hpHealed * 0.5);
+    let score = (p.kills * 150) + Math.round(p.damageDealt) + (p.fainted ? 0 : 75) + Math.round(p.hpHealed * 0.5) + (p.supportScore || 0);
     p.impactScore = score;
     if(score > bestScore){
       bestScore = score;
@@ -9895,7 +10043,7 @@ function parseShowdownBattleLog(logText, meta = {}) {
     }
   }
   result.mvp = mvpMon;
-  result.version = 7;
+  result.version = 9;
 
   return result;
 }
@@ -10698,7 +10846,7 @@ function openMatchReplayHubModal(tournamentId, matchKey, activeGameNum = 1, acti
   let isLogMissing = (!activeReplay.log || typeof activeReplay.log !== 'string' || activeReplay.log.trim().length < 20);
 
   let stats = activeReplay.stats;
-  if(!isLogMissing && (!stats || !stats.sideAttribution || !stats.version || stats.version < 8)){
+  if(!isLogMissing && (!stats || !stats.sideAttribution || !stats.version || stats.version < 9)){
     stats = parseShowdownBattleLog(activeReplay.log, { id: activeReplay.id, game: activeGameNum, match: m, coach1: p1, coach2: p2, tournament: t, manualSwapped: activeReplay.swapped });
     activeReplay.stats = stats;
   }
@@ -10942,6 +11090,8 @@ function renderMatchStatsBoxScoreHtml(stats, p1, p2, t, matchKey, gameNum) {
           damageDealt: m.damageDealt || 0,
           damageTaken: m.damageTaken || 0,
           hpHealed: m.hpHealed || 0,
+          supportScore: m.supportScore || 0,
+          supportActions: [...(m.supportActions || [])],
           moves: [...(m.moves || [])],
           fainted: Boolean(m.fainted),
           faintTurn: m.faintTurn || null
@@ -10957,6 +11107,14 @@ function renderMatchStatsBoxScoreHtml(stats, p1, p2, t, matchKey, gameNum) {
         existing.damageDealt += (m.damageDealt || 0);
         existing.damageTaken += (m.damageTaken || 0);
         existing.hpHealed += (m.hpHealed || 0);
+        existing.supportScore = (existing.supportScore || 0) + (m.supportScore || 0);
+        if(m.supportActions) {
+          if(!existing.supportActions) existing.supportActions = [];
+          m.supportActions.forEach(a => {
+            if(!existing.supportActions.includes(a)) existing.supportActions.push(a);
+          });
+        }
+        existing.impactScore = (existing.kills * 150) + Math.round(existing.damageDealt) + (existing.fainted ? 0 : 75) + Math.round(existing.hpHealed * 0.5) + (existing.supportScore || 0);
         if(m.moves) {
           m.moves.forEach(mv => {
             if(!existing.moves.includes(mv)) existing.moves.push(mv);
@@ -10986,6 +11144,8 @@ function renderMatchStatsBoxScoreHtml(stats, p1, p2, t, matchKey, gameNum) {
   let p2Dmg = coachBMons.reduce((s, m) => s + (m.damageDealt || 0), 0);
   let p1Heal = coachAMons.reduce((s, m) => s + (m.hpHealed || 0), 0);
   let p2Heal = coachBMons.reduce((s, m) => s + (m.hpHealed || 0), 0);
+  let p1Support = coachAMons.reduce((s, m) => s + (m.supportScore || 0), 0);
+  let p2Support = coachBMons.reduce((s, m) => s + (m.supportScore || 0), 0);
 
   let mvp = stats.mvp;
   let mInfo = findTournamentMatch(t, matchKey);
@@ -11016,7 +11176,7 @@ function renderMatchStatsBoxScoreHtml(stats, p1, p2, t, matchKey, gameNum) {
 
     let getMonImpact = m => {
       if(m.impactScore != null) return m.impactScore;
-      return ((m.kills || 0) * 150) + Math.round(m.damageDealt || 0) + (m.fainted ? 0 : 75) + Math.round((m.hpHealed || 0) * 0.5);
+      return ((m.kills || 0) * 150) + Math.round(m.damageDealt || 0) + (m.fainted ? 0 : 75) + Math.round((m.hpHealed || 0) * 0.5) + (m.supportScore || 0);
     };
     let maxSquadImpact = mons.length ? Math.max(...mons.map(getMonImpact)) : 0;
 
@@ -11047,6 +11207,7 @@ function renderMatchStatsBoxScoreHtml(stats, p1, p2, t, matchKey, gameNum) {
                 let faintTooltip = m.fainted ? `Fainted Turn ${m.faintTurn || '?'}` : 'Survived the match (+75 Impact bonus)';
                 let spriteStyle = m.fainted ? 'opacity:0.45;filter:grayscale(100%);transition:all .15s' : 'opacity:1;filter:none';
                 let nameColor = m.fainted ? '#8e8c95' : '#ffffff';
+                let supportBreakdown = (m.supportScore && m.supportScore > 0) ? ` + Support: +${m.supportScore}${m.supportActions && m.supportActions.length ? ' [' + m.supportActions.slice(0, 3).join(', ') + (m.supportActions.length > 3 ? '...' : '') + ']' : ''}` : '';
                 return `
                   <tr style="${m.fainted ? 'background:rgba(0,0,0,0.12)' : ''}">
                     <td style="text-align:center;padding:4px">
@@ -11062,7 +11223,7 @@ function renderMatchStatsBoxScoreHtml(stats, p1, p2, t, matchKey, gameNum) {
                         </div>
                       ` : ''}
                     </td>
-                    <td style="text-align:center;font:800 15px 'Barlow Condensed';color:#38bdf8" title="Impact Score: ${monImpact} (KOs: ${(m.kills || 0) * 150} + Dmg: ${Math.round(m.damageDealt || 0)} + ${m.fainted ? 'Fainted: +0' : 'Survived: +75'} + Heal: ${Math.round((m.hpHealed || 0) * 0.5)})">
+                    <td style="text-align:center;font:800 15px 'Barlow Condensed';color:#38bdf8" title="Impact Score: ${monImpact} (KOs: ${(m.kills || 0) * 150} + Dmg: ${Math.round(m.damageDealt || 0)}${supportBreakdown} + ${m.fainted ? 'Fainted: +0' : 'Survived: +75'} + Heal: ${Math.round((m.hpHealed || 0) * 0.5)})">
                       ${isTopImpact ? `<span style="font-size:11px;color:#ffd166;margin-right:2px" title="Squad High Impact Performer">⚡</span>` : ''}${monImpact}
                     </td>
                     <td style="text-align:center;font:800 15px 'Barlow Condensed';color:${m.kills > 0 ? '#fb923c' : '#646270'}">
@@ -11074,6 +11235,7 @@ function renderMatchStatsBoxScoreHtml(stats, p1, p2, t, matchKey, gameNum) {
                     <td>
                       <div style="display:flex;flex-wrap:wrap;gap:2px">
                         ${(m.moves || []).map(mv => `<span class="move-pill">${esc(mv)}</span>`).join('') || '<span style="color:#666">—</span>'}
+                        ${(m.supportActions || []).filter(act => !(m.moves || []).includes(act)).map(act => `<span class="move-pill" style="border-color:rgba(168,85,247,0.35);color:#d8b4fe;background:rgba(168,85,247,0.12)" title="Support Action (+${m.supportScore || 0} pts)">${esc(act)}</span>`).join('')}
                       </div>
                     </td>
                   </tr>
@@ -11135,6 +11297,7 @@ function renderMatchStatsBoxScoreHtml(stats, p1, p2, t, matchKey, gameNum) {
               <div style="display:inline-flex;align-items:baseline;gap:5px"><span style="color:#8e8c95">KOs:</span> <b style="color:#ffd166;font-size:14px">${mvp.kills}</b></div>
               <div style="display:inline-flex;align-items:baseline;gap:5px"><span style="color:#8e8c95">Damage Dealt:</span> <b style="color:#ff8a90;font-size:14px">${Math.round(mvp.damageDealt)}</b></div>
               <div style="display:inline-flex;align-items:baseline;gap:5px"><span style="color:#8e8c95">Damage Taken:</span> <b style="color:#f5f3f0;font-size:14px">${Math.round(mvp.damageTaken)}</b></div>
+              ${(mvp.supportScore && mvp.supportScore > 0) ? `<div style="display:inline-flex;align-items:baseline;gap:5px"><span style="color:#8e8c95">Support:</span> <b style="color:#c084fc;font-size:14px">+${mvp.supportScore}</b></div>` : ''}
               <div style="display:inline-flex;align-items:baseline;gap:5px"><span style="color:#8e8c95">Status:</span> ${mvp.fainted ? '<b style="color:#ff8a90;font-size:14px">Fainted</b>' : '<b style="color:#4ade80;font-size:14px">Survived</b>'}</div>
               <div style="display:inline-flex;align-items:baseline;gap:5px"><span style="color:#8e8c95">Impact Score:</span> <b style="color:#38bdf8;font-size:14px">${mvp.impactScore}</b></div>
             </div>
@@ -11142,6 +11305,12 @@ function renderMatchStatsBoxScoreHtml(stats, p1, p2, t, matchKey, gameNum) {
               <div style="margin-top:8px;display:flex;gap:4px;flex-wrap:wrap;align-items:center">
                 <span style="font-size:10px;color:#888;font-weight:700">Moves:</span>
                 ${mvp.moves.map(m => `<span class="move-pill">${esc(m)}</span>`).join('')}
+              </div>
+            ` : ''}
+            ${(mvp.supportActions && mvp.supportActions.length > 0) ? `
+              <div style="margin-top:6px;display:flex;gap:4px;flex-wrap:wrap;align-items:center">
+                <span style="font-size:10px;color:#a855f7;font-weight:700">Support:</span>
+                ${mvp.supportActions.map(a => `<span class="move-pill" style="border-color:rgba(168,85,247,0.35);color:#d8b4fe;background:rgba(168,85,247,0.12)">${esc(a)}</span>`).join('')}
               </div>
             ` : ''}
           </div>
@@ -11160,6 +11329,11 @@ function renderMatchStatsBoxScoreHtml(stats, p1, p2, t, matchKey, gameNum) {
           <div style="display:flex;justify-content:space-between;font-size:11px;color:#8e8c95;padding:4px 0">
             <span>Total HP Healed</span> <b style="color:#4ade80;font-size:13px">${Math.round(p1Heal)}</b>
           </div>
+          ${(p1Support > 0 || p2Support > 0) ? `
+            <div style="display:flex;justify-content:space-between;font-size:11px;color:#8e8c95;padding:4px 0;border-top:1px solid #1f1f2a">
+              <span>Total Support Pts</span> <b style="color:#c084fc;font-size:13px">+${p1Support}</b>
+            </div>
+          ` : ''}
         </div>
         <div style="background:#13131b;border:1px solid #272736;border-radius:8px;padding:12px 16px">
           <div style="font:800 16px 'Barlow Condensed';color:#f5f3f0;margin-bottom:8px">${esc(coachB)}</div>
@@ -11172,6 +11346,11 @@ function renderMatchStatsBoxScoreHtml(stats, p1, p2, t, matchKey, gameNum) {
           <div style="display:flex;justify-content:space-between;font-size:11px;color:#8e8c95;padding:4px 0">
             <span>Total HP Healed</span> <b style="color:#4ade80;font-size:13px">${Math.round(p2Heal)}</b>
           </div>
+          ${(p1Support > 0 || p2Support > 0) ? `
+            <div style="display:flex;justify-content:space-between;font-size:11px;color:#8e8c95;padding:4px 0;border-top:1px solid #1f1f2a">
+              <span>Total Support Pts</span> <b style="color:#c084fc;font-size:13px">+${p2Support}</b>
+            </div>
+          ` : ''}
         </div>
       </div>
 
@@ -12287,7 +12466,7 @@ function calculateTeamOfTheSeason(t) {
     let stats = r.stats;
     let hasValidStats = stats && stats.pokemon && (Array.isArray(stats.pokemon) ? stats.pokemon.length > 0 : Object.keys(stats.pokemon).length > 0);
     let hasBadCoaches = hasValidStats && (Array.isArray(stats.pokemon) ? stats.pokemon : Object.values(stats.pokemon)).some(p => !p.coach || p.coach.toLowerCase().startsWith('player '));
-    if(!hasValidStats || !stats.version || stats.version < 8 || hasBadCoaches) {
+    if(!hasValidStats || !stats.version || stats.version < 9 || hasBadCoaches) {
       let log = (r.log && typeof r.log === 'string' && r.log.includes('|')) ? r.log : null;
       if(!log && window._replayLogCache) {
         let repId = r.id || '';
@@ -12334,7 +12513,7 @@ function calculateTeamOfTheSeason(t) {
       let damageDealt = p.damageDealt || 0;
       let hpHealed = p.hpHealed || 0;
       let fainted = Boolean(p.fainted);
-      let impact = p.impactScore != null ? p.impactScore : ((kills * 150) + Math.round(damageDealt) + (fainted ? 0 : 75) + Math.round(hpHealed * 0.5));
+      let impact = p.impactScore != null ? p.impactScore : ((kills * 150) + Math.round(damageDealt) + (fainted ? 0 : 75) + Math.round(hpHealed * 0.5) + (p.supportScore || 0));
 
       if(!gfGameGroup.has(gKey)) {
         let canonicalSprite = (typeof resolvePokemonData === 'function' ? resolvePokemonData(cleanName)?.sprite : null) || (typeof getPokemonSpriteUrl === 'function' ? getPokemonSpriteUrl(cleanName.toLowerCase()) : '') || p.sprite;
@@ -12460,7 +12639,7 @@ function calculateTeamOfTheSeason(t) {
     let stats = replay.stats;
     let hasValidStats = stats && stats.pokemon && (Array.isArray(stats.pokemon) ? stats.pokemon.length > 0 : Object.keys(stats.pokemon).length > 0);
     let hasBadCoaches = hasValidStats && (Array.isArray(stats.pokemon) ? stats.pokemon : Object.values(stats.pokemon)).some(p => !p.coach || p.coach.toLowerCase().startsWith('player '));
-    if(!hasValidStats || !stats.version || stats.version < 8 || hasBadCoaches) {
+    if(!hasValidStats || !stats.version || stats.version < 9 || hasBadCoaches) {
       let log = (replay.log && typeof replay.log === 'string' && replay.log.includes('|')) ? replay.log : null;
       if(!log && window._replayLogCache) {
         let repId = replay.id || '';
@@ -12520,7 +12699,7 @@ function calculateTeamOfTheSeason(t) {
         let damageDealt = p.damageDealt || 0;
         let hpHealed = p.hpHealed || 0;
         let fainted = Boolean(p.fainted);
-        let curScore = p.impactScore != null ? p.impactScore : ((kills * 150) + Math.round(damageDealt) + (fainted ? 0 : 75) + Math.round(hpHealed * 0.5));
+        let curScore = p.impactScore != null ? p.impactScore : ((kills * 150) + Math.round(damageDealt) + (fainted ? 0 : 75) + Math.round(hpHealed * 0.5) + (p.supportScore || 0));
         if(curScore > topScore) {
           topScore = curScore;
           topMon = p;
@@ -12549,7 +12728,7 @@ function calculateTeamOfTheSeason(t) {
       let damageTaken = p.damageTaken || 0;
       let hpHealed = p.hpHealed || 0;
       let fainted = Boolean(p.fainted);
-      let curImpact = p.impactScore != null ? p.impactScore : ((kills * 150) + Math.round(damageDealt) + (fainted ? 0 : 75) + Math.round(hpHealed * 0.5));
+      let curImpact = p.impactScore != null ? p.impactScore : ((kills * 150) + Math.round(damageDealt) + (fainted ? 0 : 75) + Math.round(hpHealed * 0.5) + (p.supportScore || 0));
 
       if(!replayGameGroup.has(gKey)) {
         let canonicalSprite = (typeof resolvePokemonData === 'function' ? resolvePokemonData(cleanName)?.sprite : null) || (typeof getPokemonSpriteUrl === 'function' ? getPokemonSpriteUrl(cleanName.toLowerCase()) : '') || p.sprite;
@@ -13558,7 +13737,7 @@ function getTournamentPokemonStatsMap(t, coachFilter) {
   let cacheKey = targetNorm || '__global__';
 
   if(!t._cachedMonStatsMaps) t._cachedMonStatsMaps = {};
-  if(t._cachedMonStatsVersion === 8 && t._cachedMonStatsMaps[cacheKey] && t._cachedMonStatsTime && (Date.now() - t._cachedMonStatsTime < 30000)) {
+  if(t._cachedMonStatsVersion === 9 && t._cachedMonStatsMaps[cacheKey] && t._cachedMonStatsTime && (Date.now() - t._cachedMonStatsTime < 30000)) {
     return t._cachedMonStatsMaps[cacheKey];
   }
 
@@ -13632,7 +13811,7 @@ function getTournamentPokemonStatsMap(t, coachFilter) {
     let stats = replay.stats;
     let hasValidStats = stats && stats.pokemon && (Array.isArray(stats.pokemon) ? stats.pokemon.length > 0 : Object.keys(stats.pokemon).length > 0);
     let hasBadCoaches = hasValidStats && (Array.isArray(stats.pokemon) ? stats.pokemon : Object.values(stats.pokemon)).some(p => !p.coach || p.coach.toLowerCase().startsWith('player '));
-    if(!hasValidStats || !stats.version || stats.version < 8 || hasBadCoaches) {
+    if(!hasValidStats || !stats.version || stats.version < 9 || hasBadCoaches) {
       let log = (replay.log && typeof replay.log === 'string' && replay.log.includes('|')) ? replay.log : null;
       if(!log && window._replayLogCache) {
         let repId = replay.id || '';
@@ -13703,6 +13882,7 @@ function getTournamentPokemonStatsMap(t, coachFilter) {
           dmg: 0,
           taken: 0,
           healed: 0,
+          support: 0,
           impact: 0
         });
       }
@@ -13711,7 +13891,8 @@ function getTournamentPokemonStatsMap(t, coachFilter) {
       gEntry.dmg += (p.damageDealt || 0);
       gEntry.taken += (p.damageTaken || 0);
       gEntry.healed += (p.hpHealed || 0);
-      let pImp = (p.impactScore != null && p.impactScore !== '') ? Number(p.impactScore) : (((p.kills || 0) * 150) + Math.round(p.damageDealt || 0) + (p.fainted ? 0 : 75) + Math.round((p.hpHealed || 0) * 0.5));
+      gEntry.support += (p.supportScore || 0);
+      let pImp = (p.impactScore != null && p.impactScore !== '') ? Number(p.impactScore) : (((p.kills || 0) * 150) + Math.round(p.damageDealt || 0) + (p.fainted ? 0 : 75) + Math.round((p.hpHealed || 0) * 0.5) + (p.supportScore || 0));
       gEntry.impact += pImp;
     });
 
@@ -13741,6 +13922,7 @@ function getTournamentPokemonStatsMap(t, coachFilter) {
           dmg: 0,
           taken: 0,
           healed: 0,
+          support: 0,
           impact: 0
         };
       }
@@ -13750,6 +13932,7 @@ function getTournamentPokemonStatsMap(t, coachFilter) {
       statObj.dmg += gEntry.dmg;
       statObj.taken += gEntry.taken;
       statObj.healed += gEntry.healed;
+      statObj.support = (statObj.support || 0) + gEntry.support;
       statObj.impact += gEntry.impact;
 
       map[kClean] = statObj;
@@ -13768,11 +13951,12 @@ function getTournamentPokemonStatsMap(t, coachFilter) {
     s.damageDealtPerGame = s.dmg / g;
     s.damageTakenPerGame = s.taken / g;
     s.healedPerGame = s.healed / g;
+    s.supportPerGame = (s.support || 0) / g;
     s.avgImpactScore = s.impact / g;
   });
 
   t._cachedMonStatsMaps[cacheKey] = map;
-  t._cachedMonStatsVersion = 8;
+  t._cachedMonStatsVersion = 9;
   t._cachedMonStatsTime = Date.now();
   return map;
 }
@@ -18299,7 +18483,7 @@ function applySharedState(data){
                   let hasStatsNow = ir.stats && ir.stats.pokemon && (Array.isArray(ir.stats.pokemon) ? ir.stats.pokemon.length > 0 : Object.keys(ir.stats.pokemon).length > 0);
                   let pList = hasStatsNow ? (Array.isArray(ir.stats.pokemon) ? ir.stats.pokemon : Object.values(ir.stats.pokemon)) : [];
                   let hasBadCoaches = pList.some(p => !p.coach || p.coach.toLowerCase().startsWith('player '));
-                  if((!hasStatsNow || !ir.stats.version || ir.stats.version < 8 || hasBadCoaches) && ir.log && typeof ir.log === 'string' && ir.log.includes('|')){
+                  if((!hasStatsNow || !ir.stats.version || ir.stats.version < 9 || hasBadCoaches) && ir.log && typeof ir.log === 'string' && ir.log.includes('|')){
                     let parsed = parseShowdownBattleLog(ir.log, {
                       id: ir.id,
                       game: ir.game,
@@ -18349,7 +18533,7 @@ function applySharedState(data){
                 let hasStatsNow = ir.stats && ir.stats.pokemon && (Array.isArray(ir.stats.pokemon) ? ir.stats.pokemon.length > 0 : Object.keys(ir.stats.pokemon).length > 0);
                 let pList = hasStatsNow ? (Array.isArray(ir.stats.pokemon) ? ir.stats.pokemon : Object.values(ir.stats.pokemon)) : [];
                 let hasBadCoaches = pList.some(p => !p.coach || p.coach.toLowerCase().startsWith('player '));
-                if((!hasStatsNow || !ir.stats.version || ir.stats.version < 8 || hasBadCoaches) && ir.log && typeof ir.log === 'string' && ir.log.includes('|')){
+                if((!hasStatsNow || !ir.stats.version || ir.stats.version < 9 || hasBadCoaches) && ir.log && typeof ir.log === 'string' && ir.log.includes('|')){
                   let tcMatch = (typeof findTournamentMatch === 'function') ? (findTournamentMatch(incT, k)?.match || findTournamentMatch(locT, k)?.match) : null;
                   let tcCoach1 = ir.coach1 || lr?.coach1 || tcMatch?.a || tcMatch?.p1 || '';
                   let tcCoach2 = ir.coach2 || lr?.coach2 || tcMatch?.b || tcMatch?.p2 || '';
@@ -19167,7 +19351,7 @@ async function flushSync(){
             let hasStats = r.stats && r.stats.pokemon && (Array.isArray(r.stats.pokemon) ? r.stats.pokemon.length > 0 : Object.keys(r.stats.pokemon).length > 0);
             let pList = hasStats ? (Array.isArray(r.stats.pokemon) ? r.stats.pokemon : Object.values(r.stats.pokemon)) : [];
             let hasBadCoaches = pList.some(p => !p.coach || p.coach.toLowerCase().startsWith('player '));
-            if((!hasStats || !r.stats.version || r.stats.version < 8 || hasBadCoaches) && r.log && typeof r.log === 'string' && r.log.includes('|')){
+            if((!hasStats || !r.stats.version || r.stats.version < 9 || hasBadCoaches) && r.log && typeof r.log === 'string' && r.log.includes('|')){
               let parsed = parseShowdownBattleLog(r.log, {
                 id: r.id,
                 game: r.game,
@@ -19212,7 +19396,7 @@ async function flushSync(){
             let hasStats = r.stats && r.stats.pokemon && (Array.isArray(r.stats.pokemon) ? r.stats.pokemon.length > 0 : Object.keys(r.stats.pokemon).length > 0);
             let pList = hasStats ? (Array.isArray(r.stats.pokemon) ? r.stats.pokemon : Object.values(r.stats.pokemon)) : [];
             let hasBadCoaches = pList.some(p => !p.coach || p.coach.toLowerCase().startsWith('player '));
-            if((!hasStats || !r.stats.version || r.stats.version < 8 || hasBadCoaches) && r.log && typeof r.log === 'string' && r.log.includes('|')){
+            if((!hasStats || !r.stats.version || r.stats.version < 9 || hasBadCoaches) && r.log && typeof r.log === 'string' && r.log.includes('|')){
               let tcMatch = (typeof findTournamentMatch === 'function') ? findTournamentMatch(t, k)?.match : null;
               let tcCoach1 = r.coach1 || origR?.coach1 || tcMatch?.a || tcMatch?.p1 || '';
               let tcCoach2 = r.coach2 || origR?.coach2 || tcMatch?.b || tcMatch?.p2 || '';
@@ -20856,7 +21040,7 @@ function getMatchupShowcasePokemon(tourn, m, coach) {
           let bk = normalizeBaseSpecies(name);
           let kills = p.kills || 0;
           let dmg = p.damageDealt || 0;
-          let imp = p.impactScore != null ? p.impactScore : (kills * 150 + Math.round(dmg) + (p.fainted ? 0 : 75) + Math.round((p.hpHealed || 0) * 0.5));
+          let imp = p.impactScore != null ? p.impactScore : (kills * 150 + Math.round(dmg) + (p.fainted ? 0 : 75) + Math.round((p.hpHealed || 0) * 0.5) + (p.supportScore || 0));
           if(!matchMonMap[bk]) {
             matchMonMap[bk] = {
               name: name,
@@ -34160,9 +34344,14 @@ function TeamRosterDetailView(t, p){
                         <span style="font-size:11px;font-weight:800;background:rgba(255,255,255,0.06);color:#f1f5f9;padding:2px 8px;border-radius:4px;border:1px solid rgba(255,255,255,0.1);display:inline-flex;align-items:center;gap:4px" title="Official Games Brought Out">
                           <span style="color:#94a3b8;font-size:9px;letter-spacing:.5px;text-transform:uppercase">Apps</span> <b>${s.stat.games}</b>
                         </span>
-                        <span style="font-size:11px;font-weight:800;background:rgba(56,189,248,0.08);color:#38bdf8;padding:2px 8px;border-radius:4px;border:1px solid rgba(56,189,248,0.25);display:inline-flex;align-items:center;gap:4px" title="Average Impact Score per Game: ${Math.round(s.stat.avgImpactScore || 0)} (Total Impact: ${Math.round(s.stat.impact || 0)})">
+                        <span style="font-size:11px;font-weight:800;background:rgba(56,189,248,0.08);color:#38bdf8;padding:2px 8px;border-radius:4px;border:1px solid rgba(56,189,248,0.25);display:inline-flex;align-items:center;gap:4px" title="Average Impact Score per Game: ${Math.round(s.stat.avgImpactScore || 0)} (Total Impact: ${Math.round(s.stat.impact || 0)}${s.stat.support ? ', Support: ' + Math.round(s.stat.support) : ''})">
                           <span style="color:#0284c7;font-size:9px;letter-spacing:.5px;text-transform:uppercase">Impact</span> <b>${Math.round(s.stat.avgImpactScore || 0)}</b> <small style="opacity:0.85;font-weight:700">/g</small>
                         </span>
+                        ${(s.stat.support && s.stat.support > 0) ? `
+                          <span style="font-size:11px;font-weight:800;background:rgba(168,85,247,0.08);color:#c084fc;padding:2px 8px;border-radius:4px;border:1px solid rgba(168,85,247,0.25);display:inline-flex;align-items:center;gap:4px" title="Total Support Points: ${Math.round(s.stat.support)} (${s.stat.supportPerGame.toFixed(1)}/g)">
+                            <span style="color:#a855f7;font-size:9px;letter-spacing:.5px;text-transform:uppercase">Supp</span> <b>${Math.round(s.stat.support)}</b> <small style="opacity:0.85;font-weight:700">(${s.stat.supportPerGame.toFixed(1)}/g)</small>
+                          </span>
+                        ` : ''}
                         <span style="font-size:11px;font-weight:800;background:rgba(251,146,60,0.08);color:#fb923c;padding:2px 8px;border-radius:4px;border:1px solid rgba(251,146,60,0.25);display:inline-flex;align-items:center;gap:4px" title="Total KOs and KOs Per Game">
                           <span style="color:#ea580c;font-size:9px;letter-spacing:.5px;text-transform:uppercase">KOs</span> <b>${s.stat.kills}</b> <small style="opacity:0.85;font-weight:700">(${s.stat.killsPerGame.toFixed(1)}/g)</small>
                         </span>
