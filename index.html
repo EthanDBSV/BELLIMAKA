@@ -27300,10 +27300,18 @@ function getHistoricalPlayerOVR(p, targetTIdx, stage = 'complete', sortedT = nul
 
   let pastCompleted = histTourneys.filter((t, idx) => idx < targetTIdx && t.status === 'COMPLETE');
   let histTitles = pastCompleted.filter(t => t.champion === p).length + (stage === 'complete' && targetT.champion === p ? 1 : 0);
-  let histTopCuts = pastCompleted.filter(t => {
-    let f = tournamentFinish(t, p);
-    return f && f.place > 0 && f.place <= (t.advancePerGroup ? Object.keys(groupsOf(t)).length * t.advancePerGroup : 4);
-  }).length + (stage === 'complete' && targetT.status === 'COMPLETE' && tournamentFinish(targetT, p).place <= 4 ? 1 : 0);
+  let checkMadeTopCut = (tourn) => {
+    if(!tourn) return false;
+    if(tourn.champion === p) return true;
+    if(tourn.topCutCache?.participants?.length) return tourn.topCutCache.participants.includes(p);
+    if(tourn.bracketManagerData?.participant?.length){
+      return tourn.bracketManagerData.participant.some(pt => (typeof pt === 'string' ? pt : pt.name) === p);
+    }
+    let f = tournamentFinish(tourn, p);
+    let cutTotal = tourn.advancePerGroup ? (Object.keys(groupsOf(tourn)).length * (typeof advancePerGroup === 'function' ? advancePerGroup(tourn) : Number(tourn.advancePerGroup || 2))) : 4;
+    return Boolean(f && f.place > 0 && (f.place <= cutTotal || f.place < 100));
+  };
+  let histTopCuts = pastCompleted.filter(checkMadeTopCut).length + (stage === 'complete' && targetT.status === 'COMPLETE' && checkMadeTopCut(targetT) ? 1 : 0);
 
   let careerTitleBonus = Math.min(6.0, histTitles * 3.0);
   let careerTopCutBonus = Math.min(4.5, histTopCuts * 1.5);
