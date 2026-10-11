@@ -6109,6 +6109,7 @@ function tabToHash(t){
   if(t === 'Tournament Detail') return 'TournamentDetail';
   return encodeURIComponent(t || 'Home');
 }
+const tabs=['Home','Standings','Teams','Draft','Matches','Top Cut','Playoff Odds','Predictions','Records','Tournaments'];
 function hashToTab(h){
   if(!h) return 'Home';
   let clean = decodeURIComponent(h).replace(/^#/,'').trim();
@@ -6117,9 +6118,10 @@ function hashToTab(h){
   if(lower === 'playoffodds' || lower === 'playoffs') return 'Playoff Odds';
   if(lower === 'tournamentdetail') return 'Tournament Detail';
   if(clean === 'Draft Board' || clean === 'Draft Tools') return 'Draft';
+  let matched = tabs.find(t => t.toLowerCase().replace(/[\s\-_]/g, '') === lower);
+  if(matched) return matched;
   return clean || 'Home';
 }
-const tabs=['Home','Standings','Teams','Draft','Matches','Top Cut','Playoff Odds','Predictions','Records','Tournaments'];
 let current=(()=>{
   try{
     let hash=window.location.hash.replace(/^#/,'')||'';
@@ -6213,11 +6215,7 @@ document.addEventListener('click', function(e){
 });
 
 function getVisibleTabs(){
-  let isOngoing = Boolean(typeof ongoingT === 'function' && ongoingT());
-  if(isOngoing){
-    return ['Home', 'Standings', 'Teams', 'Draft', 'Matches', 'Top Cut', 'Playoff Odds', 'Predictions', 'Records', 'Tournaments'];
-  }
-  return ['Home', 'Standings', 'Draft', 'Records', 'Tournaments'];
+  return tabs;
 }
 
 function nav(){
@@ -6987,7 +6985,24 @@ function canManageTournament(t){
   });
 }
 
-function noTournament(){return head('No active tournament','League management')+`<div class="card empty"><div class="card-title">The league is between tournaments</div><p class="sub">Browse the archive or create the next season when you are ready.</p><button class="btn" onclick="go('Tournaments')">View tournament archive</button></div>`}
+function noTournament(tabName = '', sub = ''){
+  let icon = tabName === 'Matches' ? '⚔️' : (tabName === 'Top Cut' ? '🏆' : (tabName === 'Playoff Odds' ? '📊' : (tabName === 'Teams' ? '👥' : (tabName === 'Predictions' ? '🎯' : '🔒'))));
+  let headerTitle = tabName || 'No active tournament';
+  let headerSub = sub || 'League Off-Season · Locked';
+  let cardTitle = tabName ? `${tabName} Locked — Off-Season` : 'The league is between tournaments';
+  let desc = tabName
+    ? `No tournament is currently ongoing. ${tabName} will automatically unlock when the next tournament begins. In the meantime, you can explore completed tournaments and replays in the archive.`
+    : 'Browse the archive or create the next season when you are ready.';
+  return head(headerTitle, headerSub) + `
+    <div class="draft-locked-card">
+      <div style="font-size:44px;margin-bottom:12px">${icon}</div>
+      <div class="eyebrow" style="color:var(--amber);margin-bottom:6px;letter-spacing:1.2px">OFF-SEASON · LOCKED</div>
+      <h2 style="font:900 26px 'Barlow Condensed';color:#f5f3f0;letter-spacing:.4px;margin:4px 0 10px">${cardTitle}</h2>
+      <p class="sub" style="max-width:480px;margin:0 auto 20px;font-size:13px;line-height:1.55;color:#9d9ba6">${desc}</p>
+      <button class="btn" style="padding:10px 26px;font-weight:900;font-size:13px" onclick="go('Tournaments')">View Tournament Archive →</button>
+    </div>
+  `;
+}
 
 
 
@@ -8292,7 +8307,7 @@ function tournamentNumber(t){let all=Object.values(tournamentData);return Math.m
 function topCutPredictionMatches(t){if(!t.topCutMatches){let q=(t.customTopCutSeeding&&t.customTopCutSeeding.length)?t.customTopCutSeeding.filter(Boolean):seedTopCut(t).filter(Boolean),size=nextPow2(Math.max(2,q.length)),s=q.slice();while(s.length<size)s.push(null);let out=[];if(size===8){let pairs=[[s[0],s[7]],[s[3],s[4]],[s[1],s[6]],[s[2],s[5]]];pairs.forEach(pr=>out.push({a:pr[0]||'BYE',b:pr[1]||'BYE',as:'',bs:'',round:'Top Cut Quarterfinal'}))}else{for(let i=0;i<Math.ceil(size/2);i++)out.push({a:s[i]||'BYE',b:s[size-1-i]||'BYE',as:'',bs:'',round:'Top Cut opening round'})}t.topCutMatches=out}return t.topCutMatches}
 function Predictions(){
   let t=ongoingT();
-  if(!t)return head('Predictions','Tournament picks')+`<div class="card empty"><div class="card-title">Predictions are inactive</div><p class="sub">Predictions open automatically when a new tournament begins.</p></div>`;
+  if(!t) return noTournament('Predictions');
   viewTournament=t.id;
   if(t.phase === 'draft' && t.status === 'ONGOING'){
     return renderDraftLockedPredictions(t);
@@ -14347,7 +14362,7 @@ function renderTournamentAwardsStandingsBannerHtml(t) {
 
 function TopCut(){
   let t = ongoingT();
-  if(!t) return noTournament();
+  if(!t) return noTournament('Top Cut');
   viewTournament = t.id;
   if(t.phase === 'draft' && t.status === 'ONGOING'){
     return renderDraftLockedTopCut(t);
@@ -24859,7 +24874,7 @@ function toggleGroupCollapse(key){
 
 function Matches(){
   let t = ongoingT();
-  if(!t) return noTournament();
+  if(!t) return noTournament('Matches');
   viewTournament = t.id;
 
   if(t.phase === 'draft' && t.status === 'ONGOING'){
@@ -26823,21 +26838,6 @@ window.addEventListener('hashchange', ()=>{
 function render(){
   let active=document.activeElement;
   if(current==='Draft Board'||current==='Draft Tools')current='Draft';
-
-  let isOngoing = Boolean(typeof ongoingT === 'function' && ongoingT());
-  if(!isOngoing && ['Matches', 'Top Cut', 'Playoff Odds', 'Teams', 'Predictions'].includes(current)){
-    let _qp = null;
-    try { _qp = new URLSearchParams(window.location.search); } catch(e){}
-    if(!_qp?.get('tourney')){
-      current = 'Home';
-      try {
-        localStorage.setItem('draftdex-active-tab', 'Home');
-        if(window.location.hash && ['#matches','#topcut','#top-cut','#playoffodds','#playoffs','#teams','#predictions'].includes(window.location.hash.toLowerCase())){
-          history.replaceState(null, '', '#home');
-        }
-      } catch(e){}
-    }
-  }
 
   let scroller = document.getElementById('draftBoardGridWrap') || document.getElementById('offseasonDraftBoardGridWrap') || document.querySelector('.draft-board-wrap');
   let draftScrollLeft = (scroller && scroller.scrollLeft > 0) ? scroller.scrollLeft : (window.draftBoardScrollPos?.left || 0);
@@ -34437,7 +34437,7 @@ var playoffOddsTab = 'title';
 
 function playoffOdds(){
   let t = ongoingT();
-  if(!t) return noTournament();
+  if(!t) return noTournament('Playoff Odds');
 
   let d = ensureTournamentDraft(t);
   let isDraftPhase = (t.phase === 'draft' || (t.hasDraft && d && d.status !== 'completed' && t.phase !== 'group' && t.phase !== 'groups' && t.phase !== 'swiss' && t.phase !== 'topcut' && t.phase !== 'complete'));
@@ -34880,7 +34880,7 @@ function renderTournamentTeamsTabHtml(t){
 
 function Teams(){
   let t = ongoingT();
-  if(!t) return noTournament();
+  if(!t) return noTournament('Teams');
 
   let activeCoach = window.selectedTeamRosterCoach;
   if(activeCoach && t.players && t.players.includes(activeCoach)){
