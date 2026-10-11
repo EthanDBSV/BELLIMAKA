@@ -30,6 +30,10 @@ Format: `v[MAJOR].[MINOR].[PATCH]` — Major = major system overhauls, Minor = n
   - Added a one-click `⚡ Quick Test Cup` button on Step 1 of the Tournament Creator (exclusive to moderators) placed right next to the "Basic Info" badge.
   - Automatically preconfigures standard testing defaults in one click without auto-submitting (Name: `Test Cup`, Badge Label: `Test`, Regulation: `Test`, Start Date: `TBD`, Phase 1: `Round Robin`, Phase 2: `Double Elimination`, Groups: `2`, Advance: `2`, Coaches: `All`, Live Draft: `Off`, Cover Art: `None`).
   - Allows moderators to immediately review, adjust any test parameters, and click `+ Create Tournament` when ready.
+- **Matcha World Typography Overhaul**:
+  - Replaced `Saphifen` across the entire platform with `Matcha World` (`Matcha World.otf` / `Matcha World.ttf`).
+  - Updated the font preload tags, CSS font stacks, Primetime CFB matchup broadcast cards, generated canvas match banners, hidden DOM preloader elements, and Broadcast Banner customizer UI.
+  - Retained backward-compatible `@font-face` aliases so any legacy or fallback references seamlessly render with `Matcha World`.
 
 ### Cloudflare KV Infrastructure & Automatic Maintenance
 - **Automated Orphaned KV State Cleanup**: Added a dedicated `/api/tournament/delete` endpoint and integrated a backend safety net inside `POST /api/state` that automatically purges orphaned `draft_state:*`, `predictions:*`, and detached test `replay:*` keys whenever a test tournament is removed from the site.
