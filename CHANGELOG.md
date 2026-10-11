@@ -13,6 +13,9 @@ Format: `v[MAJOR].[MINOR].[PATCH]` — Major = major system overhauls, Minor = n
 - **Full Width Tournament Awards**: Expanded the Season Awards tab layout to span full width, perfectly matching the Top Cut bracket and other tournament tabs.
 - **Five Game Qualification Threshold**: Standardized award qualifications to a minimum of 5 games played to ensure sustained excellence across the season.
 - **Tier & Rank Card Badging**: Award cards now showcase clear tier and rank badges alongside bold per-game impact numbers and detailed statistical breakdowns.
+- **Full Width Tournament Progression**: Expanded the Progression & Accolades tab to full width (`100%`) matching the rest of the tournament archive.
+- **Entry Overall (OVR) & 3-Step Progression**: Progression cards now feature the rating coaches entered the tournament with, displaying a clear 3-step evolution (`[ENTRY OVR] ➔ [GROUP OVR] ➔ [FINAL OVR]`) alongside total tournament growth.
+- **Enlarged Podium Leaderboard Slots**: Upgraded 2nd (Silver) and 3rd (Bronze) place cards on the Statistical Leaderboards with 40px sprites, larger player & stat typography, and roomier card padding for immediate legibility.
 - **Cloudflare KV Write Optimization**: Added intelligent battle replay deduplication so existing replays are never re-uploaded on tournament saves, drastically reducing database write operations.
 
 ---
