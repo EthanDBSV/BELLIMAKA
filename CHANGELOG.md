@@ -5,6 +5,34 @@ Format: `v[MAJOR].[MINOR].[PATCH]` — Major = major system overhauls, Minor = n
 
 ---
 
+## [v2.4.1] — 2026-10-10
+
+### Match Box Score Impact Scoring & Visual Faint Feedback
+- **Impact Score Replacement**: Replaced the textual `Status` column in the Match Box Score table (Replay Hub modal) with a dedicated **Impact** metric column highlighted in cyan (`#38bdf8`), scoring each Pokémon's battle performance: `(KOs × 150) + Damage Dealt + Survival Bonus (+75) + (Healed × 0.5)`.
+- **Top Performer Lightning Indicator**: The Pokémon with the highest Impact score on each squad is distinguished with a gold `⚡` indicator.
+- **Visual Survival & Faint Feedback**:
+  - Eliminated bulky faint text from the table in favor of clean visual cues: fainted Pokémon sprites are desaturated and dimmed (`opacity: 0.45`, `grayscale(100%)`), Pokémon names appear in muted slate (`#8e8c95`), and row backgrounds are subtly softened.
+  - Survived Pokémon remain at full opacity and vibrant color, highlighting their survival bonus.
+  - Hovering over a Pokémon sprite or name displays a precise tooltip showing exact faint timing (e.g. `Fainted Turn 8`) or survival status.
+- **Color-Coded Box Score Metric Headers**: Color-coded all match box score table headers and stats to match standard analytics palettes:
+  - *Impact*: Cyan (`#38bdf8`)
+  - *KOs*: Orange (`#fb923c`)
+  - *Dmg Dealt*: Red (`#f87171`)
+  - *Dmg Taken*: Slate (`#cbd5e1` / `#94a3b8`)
+  - *Healed*: Green (`#4ade80`)
+
+### Coach Team Sheet Impact Metric & Stat Strip Harmony
+- **Per-Game Impact Average**: Integrated an **Impact** badge directly into the Pokémon stat strip on coach team sheets (`TeamRosterDetailView`), positioned right after `Apps`: `Impact [avg]/g`.
+- **Comprehensive Impact Breakdown**: Hovering over the Impact badge reveals both the per-game average and total career/season impact score accumulated across all tournament appearances.
+- **Stat Strip Palette Alignment**: Synchronized stat badge colors across team sheets (`KOs` in orange `#fb923c`, `Taken` in slate `#cbd5e1`) to maintain seamless visual harmony with the box score table.
+- **Historical Replay Stat Fallback**: Hardened `getTournamentPokemonStatsMap` with an automatic fallback calculation so legacy replays without stored `impactScore` attributes compute their impact contribution seamlessly into season totals and averages.
+
+### Clean URLs & Top Cut Moderator Event Handling
+- **Clean Hash Routing**: Removed percent-encoded URL fragments for top cut and playoff odds pages, upgrading `#Top%20Cut` to `#TopCut` and `#Playoff%20Odds` to `#PlayoffOdds` while preserving seamless backward compatibility for existing bookmarked links.
+- **Top Cut Card Moderator Click Isolation**: Resolved a conflict in playoff bracket cards where moderator permissions intercepted clicks across the entire card. Clicking a coach's name or avatar now cleanly opens their player profile without triggering the score modal, while clicking the card header, score capsule, or background opens the score setting dialog.
+
+---
+
 ## [v2.4.0] — 2026-10-10
 
 ### Instant Site Performance & On-Demand Replay Streaming

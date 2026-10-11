@@ -4,11 +4,11 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover" />
   <title>Bellimaka</title>
-  <link rel="icon" type="image/png" sizes="32x32" href="Fonts%20%26%20Logos/bellimaka_logo.png?v=2.4.0">
-  <link rel="icon" type="image/png" sizes="16x16" href="Fonts%20%26%20Logos/bellimaka_logo.png?v=2.4.0">
-  <link rel="shortcut icon" type="image/png" href="Fonts%20%26%20Logos/bellimaka_logo.png?v=2.4.0">
-  <link rel="apple-touch-icon" href="Fonts%20%26%20Logos/bellimaka_logo.png?v=2.4.0">
-  <link rel="icon" type="image/x-icon" href="favicon.ico?v=2.4.0">
+  <link rel="icon" type="image/png" sizes="32x32" href="Fonts%20%26%20Logos/bellimaka_logo.png?v=2.4.1">
+  <link rel="icon" type="image/png" sizes="16x16" href="Fonts%20%26%20Logos/bellimaka_logo.png?v=2.4.1">
+  <link rel="shortcut icon" type="image/png" href="Fonts%20%26%20Logos/bellimaka_logo.png?v=2.4.1">
+  <link rel="apple-touch-icon" href="Fonts%20%26%20Logos/bellimaka_logo.png?v=2.4.1">
+  <link rel="icon" type="image/x-icon" href="favicon.ico?v=2.4.1">
   <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;500;600;700;800;900&family=DM+Sans:wght@400;500;600;700&family=Permanent+Marker&display=swap" rel="stylesheet">
   <link rel="preload" href="Fonts%20%26%20Logos/Saphifen.otf" as="font" type="font/otf" crossorigin>
@@ -11014,6 +11014,12 @@ function renderMatchStatsBoxScoreHtml(stats, p1, p2, t, matchKey, gameNum) {
       });
     });
 
+    let getMonImpact = m => {
+      if(m.impactScore != null) return m.impactScore;
+      return ((m.kills || 0) * 150) + Math.round(m.damageDealt || 0) + (m.fainted ? 0 : 75) + Math.round((m.hpHealed || 0) * 0.5);
+    };
+    let maxSquadImpact = mons.length ? Math.max(...mons.map(getMonImpact)) : 0;
+
     return `
       <div style="background:#121218;border:1px solid #262633;border-radius:10px;overflow:hidden">
         <div style="padding:10px 16px;background:#171720;border-bottom:1px solid #262633;display:flex;justify-content:space-between;align-items:center">
@@ -11025,39 +11031,44 @@ function renderMatchStatsBoxScoreHtml(stats, p1, p2, t, matchKey, gameNum) {
               <tr>
                 <th style="width:40px"></th>
                 <th>Pokémon</th>
-                <th style="text-align:center">Status</th>
-                <th style="text-align:center">KOs</th>
-                <th style="text-align:center">Dmg Dealt</th>
-                <th style="text-align:center">Dmg Taken</th>
-                <th style="text-align:center">Healed</th>
+                <th style="text-align:center;color:#38bdf8;font-weight:800;letter-spacing:.5px">Impact</th>
+                <th style="text-align:center;color:#fb923c;font-weight:800;letter-spacing:.5px">KOs</th>
+                <th style="text-align:center;color:#f87171;font-weight:800;letter-spacing:.5px">Dmg Dealt</th>
+                <th style="text-align:center;color:#94a3b8;font-weight:800;letter-spacing:.5px">Dmg Taken</th>
+                <th style="text-align:center;color:#4ade80;font-weight:800;letter-spacing:.5px">Healed</th>
                 <th>Moves Recorded</th>
               </tr>
             </thead>
             <tbody>
               ${mons.map(m => {
                 let sprite = (typeof resolvePokemonData === 'function' ? resolvePokemonData(m.name)?.sprite : null) || (typeof getPokemonSpriteUrl === 'function' ? getPokemonSpriteUrl(m.name.toLowerCase()) : '') || m.sprite || '';
+                let monImpact = getMonImpact(m);
+                let isTopImpact = monImpact > 0 && monImpact === maxSquadImpact;
+                let faintTooltip = m.fainted ? `Fainted Turn ${m.faintTurn || '?'}` : 'Survived the match (+75 Impact bonus)';
+                let spriteStyle = m.fainted ? 'opacity:0.45;filter:grayscale(100%);transition:all .15s' : 'opacity:1;filter:none';
+                let nameColor = m.fainted ? '#8e8c95' : '#ffffff';
                 return `
-                  <tr>
+                  <tr style="${m.fainted ? 'background:rgba(0,0,0,0.12)' : ''}">
                     <td style="text-align:center;padding:4px">
-                      <img src="${sprite}" alt="${esc(m.name)}" style="width:34px;height:34px;object-fit:contain" onerror="handleSpriteError(this)">
+                      <img src="${sprite}" alt="${esc(m.name)}" style="width:34px;height:34px;object-fit:contain;${spriteStyle}" onerror="handleSpriteError(this)" title="${esc(faintTooltip)}">
                     </td>
                     <td>
-                      <div style="font:800 14px 'Barlow Condensed';color:#ffffff;display:flex;align-items:center;gap:6px">
+                      <div style="font:800 14px 'Barlow Condensed';color:${nameColor};display:flex;align-items:center;gap:6px" title="${esc(faintTooltip)}">
                         ${esc(m.name)}
                       </div>
                       ${m.killedMons && m.killedMons.length > 0 ? `
-                        <div style="font-size:10px;color:#ffd166;margin-top:2px">
+                        <div style="font-size:10px;color:#fb923c;margin-top:2px">
                           KO'd: ${m.killedMons.map(k => esc(k)).join(', ')}
                         </div>
                       ` : ''}
                     </td>
-                    <td style="text-align:center">
-                      ${m.fainted ? `<span class="status-pill-fainted">Fainted (T${m.faintTurn || '?'})</span>` : `<span class="status-pill-survived">Survived</span>`}
+                    <td style="text-align:center;font:800 15px 'Barlow Condensed';color:#38bdf8" title="Impact Score: ${monImpact} (KOs: ${(m.kills || 0) * 150} + Dmg: ${Math.round(m.damageDealt || 0)} + ${m.fainted ? 'Fainted: +0' : 'Survived: +75'} + Heal: ${Math.round((m.hpHealed || 0) * 0.5)})">
+                      ${isTopImpact ? `<span style="font-size:11px;color:#ffd166;margin-right:2px" title="Squad High Impact Performer">⚡</span>` : ''}${monImpact}
                     </td>
-                    <td style="text-align:center;font:800 15px 'Barlow Condensed';color:${m.kills > 0 ? '#ffd166' : '#646270'}">
+                    <td style="text-align:center;font:800 15px 'Barlow Condensed';color:${m.kills > 0 ? '#fb923c' : '#646270'}">
                       ${m.kills}
                     </td>
-                    <td style="text-align:center;font:800 15px 'Barlow Condensed';color:${m.damageDealt > 0 ? '#ff8a90' : '#646270'}">${Math.round(m.damageDealt)}</td>
+                    <td style="text-align:center;font:800 15px 'Barlow Condensed';color:${m.damageDealt > 0 ? '#f87171' : '#646270'}">${Math.round(m.damageDealt)}</td>
                     <td style="text-align:center;font:800 15px 'Barlow Condensed';color:${m.damageTaken > 0 ? '#cbd5e1' : '#646270'}">${Math.round(m.damageTaken)}</td>
                     <td style="text-align:center;font:800 15px 'Barlow Condensed';color:${m.hpHealed > 0 ? '#4ade80' : '#646270'}">${Math.round(m.hpHealed)}</td>
                     <td>
@@ -13700,7 +13711,8 @@ function getTournamentPokemonStatsMap(t, coachFilter) {
       gEntry.dmg += (p.damageDealt || 0);
       gEntry.taken += (p.damageTaken || 0);
       gEntry.healed += (p.hpHealed || 0);
-      gEntry.impact += (p.impactScore || 0);
+      let pImp = (p.impactScore != null && p.impactScore !== '') ? Number(p.impactScore) : (((p.kills || 0) * 150) + Math.round(p.damageDealt || 0) + (p.fainted ? 0 : 75) + Math.round((p.hpHealed || 0) * 0.5));
+      gEntry.impact += pImp;
     });
 
     gameGroup.forEach(gEntry => {
@@ -13760,7 +13772,7 @@ function getTournamentPokemonStatsMap(t, coachFilter) {
   });
 
   t._cachedMonStatsMaps[cacheKey] = map;
-  t._cachedMonStatsVersion = 7;
+  t._cachedMonStatsVersion = 8;
   t._cachedMonStatsTime = Date.now();
   return map;
 }
@@ -34148,14 +34160,17 @@ function TeamRosterDetailView(t, p){
                         <span style="font-size:11px;font-weight:800;background:rgba(255,255,255,0.06);color:#f1f5f9;padding:2px 8px;border-radius:4px;border:1px solid rgba(255,255,255,0.1);display:inline-flex;align-items:center;gap:4px" title="Official Games Brought Out">
                           <span style="color:#94a3b8;font-size:9px;letter-spacing:.5px;text-transform:uppercase">Apps</span> <b>${s.stat.games}</b>
                         </span>
-                        <span style="font-size:11px;font-weight:800;background:rgba(255,209,102,0.08);color:#ffd166;padding:2px 8px;border-radius:4px;border:1px solid rgba(255,209,102,0.25);display:inline-flex;align-items:center;gap:4px" title="Total KOs and KOs Per Game">
-                          <span style="color:#eab308;font-size:9px;letter-spacing:.5px;text-transform:uppercase">KOs</span> <b>${s.stat.kills}</b> <small style="opacity:0.85;font-weight:700">(${s.stat.killsPerGame.toFixed(1)}/g)</small>
+                        <span style="font-size:11px;font-weight:800;background:rgba(56,189,248,0.08);color:#38bdf8;padding:2px 8px;border-radius:4px;border:1px solid rgba(56,189,248,0.25);display:inline-flex;align-items:center;gap:4px" title="Average Impact Score per Game: ${Math.round(s.stat.avgImpactScore || 0)} (Total Impact: ${Math.round(s.stat.impact || 0)})">
+                          <span style="color:#0284c7;font-size:9px;letter-spacing:.5px;text-transform:uppercase">Impact</span> <b>${Math.round(s.stat.avgImpactScore || 0)}</b> <small style="opacity:0.85;font-weight:700">/g</small>
+                        </span>
+                        <span style="font-size:11px;font-weight:800;background:rgba(251,146,60,0.08);color:#fb923c;padding:2px 8px;border-radius:4px;border:1px solid rgba(251,146,60,0.25);display:inline-flex;align-items:center;gap:4px" title="Total KOs and KOs Per Game">
+                          <span style="color:#ea580c;font-size:9px;letter-spacing:.5px;text-transform:uppercase">KOs</span> <b>${s.stat.kills}</b> <small style="opacity:0.85;font-weight:700">(${s.stat.killsPerGame.toFixed(1)}/g)</small>
                         </span>
                         <span style="font-size:11px;font-weight:800;background:rgba(255,138,144,0.08);color:#ff8a90;padding:2px 8px;border-radius:4px;border:1px solid rgba(255,138,144,0.25);display:inline-flex;align-items:center;gap:4px" title="Total Damage Dealt and Damage Per Game">
                           <span style="color:#f87171;font-size:9px;letter-spacing:.5px;text-transform:uppercase">Dmg</span> <b>${Math.round(s.stat.dmg)}</b> <small style="opacity:0.85;font-weight:700">(${Math.round(s.stat.damageDealtPerGame)}/g)</small>
                         </span>
-                        <span style="font-size:11px;font-weight:800;background:rgba(125,211,252,0.08);color:#7dd3fc;padding:2px 8px;border-radius:4px;border:1px solid rgba(125,211,252,0.25);display:inline-flex;align-items:center;gap:4px" title="Total Damage Taken and Taken Per Game">
-                          <span style="color:#38bdf8;font-size:9px;letter-spacing:.5px;text-transform:uppercase">Taken</span> <b>${Math.round(s.stat.taken)}</b> <small style="opacity:0.85;font-weight:700">(${Math.round(s.stat.damageTakenPerGame)}/g)</small>
+                        <span style="font-size:11px;font-weight:800;background:rgba(148,163,184,0.08);color:#cbd5e1;padding:2px 8px;border-radius:4px;border:1px solid rgba(148,163,184,0.25);display:inline-flex;align-items:center;gap:4px" title="Total Damage Taken and Taken Per Game">
+                          <span style="color:#94a3b8;font-size:9px;letter-spacing:.5px;text-transform:uppercase">Taken</span> <b>${Math.round(s.stat.taken)}</b> <small style="opacity:0.85;font-weight:700">(${Math.round(s.stat.damageTakenPerGame)}/g)</small>
                         </span>
                         ${s.stat.healed > 0 ? `
                           <span style="font-size:11px;font-weight:800;background:rgba(74,222,128,0.08);color:#4ade80;padding:2px 8px;border-radius:4px;border:1px solid rgba(74,222,128,0.25);display:inline-flex;align-items:center;gap:4px" title="Total HP Healed and Healed Per Game">
