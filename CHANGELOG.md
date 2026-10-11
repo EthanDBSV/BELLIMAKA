@@ -3,6 +3,17 @@
 All notable changes to the Bellimaka Pokémon Draft League platform are documented here.
 Format: `v[MAJOR].[MINOR].[PATCH]` — Major = major system overhauls, Minor = new features, Patch = bug fixes and visual improvements.
 
+## [v2.4.4] — 2026-10-10
+
+### Season Awards & All-Tournament Rework
+- **Role-Free All-Tournament Teams**: Retired rigid DPS and Tank divisions in favor of ranking All-Tournament Teams purely by holistic Average Impact per game across the entire tournament.
+- **Top 3 Statistical Leaderboards**: Added dedicated podium leaderboards celebrating the top 3 Pokémon across 5 major categories: Most KOs, Most Damage, Most Tanked, Most Healed, and Most Support.
+- **Full Width Tournament Awards**: Expanded the Season Awards tab layout to span full width, perfectly matching the Top Cut bracket and other tournament tabs.
+- **Five Game Qualification Threshold**: Standardized award qualifications to a minimum of 5 games played to ensure sustained excellence across the season.
+- **Tier & Rank Card Badging**: Award cards now showcase clear tier and rank badges alongside bold per-game impact numbers and detailed statistical breakdowns.
+
+---
+
 ## [v2.4.3] — 2026-10-10
 
 ### Replay Box Score Alignment & Dedicated Support Column
