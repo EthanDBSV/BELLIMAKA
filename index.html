@@ -640,43 +640,24 @@
   pointer-events: none;
   z-index: 1;
   background-color: var(--team-sec, #ffffff);
-  -webkit-mask-image: url('Fonts%20%26%20Logos/cfb-splash-texture.png'), url('Fonts & Logos/cfb-splash-texture.png');
-  mask-image: url('Fonts%20%26%20Logos/cfb-splash-texture.png'), url('Fonts & Logos/cfb-splash-texture.png');
-  -webkit-mask-size: cover;
-  mask-size: cover;
-  opacity: 0.60;
+  -webkit-mask-image: url('Fonts%20%26%20Logos/cfb-splash-texture.png');
+  mask-image: url('Fonts%20%26%20Logos/cfb-splash-texture.png');
+  -webkit-mask-size: 100% 100%;
+  mask-size: 100% 100%;
+  -webkit-mask-position: center center;
+  mask-position: center center;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  opacity: 0.65;
   mix-blend-mode: normal;
 }
 .primetime-cfb-half.top .primetime-cfb-splash-layer,
 #bbLivePreview .primetime-cfb-splash-layer {
-  transform: scaleX(1);
-  -webkit-mask-position: 25% 35%;
-  mask-position: 25% 35%;
+  transform: none;
 }
 .primetime-cfb-half.bottom .primetime-cfb-splash-layer {
-  transform: scaleX(-1);
-  -webkit-mask-position: 75% 65%;
-  mask-position: 75% 65%;
-}
-
-/* Background Color Splash & Distressed Spray Overlay */
-.primetime-cfb-scratches {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  pointer-events: none;
-  z-index: 2;
-  mix-blend-mode: overlay;
-  opacity: 0.96;
-}
-.primetime-cfb-half.bottom .primetime-cfb-scratches svg {
-  transform: scaleX(-1);
-}
-.primetime-cfb-scratches svg {
-  width: 100%;
-  height: 100%;
-  display: block;
+  transform: scale(-1, 1);
+  transform-origin: center center;
 }
 
 /* Authentic Inset Colored Hashtag Ribbon (Layered Underneath Logos with Margins) */
@@ -6257,6 +6238,14 @@ const profilePictures={};
 const coachHashtags={};
 const coachThemeColors={};
 const coachSecondaryColors={};
+const DEFAULT_COACH_SECONDARY_COLORS = {
+  'Ozy': '#ffd166',
+  'Kiril': '#ffd166',
+  'Ethan': '#ffd166',
+  'Jace': '#f59e0b',
+  'Gavin': '#f472b6',
+  'Dao Ming': '#38bdf8'
+};
 const coachNameLines={};
 const _extractedColorsCache={};
 const _extractedSecondaryColorsCache={};
@@ -6368,6 +6357,38 @@ function hslToHex(h, s, l) {
   return `#${f(0)}${f(8)}${f(4)}`;
 }
 
+function getContrastingSecondaryHex(priHex) {
+  if (!priHex || typeof priHex !== 'string') return '#ffd166';
+  let c = priHex.replace('#', '');
+  if (c.length === 3) c = c.split('').map(x => x + x).join('');
+  let num = parseInt(c, 16);
+  if (isNaN(num)) return '#ffd166';
+  let r = (num >> 16) & 255;
+  let g = (num >> 8) & 255;
+  let b = num & 255;
+  let max = Math.max(r, g, b) / 255;
+  let min = Math.min(r, g, b) / 255;
+  let delta = max - min;
+  let hue = 0;
+  if (delta > 0.01) {
+    if (max === r / 255) {
+      hue = ((g / 255 - b / 255) / delta) % 6;
+    } else if (max === g / 255) {
+      hue = (b / 255 - r / 255) / delta + 2;
+    } else {
+      hue = (r / 255 - g / 255) / delta + 4;
+    }
+    hue = Math.round(hue * 60);
+    if (hue < 0) hue += 360;
+  }
+  // Cool hues (teals, blues, purples, cyans, greens: 90 to 320) -> warm gold/amber
+  if (hue >= 90 && hue <= 320) return '#ffd166';
+  // Yellow/gold hues (35 to 89) -> electric sky blue
+  if (hue >= 35 && hue < 90) return '#38bdf8';
+  // Red / warm hues -> bright gold
+  return '#ffd166';
+}
+
 function extractDominantColorFromImg(src, cacheKey, callback) {
   if(!src || typeof document === 'undefined') return;
   if(_extractedColorsCache[cacheKey]) {
@@ -6407,16 +6428,16 @@ function extractDominantColorFromImg(src, cacheKey, callback) {
         });
         let secHex = secCandidate 
           ? ('#' + [secCandidate.r, secCandidate.g, secCandidate.b].map(x => x.toString(16).padStart(2, '0')).join(''))
-          : hexToLighterShade(priHex, 0.35);
+          : (DEFAULT_COACH_SECONDARY_COLORS[cacheKey] || getContrastingSecondaryHex(priHex));
         _extractedSecondaryColorsCache[cacheKey] = secHex;
 
         if (typeof callback === "function") callback(priHex, secHex);
-        let el = document.querySelector(`.primetime-cfb-half[data-coach="${cacheKey}"]`);
-        if (el) {
+        let els = document.querySelectorAll(`.primetime-cfb-half[data-coach="${cacheKey}"]`);
+        els.forEach(el => {
           el.style.setProperty('--team-color', priHex);
           el.style.setProperty('--team-pri', priHex);
           el.style.setProperty('--team-sec', secHex);
-        }
+        });
       }
     } catch(e) {}
   };
@@ -6446,16 +6467,17 @@ function getCoachPrimaryColor(p) {
 }
 
 function getCoachSecondaryColor(p) {
-  if(!p) return '#f59e0b';
+  if(!p) return '#ffd166';
   if(coachSecondaryColors[p]) return coachSecondaryColors[p];
   if(typeof profiles === 'object' && profiles[p]?.secondaryColor) return profiles[p].secondaryColor;
+  if(DEFAULT_COACH_SECONDARY_COLORS[p]) return DEFAULT_COACH_SECONDARY_COLORS[p];
   if(_extractedSecondaryColorsCache[p]) return _extractedSecondaryColorsCache[p];
   if(typeof profilePictures === 'object' && profilePictures[p]) {
     extractDominantColorFromImg(profilePictures[p], p);
     if(_extractedSecondaryColorsCache[p]) return _extractedSecondaryColorsCache[p];
   }
   let pri = getCoachPrimaryColor(p);
-  return hexToLighterShade(pri, 0.35);
+  return getContrastingSecondaryHex(pri);
 }
 
 function cleanDisplayTeamName(str) {
@@ -6553,85 +6575,7 @@ function saveCoachBranding(p) {
 }
 
 function getCfbScratchOverlayHtml() {
-  return `<div class="primetime-cfb-splash-layer" aria-hidden="true"></div>
-  <div class="primetime-cfb-scratches" aria-hidden="true">
-    <svg viewBox="0 0 1000 320" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
-      <defs>
-        <linearGradient id="cfbSplashGlowGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" stop-color="#ffffff" stop-opacity="0.30"/>
-          <stop offset="40%" stop-color="#ffffff" stop-opacity="0.10"/>
-          <stop offset="100%" stop-color="#000000" stop-opacity="0.35"/>
-        </linearGradient>
-        <linearGradient id="cfbBrushGradLight" x1="0%" y1="100%" x2="100%" y2="0%">
-          <stop offset="0%" stop-color="#ffffff" stop-opacity="0.06"/>
-          <stop offset="35%" stop-color="#ffffff" stop-opacity="0.55"/>
-          <stop offset="70%" stop-color="#ffffff" stop-opacity="0.25"/>
-          <stop offset="100%" stop-color="#ffffff" stop-opacity="0"/>
-        </linearGradient>
-        <linearGradient id="cfbBrushGradDark" x1="0%" y1="100%" x2="100%" y2="0%">
-          <stop offset="0%" stop-color="#000000" stop-opacity="0.55"/>
-          <stop offset="50%" stop-color="#000000" stop-opacity="0.30"/>
-          <stop offset="100%" stop-color="#000000" stop-opacity="0"/>
-        </linearGradient>
-      </defs>
-
-      <!-- Diagonal Color Splash Ambient Wash -->
-      <polygon points="0,0 520,0 180,320 0,320" fill="url(#cfbSplashGlowGrad)"/>
-
-      <!-- Dynamic Diagonal Dry-Brush Scrapes & Slashes (Screenprint Splash Grain) -->
-      <g stroke="url(#cfbBrushGradLight)" stroke-linecap="round" fill="none">
-        <path d="M10,290 L480,30" stroke-width="2.8" stroke-dasharray="14 8 26 6 4 10 32 14" opacity="0.75"/>
-        <path d="M35,310 L540,45" stroke-width="1.8" stroke-dasharray="20 12 8 6 18 10" opacity="0.60"/>
-        <path d="M70,270 L620,20" stroke-width="3.4" stroke-dasharray="30 16 12 8 45 18" opacity="0.80"/>
-        <path d="M120,320 L680,60" stroke-width="1.5" stroke-dasharray="8 6 16 10 24 14" opacity="0.55"/>
-        <path d="M180,300 L760,40" stroke-width="2.2" stroke-dasharray="24 14 10 8 36 12" opacity="0.65"/>
-        <path d="M260,315 L840,70" stroke-width="1.6" stroke-dasharray="12 10 28 14" opacity="0.50"/>
-        <path d="M50,180 L380,25" stroke-width="2.0" stroke-dasharray="18 10 6 6 22 12" opacity="0.60"/>
-        <path d="M340,320 L920,85" stroke-width="2.4" stroke-dasharray="22 14 14 8 30 16" opacity="0.70"/>
-        <path d="M420,310 L980,110" stroke-width="1.4" stroke-dasharray="10 8 20 12" opacity="0.45"/>
-      </g>
-      <!-- Deep Contrast Brush Scrapes -->
-      <g stroke="url(#cfbBrushGradDark)" stroke-linecap="round" fill="none">
-        <path d="M12,292 L482,32" stroke-width="2.2" stroke-dasharray="12 10 22 8 6 12" opacity="0.65"/>
-        <path d="M72,272 L622,22" stroke-width="2.6" stroke-dasharray="26 18 10 10" opacity="0.70"/>
-        <path d="M182,302 L762,42" stroke-width="1.8" stroke-dasharray="20 16 8 10" opacity="0.55"/>
-        <path d="M342,322 L922,87" stroke-width="2.0" stroke-dasharray="18 16 12 10" opacity="0.60"/>
-      </g>
-
-      <!-- Screenprint Paint Splatter & Spray Droplets (White Specks) -->
-      <g fill="#ffffff" opacity="0.70">
-        <circle cx="45" cy="240" r="1.8"/><circle cx="58" cy="215" r="1.2"/><circle cx="72" cy="265" r="2.2"/>
-        <circle cx="85" cy="190" r="1.5"/><circle cx="98" cy="235" r="0.9"/><circle cx="112" cy="165" r="2.0"/>
-        <circle cx="125" cy="280" r="1.3"/><circle cx="138" cy="210" r="2.4"/><circle cx="152" cy="145" r="1.1"/>
-        <circle cx="165" cy="255" r="1.6"/><circle cx="178" cy="180" r="0.8"/><circle cx="192" cy="120" r="2.1"/>
-        <circle cx="210" cy="230" r="1.4"/><circle cx="225" cy="160" r="1.9"/><circle cx="240" cy="95" r="1.0"/>
-        <circle cx="258" cy="275" r="2.3"/><circle cx="272" cy="205" r="1.2"/><circle cx="288" cy="140" r="1.7"/>
-        <circle cx="305" cy="75" r="2.0"/><circle cx="320" cy="245" r="0.9"/><circle cx="335" cy="175" r="2.2"/>
-        <circle cx="352" cy="115" r="1.3"/><circle cx="370" cy="285" r="1.8"/><circle cx="388" cy="220" r="1.1"/>
-        <circle cx="405" cy="150" r="2.5"/><circle cx="422" cy="85" r="1.4"/><circle cx="440" cy="260" r="1.0"/>
-        <circle cx="458" cy="195" r="2.1"/><circle cx="475" cy="130" r="1.5"/><circle cx="492" cy="65" r="1.9"/>
-        <circle cx="510" cy="235" r="1.2"/><circle cx="528" cy="170" r="2.3"/><circle cx="545" cy="105" r="0.9"/>
-        <circle cx="565" cy="275" r="1.7"/><circle cx="582" cy="210" r="1.4"/><circle cx="600" cy="145" r="2.0"/>
-        <circle cx="618" cy="80" r="1.1"/><circle cx="638" cy="245" r="2.2"/><circle cx="655" cy="185" r="1.3"/>
-        <circle cx="675" cy="120" r="1.8"/><circle cx="692" cy="55" r="2.4"/><circle cx="712" cy="225" r="1.0"/>
-        <circle cx="730" cy="165" r="2.1"/><circle cx="750" cy="95" r="1.5"/><circle cx="770" cy="265" r="1.2"/>
-        <circle cx="790" cy="200" r="1.9"/><circle cx="810" cy="135" r="0.9"/><circle cx="830" cy="70" r="2.2"/>
-        <circle cx="852" cy="240" r="1.6"/><circle cx="872" cy="175" r="1.1"/><circle cx="895" cy="110" r="2.3"/>
-        <circle cx="918" cy="215" r="1.4"/><circle cx="940" cy="150" r="1.8"/><circle cx="962" cy="85" r="1.2"/>
-      </g>
-
-      <!-- Deep Contrast Ink Splatter Particles (Dark Specks) -->
-      <g fill="#000000" opacity="0.45">
-        <circle cx="48" cy="242" r="1.5"/><circle cx="75" cy="267" r="1.8"/><circle cx="115" cy="167" r="1.6"/>
-        <circle cx="140" cy="212" r="2.0"/><circle cx="195" cy="122" r="1.7"/><circle cx="228" cy="162" r="1.5"/>
-        <circle cx="260" cy="277" r="1.9"/><circle cx="290" cy="142" r="1.3"/><circle cx="338" cy="177" r="1.8"/>
-        <circle cx="408" cy="152" r="2.0"/><circle cx="460" cy="197" r="1.7"/><circle cx="530" cy="172" r="1.9"/>
-        <circle cx="602" cy="147" r="1.6"/><circle cx="640" cy="247" r="1.8"/><circle cx="695" cy="57" r="2.0"/>
-        <circle cx="732" cy="167" r="1.7"/><circle cx="792" cy="202" r="1.5"/><circle cx="832" cy="72" r="1.8"/>
-        <circle cx="897" cy="112" r="1.9"/><circle cx="942" cy="152" r="1.4"/>
-      </g>
-    </svg>
-  </div>`;
+  return `<div class="primetime-cfb-splash-layer" aria-hidden="true"></div>`;
 }
 
 function openBroadcastBrandingEditor(p) {
@@ -6867,7 +6811,7 @@ function triggerBbAutoExtract(p) {
     });
   } else {
     let fallbackPri = hslToHex((typeof hueOf === 'function' ? hueOf(p || 'team') : 0), 65, 36);
-    let fallbackSec = hexToLighterShade(fallbackPri, 0.35);
+    let fallbackSec = DEFAULT_COACH_SECONDARY_COLORS[p] || getContrastingSecondaryHex(fallbackPri);
     let colInput = document.querySelector('#bbColorInput');
     let secInput = document.querySelector('#bbSecColorInput');
     let textInput = document.querySelector('#bbColorText');
@@ -16518,7 +16462,7 @@ async function generateMatchCardDataUrl(data){
           tctx.fillStyle = secColor || '#ffffff';
           tctx.fillRect(0, 0, w, halfH);
 
-          hctx.globalAlpha = 0.55;
+          hctx.globalAlpha = 0.65;
           if(!isTop){
             hctx.translate(w, 0);
             hctx.scale(-1, 1);
