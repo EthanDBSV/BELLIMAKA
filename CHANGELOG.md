@@ -8,6 +8,7 @@ Format: `v[MAJOR].[MINOR].[PATCH]` — Major = major system overhauls, Minor = n
 ### Tournament Lifecycle & Match Automation
 - **Post-Tournament Most Improved Accolade**: Added a strict tournament completion check (`status === 'COMPLETE'`) to the Most Improved badge algorithm, ensuring it is exclusively awarded once the full tournament concludes rather than triggering off temporary group-stage standings.
 - **Dynamic Opening Date for TBD Tournaments**: When a tournament's start date is set to `TBD`, entering the very first match score (in group stage, Swiss, or playoffs) now automatically sets and locks the tournament's official opening date to that day (`YYYY-MM-DD`).
+- **Dynamic End Date on Deciding Playoff Match**: If the tournament's end date has not been manually specified (remains `TBD` or blank), entering the deciding match score in the tournament (Grand Finals or Bracket Reset) in `saveTopCutScore()` now automatically assigns the tournament's end date to that match's completion date (`YYYY-MM-DD`). Also safely enforced upon tournament completion in `endTournament()`, and cleanly reverts to `TBD` if the deciding match is ever reset or undone.
 - **Anticipation-Building Hat Ceremony (5.0s)**:
   - Overhauled the Live Hat Draw Ceremony with a 4.2-second suspense sequence featuring an accelerating-to-decelerating ticker curve (60ms ➔ 80ms ➔ 120ms ➔ 180ms ➔ 260ms delay ticks) building tension up to the reveal.
   - Added an 0.8-second celebratory reveal pause with a popping card animation before auto-advancing to the next draw (5.0s total cycle).

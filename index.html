@@ -8561,7 +8561,7 @@ function createProfile(){let p=document.querySelector('#profileNewName').value.t
 
 
 
-function topScore(i){let t=ongoingT(),m=t.topCutMatches[i],a=document.querySelector('#ta'+i).value,b=document.querySelector('#tb'+i).value;m.as=a===''?0:+a;m.bs=b===''?0:+b;m.date=new Date().toLocaleString([],{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'});if(!t.start||String(t.start).trim().toUpperCase()==='TBD')t.start=new Date().toISOString().slice(0,10);persistLeague();render()}
+function topScore(i){let t=ongoingT(),m=t.topCutMatches[i],a=document.querySelector('#ta'+i).value,b=document.querySelector('#tb'+i).value;m.as=a===''?0:+a;m.bs=b===''?0:+b;m.date=new Date().toLocaleString([],{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'});if(!t.start||String(t.start).trim().toUpperCase()==='TBD')t.start=new Date().toISOString().slice(0,10);let allDone=t.topCutMatches?.every(x=>x.as!==''&&x.bs!==''&&x.as!=null&&x.bs!=null);if(allDone&&(!t.end||String(t.end).trim().toUpperCase()==='TBD')){t.end=new Date().toISOString().slice(0,10);t.autoEndDate=true;}persistLeague();render()}
 
 
 
@@ -14497,7 +14497,13 @@ function saveTournamentRecord(id){
   let badgeLabelVal = document.querySelector('#recordBadgeLabel')?.value?.trim();
   t.badgeLabel = badgeLabelVal || '';
   t.start = document.querySelector('#recordStart').value.trim() || t.start;
-  t.end = document.querySelector('#recordEnd').value.trim() || t.end;
+  let recordEndVal = document.querySelector('#recordEnd')?.value?.trim();
+  if(recordEndVal !== undefined){
+    t.end = recordEndVal || t.end;
+    if(recordEndVal && recordEndVal.toUpperCase() !== 'TBD'){
+      delete t.autoEndDate;
+    }
+  }
   t.regulation = document.querySelector('#recordRule').value.trim() || t.regulation;
   let newPhase = document.querySelector('#recordPhase')?.value || t.phase;
   t.phase = newPhase;
@@ -17771,6 +17777,10 @@ async function resetTopCutBracket(){
   delete t.bracketManagerData;
   delete t.topCutCache;
   t.topCutMatchTimestamps = {};
+  if(t.autoEndDate){
+    t.end = 'TBD';
+    delete t.autoEndDate;
+  }
   await createTopCutStage(t);
   persistLeague();
   render();
@@ -18465,6 +18475,16 @@ async function saveTopCutScore(matchId){
   await refreshTopCutCache(t);
   if(!t.start || String(t.start).trim().toUpperCase() === 'TBD'){
     t.start = new Date().toISOString().slice(0, 10);
+  }
+  if(t.topCutCache?.complete){
+    if(!t.end || String(t.end).trim().toUpperCase() === 'TBD'){
+      let matchTs = (t.topCutMatchTimestamps && t.topCutMatchTimestamps[matchId]) || Date.now();
+      t.end = new Date(matchTs).toISOString().slice(0, 10);
+      t.autoEndDate = true;
+    }
+  } else if(t.autoEndDate){
+    t.end = 'TBD';
+    delete t.autoEndDate;
   }
   persistLeague();
   if(typeof renderPredictionLeaders === 'function'){
@@ -21437,6 +21457,10 @@ function endTournament(){
   t.champion=t.topCutCache.champion;
   t.status='COMPLETE';
   t.phase='complete';
+  if(!t.end || String(t.end).trim().toUpperCase() === 'TBD'){
+    t.end = new Date().toISOString().slice(0, 10);
+    t.autoEndDate = true;
+  }
 
   // 1. Snapshot tournament rosters into t.rosters and teamHistory[p]
   snapshotTournamentRosters(t);
