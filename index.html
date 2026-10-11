@@ -18240,9 +18240,9 @@ function renderTournamentProgressionTabHtml(t){
       ? getHistoricalPlayerOVR(p, tIdx, 'group', sortedT)
       : calculatePlayerOVR(p);
 
-    let fOvr = (inTopCut && isPastT && typeof getHistoricalPlayerOVR === 'function')
+    let fOvr = (isPastT && typeof getHistoricalPlayerOVR === 'function')
       ? getHistoricalPlayerOVR(p, tIdx, 'complete', sortedT)
-      : (inTopCut ? calculatePlayerOVR(p) : gOvr);
+      : calculatePlayerOVR(p);
 
     let diff = (fOvr && eOvr) ? (fOvr.ovr - eOvr.ovr) : null;
     let coverArt = (typeof teamCovers === 'object' && teamCovers[p]) || '';
