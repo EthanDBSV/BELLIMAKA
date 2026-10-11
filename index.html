@@ -639,20 +639,24 @@
   height: 100%;
   pointer-events: none;
   z-index: 1;
-  background-image: url('Fonts%20%26%20Logos/cfb-splash-texture.jpg'), url('Fonts & Logos/cfb-splash-texture.jpg');
-  background-size: cover;
-  background-position: center;
-  filter: grayscale(1) contrast(1.75) brightness(1.15);
-  mix-blend-mode: overlay;
-  opacity: 0.35;
+  background-color: var(--team-sec, #ffffff);
+  -webkit-mask-image: url('Fonts%20%26%20Logos/cfb-splash-texture.png'), url('Fonts & Logos/cfb-splash-texture.png');
+  mask-image: url('Fonts%20%26%20Logos/cfb-splash-texture.png'), url('Fonts & Logos/cfb-splash-texture.png');
+  -webkit-mask-size: cover;
+  mask-size: cover;
+  opacity: 0.60;
+  mix-blend-mode: normal;
 }
-.primetime-cfb-half.top .primetime-cfb-splash-layer {
+.primetime-cfb-half.top .primetime-cfb-splash-layer,
+#bbLivePreview .primetime-cfb-splash-layer {
   transform: scaleX(1);
-  background-position: 25% 35%;
+  -webkit-mask-position: 25% 35%;
+  mask-position: 25% 35%;
 }
 .primetime-cfb-half.bottom .primetime-cfb-splash-layer {
   transform: scaleX(-1);
-  background-position: 75% 65%;
+  -webkit-mask-position: 75% 65%;
+  mask-position: 75% 65%;
 }
 
 /* Background Color Splash & Distressed Spray Overlay */
@@ -6342,9 +6346,9 @@ function getBannerTextColor(hex) {
   return lum > 0.72 ? '#111116' : '#ffffff';
 }
 
-function getBattlewornBg(color, isTop, secondaryColor) {
+function getBattlewornBg(color, isTop) {
   let base = color || '#881c24';
-  let lightSplash = secondaryColor || hexToLighterShade(base, 0.20);
+  let lightSplash = hexToLighterShade(base, 0.20);
   let deepEdge = hexToDarkerShade(base, 0.10);
   if (isTop) {
     return `linear-gradient(125deg, ${lightSplash} 0%, ${base} 45%, ${deepEdge} 100%)`;
@@ -6644,7 +6648,7 @@ function openBroadcastBrandingEditor(p) {
 
   let bannerCol = getBannerShade(currentColor);
   let bannerTextCol = getBannerTextColor(currentColor);
-  let battleBg = getBattlewornBg(currentColor, true, currentSecColor);
+  let battleBg = getBattlewornBg(currentColor, true);
 
   let pic = profilePictures[p] || teamCovers[p] || '';
   let avatarFace = pic ? `background-image:url('${esc(pic)}');` : fallbackArt(p);
@@ -6825,7 +6829,7 @@ function updateBbLivePreview(p) {
 
   let bannerCol = getBannerShade(col);
   let bannerTextCol = getBannerTextColor(col);
-  let battleBg = getBattlewornBg(col, true, secCol);
+  let battleBg = getBattlewornBg(col, true);
 
   preview.style.background = battleBg;
   preview.style.setProperty('--team-pri', col);
@@ -16471,7 +16475,7 @@ async function generateMatchCardDataUrl(data){
     const [img1, img2, texImg] = await Promise.all([
       loadImg(p1ImgUrl),
       loadImg(p2ImgUrl),
-      loadImg('Fonts%20%26%20Logos/cfb-splash-texture.jpg')
+      loadImg('Fonts%20%26%20Logos/cfb-splash-texture.png').then(img => img || loadImg('Fonts%20%26%20Logos/cfb-splash-texture.jpg'))
     ]);
 
     // 1. Overall outer card clipping (rounded rectangle)
@@ -16491,8 +16495,8 @@ async function generateMatchCardDataUrl(data){
       hc.height = halfH;
       const hctx = hc.getContext('2d');
 
-      // Battleworn background gradient with secondary color flow
-      let lightSplash = secColor || ((typeof hexToLighterShade === 'function') ? hexToLighterShade(color, 0.24) : color);
+      // Battleworn background gradient (pure primary base)
+      let lightSplash = (typeof hexToLighterShade === 'function') ? hexToLighterShade(color, 0.20) : color;
       let deepEdge = (typeof hexToDarkerShade === 'function') ? hexToDarkerShade(color, 0.10) : color;
       let bgGrad = hctx.createLinearGradient(0, isTop ? 0 : halfH, w, isTop ? halfH : 0);
       bgGrad.addColorStop(0, lightSplash);
@@ -16501,12 +16505,26 @@ async function generateMatchCardDataUrl(data){
       hctx.fillStyle = bgGrad;
       hctx.fillRect(0, 0, w, halfH);
 
-      // Texture overlay if available
+      // Splash texture from folder tinted in the secondary color
       if(texImg){
         hctx.save();
-        hctx.globalAlpha = 0.35;
-        hctx.globalCompositeOperation = 'overlay';
-        hctx.drawImage(texImg, 0, 0, w, halfH);
+        const tc = document.createElement('canvas');
+        tc.width = w;
+        tc.height = halfH;
+        const tctx = tc.getContext('2d');
+        if(tctx){
+          tctx.drawImage(texImg, 0, 0, w, halfH);
+          tctx.globalCompositeOperation = 'source-in';
+          tctx.fillStyle = secColor || '#ffffff';
+          tctx.fillRect(0, 0, w, halfH);
+
+          hctx.globalAlpha = 0.55;
+          if(!isTop){
+            hctx.translate(w, 0);
+            hctx.scale(-1, 1);
+          }
+          hctx.drawImage(tc, 0, 0, w, halfH);
+        }
         hctx.restore();
       }
 
@@ -22072,8 +22090,8 @@ function matchupOfTheWeekCard(t){
   let bannerColor2 = getBannerShade(color2);
   let bannerTextCol1 = getBannerTextColor(color1);
   let bannerTextCol2 = getBannerTextColor(color2);
-  let bgTop = getBattlewornBg(color1, true, secColor1);
-  let bgBottom = getBattlewornBg(color2, false, secColor2);
+  let bgTop = getBattlewornBg(color1, true);
+  let bgBottom = getBattlewornBg(color2, false);
   let topStatusClass = isPlayed ? (p1Won ? 'is-winner' : (p2Won ? 'is-loser' : '')) : '';
   let bottomStatusClass = isPlayed ? (p2Won ? 'is-winner' : (p1Won ? 'is-loser' : '')) : '';
 

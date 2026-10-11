@@ -9,8 +9,8 @@ Format: `v[MAJOR].[MINOR].[PATCH]` — Major = major system overhauls, Minor = n
 - **Custom Primary & Secondary Team Colors**:
   - Expanded coach broadcast branding studio (`openBroadcastBrandingEditor`) with dedicated side-by-side pickers for both **Primary Color** (battleworn base & ticker ribbon) and **Secondary Color** (angled background splash & text gradient).
   - Added a one-click `⇄ Swap` button to quickly flip primary and secondary roles, plus `⚡ Auto-Extract` to sample both colors automatically from the coach's profile picture using Euclidean color clustering (`dist >= 65`).
-- **Dynamic Two-Tone Background Splash**:
-  - Upgraded the Primetime Matchup card battleworn backgrounds (`getBattlewornBg`) to seamlessly flow from the coach's secondary accent at the high-energy corner splash (`0%`) across into the primary team base (`45%`) and deep shaded outer edge (`100%`).
+- **Secondary Color Grunge Splash Texture**:
+  - Colored the actual distress spray & paint splatter texture (`cfb-splash-texture.png` / `cfb-splash-texture.jpg`) directly in the coach's secondary branding color (`var(--team-sec)` via CSS mask and canvas tinting), spraying secondary paint marks across the pure primary team base.
 - **Metallic Dual-Tone Text Gradient**:
   - Replaced solid white team names across all Primetime cards with a pure vertical dual-tone gradient (`linear-gradient(180deg, var(--team-sec) 0%, var(--team-pri) 100%)`) accented with heavy double-layer drop shadows (`0 3px 6px rgba(0,0,0,0.95), 0 0 2px rgba(0,0,0,0.9)`) for crisp broadcast contrast and legibility.
   - Seamlessly applied to all typography tiers: single-line names, two-line stacked mascots (`.primetime-cfb-team-name-l1`, `.primetime-cfb-team-name-l2`), and small prefix eyebrows (`.primetime-cfb-team-name-prefix`).
