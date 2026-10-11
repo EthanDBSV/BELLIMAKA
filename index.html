@@ -6212,12 +6212,21 @@ document.addEventListener('click', function(e){
   }
 });
 
+function getVisibleTabs(){
+  let isOngoing = Boolean(typeof ongoingT === 'function' && ongoingT());
+  if(isOngoing){
+    return ['Home', 'Standings', 'Teams', 'Draft', 'Matches', 'Top Cut', 'Playoff Odds', 'Predictions', 'Records', 'Tournaments'];
+  }
+  return ['Home', 'Standings', 'Draft', 'Records', 'Tournaments'];
+}
+
 function nav(){
-  let navHtml = tabs.map(t=>`<button class="${current===t?'active':''}" onclick="go('${t}')">${t}</button>`).join('');
+  let visibleTabs = getVisibleTabs();
+  let navHtml = visibleTabs.map(t=>`<button class="${current===t?'active':''}" onclick="go('${t}')">${t}</button>`).join('');
   let deskNav = document.querySelector('#nav');
   if(deskNav) deskNav.innerHTML = navHtml;
   let mobNav = document.querySelector('#mobileDrawerNav');
-  if(mobNav) mobNav.innerHTML = tabs.map(t=>`<button class="mobile-nav-link ${current===t?'active':''}" onclick="closeMobileNav(); go('${t}')">${t}</button>`).join('');
+  if(mobNav) mobNav.innerHTML = visibleTabs.map(t=>`<button class="mobile-nav-link ${current===t?'active':''}" onclick="closeMobileNav(); go('${t}')">${t}</button>`).join('');
   if(typeof renderTopNavExtras === 'function') renderTopNavExtras();
 }
 function go(t,updateHash=true){
@@ -7640,10 +7649,12 @@ async function hydrateTournamentsFromIndexedDB() {
 
         if(Array.isArray(fullT.matches) && Array.isArray(locT.matches)) {
           locT.matches.forEach((lm, idx) => {
-            let fm = (lm.id != null ? fullT.matches.find(m => m.id === lm.id) : null) ||
-                     fullT.matches.find(m => ((m.a === lm.a && m.b === lm.b) || (m.a === lm.b && m.b === lm.a)) && (m.round === lm.round || m.group === lm.group)) ||
-                     fullT.matches[idx];
-            if(fm && Array.isArray(fm.replays) && fm.replays.length > 0) {
+            let fm = fullT.matches.find(m => ((m.a === lm.a && m.b === lm.b) || (m.a === lm.b && m.b === lm.a)) && (m.round === lm.round || m.group === lm.group)) ||
+                     (lm.id != null ? fullT.matches.find(m => m.id === lm.id && ((m.a === lm.a && m.b === lm.b) || (m.a === lm.b && m.b === lm.a))) : null) ||
+                     (lm.id != null ? fullT.matches.find(m => m.id === lm.id && m.group === lm.group) : null) ||
+                     (fullT.matches[idx] && ((fullT.matches[idx].a === lm.a && fullT.matches[idx].b === lm.b) || (fullT.matches[idx].a === lm.b && fullT.matches[idx].b === lm.a)) ? fullT.matches[idx] : null);
+            let isCoachCompatible = Boolean(fm && (!lm.a || !lm.b || !fm.a || !fm.b || (fm.a === lm.a && fm.b === lm.b) || (fm.a === lm.b && fm.b === lm.a)));
+            if(fm && isCoachCompatible && Array.isArray(fm.replays) && fm.replays.length > 0) {
               if(!Array.isArray(lm.replays) || lm.replays.length === 0) {
                 lm.replays = JSON.parse(JSON.stringify(fm.replays));
                 restoredCount += fm.replays.length;
@@ -10122,6 +10133,99 @@ function isReplayListForCoaches(list, p1, p2, t, k) {
   return false;
 }
 
+function isReplayForMatch(r, p1, p2, t) {
+  if(!r || !p1 || !p2) return false;
+  let c1 = String(p1).toLowerCase().trim();
+  let c2 = String(p2).toLowerCase().trim();
+  if(!c1 || !c2 || c1 === c2) return false;
+
+  let matchesCoach = (c, target) => {
+    if(!c || !target) return false;
+    let sc = String(c).toLowerCase().trim();
+    if(sc === target) return true;
+    if(typeof isCoachMatch === 'function') return isCoachMatch(c, target, t);
+    return false;
+  };
+
+  let isPair = (cand1, cand2) => {
+    if(!cand1 || !cand2) return false;
+    let sc1 = String(cand1).toLowerCase().trim();
+    let sc2 = String(cand2).toLowerCase().trim();
+    if(sc1 === sc2) return false;
+    return (matchesCoach(sc1, c1) && matchesCoach(sc2, c2)) ||
+           (matchesCoach(sc1, c2) && matchesCoach(sc2, c1));
+  };
+
+  // 1. Direct coach properties
+  let rp1 = r.coach1 || r.p1 || r.stats?.coachP1 || r.stats?.coach1 || r.stats?.sideAttribution?.p1Coach;
+  let rp2 = r.coach2 || r.p2 || r.stats?.coachP2 || r.stats?.coach2 || r.stats?.sideAttribution?.p2Coach;
+  if(rp1 && rp2) {
+    return isPair(rp1, rp2);
+  }
+
+  // 2. Title check (e.g. "Game 1: Dao Ming vs Ozy" or "Ethan vs Yamac")
+  let title = String(r.title || '').trim();
+  let titleMatch = title.match(/^(?:game\s+\d+[:\s-]*)?(.+?)\s+vs\s+(.+)$/i);
+  if(titleMatch) {
+    let t1 = titleMatch[1].trim();
+    let t2 = titleMatch[2].trim().replace(/\s*-\s*game\s+\d+$/i, '').trim();
+    return isPair(t1, t2);
+  }
+
+  // 3. Stats pokemon attribution (extract coaches from pokemon on both sides)
+  if(r.stats?.pokemon) {
+    let pObj = r.stats.pokemon;
+    let list = Array.isArray(pObj) ? pObj : Object.values(pObj);
+    let p1Mons = list.filter(m => m && m.side === 'p1' && m.coach);
+    let p2Mons = list.filter(m => m && m.side === 'p2' && m.coach);
+    let coachP1 = p1Mons[0]?.coach;
+    let coachP2 = p2Mons[0]?.coach;
+    if(coachP1 && coachP2) {
+      return isPair(coachP1, coachP2);
+    }
+  }
+
+  // 4. Showdown usernames from stats
+  let u1 = r.stats?.player1;
+  let u2 = r.stats?.player2;
+  if(u1 && u2) {
+    return isPair(u1, u2);
+  }
+
+  // 5. Raw log |player| tags
+  if(r.log && typeof r.log === 'string' && r.log.includes('|player|')) {
+    let p1LogMatch = r.log.match(/\|player\|p1\|([^|\n\r]+)/);
+    let p2LogMatch = r.log.match(/\|player\|p2\|([^|\n\r]+)/);
+    if(p1LogMatch && p2LogMatch) {
+      return isPair(p1LogMatch[1].trim(), p2LogMatch[1].trim());
+    }
+  }
+
+  return false;
+}
+
+function sanitizeMatchReplays(m, t) {
+  if(!m || !Array.isArray(m.replays) || !m.replays.length) return;
+  let p1 = m.a || m.p1;
+  let p2 = m.b || m.p2;
+  if(!p1 || !p2) return;
+  m.replays = m.replays.filter(r => isReplayForMatch(r, p1, p2, t));
+}
+
+function sanitizeAllTournamentReplays() {
+  if(typeof tournamentData !== 'object' || !tournamentData) return;
+  Object.values(tournamentData).forEach(t => {
+    if(!t) return;
+    if(Array.isArray(t.matches)) {
+      t.matches.forEach(m => {
+        if(m) sanitizeMatchReplays(m, t);
+      });
+    }
+  });
+}
+try { sanitizeAllTournamentReplays(); } catch(e){}
+
+
 function getMatchTopCutReplays(t, m, matchKey) {
   if(!t || !m) return [];
   if(Array.isArray(m.replays) && m.replays.length > 0) return m.replays;
@@ -10417,6 +10521,15 @@ function findTournamentMatch(t, matchKey, index) {
     if(matchesWithId.length === 1){
       let matchObj = matchesWithId[0];
       return { match: matchObj, isTopCut: false, index: t.matches.indexOf(matchObj) };
+    } else if(matchesWithId.length > 1){
+      let grpMatch = matchesWithId.find(m => m.group && mKeyStr.includes(m.group.replace(/[^a-zA-Z0-9_-]/g, '_')));
+      if(grpMatch) return { match: grpMatch, isTopCut: false, index: t.matches.indexOf(grpMatch) };
+      let coachMatch = matchesWithId.find(m => {
+        let a = (m.a || '').replace(/[^a-zA-Z0-9_-]/g, '_');
+        let b = (m.b || '').replace(/[^a-zA-Z0-9_-]/g, '_');
+        return (a && mKeyStr.includes(a)) || (b && mKeyStr.includes(b));
+      });
+      if(coachMatch) return { match: coachMatch, isTopCut: false, index: t.matches.indexOf(coachMatch) };
     }
   }
 
@@ -10557,14 +10670,15 @@ function handleMatchCardReplayClick(e, tId, matchKey, hasReplays) {
 function renderReplayPillsHtml(m, t, matchKey, canManage, isCompact = false) {
   if(!m) return '';
   if(!t) t = (m.tournamentId && tournamentData[m.tournamentId]) || activeT() || ongoingT();
+  sanitizeMatchReplays(m, t);
   if(m.isTopCut) {
     matchKey = getMatchTopCutReplayKey(t, m, matchKey);
   }
   let replays = (Array.isArray(m.replays) && m.replays.length)
     ? m.replays
-    : ((m.isTopCut || t?.topCutReplays) ? getMatchTopCutReplays(t, m, matchKey) : ((t?.replays && matchKey && t.replays[matchKey]) || []));
+    : (m.isTopCut ? getMatchTopCutReplays(t, m, matchKey) : ((t?.replays && matchKey && t.replays[matchKey]) || []));
 
-  if(!replays.length && t?.topCutReplays){
+  if(!replays.length && m.isTopCut && t?.topCutReplays){
     replays = getMatchTopCutReplays(t, m, matchKey);
   }
 
@@ -10860,8 +10974,10 @@ function openMatchReplayHubModal(tournamentId, matchKey, activeGameNum = 1, acti
   let mInfo = findTournamentMatch(t, matchKey);
   if(!mInfo || !mInfo.match) return;
   let m = mInfo.match;
+  sanitizeMatchReplays(m, t);
+  let isTc = Boolean(mInfo.isTopCut || m.isTopCut);
   let replays = (Array.isArray(m.replays) && m.replays.length) ? m.replays : (
-    (t?.topCutReplays && (
+    (isTc && t?.topCutReplays && (
       t.topCutReplays[matchKey] ||
       (mInfo.tcMatchId != null && (t.topCutReplays[mInfo.tcMatchId] || t.topCutReplays['tc_' + mInfo.tcMatchId])) ||
       (m.id != null && (t.topCutReplays[m.id] || t.topCutReplays['tc_' + m.id])) ||
@@ -10869,7 +10985,7 @@ function openMatchReplayHubModal(tournamentId, matchKey, activeGameNum = 1, acti
       (m.matchId != null && (t.topCutReplays[m.matchId] || t.topCutReplays['tc_' + m.matchId]))
     )) || []
   );
-  if(!replays.length && (mInfo.isTopCut || m.isTopCut || t?.topCutReplays)){
+  if(!replays.length && isTc && t?.topCutReplays){
     replays = getMatchTopCutReplays(t, m, matchKey);
   }
   if((!m.replays || !m.replays.length) && replays.length){
@@ -14230,7 +14346,7 @@ function renderTournamentAwardsStandingsBannerHtml(t) {
 }
 
 function TopCut(){
-  let t = ongoingT() || activeT();
+  let t = ongoingT();
   if(!t) return noTournament();
   viewTournament = t.id;
   if(t.phase === 'draft' && t.status === 'ONGOING'){
@@ -18670,10 +18786,12 @@ function applySharedState(data){
         let tName = incT.name || tId;
         if(Array.isArray(incT.matches) && Array.isArray(locT.matches)){
           incT.matches.forEach((im, idx) => {
-            let lm = (im.id != null ? locT.matches.find(m => m.id === im.id) : null) ||
-                     locT.matches.find(m => ((m.a === im.a && m.b === im.b) || (m.a === im.b && m.b === im.a)) && (m.round === im.round || m.group === im.group)) ||
-                     locT.matches[idx];
-            if(im && lm){
+            let lm = locT.matches.find(m => ((m.a === im.a && m.b === im.b) || (m.a === im.b && m.b === im.a)) && (m.round === im.round || m.group === im.group)) ||
+                     (im.id != null ? locT.matches.find(m => m.id === im.id && ((m.a === im.a && m.b === im.b) || (m.a === im.b && m.b === im.a))) : null) ||
+                     (locT.matches[idx] && ((locT.matches[idx].a === im.a && locT.matches[idx].b === im.b) || (locT.matches[idx].a === im.b && locT.matches[idx].b === im.a)) ? locT.matches[idx] : null);
+            let isCoachCompatible = Boolean(im && lm && im.a && im.b && lm.a && lm.b && ((im.a === lm.a && im.b === lm.b) || (im.a === lm.b && im.b === lm.a)));
+            if(im && lm && isCoachCompatible){
+              sanitizeMatchReplays(lm, locT);
               if(Array.isArray(lm.replays) && lm.replays.length > 0 && (!Array.isArray(im.replays) || im.replays.length === 0)){
                 im.replays = lm.replays;
               } else if(Array.isArray(im.replays) && Array.isArray(lm.replays)){
@@ -18726,6 +18844,7 @@ function applySharedState(data){
                 });
               }
             }
+            sanitizeMatchReplays(im, incT);
           });
         }
         if(locT.topCutReplays && (!incT.topCutReplays || Object.keys(incT.topCutReplays).length === 0)){
@@ -18847,6 +18966,7 @@ function applySharedState(data){
   for(let i=0; i<10; i++) try{ localStorage.removeItem('draftdex-primetime-slot-'+i); }catch(e){}
   cut = data.cut || cut;
   boardLink = data.boardLink || boardLink;
+  if(typeof sanitizeAllTournamentReplays === 'function') sanitizeAllTournamentReplays();
   safeSaveTournamentsToLocalStorage(tournamentData);
   try{
     localStorage.setItem('draftdex-profiles', JSON.stringify(profiles));
@@ -24738,7 +24858,7 @@ function toggleGroupCollapse(key){
 }
 
 function Matches(){
-  let t = ongoingT() || activeT();
+  let t = ongoingT();
   if(!t) return noTournament();
   viewTournament = t.id;
 
@@ -26702,8 +26822,22 @@ window.addEventListener('hashchange', ()=>{
 });
 function render(){
   let active=document.activeElement;
-  if(current==='Account'&&active&&/^auth(Username|Password)$/.test(active.id||''))return;
   if(current==='Draft Board'||current==='Draft Tools')current='Draft';
+
+  let isOngoing = Boolean(typeof ongoingT === 'function' && ongoingT());
+  if(!isOngoing && ['Matches', 'Top Cut', 'Playoff Odds', 'Teams', 'Predictions'].includes(current)){
+    let _qp = null;
+    try { _qp = new URLSearchParams(window.location.search); } catch(e){}
+    if(!_qp?.get('tourney')){
+      current = 'Home';
+      try {
+        localStorage.setItem('draftdex-active-tab', 'Home');
+        if(window.location.hash && ['#matches','#topcut','#top-cut','#playoffodds','#playoffs','#teams','#predictions'].includes(window.location.hash.toLowerCase())){
+          history.replaceState(null, '', '#home');
+        }
+      } catch(e){}
+    }
+  }
 
   let scroller = document.getElementById('draftBoardGridWrap') || document.getElementById('offseasonDraftBoardGridWrap') || document.querySelector('.draft-board-wrap');
   let draftScrollLeft = (scroller && scroller.scrollLeft > 0) ? scroller.scrollLeft : (window.draftBoardScrollPos?.left || 0);
