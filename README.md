@@ -11,14 +11,16 @@ Format: `v[MAJOR].[MINOR].[PATCH]` — Major = major system overhauls, Minor = n
   - Added a one-click `⇄ Swap` button to quickly flip primary and secondary roles, plus `⚡ Auto-Extract` to sample both colors automatically from the coach's profile picture using Euclidean color clustering (`dist >= 65`).
 - **Secondary Color Grunge Splash Texture & Authentic Mirroring**:
   - Colored the authentic distress spray & paint splatter texture from the folder (`cfb-splash-texture.png`) directly in the coach's secondary branding color (`var(--team-sec)` via CSS mask and canvas composite tinting) over the battleworn primary team gradient.
+  - Upgraded splash layer to **100% Solid Opacity** (`opacity: 1.0` and solid mask body), completely eliminating background bleed and color muddiness so that chosen secondary colors (such as deep purple on yellow) render 100% true and pure.
   - Symmetrically mirrored the splash between cards (`transform: scale(-1, 1)` on the bottom half) so the heavy spray is concentrated behind the team name on both tiers (top-left on Team 1, bottom-right on Team 2) while scratch streaks angle diagonally into the center VS seam.
   - Completely removed the artificial SVG scratch overlay and polygon wash from the left side, keeping the texture purely derived from the official texture asset.
   - Added intelligent contrasting secondary color fallbacks (`getContrastingSecondaryHex` and `DEFAULT_COACH_SECONDARY_COLORS`) for all roster coaches, preventing monochromatic washouts and guaranteeing distinct secondary color splashes and text gradients.
-- **Metallic Dual-Tone Text Gradient**:
-  - Replaced solid white team names across all Primetime cards with a pure vertical dual-tone gradient (`linear-gradient(180deg, var(--team-sec) 0%, var(--team-pri) 100%)`) accented with heavy double-layer drop shadows (`0 3px 6px rgba(0,0,0,0.95), 0 0 2px rgba(0,0,0,0.9)`) for crisp broadcast contrast and legibility.
-  - Seamlessly applied to all typography tiers: single-line names, two-line stacked mascots (`.primetime-cfb-team-name-l1`, `.primetime-cfb-team-name-l2`), and small prefix eyebrows (`.primetime-cfb-team-name-prefix`).
+- **Bold Dual-Tone Chiseled Split Text Gradient**:
+  - Replaced flat two-point linear text fades with a bold **Chiseled Split Gradient** (`linear-gradient(180deg, var(--team-sec) 0%, var(--team-sec) 42%, var(--team-pri) 58%, var(--team-pri) 100%)`), giving every letter sharp, clearly separated color zones and eliminating muddy sRGB middle tones.
+  - Enhanced text outlines with a **High-Contrast Double Shadow** (`0 3px 6px rgba(0,0,0,0.95), 0 0 2px rgba(0,0,0,0.9), 0 0 1px rgba(0,0,0,0.95)`), preserving heavy broadcast depth while keeping dark secondary colors crisp and razor-sharp against shadows and backgrounds.
+  - Seamlessly applied to all typography tiers: single-line names, two-line stacked mascots (`.primetime-cfb-team-name-l1`, `.primetime-cfb-team-name-l2`), small prefix eyebrows (`.primetime-cfb-team-name-prefix`), and live previews.
 - **1:1 Canvas Generator & Export Alignment**:
-  - Synchronized `generateMatchCardDataUrl` to calculate and render the secondary color background splash and vertical dual-tone text gradient directly onto downloadable match cards with matching font scales and shadow depths.
+  - Synchronized `generateMatchCardDataUrl` with 100% solid opacity (`hctx.globalAlpha = 1.0`), the 42%/58% chiseled split gradient, and matching double-shadow depths directly onto downloadable match cards.
 - **Persistence & Cloud Sync**:
   - Persisted coach secondary colors into `coachSecondaryColors` across `localStorage` (`'draftdex-coach-secondary-colors'`) and cloud profiles (`profiles[p].secondaryColor`) via `persistLeague()`.
 
