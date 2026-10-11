@@ -3,6 +3,16 @@
 All notable changes to the Bellimaka Pokémon Draft League platform are documented here.
 Format: `v[MAJOR].[MINOR].[PATCH]` — Major = major system overhauls, Minor = new features, Patch = bug fixes and visual improvements.
 
+## [v2.4.3] — 2026-10-10
+
+### Replay Box Score Alignment & Dedicated Support Column
+- **Perfect Match Impact Alignment**: Moved the MVP lightning bolt indicator to an absolute corner badge so all Impact numbers stay centered and aligned with the column header.
+- **Dedicated Support Points Column**: Added a dedicated Support column in match box scores showing the exact utility points earned by each Pokémon, complete with an itemized hover tooltip.
+- **Clean Move-Only Recording**: Kept the "Moves Recorded" column strictly for clicked battle moves, removing stat drops and non-move effects from that column.
+- **Weather & Field Ability Support**: Weather and terrain abilities (like Drought, Drizzle, and Surges) now award support points for setting up team conditions.
+
+---
+
 ## [v2.4.2] — 2026-10-10
 
 ### Support & Utility Impact Scoring Overhaul

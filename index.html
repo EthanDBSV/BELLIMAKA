@@ -4,11 +4,11 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover" />
   <title>Bellimaka</title>
-  <link rel="icon" type="image/png" sizes="32x32" href="Fonts%20%26%20Logos/bellimaka_logo.png?v=2.4.2">
-  <link rel="icon" type="image/png" sizes="16x16" href="Fonts%20%26%20Logos/bellimaka_logo.png?v=2.4.2">
-  <link rel="shortcut icon" type="image/png" href="Fonts%20%26%20Logos/bellimaka_logo.png?v=2.4.2">
-  <link rel="apple-touch-icon" href="Fonts%20%26%20Logos/bellimaka_logo.png?v=2.4.2">
-  <link rel="icon" type="image/x-icon" href="favicon.ico?v=2.4.2">
+  <link rel="icon" type="image/png" sizes="32x32" href="Fonts%20%26%20Logos/bellimaka_logo.png?v=2.4.3">
+  <link rel="icon" type="image/png" sizes="16x16" href="Fonts%20%26%20Logos/bellimaka_logo.png?v=2.4.3">
+  <link rel="shortcut icon" type="image/png" href="Fonts%20%26%20Logos/bellimaka_logo.png?v=2.4.3">
+  <link rel="apple-touch-icon" href="Fonts%20%26%20Logos/bellimaka_logo.png?v=2.4.3">
+  <link rel="icon" type="image/x-icon" href="favicon.ico?v=2.4.3">
   <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;500;600;700;800;900&family=DM+Sans:wght@400;500;600;700&family=Permanent+Marker&display=swap" rel="stylesheet">
   <link rel="preload" href="Fonts%20%26%20Logos/Saphifen.otf" as="font" type="font/otf" crossorigin>
@@ -7678,7 +7678,7 @@ async function hydrateTournamentsFromIndexedDB() {
                   }
                   let hasStatsNow = lr.stats && lr.stats.pokemon && (Array.isArray(lr.stats.pokemon) ? lr.stats.pokemon.length > 0 : Object.keys(lr.stats.pokemon).length > 0);
                   let hasBadCoaches = hasStatsNow && (Array.isArray(lr.stats.pokemon) ? lr.stats.pokemon : Object.values(lr.stats.pokemon)).some(p => !p.coach || p.coach.toLowerCase().startsWith('player '));
-                  if((!hasStatsNow || !lr.stats.version || lr.stats.version < 9 || hasBadCoaches) && lr.log && typeof lr.log === 'string' && lr.log.includes('|')) {
+                  if((!hasStatsNow || !lr.stats.version || lr.stats.version < 10 || hasBadCoaches) && lr.log && typeof lr.log === 'string' && lr.log.includes('|')) {
                     let parsed = parseShowdownBattleLog(lr.log, {
                       id: lr.id,
                       game: lr.game,
@@ -7730,7 +7730,7 @@ async function hydrateTournamentsFromIndexedDB() {
                 }
                 let hasStatsNow = lr.stats && lr.stats.pokemon && (Array.isArray(lr.stats.pokemon) ? lr.stats.pokemon.length > 0 : Object.keys(lr.stats.pokemon).length > 0);
                 let hasBadCoaches = hasStatsNow && (Array.isArray(lr.stats.pokemon) ? lr.stats.pokemon : Object.values(lr.stats.pokemon)).some(p => !p.coach || p.coach.toLowerCase().startsWith('player '));
-                if((!hasStatsNow || !lr.stats.version || lr.stats.version < 9 || hasBadCoaches) && lr.log && typeof lr.log === 'string' && lr.log.includes('|')) {
+                if((!hasStatsNow || !lr.stats.version || lr.stats.version < 10 || hasBadCoaches) && lr.log && typeof lr.log === 'string' && lr.log.includes('|')) {
                   let tcMatch = (typeof findTournamentMatch === 'function') ? findTournamentMatch(locT, k)?.match : null;
                   let tcCoach1 = lr.coach1 || tcMatch?.a || tcMatch?.p1 || '';
                   let tcCoach2 = lr.coach2 || tcMatch?.b || tcMatch?.p2 || '';
@@ -9267,7 +9267,7 @@ function parseShowdownBattleLog(logText, meta = {}) {
     pokemon: {},
     teamPreview: { p1: [], p2: [] },
     mvp: null,
-    version: 9
+    version: 10
   };
 
   let activeSlots = {};
@@ -9840,21 +9840,40 @@ function parseShowdownBattleLog(logText, meta = {}) {
       }
     } else if(cmd === '-fieldstart'){
       let effect = parts[2] || '';
-      if(lastAttackerSlot && activeSlots[lastAttackerSlot]){
-        let attacker = activeSlots[lastAttackerSlot];
-        let attObj = attacker.pObj || result.pokemon[attacker.key];
-        if(effect.includes('Trick Room')){
-          awardSupport(attObj, 'speed_trickroom', 'Trick Room', 45, 30, 75);
-        } else if(effect.includes('Terrain')){
-          awardSupport(attObj, 'field_terrain', 'Terrain', 30, 20, 50);
+      let isUpkeep = parts.some(p => p && p.includes('[upkeep]'));
+      if(!isUpkeep){
+        let ofPart = parts.find(p => p && p.startsWith('[of] '));
+        let ofSlot = ofPart ? ofPart.replace('[of] ', '').trim().split(':')[0] : null;
+        let setterSlot = ofSlot || lastAttackerSlot;
+        let abilityPart = parts.find(p => p && p.includes('ability:'));
+        let abilityName = abilityPart ? abilityPart.replace(/.*ability:\s*/, '').trim() : '';
+
+        if(setterSlot && activeSlots[setterSlot]){
+          let attacker = activeSlots[setterSlot];
+          let attObj = attacker.pObj || result.pokemon[attacker.key];
+          if(effect.includes('Trick Room')){
+            awardSupport(attObj, 'speed_trickroom', 'Trick Room', 45, 30, 75);
+          } else if(effect.includes('Terrain')){
+            awardSupport(attObj, 'field_terrain', abilityName || 'Terrain', 30, 20, 50);
+          }
         }
       }
     } else if(cmd === '-weather'){
-      let fromClause = parts[3] || '';
-      if(fromClause.includes('move:') && lastAttackerSlot && activeSlots[lastAttackerSlot]){
-        let attacker = activeSlots[lastAttackerSlot];
-        let attObj = attacker.pObj || result.pokemon[attacker.key];
-        awardSupport(attObj, 'field_weather', 'Weather', 30, 20, 50);
+      let weatherType = (parts[2] || '').trim();
+      let isUpkeep = parts.some(p => p && p.includes('[upkeep]'));
+      if(weatherType && weatherType !== 'none' && !isUpkeep){
+        let ofPart = parts.find(p => p && p.startsWith('[of] '));
+        let ofSlot = ofPart ? ofPart.replace('[of] ', '').trim().split(':')[0] : null;
+        let weatherSetterSlot = ofSlot || lastAttackerSlot;
+        let abilityPart = parts.find(p => p && p.includes('ability:'));
+        let abilityName = abilityPart ? abilityPart.replace(/.*ability:\s*/, '').trim() : '';
+        let label = abilityName || (lastMove && ['Sunny Day', 'Rain Dance', 'Snowscape', 'Sandstorm', 'Hail', 'Chilly Reception'].includes(lastMove) ? lastMove : 'Weather');
+
+        if(weatherSetterSlot && activeSlots[weatherSetterSlot]){
+          let attacker = activeSlots[weatherSetterSlot];
+          let attObj = attacker.pObj || result.pokemon[attacker.key];
+          awardSupport(attObj, 'field_weather', label, 30, 20, 50);
+        }
       }
     } else if(cmd === '-unboost'){
       let targetSlot = (parts[2] || '').split(':')[0].trim();
@@ -10043,7 +10062,7 @@ function parseShowdownBattleLog(logText, meta = {}) {
     }
   }
   result.mvp = mvpMon;
-  result.version = 9;
+  result.version = 10;
 
   return result;
 }
@@ -10846,7 +10865,7 @@ function openMatchReplayHubModal(tournamentId, matchKey, activeGameNum = 1, acti
   let isLogMissing = (!activeReplay.log || typeof activeReplay.log !== 'string' || activeReplay.log.trim().length < 20);
 
   let stats = activeReplay.stats;
-  if(!isLogMissing && (!stats || !stats.sideAttribution || !stats.version || stats.version < 9)){
+  if(!isLogMissing && (!stats || !stats.sideAttribution || !stats.version || stats.version < 10)){
     stats = parseShowdownBattleLog(activeReplay.log, { id: activeReplay.id, game: activeGameNum, match: m, coach1: p1, coach2: p2, tournament: t, manualSwapped: activeReplay.swapped });
     activeReplay.stats = stats;
   }
@@ -11196,6 +11215,7 @@ function renderMatchStatsBoxScoreHtml(stats, p1, p2, t, matchKey, gameNum) {
                 <th style="text-align:center;color:#f87171;font-weight:800;letter-spacing:.5px">Dmg Dealt</th>
                 <th style="text-align:center;color:#94a3b8;font-weight:800;letter-spacing:.5px">Dmg Taken</th>
                 <th style="text-align:center;color:#4ade80;font-weight:800;letter-spacing:.5px">Healed</th>
+                <th style="text-align:center;color:#c084fc;font-weight:800;letter-spacing:.5px">Support</th>
                 <th>Moves Recorded</th>
               </tr>
             </thead>
@@ -11208,6 +11228,8 @@ function renderMatchStatsBoxScoreHtml(stats, p1, p2, t, matchKey, gameNum) {
                 let spriteStyle = m.fainted ? 'opacity:0.45;filter:grayscale(100%);transition:all .15s' : 'opacity:1;filter:none';
                 let nameColor = m.fainted ? '#8e8c95' : '#ffffff';
                 let supportBreakdown = (m.supportScore && m.supportScore > 0) ? ` + Support: +${m.supportScore}${m.supportActions && m.supportActions.length ? ' [' + m.supportActions.slice(0, 3).join(', ') + (m.supportActions.length > 3 ? '...' : '') + ']' : ''}` : '';
+                let supportActionsList = (m.supportActions && m.supportActions.length > 0) ? m.supportActions.join(', ') : 'None';
+                let supportTooltip = `Support Points: ${m.supportScore || 0}${m.supportScore > 0 ? ` (${supportActionsList})` : ''}`;
                 return `
                   <tr style="${m.fainted ? 'background:rgba(0,0,0,0.12)' : ''}">
                     <td style="text-align:center;padding:4px">
@@ -11223,8 +11245,9 @@ function renderMatchStatsBoxScoreHtml(stats, p1, p2, t, matchKey, gameNum) {
                         </div>
                       ` : ''}
                     </td>
-                    <td style="text-align:center;font:800 15px 'Barlow Condensed';color:#38bdf8" title="Impact Score: ${monImpact} (KOs: ${(m.kills || 0) * 150} + Dmg: ${Math.round(m.damageDealt || 0)}${supportBreakdown} + ${m.fainted ? 'Fainted: +0' : 'Survived: +75'} + Heal: ${Math.round((m.hpHealed || 0) * 0.5)})">
-                      ${isTopImpact ? `<span style="font-size:11px;color:#ffd166;margin-right:2px" title="Squad High Impact Performer">⚡</span>` : ''}${monImpact}
+                    <td style="position:relative;text-align:center;font:800 15px 'Barlow Condensed';color:#38bdf8" title="Impact Score: ${monImpact} (KOs: ${(m.kills || 0) * 150} + Dmg: ${Math.round(m.damageDealt || 0)}${supportBreakdown} + ${m.fainted ? 'Fainted: +0' : 'Survived: +75'} + Heal: ${Math.round((m.hpHealed || 0) * 0.5)})">
+                      ${isTopImpact ? `<span style="position:absolute;top:4px;left:4px;font-size:10px;color:#ffd166;line-height:1;pointer-events:none" title="Squad High Impact Performer">⚡</span>` : ''}
+                      ${monImpact}
                     </td>
                     <td style="text-align:center;font:800 15px 'Barlow Condensed';color:${m.kills > 0 ? '#fb923c' : '#646270'}">
                       ${m.kills}
@@ -11232,10 +11255,12 @@ function renderMatchStatsBoxScoreHtml(stats, p1, p2, t, matchKey, gameNum) {
                     <td style="text-align:center;font:800 15px 'Barlow Condensed';color:${m.damageDealt > 0 ? '#f87171' : '#646270'}">${Math.round(m.damageDealt)}</td>
                     <td style="text-align:center;font:800 15px 'Barlow Condensed';color:${m.damageTaken > 0 ? '#cbd5e1' : '#646270'}">${Math.round(m.damageTaken)}</td>
                     <td style="text-align:center;font:800 15px 'Barlow Condensed';color:${m.hpHealed > 0 ? '#4ade80' : '#646270'}">${Math.round(m.hpHealed)}</td>
+                    <td style="text-align:center;font:800 15px 'Barlow Condensed';color:${m.supportScore > 0 ? '#c084fc' : '#646270'}" title="${esc(supportTooltip)}">
+                      ${m.supportScore > 0 ? `+${m.supportScore}` : '0'}
+                    </td>
                     <td>
                       <div style="display:flex;flex-wrap:wrap;gap:2px">
                         ${(m.moves || []).map(mv => `<span class="move-pill">${esc(mv)}</span>`).join('') || '<span style="color:#666">—</span>'}
-                        ${(m.supportActions || []).filter(act => !(m.moves || []).includes(act)).map(act => `<span class="move-pill" style="border-color:rgba(168,85,247,0.35);color:#d8b4fe;background:rgba(168,85,247,0.12)" title="Support Action (+${m.supportScore || 0} pts)">${esc(act)}</span>`).join('')}
                       </div>
                     </td>
                   </tr>
@@ -12466,7 +12491,7 @@ function calculateTeamOfTheSeason(t) {
     let stats = r.stats;
     let hasValidStats = stats && stats.pokemon && (Array.isArray(stats.pokemon) ? stats.pokemon.length > 0 : Object.keys(stats.pokemon).length > 0);
     let hasBadCoaches = hasValidStats && (Array.isArray(stats.pokemon) ? stats.pokemon : Object.values(stats.pokemon)).some(p => !p.coach || p.coach.toLowerCase().startsWith('player '));
-    if(!hasValidStats || !stats.version || stats.version < 9 || hasBadCoaches) {
+    if(!hasValidStats || !stats.version || stats.version < 10 || hasBadCoaches) {
       let log = (r.log && typeof r.log === 'string' && r.log.includes('|')) ? r.log : null;
       if(!log && window._replayLogCache) {
         let repId = r.id || '';
@@ -12639,7 +12664,7 @@ function calculateTeamOfTheSeason(t) {
     let stats = replay.stats;
     let hasValidStats = stats && stats.pokemon && (Array.isArray(stats.pokemon) ? stats.pokemon.length > 0 : Object.keys(stats.pokemon).length > 0);
     let hasBadCoaches = hasValidStats && (Array.isArray(stats.pokemon) ? stats.pokemon : Object.values(stats.pokemon)).some(p => !p.coach || p.coach.toLowerCase().startsWith('player '));
-    if(!hasValidStats || !stats.version || stats.version < 9 || hasBadCoaches) {
+    if(!hasValidStats || !stats.version || stats.version < 10 || hasBadCoaches) {
       let log = (replay.log && typeof replay.log === 'string' && replay.log.includes('|')) ? replay.log : null;
       if(!log && window._replayLogCache) {
         let repId = replay.id || '';
@@ -13737,7 +13762,7 @@ function getTournamentPokemonStatsMap(t, coachFilter) {
   let cacheKey = targetNorm || '__global__';
 
   if(!t._cachedMonStatsMaps) t._cachedMonStatsMaps = {};
-  if(t._cachedMonStatsVersion === 9 && t._cachedMonStatsMaps[cacheKey] && t._cachedMonStatsTime && (Date.now() - t._cachedMonStatsTime < 30000)) {
+  if(t._cachedMonStatsVersion === 10 && t._cachedMonStatsMaps[cacheKey] && t._cachedMonStatsTime && (Date.now() - t._cachedMonStatsTime < 30000)) {
     return t._cachedMonStatsMaps[cacheKey];
   }
 
@@ -13811,7 +13836,7 @@ function getTournamentPokemonStatsMap(t, coachFilter) {
     let stats = replay.stats;
     let hasValidStats = stats && stats.pokemon && (Array.isArray(stats.pokemon) ? stats.pokemon.length > 0 : Object.keys(stats.pokemon).length > 0);
     let hasBadCoaches = hasValidStats && (Array.isArray(stats.pokemon) ? stats.pokemon : Object.values(stats.pokemon)).some(p => !p.coach || p.coach.toLowerCase().startsWith('player '));
-    if(!hasValidStats || !stats.version || stats.version < 9 || hasBadCoaches) {
+    if(!hasValidStats || !stats.version || stats.version < 10 || hasBadCoaches) {
       let log = (replay.log && typeof replay.log === 'string' && replay.log.includes('|')) ? replay.log : null;
       if(!log && window._replayLogCache) {
         let repId = replay.id || '';
@@ -13956,7 +13981,7 @@ function getTournamentPokemonStatsMap(t, coachFilter) {
   });
 
   t._cachedMonStatsMaps[cacheKey] = map;
-  t._cachedMonStatsVersion = 9;
+  t._cachedMonStatsVersion = 10;
   t._cachedMonStatsTime = Date.now();
   return map;
 }
@@ -18483,7 +18508,7 @@ function applySharedState(data){
                   let hasStatsNow = ir.stats && ir.stats.pokemon && (Array.isArray(ir.stats.pokemon) ? ir.stats.pokemon.length > 0 : Object.keys(ir.stats.pokemon).length > 0);
                   let pList = hasStatsNow ? (Array.isArray(ir.stats.pokemon) ? ir.stats.pokemon : Object.values(ir.stats.pokemon)) : [];
                   let hasBadCoaches = pList.some(p => !p.coach || p.coach.toLowerCase().startsWith('player '));
-                  if((!hasStatsNow || !ir.stats.version || ir.stats.version < 9 || hasBadCoaches) && ir.log && typeof ir.log === 'string' && ir.log.includes('|')){
+                  if((!hasStatsNow || !ir.stats.version || ir.stats.version < 10 || hasBadCoaches) && ir.log && typeof ir.log === 'string' && ir.log.includes('|')){
                     let parsed = parseShowdownBattleLog(ir.log, {
                       id: ir.id,
                       game: ir.game,
@@ -18533,7 +18558,7 @@ function applySharedState(data){
                 let hasStatsNow = ir.stats && ir.stats.pokemon && (Array.isArray(ir.stats.pokemon) ? ir.stats.pokemon.length > 0 : Object.keys(ir.stats.pokemon).length > 0);
                 let pList = hasStatsNow ? (Array.isArray(ir.stats.pokemon) ? ir.stats.pokemon : Object.values(ir.stats.pokemon)) : [];
                 let hasBadCoaches = pList.some(p => !p.coach || p.coach.toLowerCase().startsWith('player '));
-                if((!hasStatsNow || !ir.stats.version || ir.stats.version < 9 || hasBadCoaches) && ir.log && typeof ir.log === 'string' && ir.log.includes('|')){
+                if((!hasStatsNow || !ir.stats.version || ir.stats.version < 10 || hasBadCoaches) && ir.log && typeof ir.log === 'string' && ir.log.includes('|')){
                   let tcMatch = (typeof findTournamentMatch === 'function') ? (findTournamentMatch(incT, k)?.match || findTournamentMatch(locT, k)?.match) : null;
                   let tcCoach1 = ir.coach1 || lr?.coach1 || tcMatch?.a || tcMatch?.p1 || '';
                   let tcCoach2 = ir.coach2 || lr?.coach2 || tcMatch?.b || tcMatch?.p2 || '';
@@ -19351,7 +19376,7 @@ async function flushSync(){
             let hasStats = r.stats && r.stats.pokemon && (Array.isArray(r.stats.pokemon) ? r.stats.pokemon.length > 0 : Object.keys(r.stats.pokemon).length > 0);
             let pList = hasStats ? (Array.isArray(r.stats.pokemon) ? r.stats.pokemon : Object.values(r.stats.pokemon)) : [];
             let hasBadCoaches = pList.some(p => !p.coach || p.coach.toLowerCase().startsWith('player '));
-            if((!hasStats || !r.stats.version || r.stats.version < 9 || hasBadCoaches) && r.log && typeof r.log === 'string' && r.log.includes('|')){
+            if((!hasStats || !r.stats.version || r.stats.version < 10 || hasBadCoaches) && r.log && typeof r.log === 'string' && r.log.includes('|')){
               let parsed = parseShowdownBattleLog(r.log, {
                 id: r.id,
                 game: r.game,
@@ -19396,7 +19421,7 @@ async function flushSync(){
             let hasStats = r.stats && r.stats.pokemon && (Array.isArray(r.stats.pokemon) ? r.stats.pokemon.length > 0 : Object.keys(r.stats.pokemon).length > 0);
             let pList = hasStats ? (Array.isArray(r.stats.pokemon) ? r.stats.pokemon : Object.values(r.stats.pokemon)) : [];
             let hasBadCoaches = pList.some(p => !p.coach || p.coach.toLowerCase().startsWith('player '));
-            if((!hasStats || !r.stats.version || r.stats.version < 9 || hasBadCoaches) && r.log && typeof r.log === 'string' && r.log.includes('|')){
+            if((!hasStats || !r.stats.version || r.stats.version < 10 || hasBadCoaches) && r.log && typeof r.log === 'string' && r.log.includes('|')){
               let tcMatch = (typeof findTournamentMatch === 'function') ? findTournamentMatch(t, k)?.match : null;
               let tcCoach1 = r.coach1 || origR?.coach1 || tcMatch?.a || tcMatch?.p1 || '';
               let tcCoach2 = r.coach2 || origR?.coach2 || tcMatch?.b || tcMatch?.p2 || '';
