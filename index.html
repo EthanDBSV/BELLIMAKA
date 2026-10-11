@@ -13583,15 +13583,13 @@ function renderTeamOfTheSeasonCardsHtml(totsOrList, isCompact = false) {
 
 function renderTeamOfTheSeasonTierSectionHtml(teamList, tierNum, title, sub, color, icon, isCompact = false) {
   if(!teamList || teamList.length === 0) return '';
-  let borderColor = tierNum === 1 ? 'rgba(255,209,102,0.35)' : (tierNum === 2 ? 'rgba(203,213,225,0.3)' : 'rgba(240,168,117,0.3)');
-  let shadowGlow = tierNum === 1 ? 'box-shadow:0 6px 24px rgba(0,0,0,0.4),0 0 20px rgba(255,209,102,0.08)' : 'box-shadow:0 6px 24px rgba(0,0,0,0.4)';
   return `
-    <div style="background:linear-gradient(135deg,#15151e 0%,#0f0f15 100%);border:1px solid ${borderColor};border-radius:12px;padding:18px 20px;margin-bottom:16px;${shadowGlow}">
-      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:14px">
+    <div style="margin-bottom:${isCompact ? '24px' : '8px'}">
+      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin:8px 0 12px;padding-bottom:6px;border-bottom:1px solid rgba(255,255,255,0.07)">
         <div style="display:flex;align-items:center;gap:8px">
-          <span style="font-size:16px">${icon}</span>
-          <span style="font:900 18px 'Barlow Condensed';color:${color};letter-spacing:.6px;text-transform:uppercase">${esc(title)}</span>
-          <span style="font-size:11px;color:#94a3b8">\u2014 ${esc(sub)}</span>
+          <span style="font-size:17px">${icon}</span>
+          <span style="font:900 19px 'Barlow Condensed';color:${color};letter-spacing:.6px;text-transform:uppercase">${esc(title)}</span>
+          <span style="font-size:12px;color:#94a3b8">\u2014 ${esc(sub)}</span>
         </div>
         <div style="font-size:11px;color:#8e8c95;font-weight:700">
           4 Pok\u00E9mon Selections
@@ -13838,72 +13836,85 @@ function renderTournamentAwardsTabHtml(t) {
   let major = tots.majorAwards || {};
   let curTab = window.awardsTierTab || '1';
   let isAll = (curTab === 'all');
+  let mainTab = window.awardsMainTab || 'teams';
 
   return `
     <div style="width:100%;display:flex;flex-direction:column;gap:16px">
       ${showCards ? `
-        <!-- Major Season Awards Section (Finals MVP & Season MVP) -->
-        <div style="background:linear-gradient(135deg,rgba(255,209,102,0.12) 0%,#15151e 60%,#0f0f15 100%);border:1px solid rgba(255,209,102,0.3);border-radius:14px;padding:20px 24px;box-shadow:0 8px 32px rgba(0,0,0,0.5),0 0 24px rgba(255,209,102,0.06)">
-          <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:16px">
-            <div>
+        <!-- Top Navigation Sub-Tabs & Playbook Link -->
+        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;padding:8px 14px;background:#12121a;border:1px solid rgba(255,255,255,0.08);border-radius:10px">
+          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+            <button class="m-tab ${mainTab === 'teams' ? 'active' : ''}" onclick="window.awardsMainTab='teams';render()" style="${mainTab === 'teams' ? 'background:linear-gradient(135deg,rgba(255,209,102,0.22),rgba(217,119,6,0.22));border-color:#ffd166;color:#ffd166;font-weight:800' : ''}">
+              \uD83C\uDFC6 All-Tournament Teams
+            </button>
+            <button class="m-tab ${mainTab === 'leaders' ? 'active' : ''}" onclick="window.awardsMainTab='leaders';render()" style="${mainTab === 'leaders' ? 'background:linear-gradient(135deg,rgba(56,189,248,0.22),rgba(14,165,233,0.22));border-color:#38bdf8;color:#38bdf8;font-weight:800' : ''}">
+              \uD83D\uDCCA Stat Leaderboards
+            </button>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+            <button type="button" class="btn btn-sm ghost" onclick="openAwardsRatingGuideModal()" style="display:inline-flex;align-items:center;gap:6px;font-family:'Barlow Condensed',sans-serif;font-size:12px;font-weight:800;letter-spacing:.6px;text-transform:uppercase;color:#ffd166;background:rgba(255,209,102,0.12);border:1px solid rgba(255,209,102,0.35);padding:4px 12px;border-radius:20px;cursor:pointer;transition:all .2s ease" onmouseover="this.style.background='rgba(255,209,102,0.22)'" onmouseout="this.style.background='rgba(255,209,102,0.12)'">
+              <span>\uD83D\uDCD0</span> Rating Guide &amp; Equations
+            </button>
+            <span style="font-size:11px;color:#8e8c95;background:#181824;padding:4px 12px;border-radius:20px;border:1px solid #2e2e42">
+              <b>${tots.totalGames}</b> Battle Replays Evaluated
+            </span>
+          </div>
+        </div>
+
+        ${mainTab === 'teams' ? `
+          <!-- Major Season Awards Section (Finals MVP & Season MVP) -->
+          <div style="background:linear-gradient(135deg,rgba(255,209,102,0.1) 0%,#15151e 60%,#0f0f15 100%);border:1px solid rgba(255,209,102,0.25);border-radius:14px;padding:20px 24px;box-shadow:0 8px 32px rgba(0,0,0,0.5)">
+            <div style="margin-bottom:16px">
               <div style="font:800 11px 'Barlow Condensed';letter-spacing:1.2px;color:#ffd166;text-transform:uppercase;display:flex;align-items:center;gap:6px">
                 <span>\uD83C\uDFC6</span> PREMIER HONORS \u2022 ${esc(t.season || t.name)}
               </div>
               <h2 style="margin:2px 0 0;font:900 26px 'Barlow Condensed';letter-spacing:.6px;background:linear-gradient(135deg,#ffffff 0%,#ffd166 60%,#f59e0b 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent">
-                Major Season Awards & All-Tournament Teams
+                Major Season Awards
               </h2>
               <p style="margin:2px 0 0;font-size:12px;color:#94a3b8">
                 Evaluated from ${tots.totalGames} battle ${tots.totalGames === 1 ? 'game' : 'games'} across the regular season and playoffs (minimum 5 appearances)
               </p>
             </div>
+
+            ${renderMajorAwardsCardsHtml(major, t, isAll)}
+          </div>
+
+          <!-- Tier Switcher -->
+          <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;padding:8px 14px;background:#12121a;border:1px solid rgba(255,255,255,0.08);border-radius:10px">
             <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-              <button type="button" class="btn btn-sm ghost" onclick="openAwardsRatingGuideModal()" style="display:inline-flex;align-items:center;gap:6px;font-family:'Barlow Condensed',sans-serif;font-size:12px;font-weight:800;letter-spacing:.6px;text-transform:uppercase;color:#ffd166;background:rgba(255,209,102,0.12);border:1px solid rgba(255,209,102,0.35);padding:4px 12px;border-radius:20px;cursor:pointer;transition:all .2s ease" onmouseover="this.style.background='rgba(255,209,102,0.22)'" onmouseout="this.style.background='rgba(255,209,102,0.12)'">
-                <span>📐</span> Rating Guide &amp; Equations
+              <button class="m-tab ${curTab === '1' ? 'active' : ''}" onclick="window.awardsTierTab='1';render()" style="${curTab === '1' ? 'background:linear-gradient(135deg,rgba(255,209,102,0.25),rgba(217,119,6,0.25));border-color:#ffd166;color:#ffd166;font-weight:800' : ''}">
+                \uD83E\uDD47 1st Team
               </button>
-              <span style="font-size:11px;color:#8e8c95;background:#181824;padding:4px 12px;border-radius:20px;border:1px solid #2e2e42">
-                <b>${tots.totalGames}</b> Battle Replays Evaluated
-              </span>
+              <button class="m-tab ${curTab === '2' ? 'active' : ''}" onclick="window.awardsTierTab='2';render()" style="${curTab === '2' ? 'background:linear-gradient(135deg,rgba(203,213,225,0.25),rgba(148,163,184,0.25));border-color:#cbd5e1;color:#cbd5e1;font-weight:800' : ''}">
+                \uD83E\uDD48 2nd Team
+              </button>
+              <button class="m-tab ${curTab === '3' ? 'active' : ''}" onclick="window.awardsTierTab='3';render()" style="${curTab === '3' ? 'background:linear-gradient(135deg,rgba(240,168,117,0.25),rgba(180,83,9,0.25));border-color:#f0a875;color:#f0a875;font-weight:800' : ''}">
+                \uD83E\uDD49 3rd Team
+              </button>
+              <button class="m-tab ${curTab === 'all' ? 'active' : ''}" onclick="window.awardsTierTab='all';render()" style="${curTab === 'all' ? 'background:linear-gradient(135deg,rgba(239,68,68,0.25),rgba(185,28,28,0.25));border-color:#ef4444;color:#fca5a5;font-weight:800' : ''}">
+                \uD83C\uDF10 All Teams
+              </button>
+            </div>
+            <div style="font-size:11px;font-weight:700;color:#94a3b8;letter-spacing:.6px;display:flex;align-items:center;gap:6px">
+              <span style="color:#38bdf8">\u26A1 Impact Rated</span>
+              <span>\u2022</span>
+              <span>Min. 5 Games</span>
             </div>
           </div>
 
-          ${renderMajorAwardsCardsHtml(major, t, isAll)}
-        </div>
-
-        <!-- Top 3 Statistical Leaders Podium Grid -->
-        ${renderTournamentStatLeadersHtml(tots.leaders, t)}
-
-        <!-- Tier Switcher -->
-        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;padding:8px 14px;background:#14141d;border:1px solid rgba(255,209,102,0.22);border-radius:10px">
-          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-            <button class="m-tab ${curTab === '1' ? 'active' : ''}" onclick="window.awardsTierTab='1';render()" style="${curTab === '1' ? 'background:linear-gradient(135deg,rgba(255,209,102,0.25),rgba(217,119,6,0.25));border-color:#ffd166;color:#ffd166;font-weight:800' : ''}">
-              \uD83E\uDD47 1st Team
-            </button>
-            <button class="m-tab ${curTab === '2' ? 'active' : ''}" onclick="window.awardsTierTab='2';render()" style="${curTab === '2' ? 'background:linear-gradient(135deg,rgba(203,213,225,0.25),rgba(148,163,184,0.25));border-color:#cbd5e1;color:#cbd5e1;font-weight:800' : ''}">
-              \uD83E\uDD48 2nd Team
-            </button>
-            <button class="m-tab ${curTab === '3' ? 'active' : ''}" onclick="window.awardsTierTab='3';render()" style="${curTab === '3' ? 'background:linear-gradient(135deg,rgba(240,168,117,0.25),rgba(180,83,9,0.25));border-color:#f0a875;color:#f0a875;font-weight:800' : ''}">
-              \uD83E\uDD49 3rd Team
-            </button>
-            <button class="m-tab ${curTab === 'all' ? 'active' : ''}" onclick="window.awardsTierTab='all';render()" style="${curTab === 'all' ? 'background:linear-gradient(135deg,rgba(239,68,68,0.25),rgba(185,28,28,0.25));border-color:#ef4444;color:#fca5a5;font-weight:800' : ''}">
-              \uD83C\uDF10 All Teams
-            </button>
-          </div>
-          <div style="font-size:11px;font-weight:700;color:#94a3b8;letter-spacing:.6px;display:flex;align-items:center;gap:6px">
-            <span style="color:#38bdf8">⚡ Impact Rated</span>
-            <span>\u2022</span>
-            <span>Min. 5 Games</span>
-          </div>
-        </div>
-
-        <!-- Selected Tier (Bigger Card Style) / All Tiers (Compact Smaller Card Style) -->
-        ${!isAll ? `
-          ${curTab === '1' ? renderTeamOfTheSeasonTierSectionHtml(tots.firstTeam, 1, 'First Team All-Tournament', 'Top tournament-wide performers by Average Impact', '#ffd166', '\uD83E\uDD47', false) : ''}
-          ${curTab === '2' ? renderTeamOfTheSeasonTierSectionHtml(tots.secondTeam, 2, 'Second Team All-Tournament', 'Second-tier performers by Average Impact', '#cbd5e1', '\uD83E\uDD48', false) : ''}
-          ${curTab === '3' ? renderTeamOfTheSeasonTierSectionHtml(tots.thirdTeam, 3, 'Third Team All-Tournament', 'Third-tier performers by Average Impact', '#f0a875', '\uD83E\uDD49', false) : ''}
+          <!-- Frameless Team of the Season Cards -->
+          ${!isAll ? `
+            ${curTab === '1' ? renderTeamOfTheSeasonTierSectionHtml(tots.firstTeam, 1, 'First Team All-Tournament', 'Top tournament-wide performers by Average Impact', '#ffd166', '\uD83E\uDD47', false) : ''}
+            ${curTab === '2' ? renderTeamOfTheSeasonTierSectionHtml(tots.secondTeam, 2, 'Second Team All-Tournament', 'Second-tier performers by Average Impact', '#cbd5e1', '\uD83E\uDD48', false) : ''}
+            ${curTab === '3' ? renderTeamOfTheSeasonTierSectionHtml(tots.thirdTeam, 3, 'Third Team All-Tournament', 'Third-tier performers by Average Impact', '#f0a875', '\uD83E\uDD49', false) : ''}
+          ` : `
+            ${renderTeamOfTheSeasonTierSectionHtml(tots.firstTeam, 1, 'First Team All-Tournament', 'Top tournament-wide performers by Average Impact', '#ffd166', '\uD83E\uDD47', true)}
+            ${renderTeamOfTheSeasonTierSectionHtml(tots.secondTeam, 2, 'Second Team All-Tournament', 'Second-tier performers by Average Impact', '#cbd5e1', '\uD83E\uDD48', true)}
+            ${renderTeamOfTheSeasonTierSectionHtml(tots.thirdTeam, 3, 'Third Team All-Tournament', 'Third-tier performers by Average Impact', '#f0a875', '\uD83E\uDD49', true)}
+          `}
         ` : `
-          ${renderTeamOfTheSeasonTierSectionHtml(tots.firstTeam, 1, 'First Team All-Tournament', 'Top tournament-wide performers by Average Impact', '#ffd166', '\uD83E\uDD47', true)}
-          ${renderTeamOfTheSeasonTierSectionHtml(tots.secondTeam, 2, 'Second Team All-Tournament', 'Second-tier performers by Average Impact', '#cbd5e1', '\uD83E\uDD48', true)}
-          ${renderTeamOfTheSeasonTierSectionHtml(tots.thirdTeam, 3, 'Third Team All-Tournament', 'Third-tier performers by Average Impact', '#f0a875', '\uD83E\uDD49', true)}
+          <!-- Dedicated Stat Leaderboards View -->
+          ${renderTournamentStatLeadersHtml(tots.leaders, t)}
         `}
       ` : `
         <div class="card empty" style="padding:32px 20px;text-align:center;max-width:680px;margin:10px auto 4px;background:#14141c;border:1px solid #282838;border-radius:12px">
