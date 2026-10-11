@@ -20569,7 +20569,14 @@ function openCreator(){
                   <div class="eyebrow" style="color:var(--amber);margin:0">Step 1</div>
                   <h3 style="font:800 18px 'Barlow Condensed';color:#f5f3f0;margin:3px 0 0">Tournament Identity &amp; Scheduling</h3>
                 </div>
-                <span class="tag" style="background:#1d1c24;color:#a09fa8;border:1px solid #363546">Basic Info</span>
+                <div style="display:flex;align-items:center;gap:8px">
+                  ${(moderator || window.moderator) ? `
+                    <button type="button" class="btn ghost btn-sm" id="btnQuickTestCup" onclick="quickFillTestTournament()" style="padding:3px 10px;font-size:11px;font-weight:700;color:#ffd166;border-color:#5c4813;background:rgba(255,209,102,0.08);display:inline-flex;align-items:center;gap:5px;cursor:pointer" title="Pre-fill standard Test Cup settings for moderators">
+                      <span>⚡ Quick Test Cup</span>
+                    </button>
+                  ` : ''}
+                  <span class="tag" style="background:#1d1c24;color:#a09fa8;border:1px solid #363546">Basic Info</span>
+                </div>
               </div>
               <div class="creator-grid">
                 <div class="field" style="margin-top:0">
@@ -21011,6 +21018,80 @@ function selectAllCreatorPlayers(check){
   document.querySelectorAll('.profileChoice').forEach(cb=>cb.checked=Boolean(check));
   updateCreatorSelectedCount();
 }
+
+function quickFillTestTournament(){
+  // 1. Tournament Name: Test Cup
+  let nameEl = document.querySelector('#tn');
+  if(nameEl) nameEl.value = 'Test Cup';
+
+  // 2. Badge Label: Test
+  let badgeEl = document.querySelector('#tbl');
+  if(badgeEl) badgeEl.value = 'Test';
+
+  // 3. Regulation: Test
+  let regEl = document.querySelector('#tr');
+  if(regEl) regEl.value = 'Test';
+
+  // 4. Start Date: TBD (cleared input yields 'TBD' on tournament creation)
+  let sdEl = document.querySelector('#sd');
+  if(sdEl) sdEl.value = '';
+  let edEl = document.querySelector('#ed');
+  if(edEl) edEl.value = '';
+
+  // 5. First Phase: Round Robin
+  let s1El = document.querySelector('#stage1Format');
+  if(s1El){
+    s1El.value = 'round_robin';
+    if(typeof onCreatorStage1FormatChange === 'function') onCreatorStage1FormatChange('round_robin');
+  }
+
+  // 6. Second Phase: Double Elimination
+  let s2El = document.querySelector('#stage2Format');
+  if(s2El) s2El.value = 'double_elimination';
+
+  // 7. Number of Groups: 2
+  let gcEl = document.querySelector('#gc');
+  if(gcEl) gcEl.value = '2';
+
+  // 8. Advance Per Group: 2
+  let apEl = document.querySelector('#ap');
+  if(apEl) apEl.value = '2';
+
+  // 9. Participating Coaches: All
+  if(typeof selectAllCreatorPlayers === 'function'){
+    selectAllCreatorPlayers(true);
+  } else {
+    document.querySelectorAll('.profileChoice').forEach(cb => cb.checked = true);
+  }
+  let npEl = document.querySelector('#newPlayers');
+  if(npEl) npEl.value = '';
+  document.querySelectorAll('.creatorManagerChoice').forEach(cb => cb.checked = false);
+
+  // 10. Live Draft: Off
+  let draftEl = document.querySelector('#enableDraft');
+  if(draftEl){
+    draftEl.checked = false;
+    let dBox = document.getElementById('draftSettingsContainer');
+    if(dBox) dBox.style.display = 'none';
+  }
+
+  // 11. Cover Art: None
+  window.pendingCreatorCover = null;
+  let wrap = document.querySelector('#creatorCoverSectionWrap');
+  if(wrap && typeof renderCreatorCoverSectionHtml === 'function'){
+    wrap.innerHTML = renderCreatorCoverSectionHtml();
+  }
+
+  // 12. Update live preview cards and count badges
+  if(typeof updateCreatorLiveCardPreview === 'function') updateCreatorLiveCardPreview();
+  if(typeof updateCreatorSelectedCount === 'function') updateCreatorSelectedCount();
+
+  // 13. Moderator toast notification
+  if(typeof showDraftToast === 'function'){
+    showDraftToast('⚡ Test Cup prefilled! Review settings & click + Create Tournament.');
+  }
+}
+window.quickFillTestTournament = quickFillTestTournament;
 
 document.querySelector('.brand').innerHTML='<img src="Fonts%20%26%20Logos/bellimaka_logo.jpg" onerror="handleLogoError(this)" class="bellimaka-logo" alt="Bellimaka"><span style="letter-spacing:1px">BELLIMAKA</span>';
 
