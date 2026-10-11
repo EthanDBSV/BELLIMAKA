@@ -3,6 +3,16 @@
 All notable changes to the Bellimaka Pokémon Draft League platform are documented here.
 Format: `v[MAJOR].[MINOR].[PATCH]` — Major = major system overhauls, Minor = new features, Patch = bug fixes and visual improvements.
 
+## [v2.5.1] — 2026-10-11
+
+### Primetime Matchup Card Typography & Name Formatting
+- **Small Prefix Eyebrow Style**: Short articles and prefixes (such as `"THE"`, `"A"`, `"AN"`, `"EL"`, `"LA"`, `"LE"`, `"LOS"`, `"LAS"`, `"ST"`, `"ST."`) now render as a sleek, metallic uppercase eyebrow line (`.primetime-cfb-team-name-prefix`) above the main mascot name rather than taking up a giant split line, keeping names like "The Misters" balanced and punchy.
+- **Multilingual & CJK Font Integration**: Added Google Fonts (`ZCOOL KuaiLe`, `Noto Sans SC:wght@700;900`) and system heavy typography (`'Microsoft YaHei'`, `'PingFang SC'`, `'Hiragino Sans GB'`, `'SimHei'`) across all broadcast elements and canvas renderers, ensuring non-English characters (e.g. `"廣州"` in `"廣州 Gibles"`) match the weight and rounded boldness of `Matcha World`.
+- **Subtle Proportional Indentation**: Refined the middle indent for two-line names down to a cohesive `clamp(10px, 1.8vw, 16px)` (and `clamp(8px, 1.2vw, 12px)` under prefixes), preventing words from drifting into the center seam.
+- **Live Preview & Canvas Alignment**: Synchronized the Broadcast Branding modal (`#bbLivePreview`) and canvas banner exporter (`generateMatchCardDataUrl`) with the prefix rules and CJK font loading for identical live rendering.
+
+---
+
 ## [v2.5.0] — 2026-10-11
 
 ### Tournament Lifecycle & Match Automation
