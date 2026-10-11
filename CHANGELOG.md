@@ -3,6 +3,30 @@
 All notable changes to the Bellimaka Pokémon Draft League platform are documented here.
 Format: `v[MAJOR].[MINOR].[PATCH]` — Major = major system overhauls, Minor = new features, Patch = bug fixes and visual improvements.
 
+## [v2.5.0] — 2026-10-11
+
+### Tournament Lifecycle & Match Automation
+- **Post-Tournament Most Improved Accolade**: Added a strict tournament completion check (`status === 'COMPLETE'`) to the Most Improved badge algorithm, ensuring it is exclusively awarded once the full tournament concludes rather than triggering off temporary group-stage standings.
+- **Dynamic Opening Date for TBD Tournaments**: When a tournament's start date is set to `TBD`, entering the very first match score (in group stage, Swiss, or playoffs) now automatically sets and locks the tournament's official opening date to that day (`YYYY-MM-DD`).
+- **Anticipation-Building Hat Ceremony (3.0s)**:
+  - Overhauled the Live Hat Draw Ceremony with a 2.2-second suspense sequence featuring an accelerating-to-decelerating ticker curve (60ms ➔ 90ms ➔ 140ms ➔ 220ms delay ticks) building tension up to the reveal.
+  - Added a 0.8-second celebratory reveal pause with a popping card animation before auto-advancing to the next draw.
+  - Updated auto-draw control label and cadence to `⚡ Auto-Draw Show (3.0s)`.
+- **Match Pick'em Tip-Off Lock**:
+  - Individual match predictions now lock immediately for the entire tournament the moment the first match result or score is reported, matching standard pick'em rules and preventing mid-stage prediction tampering.
+  - Match cards automatically transition into the locked ballot view upon the tournament's first recorded game.
+- **Decluttered Matches Navigation**: Removed the redundant "Arrange groups" button from the Matches view action bar; group configuration remains cleanly accessible on the Standings page.
+- **Sugar Land Regional Seeding & Bracket Correction**:
+  - Fixed Sugar Land Regional (`t1787348238028`) Top Cut seeding to reflect the authentic bracket format: Ethan (Seed #1), Ozy (Seed #2), Jace (Seed #3), and Dao Ming (Seed #4).
+  - Updated bracket match card origins and seed badges to properly display `[1] Ethan vs [2] Ozy` (`Seed #1` vs `Seed #2`) in Upper Semifinal 1 and `[4] Dao Ming vs [3] Jace` (`Seed #4` vs `Seed #3`) in Upper Semifinal 2.
+  - Synchronized `customTopCutSeeding` and `topCutCache` in the live Cloudflare database, aligning all career stats, head-to-heads, and tournament archives.
+
+### Cloudflare KV Infrastructure & Automatic Maintenance
+- **Automated Orphaned KV State Cleanup**: Added a dedicated `/api/tournament/delete` endpoint and integrated a backend safety net inside `POST /api/state` that automatically purges orphaned `draft_state:*`, `predictions:*`, and detached test `replay:*` keys whenever a test tournament is removed from the site.
+- **Hardcoded Official Tournament Guardrail**: Permanently protected all four historical official tournaments (Cagliari, Sugar Land, Wilmington, Bentonville), user profiles, discord configurations, and core database records against accidental deletion.
+
+---
+
 ## [v2.4.4] — 2026-10-10
 
 ### Season Awards & All-Tournament Rework

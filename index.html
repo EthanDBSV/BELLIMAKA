@@ -8561,7 +8561,7 @@ function createProfile(){let p=document.querySelector('#profileNewName').value.t
 
 
 
-function topScore(i){let t=ongoingT(),m=t.topCutMatches[i],a=document.querySelector('#ta'+i).value,b=document.querySelector('#tb'+i).value;m.as=a===''?0:+a;m.bs=b===''?0:+b;m.date=new Date().toLocaleString([],{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'});persistLeague();render()}
+function topScore(i){let t=ongoingT(),m=t.topCutMatches[i],a=document.querySelector('#ta'+i).value,b=document.querySelector('#tb'+i).value;m.as=a===''?0:+a;m.bs=b===''?0:+b;m.date=new Date().toLocaleString([],{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'});if(!t.start||String(t.start).trim().toUpperCase()==='TBD')t.start=new Date().toISOString().slice(0,10);persistLeague();render()}
 
 
 
@@ -17180,12 +17180,12 @@ function getTournamentTopCutModel(t){
     let isPreview = (!t.bracketManagerData && t.phase!=='topcut' && t.status==='ONGOING');
   
   let qualifiers=[];
-  if(t.bracketManagerData?.participant?.length){
+  if(t.customTopCutSeeding && t.customTopCutSeeding.length){
+    qualifiers=t.customTopCutSeeding.filter(Boolean).map((name,idx)=>({name,seed:idx+1}));
+  }else if(t.bracketManagerData?.participant?.length){
     qualifiers=t.bracketManagerData.participant.map((pt,idx)=>({name:pt.name,seed:idx+1}));
   }else if(t.topCutCache?.participants?.length){
     qualifiers=t.topCutCache.participants.map((name,idx)=>({name,seed:idx+1}));
-  }else if(t.customTopCutSeeding && t.customTopCutSeeding.length){
-    qualifiers=t.customTopCutSeeding.filter(Boolean).map((name,idx)=>({name,seed:idx+1}));
   }else{
     let seeds = seedTopCut(t).filter(Boolean);
     qualifiers=seeds.map((name,idx)=>({name,seed:idx+1}));
@@ -17215,8 +17215,18 @@ function getTournamentTopCutModel(t){
     else if(bmd) matchObj.p1 = null;
     if(sm.p2 != null) matchObj.p2 = sm.p2;
     else if(bmd) matchObj.p2 = null;
-    if(matchObj.p1 && seedMap[matchObj.p1]) matchObj.p1Seed = seedMap[matchObj.p1];
-    if(matchObj.p2 && seedMap[matchObj.p2]) matchObj.p2Seed = seedMap[matchObj.p2];
+    if(matchObj.p1 && seedMap[matchObj.p1]) {
+      matchObj.p1Seed = seedMap[matchObj.p1];
+      if(matchObj.originP1 && String(matchObj.originP1).startsWith('Seed #')) {
+        matchObj.originP1 = `Seed #${matchObj.p1Seed}`;
+      }
+    }
+    if(matchObj.p2 && seedMap[matchObj.p2]) {
+      matchObj.p2Seed = seedMap[matchObj.p2];
+      if(matchObj.originP2 && String(matchObj.originP2).startsWith('Seed #')) {
+        matchObj.originP2 = `Seed #${matchObj.p2Seed}`;
+      }
+    }
     matchObj.a = matchObj.p1;
     matchObj.b = matchObj.p2;
     matchObj.isTopCut = true;
@@ -18453,6 +18463,9 @@ async function saveTopCutScore(matchId){
 
   t.bracketManagerData = JSON.parse(JSON.stringify(h.storage.data));
   await refreshTopCutCache(t);
+  if(!t.start || String(t.start).trim().toUpperCase() === 'TBD'){
+    t.start = new Date().toISOString().slice(0, 10);
+  }
   persistLeague();
   if(typeof renderPredictionLeaders === 'function'){
     renderPredictionLeaders(t, true);
@@ -21203,6 +21216,9 @@ function score(i){
   delete scoreDrafts['b'+i];
   m.completedAt=Date.now();
   m.date=new Date(m.completedAt).toLocaleString([],{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'});
+  if(!t.start || String(t.start).trim().toUpperCase() === 'TBD'){
+    t.start = new Date().toISOString().slice(0, 10);
+  }
   persistLeague();
   render();
 
@@ -24962,7 +24978,6 @@ function Matches(){
       </div>
     ` : `
       <div style="display:flex;align-items:center;flex-wrap:wrap;gap:8px">
-        <button class="btn ghost" style="padding:6px 11px;font-size:11px" onclick="openGroupPlacementEditor()">👥 Arrange groups</button>
         <button class="btn ghost" style="padding:6px 11px;font-size:11px" onclick="addCustom()">⚡ Custom match</button>
         <button class="btn ghost" style="padding:6px 11px;font-size:11px;color:#ff9ba1;border-color:#4a242a" onclick="resetGroupStageScores()">➔ Reset group scores</button>
         <button class="btn" style="padding:6px 13px;font-size:11px" onclick="endGroupStage()">🏆 End group stage</button>
@@ -30820,9 +30835,12 @@ function isPredictionQuestionLocked(t, question){
     return done;
   }
 
-  // 4. Individual regular season match: Locks once that specific match has scores or is marked done
+  // 4. Individual regular season match: Locks once ANY tournament match has started/scored, or this specific match is scored
   let vs = question.match(/^Who wins:\s*(.+)\s+vs\s+(.+)$/i);
   if(vs){
+    if(t.phase === 'topcut' || t.status === 'COMPLETE') return true;
+    let anyPlayed = (t.matches || []).some(m => (m.as !== '' && m.as != null && m.bs !== '' && m.bs != null) || m.isDone);
+    if(anyPlayed) return true;
     let p1 = vs[1].trim(), p2 = vs[2].trim();
     let m = (t.matches || []).find(x => (x.a === p1 && x.b === p2) || (x.a === p2 && x.b === p1));
     if(m && ((m.as !== '' && m.as != null && m.bs !== '' && m.bs != null) || m.isDone || m.a === 'BYE' || m.b === 'BYE')){
@@ -31050,7 +31068,8 @@ function renderGroupWinnersPredictionPicker(t, groups, locked){
 function compactMatchPredictionCard(t, m, forceLocked = false){
   let p1 = m.a, p2 = m.b;
   let question = 'Who wins: ' + p1 + ' vs ' + p2;
-  let locked = forceLocked || (typeof window !== 'undefined' && !!window._viewingBallotPickMap) || (m.as !== '' && m.bs !== '' && m.as != null && m.bs != null);
+  let anyPlayed = (t.matches || []).some(x => (x.as !== '' && x.as != null && x.bs !== '' && x.bs != null) || x.isDone);
+  let locked = forceLocked || (typeof window !== 'undefined' && !!window._viewingBallotPickMap) || (m.as !== '' && m.bs !== '' && m.as != null && m.bs != null) || anyPlayed || t.status === 'COMPLETE' || t.phase === 'topcut';
   let isDecided = (m.as !== '' && m.bs !== '' && m.as != null && m.bs != null) && +m.as !== +m.bs;
   let winner = isDecided ? (+m.as > +m.bs ? p1 : p2) : null;
   let chosen = savedPick(t, question);
@@ -32244,9 +32263,10 @@ function calculateLeagueRecords(forceRefresh = false){
     });
   });
 
-  // Most Improved: Exactly ONE player per tournament (evaluated chronologically from tournament 2 onwards)
+  // Most Improved: Exactly ONE player per tournament (evaluated chronologically from tournament 2 onwards, only after tournament is COMPLETE)
   for(let tIdx=1;tIdx<sortedTournaments.length;tIdx++){
     let currT=sortedTournaments[tIdx];
+    if(currT.status !== 'COMPLETE') continue; // Only award after the tournament has concluded!
     let candidates=[];
 
     allPlayers.forEach(p=>{
@@ -33937,7 +33957,7 @@ function renderHatStageContent(state, t){
         ${state.autoTimer ? `
           <button class="btn ghost" style="color:#ff8e95;border-color:#5c242c" onclick="pauseAutoGroupDraw()">⏸️ Pause Show</button>
         ` : `
-          <button class="btn ghost" style="border-color:#ffd166;color:#ffd166" ${state.isDrawing ? 'disabled' : ''} onclick="startAutoGroupDraw()">⚡ Auto-Draw Show (1.3s)</button>
+          <button class="btn ghost" style="border-color:#ffd166;color:#ffd166" ${state.isDrawing ? 'disabled' : ''} onclick="startAutoGroupDraw()">⚡ Auto-Draw Show (3.0s)</button>
         `}
       </div>
     </div>
@@ -33955,33 +33975,57 @@ function drawNextGroupCoach(){
   if(hatEl) hatEl.classList.add('drawing');
 
   let pool = state.pool;
-  let tickerInterval = setInterval(() => {
+  let startTime = Date.now();
+  let totalShuffleDuration = 2200; // 2.2s of suspenseful name shuffling
+
+  function tickShuffle(){
+    if(!state.isDrawing) return;
+    let elapsed = Date.now() - startTime;
+    if(elapsed >= totalShuffleDuration){
+      // Reveal pick!
+      if(hatEl) hatEl.classList.remove('drawing');
+
+      let pickedIdx = Math.floor(Math.random() * pool.length);
+      let pickedPlayer = pool.splice(pickedIdx, 1)[0];
+
+      let targetGroup = state.groupNames[state.currentGroupIdx % state.groupNames.length];
+      state.drawn[targetGroup].push(pickedPlayer);
+      state.currentGroupIdx++;
+      state.isDrawing = false;
+      state.latestDrawn = { player: pickedPlayer, group: targetGroup, slot: state.drawn[targetGroup].length };
+
+      renderGroupDrawCeremonyModal();
+
+      if(state.autoTimer && state.pool.length > 0){
+        state.autoTimer = setTimeout(drawNextGroupCoach, 800); // 0.8s celebratory reveal pop (3.0s total per draw)
+      } else if(state.pool.length === 0){
+        pauseAutoGroupDraw();
+      }
+      return;
+    }
+
     let randomIdx = Math.floor(Math.random() * pool.length);
     let samplePlayer = pool[randomIdx];
-    if(tickerEl) tickerEl.textContent = `✨ ${samplePlayer}...`;
-  }, 75);
-
-  setTimeout(() => {
-    clearInterval(tickerInterval);
-    if(hatEl) hatEl.classList.remove('drawing');
-
-    let pickedIdx = Math.floor(Math.random() * pool.length);
-    let pickedPlayer = pool.splice(pickedIdx, 1)[0];
-
-    let targetGroup = state.groupNames[state.currentGroupIdx % state.groupNames.length];
-    state.drawn[targetGroup].push(pickedPlayer);
-    state.currentGroupIdx++;
-    state.isDrawing = false;
-    state.latestDrawn = { player: pickedPlayer, group: targetGroup, slot: state.drawn[targetGroup].length };
-
-    renderGroupDrawCeremonyModal();
-
-    if(state.autoTimer && state.pool.length > 0){
-      state.autoTimer = setTimeout(drawNextGroupCoach, 1300);
-    } else if(state.pool.length === 0){
-      pauseAutoGroupDraw();
+    if(tickerEl){
+      if(elapsed < 1200){
+        tickerEl.textContent = `🎩 ${samplePlayer}...`;
+      } else if(elapsed < 1800){
+        tickerEl.textContent = `✨ ${samplePlayer}...`;
+      } else {
+        tickerEl.textContent = `⭐ ${samplePlayer}?!`;
+      }
     }
-  }, 1100);
+
+    // Decelerating tick interval to build dramatic suspense
+    let nextDelay = 60;
+    if(elapsed > 1800) nextDelay = 220;
+    else if(elapsed > 1400) nextDelay = 140;
+    else if(elapsed > 900) nextDelay = 90;
+
+    setTimeout(tickShuffle, nextDelay);
+  }
+
+  tickShuffle();
 }
 
 function startAutoGroupDraw(){
