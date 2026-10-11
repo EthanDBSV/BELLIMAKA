@@ -10630,16 +10630,42 @@ function renderReplayPillsHtml(m, t, matchKey, canManage, isCompact = false) {
   </div>`;
 }
 
+var _syncedReplayLogIds = (function(){
+  let s = new Set();
+  try {
+    let arr = JSON.parse(localStorage.getItem('draftdex-synced-replays') || '[]');
+    if(Array.isArray(arr)) arr.forEach(id => { if(id) s.add(String(id)); });
+  } catch(e){}
+  return s;
+})();
+
+function markReplayLogSynced(replayId){
+  if(!replayId) return;
+  let rIdStr = String(replayId);
+  if(_syncedReplayLogIds.has(rIdStr)) return;
+  _syncedReplayLogIds.add(rIdStr);
+  try {
+    let arr = Array.from(_syncedReplayLogIds);
+    if(arr.length > 2000) arr = arr.slice(-2000);
+    localStorage.setItem('draftdex-synced-replays', JSON.stringify(arr));
+  } catch(e){}
+}
+
 async function saveReplayLogToCloud(replayId, logText){
   if(!replayId || !logText) return;
+  let rIdStr = String(replayId);
+  if(_syncedReplayLogIds.has(rIdStr)) return; // Already safely stored in Cloudflare KV! Zero redundant writes!
   let cfUrl = typeof getCloudflareUrl === 'function' ? getCloudflareUrl() : '';
   if(!cfUrl) return;
   try {
-    await fetch(`${cfUrl}/api/replay`, {
+    let res = await fetch(`${cfUrl}/api/replay`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ id: replayId, log: logText })
     });
+    if(res.ok){
+      markReplayLogSynced(replayId);
+    }
   } catch(e){
     console.warn('Draftdex: failed to push on-demand replay to cloud:', e);
   }
@@ -18745,6 +18771,20 @@ function applySharedState(data){
   Object.assign(tournamentData, data.tournaments || {});
   window._cloudTournamentCount = Object.keys(tournamentData).length;
 
+  // Mark all incoming replays that already have cloud logs as synced to prevent redundant writes
+  try {
+    Object.values(tournamentData).forEach(t => {
+      (t.matches || []).forEach(m => {
+        (m.replays || []).forEach(r => { if(r && r.hasLog && r.id) markReplayLogSynced(r.id); });
+      });
+      if(t.topCutReplays) {
+        Object.values(t.topCutReplays).forEach(rList => {
+          if(Array.isArray(rList)) rList.forEach(r => { if(r && r.hasLog && r.id) markReplayLogSynced(r.id); });
+        });
+      }
+    });
+  } catch(e){}
+
   // Restore tournament background and recap covers from cache
   Object.keys(tournamentData).forEach(tId => {
     let t = tournamentData[tId];
@@ -19545,9 +19585,16 @@ async function flushSync(){
                 if(origR) origR.stats = parsed;
               }
             }
+            let rKey = String(r.id || '');
+            let isAlreadySaved = (origR && origR.hasLog) || (r && r.hasLog) || (rKey && _syncedReplayLogIds.has(rKey));
+            if(isAlreadySaved && rKey){
+              markReplayLogSynced(rKey);
+            }
             if(r.log && r.log.length > 20){
               r.hasLog = true;
-              saveReplayLogToCloud(r.id, r.log);
+              if(!isAlreadySaved && rKey){
+                saveReplayLogToCloud(r.id, r.log);
+              }
               delete r.log; // Decouple heavy log from main state
             }
           });
@@ -19593,9 +19640,16 @@ async function flushSync(){
                 if(origR) origR.stats = parsed;
               }
             }
+            let rKey = String(r.id || '');
+            let isAlreadySaved = (origR && origR.hasLog) || (r && r.hasLog) || (rKey && _syncedReplayLogIds.has(rKey));
+            if(isAlreadySaved && rKey){
+              markReplayLogSynced(rKey);
+            }
             if(r.log && r.log.length > 20){
               r.hasLog = true;
-              saveReplayLogToCloud(r.id, r.log);
+              if(!isAlreadySaved && rKey){
+                saveReplayLogToCloud(r.id, r.log);
+              }
               delete r.log; // Decouple heavy log from main state
             }
           });
