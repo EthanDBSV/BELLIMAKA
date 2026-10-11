@@ -14529,6 +14529,41 @@ function deleteTournament(id){
   if(!t)return;
   if(!confirm(`Delete "${t.name}" (${t.season})? This cannot be undone.`))return;
 
+  // Collect all replay IDs associated with this tournament for KV cleanup
+  let replayIds = [];
+  if (t.matches && Array.isArray(t.matches)) {
+    for (const m of t.matches) {
+      if (m && Array.isArray(m.replays)) {
+        for (const r of m.replays) {
+          if (r && r.id) replayIds.push(r.id);
+        }
+      }
+    }
+  }
+  if (t.topCutReplays && typeof t.topCutReplays === 'object') {
+    for (const rList of Object.values(t.topCutReplays)) {
+      if (Array.isArray(rList)) {
+        for (const r of rList) {
+          if (r && r.id) replayIds.push(r.id);
+        }
+      }
+    }
+  }
+
+  // Layer 1: Send immediate tournament KV cleanup request to Cloudflare Worker
+  if (typeof getBackendType === 'function' && getBackendType() === 'cloudflare') {
+    let cfUrl = typeof getCloudflareUrl === 'function' ? getCloudflareUrl() : '';
+    if (cfUrl) {
+      try {
+        fetch(`${cfUrl}/api/tournament/delete`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ tournamentId: id, replayIds: replayIds })
+        }).catch(err => console.warn('Worker tournament cleanup non-critical error:', err));
+      } catch(e) {}
+    }
+  }
+
   // 1. Remove this tournament's pokemon from active rosters
   let tourneyMonsByPlayer = {};
   (t.players || []).forEach(p => {
