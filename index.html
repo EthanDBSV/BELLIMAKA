@@ -908,10 +908,10 @@
   line-height: 1.1;
   letter-spacing: 3.5px;
   text-transform: uppercase;
-  background: linear-gradient(180deg, #ffffff 0%, #e2e8f0 40%, #cbd5e1 70%, #94a3b8 100%);
+  background: linear-gradient(180deg, var(--team-name-col1, var(--team-sec, #ffffff)) 0%, var(--team-name-col2, var(--team-pri, #cbd5e1)) 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
-  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.95)) drop-shadow(0 0 2px rgba(255, 255, 255, 0.4));
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.95)) drop-shadow(0 0 2px rgba(0, 0, 0, 0.85));
   white-space: nowrap;
   overflow: visible;
   padding: 0 2px;
@@ -930,10 +930,10 @@
   line-height: 1.16;
   letter-spacing: 2px;
   text-transform: uppercase;
-  background: linear-gradient(180deg, #ffffff 0%, #f1f5f9 35%, #cbd5e1 68%, #94a3b8 100%);
+  background: linear-gradient(180deg, var(--team-name-col1, var(--team-sec, #ffffff)) 0%, var(--team-name-col2, var(--team-pri, #cbd5e1)) 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
-  filter: drop-shadow(0 3px 6px rgba(0, 0, 0, 0.95)) drop-shadow(0 0 2px rgba(255, 255, 255, 0.4));
+  filter: drop-shadow(0 3px 6px rgba(0, 0, 0, 0.95)) drop-shadow(0 0 2px rgba(0, 0, 0, 0.9));
   white-space: nowrap;
   overflow: visible;
   padding: 2px 4px 4px 0;
@@ -950,10 +950,10 @@
   line-height: 1.14;
   letter-spacing: 2px;
   text-transform: uppercase;
-  background: linear-gradient(180deg, #ffffff 0%, #f1f5f9 35%, #cbd5e1 68%, #94a3b8 100%);
+  background: linear-gradient(180deg, var(--team-name-col1, var(--team-sec, #ffffff)) 0%, var(--team-name-col2, var(--team-pri, #cbd5e1)) 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
-  filter: drop-shadow(0 3px 6px rgba(0, 0, 0, 0.95)) drop-shadow(0 0 2px rgba(255, 255, 255, 0.4));
+  filter: drop-shadow(0 3px 6px rgba(0, 0, 0, 0.95)) drop-shadow(0 0 2px rgba(0, 0, 0, 0.9));
   white-space: nowrap;
   overflow: visible;
   margin-top: 0;
@@ -1008,10 +1008,10 @@
   line-height: 1.16;
   letter-spacing: 2px;
   text-transform: uppercase;
-  background: linear-gradient(180deg, #ffffff 0%, #f1f5f9 35%, #cbd5e1 65%, #94a3b8 100%);
+  background: linear-gradient(180deg, var(--team-name-col1, var(--team-sec, #ffffff)) 0%, var(--team-name-col2, var(--team-pri, #cbd5e1)) 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
-  filter: drop-shadow(0 3px 6px rgba(0, 0, 0, 0.95)) drop-shadow(0 0 2px rgba(255, 255, 255, 0.5));
+  filter: drop-shadow(0 3px 6px rgba(0, 0, 0, 0.95)) drop-shadow(0 0 2px rgba(0, 0, 0, 0.9));
   white-space: nowrap;
   overflow: visible;
 }
@@ -6252,8 +6252,10 @@ const teamCovers={};
 const profilePictures={};
 const coachHashtags={};
 const coachThemeColors={};
+const coachSecondaryColors={};
 const coachNameLines={};
 const _extractedColorsCache={};
+const _extractedSecondaryColorsCache={};
 
 function hexToRgba(hex, alpha = 1) {
   if(!hex || typeof hex !== 'string') return `rgba(239,48,56,${alpha})`;
@@ -6340,9 +6342,9 @@ function getBannerTextColor(hex) {
   return lum > 0.72 ? '#111116' : '#ffffff';
 }
 
-function getBattlewornBg(color, isTop) {
+function getBattlewornBg(color, isTop, secondaryColor) {
   let base = color || '#881c24';
-  let lightSplash = hexToLighterShade(base, 0.18);
+  let lightSplash = secondaryColor || hexToLighterShade(base, 0.20);
   let deepEdge = hexToDarkerShade(base, 0.10);
   if (isTop) {
     return `linear-gradient(125deg, ${lightSplash} 0%, ${base} 45%, ${deepEdge} 100%)`;
@@ -6364,7 +6366,10 @@ function hslToHex(h, s, l) {
 
 function extractDominantColorFromImg(src, cacheKey, callback) {
   if(!src || typeof document === 'undefined') return;
-  if(_extractedColorsCache[cacheKey]) return _extractedColorsCache[cacheKey];
+  if(_extractedColorsCache[cacheKey]) {
+    if(typeof callback === "function") callback(_extractedColorsCache[cacheKey], _extractedSecondaryColorsCache[cacheKey]);
+    return _extractedColorsCache[cacheKey];
+  }
   let img = new Image();
   img.crossOrigin = 'Anonymous';
   img.onload = function() {
@@ -6375,7 +6380,7 @@ function extractDominantColorFromImg(src, cacheKey, callback) {
       let ctx = canvas.getContext('2d');
       ctx.drawImage(img, 0, 0, 16, 16);
       let data = ctx.getImageData(0, 0, 16, 16).data;
-      let bestR = 120, bestG = 20, bestB = 30, bestScore = -1;
+      let candidates = [];
       for (let i = 0; i < data.length; i += 4) {
         let r = data[i], g = data[i+1], b = data[i+2], a = data[i+3];
         if (a < 128) continue;
@@ -6384,17 +6389,29 @@ function extractDominantColorFromImg(src, cacheKey, callback) {
         let lum = (max + min) / 510;
         if (lum < 0.12 || lum > 0.88 || sat < 0.15) continue;
         let score = sat * (1 - Math.abs(lum - 0.5));
-        if (score > bestScore) {
-          bestScore = score;
-          bestR = r; bestG = g; bestB = b;
-        }
+        candidates.push({ r, g, b, sat, lum, score });
       }
-      if (bestScore > 0) {
-        let hex = '#' + [bestR, bestG, bestB].map(x => x.toString(16).padStart(2, '0')).join('');
-        _extractedColorsCache[cacheKey] = hex; if(typeof callback === "function") callback(hex);
+      candidates.sort((a, b) => b.score - a.score);
+      if (candidates.length > 0) {
+        let primary = candidates[0];
+        let priHex = '#' + [primary.r, primary.g, primary.b].map(x => x.toString(16).padStart(2, '0')).join('');
+        _extractedColorsCache[cacheKey] = priHex;
+
+        let secCandidate = candidates.find(c => {
+          let dist = Math.hypot(c.r - primary.r, c.g - primary.g, c.b - primary.b);
+          return dist >= 65 && c.sat >= 0.20;
+        });
+        let secHex = secCandidate 
+          ? ('#' + [secCandidate.r, secCandidate.g, secCandidate.b].map(x => x.toString(16).padStart(2, '0')).join(''))
+          : hexToLighterShade(priHex, 0.35);
+        _extractedSecondaryColorsCache[cacheKey] = secHex;
+
+        if (typeof callback === "function") callback(priHex, secHex);
         let el = document.querySelector(`.primetime-cfb-half[data-coach="${cacheKey}"]`);
-        if(el) {
-          el.style.setProperty('--team-color', hex);
+        if (el) {
+          el.style.setProperty('--team-color', priHex);
+          el.style.setProperty('--team-pri', priHex);
+          el.style.setProperty('--team-sec', secHex);
         }
       }
     } catch(e) {}
@@ -6422,6 +6439,19 @@ function getCoachPrimaryColor(p) {
     extractDominantColorFromImg(profilePictures[p], p);
   }
   return hslToHex((typeof hueOf === 'function' ? hueOf(p || 'team') : 0), 65, 36);
+}
+
+function getCoachSecondaryColor(p) {
+  if(!p) return '#f59e0b';
+  if(coachSecondaryColors[p]) return coachSecondaryColors[p];
+  if(typeof profiles === 'object' && profiles[p]?.secondaryColor) return profiles[p].secondaryColor;
+  if(_extractedSecondaryColorsCache[p]) return _extractedSecondaryColorsCache[p];
+  if(typeof profilePictures === 'object' && profilePictures[p]) {
+    extractDominantColorFromImg(profilePictures[p], p);
+    if(_extractedSecondaryColorsCache[p]) return _extractedSecondaryColorsCache[p];
+  }
+  let pri = getCoachPrimaryColor(p);
+  return hexToLighterShade(pri, 0.35);
 }
 
 function cleanDisplayTeamName(str) {
@@ -6499,6 +6529,17 @@ function saveCoachBranding(p) {
     coachThemeColors[p] = col;
     if(profiles[p]) profiles[p].themeColor = col;
   }
+  let secColorInput = document.querySelector('#coachSecColorInput_' + jsArg(p));
+  let secCol = secColorInput ? secColorInput.value : '';
+  if(secCol) {
+    coachSecondaryColors[p] = secCol;
+    if(profiles[p]) profiles[p].secondaryColor = secCol;
+  }
+  try {
+    localStorage.setItem('draftdex-coach-hashtags', JSON.stringify(coachHashtags));
+    localStorage.setItem('draftdex-coach-colors', JSON.stringify(coachThemeColors));
+    localStorage.setItem('draftdex-coach-secondary-colors', JSON.stringify(coachSecondaryColors));
+  } catch(e) {}
   persistLeague();
   if(typeof showDraftToast === 'function') {
     showDraftToast(`✓ Saved broadcast branding for ${p}!`);
@@ -6593,6 +6634,7 @@ function openBroadcastBrandingEditor(p) {
   if (!p || (!moderator && !window.moderator)) return;
   let currentTag = getCoachHashtag(p);
   let currentColor = getCoachPrimaryColor(p);
+  let currentSecColor = getCoachSecondaryColor(p);
   let t = typeof currentTournament === 'function' ? currentTournament() : null;
   let autoSplit = getCoachNameSplit(p, t, true);
   let savedSplit = coachNameLines[p] || { line1: profiles[p]?.nameLine1 || '', line2: profiles[p]?.nameLine2 || '' };
@@ -6602,7 +6644,7 @@ function openBroadcastBrandingEditor(p) {
 
   let bannerCol = getBannerShade(currentColor);
   let bannerTextCol = getBannerTextColor(currentColor);
-  let battleBg = getBattlewornBg(currentColor, true);
+  let battleBg = getBattlewornBg(currentColor, true, currentSecColor);
 
   let pic = profilePictures[p] || teamCovers[p] || '';
   let avatarFace = pic ? `background-image:url('${esc(pic)}');` : fallbackArt(p);
@@ -6620,12 +6662,12 @@ function openBroadcastBrandingEditor(p) {
           </div>
           <button class="close" onclick="openProfile('${jsArg(p)}')">×</button>
         </div>
-        <p class="sub" style="margin:4px 0 16px">Customize ${esc(p)}'s team name two-line split, hashtag ribbon, and battleworn primary color for Primetime Matchups.</p>
+        <p class="sub" style="margin:4px 0 16px">Customize ${esc(p)}'s team name two-line split, hashtag ribbon, and dual-tone primary/secondary branding for Primetime Matchups.</p>
 
         <!-- Live Preview Card -->
         <div style="margin-bottom:18px">
           <div class="eyebrow" style="margin-bottom:6px;color:#94a3b8">Live Broadcast Graphic Preview</div>
-          <div id="bbLivePreview" style="position:relative;border-radius:9px;overflow:hidden;border:1px solid rgba(255,255,255,0.18);background:${battleBg};isolation:isolate;box-shadow:0 8px 24px rgba(0,0,0,0.6);min-height:135px">
+          <div id="bbLivePreview" style="position:relative;border-radius:9px;overflow:hidden;border:1px solid rgba(255,255,255,0.18);background:${battleBg};isolation:isolate;box-shadow:0 8px 24px rgba(0,0,0,0.6);min-height:135px;--team-pri:${esc(currentColor)};--team-sec:${esc(currentSecColor)};">
             <!-- Top Hashtag Ribbon Inset by 6px -->
             <div id="bbLiveRibbonBar" style="position:absolute;top:6px;left:0;right:0;height:22px;background:${bannerCol};color:${bannerTextCol};display:flex;align-items:center;justify-content:center;overflow:hidden;padding:0 10px;border-top:1px solid rgba(255,255,255,0.45);border-bottom:1.5px solid rgba(0,0,0,0.45);box-shadow:0 2px 8px rgba(0,0,0,0.35);z-index:2">
               <div id="bbLiveRibbon" style="display:flex;align-items:center;gap:12px;white-space:nowrap;font-family:'Agency FB', sans-serif;font-weight:700;font-size:15px;letter-spacing:2px;color:${bannerTextCol};text-transform:uppercase;text-shadow:0 1px 2px rgba(0,0,0,0.7)">
@@ -6676,15 +6718,34 @@ function openBroadcastBrandingEditor(p) {
           </div>
 
           <div>
-            <label style="font:800 11px 'Barlow Condensed';color:#aaa;letter-spacing:1px;text-transform:uppercase;display:block;margin-bottom:5px">Primary Team Broadcast Color</label>
-            <div style="display:flex;align-items:center;gap:10px">
-              <input type="color" id="bbColorInput" value="${esc(currentColor)}" style="width:44px;height:38px;padding:2px;background:#0c0c11;border:1px solid #383846;border-radius:6px;cursor:pointer" oninput="updateBbLivePreview('${jsArg(p)}')" />
-              <input type="text" id="bbColorText" value="${esc(currentColor)}" style="width:90px;background:#0c0c11;border:1px solid #383846;border-radius:6px;padding:8px 10px;font:800 13px 'Barlow Condensed';color:#fff" oninput="document.querySelector('#bbColorInput').value=this.value;updateBbLivePreview('${jsArg(p)}')" />
-              <button class="btn ghost btn-sm" style="margin-left:auto;font-size:11px;padding:7px 12px;display:flex;align-items:center;gap:5px" onclick="triggerBbAutoExtract('${jsArg(p)}')">
-                <span>⚡</span> Auto-Extract
-              </button>
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+              <label style="font:800 11px 'Barlow Condensed';color:#aaa;letter-spacing:1px;text-transform:uppercase;margin:0">Broadcast Color Palette</label>
+              <div style="display:flex;gap:6px">
+                <button class="btn ghost btn-sm" style="font-size:10.5px;padding:4px 9px;display:flex;align-items:center;gap:4px" onclick="swapBbColors('${jsArg(p)}')">
+                  <span>⇄</span> Swap
+                </button>
+                <button class="btn ghost btn-sm" style="font-size:10.5px;padding:4px 9px;display:flex;align-items:center;gap:4px" onclick="triggerBbAutoExtract('${jsArg(p)}')">
+                  <span>⚡</span> Auto-Extract
+                </button>
+              </div>
             </div>
-            <div style="font-size:11px;color:#7e7c85;margin-top:4px">Sets rich pure background color with battleworn texture and calculates the lighter hashtag banner shade.</div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+              <div>
+                <span style="font-size:10.5px;color:#94a3b8;display:block;margin-bottom:4px">Primary Color · Base & Ribbon</span>
+                <div style="display:flex;align-items:center;gap:8px">
+                  <input type="color" id="bbColorInput" value="${esc(currentColor)}" style="width:40px;height:36px;padding:2px;background:#0c0c11;border:1px solid #383846;border-radius:6px;cursor:pointer" oninput="updateBbLivePreview('${jsArg(p)}')" />
+                  <input type="text" id="bbColorText" value="${esc(currentColor)}" style="width:100%;box-sizing:border-box;background:#0c0c11;border:1px solid #383846;border-radius:6px;padding:8px 9px;font:800 12.5px 'Barlow Condensed';color:#fff" oninput="document.querySelector('#bbColorInput').value=this.value;updateBbLivePreview('${jsArg(p)}')" />
+                </div>
+              </div>
+              <div>
+                <span style="font-size:10.5px;color:#94a3b8;display:block;margin-bottom:4px">Secondary Color · Splash & Gradient</span>
+                <div style="display:flex;align-items:center;gap:8px">
+                  <input type="color" id="bbSecColorInput" value="${esc(currentSecColor)}" style="width:40px;height:36px;padding:2px;background:#0c0c11;border:1px solid #383846;border-radius:6px;cursor:pointer" oninput="updateBbLivePreview('${jsArg(p)}')" />
+                  <input type="text" id="bbSecColorText" value="${esc(currentSecColor)}" style="width:100%;box-sizing:border-box;background:#0c0c11;border:1px solid #383846;border-radius:6px;padding:8px 9px;font:800 12.5px 'Barlow Condensed';color:#fff" oninput="document.querySelector('#bbSecColorInput').value=this.value;updateBbLivePreview('${jsArg(p)}')" />
+                </div>
+              </div>
+            </div>
+            <div style="font-size:11px;color:#7e7c85;margin-top:6px">Primary color tints the battleworn base and hashtag ribbon. Secondary color powers the angled background splash and letters' top-to-bottom text gradient.</div>
           </div>
         </div>
 
@@ -6697,10 +6758,26 @@ function openBroadcastBrandingEditor(p) {
   `;
 }
 
+function swapBbColors(p) {
+  let colInput = document.querySelector('#bbColorInput');
+  let secInput = document.querySelector('#bbSecColorInput');
+  let textInput = document.querySelector('#bbColorText');
+  let secTextInput = document.querySelector('#bbSecColorText');
+  if (!colInput || !secInput) return;
+  let tmp = colInput.value;
+  colInput.value = secInput.value;
+  secInput.value = tmp;
+  if (textInput) textInput.value = colInput.value;
+  if (secTextInput) secTextInput.value = secInput.value;
+  updateBbLivePreview(p);
+}
+
 function updateBbLivePreview(p) {
   let tagInput = document.querySelector('#bbHashtagInput');
   let colInput = document.querySelector('#bbColorInput');
+  let secInput = document.querySelector('#bbSecColorInput');
   let textInput = document.querySelector('#bbColorText');
+  let secTextInput = document.querySelector('#bbSecColorText');
   let l1Input = document.querySelector('#bbNameL1Input');
   let l2Input = document.querySelector('#bbNameL2Input');
   let preview = document.querySelector('#bbLivePreview');
@@ -6739,17 +6816,20 @@ function updateBbLivePreview(p) {
     l2El.style.display = cleanL2 ? 'block' : 'none';
   }
 
-
   let tag = (tagInput ? tagInput.value.trim() : '') || `#${p.replace(/\s+/g, '')}Nation`;
   if (!tag.startsWith('#')) tag = '#' + tag;
   let col = colInput ? colInput.value : '#ef3038';
+  let secCol = secInput ? secInput.value : '#f59e0b';
   if (textInput && textInput !== document.activeElement) textInput.value = col;
+  if (secTextInput && secTextInput !== document.activeElement) secTextInput.value = secCol;
 
   let bannerCol = getBannerShade(col);
   let bannerTextCol = getBannerTextColor(col);
-  let battleBg = getBattlewornBg(col, true);
+  let battleBg = getBattlewornBg(col, true, secCol);
 
   preview.style.background = battleBg;
+  preview.style.setProperty('--team-pri', col);
+  preview.style.setProperty('--team-sec', secCol);
   if (ribbonBar) ribbonBar.style.background = bannerCol;
   if (ribbon) {
     ribbon.style.color = bannerTextCol;
@@ -6766,24 +6846,37 @@ function updateBbLivePreview(p) {
 function triggerBbAutoExtract(p) {
   if (!p) return;
   if (typeof profilePictures === 'object' && profilePictures[p]) {
-    extractDominantColorFromImg(profilePictures[p], p, (extracted) => {
+    extractDominantColorFromImg(profilePictures[p], p, (priExtracted, secExtracted) => {
       let colInput = document.querySelector('#bbColorInput');
+      let secInput = document.querySelector('#bbSecColorInput');
       let textInput = document.querySelector('#bbColorText');
-      if (colInput && extracted) {
-        colInput.value = extracted;
-        if (textInput) textInput.value = extracted;
-        updateBbLivePreview(p);
+      let secTextInput = document.querySelector('#bbSecColorText');
+      if (colInput && priExtracted) {
+        colInput.value = priExtracted;
+        if (textInput) textInput.value = priExtracted;
       }
+      if (secInput && secExtracted) {
+        secInput.value = secExtracted;
+        if (secTextInput) secTextInput.value = secExtracted;
+      }
+      updateBbLivePreview(p);
     });
   } else {
-    let fallbackCol = hslToHex((typeof hueOf === 'function' ? hueOf(p || 'team') : 0), 65, 36);
+    let fallbackPri = hslToHex((typeof hueOf === 'function' ? hueOf(p || 'team') : 0), 65, 36);
+    let fallbackSec = hexToLighterShade(fallbackPri, 0.35);
     let colInput = document.querySelector('#bbColorInput');
+    let secInput = document.querySelector('#bbSecColorInput');
     let textInput = document.querySelector('#bbColorText');
+    let secTextInput = document.querySelector('#bbSecColorText');
     if (colInput) {
-      colInput.value = fallbackCol;
-      if (textInput) textInput.value = fallbackCol;
-      updateBbLivePreview(p);
+      colInput.value = fallbackPri;
+      if (textInput) textInput.value = fallbackPri;
     }
+    if (secInput) {
+      secInput.value = fallbackSec;
+      if (secTextInput) secTextInput.value = fallbackSec;
+    }
+    updateBbLivePreview(p);
   }
 }
 
@@ -6791,6 +6884,7 @@ function saveBroadcastBrandingModal(p) {
   if (!p || (!moderator && !window.moderator)) return;
   let tagInput = document.querySelector('#bbHashtagInput');
   let colInput = document.querySelector('#bbColorInput');
+  let secInput = document.querySelector('#bbSecColorInput');
   let l1Input = document.querySelector('#bbNameL1Input');
   let l2Input = document.querySelector('#bbNameL2Input');
 
@@ -6808,6 +6902,11 @@ function saveBroadcastBrandingModal(p) {
   if (col) {
     coachThemeColors[p] = col;
     if (profiles[p]) profiles[p].themeColor = col;
+  }
+  let secCol = secInput ? secInput.value : '';
+  if (secCol) {
+    coachSecondaryColors[p] = secCol;
+    if (profiles[p]) profiles[p].secondaryColor = secCol;
   }
 
   let l1Val = l1Input ? l1Input.value.trim() : '';
@@ -6830,6 +6929,7 @@ function saveBroadcastBrandingModal(p) {
     localStorage.setItem('draftdex-coach-namelines', JSON.stringify(coachNameLines));
     localStorage.setItem('draftdex-coach-hashtags', JSON.stringify(coachHashtags));
     localStorage.setItem('draftdex-coach-colors', JSON.stringify(coachThemeColors));
+    localStorage.setItem('draftdex-coach-secondary-colors', JSON.stringify(coachSecondaryColors));
   } catch(e) {}
   persistLeague();
   if (typeof showDraftToast === 'function') {
@@ -6842,8 +6942,13 @@ function saveBroadcastBrandingModal(p) {
 function resetCoachThemeColor(p) {
   if(!p || (!moderator && !window.moderator)) return;
   delete coachThemeColors[p];
-  if(profiles[p]) delete profiles[p].themeColor;
+  delete coachSecondaryColors[p];
+  if(profiles[p]) {
+    delete profiles[p].themeColor;
+    delete profiles[p].secondaryColor;
+  }
   delete _extractedColorsCache[p];
+  delete _extractedSecondaryColorsCache[p];
   if(profilePictures[p]) {
     extractDominantColorFromImg(profilePictures[p], p);
   }
@@ -7826,6 +7931,8 @@ try{
   if(savedHashtags)Object.assign(coachHashtags,savedHashtags);
   let savedColors=JSON.parse(localStorage.getItem('draftdex-coach-colors')||'null');
   if(savedColors)Object.assign(coachThemeColors,savedColors);
+  let savedSecColors=JSON.parse(localStorage.getItem('draftdex-coach-secondary-colors')||'null');
+  if(savedSecColors)Object.assign(coachSecondaryColors,savedSecColors);
   // Auto-convert any team covers into profile pictures
   let convertedAnyCovers = false;
   Object.keys(teamCovers).forEach(k => {
@@ -7838,7 +7945,8 @@ try{
     try{ localStorage.setItem('draftdex-profilepics', JSON.stringify(profilePictures));
     localStorage.setItem('draftdex-coach-namelines', JSON.stringify(coachNameLines));
     localStorage.setItem('draftdex-coach-hashtags', JSON.stringify(coachHashtags));
-    localStorage.setItem('draftdex-coach-colors', JSON.stringify(coachThemeColors)); }catch(e){}
+    localStorage.setItem('draftdex-coach-colors', JSON.stringify(coachThemeColors));
+    localStorage.setItem('draftdex-coach-secondary-colors', JSON.stringify(coachSecondaryColors)); }catch(e){}
   }
   let savedPulse=JSON.parse(localStorage.getItem('draftdex-pulsepanels')||'null');
   if(savedPulse)Object.assign(pulsePanelImages,savedPulse);
@@ -8313,12 +8421,20 @@ function openProfile(p){let q=ensureProfile(p);document.querySelector('#modal').
           <label style="font:800 11px 'Barlow Condensed';color:#8e8c95;letter-spacing:.5px;text-transform:uppercase;display:block;margin-bottom:4px">Team Hashtag</label>
           <input id="coachHashtagInput_${jsArg(p)}" value="${esc(coachHashtags[p] || profiles[p]?.hashtag || '')}" placeholder="#${esc(p.replace(/\s+/g, ''))}Nation" style="width:100%;box-sizing:border-box;background:#0c0c11;border:1px solid #2d2d3a;border-radius:6px;padding:6px 10px;color:#f5f3f0;font:800 13px 'Barlow Condensed'" />
         </div>
-        <div>
-          <label style="font:800 11px 'Barlow Condensed';color:#8e8c95;letter-spacing:.5px;text-transform:uppercase;display:block;margin-bottom:4px">Primary Team Color</label>
-          <div style="display:flex;align-items:center;gap:10px">
-            <input type="color" id="coachColorInput_${jsArg(p)}" value="${esc(getCoachPrimaryColor(p))}" oninput="document.querySelector('#coachColorLabel_${jsArg(p)}').textContent=this.value" style="width:38px;height:34px;padding:2px;background:#0c0c11;border:1px solid #2d2d3a;border-radius:6px;cursor:pointer" />
-            <span style="font:800 13px 'Barlow Condensed';color:#cbd5e1" id="coachColorLabel_${jsArg(p)}">${esc(getCoachPrimaryColor(p))}</span>
-            <button class="btn ghost btn-sm" style="font-size:10px;padding:4px 9px;margin-left:auto" onclick="resetCoachThemeColor('${jsArg(p)}')">Auto-Extract</button>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+          <div>
+            <label style="font:800 11px 'Barlow Condensed';color:#8e8c95;letter-spacing:.5px;text-transform:uppercase;display:block;margin-bottom:4px">Primary Color</label>
+            <div style="display:flex;align-items:center;gap:6px">
+              <input type="color" id="coachColorInput_${jsArg(p)}" value="${esc(getCoachPrimaryColor(p))}" oninput="document.querySelector('#coachColorLabel_${jsArg(p)}').textContent=this.value" style="width:34px;height:30px;padding:2px;background:#0c0c11;border:1px solid #2d2d3a;border-radius:6px;cursor:pointer" />
+              <span style="font:800 11.5px 'Barlow Condensed';color:#cbd5e1" id="coachColorLabel_${jsArg(p)}">${esc(getCoachPrimaryColor(p))}</span>
+            </div>
+          </div>
+          <div>
+            <label style="font:800 11px 'Barlow Condensed';color:#8e8c95;letter-spacing:.5px;text-transform:uppercase;display:block;margin-bottom:4px">Secondary Color</label>
+            <div style="display:flex;align-items:center;gap:6px">
+              <input type="color" id="coachSecColorInput_${jsArg(p)}" value="${esc(getCoachSecondaryColor(p))}" oninput="document.querySelector('#coachSecColorLabel_${jsArg(p)}').textContent=this.value" style="width:34px;height:30px;padding:2px;background:#0c0c11;border:1px solid #2d2d3a;border-radius:6px;cursor:pointer" />
+              <span style="font:800 11.5px 'Barlow Condensed';color:#cbd5e1" id="coachSecColorLabel_${jsArg(p)}">${esc(getCoachSecondaryColor(p))}</span>
+            </div>
           </div>
         </div>
         <div style="display:flex;gap:8px;margin-top:4px">
@@ -16311,6 +16427,8 @@ async function generateMatchCardDataUrl(data){
 
     const color1 = (typeof getCoachPrimaryColor === 'function' ? getCoachPrimaryColor(p1) : '#124866') || '#124866';
     const color2 = (typeof getCoachPrimaryColor === 'function' ? getCoachPrimaryColor(p2) : '#2e4a36') || '#2e4a36';
+    const secColor1 = (typeof getCoachSecondaryColor === 'function' ? getCoachSecondaryColor(p1) : null) || ((typeof hexToLighterShade === 'function') ? hexToLighterShade(color1, 0.35) : '#f59e0b');
+    const secColor2 = (typeof getCoachSecondaryColor === 'function' ? getCoachSecondaryColor(p2) : null) || ((typeof hexToLighterShade === 'function') ? hexToLighterShade(color2, 0.35) : '#f59e0b');
 
     const hashtag1 = (typeof getCoachHashtag === 'function' ? getCoachHashtag(p1) : '#BELLIMAKA') || '#BELLIMAKA';
     const hashtag2 = (typeof getCoachHashtag === 'function' ? getCoachHashtag(p2) : '#BELLIMAKA') || '#BELLIMAKA';
@@ -16367,18 +16485,18 @@ async function generateMatchCardDataUrl(data){
     ctx.fillRect(0, 0, w, h);
 
     // 3. Helper to render each half into an offscreen canvas
-    function renderHalf(isTop, coachName, teamTitle, color, bannerCol, bannerTxt, hashtag, avatarImg, recStr, isWinner, isLoser){
+    function renderHalf(isTop, coachName, teamTitle, color, secColor, bannerCol, bannerTxt, hashtag, avatarImg, recStr, isWinner, isLoser){
       const hc = document.createElement('canvas');
       hc.width = w;
       hc.height = halfH;
       const hctx = hc.getContext('2d');
 
-      // Battleworn background gradient
-      let lightSplash = (typeof hexToLighterShade === 'function') ? hexToLighterShade(color, 0.24) : color;
+      // Battleworn background gradient with secondary color flow
+      let lightSplash = secColor || ((typeof hexToLighterShade === 'function') ? hexToLighterShade(color, 0.24) : color);
       let deepEdge = (typeof hexToDarkerShade === 'function') ? hexToDarkerShade(color, 0.10) : color;
       let bgGrad = hctx.createLinearGradient(0, isTop ? 0 : halfH, w, isTop ? halfH : 0);
       bgGrad.addColorStop(0, lightSplash);
-      bgGrad.addColorStop(0.40, color);
+      bgGrad.addColorStop(0.45, color);
       bgGrad.addColorStop(1, deepEdge);
       hctx.fillStyle = bgGrad;
       hctx.fillRect(0, 0, w, halfH);
@@ -16410,7 +16528,7 @@ async function generateMatchCardDataUrl(data){
       hctx.beginPath();
       hctx.rect(0, ribbonY, w, 24);
       hctx.clip();
-      hctx.font = '800 15px \"Agency FB\", \"Barlow Condensed\", sans-serif';
+      hctx.font = '800 15px "Agency FB", "Barlow Condensed", sans-serif';
       hctx.fillStyle = bannerTxt;
       hctx.textBaseline = 'middle';
       hctx.textAlign = 'center';
@@ -16437,7 +16555,11 @@ async function generateMatchCardDataUrl(data){
         hctx.font = `italic 900 ${actualFontSize}px ${fontStack}`;
       }
 
-      hctx.fillStyle = '#ffffff';
+      const textY = isTop ? 108 : 96;
+      let textGrad = hctx.createLinearGradient(0, textY - actualFontSize * 0.55, 0, textY + actualFontSize * 0.55);
+      textGrad.addColorStop(0, secColor || '#ffffff');
+      textGrad.addColorStop(1, color || '#cbd5e1');
+      hctx.fillStyle = textGrad;
       hctx.shadowColor = 'rgba(0, 0, 0, 0.95)';
       hctx.shadowBlur = 14;
       hctx.shadowOffsetX = 0;
@@ -16447,11 +16569,11 @@ async function generateMatchCardDataUrl(data){
       if(isTop){
         // Anchored Left at x=42, extending into middle
         hctx.textAlign = 'left';
-        hctx.fillText(displayTitle, 42, 108);
+        hctx.fillText(displayTitle, 42, textY);
       } else {
         // Anchored Right at x=w-42, extending into middle
         hctx.textAlign = 'right';
-        hctx.fillText(displayTitle, w - 42, 96);
+        hctx.fillText(displayTitle, w - 42, textY);
       }
       hctx.restore();
 
@@ -16536,7 +16658,7 @@ async function generateMatchCardDataUrl(data){
     }
 
     // 4. Render Top Half
-    const topCanvas = renderHalf(true, p1, tName1, color1, bannerCol1, bannerTxt1, hashtag1, img1, rec1, p1Won, p2Won);
+    const topCanvas = renderHalf(true, p1, tName1, color1, secColor1, bannerCol1, bannerTxt1, hashtag1, img1, rec1, p1Won, p2Won);
     ctx.save();
     if(p2Won){
       // LOSER FADE OUT
@@ -16546,7 +16668,7 @@ async function generateMatchCardDataUrl(data){
     ctx.restore();
 
     // 5. Render Bottom Half
-    const btmCanvas = renderHalf(false, p2, tName2, color2, bannerCol2, bannerTxt2, hashtag2, img2, rec2, p2Won, p1Won);
+    const btmCanvas = renderHalf(false, p2, tName2, color2, secColor2, bannerCol2, bannerTxt2, hashtag2, img2, rec2, p2Won, p1Won);
     ctx.save();
     if(p1Won){
       // LOSER FADE OUT
@@ -19921,6 +20043,7 @@ function persistLeague(){
     localStorage.setItem('draftdex-coach-namelines', JSON.stringify(coachNameLines));
     localStorage.setItem('draftdex-coach-hashtags', JSON.stringify(coachHashtags));
     localStorage.setItem('draftdex-coach-colors', JSON.stringify(coachThemeColors));
+    localStorage.setItem('draftdex-coach-secondary-colors', JSON.stringify(coachSecondaryColors));
     if(typeof offseasonDraftBoard !== 'undefined') localStorage.setItem('draftdex-offseason-board', JSON.stringify(offseasonDraftBoard));
     if(typeof accountLinks!=='undefined') localStorage.setItem('draftdex-accountlinks', JSON.stringify(accountLinks));
   }catch(e){}
@@ -21943,12 +22066,14 @@ function matchupOfTheWeekCard(t){
   let hashtag2 = getCoachHashtag(p2);
   let color1 = getCoachPrimaryColor(p1);
   let color2 = getCoachPrimaryColor(p2);
+  let secColor1 = getCoachSecondaryColor(p1);
+  let secColor2 = getCoachSecondaryColor(p2);
   let bannerColor1 = getBannerShade(color1);
   let bannerColor2 = getBannerShade(color2);
   let bannerTextCol1 = getBannerTextColor(color1);
   let bannerTextCol2 = getBannerTextColor(color2);
-  let bgTop = getBattlewornBg(color1, true);
-  let bgBottom = getBattlewornBg(color2, false);
+  let bgTop = getBattlewornBg(color1, true, secColor1);
+  let bgBottom = getBattlewornBg(color2, false, secColor2);
   let topStatusClass = isPlayed ? (p1Won ? 'is-winner' : (p2Won ? 'is-loser' : '')) : '';
   let bottomStatusClass = isPlayed ? (p2Won ? 'is-winner' : (p1Won ? 'is-loser' : '')) : '';
 
@@ -22018,7 +22143,7 @@ function matchupOfTheWeekCard(t){
           ` : ''}
 
           <!-- Top Half (Team 1) -->
-          <div class="primetime-cfb-half top ${topStatusClass}" data-coach="${esc(p1)}" style="background:${bgTop};">
+          <div class="primetime-cfb-half top ${topStatusClass}" data-coach="${esc(p1)}" style="background:${bgTop};--team-pri:${esc(color1)};--team-sec:${esc(secColor1)};">
             <div class="primetime-ticker-bar top" style="background:${bannerColor1};color:${bannerTextCol1};">
               <div class="primetime-ticker-static" style="color:${bannerTextCol1};">${tickerItems1}</div>
             </div>
@@ -22066,7 +22191,7 @@ function matchupOfTheWeekCard(t){
           </div>
 
           <!-- Bottom Half (Team 2) -->
-          <div class="primetime-cfb-half bottom ${bottomStatusClass}" data-coach="${esc(p2)}" style="background:${bgBottom};">
+          <div class="primetime-cfb-half bottom ${bottomStatusClass}" data-coach="${esc(p2)}" style="background:${bgBottom};--team-pri:${esc(color2)};--team-sec:${esc(secColor2)};">
             ${getCfbScratchOverlayHtml()}
 
             <div class="primetime-cfb-logo-wrap bottom-left" onclick="openProfile('${jsArg(p2)}')" title="View ${esc(p2)} profile">

@@ -3,6 +3,24 @@
 All notable changes to the Bellimaka Pokémon Draft League platform are documented here.
 Format: `v[MAJOR].[MINOR].[PATCH]` — Major = major system overhauls, Minor = new features, Patch = bug fixes and visual improvements.
 
+## [v2.5.2] — 2026-10-11
+
+### Dual-Tone Primary & Secondary Broadcast Branding
+- **Custom Primary & Secondary Team Colors**:
+  - Expanded coach broadcast branding studio (`openBroadcastBrandingEditor`) with dedicated side-by-side pickers for both **Primary Color** (battleworn base & ticker ribbon) and **Secondary Color** (angled background splash & text gradient).
+  - Added a one-click `⇄ Swap` button to quickly flip primary and secondary roles, plus `⚡ Auto-Extract` to sample both colors automatically from the coach's profile picture using Euclidean color clustering (`dist >= 65`).
+- **Dynamic Two-Tone Background Splash**:
+  - Upgraded the Primetime Matchup card battleworn backgrounds (`getBattlewornBg`) to seamlessly flow from the coach's secondary accent at the high-energy corner splash (`0%`) across into the primary team base (`45%`) and deep shaded outer edge (`100%`).
+- **Metallic Dual-Tone Text Gradient**:
+  - Replaced solid white team names across all Primetime cards with a pure vertical dual-tone gradient (`linear-gradient(180deg, var(--team-sec) 0%, var(--team-pri) 100%)`) accented with heavy double-layer drop shadows (`0 3px 6px rgba(0,0,0,0.95), 0 0 2px rgba(0,0,0,0.9)`) for crisp broadcast contrast and legibility.
+  - Seamlessly applied to all typography tiers: single-line names, two-line stacked mascots (`.primetime-cfb-team-name-l1`, `.primetime-cfb-team-name-l2`), and small prefix eyebrows (`.primetime-cfb-team-name-prefix`).
+- **1:1 Canvas Generator & Export Alignment**:
+  - Synchronized `generateMatchCardDataUrl` to calculate and render the secondary color background splash and vertical dual-tone text gradient directly onto downloadable match cards with matching font scales and shadow depths.
+- **Persistence & Cloud Sync**:
+  - Persisted coach secondary colors into `coachSecondaryColors` across `localStorage` (`'draftdex-coach-secondary-colors'`) and cloud profiles (`profiles[p].secondaryColor`) via `persistLeague()`.
+
+---
+
 ## [v2.5.1] — 2026-10-11
 
 ### Primetime Matchup Card Typography & Name Formatting
