@@ -27466,7 +27466,8 @@ function getHistoricalPlayerOVR(p, targetTIdx, stage = 'complete', sortedT = nul
     let cutTotal = tourn.advancePerGroup ? (Object.keys(groupsOf(tourn)).length * (typeof advancePerGroup === 'function' ? advancePerGroup(tourn) : Number(tourn.advancePerGroup || 2))) : 4;
     return Boolean(f && f.place > 0 && (f.place <= cutTotal || f.place < 100));
   };
-  let histTopCuts = pastCompleted.filter(checkMadeTopCut).length + (stage === 'complete' && targetT.status === 'COMPLETE' && checkMadeTopCut(targetT) ? 1 : 0);
+  let clinchedTargetCut = checkMadeTopCut(targetT);
+  let histTopCuts = pastCompleted.filter(checkMadeTopCut).length + (clinchedTargetCut ? 1 : 0);
 
   let careerTitleBonus = Math.min(6.0, histTitles * 3.0);
   let careerTopCutBonus = Math.min(4.5, histTopCuts * 1.5);
@@ -27490,6 +27491,7 @@ function getHistoricalPlayerOVR(p, targetTIdx, stage = 'complete', sortedT = nul
       else if(lastPlace === 2) recentPlacementBonus = 1.5;
       else if(lastPlace <= 4) recentPlacementBonus = 1.0;
       else if(lastPlace <= 100) recentPlacementBonus = 0.5;
+      else recentPlacementBonus = 0.5; // Group-stage exits freeze at their 0.5 group finish so rating never decays after elimination
     } else {
       recentPlacementBonus = 0.5;
     }
@@ -27807,6 +27809,7 @@ function calculatePlayerOVR(p, leagueData=null){
         else if(lastPlace === 2) recentPlacementBonus = 1.5; // Runner-up / Grand Finalist
         else if(lastPlace <= 4) recentPlacementBonus = 1.0;  // Top 4 / Semifinalist
         else if(lastPlace <= 100) recentPlacementBonus = 0.5; // Top of Group / Qualifier
+        else recentPlacementBonus = 0.5; // Group-stage exits freeze at their 0.5 group finish so rating never decays after elimination
       } else {
         // During active Top Cut before completion, qualifiers maintain stable group milestone bonus
         recentPlacementBonus = 0.5;
