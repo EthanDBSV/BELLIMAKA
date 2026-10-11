@@ -20,6 +20,7 @@ Format: `v[MAJOR].[MINOR].[PATCH]` — Major = major system overhauls, Minor = n
   - Fixed Sugar Land Regional (`t1787348238028`) Top Cut seeding to reflect the authentic bracket format: Ethan (Seed #1), Ozy (Seed #2), Jace (Seed #3), and Dao Ming (Seed #4).
   - Updated bracket match card origins and seed badges to properly display `[1] Ethan vs [2] Ozy` (`Seed #1` vs `Seed #2`) in Upper Semifinal 1 and `[4] Dao Ming vs [3] Jace` (`Seed #4` vs `Seed #3`) in Upper Semifinal 2.
   - Synchronized `customTopCutSeeding` and `topCutCache` in the live Cloudflare database, aligning all career stats, head-to-heads, and tournament archives.
+- **Recent Draft Picks Grid Expansion (10 Picks)**: Increased the Live Draft Activity spotlight feed on the home page from 8 to 10 cards (`picks.slice(0, 10)`), cleanly filling out two complete 5-card rows on widescreen displays and eliminating empty trailing gaps.
 - **Moderator Quick Test Cup Preset**:
   - Added a one-click `⚡ Quick Test Cup` button on Step 1 of the Tournament Creator (exclusive to moderators) placed right next to the "Basic Info" badge.
   - Automatically preconfigures standard testing defaults in one click without auto-submitting (Name: `Test Cup`, Badge Label: `Test`, Regulation: `Test`, Start Date: `TBD`, Phase 1: `Round Robin`, Phase 2: `Double Elimination`, Groups: `2`, Advance: `2`, Coaches: `All`, Live Draft: `Off`, Cover Art: `None`).
