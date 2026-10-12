@@ -9216,8 +9216,8 @@ function rawToImpactScore(raw) {
   if(raw == null || isNaN(raw)) return 0.0;
   raw = Number(raw);
   if(raw <= 0) return 0.0;
-  let frac = Math.min(1, Math.max(0, raw / 525));
-  let score = 100.0 * Math.pow(frac, 0.34);
+  let frac = Math.min(1, Math.max(0, raw / 750));
+  let score = 100.0 * Math.pow(frac, 0.38);
   return Number(Math.min(100.0, Math.max(0.0, score)).toFixed(2));
 }
 
@@ -12669,6 +12669,7 @@ function calculateTeamOfTheSeason(t) {
       let hpHealed = p.hpHealed || 0;
       let fainted = Boolean(p.fainted);
       let impact = calculateMonImpactScore(p);
+      let rawScore = (kills * 150) + Math.round(damageDealt) + (fainted ? 0 : 75) + Math.round((p.hpHealed || 0) * 0.5) + (p.supportScore || 0);
 
       if(!gfGameGroup.has(gKey)) {
         let canonicalSprite = (typeof resolvePokemonData === 'function' ? resolvePokemonData(cleanName)?.sprite : null) || (typeof getPokemonSpriteUrl === 'function' ? getPokemonSpriteUrl(cleanName.toLowerCase()) : '') || p.sprite;
@@ -12678,13 +12679,15 @@ function calculateTeamOfTheSeason(t) {
           sprite: canonicalSprite,
           kills: 0,
           damageDealt: 0,
-          impact: 0
+          impact: 0,
+          rawScore: 0
         });
       }
       let gEntry = gfGameGroup.get(gKey);
       gEntry.kills += kills;
       gEntry.damageDealt += damageDealt;
       gEntry.impact += impact;
+      gEntry.rawScore += rawScore;
       if(!gEntry.sprite && p.sprite) gEntry.sprite = p.sprite;
     });
 
@@ -12699,6 +12702,7 @@ function calculateTeamOfTheSeason(t) {
           sprite: canonicalSprite,
           games: 0,
           totalImpact: 0,
+          totalRaw: 0,
           totalKills: 0,
           totalDamageDealt: 0
         });
@@ -12706,6 +12710,7 @@ function calculateTeamOfTheSeason(t) {
       let entry = gfMonMap.get(key);
       entry.games += 1;
       entry.totalImpact += gEntry.impact;
+      entry.totalRaw = (entry.totalRaw || 0) + (gEntry.rawScore || 0);
       entry.totalKills += gEntry.kills;
       entry.totalDamageDealt += gEntry.damageDealt;
       if(!entry.coach && gEntry.coach) entry.coach = gEntry.coach;
@@ -12751,7 +12756,7 @@ function calculateTeamOfTheSeason(t) {
       return {
         ...m,
         coach: coachName,
-        avgImpact: m.totalImpact / Math.max(1, m.games),
+        avgImpact: m.totalRaw ? rawToImpactScore(m.totalRaw / Math.max(1, m.games)) : (m.totalImpact / Math.max(1, m.games)),
         isChampTeam: Boolean(isChampTeam)
       };
     });
@@ -12898,6 +12903,7 @@ function calculateTeamOfTheSeason(t) {
       let fainted = Boolean(p.fainted);
       let supportScore = p.supportScore || 0;
       let curImpact = calculateMonImpactScore(p);
+      let rawScore = (kills * 150) + Math.round(damageDealt) + (fainted ? 0 : 75) + Math.round(hpHealed * 0.5) + supportScore;
 
       if(!replayGameGroup.has(gKey)) {
         let canonicalSprite = (typeof resolvePokemonData === 'function' ? resolvePokemonData(cleanName)?.sprite : null) || (typeof getPokemonSpriteUrl === 'function' ? getPokemonSpriteUrl(cleanName.toLowerCase()) : '') || p.sprite;
@@ -12913,6 +12919,7 @@ function calculateTeamOfTheSeason(t) {
           support: 0,
           fainted: false,
           curImpact: 0,
+          rawScore: 0,
           moves: new Set()
         });
       }
@@ -12924,6 +12931,7 @@ function calculateTeamOfTheSeason(t) {
       gEntry.support += supportScore;
       if(fainted) gEntry.fainted = true;
       gEntry.curImpact += curImpact;
+      gEntry.rawScore += rawScore;
       (p.moves || []).forEach(mv => gEntry.moves.add(mv));
       if(!gEntry.sprite && p.sprite) gEntry.sprite = p.sprite;
     });
@@ -12956,6 +12964,8 @@ function calculateTeamOfTheSeason(t) {
           regSupport: 0,
           impactScoreTotal: 0,
           regImpactScoreTotal: 0,
+          rawScoreTotal: 0,
+          regRawScoreTotal: 0,
           moves: new Set()
         });
       }
@@ -12970,6 +12980,7 @@ function calculateTeamOfTheSeason(t) {
         entry.regDamageDealt += gEntry.damageDealt;
         entry.regSupport += (gEntry.support || 0);
         entry.regImpactScoreTotal += gEntry.curImpact;
+        entry.regRawScoreTotal += (gEntry.rawScore || 0);
       }
 
       let curCoach = gEntry.coach || entry.coach || rosterCoachMap.get(draftKey);
@@ -12991,6 +13002,7 @@ function calculateTeamOfTheSeason(t) {
       entry.totalHpHealed += gEntry.hpHealed;
       entry.totalSupport += (gEntry.support || 0);
       entry.impactScoreTotal += gEntry.curImpact;
+      entry.rawScoreTotal += (gEntry.rawScore || 0);
       if(!entry.coach && curCoach) entry.coach = curCoach;
       gEntry.moves.forEach(mv => entry.moves.add(mv));
     });
@@ -13124,8 +13136,8 @@ function calculateTeamOfTheSeason(t) {
       winRate,
       rawTankScore: rawTank,
       tankScore,
-      avgImpactScore: m.impactScoreTotal / games,
-      regAvgImpactScore: m.regImpactScoreTotal / regG
+      avgImpactScore: m.rawScoreTotal ? rawToImpactScore(m.rawScoreTotal / games) : (m.impactScoreTotal / games),
+      regAvgImpactScore: m.regRawScoreTotal ? rawToImpactScore(m.regRawScoreTotal / regG) : (m.regImpactScoreTotal / regG)
     };
   });
 
@@ -13282,7 +13294,7 @@ function calculateTeamOfTheSeason(t) {
         mon,
         statVal: formatImpactScore(mon.avgImpactScore),
         statUnit: 'Average Impact per Game',
-        statBreakdown: `${kpg} KOs/g • ${dpg}% Dmg/g • ${spg} Supp/g`,
+        statBreakdown: `${kpg} KOs/g • ${dpg} Dmg/g • ${spg} Supp/g`,
         tags: getMonLeaderTags(mon.name),
         heroColor: getImpactScoreColor(mon.avgImpactScore)
       };
@@ -14188,7 +14200,7 @@ function getTournamentPokemonStatsMap(t, coachFilter) {
   let cacheKey = targetNorm || '__global__';
 
   if(!t._cachedMonStatsMaps) t._cachedMonStatsMaps = {};
-  if(t._cachedMonStatsVersion === 14 && t._cachedMonStatsMaps[cacheKey] && t._cachedMonStatsTime && (Date.now() - t._cachedMonStatsTime < 30000)) {
+  if(t._cachedMonStatsVersion === 15 && t._cachedMonStatsMaps[cacheKey] && t._cachedMonStatsTime && (Date.now() - t._cachedMonStatsTime < 30000)) {
     return t._cachedMonStatsMaps[cacheKey];
   }
 
@@ -14334,7 +14346,8 @@ function getTournamentPokemonStatsMap(t, coachFilter) {
           taken: 0,
           healed: 0,
           support: 0,
-          impact: 0
+          impact: 0,
+          rawScore: 0
         });
       }
       let gEntry = gameGroup.get(gKey);
@@ -14345,6 +14358,9 @@ function getTournamentPokemonStatsMap(t, coachFilter) {
       gEntry.support += (p.supportScore || 0);
       let pImp = calculateMonImpactScore(p);
       gEntry.impact += pImp;
+      let fainted = Boolean(p.fainted);
+      let pRaw = ((p.kills || 0) * 150) + Math.round(p.damageDealt || 0) + (fainted ? 0 : 75) + Math.round((p.hpHealed || 0) * 0.5) + (p.supportScore || 0);
+      gEntry.rawScore += pRaw;
     });
 
     gameGroup.forEach(gEntry => {
@@ -14374,7 +14390,8 @@ function getTournamentPokemonStatsMap(t, coachFilter) {
           taken: 0,
           healed: 0,
           support: 0,
-          impact: 0
+          impact: 0,
+          rawScore: 0
         };
       }
 
@@ -14385,6 +14402,7 @@ function getTournamentPokemonStatsMap(t, coachFilter) {
       statObj.healed += gEntry.healed;
       statObj.support = (statObj.support || 0) + gEntry.support;
       statObj.impact += gEntry.impact;
+      statObj.rawScore = (statObj.rawScore || 0) + (gEntry.rawScore || 0);
 
       map[kClean] = statObj;
       if(!map[kRaw] && kRaw) map[kRaw] = statObj;
@@ -14403,11 +14421,11 @@ function getTournamentPokemonStatsMap(t, coachFilter) {
     s.damageTakenPerGame = s.taken / g;
     s.healedPerGame = s.healed / g;
     s.supportPerGame = (s.support || 0) / g;
-    s.avgImpactScore = s.impact / g;
+    s.avgImpactScore = s.rawScore ? rawToImpactScore(s.rawScore / g) : (s.impact / g);
   });
 
   t._cachedMonStatsMaps[cacheKey] = map;
-  t._cachedMonStatsVersion = 14;
+  t._cachedMonStatsVersion = 15;
   t._cachedMonStatsTime = Date.now();
   return map;
 }
