@@ -20872,12 +20872,14 @@ function openCreator(){
                     <div class="field" style="margin:0">
                       <label style="margin:0;font-size:10px">Time Per Pick</label>
                       <select id="draftTimerMinutes" style="width:100%;background:#101015;border:1px solid #3d3d4e;border-radius:5px;padding:6px 8px;color:#fff;font-size:11px">
+                        <option value="1">1 Minute (Testing / Blitz)</option>
                         <option value="5">5 Minutes</option>
                         <option value="15">15 Minutes</option>
                         <option value="30">30 Minutes</option>
                         <option value="60">1 Hour</option>
                         <option value="120" selected>2 Hours</option>
                         <option value="240">4 Hours</option>
+                        <option value="360">6 Hours</option>
                         <option value="480">8 Hours</option>
                         <option value="720">12 Hours</option>
                         <option value="1440">24 Hours</option>
@@ -27782,9 +27784,16 @@ function renderTournamentMatchHistoryHtml(t, p){
   if(!t || !p) return '';
   let matchHistory = (typeof getPlayerMatchHistory === 'function' ? getPlayerMatchHistory(p) : []).filter(m => m.tournamentId === t.id);
   matchHistory = matchHistory.slice().sort((a, b) => {
-    if(a.isTopCut && !b.isTopCut) return 1;
-    if(!a.isTopCut && b.isTopCut) return -1;
-    return (a.fixtureIndex || 0) - (b.fixtureIndex || 0);
+    let tA = a.timestamp || 0;
+    let tB = b.timestamp || 0;
+    if(tA && tB && tA !== tB) {
+      return tB - tA; // latest timestamp on top
+    }
+    // If timestamps are identical or missing, top cut / playoffs were played after group stage
+    if(a.isTopCut && !b.isTopCut) return -1;
+    if(!a.isTopCut && b.isTopCut) return 1;
+    // Later fixtures/rounds come before earlier fixtures/rounds
+    return (b.fixtureIndex || 0) - (a.fixtureIndex || 0);
   });
 
   if(!matchHistory.length){
@@ -35945,6 +35954,46 @@ function openDraftFromPlanner(monName, cost){
   openDraftConfirmationModal(t.id, monName, actualCost, tierName);
 }
 
+/* --- Draft Bank Right-Hand Panel Widget --- */
+function renderDraftBankCard(t, coachName){
+  if(!t || !t.hasDraft || !t.draftData) return '';
+  let d = t.draftData;
+  let curUser = window.currentAccount?.username || sessionUser?.user_metadata?.username || sessionUser?.email?.split('@')[0] || '';
+  let coach = coachName || (typeof myPlayer === 'function' ? myPlayer() : null) || (typeof playerForAccount === 'function' ? playerForAccount(curUser) : null) || curUser;
+  let myBanked = (d.bank && coach) ? d.bank[coach] : null;
+
+  return `
+    <div class="draft-bank-panel-card" style="background:#13131c;border:1px solid #28283a;border-radius:8px;padding:9px 12px;margin:8px 0 12px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+        <div style="display:flex;align-items:center;gap:6px">
+          <span style="font-size:15px;line-height:1">🏦</span>
+          <span style="font-size:11px;font-weight:800;color:#f5f3f0;letter-spacing:.5px;text-transform:uppercase">Draft Bank</span>
+          <span class="tag" style="background:#1b253b;color:#60a5fa;border:1px solid #2563eb;font-size:9.5px;padding:1px 5px;font-weight:800">1 Slot</span>
+        </div>
+        ${myBanked && coach ? `
+          <button class="btn ghost btn-sm" style="color:#ff858b;border-color:#5a242c;padding:1px 7px!important;font-size:10px;font-weight:700" onclick="clearDraftBankMon('${jsArg(t.id)}', '${jsArg(coach)}')">✕ Clear</button>
+        ` : ''}
+      </div>
+      ${myBanked ? `
+        <div style="display:flex;align-items:center;justify-content:space-between;background:#181824;border:1px solid #2d2d42;border-radius:6px;padding:6px 10px;gap:8px">
+          <div style="display:flex;align-items:center;gap:8px;min-width:0">
+            <img src="${esc(pokeSprite(myBanked.pokemon))}" style="width:28px;height:28px;object-fit:contain" onerror="handleSpriteError(this)">
+            <div style="min-width:0">
+              <div style="font-weight:800;font-size:13px;color:#ffd166;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(myBanked.pokemon)}</div>
+              <div style="font-size:10px;color:#10b981;font-weight:700">Auto-picks on your turn</div>
+            </div>
+          </div>
+          <span class="tag" style="background:#282014;color:#ffd166;font-size:11px;font-weight:800;padding:2px 7px;border:1px solid #4a3818;flex:none">${myBanked.cost} pts</span>
+        </div>
+      ` : `
+        <div style="font-size:10.5px;color:#8e8c95;line-height:1.4;background:#0f0f15;border:1px dashed #242432;border-radius:6px;padding:7px 9px;text-align:center">
+          Reserve your next pick! Click <b>"🏦 Bank"</b> on any available Pokémon to auto-draft when it's your turn.
+        </div>
+      `}
+    </div>
+  `;
+}
+
 /* --- markup --- */
 function builderHTML(){
   let hasImportedBoard = !!(sheetIds(boardLink).id || (typeof draftPool !== 'undefined' && draftPool?.items?.length) || Object.values(tournamentData).some(t => t.draftData?.board?.length) || (typeof getOffseasonDraftBoard === 'function' && getOffseasonDraftBoard().length));
@@ -35965,6 +36014,10 @@ function builderHTML(){
   let hasCurrentDraft = currentPicks.length > 0 || (isLiveDraft && curT);
   let currentChip = hasCurrentDraft ? `<button class="team-chip current-chip ${s.activeId==='__current__'?'on':''}" style="${s.activeId==='__current__'?'background:#133321;border-color:#34d399;color:#a7f3d0;':''}" title="Your official drafted roster in this tournament" onclick="switchTeam('__current__')">🛡️ Current (${currentPicks.length})</button>` : '';
 
+  let curUser = window.currentAccount?.username || sessionUser?.user_metadata?.username || sessionUser?.email?.split('@')[0] || '';
+  let myCoach = (typeof myPlayer === 'function' ? myPlayer() : null) || (typeof playerForAccount === 'function' ? playerForAccount(curUser) : null) || curUser;
+  let bankWidget = (curT && curT.hasDraft) ? renderDraftBankCard(curT, myCoach) : '';
+
   let chips=`<div class="team-chips">${currentChip}${s.teams.map(t=>`<button class="team-chip ${t.id===s.activeId?'on':''}" title="${esc(t.name)}" onclick="switchTeam('${jsArg(t.id)}')">${esc(t.name)}</button>`).join('')}<button class="team-chip new" onclick="window.renamingTeam=null;switchTeam('${jsArg(s.activeId||'')}');document.querySelector('#newTeamRow').style.display='grid';document.querySelector('#newTeamName').focus()">+ New team</button></div>
   <div id="newTeamRow" style="display:none;grid-template-columns:minmax(0,1fr) auto;gap:7px;margin-top:10px">
     <input id="newTeamName" class="planner-team-input" placeholder="Name this team (e.g. Rain squad)" maxlength="40" onkeydown="if(event.key==='Enter'){event.preventDefault();createTeam()}">
@@ -35973,6 +36026,7 @@ function builderHTML(){
   if(!team || (!s.teams.length && s.activeId !== '__current__')){
     return `
       <div class="eyebrow" style="color:var(--red);letter-spacing:1px">TEAM PLANNER</div>
+      ${bankWidget}
       ${chips}
       <div class="planner-empty-box">
         <div class="planner-empty-icon">📋</div>
@@ -36001,8 +36055,6 @@ function builderHTML(){
       if(p.pokemon) draftedMap[p.pokemon.toLowerCase().trim()] = p.player;
     });
   }
-  let curUser = window.currentAccount?.username || sessionUser?.user_metadata?.username || sessionUser?.email?.split('@')[0] || '';
-  let myCoach = (typeof myPlayer === 'function' ? myPlayer() : null) || (typeof playerForAccount === 'function' ? playerForAccount(curUser) : null) || curUser;
 
   let isCurrentTab = (team.isCurrent || s.activeId === '__current__');
   let spent=teamSpent(team),left=fmtPts(TEAM_BUDGET-spent),over=left<0;
@@ -36014,6 +36066,7 @@ function builderHTML(){
   let free=Math.max(0,TEAM_SLOTS-team.picks.length);
 
   return `<div class="eyebrow">Team planner</div>
+    ${bankWidget}
     ${chips}
     ${nameRow}
     ${!isCurrentTab ? `
@@ -36140,6 +36193,7 @@ function ensureTournamentDraft(t){
   }
   if(!t.draftData.bank) t.draftData.bank = {};
   if(t.draftData.timerEnabled === undefined) t.draftData.timerEnabled = false;
+  if(t.draftData.timerPaused === undefined) t.draftData.timerPaused = false;
   if(t.draftData.timePerPickMinutes === undefined) t.draftData.timePerPickMinutes = 120;
   if(!t.draftData.activeStart) t.draftData.activeStart = '09:00';
   if(!t.draftData.activeEnd) t.draftData.activeEnd = '22:00';
@@ -36421,6 +36475,7 @@ function setDraftBankMon(tId, pokemonName, cost, overrideCoach){
   persistLeague();
   syncDraftStateToCloud(t);
   render();
+  refreshBuilder();
   showDraftToast(`🏦 Saved ${pokemonName} to your Draft Bank!`, pokemonName);
   return { success: true, coach, pokemon: pokemonName, cost: monCost };
 }
@@ -36438,6 +36493,7 @@ function clearDraftBankMon(tId, coach){
     persistLeague();
     syncDraftStateToCloud(t);
     render();
+    refreshBuilder();
     showDraftToast('Draft bank cleared');
   }
 }
@@ -36558,15 +36614,34 @@ function getDraftPickTimerStatus(t){
     return {
       enabled: true,
       isActive: false,
-      isPaused: d.status === 'paused',
+      isPaused: d.status === 'paused' || Boolean(d.timerPaused),
       isComplete: turn?.isComplete || d.status === 'completed',
       player: turn?.player
     };
   }
 
+  let limitMs = Math.max(1, +(d.timePerPickMinutes || 120)) * 60 * 1000;
+
+  if(d.timerPaused){
+    let remainingMs = d.frozenRemainingMs != null ? d.frozenRemainingMs : limitMs;
+    return {
+      enabled: true,
+      isActive: true,
+      isTimerPaused: true,
+      inActiveWindow: true,
+      activeStart: d.activeStart || '09:00',
+      activeEnd: d.activeEnd || '22:00',
+      timePerPickMinutes: +(d.timePerPickMinutes || 120),
+      limitMs,
+      elapsedActiveMs: Math.max(0, limitMs - remainingMs),
+      remainingMs,
+      isExpired: false,
+      player: turn.player
+    };
+  }
+
   let now = Date.now();
   let inActiveWindow = isDraftTimerInActiveWindow(t, new Date(now));
-  let limitMs = Math.max(1, +(d.timePerPickMinutes || 120)) * 60 * 1000;
 
   if(!d.currentTurnStartedAt){
     d.currentTurnStartedAt = now;
@@ -36579,6 +36654,7 @@ function getDraftPickTimerStatus(t){
   return {
     enabled: true,
     isActive: true,
+    isTimerPaused: false,
     inActiveWindow,
     activeStart: d.activeStart || '09:00',
     activeEnd: d.activeEnd || '22:00',
@@ -36589,6 +36665,45 @@ function getDraftPickTimerStatus(t){
     isExpired,
     player: turn.player
   };
+}
+
+function toggleDraftTimerPause(tId){
+  let t = tournamentData[tId] || ongoingT() || activeT();
+  if(!t || !canManageTournament(t)) return;
+  let d = ensureTournamentDraft(t);
+  if(!d || !d.timerEnabled) return;
+
+  if(!d.timerPaused){
+    let status = getDraftPickTimerStatus(t);
+    d.timerPaused = true;
+    d.frozenRemainingMs = status.remainingMs != null ? status.remainingMs : ((d.timePerPickMinutes || 120) * 60 * 1000);
+    showDraftToast('⏸️ Draft pick timer paused by moderator');
+  } else {
+    d.timerPaused = false;
+    let limitMs = Math.max(1, +(d.timePerPickMinutes || 120)) * 60 * 1000;
+    let frozen = d.frozenRemainingMs != null ? d.frozenRemainingMs : limitMs;
+    delete d.frozenRemainingMs;
+    let elapsedNeeded = Math.max(0, limitMs - frozen);
+    d.currentTurnStartedAt = Date.now() - elapsedNeeded;
+    showDraftToast('▶️ Draft pick timer resumed');
+  }
+
+  window._lastLocalDraftActionTime = Date.now();
+  knownRev = (knownRev || 0) + 1;
+  lastLocalUpdate = Date.now();
+  persistLeague();
+  syncDraftStateToCloud(t);
+  render();
+
+  if(draftRealtimeChannel){
+    try {
+      draftRealtimeChannel.send({
+        type: 'broadcast',
+        event: 'draft-control',
+        payload: { tournamentId: t.id, action: d.timerPaused ? 'timer-pause' : 'timer-resume', timestamp: Date.now() }
+      });
+    } catch(e){}
+  }
 }
 
 function autoPickLowestAvailableMon(t, targetPlayer){
@@ -36648,6 +36763,17 @@ function setupDraftCountdownTicker(){
             (typeof activeT === 'function' ? activeT() : null);
     if(!t || !t.draftData || t.draftData.status !== 'active' || !t.draftData.timerEnabled) return;
 
+    if(t.draftData.timerPaused){
+      let badge = document.getElementById('draftCountdownBadge');
+      if(badge){
+        badge.innerHTML = `⏸️ <b>Timer Paused</b> (By Director)`;
+        badge.style.background = '#282014';
+        badge.style.borderColor = '#b45309';
+        badge.style.color = '#ffd166';
+      }
+      return;
+    }
+
     let status = getDraftPickTimerStatus(t);
     if(!status || !status.isActive) return;
 
@@ -36678,7 +36804,7 @@ function setupDraftCountdownTicker(){
       }
     }
 
-    if(status.inActiveWindow && status.isExpired && !t.draftData._isAutoPicking){
+    if(!t.draftData.timerPaused && status.inActiveWindow && status.isExpired && !t.draftData._isAutoPicking){
       autoPickLowestAvailableMon(t, status.player);
     }
   }, 1000);
@@ -36711,15 +36837,28 @@ function openDraftSettingsModal(tId){
               <div style="grid-column:1/-1">
                 <label style="font-size:10px;font-weight:800;color:#8e8c95;text-transform:uppercase">Time Allotted Per Pick</label>
                 <select id="editDraftTimerMinutes" style="width:100%;padding:8px 10px;background:#1b1b26;border:1px solid #333346;border-radius:6px;color:#f5f3f0;font-weight:700;margin-top:4px">
+                  <option value="1" ${d.timePerPickMinutes == 1 ? 'selected' : ''}>1 Minute (Testing / Blitz)</option>
+                  <option value="5" ${d.timePerPickMinutes == 5 ? 'selected' : ''}>5 Minutes</option>
                   <option value="15" ${d.timePerPickMinutes == 15 ? 'selected' : ''}>15 Minutes (Fast Live Draft)</option>
                   <option value="30" ${d.timePerPickMinutes == 30 ? 'selected' : ''}>30 Minutes</option>
                   <option value="60" ${d.timePerPickMinutes == 60 ? 'selected' : ''}>1 Hour</option>
                   <option value="120" ${d.timePerPickMinutes == 120 ? 'selected' : ''}>2 Hours (Standard Slow Draft)</option>
                   <option value="240" ${d.timePerPickMinutes == 240 ? 'selected' : ''}>4 Hours</option>
+                  <option value="360" ${d.timePerPickMinutes == 360 ? 'selected' : ''}>6 Hours</option>
                   <option value="480" ${d.timePerPickMinutes == 480 ? 'selected' : ''}>8 Hours</option>
                   <option value="720" ${d.timePerPickMinutes == 720 ? 'selected' : ''}>12 Hours</option>
                   <option value="1440" ${d.timePerPickMinutes == 1440 ? 'selected' : ''}>24 Hours</option>
                 </select>
+              </div>
+
+              <div style="grid-column:1/-1;display:flex;align-items:center;justify-content:space-between;background:#101017;border:1px solid #282838;border-radius:6px;padding:8px 12px;margin-top:4px">
+                <div>
+                  <div style="font-size:11px;font-weight:800;color:#f5f3f0">Pick Clock Manual Override</div>
+                  <div style="font-size:10px;color:${d.timerPaused ? '#fbbf24' : '#4ade80'}">${d.timerPaused ? '⏸️ Timer is currently PAUSED by moderator' : '▶️ Timer is currently RUNNING'}</div>
+                </div>
+                <button type="button" class="btn btn-sm" style="${d.timerPaused ? 'background:#166534;border:1px solid #22c55e;color:#fff' : 'background:#2d1b10;border:1px solid #b45309;color:#fbbf24'};font-size:11px;font-weight:700" onclick="toggleDraftTimerPause('${jsArg(t.id)}');openDraftSettingsModal('${jsArg(t.id)}')">
+                  ${d.timerPaused ? '▶️ Resume Timer' : '⏸️ Pause Timer'}
+                </button>
               </div>
 
               <div>
@@ -38297,10 +38436,15 @@ function DraftRoom(t){
 
   let canManageDraft = canManageTournament(t);
   let modActions = `
-    <div style="display:flex;gap:6px;flex-wrap:wrap">
+    <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
       ${canManageDraft && d.status === 'pending' ? `<button class="btn btn-sm" style="padding:6px 14px!important;font-weight:800" onclick="startDraft('${jsArg(t.id)}')">▶️ Start Draft</button>` : ''}
-      ${canManageDraft && d.status === 'active' ? `<button class="btn ghost btn-sm" onclick="pauseDraft('${jsArg(t.id)}')">⏸️ Pause</button>` : ''}
-      ${canManageDraft && d.status === 'paused' ? `<button class="btn btn-sm" onclick="resumeDraft('${jsArg(t.id)}')">▶️ Resume</button>` : ''}
+      ${canManageDraft && d.status === 'active' ? `<button class="btn ghost btn-sm" onclick="pauseDraft('${jsArg(t.id)}')">⏸️ Pause Draft</button>` : ''}
+      ${canManageDraft && d.status === 'paused' ? `<button class="btn btn-sm" onclick="resumeDraft('${jsArg(t.id)}')">▶️ Resume Draft</button>` : ''}
+      ${canManageDraft && d.status === 'active' && d.timerEnabled ? (
+        d.timerPaused 
+          ? `<button class="btn btn-sm" style="background:#166534;border:1px solid #22c55e;color:#fff;font-weight:700" onclick="toggleDraftTimerPause('${jsArg(t.id)}')">▶️ Resume Timer</button>`
+          : `<button class="btn ghost btn-sm" style="color:#ffd166;border-color:#b45309;font-weight:700" onclick="toggleDraftTimerPause('${jsArg(t.id)}')">⏸️ Pause Timer</button>`
+      ) : ''}
       ${canManageDraft && d.picks?.length ? `<button class="btn ghost btn-sm" style="color:#ff9ba1" onclick="undoDraftPick('${jsArg(t.id)}')">↩️ Undo Pick</button>` : ''}
       ${canManageDraft ? `<button class="btn ghost btn-sm" onclick="openDraftSettingsModal('${jsArg(t.id)}')">⚙️ Timer & Settings</button>` : ''}
       ${canManageDraft ? `<button class="btn ghost btn-sm" onclick="openDraftOrderEditor('${jsArg(t.id)}')">🔀 Draft Order</button>` : ''}
@@ -38312,12 +38456,15 @@ function DraftRoom(t){
 
   let timerBadge = '';
   if(d.timerEnabled){
+    let formatDur = (m) => m < 60 ? m + 'm' : (m / 60) + 'h';
     if(d.status === 'pending'){
-      timerBadge = `<span class="tag" style="background:#22222c;color:#a09fa8;border:1px solid #3d3d4e">⏱️ ${d.timePerPickMinutes || 120}m/pick (${esc(d.activeStart || '09:00')}–${esc(d.activeEnd || '22:00')})</span>`;
+      timerBadge = `<span class="tag" style="background:#22222c;color:#a09fa8;border:1px solid #3d3d4e">⏱️ ${formatDur(d.timePerPickMinutes || 120)}/pick (${esc(d.activeStart || '09:00')}–${esc(d.activeEnd || '22:00')})</span>`;
     } else if(d.status === 'paused'){
-      timerBadge = `<span class="tag" style="background:#3d2c12;border-color:#f59e0b;color:#f59e0b">⏸️ Timer Paused</span>`;
+      timerBadge = `<span class="tag" style="background:#3d2c12;border-color:#f59e0b;color:#f59e0b">⏸️ Draft Paused</span>`;
     } else if(d.status === 'completed'){
       timerBadge = '';
+    } else if(d.timerPaused){
+      timerBadge = `<span class="tag" id="draftCountdownBadge" style="background:#282014;border:1px solid #b45309;color:#ffd166;font-weight:800;font-size:11px;padding:3px 8px;border-radius:6px">⏸️ <b>Timer Paused</b> (By Director)</span>`;
     } else {
       let tStatus = getDraftPickTimerStatus(t);
       if(!tStatus.inActiveWindow){
@@ -38332,32 +38479,6 @@ function DraftRoom(t){
       }
     }
   }
-
-  let myCoach = linkedPlayerName || (typeof myPlayer === 'function' ? myPlayer() : null) || currentUsername;
-  let myBanked = (d.bank && myCoach) ? d.bank[myCoach] : null;
-  let draftBankBanner = `
-    <div class="draft-bank-banner" style="background:#161622;border:1px solid #2e2e42;border-radius:8px;padding:9px 14px;margin:8px 0 12px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
-      <div style="display:flex;align-items:center;gap:10px;min-width:0">
-        <span style="font-size:20px;line-height:1">🏦</span>
-        <div style="min-width:0">
-          <div style="font-size:10px;font-weight:800;color:#8e8c95;text-transform:uppercase;letter-spacing:.6px">Your Draft Bank (1-Slot Reserve Queue)</div>
-          <div style="font-size:12px;color:#f5f3f0;font-weight:600;margin-top:2px;display:flex;align-items:center;gap:6px;flex-wrap:wrap">
-            ${myBanked ? `
-              <span style="display:inline-flex;align-items:center;gap:6px">
-                <img src="${esc(pokeSprite(myBanked.pokemon))}" style="width:22px;height:22px;object-fit:contain" onerror="handleSpriteError(this)">
-                <b style="color:#ffd166">${esc(myBanked.pokemon)}</b>
-                <span class="tag" style="background:#282014;color:#ffd166;font-size:10px;padding:1px 6px;border:1px solid #4a3818">${myBanked.cost} pts</span>
-                <span style="color:#10b981;font-size:11px;font-weight:700">· Ready to auto-pick instantly on your turn!</span>
-              </span>
-            ` : `<span style="color:#8e8c95">No Pokémon banked. Click <b>"🏦 Bank"</b> on any available Pokémon to reserve it for your next turn!</span>`}
-          </div>
-        </div>
-      </div>
-      ${myBanked ? `
-        <button class="btn ghost btn-sm" style="color:#ff858b;border-color:#5a242c;padding:3px 10px!important;font-size:11px;font-weight:700" onclick="clearDraftBankMon('${jsArg(t.id)}', '${jsArg(myCoach)}')">✕ Clear Bank</button>
-      ` : ''}
-    </div>
-  `;
 
   setTimeout(setupDraftCountdownTicker, 50);
 
@@ -38471,8 +38592,6 @@ function DraftRoom(t){
           </div>
         </div>
       </div>
-
-      ${draftBankBanner}
 
       <!-- Navigation Subtabs -->
       <div class="tabs" style="margin-top:4px">

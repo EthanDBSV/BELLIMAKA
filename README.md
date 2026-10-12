@@ -9,11 +9,14 @@ Format: `v[MAJOR].[MINOR].[PATCH]` — Major = major system overhauls, Minor = n
 - **Scheduled Draft Timer & Overnight Active Window Engine**:
   - Configurable draft clock (`draftTimerEnabled`, `draftTimerMinutes`, `activeStart`, `activeEnd`) configurable during tournament creation and live via the new **⚙️ Timer & Settings** modal.
   - Multi-day active window tracking (`calculateActiveMsBetween`) accurately credits clock time while automatically pausing overnight (e.g. 10:00 PM to 9:00 AM) without eating into coach time limits.
-  - Dynamic countdown HUD badge in the draft room header displaying running time or `⏸️ Paused (Resumes at 09:00)`.
+  - Dynamic countdown HUD badge in the draft room header displaying running time, `⏸️ Paused (Resumes at 09:00)`, or `⏸️ Timer Paused (By Director)`.
+  - **Moderator Manual Timer Pause & Resume**: Added dedicated `⏸️ Pause Timer` / `▶️ Resume Timer` button in the draft room moderator action bar and Settings modal (`toggleDraftTimerPause`). Directors can freeze the pick clock indefinitely while keeping the draft room interactive, resuming from the exact remaining millisecond via Supabase realtime broadcast.
+  - **Expanded Timer Lengths**: Added **1 minute** (blitz mode & testing) and **6 hours** (asynchronous league drafts) options to the tournament creator and draft room settings presets.
   - Automated timeout resolution (`autoPickLowestAvailableMon`): on timer expiry, randomly drafts a legal Pokémon from the lowest available point cost tier among affordable options with badge `⏰ Auto-picked on timeout`.
 - **Coach Draft Bank (1-Slot Reserve Queue)**:
   - 1-slot reserve queue (`t.draftData.bank = { [coach]: { pokemon, cost, setAt } }`) allowing coaches to queue up their next pick ahead of time.
-  - Quick `"🏦 Bank"` actions on draft board cards and pick confirmation modals, with active reserve status banner and one-click clear controls.
+  - **Right-Hand Panel Integration**: Integrated the Coach Draft Bank widget into the persistent right-hand Team Planner panel (`#teamBuilder`), placing the coach's active banked slot directly alongside their team plans and tabs rather than consuming vertical board space.
+  - Quick `"🏦 Bank"` actions on draft board cards and pick confirmation modals, with active reserve status and one-click clear controls.
   - Automated turn trigger (`checkAndExecuteDraftBank`): drafts reserved Pokémon the instant the coach is on the clock, chained cleanly across consecutive banked turns.
   - Discord webhook pick announcements include distinctive badges and mentions for `🏦 Banked` and `⏰ Timeout` auto-picks.
 - **Cross-Device Team Planner Cloud Sync**:
@@ -27,6 +30,7 @@ Format: `v[MAJOR].[MINOR].[PATCH]` — Major = major system overhauls, Minor = n
   - Auto-seeding: All newly created plans (`quickCreateTeam`, `createTeam`, `createPlanFromCurrent`) automatically initialize with the coach's current drafted roster.
 - **Player Profile Tournament Match History**:
   - Integrated round-by-round match history stacked directly beneath tournament rosters in `pastTournaments(p)`.
+  - **Strict Reverse Chronological Order**: Matches display in descending chronological order (most recent/latest match on top, going down to oldest fixture), correctly prioritizing playoffs/finals over group matches and later round indices.
   - Displays tournament stage/round, opponent avatar with OVR rating, match game score, outcome status badge (`WIN` / `LOSS`), and direct Showdown replay links.
 - **Standings Overdraft Penalty Tiebreaker**:
   - Added `overdraft` (`PEN`) metric to `STANDING_METRICS` for ranking coaches with the fewest overdraft penalty points.
