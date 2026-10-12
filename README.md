@@ -3,6 +3,37 @@
 All notable changes to the Bellimaka Pokémon Draft League platform are documented here.
 Format: `v[MAJOR].[MINOR].[PATCH]` — Major = major system overhauls, Minor = new features, Patch = bug fixes and visual improvements.
 
+## [v3.0.0] — 2026-10-12
+
+### Bellimaka v3.0 Feature Suite — Draft Automation, Team Planner & Profile History
+- **Scheduled Draft Timer & Overnight Active Window Engine**:
+  - Configurable draft clock (`draftTimerEnabled`, `draftTimerMinutes`, `activeStart`, `activeEnd`) configurable during tournament creation and live via the new **⚙️ Timer & Settings** modal.
+  - Multi-day active window tracking (`calculateActiveMsBetween`) accurately credits clock time while automatically pausing overnight (e.g. 10:00 PM to 9:00 AM) without eating into coach time limits.
+  - Dynamic countdown HUD badge in the draft room header displaying running time or `⏸️ Paused (Resumes at 09:00)`.
+  - Automated timeout resolution (`autoPickLowestAvailableMon`): on timer expiry, randomly drafts a legal Pokémon from the lowest available point cost tier among affordable options with badge `⏰ Auto-picked on timeout`.
+- **Coach Draft Bank (1-Slot Reserve Queue)**:
+  - 1-slot reserve queue (`t.draftData.bank = { [coach]: { pokemon, cost, setAt } }`) allowing coaches to queue up their next pick ahead of time.
+  - Quick `"🏦 Bank"` actions on draft board cards and pick confirmation modals, with active reserve status banner and one-click clear controls.
+  - Automated turn trigger (`checkAndExecuteDraftBank`): drafts reserved Pokémon the instant the coach is on the clock, chained cleanly across consecutive banked turns.
+  - Discord webhook pick announcements include distinctive badges and mentions for `🏦 Banked` and `⏰ Timeout` auto-picks.
+- **Cross-Device Team Planner Cloud Sync**:
+  - Cloudflare Worker KV integration via `/api/user/planner` endpoints (`GET` and `POST`) syncing planner plans to user accounts (`user:${username}`).
+  - Debounced auto-push on plan modifications (`schedulePushTeams`) and pull on app load/sign-in (`pullRemoteTeams`) with timestamp-based conflict resolution.
+- **Drag & Drop Team Planner Reordering**:
+  - HTML5 drag and drop (`handlePlannerDragStart`, `handlePlannerDrop`) and mobile touch event handlers (`handlePlannerTouchMove`, `handlePlannerTouchEnd`) on `.tm-item` rows.
+  - Real-time reordering persists to storage and syncs across devices.
+- **Team Planner "Current" Drafted Roster & Auto-Seeding**:
+  - Pinned `[🛡️ Current (N)]` chip in the planner header displaying the coach's live official tournament drafted roster, points spent, and remaining budget.
+  - Auto-seeding: All newly created plans (`quickCreateTeam`, `createTeam`, `createPlanFromCurrent`) automatically initialize with the coach's current drafted roster.
+- **Player Profile Tournament Match History**:
+  - Integrated round-by-round match history stacked directly beneath tournament rosters in `pastTournaments(p)`.
+  - Displays tournament stage/round, opponent avatar with OVR rating, match game score, outcome status badge (`WIN` / `LOSS`), and direct Showdown replay links.
+- **Standings Overdraft Penalty Tiebreaker**:
+  - Added `overdraft` (`PEN`) metric to `STANDING_METRICS` for ranking coaches with the fewest overdraft penalty points.
+  - Tournament directors can assign custom coach penalties via the updated **⚠️ Overdraft Penalties & Sanctions** section in `openTiebreakerEditor`.
+
+---
+
 ## [v2.5.4] — 2026-10-11
 
 ### All-Tournament Teams 60% Calculation Engine & Coach Aggregator Fix

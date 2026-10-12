@@ -2262,11 +2262,16 @@ details[open] > .past-tourney-summary .past-chevron{transform:rotate(180deg);col
 .tm-count{display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin-top:16px}
 .tm-count .slots{font-size:11px;font-weight:800;color:#9d9ba4;letter-spacing:.4px}
 .tm-list{margin-top:8px}
-.tm-item{display:flex;align-items:center;gap:9px;padding:7px 10px;border-radius:6px;border:1px solid transparent;border-bottom:1px solid #2b2b32;font-size:12px;cursor:pointer;transition:all .18s ease;user-select:none}
+.tm-item{display:flex;align-items:center;gap:8px;padding:7px 10px;border-radius:6px;border:1px solid transparent;border-bottom:1px solid #2b2b32;font-size:12px;cursor:pointer;transition:all .18s ease;user-select:none}
 .tm-item:hover{background:linear-gradient(90deg,rgba(255,209,102,0.14) 0%,rgba(255,209,102,0.04) 100%);border:1px solid rgba(255,209,102,0.45);box-shadow:0 0 14px rgba(255,209,102,0.22),inset 0 0 8px rgba(255,209,102,0.08);transform:translateX(3px)}
 .tm-item:hover span{color:#ffd166;text-shadow:0 0 8px rgba(255,209,102,0.4)}
 .tm-item:hover img{transform:scale(1.15);filter:drop-shadow(0 2px 6px rgba(255,209,102,0.5))}
 .tm-item:last-of-type{border-bottom:1px solid transparent}
+.tm-item.dragging{opacity:0.35;border:1px dashed #ffd166!important;background:#241d14!important}
+.tm-item.drag-over{border-top:2px solid var(--amber)!important;background:rgba(255,209,102,0.12)!important}
+.tm-drag-handle{cursor:grab;color:#636270;font-size:13px;line-height:1;padding:2px 3px;user-select:none;display:inline-flex;align-items:center;justify-content:center;transition:color .15s ease;flex:none}
+.tm-drag-handle:hover{color:#ffd166}
+.tm-drag-handle:active{cursor:grabbing}
 .tm-item img{width:28px;height:28px;object-fit:contain;image-rendering:var(--sprite-rendering,auto);flex:none;transition:transform .18s ease,filter .18s ease}
 .tm-item span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:700;transition:color .18s ease,text-shadow .18s ease}
 .tm-item b{margin-left:auto;font:800 15px 'Barlow Condensed';color:var(--amber);flex:none}
@@ -7818,7 +7823,7 @@ function getSwissStand(t = activeT()){
   let players = (t.players || []).slice();
   let s = {};
   players.forEach(p => {
-    s[p] = { p, w: 0, l: 0, gw: 0, gl: 0, diff: 0, opponents: [], results: {}, h2hWins: 0, sos: 0, buch: 0, status: 'in_contention' };
+    s[p] = { p, w: 0, l: 0, gw: 0, gl: 0, diff: 0, opponents: [], results: {}, h2hWins: 0, sos: 0, buch: 0, status: 'in_contention', overdraftPenalty: +(t.overdraftPenalties?.[p] || 0) };
   });
 
   let matches = (t.matches || []).filter(m => m.as !== '' && m.as != null && m.bs !== '' && m.bs != null);
@@ -8286,6 +8291,10 @@ function createTournament(){
   let enableDraft = document.querySelector('#enableDraft')?.checked ?? true;
   let draftBudget = Math.max(0, +(document.querySelector('#draftBudget')?.value || 100));
   let draftRounds = Math.max(1, +(document.querySelector('#draftRounds')?.value || 10));
+  let draftTimerEnabled = document.querySelector('#draftTimerEnabled')?.checked || false;
+  let draftTimerMinutes = Math.max(1, +(document.querySelector('#draftTimerMinutes')?.value || 120));
+  let draftActiveStart = document.querySelector('#draftActiveStart')?.value || '09:00';
+  let draftActiveEnd = document.querySelector('#draftActiveEnd')?.value || '22:00';
 
   let offseasonBoard = (typeof getOffseasonDraftBoard === 'function') ? getOffseasonDraftBoard() : [];
   let hasOffseasonBoard = Array.isArray(offseasonBoard) && offseasonBoard.length > 0;
@@ -8349,7 +8358,12 @@ function createTournament(){
       order: [...selected],
       currentPickIndex: 0,
       board: boardToUse,
-      picks: []
+      picks: [],
+      timerEnabled: draftTimerEnabled,
+      timePerPickMinutes: draftTimerMinutes,
+      activeStart: draftActiveStart,
+      activeEnd: draftActiveEnd,
+      bank: {}
     } : null
   };
   selected.forEach(p => {
@@ -16288,7 +16302,8 @@ async function announceDraftPickToDiscord(t, pickObj, nextTurn){
         cost: pickObj.cost || 0,
         teamCount: teamCount,
         maxSlots: maxSlots,
-        remainingBudget: remainingBudget
+        remainingBudget: remainingBudget,
+        autoReason: pickObj.autoReason || null
       },
       nextTurn: nextTurn ? {
         player: nextTurn.player,
@@ -19194,6 +19209,10 @@ function teardownDraftRealtime(){
     clearInterval(draftPollTimer);
     draftPollTimer = null;
   }
+  if(typeof draftCountdownInterval !== 'undefined' && draftCountdownInterval){
+    clearInterval(draftCountdownInterval);
+    draftCountdownInterval = null;
+  }
   releaseDraftWakeLock();
   if(supabaseClient){
     if(draftRealtimeChannel){
@@ -19225,6 +19244,11 @@ function setupDraftRealtime(){
 
   // Prevent mobile screen from sleeping while coach is watching live draft
   requestDraftWakeLock();
+
+  // Active pick clock interval
+  if(typeof setupDraftCountdownTicker === 'function'){
+    setupDraftCountdownTicker();
+  }
 
   // Active Draft Room polling: 2s interval with ultra-lightweight fast-path (0.4ms execution, zero DOM rebuilds)
   let pollInterval = bType === 'cloudflare' ? 2000 : 4000;
@@ -20831,6 +20855,43 @@ function openCreator(){
                   <label style="margin:0;font-size:11px">Roster Size (Draft Rounds)</label>
                   <input id="draftRounds" type="number" min="1" max="15" value="10" placeholder="10">
                   <span style="font-size:10px;color:#8e8c95">Total Pokémon to draft per coach (e.g. 10 or 11)</span>
+                </div>
+
+                <div class="field" style="grid-column:1/-1;margin:0;padding:12px;background:#15151e;border:1px solid #2d2d3c;border-radius:6px">
+                  <div style="display:flex;justify-content:space-between;align-items:center">
+                    <label style="display:flex;align-items:center;gap:8px;cursor:pointer;margin:0">
+                      <input type="checkbox" id="draftTimerEnabled" style="width:16px;height:16px;accent-color:var(--red);cursor:pointer" onchange="document.getElementById('draftTimerOptions').style.display=this.checked?'grid':'none'">
+                      <div>
+                        <div style="font-weight:800;font-size:12px;color:#f5f3f0">⏱️ Scheduled Draft Timer &amp; Auto-Pick</div>
+                        <div style="font-size:10px;color:#a09fa8">Pauses during off-hours; auto-picks random lowest-cost Pokémon on timeout</div>
+                      </div>
+                    </label>
+                  </div>
+
+                  <div id="draftTimerOptions" style="display:none;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-top:10px;padding-top:10px;border-top:1px solid #242432">
+                    <div class="field" style="margin:0">
+                      <label style="margin:0;font-size:10px">Time Per Pick</label>
+                      <select id="draftTimerMinutes" style="width:100%;background:#101015;border:1px solid #3d3d4e;border-radius:5px;padding:6px 8px;color:#fff;font-size:11px">
+                        <option value="5">5 Minutes</option>
+                        <option value="15">15 Minutes</option>
+                        <option value="30">30 Minutes</option>
+                        <option value="60">1 Hour</option>
+                        <option value="120" selected>2 Hours</option>
+                        <option value="240">4 Hours</option>
+                        <option value="480">8 Hours</option>
+                        <option value="720">12 Hours</option>
+                        <option value="1440">24 Hours</option>
+                      </select>
+                    </div>
+                    <div class="field" style="margin:0">
+                      <label style="margin:0;font-size:10px">Active Window Start</label>
+                      <input id="draftActiveStart" type="time" value="09:00" style="width:100%;background:#101015;border:1px solid #3d3d4e;border-radius:5px;padding:6px 8px;color:#fff;font-size:11px">
+                    </div>
+                    <div class="field" style="margin:0">
+                      <label style="margin:0;font-size:10px">Active Window End</label>
+                      <input id="draftActiveEnd" type="time" value="22:00" style="width:100%;background:#101015;border:1px solid #3d3d4e;border-radius:5px;padding:6px 8px;color:#fff;font-size:11px">
+                    </div>
+                  </div>
                 </div>
 
                 <div class="field" style="grid-column:1/-1;margin:0;padding:12px;background:#15151e;border:1px solid #2d2d3c;border-radius:6px">
@@ -25483,6 +25544,18 @@ var STANDING_METRICS = {
     desc: "Cumulative match wins of all opponents faced",
     compare: (a, b) => (b.sos || 0) - (a.sos || 0),
     format: (x) => `${x.sos || 0}`
+  },
+  overdraft: {
+    id: 'overdraft',
+    label: 'PEN',
+    name: 'Overdraft Penalty',
+    shortDesc: 'Fewest Penalty Points',
+    desc: 'Fewest overdraft penalty points (manually assigned by tournament directors)',
+    compare: (a, b) => (a.overdraftPenalty || 0) - (b.overdraftPenalty || 0),
+    format: (x) => {
+      let pts = x.overdraftPenalty || 0;
+      return pts > 0 ? `<span style="color:#ff8e95;font-weight:800">-${pts}</span>` : '0';
+    }
   }
 };
 
@@ -25600,7 +25673,7 @@ function sortStandingsWithCriteria(teamsList, criteriaList, metricsMap) {
 function getStand(t=activeT(),group=null){
   if(getStage1Format(t) === 'swiss') return getSwissStand(t);
   let buckets=groupsOf(t),g=group||Object.keys(buckets)[0],members=buckets[g]||t.players,s={};
-  members.forEach(p=>s[p]={p,w:0,l:0,gw:0,gl:0,h2h:0,h2hWins:0,sos:0,faintsDealt:0,faintsTaken:0,results:{}});
+  members.forEach(p=>s[p]={p,w:0,l:0,gw:0,gl:0,h2h:0,h2hWins:0,sos:0,faintsDealt:0,faintsTaken:0,results:{},overdraftPenalty:+(t.overdraftPenalties?.[p]||0)});
   let matches = groupMatches(t,g).filter(m=>m.as!==''&&m.as!=null&&m.bs!==''&&m.bs!=null);
   matches.forEach(m=>{
     let a=s[m.a],b=s[m.b];
@@ -25688,7 +25761,8 @@ function standingTable(t, g){
     gpct: { label: 'GW%',    width: '46px', title: 'Game Win Percentage' },
     sos:  { label: 'SOS',    width: '44px', title: 'Strength of Schedule' },
     buch: { label: 'BUCH',   width: '46px', title: "Buchholz / Strength of Schedule (Opponents' Match Wins)" },
-    fr:   { label: 'FR',     width: '46px', title: 'Faint Ratio (Opponent Pokémon Fainted ÷ Own Pokémon Fainted)' }
+    fr:   { label: 'FR',     width: '46px', title: 'Faint Ratio (Opponent Pokémon Fainted ÷ Own Pokémon Fainted)' },
+    overdraft: { label: 'PEN', width: '42px', title: 'Overdraft Penalty Points' }
   };
 
   let criteriaList = isSwiss ? ['wl', 'buch', 'gd', 'gw'] : getStandingsCriteria(t);
@@ -25941,6 +26015,29 @@ function openTiebreakerEditor(targetId){
           <div class="eyebrow" style="color:var(--amber);margin-bottom:8px">Active Priority Order</div>
           ${activeListHtml}
           ${availableListHtml}
+
+          <div style="margin-top:20px;padding-top:14px;border-top:1px solid #242432">
+            <div class="eyebrow" style="color:#ff8e95;margin-bottom:4px;display:flex;align-items:center;gap:6px">
+              <span>⚠️</span> OVERDRAFT PENALTIES &amp; SANCTIONS (MANUAL)
+            </div>
+            <p class="sub" style="font-size:11px;margin:0 0 10px;color:#9d9ba6">
+              Assign penalty points for drafting over budget or roster violations. When "Overdraft Penalty (PEN)" is active in your tiebreaker priority list, coaches with fewer penalty points rank ahead of coaches with penalties.
+            </p>
+            <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(200px, 1fr));gap:8px">
+              ${(t.players || []).map(p => {
+                let currentPen = (t.overdraftPenalties && t.overdraftPenalties[p]) || 0;
+                return `
+                  <div style="display:flex;align-items:center;justify-content:space-between;padding:6px 10px;background:#14141c;border:1px solid #292938;border-radius:6px;gap:8px">
+                    <span style="font-size:12px;font-weight:700;color:#f5f3f0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1" title="${esc(p)}">${esc(p)}</span>
+                    <div style="display:flex;align-items:center;gap:4px;flex:none">
+                      <input type="number" min="0" max="99" value="${currentPen}" style="width:48px;padding:3px 6px;background:#0d0d12;border:1px solid ${currentPen > 0 ? '#ff8e95' : '#3d3d4e'};border-radius:4px;color:${currentPen > 0 ? '#ff8e95' : '#fff'};font-weight:800;font-size:12px;text-align:center" onchange="updateCoachOverdraftPenalty('${jsArg(t.id)}', '${jsArg(p)}', this.value)" oninput="if(this.value < 0) this.value = 0;">
+                      <span style="font-size:10px;color:#8e8c95">pts</span>
+                    </div>
+                  </div>
+                `;
+              }).join('')}
+            </div>
+          </div>
         </div>
 
         <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;margin-top:16px;padding-top:14px;border-top:1px solid #242432;flex:none">
@@ -25952,6 +26049,20 @@ function openTiebreakerEditor(targetId){
       </div>
     </div>
   `;
+}
+
+function updateCoachOverdraftPenalty(tId, coach, val){
+  let t = (tId ? tournamentData[tId] : null) || ongoingT() || activeT();
+  if(!t || !canManageTournament(t)) return;
+  if(!t.overdraftPenalties) t.overdraftPenalties = {};
+  let num = Math.max(0, parseInt(val, 10) || 0);
+  if(num > 0){
+    t.overdraftPenalties[coach] = num;
+  } else {
+    delete t.overdraftPenalties[coach];
+  }
+  persistLeague();
+  render();
 }
 
 function moveTiebreakerCriteria(tId, index, dir){
@@ -27653,9 +27764,94 @@ function pastTournaments(p){
             <button class="btn btn-sm" style="height:32px;padding:0 12px!important" onclick="addTournamentRosterMon('${jsArg(p)}', '${jsArg(t.id)}')">+ Add</button>
           </div>
         ` : ''}
+
+        <div style="margin-top:16px;padding-top:12px;border-top:1px solid #1f1f2a">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+            <div style="display:flex;align-items:center;gap:8px">
+              <span class="eyebrow" style="color:var(--amber);margin:0">Match History</span>
+            </div>
+          </div>
+          ${renderTournamentMatchHistoryHtml(t, p)}
+        </div>
       </div>
     </details>`;
   }).join('');
+}
+
+function renderTournamentMatchHistoryHtml(t, p){
+  if(!t || !p) return '';
+  let matchHistory = (typeof getPlayerMatchHistory === 'function' ? getPlayerMatchHistory(p) : []).filter(m => m.tournamentId === t.id);
+  matchHistory = matchHistory.slice().sort((a, b) => {
+    if(a.isTopCut && !b.isTopCut) return 1;
+    if(!a.isTopCut && b.isTopCut) return -1;
+    return (a.fixtureIndex || 0) - (b.fixtureIndex || 0);
+  });
+
+  if(!matchHistory.length){
+    return `<div style="padding:10px;text-align:center;color:#6b6a78;font-size:11px;background:#0d0d12;border-radius:6px;border:1px dashed #242432">No matches recorded for this tournament.</div>`;
+  }
+
+  return `
+    <div style="display:flex;flex-direction:column;gap:6px">
+      ${matchHistory.map(m => {
+        let opp = m.opponent;
+        let oppFace = profilePictures[opp] ? `url('${esc(profilePictures[opp])}')` : (teamCovers[opp] ? `url('${esc(teamCovers[opp])}')` : fallbackArt(opp));
+        let oppLetter = (profilePictures[opp] || teamCovers[opp]) ? '' : esc((opp || '?')[0]);
+        let oppOvr = calculatePlayerOVR(opp);
+        let oppTeam = m.opponentTeam && m.opponentTeam !== 'Unassigned team' ? m.opponentTeam : '';
+
+        let isPlayed = m.isPlayed;
+        let isVictory = m.won;
+        let isDefeat = m.lost;
+
+        let outcomeBg = isVictory ? '#13281c' : (isDefeat ? '#2c1417' : '#181820');
+        let outcomeBorder = isVictory ? '#245c36' : (isDefeat ? '#5a2228' : '#2e2e3a');
+        let outcomeColor = isVictory ? '#4ade80' : (isDefeat ? '#ff8e95' : '#85838d');
+        let outcomeText = isVictory ? 'WIN' : (isDefeat ? 'LOSS' : 'VS');
+
+        let cleanStage = m.stage.replace(/^group\s+group\s*/i, 'Group ');
+        let isTopCut = Boolean(m.isTopCut);
+        let replays = Array.isArray(m.rawMatch?.replays) ? m.rawMatch.replays : [];
+
+        return `
+          <div style="background:#0f0f15;border:1px solid #232330;border-radius:8px;padding:8px 12px;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">
+            <div style="display:flex;align-items:center;gap:10px;min-width:0;flex:1">
+              <span class="tag" style="background:${outcomeBg};border:1px solid ${outcomeBorder};color:${outcomeColor};font-weight:900;font-size:10px;padding:2px 7px;min-width:38px;text-align:center">
+                ${outcomeText}
+              </span>
+
+              <div style="min-width:0;flex:1">
+                <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+                  <span style="font-size:10px;font-weight:800;letter-spacing:.3px;color:${isTopCut ? '#ffd166' : '#9d9ba6'};text-transform:uppercase">
+                    ${isTopCut ? '🏆 ' : ''}${esc(cleanStage)}
+                  </span>
+                </div>
+                <div style="display:flex;align-items:center;gap:7px;margin-top:2px">
+                  <span class="avatar mini" style="background-image:${oppFace};background-size:cover;background-position:center;width:20px;height:20px;border-radius:50%;display:grid;place-items:center;border:1.5px solid ${oppOvr.color};font-size:9px;flex:none">${oppLetter}</span>
+                  <button class="player-link" style="font:800 13px 'Barlow Condensed';color:#f5f3f0;letter-spacing:.3px;text-align:left;padding:0;background:none;border:none;cursor:pointer" onclick="openProfile('${jsArg(opp)}')">
+                    ${esc(opp)}
+                  </button>
+                  ${oppTeam ? `<span style="font-size:10px;color:#7e7d88;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">(${esc(oppTeam)})</span>` : ''}
+                </div>
+              </div>
+            </div>
+
+            <div style="display:flex;align-items:center;gap:10px;flex-shrink:0">
+              <div style="font:800 16px 'Barlow Condensed';color:${isPlayed ? '#f5f3f0' : '#6b6a75'};letter-spacing:.5px;min-width:44px;text-align:right">
+                ${isPlayed ? `${m.myScore} - ${m.oppScore}` : '—'}
+              </div>
+
+              ${replays.length ? `
+                <a href="${esc(replays[0].url || replays[0])}" target="_blank" rel="noopener" class="btn ghost btn-sm" style="padding:2px 7px!important;font-size:10px!important;color:#60a5fa;border-color:#1e3a8a;display:inline-flex;align-items:center;gap:3px;text-decoration:none" title="Watch Showdown battle replay">
+                  🎥 Replay
+                </a>
+              ` : ''}
+            </div>
+          </div>
+        `;
+      }).join('')}
+    </div>
+  `;
 }
 
 var _cachedLeagueRecords = null;
@@ -34665,6 +34861,15 @@ function openTournamentEdit(id){
             <div class="edit-hub-card-arrow">›</div>
           </div>
 
+          <div class="edit-hub-card" onclick="openDraftSettingsModal('${jsArg(t.id)}')">
+            <div class="edit-hub-card-icon">⏱️</div>
+            <div class="edit-hub-card-content">
+              <div class="edit-hub-card-title">Scheduled Draft Timer &amp; Rules</div>
+              <div class="edit-hub-card-desc">Active pick clock window, auto-pick, budget, and roster slots</div>
+            </div>
+            <div class="edit-hub-card-arrow">›</div>
+          </div>
+
           <div class="edit-hub-card" onclick="openTournamentPointCostsEditor('${jsArg(t.id)}')">
             <div class="edit-hub-card-icon">💰</div>
             <div class="edit-hub-card-content">
@@ -35401,49 +35606,110 @@ function ensureTeams(){
   /* teams built before signing in follow the FIRST account that signs
      in on this browser; the guest copy is then marked claimed so a
      second account on the same machine cannot see them. */
-  if(key!=='guest'&&!teamStore.teams.length&&!teamStore.adoptedGuest){
-    let guest=readTeamStore('guest');
-    if(guest?.teams?.length&&!guest.claimed){
-      teamStore.teams=JSON.parse(JSON.stringify(guest.teams));
-      teamStore.activeId=guest.activeId||guest.teams[0].id;
-      try{localStorage.setItem('draftdex-teams-guest',JSON.stringify({...guest,claimed:true}))}catch{}
-    }
+  if(key!=='guest'&&!teamStore.adoptedGuest){
     teamStore.adoptedGuest=true;writeTeams(false);
+    pullRemoteTeams();
   }
   if(!teamStore.activeId&&teamStore.teams.length)teamStore.activeId=teamStore.teams[0].id;
   return teamStore
 }
 function teamId(){return 't'+Date.now().toString(36)+Math.random().toString(36).slice(2,6)}
-function activeTeam(){let s=ensureTeams();return s.teams.find(x=>x.id===s.activeId)||null}
+
+function getCurrentDraftTournament(){
+  if(typeof window !== 'undefined' && window._currentDraftTournamentId && tournamentData[window._currentDraftTournamentId]){
+    return tournamentData[window._currentDraftTournamentId];
+  }
+  let curT = typeof ongoingT === 'function' ? ongoingT() : null;
+  if(curT && curT.hasDraft) return curT;
+  return Object.values(tournamentData).find(x => x.hasDraft && x.draftData && x.draftData.status !== 'completed') || curT || null;
+}
+
+function getCurrentDraftedPicks(){
+  let t = getCurrentDraftTournament();
+  if(!t || !t.draftData || !Array.isArray(t.draftData.picks)) return [];
+  let curUser = window.currentAccount?.username || sessionUser?.user_metadata?.username || sessionUser?.email?.split('@')[0] || '';
+  let myCoach = (typeof myPlayer === 'function' ? myPlayer() : null) || (typeof playerForAccount === 'function' ? playerForAccount(curUser) : null) || curUser;
+  if(!myCoach) return [];
+  let myCoachLower = myCoach.toLowerCase().trim();
+  let userPicks = t.draftData.picks.filter(p => p && p.player && p.player.toLowerCase().trim() === myCoachLower);
+  return userPicks.map(p => ({
+    name: p.pokemon,
+    cost: fmtPts(p.cost !== undefined ? p.cost : (findPokemonCostOnBoard(t, p.pokemon) || 0)),
+    isOfficial: true
+  }));
+}
+
+function activeTeam(){
+  let s=ensureTeams();
+  if(s.activeId==='__current__'){
+    return {
+      id: '__current__',
+      name: 'Current Drafted Roster',
+      isCurrent: true,
+      picks: getCurrentDraftedPicks()
+    };
+  }
+  return s.teams.find(x=>x.id===s.activeId)||null;
+}
+
 function writeTeams(bump=true){
   if(bump)teamStore.updatedAt=Date.now();
   try{localStorage.setItem('draftdex-teams-'+teamStore.key,JSON.stringify({teams:teamStore.teams,activeId:teamStore.activeId,updatedAt:teamStore.updatedAt,adoptedGuest:teamStore.adoptedGuest}))}catch{}
-  if(bump)schedulePushTeams()
+  if(bump)schedulePushTeams();
 }
+
 var teamsPushTimer=null;
 function schedulePushTeams(){
-  if(isSandboxMode() || !supabaseClient || !sessionUser) return;
+  let user = window.currentAccount?.username || (accountKey() !== 'guest' ? accountKey() : null);
+  if(!user || isSandboxMode()) return;
   clearTimeout(teamsPushTimer);
   teamsPushTimer=setTimeout(async()=>{
-    try{await supabaseClient.auth.updateUser({data:{draftTeams:{teams:teamStore.teams,activeId:teamStore.activeId,updatedAt:teamStore.updatedAt,adoptedGuest:teamStore.adoptedGuest}}})}catch(e){}
-  },800)
-}
-async function pullRemoteTeams(){
-  if(isSandboxMode() || !supabaseClient || !sessionUser) return;
-  let key=accountKey();
-  if(window.__teamsPulled[key])return;
-  window.__teamsPulled[key]=true;
-  try{
-    let {data}=await supabaseClient.auth.getUser();
-    let remote=data?.user?.user_metadata?.draftTeams;
-    ensureTeams();
-    if(remote&&Array.isArray(remote.teams)&&(remote.updatedAt||0)>(teamStore.updatedAt||0)&&teamStore.key===accountKey()){
-      teamStore.teams=remote.teams;teamStore.activeId=remote.activeId||remote.teams[0]?.id||null;
-      teamStore.updatedAt=remote.updatedAt;teamStore.adoptedGuest=!!remote.adoptedGuest;
-      writeTeams(false);refreshBuilder();
+    let cfUrl = typeof getCloudflareUrl === 'function' ? getCloudflareUrl() : '';
+    if(!cfUrl) return;
+    try{
+      await fetch(`${cfUrl}/api/user/planner`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          username: user,
+          teams: teamStore.teams,
+          activeId: teamStore.activeId,
+          updatedAt: teamStore.updatedAt || Date.now()
+        })
+      });
+    }catch(e){
+      console.warn('Failed to push planner teams to cloud:', e);
     }
-  }catch(e){}
+  }, 600);
 }
+
+async function pullRemoteTeams(force=false){
+  let user = window.currentAccount?.username || (accountKey() !== 'guest' ? accountKey() : null);
+  if(!user || isSandboxMode()) return;
+  let key=accountKey();
+  if(!force && window.__teamsPulled[key]) return;
+  window.__teamsPulled[key]=true;
+  let cfUrl = typeof getCloudflareUrl === 'function' ? getCloudflareUrl() : '';
+  if(!cfUrl) return;
+  try{
+    let res = await fetch(`${cfUrl}/api/user/planner?username=${encodeURIComponent(user)}`);
+    if(!res.ok) return;
+    let remote = await res.json();
+    ensureTeams();
+    if(remote && Array.isArray(remote.teams) && (remote.updatedAt||0) > (teamStore.updatedAt||0) && teamStore.key===key){
+      teamStore.teams = remote.teams;
+      teamStore.activeId = remote.activeId || remote.teams[0]?.id || null;
+      teamStore.updatedAt = remote.updatedAt;
+      writeTeams(false);
+      refreshBuilder();
+    } else if(teamStore.teams.length > 0 && (!remote || !remote.updatedAt || (teamStore.updatedAt||0) > remote.updatedAt)){
+      schedulePushTeams();
+    }
+  }catch(e){
+    console.warn('Failed to pull planner teams from cloud:', e);
+  }
+}
+
 function fmtPts(n){return Number.isInteger(+n)?+n:+(+n).toFixed(1)}
 function teamSpent(team){return fmtPts((team?.picks||[]).reduce((n,x)=>n+(+x.cost||0),0))}
 
@@ -35455,9 +35721,11 @@ function refreshBuilder(){
     host.scrollTop = prevTop;
   }
 }
+
 function quickCreateTeam(name){
   let cleanName = (name || 'My Draft Plan').trim().slice(0, 40);
-  let s = ensureTeams(), team = { id: teamId(), name: cleanName, picks: [] };
+  let initialPicks = getCurrentDraftedPicks().map(p => ({ name: p.name, cost: p.cost }));
+  let s = ensureTeams(), team = { id: teamId(), name: cleanName, picks: initialPicks };
   s.teams.push(team);
   s.activeId = team.id;
   builderStatus = '';
@@ -35469,24 +35737,138 @@ function quickCreateTeam(name){
 function createTeam(){
   let box=document.querySelector('#newTeamName'),name=(box?.value||'').trim()||'Team '+(ensureTeams().teams.length+1);
   if(name.length>40)name=name.slice(0,40);
-  let s=ensureTeams(),team={id:teamId(),name,picks:[]};
+  let initialPicks = getCurrentDraftedPicks().map(p => ({ name: p.name, cost: p.cost }));
+  let s=ensureTeams(),team={id:teamId(),name,picks:initialPicks};
   s.teams.push(team);s.activeId=team.id;builderStatus='';writeTeams();refreshBuilder();
-  setTimeout(()=>document.querySelector('#tmName')?.focus(),0)
+  setTimeout(()=>document.querySelector('#tmName')?.focus(),0);
 }
-function switchTeam(id){let s=ensureTeams();if(!s.teams.some(x=>x.id===id))return;s.activeId=id;window.renamingTeam=null;builderStatus='';writeTeams();refreshBuilder()}
-function startRenameTeam(){window.renamingTeam=ensureTeams().activeId;refreshBuilder();setTimeout(()=>document.querySelector('#renameTeam')?.focus(),0)}
+
+function createPlanFromCurrent(){
+  let currentPicks = getCurrentDraftedPicks().map(p => ({ name: p.name, cost: p.cost }));
+  let name = 'Plan from Round ' + (currentPicks.length + 1);
+  let s = ensureTeams(), team = { id: teamId(), name, picks: currentPicks };
+  s.teams.push(team);
+  s.activeId = team.id;
+  builderStatus = 'Created new plan from your current drafted roster!';
+  writeTeams();
+  refreshBuilder();
+}
+
+function switchTeam(id){
+  let s=ensureTeams();
+  if(id!=='__current__'&&!s.teams.some(x=>x.id===id))return;
+  s.activeId=id;
+  window.renamingTeam=null;
+  builderStatus='';
+  writeTeams();
+  refreshBuilder();
+}
+function startRenameTeam(){
+  if(ensureTeams().activeId==='__current__')return;
+  window.renamingTeam=ensureTeams().activeId;
+  refreshBuilder();
+  setTimeout(()=>document.querySelector('#renameTeam')?.focus(),0);
+}
 function commitRenameTeam(){
   let team=activeTeam(),box=document.querySelector('#renameTeam');
-  if(team&&box){let v=box.value.trim();if(v)team.name=v.slice(0,40)}
-  window.renamingTeam=null;writeTeams();refreshBuilder()
+  if(team&&!team.isCurrent&&box){let v=box.value.trim();if(v)team.name=v.slice(0,40)}
+  window.renamingTeam=null;writeTeams();refreshBuilder();
 }
 function deleteTeam(){
   let s=ensureTeams(),team=activeTeam();
-  if(!team)return;
+  if(!team||team.isCurrent)return;
   if(!confirm('Delete "'+team.name+'"? This cannot be undone.'))return;
   s.teams=s.teams.filter(x=>x.id!==team.id);
   s.activeId=s.teams[0]?.id||null;
-  builderStatus='';writeTeams();refreshBuilder()
+  builderStatus='';writeTeams();refreshBuilder();
+}
+
+/* Drag and Drop & Touch Reordering for Team Planner */
+var _draggedMonIndex = null;
+function handlePlannerDragStart(e, index){
+  let team = activeTeam();
+  if(!team || team.isCurrent) return;
+  _draggedMonIndex = index;
+  try {
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', String(index));
+  } catch(err){}
+  e.currentTarget.classList.add('dragging');
+}
+function handlePlannerDragOver(e, index){
+  let team = activeTeam();
+  if(!team || team.isCurrent) return;
+  e.preventDefault();
+  try { e.dataTransfer.dropEffect = 'move'; } catch(err){}
+}
+function handlePlannerDragEnter(e, index){
+  let team = activeTeam();
+  if(!team || team.isCurrent) return;
+  if(_draggedMonIndex === null || _draggedMonIndex === index) return;
+  e.currentTarget.classList.add('drag-over');
+}
+function handlePlannerDragLeave(e, index){
+  e.currentTarget.classList.remove('drag-over');
+}
+function handlePlannerDrop(e, targetIndex){
+  let team = activeTeam();
+  if(!team || team.isCurrent) return;
+  e.preventDefault();
+  e.currentTarget.classList.remove('drag-over');
+  let sourceIndex = _draggedMonIndex;
+  _draggedMonIndex = null;
+  if(sourceIndex === null || sourceIndex === targetIndex) return;
+  reorderTeamMon(sourceIndex, targetIndex);
+}
+function handlePlannerDragEnd(e){
+  _draggedMonIndex = null;
+  document.querySelectorAll('.tm-item').forEach(el => el.classList.remove('dragging', 'drag-over'));
+}
+
+var _touchDragIdx = null;
+function handlePlannerTouchStart(e, idx){
+  let team = activeTeam();
+  if(!team || team.isCurrent) return;
+  _touchDragIdx = idx;
+  let row = e.target.closest('.tm-item');
+  if(row) row.classList.add('dragging');
+}
+function handlePlannerTouchMove(e){
+  if(_touchDragIdx === null) return;
+  e.preventDefault();
+  let touch = e.touches[0];
+  let el = document.elementFromPoint(touch.clientX, touch.clientY);
+  let item = el?.closest('.tm-item[data-mon-idx]');
+  document.querySelectorAll('.tm-item').forEach(x => {
+    if(x !== item) x.classList.remove('drag-over');
+  });
+  if(item && parseInt(item.getAttribute('data-mon-idx'), 10) !== _touchDragIdx){
+    item.classList.add('drag-over');
+  }
+}
+function handlePlannerTouchEnd(e){
+  if(_touchDragIdx === null) return;
+  let fromIdx = _touchDragIdx;
+  _touchDragIdx = null;
+  let changedTouch = e.changedTouches[0];
+  let el = document.elementFromPoint(changedTouch.clientX, changedTouch.clientY);
+  let item = el?.closest('.tm-item[data-mon-idx]');
+  document.querySelectorAll('.tm-item').forEach(x => x.classList.remove('drag-over', 'dragging'));
+  if(item){
+    let toIdx = parseInt(item.getAttribute('data-mon-idx'), 10);
+    if(!isNaN(toIdx) && fromIdx !== toIdx){
+      reorderTeamMon(fromIdx, toIdx);
+    }
+  }
+}
+function reorderTeamMon(fromIdx, toIdx){
+  let team = activeTeam();
+  if(!team || team.isCurrent || !Array.isArray(team.picks)) return;
+  if(fromIdx < 0 || fromIdx >= team.picks.length || toIdx < 0 || toIdx >= team.picks.length) return;
+  let [moved] = team.picks.splice(fromIdx, 1);
+  team.picks.splice(toIdx, 0, moved);
+  writeTeams();
+  refreshBuilder();
 }
 function addTeamMon(directName, directCost){
   let s = ensureTeams(), team = activeTeam();
@@ -35577,18 +35959,25 @@ function builderHTML(){
   }
 
   let s=ensureTeams(),team=activeTeam(),who=s.key==='guest'?'this browser':(window.currentAccount?.username||'your account');
-  let chips=`<div class="team-chips">${s.teams.map(t=>`<button class="team-chip ${t.id===s.activeId?'on':''}" title="${esc(t.name)}" onclick="switchTeam('${jsArg(t.id)}')">${esc(t.name)}</button>`).join('')}<button class="team-chip new" onclick="window.renamingTeam=null;switchTeam('${jsArg(s.activeId||'')}');document.querySelector('#newTeamRow').style.display='grid';document.querySelector('#newTeamName').focus()">+ New team</button></div>
+  let currentPicks = getCurrentDraftedPicks();
+  let curT = typeof getCurrentDraftTournament === 'function' ? getCurrentDraftTournament() : (typeof ongoingT === 'function' ? ongoingT() : null);
+  let isLiveDraft = Boolean(curT && curT.status === 'ONGOING' && curT.hasDraft && curT.phase === 'draft' && curT.draftData?.status !== 'completed');
+  let hasCurrentDraft = currentPicks.length > 0 || (isLiveDraft && curT);
+  let currentChip = hasCurrentDraft ? `<button class="team-chip current-chip ${s.activeId==='__current__'?'on':''}" style="${s.activeId==='__current__'?'background:#133321;border-color:#34d399;color:#a7f3d0;':''}" title="Your official drafted roster in this tournament" onclick="switchTeam('__current__')">🛡️ Current (${currentPicks.length})</button>` : '';
+
+  let chips=`<div class="team-chips">${currentChip}${s.teams.map(t=>`<button class="team-chip ${t.id===s.activeId?'on':''}" title="${esc(t.name)}" onclick="switchTeam('${jsArg(t.id)}')">${esc(t.name)}</button>`).join('')}<button class="team-chip new" onclick="window.renamingTeam=null;switchTeam('${jsArg(s.activeId||'')}');document.querySelector('#newTeamRow').style.display='grid';document.querySelector('#newTeamName').focus()">+ New team</button></div>
   <div id="newTeamRow" style="display:none;grid-template-columns:minmax(0,1fr) auto;gap:7px;margin-top:10px">
     <input id="newTeamName" class="planner-team-input" placeholder="Name this team (e.g. Rain squad)" maxlength="40" onkeydown="if(event.key==='Enter'){event.preventDefault();createTeam()}">
     <button class="btn btn-sm" onclick="createTeam()">Create</button></div>`;
 
-  if(!team || !s.teams.length){
+  if(!team || (!s.teams.length && s.activeId !== '__current__')){
     return `
       <div class="eyebrow" style="color:var(--red);letter-spacing:1px">TEAM PLANNER</div>
+      ${chips}
       <div class="planner-empty-box">
         <div class="planner-empty-icon">📋</div>
         <h3 class="planner-empty-title">Draft Team Planner</h3>
-        <p class="planner-empty-sub">Plan out rosters before and during the draft. Click any Pokémon on the board to test synergies and track costs against your <b>${TEAM_BUDGET} pt budget</b>.</p>
+        <p class="planner-empty-sub">Plan out rosters before and during the draft. Click any Pokémon on the board to test synergies and track costs against your <b>${TEAM_BUDGET} pt budget</b>.${currentPicks.length > 0 ? ` All new plans start seeded with your <b>${currentPicks.length} drafted Pokémon</b>.` : ''}</p>
 
         <div class="planner-empty-input-group">
           <input id="newTeamName" class="planner-team-input" placeholder="Name your plan (e.g. Main Draft, Rain squad...)" maxlength="40" onkeydown="if(event.key==='Enter'){event.preventDefault();createTeam()}">
@@ -35605,16 +35994,6 @@ function builderHTML(){
     `;
   }
 
-  let isLiveDraft = (function(){
-    if(window._isRenderingOffseasonDraft || (typeof document !== 'undefined' && document.getElementById('offseasonDraftBoardGridWrap'))) return false;
-    let t = ongoingT();
-    if(!t || t.status !== 'ONGOING' || !t.hasDraft || t.phase !== 'draft') return false;
-    let d = t.draftData;
-    if(!d || d.status === 'completed') return false;
-    return true;
-  })();
-
-  let curT = isLiveDraft ? ongoingT() : null;
   let draftPicks = isLiveDraft ? (curT?.draftData?.picks || []) : [];
   let draftedMap = {};
   if(isLiveDraft && draftPicks.length > 0){
@@ -35625,18 +36004,27 @@ function builderHTML(){
   let curUser = window.currentAccount?.username || sessionUser?.user_metadata?.username || sessionUser?.email?.split('@')[0] || '';
   let myCoach = (typeof myPlayer === 'function' ? myPlayer() : null) || (typeof playerForAccount === 'function' ? playerForAccount(curUser) : null) || curUser;
 
+  let isCurrentTab = (team.isCurrent || s.activeId === '__current__');
   let spent=teamSpent(team),left=fmtPts(TEAM_BUDGET-spent),over=left<0;
-  let nameRow=window.renamingTeam===team.id
-    ?`<div class="tm-name-row"><input id="renameTeam" value="${esc(team.name)}" maxlength="40" onkeydown="if(event.key==='Enter'){event.preventDefault();commitRenameTeam()}"><button class="save" onclick="commitRenameTeam()">Save</button></div>`
-    :`<div class="tm-name-row"><div class="tm-name">${esc(team.name)}</div><button class="save" onclick="startRenameTeam()">Rename</button></div>`;
+  let nameRow = isCurrentTab
+    ? `<div class="tm-name-row"><div class="tm-name" style="color:#a7f3d0">🛡️ Current Drafted Roster</div><span class="tag" style="background:#0e281b;color:#4bdd91;border:1px solid #1c5236;font-size:10px;font-weight:800">OFFICIAL</span></div>`
+    : (window.renamingTeam===team.id
+      ? `<div class="tm-name-row"><input id="renameTeam" value="${esc(team.name)}" maxlength="40" onkeydown="if(event.key==='Enter'){event.preventDefault();commitRenameTeam()}"><button class="save" onclick="commitRenameTeam()">Save</button></div>`
+      : `<div class="tm-name-row"><div class="tm-name">${esc(team.name)}</div><button class="save" onclick="startRenameTeam()">Rename</button></div>`);
   let free=Math.max(0,TEAM_SLOTS-team.picks.length);
+
   return `<div class="eyebrow">Team planner</div>
     ${chips}
     ${nameRow}
-    <div class="tm-add">
-      <input id="tmName" placeholder="Pokémon" maxlength="30" onkeydown="teamKeydown(event)">
-      <input id="tmCost" type="number" min="0" step="any" placeholder="Cost" inputmode="decimal" onkeydown="teamKeydown(event)">
-      <button class="btn" onclick="addTeamMon()">Add</button></div>
+    ${!isCurrentTab ? `
+      <div class="tm-add">
+        <input id="tmName" placeholder="Pokémon" maxlength="30" onkeydown="teamKeydown(event)">
+        <input id="tmCost" type="number" min="0" step="any" placeholder="Cost" inputmode="decimal" onkeydown="teamKeydown(event)">
+        <button class="btn" onclick="addTeamMon()">Add</button>
+      </div>
+    ` : `
+      <div class="sub" style="font-size:11px;color:#a09fa8;margin:8px 0 2px">Your officially drafted Pokémon in <b>${esc(curT?.name || 'this tournament')}</b>.</div>
+    `}
     <div class="tm-status">${esc(builderStatus)}</div>
     <div class="tm-count">
       <div class="budget-num ${over?'over':''}" style="margin:0">${spent}<span style="font-size:17px;color:#9d9ba4"> / ${TEAM_BUDGET}</span></div>
@@ -35649,25 +36037,48 @@ function builderHTML(){
         let drafter = isLiveDraft ? draftedMap[cleanName] : null;
         let isDrafted = Boolean(isLiveDraft && drafter);
         let isMine = isDrafted && myCoach && drafter.toLowerCase() === myCoach.toLowerCase();
-        let statusBadge = isDrafted ? (isMine ? `<span style="font-size:9.5px;color:#4bdd91;background:#0e281b;border:1px solid #1c5236;padding:1px 5px;border-radius:4px;font-weight:800">✓ Drafted</span>` : `<span style="font-size:9.5px;color:#ff8e95;background:#281216;border:1px solid #54222a;padding:1px 5px;border-radius:4px;font-weight:800">❌ Taken</span>`) : '';
+        let statusBadge = isCurrentTab
+          ? `<span style="font-size:9.5px;color:#4bdd91;background:#0e281b;border:1px solid #1c5236;padding:1px 5px;border-radius:4px;font-weight:800;width:fit-content">✓ Official Pick</span>`
+          : (isDrafted ? (isMine ? `<span style="font-size:9.5px;color:#4bdd91;background:#0e281b;border:1px solid #1c5236;padding:1px 5px;border-radius:4px;font-weight:800;width:fit-content">✓ Drafted</span>` : `<span style="font-size:9.5px;color:#ff8e95;background:#281216;border:1px solid #54222a;padding:1px 5px;border-radius:4px;font-weight:800;width:fit-content">❌ Taken</span>`) : '');
         let rowTitle = isLiveDraft
           ? (isDrafted ? (isMine ? `Drafted by you in this tournament` : `Already taken by another coach (${esc(drafter)})`) : `Click to draft ${esc(x.name)}`)
           : `Click to view ${esc(x.name)} details`;
 
-        return `<div class="tm-item" style="cursor:pointer;transition:all .15s ease;${isDrafted && !isMine ? 'opacity:0.6;' : ''}" title="${esc(rowTitle)}" onclick="openDraftFromPlanner('${jsArg(x.name)}', ${x.cost})">
+        let bankBtn = (isLiveDraft && curT && !isCurrentTab && !isDrafted)
+          ? `<button title="Reserve in Draft Bank" style="color:#60a5fa;font-size:12px;margin-right:2px" onclick="event.stopPropagation();setDraftBankMon('${jsArg(curT.id)}', '${jsArg(x.name)}', ${x.cost})">🏦</button>`
+          : '';
+
+        let dragHandle = !isCurrentTab
+          ? `<span class="tm-drag-handle" title="Drag to reorder" onmousedown="event.stopPropagation()" ontouchstart="handlePlannerTouchStart(event, ${i})">⋮⋮</span>`
+          : '';
+
+        let dndAttrs = !isCurrentTab
+          ? `draggable="true" data-mon-idx="${i}" ondragstart="handlePlannerDragStart(event, ${i})" ondragover="handlePlannerDragOver(event, ${i})" ondrop="handlePlannerDrop(event, ${i})" ondragenter="handlePlannerDragEnter(event, ${i})" ondragleave="handlePlannerDragLeave(event, ${i})" ondragend="handlePlannerDragEnd(event)" ontouchmove="handlePlannerTouchMove(event)" ontouchend="handlePlannerTouchEnd(event)"`
+          : '';
+
+        return `<div class="tm-item" ${dndAttrs} style="cursor:pointer;transition:all .15s ease;${isDrafted && !isMine && !isCurrentTab ? 'opacity:0.6;' : ''}" title="${esc(rowTitle)}" onclick="openDraftFromPlanner('${jsArg(x.name)}', ${x.cost})">
+          ${dragHandle}
           <img src="${esc(monSprite(x.name))}" alt="" loading="lazy" onerror="handleSpriteError(this)">
           <div style="flex:1;min-width:0;text-align:left;display:flex;flex-direction:column;gap:1px">
-            <span style="font-weight:700;color:#f5f3f0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;${isDrafted && !isMine ? 'text-decoration:line-through;color:#a09fa8' : ''}">${esc(x.name)}</span>
+            <span style="font-weight:700;color:#f5f3f0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;${isDrafted && !isMine && !isCurrentTab ? 'text-decoration:line-through;color:#a09fa8' : ''}">${esc(x.name)}</span>
             ${statusBadge}
           </div>
           <b style="color:#ffd166;font-size:12px;background:#282014;padding:2px 6px;border-radius:4px;border:1px solid #4a3818;flex:none">${fmtPts(x.cost)}</b>
-          <button title="Remove ${esc(x.name)}" onclick="event.stopPropagation();removeTeamMon(${i})">×</button>
+          ${bankBtn}
+          ${!isCurrentTab ? `<button title="Remove ${esc(x.name)}" onclick="event.stopPropagation();removeTeamMon(${i})">×</button>` : ''}
         </div>`;
       }).join('')}
       ${Array.from({length:free},(_,i)=>`<div class="tm-slot-free">Slot ${team.picks.length+i+1} open</div>`).join('')}
     </div>
-    <div class="mock-actions"><button class="chip" onclick="copyTeam()">Copy list</button><button class="chip" onclick="deleteTeam()" style="color:#ff9ba1">Delete team</button></div>
-    <p class="tm-note">Teams are private and saved to ${esc(who)}${s.key!=='guest'?' — they follow your account when you sign in elsewhere':''}. ${isLiveDraft ? 'Click any Pokémon above to draft it on the board.' : 'Click any Pokémon on the board to add it to your plan.'}</p>`
+    <div class="mock-actions">
+      <button class="chip" onclick="copyTeam()">Copy list</button>
+      ${isCurrentTab ? `
+        <button class="chip" onclick="createPlanFromCurrent()" style="color:#ffd166;font-weight:800">+ Branch into New Plan</button>
+      ` : `
+        <button class="chip" onclick="deleteTeam()" style="color:#ff9ba1">Delete team</button>
+      `}
+    </div>
+    <p class="tm-note">${isCurrentTab ? 'Official picks update live as you draft in the tournament.' : `Teams are private and saved to ${esc(who)}${s.key!=='guest'?' — they follow your account when you sign in elsewhere':''}. ${isLiveDraft ? 'Click any Pokémon above to draft it on the board.' : 'Click any Pokémon on the board to add it to your plan.'}`}</p>`
 }
 
 /* ------------------------------------------------------------
@@ -35727,6 +36138,11 @@ function ensureTournamentDraft(t){
       t.draftData.status = 'pending';
     }
   }
+  if(!t.draftData.bank) t.draftData.bank = {};
+  if(t.draftData.timerEnabled === undefined) t.draftData.timerEnabled = false;
+  if(t.draftData.timePerPickMinutes === undefined) t.draftData.timePerPickMinutes = 120;
+  if(!t.draftData.activeStart) t.draftData.activeStart = '09:00';
+  if(!t.draftData.activeEnd) t.draftData.activeEnd = '22:00';
   return t.draftData;
 }
 
@@ -35947,6 +36363,415 @@ function promptEditPokemonCost(targetId, pokemonName, currentCost){
     showDraftToast(`💰 Set ${pokemonName} cost to ${num} pts in ${t.name}`);
   }
   render();
+}
+
+/* ------------------------------------------------------------
+   DRAFT BANK (1-SLOT RESERVE QUEUE) & SCHEDULED DRAFT TIMER
+   ------------------------------------------------------------ */
+var draftCountdownInterval = null;
+
+function setDraftBankMon(tId, pokemonName, cost, overrideCoach){
+  let t = tournamentData[tId] || ongoingT() || activeT();
+  if(!t) return { success: false, reason: 'Tournament not found' };
+  let d = ensureTournamentDraft(t);
+  if(!d) return { success: false, reason: 'Draft data not found' };
+
+  let currentUsername = window.currentAccount?.username || sessionUser?.user_metadata?.username || sessionUser?.email?.split('@')[0] || '';
+  let linkedPlayerName = (typeof myPlayer === 'function' ? myPlayer() : null) || (typeof playerForAccount === 'function' ? playerForAccount(currentUsername) : null);
+  let coach = overrideCoach || linkedPlayerName || (typeof myPlayer === 'function' ? myPlayer() : null) || currentUsername;
+
+  if(!coach && !moderator && !canManageTournament(t)){
+    alert('Please sign in or link your account to bank a Pokémon.');
+    return { success: false, reason: 'Not signed in' };
+  }
+
+  if(!coach && (moderator || canManageTournament(t))){
+    let turn = getDraftCurrentTurn(t);
+    coach = turn?.player;
+  }
+  if(!coach){
+    alert('Could not determine coach for draft bank.');
+    return { success: false, reason: 'No coach determined' };
+  }
+
+  let alreadyPicked = (d.picks || []).some(x => x.pokemon.toLowerCase().trim() === pokemonName.toLowerCase().trim());
+  if(alreadyPicked){
+    alert(`${pokemonName} has already been drafted!`);
+    return { success: false, reason: 'Already picked' };
+  }
+
+  let monCost = (cost !== undefined && cost !== null) ? cost : findPokemonCostOnBoard(t, pokemonName);
+  let stats = getDraftCoachStats(t, coach);
+  if(stats.budget > 0 && stats.remainingBudget < monCost){
+    alert(`Cannot bank ${pokemonName}: costs ${monCost} pts but you only have ${stats.remainingBudget} pts left.`);
+    return { success: false, reason: 'Exceeds budget' };
+  }
+  if(stats.budget > 0 && monCost > stats.maxAffordableCost){
+    alert(`Cannot bank ${pokemonName}: exceeds maximum affordable cost (${stats.maxAffordableCost} pts) to preserve 1 pt per remaining slot.`);
+    return { success: false, reason: 'Exceeds reserve' };
+  }
+
+  d.bank = d.bank || {};
+  d.bank[coach] = {
+    pokemon: pokemonName,
+    cost: monCost,
+    setAt: Date.now()
+  };
+
+  persistLeague();
+  syncDraftStateToCloud(t);
+  render();
+  showDraftToast(`🏦 Saved ${pokemonName} to your Draft Bank!`, pokemonName);
+  return { success: true, coach, pokemon: pokemonName, cost: monCost };
+}
+
+function clearDraftBankMon(tId, coach){
+  let t = tournamentData[tId] || ongoingT() || activeT();
+  if(!t || !t.draftData?.bank) return;
+  let targetCoach = coach;
+  if(!targetCoach){
+    let currentUsername = window.currentAccount?.username || sessionUser?.user_metadata?.username || sessionUser?.email?.split('@')[0] || '';
+    targetCoach = (typeof myPlayer === 'function' ? myPlayer() : null) || (typeof playerForAccount === 'function' ? playerForAccount(currentUsername) : null) || currentUsername;
+  }
+  if(targetCoach && t.draftData.bank[targetCoach]){
+    delete t.draftData.bank[targetCoach];
+    persistLeague();
+    syncDraftStateToCloud(t);
+    render();
+    showDraftToast('Draft bank cleared');
+  }
+}
+
+function checkAndExecuteDraftBank(t){
+  if(!t || !t.draftData) return false;
+  let d = t.draftData;
+  if(d.status !== 'active') return false;
+
+  let turn = getDraftCurrentTurn(t);
+  if(!turn || turn.isComplete || !turn.player) return false;
+
+  let coach = turn.player;
+  let banked = d.bank?.[coach];
+  if(!banked || !banked.pokemon) return false;
+
+  let alreadyPicked = (d.picks || []).some(x => x.pokemon.toLowerCase().trim() === banked.pokemon.toLowerCase().trim());
+  let cost = findPokemonCostOnBoard(t, banked.pokemon);
+  let stats = getDraftCoachStats(t, coach);
+  let hasBudget = (stats.budget === 0 || stats.remainingBudget >= cost);
+  let satisfiesReserve = (stats.budget === 0 || cost <= stats.maxAffordableCost);
+  let hasSlots = !stats.isRosterFull;
+
+  if(alreadyPicked || !hasBudget || !satisfiesReserve || !hasSlots){
+    delete d.bank[coach];
+    persistLeague();
+    syncDraftStateToCloud(t);
+    let reason = alreadyPicked ? 'was already drafted' : (!hasBudget || !satisfiesReserve ? 'is over budget' : 'roster is full');
+    showDraftToast(`⚠️ Banked pick ${banked.pokemon} skipped (${reason})`, banked.pokemon);
+    return false;
+  }
+
+  delete d.bank[coach];
+  persistLeague();
+
+  makeDraftPick(t.id, banked.pokemon, coach, { autoReason: 'bank' });
+  return true;
+}
+
+function isDraftTimerInActiveWindow(t, dateObj = new Date()){
+  let d = t?.draftData;
+  if(!d) return true;
+  let startStr = d.activeStart || '09:00';
+  let endStr = d.activeEnd || '22:00';
+
+  let [sH, sM] = startStr.split(':').map(Number);
+  let [eH, eM] = endStr.split(':').map(Number);
+  let startMinutes = (isNaN(sH) ? 9 : sH) * 60 + (isNaN(sM) ? 0 : sM);
+  let endMinutes = (isNaN(eH) ? 22 : eH) * 60 + (isNaN(eM) ? 0 : eM);
+
+  let curMinutes = dateObj.getHours() * 60 + dateObj.getMinutes();
+
+  if(startMinutes === endMinutes){
+    return true;
+  }
+  if(startMinutes < endMinutes){
+    return curMinutes >= startMinutes && curMinutes < endMinutes;
+  } else {
+    return curMinutes >= startMinutes || curMinutes < endMinutes;
+  }
+}
+
+function calculateActiveMsBetween(startMs, endMs, activeStartStr, activeEndStr){
+  if(!startMs || !endMs || startMs >= endMs) return 0;
+  let startStr = activeStartStr || '09:00';
+  let endStr = activeEndStr || '22:00';
+
+  let [sH, sM] = startStr.split(':').map(Number);
+  let [eH, eM] = endStr.split(':').map(Number);
+  let startMin = (isNaN(sH) ? 9 : sH) * 60 + (isNaN(sM) ? 0 : sM);
+  let endMin = (isNaN(eH) ? 22 : eH) * 60 + (isNaN(eM) ? 0 : eM);
+
+  if(startMin === endMin){
+    return Math.max(0, endMs - startMs);
+  }
+
+  let totalActiveMs = 0;
+  let cur = new Date(startMs);
+  let curDayStart = new Date(cur.getFullYear(), cur.getMonth(), cur.getDate()).getTime();
+
+  while(curDayStart <= endMs){
+    let curDayEnd = curDayStart + 86400000;
+    let winStartThisDay = Math.max(startMs, curDayStart);
+    let winEndThisDay = Math.min(endMs, curDayEnd);
+
+    if(winStartThisDay < winEndThisDay){
+      if(startMin < endMin){
+        let aStart = curDayStart + startMin * 60000;
+        let aEnd = curDayStart + endMin * 60000;
+        let overlap = Math.max(0, Math.min(winEndThisDay, aEnd) - Math.max(winStartThisDay, aStart));
+        totalActiveMs += overlap;
+      } else {
+        let w1Start = curDayStart;
+        let w1End = curDayStart + endMin * 60000;
+        let o1 = Math.max(0, Math.min(winEndThisDay, w1End) - Math.max(winStartThisDay, w1Start));
+
+        let w2Start = curDayStart + startMin * 60000;
+        let w2End = curDayEnd;
+        let o2 = Math.max(0, Math.min(winEndThisDay, w2End) - Math.max(winStartThisDay, w2Start));
+
+        totalActiveMs += (o1 + o2);
+      }
+    }
+    curDayStart = curDayEnd;
+  }
+
+  return totalActiveMs;
+}
+
+function getDraftPickTimerStatus(t){
+  let d = t?.draftData;
+  if(!d || !d.timerEnabled){
+    return { enabled: false };
+  }
+
+  let turn = getDraftCurrentTurn(t);
+  if(!turn || turn.isComplete || !turn.player || d.status !== 'active'){
+    return {
+      enabled: true,
+      isActive: false,
+      isPaused: d.status === 'paused',
+      isComplete: turn?.isComplete || d.status === 'completed',
+      player: turn?.player
+    };
+  }
+
+  let now = Date.now();
+  let inActiveWindow = isDraftTimerInActiveWindow(t, new Date(now));
+  let limitMs = Math.max(1, +(d.timePerPickMinutes || 120)) * 60 * 1000;
+
+  if(!d.currentTurnStartedAt){
+    d.currentTurnStartedAt = now;
+  }
+
+  let elapsedActiveMs = calculateActiveMsBetween(d.currentTurnStartedAt, now, d.activeStart, d.activeEnd);
+  let remainingMs = Math.max(0, limitMs - elapsedActiveMs);
+  let isExpired = (remainingMs <= 0);
+
+  return {
+    enabled: true,
+    isActive: true,
+    inActiveWindow,
+    activeStart: d.activeStart || '09:00',
+    activeEnd: d.activeEnd || '22:00',
+    timePerPickMinutes: +(d.timePerPickMinutes || 120),
+    limitMs,
+    elapsedActiveMs,
+    remainingMs,
+    isExpired,
+    player: turn.player
+  };
+}
+
+function autoPickLowestAvailableMon(t, targetPlayer){
+  if(!t || !t.draftData) return;
+  let d = t.draftData;
+  if(d.status !== 'active') return;
+  if(d._isAutoPicking) return;
+
+  let turn = getDraftCurrentTurn(t);
+  let player = targetPlayer || turn?.player;
+  if(!player) return;
+
+  d._isAutoPicking = true;
+
+  try {
+    let board = d.board || [];
+    let draftedSet = new Set((d.picks || []).map(x => (x.pokemon || '').toLowerCase().trim()));
+    let stats = getDraftCoachStats(t, player);
+
+    let candidates = [];
+    board.forEach(tier => {
+      (tier.pokemon || []).forEach(mon => {
+        let clean = mon.toLowerCase().trim();
+        if(!draftedSet.has(clean)){
+          let cost = tier.cost ?? 0;
+          let affordable = (stats.budget === 0 || (stats.remainingBudget >= cost && cost <= stats.maxAffordableCost));
+          if(affordable){
+            candidates.push({ pokemon: mon, cost: cost });
+          }
+        }
+      });
+    });
+
+    if(!candidates.length){
+      console.warn(`[Draft Timer] No affordable Pokémon available to auto-pick for ${player}`);
+      showDraftToast(`⚠️ Auto-pick skipped: No affordable Pokémon available for ${player}`);
+      return;
+    }
+
+    let minCost = Math.min(...candidates.map(c => c.cost));
+    let lowestTierCandidates = candidates.filter(c => c.cost === minCost);
+    let chosen = lowestTierCandidates[Math.floor(Math.random() * lowestTierCandidates.length)];
+
+    makeDraftPick(t.id, chosen.pokemon, player, { autoReason: 'timeout' });
+    return chosen;
+  } finally {
+    d._isAutoPicking = false;
+  }
+}
+
+function setupDraftCountdownTicker(){
+  if(draftCountdownInterval) clearInterval(draftCountdownInterval);
+  draftCountdownInterval = setInterval(() => {
+    let t = (typeof viewTournament !== 'undefined' && viewTournament && tournamentData[viewTournament]) ||
+            (typeof window !== 'undefined' && window.viewTournament && tournamentData[window.viewTournament]) ||
+            (typeof ongoingT === 'function' ? ongoingT() : null) ||
+            (typeof activeT === 'function' ? activeT() : null);
+    if(!t || !t.draftData || t.draftData.status !== 'active' || !t.draftData.timerEnabled) return;
+
+    let status = getDraftPickTimerStatus(t);
+    if(!status || !status.isActive) return;
+
+    let badge = document.getElementById('draftCountdownBadge');
+    if(badge){
+      if(!status.inActiveWindow){
+        badge.innerHTML = `⏸️ Paused (Resumes at ${status.activeStart})`;
+        badge.style.background = '#2e2208';
+        badge.style.borderColor = '#d97706';
+        badge.style.color = '#fbbf24';
+      } else {
+        let totalSec = Math.floor(status.remainingMs / 1000);
+        let hrs = Math.floor(totalSec / 3600);
+        let mins = Math.floor((totalSec % 3600) / 60);
+        let secs = totalSec % 60;
+        let timeStr = `${hrs > 0 ? hrs + 'h ' : ''}${String(mins).padStart(2, '0')}m ${String(secs).padStart(2, '0')}s`;
+
+        badge.innerHTML = `⏳ <b>${timeStr}</b> Remaining`;
+        if(totalSec <= 300){
+          badge.style.background = '#3e1418';
+          badge.style.borderColor = '#ef4444';
+          badge.style.color = '#fca5a5';
+        } else {
+          badge.style.background = '#2a1b1e';
+          badge.style.borderColor = '#ef3038';
+          badge.style.color = '#ff858b';
+        }
+      }
+    }
+
+    if(status.inActiveWindow && status.isExpired && !t.draftData._isAutoPicking){
+      autoPickLowestAvailableMon(t, status.player);
+    }
+  }, 1000);
+}
+
+function openDraftSettingsModal(tId){
+  let t = tournamentData[tId] || ongoingT() || activeT();
+  if(!t || !canManageTournament(t)) return;
+  let d = ensureTournamentDraft(t);
+
+  document.querySelector('#modal').innerHTML = `
+    <div class="modal-wrap">
+      <div class="modal" style="max-width:480px;text-align:left">
+        <div class="modal-head">
+          <div class="modal-title">⚙️ Draft Timer & Settings</div>
+          <button class="close" onclick="closeModal()">×</button>
+        </div>
+
+        <div style="display:flex;flex-direction:column;gap:14px;margin-top:10px">
+          <div class="card" style="padding:14px;background:#14141c;border-color:#2a2a3a">
+            <label style="display:flex;align-items:center;gap:10px;cursor:pointer;margin:0">
+              <input type="checkbox" id="editDraftTimerEnabled" ${d.timerEnabled ? 'checked' : ''} style="width:18px;height:18px;accent-color:var(--red);cursor:pointer" onchange="document.getElementById('editDraftTimerFields').style.display=this.checked?'grid':'none'">
+              <div>
+                <div style="font-weight:800;font-size:13px;color:#f5f3f0">⏱️ Scheduled Draft Timer & Auto-Pick</div>
+                <div style="font-size:11px;color:#8e8c95;margin-top:2px">Picks countdown during active hours; pauses overnight; auto-picks on timeout.</div>
+              </div>
+            </label>
+
+            <div id="editDraftTimerFields" style="display:${d.timerEnabled ? 'grid' : 'none'};grid-template-columns:1fr 1fr;gap:10px;margin-top:12px;border-top:1px solid #242432;padding-top:12px">
+              <div style="grid-column:1/-1">
+                <label style="font-size:10px;font-weight:800;color:#8e8c95;text-transform:uppercase">Time Allotted Per Pick</label>
+                <select id="editDraftTimerMinutes" style="width:100%;padding:8px 10px;background:#1b1b26;border:1px solid #333346;border-radius:6px;color:#f5f3f0;font-weight:700;margin-top:4px">
+                  <option value="15" ${d.timePerPickMinutes == 15 ? 'selected' : ''}>15 Minutes (Fast Live Draft)</option>
+                  <option value="30" ${d.timePerPickMinutes == 30 ? 'selected' : ''}>30 Minutes</option>
+                  <option value="60" ${d.timePerPickMinutes == 60 ? 'selected' : ''}>1 Hour</option>
+                  <option value="120" ${d.timePerPickMinutes == 120 ? 'selected' : ''}>2 Hours (Standard Slow Draft)</option>
+                  <option value="240" ${d.timePerPickMinutes == 240 ? 'selected' : ''}>4 Hours</option>
+                  <option value="480" ${d.timePerPickMinutes == 480 ? 'selected' : ''}>8 Hours</option>
+                  <option value="720" ${d.timePerPickMinutes == 720 ? 'selected' : ''}>12 Hours</option>
+                  <option value="1440" ${d.timePerPickMinutes == 1440 ? 'selected' : ''}>24 Hours</option>
+                </select>
+              </div>
+
+              <div>
+                <label style="font-size:10px;font-weight:800;color:#8e8c95;text-transform:uppercase">Active Window Start</label>
+                <input type="time" id="editDraftActiveStart" value="${esc(d.activeStart || '09:00')}" style="width:100%;padding:8px 10px;background:#1b1b26;border:1px solid #333346;border-radius:6px;color:#f5f3f0;margin-top:4px">
+              </div>
+
+              <div>
+                <label style="font-size:10px;font-weight:800;color:#8e8c95;text-transform:uppercase">Active Window End</label>
+                <input type="time" id="editDraftActiveEnd" value="${esc(d.activeEnd || '22:00')}" style="width:100%;padding:8px 10px;background:#1b1b26;border:1px solid #333346;border-radius:6px;color:#f5f3f0;margin-top:4px">
+              </div>
+            </div>
+          </div>
+
+          <div class="card" style="padding:14px;background:#14141c;border-color:#2a2a3a;display:grid;grid-template-columns:1fr 1fr;gap:10px">
+            <div>
+              <label style="font-size:10px;font-weight:800;color:#8e8c95;text-transform:uppercase">Point Budget</label>
+              <input type="number" id="editDraftPointBudget" min="0" value="${d.pointBudget ?? 100}" style="width:100%;padding:8px 10px;background:#1b1b26;border:1px solid #333346;border-radius:6px;color:#f5f3f0;font-weight:700;margin-top:4px">
+            </div>
+            <div>
+              <label style="font-size:10px;font-weight:800;color:#8e8c95;text-transform:uppercase">Roster Slots (Rounds)</label>
+              <input type="number" id="editDraftMaxRoster" min="1" max="24" value="${d.maxRosterSize ?? 10}" style="width:100%;padding:8px 10px;background:#1b1b26;border:1px solid #333346;border-radius:6px;color:#f5f3f0;font-weight:700;margin-top:4px">
+            </div>
+          </div>
+
+          <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:6px">
+            <button class="btn ghost" onclick="closeModal()">Cancel</button>
+            <button class="btn" onclick="saveDraftSettingsModal('${jsArg(t.id)}')">Save Settings</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function saveDraftSettingsModal(tId){
+  let t = tournamentData[tId] || ongoingT() || activeT();
+  if(!t || !canManageTournament(t)) return;
+  let d = ensureTournamentDraft(t);
+
+  d.timerEnabled = document.getElementById('editDraftTimerEnabled')?.checked || false;
+  d.timePerPickMinutes = Math.max(1, +(document.getElementById('editDraftTimerMinutes')?.value || 120));
+  d.activeStart = document.getElementById('editDraftActiveStart')?.value || '09:00';
+  d.activeEnd = document.getElementById('editDraftActiveEnd')?.value || '22:00';
+  d.pointBudget = Math.max(0, +(document.getElementById('editDraftPointBudget')?.value || 100));
+  d.maxRosterSize = Math.max(1, +(document.getElementById('editDraftMaxRoster')?.value || 10));
+
+  persistLeague();
+  syncDraftStateToCloud(t);
+  closeModal();
+  render();
+  showDraftToast('Draft settings updated successfully');
 }
 
 function openTournamentPointCostsEditor(targetId){
@@ -37090,6 +37915,10 @@ function openDraftConfirmationModal(tId, monName, cost, tierName){
               </button>
             ` : ''))}
 
+            <button class="btn ghost" style="color:#60a5fa;border-color:#2563eb;width:100%;font-weight:700" onclick="setDraftBankMon('${jsArg(t.id)}', '${jsArg(monName)}', ${cost});closeModal()">
+              🏦 Save to My Draft Bank (Auto-Pick on My Turn)
+            </button>
+
             <button class="btn ghost" style="color:#ffd166;border-color:#5a441c;width:100%" onclick="addTeamMon('${jsArg(monName)}', ${cost});closeModal()">
               📝 Add to My Private Team Plan
             </button>
@@ -37102,7 +37931,7 @@ function openDraftConfirmationModal(tId, monName, cost, tierName){
 }
 
 
-function makeDraftPick(tId, pokemonName, forcedPlayer = null){
+function makeDraftPick(tId, pokemonName, forcedPlayer = null, options = {}){
   let t = tournamentData[tId] || ongoingT() || activeT();
   if(!t) return;
   let d = ensureTournamentDraft(t);
@@ -37138,7 +37967,7 @@ function makeDraftPick(tId, pokemonName, forcedPlayer = null){
   }
 
   // Account authentication check: only tournament managers can pick on behalf of someone else
-  if(!canManageTournament(t)){
+  if(!canManageTournament(t) && !options?.autoReason){
     let currentUsername = window.currentAccount?.username || sessionUser?.user_metadata?.username || sessionUser?.email?.split('@')[0] || '';
     let linked = (typeof myPlayer === 'function' ? myPlayer() : null) || (typeof playerForAccount === 'function' ? playerForAccount(currentUsername) : null) || currentUsername;
     if(!linked || linked.toLowerCase() !== (targetPlayer || '').toLowerCase()){
@@ -37176,9 +38005,16 @@ function makeDraftPick(tId, pokemonName, forcedPlayer = null){
     player: targetPlayer,
     pokemon: pokemonName,
     cost: cost,
-    timestamp: Date.now()
+    timestamp: Date.now(),
+    autoPick: Boolean(options?.autoReason),
+    autoReason: options?.autoReason || null
   };
   d.picks.push(pickObj);
+
+  // Reset timer clock for next turn
+  d.currentTurnStartedAt = Date.now();
+  d.currentTurnElapsedActiveMs = 0;
+  d.lastTimerTickAt = Date.now();
 
   // Automatically place Pokémon onto active tournament roster!
   if(!t.rosters) t.rosters = {};
@@ -37203,7 +38039,20 @@ function makeDraftPick(tId, pokemonName, forcedPlayer = null){
   lastLocalUpdate = Date.now();
   persistLeague();
   render();
-  showDraftToast(`${targetPlayer} drafted ${pokemonName}!`, pokemonName);
+
+  let toastMsg = pickObj.autoReason === 'bank'
+    ? `🏦 ${targetPlayer} drafted ${pokemonName} via Draft Bank!`
+    : (pickObj.autoReason === 'timeout'
+      ? `⏰ ${targetPlayer} auto-drafted ${pokemonName} on timeout!`
+      : `${targetPlayer} drafted ${pokemonName}!`);
+  showDraftToast(toastMsg, pokemonName);
+
+  // Check if upcoming player has a valid banked pick ready to auto-draft!
+  if(d.status === 'active'){
+    setTimeout(() => {
+      checkAndExecuteDraftBank(t);
+    }, 400);
+  }
 
   // Instant Realtime Broadcast to all online draft participants (< 100ms)
   if(draftRealtimeChannel){
@@ -37221,7 +38070,9 @@ function makeDraftPick(tId, pokemonName, forcedPlayer = null){
           picks: d.picks,
           rosters: t.rosters,
           rev: knownRev,
-          timestamp: pickObj.timestamp
+          timestamp: pickObj.timestamp,
+          autoPick: pickObj.autoPick,
+          autoReason: pickObj.autoReason
         }
       });
     } catch(e){}
@@ -37286,6 +38137,9 @@ function startDraft(tId){
   if(!t || !canManageTournament(t)) return;
   let d = ensureTournamentDraft(t);
   d.status = 'active';
+  d.currentTurnStartedAt = Date.now();
+  d.currentTurnElapsedActiveMs = 0;
+  d.lastTimerTickAt = Date.now();
   window._lastLocalDraftActionTime = Date.now();
   window._lastLocalDraftStatusActionTime = Date.now();
   knownRev = (knownRev || 0) + 1;
@@ -37295,6 +38149,10 @@ function startDraft(tId){
 
   // Fast lightweight draft state sync (< 50ms)
   syncDraftStateToCloud(t);
+
+  setTimeout(() => {
+    checkAndExecuteDraftBank(t);
+  }, 400);
 
   if(draftRealtimeChannel){
     try {
@@ -37346,6 +38204,7 @@ function resumeDraft(tId){
   if(!t || !canManageTournament(t)) return;
   let d = ensureTournamentDraft(t);
   d.status = 'active';
+  d.lastTimerTickAt = Date.now();
   window._lastLocalDraftActionTime = Date.now();
   window._lastLocalDraftStatusActionTime = Date.now();
   knownRev = (knownRev || 0) + 1;
@@ -37355,6 +38214,10 @@ function resumeDraft(tId){
 
   // Fast lightweight draft state sync (< 50ms)
   syncDraftStateToCloud(t);
+
+  setTimeout(() => {
+    checkAndExecuteDraftBank(t);
+  }, 400);
 
   if(draftRealtimeChannel){
     try {
@@ -37439,12 +38302,64 @@ function DraftRoom(t){
       ${canManageDraft && d.status === 'active' ? `<button class="btn ghost btn-sm" onclick="pauseDraft('${jsArg(t.id)}')">⏸️ Pause</button>` : ''}
       ${canManageDraft && d.status === 'paused' ? `<button class="btn btn-sm" onclick="resumeDraft('${jsArg(t.id)}')">▶️ Resume</button>` : ''}
       ${canManageDraft && d.picks?.length ? `<button class="btn ghost btn-sm" style="color:#ff9ba1" onclick="undoDraftPick('${jsArg(t.id)}')">↩️ Undo Pick</button>` : ''}
+      ${canManageDraft ? `<button class="btn ghost btn-sm" onclick="openDraftSettingsModal('${jsArg(t.id)}')">⚙️ Timer & Settings</button>` : ''}
       ${canManageDraft ? `<button class="btn ghost btn-sm" onclick="openDraftOrderEditor('${jsArg(t.id)}')">🔀 Draft Order</button>` : ''}
       ${canManageDraft ? `<button class="btn ghost btn-sm" onclick="exportDraftBoardCSV('${jsArg(t.id)}')">📥 Export Board (CSV)</button>` : ''}
       ${canManageDraft ? `<button class="btn ghost btn-sm" onclick="openDraftBoardImporter('${jsArg(t.id)}')">📥 Import Sheet</button>` : ''}
       ${canManageDraft && (d.status === 'completed' || d.picks?.length >= getDraftTotalPicks(t)) ? `<button class="btn btn-sm" style="background:#10b981;border-color:#34d399" onclick="completeDraftAndAdvance('${jsArg(t.id)}')">🏁 Start ${getStage1Format(t) === 'swiss' ? 'Swiss Stage' : 'Group Stage'} →</button>` : ''}
     </div>
   `;
+
+  let timerBadge = '';
+  if(d.timerEnabled){
+    if(d.status === 'pending'){
+      timerBadge = `<span class="tag" style="background:#22222c;color:#a09fa8;border:1px solid #3d3d4e">⏱️ ${d.timePerPickMinutes || 120}m/pick (${esc(d.activeStart || '09:00')}–${esc(d.activeEnd || '22:00')})</span>`;
+    } else if(d.status === 'paused'){
+      timerBadge = `<span class="tag" style="background:#3d2c12;border-color:#f59e0b;color:#f59e0b">⏸️ Timer Paused</span>`;
+    } else if(d.status === 'completed'){
+      timerBadge = '';
+    } else {
+      let tStatus = getDraftPickTimerStatus(t);
+      if(!tStatus.inActiveWindow){
+        timerBadge = `<span class="tag" id="draftCountdownBadge" style="background:#2e2208;border:1px solid #d97706;color:#fbbf24;font-weight:800;font-size:11px;padding:3px 8px;border-radius:6px">⏸️ Paused (Resumes at ${esc(tStatus.activeStart)})</span>`;
+      } else {
+        let totalSec = Math.floor(tStatus.remainingMs / 1000);
+        let hrs = Math.floor(totalSec / 3600);
+        let mins = Math.floor((totalSec % 3600) / 60);
+        let secs = totalSec % 60;
+        let timeStr = `${hrs > 0 ? hrs + 'h ' : ''}${String(mins).padStart(2, '0')}m ${String(secs).padStart(2, '0')}s`;
+        timerBadge = `<span class="tag" id="draftCountdownBadge" style="background:#2a1b1e;border:1px solid #ef3038;color:#ff858b;font-weight:800;font-size:11px;padding:3px 8px;border-radius:6px">⏳ <b>${timeStr}</b> Remaining</span>`;
+      }
+    }
+  }
+
+  let myCoach = linkedPlayerName || (typeof myPlayer === 'function' ? myPlayer() : null) || currentUsername;
+  let myBanked = (d.bank && myCoach) ? d.bank[myCoach] : null;
+  let draftBankBanner = `
+    <div class="draft-bank-banner" style="background:#161622;border:1px solid #2e2e42;border-radius:8px;padding:9px 14px;margin:8px 0 12px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
+      <div style="display:flex;align-items:center;gap:10px;min-width:0">
+        <span style="font-size:20px;line-height:1">🏦</span>
+        <div style="min-width:0">
+          <div style="font-size:10px;font-weight:800;color:#8e8c95;text-transform:uppercase;letter-spacing:.6px">Your Draft Bank (1-Slot Reserve Queue)</div>
+          <div style="font-size:12px;color:#f5f3f0;font-weight:600;margin-top:2px;display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+            ${myBanked ? `
+              <span style="display:inline-flex;align-items:center;gap:6px">
+                <img src="${esc(pokeSprite(myBanked.pokemon))}" style="width:22px;height:22px;object-fit:contain" onerror="handleSpriteError(this)">
+                <b style="color:#ffd166">${esc(myBanked.pokemon)}</b>
+                <span class="tag" style="background:#282014;color:#ffd166;font-size:10px;padding:1px 6px;border:1px solid #4a3818">${myBanked.cost} pts</span>
+                <span style="color:#10b981;font-size:11px;font-weight:700">· Ready to auto-pick instantly on your turn!</span>
+              </span>
+            ` : `<span style="color:#8e8c95">No Pokémon banked. Click <b>"🏦 Bank"</b> on any available Pokémon to reserve it for your next turn!</span>`}
+          </div>
+        </div>
+      </div>
+      ${myBanked ? `
+        <button class="btn ghost btn-sm" style="color:#ff858b;border-color:#5a242c;padding:3px 10px!important;font-size:11px;font-weight:700" onclick="clearDraftBankMon('${jsArg(t.id)}', '${jsArg(myCoach)}')">✕ Clear Bank</button>
+      ` : ''}
+    </div>
+  `;
+
+  setTimeout(setupDraftCountdownTicker, 50);
 
   return `
     <div class="draft-room-layout">
@@ -37455,6 +38370,7 @@ function DraftRoom(t){
             ${statusBadge}
             <span class="eyebrow" style="margin:0;color:#ffd166;letter-spacing:1px">${esc(t.name)}</span>
             <span class="tag" style="background:#1e1e28;color:#c0bfca">Round <b>${turn.currentRound}</b> · Pick <b>${turn.currentPickNumber} of ${turn.totalPicks}</b></span>
+            ${timerBadge}
           </div>
           ${modActions}
         </div>
@@ -37544,6 +38460,8 @@ function DraftRoom(t){
                       <div style="display:inline-flex;align-items:center;gap:4px">
                         <img src="${esc(pokeSprite(pickObj.pokemon))}" class="draft-tile-sprite" onerror="handleSpriteError(this)">
                         <span class="draft-tile-mon">${esc(pickObj.pokemon)}</span>
+                        ${pickObj.autoReason === 'bank' ? `<span title="Banked auto-pick" style="font-size:10px">🏦</span>` : ''}
+                        ${pickObj.autoReason === 'timeout' ? `<span title="Auto-picked on timeout" style="font-size:10px">⏰</span>` : ''}
                       </div>
                     ` : (isCurrent ? `<span class="draft-tile-live">⏱️ LIVE PICK</span>` : `<span class="draft-tile-wait">Pick #${pickInfo.pickNumber}</span>`)}
                   </div>
@@ -37553,6 +38471,8 @@ function DraftRoom(t){
           </div>
         </div>
       </div>
+
+      ${draftBankBanner}
 
       <!-- Navigation Subtabs -->
       <div class="tabs" style="margin-top:4px">
@@ -37672,11 +38592,14 @@ function renderDraftBoardTierColumns(t){
                   </div>
                 </div>
 
-                ${moderator ? `
-                  <div style="display:flex;align-items:center;gap:6px">
+                <div style="display:flex;align-items:center;gap:4px">
+                  ${!isDrafted ? `
+                    <button class="btn ghost btn-sm" style="padding:1px 6px!important;font-size:9.5px!important;color:#60a5fa;border-color:#1e3a8a;font-weight:700" title="Reserve in your Draft Bank" onclick="event.stopPropagation();setDraftBankMon('${jsArg(t.id)}', '${jsArg(mon)}', ${tier.cost})">🏦 Bank</button>
+                  ` : ''}
+                  ${moderator ? `
                     <button class="btn ghost btn-sm" style="padding:1px 5px!important;font-size:9px!important;color:#ffd166;border-color:#5a4218" title="Edit / Move Tier" onclick="event.stopPropagation();openEditBoardPokemonModal('${jsArg(t.id)}', '${jsArg(mon)}', ${tier.cost}, '${jsArg(tier.name)}')">✏️</button>
-                  </div>
-                ` : ''}
+                  ` : ''}
+                </div>
 
                 ${isDrafted ? `
                   <span style="font-size:11px;color:#6b6a75;font-weight:700">Picked</span>
@@ -38135,7 +39058,7 @@ function DraftRostersView(t){
                        title="${esc(pickObj.pokemon)} (${theme.name} · ${cellCost} pts) · Round ${roundNum}, Pick #${pickNumber}${canManage ? ' · Click to swap out' : ''}"
                        ${canManage ? `onclick="openModeratorSwapModal('${jsArg(t.id)}', '${jsArg(coach)}', '${jsArg(pickObj.pokemon)}', ${roundNum}, ${pickNumber}, ${cellCost})"` : ''}>
                     <div class="draft-matrix-cell-head">
-                      <span class="draft-matrix-pick-num" style="color:${theme.accent};font-weight:800">${roundNum}.${posInRound + 1}</span>
+                      <span class="draft-matrix-pick-num" style="color:${theme.accent};font-weight:800">${roundNum}.${posInRound + 1}${pickObj.autoReason === 'bank' ? ' <span title="Draft Bank auto-pick" style="font-size:10px">🏦</span>' : (pickObj.autoReason === 'timeout' ? ' <span title="Auto-picked on timeout" style="font-size:10px">⏰</span>' : '')}</span>
                       <span class="draft-matrix-cost" style="background:${theme.badgeBg};border:1px solid ${theme.border};color:${theme.badgeText};font-weight:700">${cellCost} PTS</span>
                     </div>
                     <div class="draft-matrix-cell-body">
