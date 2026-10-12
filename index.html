@@ -2290,6 +2290,8 @@ details[open] > .past-tourney-summary .past-chevron{transform:rotate(180deg);col
 .planner-team-input:focus{border-color:var(--red)!important;outline:none!important;box-shadow:0 0 10px rgba(239,48,56,0.3)!important}
 .planner-presets{display:flex;align-items:center;justify-content:center;gap:6px;margin-bottom:14px;flex-wrap:wrap}
 .planner-badge-row{display:flex;align-items:center;justify-content:center;gap:8px;margin-top:4px}
+@keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
+.planner-sync-btn:hover{background:#1e2230!important;border-color:#3b82f6!important;color:#bfdbfe!important;box-shadow:0 0 10px rgba(59,130,246,0.25)!important}
 /* ------------------------------------------------------------ Group Draw Ceremony & Draft-Locked Styles ------------------------------------------------------------ */
 .group-draw-ceremony-modal{max-width:840px;width:100%}
 .hat-stage{background:radial-gradient(circle at center, #261622 0%, #13131a 70%);border:1px solid #3d2432;border-radius:12px;padding:24px 20px;text-align:center;position:relative;overflow:hidden;box-shadow:0 8px 32px rgba(0,0,0,0.6)}
@@ -27792,6 +27794,26 @@ function pastTournaments(p){
   }).join('');
 }
 
+function handleMatchHistoryReplayClick(tournamentId, matchKey, fallbackUrl){
+  let t = (tournamentId && tournamentData[tournamentId]) || activeT() || ongoingT();
+  let mInfo = t && matchKey ? findTournamentMatch(t, matchKey) : null;
+  if(mInfo && mInfo.match && typeof openMatchReplayHubModal === 'function'){
+    openMatchReplayHubModal(tournamentId, matchKey, 1, 'watch');
+    return;
+  }
+  if(typeof openMatchReplayHubModal === 'function' && tournamentId && matchKey){
+    openMatchReplayHubModal(tournamentId, matchKey, 1, 'watch');
+    return;
+  }
+  if(fallbackUrl && typeof fallbackUrl === 'string' && (fallbackUrl.startsWith('http://') || fallbackUrl.startsWith('https://'))){
+    window.open(fallbackUrl, '_blank', 'noopener,noreferrer');
+    return;
+  }
+  if(typeof showDraftToast === 'function'){
+    showDraftToast('Replay could not be loaded for this match', 'error');
+  }
+}
+
 function renderTournamentMatchHistoryHtml(t, p){
   if(!t || !p) return '';
   let matchHistory = (typeof getPlayerMatchHistory === 'function' ? getPlayerMatchHistory(p) : []).filter(m => m.tournamentId === t.id);
@@ -27873,9 +27895,10 @@ function renderTournamentMatchHistoryHtml(t, p){
               </div>
 
               ${replays.length ? `
-                <a href="${esc(replays[0].url || replays[0])}" target="_blank" rel="noopener" class="btn ghost btn-sm" style="padding:2px 7px!important;font-size:10px!important;color:#60a5fa;border-color:#1e3a8a;display:inline-flex;align-items:center;gap:3px;text-decoration:none" title="Watch Showdown battle replay">
-                  🎥 Replay
-                </a>
+                <button type="button" class="btn ghost btn-sm" style="padding:3px 9px!important;font-size:10px!important;color:#60a5fa;border-color:#1e3a8a;display:inline-flex;align-items:center;gap:4px;cursor:pointer;font-weight:700" onclick="handleMatchHistoryReplayClick('${jsArg(m.tournamentId || t.id)}', '${jsArg(m.matchKey || m.id)}', '${jsArg(typeof replays[0] === 'string' ? replays[0] : (replays[0]?.url || ''))}')" title="Watch Showdown battle replay">
+                  <svg viewBox="0 0 24 24" width="10" height="10" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+                  Replay
+                </button>
               ` : ''}
             </div>
           </div>
@@ -35694,67 +35717,208 @@ function activeTeam(){
   return s.teams.find(x=>x.id===s.activeId)||null;
 }
 
+function getPlannerUsername(){
+  let u = window.currentAccount?.username || 
+          sessionUser?.username || 
+          sessionUser?.user_metadata?.username || 
+          sessionUser?.email?.split('@')[0] || 
+          (typeof accountKey === 'function' && accountKey() !== 'guest' ? accountKey() : '');
+  return (typeof u === 'string' ? u : '').trim().toLowerCase();
+}
+
 function writeTeams(bump=true){
   if(bump)teamStore.updatedAt=Date.now();
-  try{localStorage.setItem('draftdex-teams-'+teamStore.key,JSON.stringify({teams:teamStore.teams,activeId:teamStore.activeId,updatedAt:teamStore.updatedAt,adoptedGuest:teamStore.adoptedGuest}))}catch{}
+  try{
+    localStorage.setItem('draftdex-teams-'+teamStore.key,JSON.stringify({teams:teamStore.teams,activeId:teamStore.activeId,updatedAt:teamStore.updatedAt,adoptedGuest:teamStore.adoptedGuest}));
+    if(teamStore.key && teamStore.key !== 'guest'){
+      localStorage.setItem('draftdex-teams-'+String(teamStore.key).toLowerCase(),JSON.stringify({teams:teamStore.teams,activeId:teamStore.activeId,updatedAt:teamStore.updatedAt,adoptedGuest:teamStore.adoptedGuest}));
+    }
+  }catch{}
   if(bump)schedulePushTeams();
+}
+
+async function pushRemoteTeams(){
+  let user = getPlannerUsername();
+  if(!user || isSandboxMode()) return false;
+  let cfUrl = typeof getCloudflareUrl === 'function' ? getCloudflareUrl() : '';
+  if(!cfUrl) return false;
+  try{
+    let res = await fetch(`${cfUrl}/api/user/planner`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        username: user,
+        teams: teamStore.teams || [],
+        activeId: teamStore.activeId || null,
+        updatedAt: teamStore.updatedAt || Date.now()
+      })
+    });
+    return res.ok;
+  }catch(e){
+    console.warn('Failed to push planner teams to cloud:', e);
+    return false;
+  }
 }
 
 var teamsPushTimer=null;
 function schedulePushTeams(){
-  let user = window.currentAccount?.username || (accountKey() !== 'guest' ? accountKey() : null);
+  let user = getPlannerUsername();
   if(!user || isSandboxMode()) return;
   clearTimeout(teamsPushTimer);
   teamsPushTimer=setTimeout(async()=>{
-    let cfUrl = typeof getCloudflareUrl === 'function' ? getCloudflareUrl() : '';
-    if(!cfUrl) return;
-    try{
-      await fetch(`${cfUrl}/api/user/planner`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          username: user,
-          teams: teamStore.teams,
-          activeId: teamStore.activeId,
-          updatedAt: teamStore.updatedAt || Date.now()
-        })
-      });
-    }catch(e){
-      console.warn('Failed to push planner teams to cloud:', e);
-    }
+    await pushRemoteTeams();
   }, 400);
 }
 
 async function pullRemoteTeams(force=false){
-  let user = window.currentAccount?.username || (accountKey() !== 'guest' ? accountKey() : null);
-  if(!user || isSandboxMode()) return;
-  let key=accountKey();
-  if(!force && window.__teamsPulled[key]) return;
-  window.__teamsPulled[key]=true;
+  let user = getPlannerUsername();
+  if(!user || isSandboxMode()){
+    if(force && typeof showDraftToast === 'function'){
+      showDraftToast('Please sign in to sync draft plans across devices', 'error');
+    }
+    return false;
+  }
+  let key = accountKey();
+  if(!force && window.__teamsPulled[key]) return true;
+  window.__teamsPulled[key] = true;
+
   let cfUrl = typeof getCloudflareUrl === 'function' ? getCloudflareUrl() : '';
-  if(!cfUrl) return;
+  if(!cfUrl){
+    if(force && typeof showDraftToast === 'function'){
+      showDraftToast('Cloud backend URL not configured', 'error');
+    }
+    return false;
+  }
+
   try{
-    let res = await fetch(`${cfUrl}/api/user/planner?username=${encodeURIComponent(user)}&_t=${Date.now()}`, {
-      headers: { 'Cache-Control': 'no-cache' }
-    });
-    if(!res.ok) return;
+    // Simple CORS GET request: no custom headers to avoid OPTIONS preflight failure on mobile
+    let res = await fetch(`${cfUrl}/api/user/planner?username=${encodeURIComponent(user)}&_t=${Date.now()}`);
+    if(!res.ok){
+      if(force && typeof showDraftToast === 'function'){
+        showDraftToast('Could not reach cloud server', 'error');
+      }
+      return false;
+    }
     let remote = await res.json();
     ensureTeams();
-    let remoteHasTeams = Array.isArray(remote?.teams) && remote.teams.length > 0;
-    let localHasTeams = Array.isArray(teamStore?.teams) && teamStore.teams.length > 0;
-    let remoteIsNewer = (remote?.updatedAt || 0) > (teamStore?.updatedAt || 0);
 
-    if(remoteHasTeams && (!localHasTeams || remoteIsNewer)){
-      teamStore.teams = remote.teams;
-      teamStore.activeId = remote.activeId || remote.teams[0]?.id || null;
-      teamStore.updatedAt = remote.updatedAt || Date.now();
+    let remoteTeams = Array.isArray(remote?.teams) ? remote.teams : [];
+    let localTeams = Array.isArray(teamStore?.teams) ? teamStore.teams : [];
+    let remoteHasTeams = remoteTeams.length > 0;
+    let localHasTeams = localTeams.length > 0;
+    let remoteUpdated = Number(remote?.updatedAt) || 0;
+    let localUpdated = Number(teamStore?.updatedAt) || 0;
+
+    let changed = false;
+
+    if(remoteHasTeams && !localHasTeams){
+      // Device had no local teams -> adopt remote teams directly
+      teamStore.teams = remoteTeams;
+      teamStore.activeId = remote.activeId || remoteTeams[0]?.id || null;
+      teamStore.updatedAt = remoteUpdated || Date.now();
       writeTeams(false);
-      refreshBuilder();
-    } else if(localHasTeams && (!remoteHasTeams || (teamStore.updatedAt || 0) > (remote?.updatedAt || 0))){
-      schedulePushTeams();
+      changed = true;
+    } else if(localHasTeams && !remoteHasTeams){
+      // Cloud had no teams -> push local teams to cloud
+      await pushRemoteTeams();
+    } else if(remoteHasTeams && localHasTeams){
+      if(remoteUpdated > localUpdated){
+        // Remote is newer: check for any unique local teams that cloud doesn't have
+        let remoteIds = new Set(remoteTeams.map(t => t.id));
+        let uniqueLocal = localTeams.filter(t => t && t.id && !remoteIds.has(t.id));
+        if(uniqueLocal.length > 0){
+          teamStore.teams = [...remoteTeams, ...uniqueLocal];
+          teamStore.updatedAt = Date.now();
+          writeTeams(false);
+          await pushRemoteTeams();
+        } else {
+          teamStore.teams = remoteTeams;
+          teamStore.activeId = remote.activeId || remoteTeams[0]?.id || null;
+          teamStore.updatedAt = remoteUpdated;
+          writeTeams(false);
+        }
+        changed = true;
+      } else if(localUpdated > remoteUpdated){
+        // Local is newer: check if cloud has unique teams
+        let localIds = new Set(localTeams.map(t => t.id));
+        let uniqueRemote = remoteTeams.filter(t => t && t.id && !localIds.has(t.id));
+        if(uniqueRemote.length > 0){
+          teamStore.teams = [...localTeams, ...uniqueRemote];
+          teamStore.updatedAt = Date.now();
+          writeTeams(false);
+          await pushRemoteTeams();
+          changed = true;
+        } else {
+          await pushRemoteTeams();
+        }
+      } else if(force){
+        // Timestamps match or force sync: merge any unique teams
+        let remoteIds = new Set(remoteTeams.map(t => t.id));
+        let merged = [...remoteTeams];
+        for(let lt of localTeams){
+          if(lt && lt.id && !remoteIds.has(lt.id)){
+            merged.push(lt);
+            changed = true;
+          }
+        }
+        if(changed){
+          teamStore.teams = merged;
+          teamStore.updatedAt = Date.now();
+          writeTeams(false);
+          await pushRemoteTeams();
+        }
+      }
     }
+
+    if(changed || force){
+      refreshBuilder();
+    }
+
+    if(force && typeof showDraftToast === 'function'){
+      let totalPlans = (teamStore.teams || []).length;
+      if(totalPlans > 0){
+        showDraftToast(`✓ Synced ${totalPlans} draft ${totalPlans === 1 ? 'plan' : 'plans'} with cloud!`);
+      } else {
+        showDraftToast('✓ Draft plans are up to date!');
+      }
+    }
+    return true;
   }catch(e){
     console.warn('Failed to pull planner teams from cloud:', e);
+    if(force && typeof showDraftToast === 'function'){
+      showDraftToast('⚠️ Sync error: ' + (e.message || 'Network issue'), 'error');
+    }
+    return false;
+  }
+}
+
+async function manualSyncPlanner(btn){
+  let user = getPlannerUsername();
+  if(!user){
+    if(typeof showDraftToast === 'function'){
+      showDraftToast('Please sign in to sync draft plans across devices', 'error');
+    }
+    if(typeof go === 'function'){
+      go('Account');
+    }
+    return;
+  }
+
+  let origHtml = btn ? btn.innerHTML : '';
+  if(btn){
+    btn.disabled = true;
+    btn.style.opacity = '0.7';
+    btn.innerHTML = '<span style="display:inline-block;animation:spin 1s linear infinite">🔄</span> <span>Syncing...</span>';
+  }
+
+  try {
+    await pullRemoteTeams(true);
+  } finally {
+    if(btn){
+      btn.disabled = false;
+      btn.style.opacity = '1';
+      btn.innerHTML = origHtml || '<span class="sync-icon">🔄</span><span>Sync</span>';
+    }
   }
 }
 
@@ -36064,7 +36228,13 @@ function builderHTML(){
 
   if(!team || (!s.teams.length && s.activeId !== '__current__')){
     return `
-      <div class="eyebrow" style="color:var(--red);letter-spacing:1px">TEAM PLANNER</div>
+      <div class="planner-header-bar" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;gap:8px">
+        <div class="eyebrow" style="color:var(--red);letter-spacing:1.5px;margin:0;font-size:11px;font-weight:800">TEAM PLANNER</div>
+        <button type="button" class="btn ghost btn-sm planner-sync-btn" onclick="manualSyncPlanner(this)" title="Sync draft plans across all your devices" style="font-size:11px;padding:3px 10px;border-radius:6px;display:inline-flex;align-items:center;gap:5px;border:1px solid #2a2d3d;background:#141620;color:#93c5fa;cursor:pointer;font-weight:700;transition:all .15s ease">
+          <span class="sync-icon" style="display:inline-block;font-size:12px">🔄</span>
+          <span>Sync</span>
+        </button>
+      </div>
       ${bankWidget}
       ${chips}
       <div class="planner-empty-box">
@@ -36082,9 +36252,8 @@ function builderHTML(){
           <span class="tag" style="background:#261d10;color:#ffd166;border:1px solid #4a3818">💎 ${TEAM_BUDGET} Pts Budget</span>
         </div>
 
-        <p class="tm-note" style="margin-top:14px;border-top:1px solid #242432;padding-top:10px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px">
-          <span>🔒 Plans are private and saved to <b>${esc(who)}</b>${s.key!=='guest'?' · Synced to your account':''}.</span>
-          ${s.key!=='guest'?`<button class="btn ghost btn-sm" style="padding:1px 7px!important;font-size:10px;color:#60a5fa;border-color:#1e3a8a;cursor:pointer" onclick="pullRemoteTeams(true)" title="Force sync plans from cloud">🔄 Sync</button>`:''}
+        <p class="tm-note" style="margin-top:14px;border-top:1px solid #242432;padding-top:10px">
+          🔒 Plans are private and saved to <b>${esc(who)}</b>${s.key!=='guest'?' · Synced across your devices':''}.
         </p>
       </div>
     `;
@@ -36107,7 +36276,14 @@ function builderHTML(){
       : `<div class="tm-name-row"><div class="tm-name">${esc(team.name)}</div><button class="save" onclick="startRenameTeam()">Rename</button></div>`);
   let free=Math.max(0,TEAM_SLOTS-team.picks.length);
 
-  return `<div class="eyebrow">Team planner</div>
+  return `
+    <div class="planner-header-bar" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;gap:8px">
+      <div class="eyebrow" style="color:var(--red);letter-spacing:1.5px;margin:0;font-size:11px;font-weight:800">TEAM PLANNER</div>
+      <button type="button" class="btn ghost btn-sm planner-sync-btn" onclick="manualSyncPlanner(this)" title="Sync draft plans across all your devices" style="font-size:11px;padding:3px 10px;border-radius:6px;display:inline-flex;align-items:center;gap:5px;border:1px solid #2a2d3d;background:#141620;color:#93c5fa;cursor:pointer;font-weight:700;transition:all .15s ease">
+        <span class="sync-icon" style="display:inline-block;font-size:12px">🔄</span>
+        <span>Sync</span>
+      </button>
+    </div>
     ${bankWidget}
     ${chips}
     ${nameRow}
@@ -36173,9 +36349,8 @@ function builderHTML(){
         <button class="chip" onclick="deleteTeam()" style="color:#ff9ba1">Delete team</button>
       `}
     </div>
-    <p class="tm-note" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px">
-      <span>${isCurrentTab ? 'Official picks update live as you draft in the tournament.' : `Teams are private and saved to ${esc(who)}${s.key!=='guest'?' — they follow your account when you sign in elsewhere':''}. ${isLiveDraft ? 'Click any Pokémon above to draft it on the board.' : 'Click any Pokémon on the board to add it to your plan.'}`}</span>
-      ${s.key!=='guest'?`<button class="btn ghost btn-sm" style="padding:1px 7px!important;font-size:10px;color:#60a5fa;border-color:#1e3a8a;cursor:pointer" onclick="pullRemoteTeams(true)" title="Force sync plans from cloud">🔄 Sync</button>`:''}
+    <p class="tm-note">
+      <span>${isCurrentTab ? 'Official picks update live as you draft in the tournament.' : `Teams are private and saved to ${esc(who)}${s.key!=='guest'?' — synced across your devices':''}. ${isLiveDraft ? 'Click any Pokémon above to draft it on the board.' : 'Click any Pokémon on the board to add it to your plan.'}`}</span>
     </p>`
 }
 
