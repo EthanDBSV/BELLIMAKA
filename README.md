@@ -21,7 +21,9 @@ Format: `v[MAJOR].[MINOR].[PATCH]` — Major = major system overhauls, Minor = n
   - Discord webhook pick announcements include distinctive badges and mentions for `🏦 Banked` and `⏰ Timeout` auto-picks.
 - **Cross-Device Team Planner Cloud Sync**:
   - Cloudflare Worker KV integration via `/api/user/planner` endpoints (`GET` and `POST`) syncing planner plans to user accounts (`user:${username}`).
-  - Debounced auto-push on plan modifications (`schedulePushTeams`) and pull on app load/sign-in (`pullRemoteTeams`) with timestamp-based conflict resolution.
+  - **Mobile Auto-Adoption & Cache-Busting**: When coaches open the planner on a secondary device (e.g. mobile Safari on phone), the planner automatically adopts cloud plans from PC even if local blank slate timestamps are newer (`!localHasTeams || remoteIsNewer`).
+  - **Foreground & Wake Triggers**: `handleAppForeground` automatically triggers `pullRemoteTeams(true)` whenever the mobile browser wakes up, switches visibility (`visibilitychange`), or regains focus (`pageshow`). Added cache-busting timestamps (`_t`) and `Cache-Control: no-cache` headers to prevent iOS Safari from caching empty responses.
+  - **Manual 🔄 Sync Button**: Added a dedicated one-tap `🔄 Sync` button in both empty and active planner footers for instant manual synchronization.
 - **Drag & Drop Team Planner Reordering**:
   - HTML5 drag and drop (`handlePlannerDragStart`, `handlePlannerDrop`) and mobile touch event handlers (`handlePlannerTouchMove`, `handlePlannerTouchEnd`) on `.tm-item` rows.
   - Real-time reordering persists to storage and syncs across devices.
@@ -30,7 +32,7 @@ Format: `v[MAJOR].[MINOR].[PATCH]` — Major = major system overhauls, Minor = n
   - Auto-seeding: All newly created plans (`quickCreateTeam`, `createTeam`, `createPlanFromCurrent`) automatically initialize with the coach's current drafted roster.
 - **Player Profile Tournament Match History**:
   - Integrated round-by-round match history stacked directly beneath tournament rosters in `pastTournaments(p)`.
-  - **Strict Reverse Chronological Order**: Matches display in descending chronological order (most recent/latest match on top, going down to oldest fixture), correctly prioritizing playoffs/finals over group matches and later round indices.
+  - **Strict Reverse Chronological Order & Top Cut Priority**: Matches display in descending chronological order (most recent on top). In all tournaments (including Cagliari Regional), Top Cut playoff fixtures (`isTopCut: true`) strictly precede Group Stage matches, preventing re-uploaded or late-imported group stage replays from floating above playoffs. Within Top Cut and Group Stage, matches are ordered from Grand Finals down to Round 1.
   - Displays tournament stage/round, opponent avatar with OVR rating, match game score, outcome status badge (`WIN` / `LOSS`), and direct Showdown replay links.
 - **Standings Overdraft Penalty Tiebreaker**:
   - Added `overdraft` (`PEN`) metric to `STANDING_METRICS` for ranking coaches with the fewest overdraft penalty points.

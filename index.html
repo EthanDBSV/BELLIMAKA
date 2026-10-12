@@ -19691,6 +19691,9 @@ function handleAppForeground(forced = false){
     lastCloudCheckTime = now;
     syncFromCloud(isDraftRoom);
   }
+  if(typeof pullRemoteTeams === 'function' && typeof accountKey === 'function' && accountKey() !== 'guest'){
+    pullRemoteTeams(true);
+  }
   setupLeagueStateRealtime();
   setupDraftRealtime();
 }
@@ -19739,6 +19742,9 @@ async function initBackend(){
       if(sessionUser?.id && typeof syncLocalPicksToCloud === 'function'){
         let oT = (typeof ongoingT === 'function' && ongoingT()) || (typeof activeT === 'function' && activeT());
         if(oT?.id) syncLocalPicksToCloud(oT.id);
+      }
+      if(typeof pullRemoteTeams === 'function'){
+        pullRemoteTeams(true);
       }
       render();
     } catch(e){
@@ -24613,6 +24619,9 @@ async function signIn(event){
           let oT = (typeof ongoingT === 'function' && ongoingT()) || (typeof activeT === 'function' && activeT());
           if(oT?.id) syncLocalPicksToCloud(oT.id);
         }
+        if(typeof pullRemoteTeams === 'function'){
+          pullRemoteTeams(true);
+        }
         render();
       }
     } catch(err) {
@@ -24750,6 +24759,9 @@ async function signUp(event){
         if(typeof syncLocalPicksToCloud === 'function'){
           let oT = (typeof ongoingT === 'function' && ongoingT()) || (typeof activeT === 'function' && activeT());
           if(oT?.id) syncLocalPicksToCloud(oT.id);
+        }
+        if(typeof pullRemoteTeams === 'function'){
+          pullRemoteTeams(true);
         }
         render();
       }
@@ -27784,15 +27796,25 @@ function renderTournamentMatchHistoryHtml(t, p){
   if(!t || !p) return '';
   let matchHistory = (typeof getPlayerMatchHistory === 'function' ? getPlayerMatchHistory(p) : []).filter(m => m.tournamentId === t.id);
   matchHistory = matchHistory.slice().sort((a, b) => {
+    // 1. In any tournament, Top Cut (playoffs) takes place strictly after Group Stage
+    if(a.isTopCut && !b.isTopCut) return -1;
+    if(!a.isTopCut && b.isTopCut) return 1;
+
+    // 2. If both are Top Cut or both are Group Stage, compare timestamps (latest on top)
     let tA = a.timestamp || 0;
     let tB = b.timestamp || 0;
     if(tA && tB && tA !== tB) {
       return tB - tA; // latest timestamp on top
     }
-    // If timestamps are identical or missing, top cut / playoffs were played after group stage
-    if(a.isTopCut && !b.isTopCut) return -1;
-    if(!a.isTopCut && b.isTopCut) return 1;
-    // Later fixtures/rounds come before earlier fixtures/rounds
+
+    // 3. For Top Cut ties or identical timestamps, higher stage rank comes first (Bracket Reset > Grand Final > Winners Final, etc.)
+    if(a.isTopCut && b.isTopCut && typeof getTopCutStageRank === 'function') {
+      let rA = getTopCutStageRank(a, t);
+      let rB = getTopCutStageRank(b, t);
+      if(rA !== rB) return rB - rA;
+    }
+
+    // 4. Fall back to descending fixtureIndex / round index (later matches on top)
     return (b.fixtureIndex || 0) - (a.fixtureIndex || 0);
   });
 
@@ -35601,7 +35623,16 @@ const TEAM_BUDGET=100,TEAM_SLOTS=10;
 var teamStore={key:null,teams:[],activeId:null,updatedAt:0,adoptedGuest:false};
 var builderStatus='';window.__teamsPulled={};
 
-function readTeamStore(key){try{return JSON.parse(localStorage.getItem('draftdex-teams-'+key)||'null')}catch{return null}}
+function readTeamStore(key){
+  try{
+    let raw = localStorage.getItem('draftdex-teams-'+key);
+    if(!raw && typeof key === 'string' && key !== 'guest'){
+      raw = localStorage.getItem('draftdex-teams-'+key.toLowerCase()) || 
+            localStorage.getItem('draftdex-teams-'+(key.charAt(0).toUpperCase() + key.slice(1).toLowerCase()));
+    }
+    return JSON.parse(raw || 'null');
+  }catch{return null}
+}
 function ensureTeams(){
   let key=accountKey();
   if(teamStore.key===key)return teamStore;
@@ -35617,6 +35648,8 @@ function ensureTeams(){
      second account on the same machine cannot see them. */
   if(key!=='guest'&&!teamStore.adoptedGuest){
     teamStore.adoptedGuest=true;writeTeams(false);
+  }
+  if(key!=='guest'&&!window.__teamsPulled[key]){
     pullRemoteTeams();
   }
   if(!teamStore.activeId&&teamStore.teams.length)teamStore.activeId=teamStore.teams[0].id;
@@ -35689,7 +35722,7 @@ function schedulePushTeams(){
     }catch(e){
       console.warn('Failed to push planner teams to cloud:', e);
     }
-  }, 600);
+  }, 400);
 }
 
 async function pullRemoteTeams(force=false){
@@ -35701,17 +35734,23 @@ async function pullRemoteTeams(force=false){
   let cfUrl = typeof getCloudflareUrl === 'function' ? getCloudflareUrl() : '';
   if(!cfUrl) return;
   try{
-    let res = await fetch(`${cfUrl}/api/user/planner?username=${encodeURIComponent(user)}`);
+    let res = await fetch(`${cfUrl}/api/user/planner?username=${encodeURIComponent(user)}&_t=${Date.now()}`, {
+      headers: { 'Cache-Control': 'no-cache' }
+    });
     if(!res.ok) return;
     let remote = await res.json();
     ensureTeams();
-    if(remote && Array.isArray(remote.teams) && (remote.updatedAt||0) > (teamStore.updatedAt||0) && teamStore.key===key){
+    let remoteHasTeams = Array.isArray(remote?.teams) && remote.teams.length > 0;
+    let localHasTeams = Array.isArray(teamStore?.teams) && teamStore.teams.length > 0;
+    let remoteIsNewer = (remote?.updatedAt || 0) > (teamStore?.updatedAt || 0);
+
+    if(remoteHasTeams && (!localHasTeams || remoteIsNewer)){
       teamStore.teams = remote.teams;
       teamStore.activeId = remote.activeId || remote.teams[0]?.id || null;
-      teamStore.updatedAt = remote.updatedAt;
+      teamStore.updatedAt = remote.updatedAt || Date.now();
       writeTeams(false);
       refreshBuilder();
-    } else if(teamStore.teams.length > 0 && (!remote || !remote.updatedAt || (teamStore.updatedAt||0) > remote.updatedAt)){
+    } else if(localHasTeams && (!remoteHasTeams || (teamStore.updatedAt || 0) > (remote?.updatedAt || 0))){
       schedulePushTeams();
     }
   }catch(e){
@@ -36043,7 +36082,10 @@ function builderHTML(){
           <span class="tag" style="background:#261d10;color:#ffd166;border:1px solid #4a3818">💎 ${TEAM_BUDGET} Pts Budget</span>
         </div>
 
-        <p class="tm-note" style="margin-top:14px;border-top:1px solid #242432;padding-top:10px">🔒 Plans are private and saved to <b>${esc(who)}</b>${s.key!=='guest'?' · Synced to your account':''}.</p>
+        <p class="tm-note" style="margin-top:14px;border-top:1px solid #242432;padding-top:10px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px">
+          <span>🔒 Plans are private and saved to <b>${esc(who)}</b>${s.key!=='guest'?' · Synced to your account':''}.</span>
+          ${s.key!=='guest'?`<button class="btn ghost btn-sm" style="padding:1px 7px!important;font-size:10px;color:#60a5fa;border-color:#1e3a8a;cursor:pointer" onclick="pullRemoteTeams(true)" title="Force sync plans from cloud">🔄 Sync</button>`:''}
+        </p>
       </div>
     `;
   }
@@ -36131,7 +36173,10 @@ function builderHTML(){
         <button class="chip" onclick="deleteTeam()" style="color:#ff9ba1">Delete team</button>
       `}
     </div>
-    <p class="tm-note">${isCurrentTab ? 'Official picks update live as you draft in the tournament.' : `Teams are private and saved to ${esc(who)}${s.key!=='guest'?' — they follow your account when you sign in elsewhere':''}. ${isLiveDraft ? 'Click any Pokémon above to draft it on the board.' : 'Click any Pokémon on the board to add it to your plan.'}`}</p>`
+    <p class="tm-note" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px">
+      <span>${isCurrentTab ? 'Official picks update live as you draft in the tournament.' : `Teams are private and saved to ${esc(who)}${s.key!=='guest'?' — they follow your account when you sign in elsewhere':''}. ${isLiveDraft ? 'Click any Pokémon above to draft it on the board.' : 'Click any Pokémon on the board to add it to your plan.'}`}</span>
+      ${s.key!=='guest'?`<button class="btn ghost btn-sm" style="padding:1px 7px!important;font-size:10px;color:#60a5fa;border-color:#1e3a8a;cursor:pointer" onclick="pullRemoteTeams(true)" title="Force sync plans from cloud">🔄 Sync</button>`:''}
+    </p>`
 }
 
 /* ------------------------------------------------------------
