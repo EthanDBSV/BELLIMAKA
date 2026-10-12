@@ -3,6 +3,27 @@
 All notable changes to the Bellimaka Pokémon Draft League platform are documented here.
 Format: `v[MAJOR].[MINOR].[PATCH]` — Major = major system overhauls, Minor = new features, Patch = bug fixes and visual improvements.
 
+## [v2.5.4] — 2026-10-11
+
+### All-Tournament Teams 60% Calculation Engine & Coach Aggregator Fix
+- **Lowered Appearance Threshold to 60%**:
+  - Adjusted the qualification requirement for All-Tournament Teams and Statistical Leaderboards from 70% to **60% (rounded down, floor of 3 games)** of the coach's total tournament battles: `Math.max(3, Math.floor(coachTotalGames * 0.60))`.
+  - Updated all badges, equations, and playbook guide modals across the UI to display `"Min. 60% Games Played"`.
+- **Eliminated Single-Pokemon Game Fallback Bug**:
+  - Removed the faulty fallback `if((coachGames == null || coachGames === 0) && m.games > 0) coachGames = m.games;` in `calculateTeamOfTheSeason()`, which previously caused unmapped or missing coach queries to self-evaluate Pokémon against their own individual games.
+- **Multi-Source Coach Total Games Aggregator**:
+  - Implemented `getCoachTournamentGames()` and a pre-pass `coachMaxMonGamesMap` across all drafted and brought Pokémon to establish a mathematically guaranteed lower bound: a coach's tournament games can never be less than the maximum games played by any Pokémon on their roster ($\text{coachTotalGames} \ge \max(\text{monGames})$).
+  - Unifies coach battle counts across regular season match fixtures, top cut replays, roster draft mappings, and fuzzy/canonical coach name resolution.
+  - Automatically falls back unassigned/neutral Pokémon to the tournament's maximum coach game count (`tournamentRefCoachGames`) rather than individual Pokémon appearances.
+- **Immediate One-Click UI Recalculation**:
+  - Added a dedicated **🔄 Recalculate Honors** button in the Awards view navigation bar with instant toast notifications, ensuring users can trigger recalculation without needing browser hard refreshes or clearing cache.
+- **Accurate Honors Results**:
+  - Mega Steelix (5 games), Milotic (5 games), and Gholdengo (3 games) remain properly disqualified ($< 6$ games required under Ozy's 11 games).
+  - Mega Tyranitar (10 games $\ge 6$), Sinistcha (8 games $\ge 6$), and Garchomp (7 games $\ge 6$) qualify.
+  - Mega Tyranitar holds its Second Team All-Tournament slot, and Mega Crabominable holds the "Most KOs" badge.
+
+---
+
 ## [v2.5.3] — 2026-10-11
 
 ### All-Tournament Teams & Statistical Leaderboards 70% Appearance Requirement

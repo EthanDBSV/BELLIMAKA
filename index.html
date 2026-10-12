@@ -12952,12 +12952,20 @@ function calculateTeamOfTheSeason(t) {
     });
   });
 
-  // Verify coach assignments from tournament rosters if missing
+  // Verify coach assignments from tournament rosters if missing or placeholder
+  monMap.forEach((entry) => {
+    if(!entry.coach || entry.coach.toLowerCase().startsWith('player ')) {
+      let clean = normalizeBattleFormToDraftForm(entry.name).toLowerCase();
+      let rosterCoach = rosterCoachMap.get(clean);
+      if(rosterCoach) entry.coach = rosterCoach;
+    }
+  });
   if(t.rosters) {
     Object.keys(t.rosters).forEach(coachName => {
       let rList = t.rosters[coachName] || [];
       rList.forEach(rMon => {
-        let key = coachName.toLowerCase() + '::' + String(rMon).toLowerCase().trim();
+        let clean = normalizeBattleFormToDraftForm(String(rMon)).toLowerCase();
+        let key = coachName.toLowerCase() + '::' + clean;
         if(monMap.has(key)) {
           let entry = monMap.get(key);
           if(!entry.coach || entry.coach.toLowerCase().startsWith('player ')) entry.coach = coachName;
@@ -12965,6 +12973,46 @@ function calculateTeamOfTheSeason(t) {
       });
     });
   }
+
+  // Pre-pass: Compute maximum games played by any individual Pokemon for each coach
+  let coachMaxMonGamesMap = new Map();
+  monMap.forEach(m => {
+    let canon = resolveCanonicalCoachName(m.coach);
+    if(canon) {
+      coachMaxMonGamesMap.set(canon, Math.max(coachMaxMonGamesMap.get(canon) || 0, m.games || 0));
+    }
+  });
+
+  // Helper to reliably retrieve a coach's total tournament games across all telemetry
+  function getCoachTournamentGames(rawCoach) {
+    if(!rawCoach) return 0;
+    let coachCanon = resolveCanonicalCoachName(rawCoach);
+    let maxG = 0;
+    if(coachCanon && coachTotalGamesMap.has(coachCanon)) {
+      maxG = Math.max(maxG, coachTotalGamesMap.get(coachCanon) || 0);
+    }
+    for(let [k, v] of coachTotalGamesMap.entries()) {
+      if(k.toLowerCase() === String(rawCoach).toLowerCase() || (coachCanon && k.toLowerCase() === coachCanon.toLowerCase()) || (typeof isCoachMatch === 'function' && isCoachMatch(k, rawCoach, t))) {
+        maxG = Math.max(maxG, v || 0);
+      }
+    }
+    if(coachCanon && coachMaxMonGamesMap.has(coachCanon)) {
+      maxG = Math.max(maxG, coachMaxMonGamesMap.get(coachCanon) || 0);
+    }
+    for(let [k, v] of coachMaxMonGamesMap.entries()) {
+      if(k.toLowerCase() === String(rawCoach).toLowerCase() || (coachCanon && k.toLowerCase() === coachCanon.toLowerCase()) || (typeof isCoachMatch === 'function' && isCoachMatch(k, rawCoach, t))) {
+        maxG = Math.max(maxG, v || 0);
+      }
+    }
+    return maxG;
+  }
+
+  // Compute tournament-wide reference games for unassigned or missing coach fallbacks
+  let allCoachCounts = [
+    ...Array.from(coachTotalGamesMap.values()),
+    ...Array.from(coachMaxMonGamesMap.values())
+  ].filter(v => typeof v === 'number' && v > 0);
+  let tournamentRefCoachGames = allCoachCounts.length > 0 ? Math.max(3, ...allCoachCounts) : 3;
 
   let list = Array.from(monMap.values()).map(m => {
     let games = Math.max(1, m.games);
@@ -12983,17 +13031,15 @@ function calculateTeamOfTheSeason(t) {
     let tankMult = 0.55 + (0.35 * winRate) + (0.45 * survivalRate);
     let tankScore = rawTank * tankMult;
 
-    // 70% requirement calculation (rounded down, floor of 3 games)
+    // 60% requirement calculation (rounded down, floor of 3 games)
     let coachCanon = resolveCanonicalCoachName(m.coach);
-    let coachGames = coachTotalGamesMap.get(coachCanon);
-    if(coachGames == null && coachCanon) {
-      for(let [k, v] of coachTotalGamesMap.entries()) {
-        if(isCoachMatch(k, coachCanon, t)) { coachGames = v; break; }
-      }
+    let coachGames = getCoachTournamentGames(coachCanon || m.coach);
+    if(coachGames <= 0) coachGames = tournamentRefCoachGames;
+    if(coachCanon && coachMaxMonGamesMap.has(coachCanon)) {
+      coachGames = Math.max(coachGames, coachMaxMonGamesMap.get(coachCanon) || 0);
     }
-    if((coachGames == null || coachGames === 0) && m.games > 0) coachGames = m.games;
-    coachGames = coachGames || 0;
-    let minGamesReq = Math.max(3, Math.floor(coachGames * 0.70));
+    coachGames = Math.max(coachGames, m.games || 0, 3);
+    let minGamesReq = Math.max(3, Math.floor(coachGames * 0.60));
     let coachGamePct = coachGames > 0 ? (m.games / coachGames) : 0;
     let meetsGameThreshold = (m.games >= minGamesReq);
 
@@ -13063,9 +13109,9 @@ function calculateTeamOfTheSeason(t) {
 
   // 5. Teams of the Season: First Team, Second Team, Third Team
   // Based strictly on Average Impact Score per game across the entire tournament
-  // Exactly 4 Pokemon per tier (12 total), requiring >= 70% of coach's tournament games (floor of 3 games)
+  // Exactly 4 Pokemon per tier (12 total), requiring >= 60% of coach's tournament games (floor of 3 games)
   let eligibleTots = list.filter(m => m.meetsGameThreshold);
-  // If fewer than 12 candidates meet the 70% threshold, backfill with remaining candidates sorted by coach-game percentage
+  // If fewer than 12 candidates meet the 60% threshold, backfill with remaining candidates sorted by coach-game percentage
   if(eligibleTots.length < 12 && list.length > eligibleTots.length) {
     let lowerGameMons = list.filter(m => !m.meetsGameThreshold).sort((a, b) => {
       let bPct = b.coachGamePct || 0;
@@ -13078,7 +13124,7 @@ function calculateTeamOfTheSeason(t) {
   }
   if(eligibleTots.length === 0) eligibleTots = [...list];
 
-  // Candidates for statistical leaderboards (minimum 70% coach games, floor 3, backfilled if fewer than 3)
+  // Candidates for statistical leaderboards (minimum 60% coach games, floor 3, backfilled if fewer than 3)
   let eligibleLeaders = list.filter(m => m.meetsGameThreshold);
   if(eligibleLeaders.length < 3 && list.length > eligibleLeaders.length) {
     let lowerGameMons = list.filter(m => !m.meetsGameThreshold).sort((a, b) => {
@@ -13186,12 +13232,28 @@ function calculateTeamOfTheSeason(t) {
   let secondTeam = buildTeamTier(2, '2nd Team', '#cbd5e1', '🥈');
   let thirdTeam = buildTeamTier(3, '3rd Team', '#f0a875', '🥉');
 
+  let finalCoachGamesMap = new Map();
+  let allKnownCoaches = new Set([
+    ...Array.from(coachTotalGamesMap.keys()),
+    ...Array.from(coachMaxMonGamesMap.keys()),
+    ...(Array.isArray(t.players) ? t.players : []),
+    ...(t.rosters ? Object.keys(t.rosters) : [])
+  ]);
+  allKnownCoaches.forEach(c => {
+    let canon = resolveCanonicalCoachName(c);
+    let nameToUse = canon || c;
+    if(nameToUse && !nameToUse.toLowerCase().startsWith('player ')) {
+      let g = getCoachTournamentGames(nameToUse);
+      finalCoachGamesMap.set(nameToUse, Math.max(finalCoachGamesMap.get(nameToUse) || 0, g));
+    }
+  });
+
   return {
     empty: firstTeam.length === 0 && (!seasonMvp),
     totalGames: allReplays.length,
     pokemonCount: list.length,
     pokemonList: list,
-    coachTotalGames: Object.fromEntries(coachTotalGamesMap),
+    coachTotalGames: Object.fromEntries(finalCoachGamesMap),
     seasonMvp,
     finalsMvp,
     majorAwards,
@@ -13453,7 +13515,7 @@ function renderTournamentStatLeadersHtml(leaders, t) {
         <div style="display:flex;align-items:center;gap:8px">
           <span style="font-size:16px">📊</span>
           <span style="font:900 18px 'Barlow Condensed';color:#f5f3f0;letter-spacing:.6px;text-transform:uppercase">Tournament Stat Leaders</span>
-          <span style="font-size:11px;color:#94a3b8">— Per-Game Averages • Min. 70% Games Played</span>
+          <span style="font-size:11px;color:#94a3b8">— Per-Game Averages • Min. 60% Games Played</span>
         </div>
         <div style="font-size:11px;color:#8e8c95;font-weight:700">
           Top 3 Across All Tournament Replays
@@ -13745,7 +13807,7 @@ function openAwardsRatingGuideModal() {
           <div style="background:rgba(255,209,102,0.06);border:1px solid rgba(255,209,102,0.25);border-radius:10px;padding:12px 16px;display:flex;align-items:flex-start;gap:12px">
             <span style="font-size:20px;line-height:1.2">ℹ️</span>
             <div style="font-size:12px;color:#e2e8f0;line-height:1.5">
-              Every premier honor, All-Tournament Team slot, and statistical badge is computed straight from verified battle replays and tournament telemetry. To ensure genuine sample reliability and reward sustained excellence, Season MVP requires a minimum of <b>5 regular season appearances</b>, while All-Tournament Teams and Statistical Leaderboards require participating in at least <b>70% of the coach's total tournament games</b> (rounded down, minimum 3 games, with fallback if fewer meet the threshold).
+              Every premier honor, All-Tournament Team slot, and statistical badge is computed straight from verified battle replays and tournament telemetry. To ensure genuine sample reliability and reward sustained excellence, Season MVP requires a minimum of <b>5 regular season appearances</b>, while All-Tournament Teams and Statistical Leaderboards require participating in at least <b>60% of the coach's total tournament games</b> (rounded down, minimum 3 games, with fallback if fewer meet the threshold).
             </div>
           </div>
 
@@ -13826,11 +13888,11 @@ function openAwardsRatingGuideModal() {
                 <span style="font:900 18px 'Barlow Condensed',sans-serif;letter-spacing:.5px;color:#38bdf8;text-transform:uppercase">All-Tournament Teams (Average Impact Rating)</span>
               </div>
               <span style="font:800 10px 'Barlow Condensed',sans-serif;letter-spacing:.6px;text-transform:uppercase;padding:2px 8px;border-radius:4px;background:rgba(56,189,248,0.12);color:#7dd3fc;border:1px solid rgba(56,189,248,0.3)">
-                4 Pokémon per Tier (1st, 2nd, 3rd Team) • Min. 70% Games Played
+                4 Pokémon per Tier (1st, 2nd, 3rd Team) • Min. 60% Games Played
               </span>
             </div>
             <p style="margin:0 0 10px;color:#94a3b8;font-size:12px;line-height:1.45">
-              All-Tournament Teams honor the top 12 individual Pokémon across the entire tournament, ranked strictly by <b>Average Impact Score per Game</b> (must participate in at least 70% of their coach's tournament battles, rounded down). Arbitrary role divisions like DPS and Tank have been retired in favor of universal holistic battle impact.
+              All-Tournament Teams honor the top 12 individual Pokémon across the entire tournament, ranked strictly by <b>Average Impact Score per Game</b> (must participate in at least 60% of their coach's tournament battles, rounded down). Arbitrary role divisions like DPS and Tank have been retired in favor of universal holistic battle impact.
             </p>
             <div style="background:#0f1722;border:1px solid rgba(56,189,248,0.25);border-radius:8px;padding:12px 14px">
               <div style="font:800 11px 'Barlow Condensed',sans-serif;letter-spacing:.8px;text-transform:uppercase;color:#7dd3fc;margin-bottom:6px">
@@ -13856,7 +13918,7 @@ function openAwardsRatingGuideModal() {
                 <span style="font:900 18px 'Barlow Condensed',sans-serif;letter-spacing:.5px;color:#f59e0b;text-transform:uppercase">Tournament Stat Leaderboards (Top 3 Podiums)</span>
               </div>
               <span style="font:800 10px 'Barlow Condensed',sans-serif;letter-spacing:.6px;text-transform:uppercase;padding:2px 8px;border-radius:4px;background:rgba(245,158,11,0.12);color:#fde047;border:1px solid rgba(245,158,11,0.3)">
-                5 Premier Categories • Min. 70% Games Played
+                5 Premier Categories • Min. 60% Games Played
               </span>
             </div>
             <p style="margin:0 0 10px;color:#94a3b8;font-size:12px;line-height:1.45">
@@ -13973,6 +14035,9 @@ function renderTournamentAwardsTabHtml(t) {
             </button>
           </div>
           <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+            <button type="button" class="btn btn-sm ghost" onclick="render();if(typeof showToast==='function')showToast('All-Tournament Teams & Awards Recalculated (60% Rule Applied)')" style="display:inline-flex;align-items:center;gap:6px;font-family:'Barlow Condensed',sans-serif;font-size:12px;font-weight:800;letter-spacing:.6px;text-transform:uppercase;color:#38bdf8;background:rgba(56,189,248,0.12);border:1px solid rgba(56,189,248,0.35);padding:4px 12px;border-radius:20px;cursor:pointer;transition:all .2s ease" onmouseover="this.style.background='rgba(56,189,248,0.22)'" onmouseout="this.style.background='rgba(56,189,248,0.12)'">
+              <span>\uD83D\uDD04</span> Recalculate Honors
+            </button>
             <button type="button" class="btn btn-sm ghost" onclick="openAwardsRatingGuideModal()" style="display:inline-flex;align-items:center;gap:6px;font-family:'Barlow Condensed',sans-serif;font-size:12px;font-weight:800;letter-spacing:.6px;text-transform:uppercase;color:#ffd166;background:rgba(255,209,102,0.12);border:1px solid rgba(255,209,102,0.35);padding:4px 12px;border-radius:20px;cursor:pointer;transition:all .2s ease" onmouseover="this.style.background='rgba(255,209,102,0.22)'" onmouseout="this.style.background='rgba(255,209,102,0.12)'">
               <span>\uD83D\uDCD0</span> Rating Guide &amp; Equations
             </button>
@@ -14019,7 +14084,7 @@ function renderTournamentAwardsTabHtml(t) {
             <div style="font-size:11px;font-weight:700;color:#94a3b8;letter-spacing:.6px;display:flex;align-items:center;gap:6px">
               <span style="color:#38bdf8">\u26A1 Impact Rated</span>
               <span>\u2022</span>
-              <span>Min. 70% Games Played</span>
+              <span>Min. 60% Games Played</span>
             </div>
           </div>
 

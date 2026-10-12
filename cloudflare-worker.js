@@ -9,6 +9,14 @@
 
 const MASTER_KEY = "bellimaka-master-2026";
 
+// Protected Official Tournaments (Never auto-purged)
+const PROTECTED_TOURNAMENT_IDS = new Set([
+  "t1787300970005", // Cagliari Regional
+  "t1787348238028", // Sugar Land Regional
+  "t1787352776992", // Wilmington Regional
+  "t1789437182369", // Bentonville Regional
+]);
+
 // CORS Response Helper
 function corsHeaders() {
   return {
@@ -209,6 +217,97 @@ export default {
             return jsonResponse({ error: "Invalid state payload" }, 400);
           }
 
+          if (stateId === "main" && statePayload.tournaments) {
+            // Backend Safety Net: Detect deleted tournaments compared to existing state and auto-clean their KV records
+            try {
+              const previousRaw = await kv.get("league_state:main");
+              if (previousRaw) {
+                const previousState = JSON.parse(previousRaw);
+                const prevTournaments = previousState.tournaments || {};
+                const newTournaments = statePayload.tournaments || {};
+
+                for (const [prevTid, prevTourney] of Object.entries(prevTournaments)) {
+                  if (!newTournaments[prevTid] && !PROTECTED_TOURNAMENT_IDS.has(prevTid)) {
+                    await kv.delete(`draft_state:${prevTid}`).catch(() => {});
+                    await kv.delete(`predictions:${prevTid}`).catch(() => {});
+
+                    const replayIdsToPrune = [];
+                    if (prevTourney && Array.isArray(prevTourney.matches)) {
+                      for (const m of prevTourney.matches) {
+                        if (m && Array.isArray(m.replays)) {
+                          for (const r of m.replays) {
+                            if (r && r.id) replayIdsToPrune.push(r.id);
+                          }
+                        }
+                      }
+                    }
+                    if (prevTourney && prevTourney.topCutReplays && typeof prevTourney.topCutReplays === "object") {
+                      for (const rList of Object.values(prevTourney.topCutReplays)) {
+                        if (Array.isArray(rList)) {
+                          for (const r of rList) {
+                            if (r && r.id) replayIdsToPrune.push(r.id);
+                          }
+                        }
+                      }
+                    }
+
+                    for (const rId of replayIdsToPrune) {
+                      const stillReferenced = Object.values(newTournaments).some(t => {
+                        if (t && Array.isArray(t.matches) && t.matches.some(m => m.replays && m.replays.some(r => r.id === rId))) return true;
+                        if (t && t.topCutReplays && Object.values(t.topCutReplays).some(list => Array.isArray(list) && list.some(r => r.id === rId))) return true;
+                        return false;
+                      });
+                      if (!stillReferenced) {
+                        await kv.delete(`replay:${rId}`).catch(() => {});
+                      }
+                    }
+                  }
+                }
+              }
+            } catch(e) {}
+
+            // Detach any heavy replay logs into replay:${id} to keep league_state:main lightweight
+            let putCount = 0;
+            for (const t of Object.values(statePayload.tournaments)) {
+              if (t && t.matches && Array.isArray(t.matches)) {
+                for (const m of t.matches) {
+                  if (m && m.replays && Array.isArray(m.replays)) {
+                    for (const r of m.replays) {
+                      if (r && r.log && typeof r.log === "string" && r.log.length > 20) {
+                        const rId = r.id || `replay_${Date.now()}_g${r.game || 1}`;
+                        r.id = rId;
+                        if (putCount < 30) {
+                          await kv.put(`replay:${rId}`, JSON.stringify({ id: rId, log: r.log }));
+                          putCount++;
+                        }
+                        r.hasLog = true;
+                        delete r.log;
+                      }
+                    }
+                  }
+                }
+              }
+              if (t && t.topCutReplays && typeof t.topCutReplays === "object") {
+                for (const rList of Object.values(t.topCutReplays)) {
+                  if (Array.isArray(rList)) {
+                    for (const r of rList) {
+                      if (r && r.log && typeof r.log === "string" && r.log.length > 20) {
+                        const rId = r.id || `replay_${Date.now()}_g${r.game || 1}`;
+                        r.id = rId;
+                        if (putCount < 30) {
+                          await kv.put(`replay:${rId}`, JSON.stringify({ id: rId, log: r.log }));
+                          putCount++;
+                        }
+                        r.hasLog = true;
+                        delete r.log;
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+
           // Save state for given id (main or media)
           await kv.put(`league_state:${stateId}`, JSON.stringify(statePayload));
 
@@ -229,6 +328,207 @@ export default {
 
           return jsonResponse({ success: true, rev: statePayload.rev, updatedAt: updateTime });
         }
+      }
+
+      // -------------------------------------------------------------
+      // 2.5 On-Demand Replay Logs & Migration
+      // -------------------------------------------------------------
+      if (path === "/api/replay") {
+        const replayId = url.searchParams.get("id");
+        if (request.method === "GET") {
+          if (!replayId) return jsonResponse({ error: "Missing replay id" }, 400);
+          const raw = await kv.get(`replay:${replayId}`);
+          if (raw) {
+            return new Response(raw, {
+              status: 200,
+              headers: { "Content-Type": "application/json", ...corsHeaders() }
+            });
+          }
+          // Fallback: check main state if not yet migrated
+          const mainRaw = await kv.get("league_state:main");
+          if (mainRaw) {
+            try {
+              const main = JSON.parse(mainRaw);
+              for (const t of Object.values(main.tournaments || {})) {
+                for (const m of (t.matches || [])) {
+                  const r = (m.replays || []).find(x => x.id === replayId);
+                  if (r && r.log) {
+                    const payload = { id: replayId, log: r.log };
+                    await kv.put(`replay:${replayId}`, JSON.stringify(payload));
+                    return jsonResponse(payload);
+                  }
+                }
+                for (const rList of Object.values(t.topCutReplays || {})) {
+                  if (Array.isArray(rList)) {
+                    const r = rList.find(x => x.id === replayId);
+                    if (r && r.log) {
+                      const payload = { id: replayId, log: r.log };
+                      await kv.put(`replay:${replayId}`, JSON.stringify(payload));
+                      return jsonResponse(payload);
+                    }
+                  }
+                }
+              }
+            } catch(e){}
+          }
+          return jsonResponse({ error: "Replay log not found" }, 404);
+        }
+
+        if (request.method === "POST") {
+          const body = await request.json();
+          const targetId = body.id || replayId;
+          if (!targetId || !body.log) {
+            return jsonResponse({ error: "Missing id or log" }, 400);
+          }
+          await kv.put(`replay:${targetId}`, JSON.stringify({ id: targetId, log: body.log }));
+          return jsonResponse({ success: true, id: targetId });
+        }
+      }
+
+      if (path === "/api/replays/migrate" && request.method === "POST") {
+        const masterKeyHeader = request.headers.get("x-master-key");
+        const body = await request.json().catch(() => ({}));
+        if (masterKeyHeader !== MASTER_KEY && body.masterKey !== MASTER_KEY) {
+          return jsonResponse({ error: "Unauthorized: Invalid master key" }, 401);
+        }
+
+        const batchLimit = parseInt(url.searchParams.get("batch") || body.batch || "30", 10);
+        const mainRaw = await kv.get("league_state:main");
+        if (!mainRaw) {
+          return jsonResponse({ error: "Main league state not found" }, 404);
+        }
+
+        let main;
+        try { main = JSON.parse(mainRaw); } catch(e) { return jsonResponse({ error: "Invalid JSON in main state" }, 500); }
+        let migratedCount = 0;
+        let totalLogBytes = 0;
+        let remainingWithLog = 0;
+
+        if (main.tournaments) {
+          for (const t of Object.values(main.tournaments)) {
+            if (t && t.matches && Array.isArray(t.matches)) {
+              for (const m of t.matches) {
+                if (m && m.replays && Array.isArray(m.replays)) {
+                  for (const r of m.replays) {
+                    if (r && r.log && typeof r.log === "string" && r.log.length > 20) {
+                      if (migratedCount < batchLimit) {
+                        const rId = r.id || `replay_${Date.now()}_g${r.game || 1}`;
+                        r.id = rId;
+                        totalLogBytes += r.log.length;
+                        await kv.put(`replay:${rId}`, JSON.stringify({ id: rId, log: r.log }));
+                        r.hasLog = true;
+                        delete r.log;
+                        migratedCount++;
+                      } else {
+                        remainingWithLog++;
+                      }
+                    }
+                  }
+                }
+              }
+            }
+            if (t && t.topCutReplays && typeof t.topCutReplays === "object") {
+              for (const rList of Object.values(t.topCutReplays)) {
+                if (Array.isArray(rList)) {
+                  for (const r of rList) {
+                    if (r && r.log && typeof r.log === "string" && r.log.length > 20) {
+                      if (migratedCount < batchLimit) {
+                        const rId = r.id || `replay_${Date.now()}_g${r.game || 1}`;
+                        r.id = rId;
+                        totalLogBytes += r.log.length;
+                        await kv.put(`replay:${rId}`, JSON.stringify({ id: rId, log: r.log }));
+                        r.hasLog = true;
+                        delete r.log;
+                        migratedCount++;
+                      } else {
+                        remainingWithLog++;
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+
+        const cleanJson = JSON.stringify(main);
+        if (migratedCount > 0) {
+          await kv.put("league_state:main", cleanJson);
+        }
+
+        return jsonResponse({
+          success: true,
+          migratedCount,
+          remainingWithLog,
+          isComplete: (remainingWithLog === 0),
+          totalLogBytes,
+          originalSizeKb: Math.round(mainRaw.length / 1024),
+          newSizeKb: Math.round(cleanJson.length / 1024),
+          savedKb: Math.round((mainRaw.length - cleanJson.length) / 1024)
+        });
+      }
+
+      // -------------------------------------------------------------
+      // 2.8 Tournament KV Cleanup Endpoint (Draft, Predictions, Replays)
+      // -------------------------------------------------------------
+      if (path === "/api/tournament/delete" || (path === "/api/tournament" && request.method === "DELETE")) {
+        let tId = url.searchParams.get("id") || url.searchParams.get("tournamentId");
+        let replayIds = [];
+        if (request.method === "POST" || request.method === "DELETE") {
+          try {
+            const body = await request.json();
+            if (body.tournamentId) tId = body.tournamentId;
+            if (body.id) tId = body.id;
+            if (Array.isArray(body.replayIds)) replayIds = body.replayIds;
+          } catch(e) {}
+        }
+
+        if (!tId) {
+          return jsonResponse({ error: "Missing tournamentId" }, 400);
+        }
+
+        if (PROTECTED_TOURNAMENT_IDS.has(tId)) {
+          return jsonResponse({ error: "Cannot delete protected official tournament KV data" }, 403);
+        }
+
+        const deleted = [];
+        try {
+          await kv.delete(`draft_state:${tId}`);
+          deleted.push(`draft_state:${tId}`);
+        } catch(e) {}
+
+        try {
+          await kv.delete(`predictions:${tId}`);
+          deleted.push(`predictions:${tId}`);
+        } catch(e) {}
+
+        // Check against remaining tournaments in main state to avoid deleting any shared replay
+        let mainTournaments = {};
+        try {
+          const mainRaw = await kv.get("league_state:main");
+          if (mainRaw) {
+            mainTournaments = JSON.parse(mainRaw).tournaments || {};
+          }
+        } catch(e) {}
+
+        for (const rId of replayIds) {
+          if (rId && typeof rId === "string") {
+            const stillReferenced = Object.values(mainTournaments).some(t => {
+              if (t.id === tId) return false; // Ignore the tournament being deleted
+              if (t && Array.isArray(t.matches) && t.matches.some(m => m.replays && m.replays.some(r => r.id === rId))) return true;
+              if (t && t.topCutReplays && Object.values(t.topCutReplays).some(list => Array.isArray(list) && list.some(r => r.id === rId))) return true;
+              return false;
+            });
+            if (!stillReferenced) {
+              try {
+                await kv.delete(`replay:${rId}`);
+                deleted.push(`replay:${rId}`);
+              } catch(e) {}
+            }
+          }
+        }
+
+        return jsonResponse({ success: true, tournamentId: tId, deleted });
       }
 
       // -------------------------------------------------------------
@@ -786,6 +1086,151 @@ export default {
         }
 
         return jsonResponse({ success: true, message: "Seed data successfully loaded into Cloudflare KV!", imported });
+      }
+
+      // -------------------------------------------------------------
+      // 6.5. Admin KV Inspection & Orphaned Test Cleanup Endpoint
+      // -------------------------------------------------------------
+      if (path === "/api/admin/clean-kv") {
+        const masterKeyHeader = request.headers.get("x-master-key") || url.searchParams.get("masterKey");
+        let body = {};
+        if (request.method === "POST") {
+          try { body = await request.json(); } catch(e) {}
+        }
+        const providedKey = masterKeyHeader || body.masterKey;
+        if (providedKey !== MASTER_KEY) {
+          return jsonResponse({ error: "Unauthorized: Invalid master key" }, 401);
+        }
+
+        // Fetch official tournament IDs dynamically from league_state:main + hardcoded baseline
+        const officialTournamentIds = new Set(PROTECTED_TOURNAMENT_IDS);
+
+        try {
+          const mainRaw = await kv.get("league_state:main");
+          if (mainRaw) {
+            const main = JSON.parse(mainRaw);
+            if (main && main.tournaments) {
+              for (const tid of Object.keys(main.tournaments)) {
+                officialTournamentIds.add(tid);
+              }
+            }
+          }
+        } catch(e) {}
+
+        // Enumerate all keys in KV namespace
+        let allKeys = [];
+        let cursor = null;
+        let pageCount = 0;
+        do {
+          const listOptions = cursor ? { cursor, limit: 1000 } : { limit: 1000 };
+          const listRes = await kv.list(listOptions);
+          if (listRes && Array.isArray(listRes.keys)) {
+            allKeys.push(...listRes.keys);
+          }
+          cursor = (listRes && !listRes.list_complete && listRes.cursor) ? listRes.cursor : null;
+          pageCount++;
+          if (pageCount > 50) break; // Safety cap
+        } while (cursor);
+
+        const protectedKeys = [];
+        const candidateKeys = [];
+
+        for (const item of allKeys) {
+          const keyName = item.name;
+
+          // 1. Standalone match replays are unconditionally protected
+          if (keyName.startsWith("replay:")) {
+            protectedKeys.push({ name: keyName, reason: "Replay battle log" });
+            continue;
+          }
+
+          // 2. Core database states are unconditionally protected
+          if (keyName.startsWith("league_state:")) {
+            protectedKeys.push({ name: keyName, reason: "Core database state" });
+            continue;
+          }
+
+          // 3. User accounts & rosters are unconditionally protected
+          if (keyName.startsWith("user:") || keyName === "user_profiles_list") {
+            protectedKeys.push({ name: keyName, reason: "Coach profile / credentials" });
+            continue;
+          }
+
+          // 4. Discord config is unconditionally protected
+          if (keyName === "discord_config") {
+            protectedKeys.push({ name: keyName, reason: "Discord webhook configuration" });
+            continue;
+          }
+
+          // 5. Draft state keys: check if official vs orphaned test
+          if (keyName.startsWith("draft_state:")) {
+            const tId = keyName.replace("draft_state:", "").trim();
+            if (officialTournamentIds.has(tId)) {
+              protectedKeys.push({ name: keyName, reason: "Official tournament draft state" });
+            } else {
+              candidateKeys.push({ name: keyName, reason: `Orphaned draft state (not in active/official tournaments: ${tId})` });
+            }
+            continue;
+          }
+
+          // 6. Predictions keys: check if official vs orphaned test
+          if (keyName.startsWith("predictions:")) {
+            const tId = keyName.replace("predictions:", "").trim();
+            if (officialTournamentIds.has(tId)) {
+              protectedKeys.push({ name: keyName, reason: "Official tournament predictions" });
+            } else {
+              candidateKeys.push({ name: keyName, reason: `Orphaned predictions ballot (not in active/official tournaments: ${tId})` });
+            }
+            continue;
+          }
+
+          // 7. Any other unknown key defaults to protected for maximum safety
+          protectedKeys.push({ name: keyName, reason: "Unknown key type (preserved by fail-safe whitelist)" });
+        }
+
+        const isConfirm = request.method === "POST" && (body.confirm === true || url.searchParams.get("confirm") === "true");
+
+        // Dry Run mode
+        if (!isConfirm) {
+          return jsonResponse({
+            mode: "dry_run",
+            total_keys_found: allKeys.length,
+            protected_count: protectedKeys.length,
+            candidate_count: candidateKeys.length,
+            candidate_keys: candidateKeys,
+            protected_summary: {
+              replays: protectedKeys.filter(k => k.name.startsWith("replay:")).length,
+              users: protectedKeys.filter(k => k.name.startsWith("user:") || k.name === "user_profiles_list").length,
+              official_tournaments: protectedKeys.filter(k => k.name.startsWith("draft_state:") || k.name.startsWith("predictions:")).length,
+              system: protectedKeys.filter(k => k.name.startsWith("league_state:") || k.name === "discord_config").length,
+              other: protectedKeys.filter(k => !k.name.startsWith("replay:") && !k.name.startsWith("user:") && k.name !== "user_profiles_list" && !k.name.startsWith("draft_state:") && !k.name.startsWith("predictions:") && !k.name.startsWith("league_state:") && k.name !== "discord_config").length,
+            },
+            instructions: "Dry run preview complete. No keys were deleted. To permanently purge candidate keys, send POST to /api/admin/clean-kv with { confirm: true } and the x-master-key."
+          });
+        }
+
+        // Execution mode
+        const deletedKeys = [];
+        const failedKeys = [];
+        for (const item of candidateKeys) {
+          try {
+            await kv.delete(item.name);
+            deletedKeys.push(item.name);
+          } catch(err) {
+            failedKeys.push({ name: item.name, error: err.message });
+          }
+        }
+
+        return jsonResponse({
+          mode: "executed",
+          success: true,
+          total_keys_scanned: allKeys.length,
+          deleted_count: deletedKeys.length,
+          deleted_keys: deletedKeys,
+          failed_count: failedKeys.length,
+          failed_keys: failedKeys,
+          protected_count: protectedKeys.length
+        });
       }
 
       // -------------------------------------------------------------
