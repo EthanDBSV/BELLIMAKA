@@ -2419,9 +2419,35 @@ details[open] > .past-tourney-summary .past-chevron{transform:rotate(180deg);col
   padding: 5px 12px !important;
   font-size: 11px !important;
 }
+.tabs {
+  display: flex !important;
+  gap: 6px !important;
+  margin-bottom: 18px !important;
+  border-bottom: 1px solid var(--line) !important;
+  overflow-x: auto !important;
+  -webkit-overflow-scrolling: touch !important;
+  scrollbar-width: none !important;
+  width: 100% !important;
+  max-width: 100% !important;
+}
+.tabs::-webkit-scrollbar {
+  display: none !important;
+}
 .tabs button {
   font-size: 14px !important;
   padding: 12px 16px !important;
+  flex-shrink: 0 !important;
+  white-space: nowrap !important;
+}
+@media (max-width: 600px) {
+  .tabs {
+    gap: 4px !important;
+    padding-bottom: 2px !important;
+  }
+  .tabs button {
+    font-size: 13px !important;
+    padding: 10px 14px !important;
+  }
 }
 .hero {
   gap: 24px !important;
@@ -3139,6 +3165,21 @@ details[open] > .past-tourney-summary .past-chevron{transform:rotate(180deg);col
   background: rgba(142, 140, 149, 0.14);
   color: #c4c2cb;
   border-color: rgba(142, 140, 149, 0.3);
+}
+.bcast-advance-tag.qualify {
+  background: rgba(74, 222, 128, 0.14);
+  color: #4ade80;
+  border-color: rgba(74, 222, 128, 0.4);
+}
+.bcast-advance-tag.elim {
+  background: rgba(248, 113, 113, 0.14);
+  color: #f87171;
+  border-color: rgba(248, 113, 113, 0.4);
+}
+.bcast-advance-tag.hunt {
+  background: rgba(245, 158, 11, 0.14);
+  color: #f59e0b;
+  border-color: rgba(245, 158, 11, 0.4);
 }
 
 /* Column Subbar - Perfectly mirrors .bcast-stand-row structure */
@@ -25814,15 +25855,16 @@ function getStand(t=activeT(),group=null){
   return list;
 }
 
-function standingTable(t, g){
+function standingTable(t, g, opts = {}){
   if(!t) return '';
   let isSwiss = getStage1Format(t) === 'swiss';
-  let list = isSwiss ? getSwissStand(t) : getStand(t, g);
-  if(!list || !list.length){
+  let fullList = isSwiss ? getSwissStand(t) : getStand(t, g);
+  if(!fullList || !fullList.length){
+    let emptyTitle = opts.title || `${esc(g || (isSwiss ? 'SWISS STAGE' : 'GROUP'))} STANDINGS`;
     return `
-      <div class="bcast-group-card">
+      <div class="bcast-group-card ${isSwiss ? 'swiss-card' : ''}${opts.cardClass ? ' ' + opts.cardClass : ''}">
         <div class="bcast-group-head">
-          <span class="bcast-group-title">${esc(g || (isSwiss ? 'SWISS STAGE' : 'GROUP'))} STANDINGS</span>
+          <span class="bcast-group-title">${emptyTitle}</span>
         </div>
         <div style="padding:28px 16px;text-align:center;color:#8e8c95;font-size:12px">No standings data available yet.</div>
       </div>
@@ -25833,6 +25875,13 @@ function standingTable(t, g){
   let tIdx = t ? sortedT.findIndex(x => x.id === t.id || x.name === t.name) : -1;
   let isPastT = (t && t.status === 'COMPLETE' && tIdx >= 0);
   let { lossesToEliminate, isEliminationStyle } = isSwiss ? getSwissThresholds(t) : {};
+
+  let startIndex = 0;
+  let list = fullList;
+  if(Array.isArray(opts.sliceRange)){
+    startIndex = Number(opts.sliceRange[0]) || 0;
+    list = fullList.slice(startIndex, opts.sliceRange[1]);
+  }
 
   // Active criteria configuration
   const CRIT_COL_CONFIG = {
@@ -25857,7 +25906,8 @@ function standingTable(t, g){
   let gridTrackStyle = `${critCols.map(c => c.width).join(' ')} 78px`;
 
   let rowsHtml = [];
-  list.forEach((x, i) => {
+  list.forEach((x, subIdx) => {
+    let i = startIndex + subIdx;
     let p = x.p;
     let tName = teamName(t, p) || 'Unassigned team';
 
@@ -25979,23 +26029,26 @@ function standingTable(t, g){
     `);
   });
 
-  let titleText = isSwiss ? 'SWISS STAGE STANDINGS' : `${esc(g)} STANDINGS`;
-  let advanceTagText = isPastT 
+  let titleText = opts.title !== undefined ? opts.title : (isSwiss ? 'SWISS STAGE STANDINGS' : `${esc(g)} STANDINGS`);
+  let advanceTagText = opts.advanceTag !== undefined ? opts.advanceTag : (isPastT 
     ? (isSwiss ? 'FINAL SWISS STANDINGS' : 'FINAL GROUP STANDINGS')
-    : (isSwiss ? `TOP ${cut} ADVANCE TO PLAYOFFS` : `TOP ${cut} ADVANCE`);
+    : (isSwiss ? `TOP ${cut} ADVANCE TO PLAYOFFS` : `TOP ${cut} ADVANCE`));
+  let advanceTagClass = opts.advanceTagClass !== undefined ? opts.advanceTagClass : (isPastT ? 'final' : '');
+  let headerIcon = opts.icon !== undefined ? opts.icon : (isPastT ? '🏆' : '⚔️');
+  let cardExtraClass = opts.cardClass ? ` ${opts.cardClass}` : '';
 
   let headerColsHtml = critCols.map(col => `
     <span class="bcast-col-lbl col-${esc(col.id)}" style="width:${col.width}" title="${esc(col.title)}">${esc(col.label)}</span>
   `).join('');
 
   return `
-    <div class="bcast-group-card ${isSwiss ? 'swiss-card' : ''}">
+    <div class="bcast-group-card ${isSwiss ? 'swiss-card' : ''}${cardExtraClass}">
       <div class="bcast-group-head">
         <div class="bcast-group-title-wrap">
-          <span class="bcast-group-icon">${isPastT ? '🏆' : '⚔️'}</span>
+          <span class="bcast-group-icon">${headerIcon}</span>
           <span class="bcast-group-title">${titleText}</span>
         </div>
-        <span class="bcast-advance-tag ${isPastT ? 'final' : ''}">${advanceTagText}</span>
+        <span class="bcast-advance-tag ${advanceTagClass}">${advanceTagText}</span>
       </div>
 
       <div class="bcast-cols-subbar">
@@ -26016,6 +26069,67 @@ function standingTable(t, g){
       </div>
     </div>
   `;
+}
+
+function renderSingleStageOrSwissStandings(t, stageName){
+  if(!t) return '';
+  let isSwiss = getStage1Format(t) === 'swiss';
+  let fullList = isSwiss ? getSwissStand(t) : getStand(t, stageName);
+  if(!fullList || !fullList.length){
+    return `<div class="card table-wrap bcast-card-wrap" style="max-width:100%">${standingTable(t, stageName)}</div>`;
+  }
+
+  let cut = advancePerGroup(t);
+  let sortedT = typeof sortedTournamentsChronological === 'function' ? sortedTournamentsChronological() : Object.values(tournamentData);
+  let tIdx = t ? sortedT.findIndex(x => x.id === t.id || x.name === t.name) : -1;
+  let isPastT = (t && t.status === 'COMPLETE' && tIdx >= 0);
+
+  if(cut > 0 && cut < fullList.length){
+    let leftTitle = isPastT 
+      ? (isSwiss ? 'SWISS PLAYOFF ADVANCERS' : `${esc(stageName || 'GROUP')} ADVANCERS (TOP ${cut})`)
+      : (isSwiss ? `SWISS TOP SEEDS (TOP ${cut})` : `${esc(stageName || 'STAGE')} TOP SEEDS (TOP ${cut})`);
+    let leftTag = isPastT ? 'QUALIFIED FOR TOP CUT' : `TOP ${cut} ADVANCE`;
+    let leftTagClass = isPastT ? 'qualify' : '';
+    let leftIcon = '🏆';
+
+    let rightTitle = isPastT 
+      ? 'FINAL PLACEMENT'
+      : `THE HUNT (SEEDS ${cut + 1}–${fullList.length})`;
+    let rightTag = isPastT ? 'ELIMINATED' : `OUTSIDE TOP ${cut}`;
+    let rightTagClass = isPastT ? 'elim' : 'hunt';
+    let rightIcon = isPastT ? '🛑' : '🎯';
+
+    let leftCard = standingTable(t, stageName, {
+      sliceRange: [0, cut],
+      title: leftTitle,
+      advanceTag: leftTag,
+      advanceTagClass: leftTagClass,
+      icon: leftIcon,
+      cardClass: 'standings-top-seeds-card'
+    });
+
+    let rightCard = standingTable(t, stageName, {
+      sliceRange: [cut, fullList.length],
+      title: rightTitle,
+      advanceTag: rightTag,
+      advanceTagClass: rightTagClass,
+      icon: rightIcon,
+      cardClass: 'standings-the-hunt-card'
+    });
+
+    return `
+      <div class="bcast-groups-grid two-groups single-group-split">
+        <div class="card table-wrap bcast-card-wrap" style="align-self:start">
+          ${leftCard}
+        </div>
+        <div class="card table-wrap bcast-card-wrap" style="align-self:start">
+          ${rightCard}
+        </div>
+      </div>
+    `;
+  }
+
+  return `<div class="card table-wrap bcast-card-wrap" style="max-width:100%">${standingTable(t, stageName)}</div>`;
 }
 
 function swapStandingsCriteria(tId, fromIdx, toIdx){
@@ -26636,12 +26750,15 @@ function Standings(){
   ) : '';
 
   if(isSwiss){
-    return head('Standings', t.name + ' · Swiss System Stage', controls) + `<div class="card table-wrap bcast-card-wrap" style="max-width:100%">${standingTable(t, 'Swiss Stage')}</div><p class="sub">Swiss ranking order: <b>Match Wins (W-L) → Buchholz Strength of Schedule (BUCH) → Game Differential (DIFF) → Game Wins (GW) → Head-to-Head</b>.</p>` + renderTournamentAwardsStandingsBannerHtml(t);
+    return head('Standings', t.name + ' · Swiss System Stage', controls) + renderSingleStageOrSwissStandings(t, 'Swiss Stage') + `<p class="sub" style="margin-top:12px">Swiss ranking order: <b>Match Wins (W-L) → Buchholz Strength of Schedule (BUCH) → Game Differential (DIFF) → Game Wins (GW) → Head-to-Head</b>.</p>` + renderTournamentAwardsStandingsBannerHtml(t);
   }
 
   let criteria = getStandingsCriteria(t);
   let orderDesc = criteria.map(c => `${STANDING_METRICS[c]?.name || c.toUpperCase()} (${STANDING_METRICS[c]?.label || c.toUpperCase()})`).join(' → ');
-  return head('Standings', t.name + ' · group stage', controls) + `<div class="bcast-groups-grid ${groups.length > 1 ? 'two-groups' : 'single-group'}">${groups.map(g => `<div class="card table-wrap bcast-card-wrap">${standingTable(t, g)}</div>`).join('')}</div>` + `<p class="sub" style="margin-top:12px">Group ranking order: <b>${orderDesc}</b>.</p>` + renderTournamentAwardsStandingsBannerHtml(t);
+  let groupsHtml = groups.length > 1
+    ? `<div class="bcast-groups-grid two-groups">${groups.map(g => `<div class="card table-wrap bcast-card-wrap" style="align-self:start">${standingTable(t, g)}</div>`).join('')}</div>`
+    : renderSingleStageOrSwissStandings(t, groups[0] || 'Group Stage');
+  return head('Standings', t.name + ' · group stage', controls) + groupsHtml + `<p class="sub" style="margin-top:12px">Group ranking order: <b>${orderDesc}</b>.</p>` + renderTournamentAwardsStandingsBannerHtml(t);
 }
 
 function matchPlayerName(p){return `<button class="player-link match-hover-name" onclick="openProfile('${jsArg(p)}')" onmouseenter="highlightMatches('${jsArg(p)}',true)" onmouseleave="highlightMatches('',false)">${esc(p)}</button>`}
@@ -34822,7 +34939,7 @@ function tournamentDetail(){
 
   let content=detailTab==='Draft'?DraftRostersView(t)
     :detailTab==='Teams'?renderTournamentTeamsTabHtml(t)
-    :detailTab==='Standings'?(isDraftOngoing ? renderDraftLockedStandings(t, true) : (isSwiss ? `<div class="card table-wrap bcast-card-wrap" style="max-width:100%">${standingTable(t,'Swiss Stage')}</div>` : `<div class="bcast-groups-grid ${groups.length>1?'two-groups':'single-group'}">${groups.map(g=>`<div class="card table-wrap bcast-card-wrap" style="align-self:start">${standingTable(t,g)}</div>`).join('')}</div>`))
+    :detailTab==='Standings'?(isDraftOngoing ? renderDraftLockedStandings(t, true) : (isSwiss ? renderSingleStageOrSwissStandings(t, 'Swiss Stage') : (groups.length > 1 ? `<div class="bcast-groups-grid two-groups">${groups.map(g=>`<div class="card table-wrap bcast-card-wrap" style="align-self:start">${standingTable(t,g)}</div>`).join('')}</div>` : renderSingleStageOrSwissStandings(t, groups[0] || 'Group Stage'))))
     :detailTab===stage1TabName?(isDraftOngoing ? renderDraftLockedMatches(t, true) : matchesView(t,false))
     :detailTab==='Top Cut'?(isDraftOngoing ? renderDraftLockedTopCut(t, true) : topCutSection(t,!t.bracketManagerData))
     :detailTab==='Awards'?renderTournamentAwardsTabHtml(t)

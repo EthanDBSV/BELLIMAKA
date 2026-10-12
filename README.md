@@ -55,6 +55,15 @@ Format: `v[MAJOR].[MINOR].[PATCH]` — Major = major system overhauls, Minor = n
     - Updated All-Tournament Team cards to display `"Average Impact per Game"` instead of `"Avg Impact / 10"`.
     - Removed redundant `"/ 10"` and `"/ 100"` suffixes from team roster sheets, MVP cards, and replay tooltips as the 100-point scale is self-explanatory.
   - **Backward Compatibility & Cache Migration**: Pre-existing replays and legacy caches automatically convert onto the 0.0–100.0 scale, and tournament stats cache version was bumped to `15`.
+- **Standings 2-Column Split Board for Single-Group & Swiss Stages**:
+  - Re-architected standings presentation for single-group and Swiss system tournaments (`renderSingleStageOrSwissStandings`): on desktop, automatically partitions standings across the playoff cutoff line into an elegant 2-column board (`.bcast-groups-grid.two-groups.single-group-split`).
+  - **Left Card (Playoff Seeds / Advancers)**: Shows Ranks $1$ to $\text{cut}$ (e.g. `GROUP A ADVANCERS (TOP 4)` or `SWISS PLAYOFF ADVANCERS` with `QUALIFIED FOR TOP CUT` or `TOP N ADVANCE` green/gold badge and trophy icon).
+  - **Right Card (The Hunt / Final Placement)**: Shows Ranks $\text{cut} + 1$ to $N$ with `FINAL PLACEMENT` or `THE HUNT` and `ELIMINATED` or `OUTSIDE TOP N` red/amber badge and target icon.
+  - **Eliminated Background Image Stretching**: Matches the card width and ~4:1 banner proportions of 2-group tournaments (e.g. Cagliari Regional), completely resolving the extreme 15:1 distorted slit problem on desktop displays while gracefully stacking into single-column cards on mobile (`<= 900px`).
+  - Multi-group tournaments (e.g. Cagliari Regional) remain completely untouched in their side-by-side group layout.
+- **Tournament Detail Tabs Mobile UI Overflow & Touch-Scroll Fix**:
+  - Fixed horizontal overflow on `.tabs` across tournament archive detail views on mobile devices (`max-width: 100% !important; overflow-x: auto !important; -webkit-overflow-scrolling: touch !important; scrollbar-width: none !important`).
+  - Added `flex-shrink: 0 !important; white-space: nowrap !important` on tab buttons with compact padding on `< 600px` viewports, ensuring trailing tabs like "Top Cut", "Awards", and "Predictions" are smoothly accessible via touch swiping without breaking page boundaries.
 
 ---
 
