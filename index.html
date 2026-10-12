@@ -12723,6 +12723,23 @@ function calculateTeamOfTheSeason(t) {
     });
   }
 
+  function resolveCanonicalCoachName(c) {
+    if(!c) return '';
+    let s = String(c).trim();
+    if(!s) return '';
+    if(t.rosters) {
+      let rKey = Object.keys(t.rosters).find(k => isCoachMatch(k, s, t));
+      if(rKey) return rKey;
+    }
+    if(Array.isArray(t.players)) {
+      let pKey = t.players.find(k => isCoachMatch(k, s, t));
+      if(pKey) return pKey;
+    }
+    return s;
+  }
+
+  let coachTotalGamesMap = new Map();
+
   // 3. Aggregate stats across all replays, tracking Match MVPs and regular vs top cut
   let monMap = new Map();
   allReplays.forEach(({ replay, match, isTopCut }) => {
@@ -12916,6 +12933,23 @@ function calculateTeamOfTheSeason(t) {
       if(!entry.coach && curCoach) entry.coach = curCoach;
       gEntry.moves.forEach(mv => entry.moves.add(mv));
     });
+
+    // Track total games played by each coach across the tournament
+    let seenReplayCoaches = new Set();
+    let addReplayCoach = (raw) => {
+      let canon = resolveCanonicalCoachName(raw);
+      if(canon && !canon.toLowerCase().startsWith('player ')) {
+        seenReplayCoaches.add(canon);
+      }
+    };
+    if(mC1) addReplayCoach(mC1);
+    if(mC2) addReplayCoach(mC2);
+    replayGameGroup.forEach(gEntry => {
+      if(gEntry.coach) addReplayCoach(gEntry.coach);
+    });
+    seenReplayCoaches.forEach(c => {
+      coachTotalGamesMap.set(c, (coachTotalGamesMap.get(c) || 0) + 1);
+    });
   });
 
   // Verify coach assignments from tournament rosters if missing
@@ -12948,8 +12982,28 @@ function calculateTeamOfTheSeason(t) {
     let rawTank = tpg + (hpg * 1.5);
     let tankMult = 0.55 + (0.35 * winRate) + (0.45 * survivalRate);
     let tankScore = rawTank * tankMult;
+
+    // 70% requirement calculation (rounded down, floor of 3 games)
+    let coachCanon = resolveCanonicalCoachName(m.coach);
+    let coachGames = coachTotalGamesMap.get(coachCanon);
+    if(coachGames == null && coachCanon) {
+      for(let [k, v] of coachTotalGamesMap.entries()) {
+        if(isCoachMatch(k, coachCanon, t)) { coachGames = v; break; }
+      }
+    }
+    if((coachGames == null || coachGames === 0) && m.games > 0) coachGames = m.games;
+    coachGames = coachGames || 0;
+    let minGamesReq = Math.max(3, Math.floor(coachGames * 0.70));
+    let coachGamePct = coachGames > 0 ? (m.games / coachGames) : 0;
+    let meetsGameThreshold = (m.games >= minGamesReq);
+
     return {
       ...m,
+      coach: coachCanon || m.coach,
+      coachTotalGames: coachGames,
+      minGamesRequired: minGamesReq,
+      coachGamePct,
+      meetsGameThreshold,
       moves: Array.from(m.moves),
       killsPerGame: kpg,
       damageDealtPerGame: dpg,
@@ -13009,29 +13063,60 @@ function calculateTeamOfTheSeason(t) {
 
   // 5. Teams of the Season: First Team, Second Team, Third Team
   // Based strictly on Average Impact Score per game across the entire tournament
-  // Exactly 4 Pokemon per tier (12 total), minimum 5 games played to qualify
-  let eligibleTots = list.filter(m => (m.games || 0) >= 5);
-  // If fewer than 12 candidates meet the 5-game minimum, supplement with remaining candidates sorted by games played
+  // Exactly 4 Pokemon per tier (12 total), requiring >= 70% of coach's tournament games (floor of 3 games)
+  let eligibleTots = list.filter(m => m.meetsGameThreshold);
+  // If fewer than 12 candidates meet the 70% threshold, backfill with remaining candidates sorted by coach-game percentage
   if(eligibleTots.length < 12 && list.length > eligibleTots.length) {
-    let lowerGameMons = list.filter(m => (m.games || 0) < 5).sort((a, b) => (b.games || 0) - (a.games || 0));
+    let lowerGameMons = list.filter(m => !m.meetsGameThreshold).sort((a, b) => {
+      let bPct = b.coachGamePct || 0;
+      let aPct = a.coachGamePct || 0;
+      if(bPct !== aPct) return bPct - aPct;
+      if((b.games || 0) !== (a.games || 0)) return (b.games || 0) - (a.games || 0);
+      return (b.avgImpactScore || 0) - (a.avgImpactScore || 0);
+    });
     eligibleTots = [...eligibleTots, ...lowerGameMons];
   }
   if(eligibleTots.length === 0) eligibleTots = [...list];
 
-  // Candidates for statistical leaderboards (minimum 5 games, supplemented if fewer than 3)
-  let eligibleLeaders = list.filter(m => (m.games || 0) >= 5);
+  // Candidates for statistical leaderboards (minimum 70% coach games, floor 3, backfilled if fewer than 3)
+  let eligibleLeaders = list.filter(m => m.meetsGameThreshold);
   if(eligibleLeaders.length < 3 && list.length > eligibleLeaders.length) {
-    let lowerGameMons = list.filter(m => (m.games || 0) < 5).sort((a, b) => (b.games || 0) - (a.games || 0));
+    let lowerGameMons = list.filter(m => !m.meetsGameThreshold).sort((a, b) => {
+      let bPct = b.coachGamePct || 0;
+      let aPct = a.coachGamePct || 0;
+      if(bPct !== aPct) return bPct - aPct;
+      if((b.games || 0) !== (a.games || 0)) return (b.games || 0) - (a.games || 0);
+      return (b.avgImpactScore || 0) - (a.avgImpactScore || 0);
+    });
     eligibleLeaders = [...eligibleLeaders, ...lowerGameMons];
   }
   if(eligibleLeaders.length === 0) eligibleLeaders = [...list];
 
-  // Compute Top 3 Statistical Leaders (per-game averages, broken by total stats)
-  let topKOs = [...eligibleLeaders].sort((a, b) => b.killsPerGame !== a.killsPerGame ? b.killsPerGame - a.killsPerGame : b.totalKills - a.totalKills).slice(0, 3);
-  let topDamage = [...eligibleLeaders].sort((a, b) => b.damageDealtPerGame !== a.damageDealtPerGame ? b.damageDealtPerGame - a.damageDealtPerGame : b.totalDamageDealt - a.totalDamageDealt).slice(0, 3);
-  let topTaken = [...eligibleLeaders].sort((a, b) => b.damageTakenPerGame !== a.damageTakenPerGame ? b.damageTakenPerGame - a.damageTakenPerGame : b.totalDamageTaken - a.totalDamageTaken).slice(0, 3);
-  let topHealed = [...eligibleLeaders].sort((a, b) => b.healedPerGame !== a.healedPerGame ? b.healedPerGame - a.healedPerGame : b.totalHpHealed - a.totalHpHealed).slice(0, 3);
-  let topSupport = [...eligibleLeaders].sort((a, b) => (b.supportPerGame || 0) !== (a.supportPerGame || 0) ? (b.supportPerGame || 0) - (a.supportPerGame || 0) : (b.totalSupport || 0) - (a.totalSupport || 0)).slice(0, 3);
+  // Compute Top 3 Statistical Leaders (per-game averages, prioritizing qualified threshold candidates)
+  let topKOs = [...eligibleLeaders].sort((a, b) => {
+    if(b.meetsGameThreshold !== a.meetsGameThreshold) return (b.meetsGameThreshold ? 1 : 0) - (a.meetsGameThreshold ? 1 : 0);
+    return b.killsPerGame !== a.killsPerGame ? b.killsPerGame - a.killsPerGame : b.totalKills - a.totalKills;
+  }).slice(0, 3);
+
+  let topDamage = [...eligibleLeaders].sort((a, b) => {
+    if(b.meetsGameThreshold !== a.meetsGameThreshold) return (b.meetsGameThreshold ? 1 : 0) - (a.meetsGameThreshold ? 1 : 0);
+    return b.damageDealtPerGame !== a.damageDealtPerGame ? b.damageDealtPerGame - a.damageDealtPerGame : b.totalDamageDealt - a.totalDamageDealt;
+  }).slice(0, 3);
+
+  let topTaken = [...eligibleLeaders].sort((a, b) => {
+    if(b.meetsGameThreshold !== a.meetsGameThreshold) return (b.meetsGameThreshold ? 1 : 0) - (a.meetsGameThreshold ? 1 : 0);
+    return b.damageTakenPerGame !== a.damageTakenPerGame ? b.damageTakenPerGame - a.damageTakenPerGame : b.totalDamageTaken - a.totalDamageTaken;
+  }).slice(0, 3);
+
+  let topHealed = [...eligibleLeaders].sort((a, b) => {
+    if(b.meetsGameThreshold !== a.meetsGameThreshold) return (b.meetsGameThreshold ? 1 : 0) - (a.meetsGameThreshold ? 1 : 0);
+    return b.healedPerGame !== a.healedPerGame ? b.healedPerGame - a.healedPerGame : b.totalHpHealed - a.totalHpHealed;
+  }).slice(0, 3);
+
+  let topSupport = [...eligibleLeaders].sort((a, b) => {
+    if(b.meetsGameThreshold !== a.meetsGameThreshold) return (b.meetsGameThreshold ? 1 : 0) - (a.meetsGameThreshold ? 1 : 0);
+    return (b.supportPerGame || 0) !== (a.supportPerGame || 0) ? (b.supportPerGame || 0) - (a.supportPerGame || 0) : (b.totalSupport || 0) - (a.totalSupport || 0);
+  }).slice(0, 3);
 
   let leaders = {
     damageMon: topDamage[0]?.name?.toLowerCase() || null,
@@ -13063,8 +13148,9 @@ function calculateTeamOfTheSeason(t) {
     return tags;
   }
 
-  // Sort eligible Pokémon strictly by Average Impact Score per game
+  // Sort eligible Pokémon strictly by Average Impact Score per game (qualifying candidates prioritized over backfilled)
   eligibleTots.sort((a, b) => {
+    if(b.meetsGameThreshold !== a.meetsGameThreshold) return (b.meetsGameThreshold ? 1 : 0) - (a.meetsGameThreshold ? 1 : 0);
     if(b.avgImpactScore !== a.avgImpactScore) return b.avgImpactScore - a.avgImpactScore;
     if(b.impactScoreTotal !== a.impactScoreTotal) return b.impactScoreTotal - a.impactScoreTotal;
     if(b.totalKills !== a.totalKills) return b.totalKills - a.totalKills;
@@ -13105,6 +13191,7 @@ function calculateTeamOfTheSeason(t) {
     totalGames: allReplays.length,
     pokemonCount: list.length,
     pokemonList: list,
+    coachTotalGames: Object.fromEntries(coachTotalGamesMap),
     seasonMvp,
     finalsMvp,
     majorAwards,
@@ -13366,7 +13453,7 @@ function renderTournamentStatLeadersHtml(leaders, t) {
         <div style="display:flex;align-items:center;gap:8px">
           <span style="font-size:16px">📊</span>
           <span style="font:900 18px 'Barlow Condensed';color:#f5f3f0;letter-spacing:.6px;text-transform:uppercase">Tournament Stat Leaders</span>
-          <span style="font-size:11px;color:#94a3b8">— Per-Game Averages • Min. 5 Games</span>
+          <span style="font-size:11px;color:#94a3b8">— Per-Game Averages • Min. 70% Games Played</span>
         </div>
         <div style="font-size:11px;color:#8e8c95;font-weight:700">
           Top 3 Across All Tournament Replays
@@ -13658,7 +13745,7 @@ function openAwardsRatingGuideModal() {
           <div style="background:rgba(255,209,102,0.06);border:1px solid rgba(255,209,102,0.25);border-radius:10px;padding:12px 16px;display:flex;align-items:flex-start;gap:12px">
             <span style="font-size:20px;line-height:1.2">ℹ️</span>
             <div style="font-size:12px;color:#e2e8f0;line-height:1.5">
-              Every premier honor, All-Tournament Team slot, and statistical badge is computed straight from verified battle replays and tournament telemetry. To ensure genuine sample reliability and reward sustained excellence, a minimum of <b>5 tournament battle appearances</b> is required to qualify for Season MVP, All-Tournament Teams, and Statistical Leaderboards (with fallback to highest appearances if fewer meet the threshold).
+              Every premier honor, All-Tournament Team slot, and statistical badge is computed straight from verified battle replays and tournament telemetry. To ensure genuine sample reliability and reward sustained excellence, Season MVP requires a minimum of <b>5 regular season appearances</b>, while All-Tournament Teams and Statistical Leaderboards require participating in at least <b>70% of the coach's total tournament games</b> (rounded down, minimum 3 games, with fallback if fewer meet the threshold).
             </div>
           </div>
 
@@ -13739,11 +13826,11 @@ function openAwardsRatingGuideModal() {
                 <span style="font:900 18px 'Barlow Condensed',sans-serif;letter-spacing:.5px;color:#38bdf8;text-transform:uppercase">All-Tournament Teams (Average Impact Rating)</span>
               </div>
               <span style="font:800 10px 'Barlow Condensed',sans-serif;letter-spacing:.6px;text-transform:uppercase;padding:2px 8px;border-radius:4px;background:rgba(56,189,248,0.12);color:#7dd3fc;border:1px solid rgba(56,189,248,0.3)">
-                4 Pokémon per Tier (1st, 2nd, 3rd Team) • Min. 5 Games
+                4 Pokémon per Tier (1st, 2nd, 3rd Team) • Min. 70% Games Played
               </span>
             </div>
             <p style="margin:0 0 10px;color:#94a3b8;font-size:12px;line-height:1.45">
-              All-Tournament Teams honor the top 12 individual Pokémon across the entire tournament, ranked strictly by <b>Average Impact Score per Game</b>. Arbitrary role divisions like DPS and Tank have been retired in favor of universal holistic battle impact.
+              All-Tournament Teams honor the top 12 individual Pokémon across the entire tournament, ranked strictly by <b>Average Impact Score per Game</b> (must participate in at least 70% of their coach's tournament battles, rounded down). Arbitrary role divisions like DPS and Tank have been retired in favor of universal holistic battle impact.
             </p>
             <div style="background:#0f1722;border:1px solid rgba(56,189,248,0.25);border-radius:8px;padding:12px 14px">
               <div style="font:800 11px 'Barlow Condensed',sans-serif;letter-spacing:.8px;text-transform:uppercase;color:#7dd3fc;margin-bottom:6px">
@@ -13769,7 +13856,7 @@ function openAwardsRatingGuideModal() {
                 <span style="font:900 18px 'Barlow Condensed',sans-serif;letter-spacing:.5px;color:#f59e0b;text-transform:uppercase">Tournament Stat Leaderboards (Top 3 Podiums)</span>
               </div>
               <span style="font:800 10px 'Barlow Condensed',sans-serif;letter-spacing:.6px;text-transform:uppercase;padding:2px 8px;border-radius:4px;background:rgba(245,158,11,0.12);color:#fde047;border:1px solid rgba(245,158,11,0.3)">
-                5 Premier Categories • Min. 5 Games
+                5 Premier Categories • Min. 70% Games Played
               </span>
             </div>
             <p style="margin:0 0 10px;color:#94a3b8;font-size:12px;line-height:1.45">
@@ -13932,7 +14019,7 @@ function renderTournamentAwardsTabHtml(t) {
             <div style="font-size:11px;font-weight:700;color:#94a3b8;letter-spacing:.6px;display:flex;align-items:center;gap:6px">
               <span style="color:#38bdf8">\u26A1 Impact Rated</span>
               <span>\u2022</span>
-              <span>Min. 5 Games</span>
+              <span>Min. 70% Games Played</span>
             </div>
           </div>
 

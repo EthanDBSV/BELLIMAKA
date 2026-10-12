@@ -3,26 +3,29 @@
 All notable changes to the Bellimaka Pokémon Draft League platform are documented here.
 Format: `v[MAJOR].[MINOR].[PATCH]` — Major = major system overhauls, Minor = new features, Patch = bug fixes and visual improvements.
 
+## [v2.5.3] — 2026-10-11
+
+### All-Tournament Teams & Statistical Leaderboards 70% Appearance Requirement
+- **Dynamic 70% Coach Games Requirement**:
+  - Replaced the static 5-game requirement for All-Tournament Teams (1st, 2nd, and 3rd Team) and Statistical Leaderboards (Most KOs, Most Damage, Most Tanked, Most Healed, Most Support) with a dynamic requirement: each Pokémon must participate in at least **70% of its coach's total tournament battles** (`Math.floor(coachTotalGames * 0.70)`).
+  - Enforced a minimum floor of 3 games (`Math.max(3, Math.floor(coachTotalGames * 0.70))`) to ensure reliable statistical sample size even for short tournament runs.
+  - Automatically calculates total games played per coach across all verified replays (regular season + top cut playoffs).
+- **Graceful Fallback & Prioritization**:
+  - In cases where fewer than 12 Pokémon meet the 70% threshold, backfills remaining slots from the next highest appearance-percentage candidates so all 12 All-Tournament slots and top 3 statistical podiums remain fully populated.
+  - Prioritizes qualified 70% performers above backfilled candidates in leaderboard rankings.
+- **UI & Guidance Alignment**:
+  - Updated awards playbook guide modal and section badges to display `"Min. 70% Games Played"`.
+
+---
+
 ## [v2.5.2] — 2026-10-11
 
-### Dual-Tone Primary & Secondary Broadcast Branding
-- **Custom Primary & Secondary Team Colors**:
-  - Expanded coach broadcast branding studio (`openBroadcastBrandingEditor`) with dedicated side-by-side pickers for both **Primary Color** (battleworn base & ticker ribbon) and **Secondary Color** (angled background splash & text gradient).
-  - Added a one-click `⇄ Swap` button to quickly flip primary and secondary roles, plus `⚡ Auto-Extract` to sample both colors automatically from the coach's profile picture using Euclidean color clustering (`dist >= 65`).
-- **Secondary Color Grunge Splash Texture & Authentic Mirroring**:
-  - Colored the authentic distress spray & paint splatter texture from the folder (`cfb-splash-texture.png`) directly in the coach's secondary branding color (`var(--team-sec)` via CSS mask and canvas composite tinting) over the battleworn primary team gradient.
-  - Upgraded splash layer to **100% Solid Opacity** (`opacity: 1.0` and solid mask body), completely eliminating background bleed and color muddiness so that chosen secondary colors (such as deep purple on yellow) render 100% true and pure.
-  - Symmetrically mirrored the splash between cards (`transform: scale(-1, 1)` on the bottom half) so the heavy spray is concentrated behind the team name on both tiers (top-left on Team 1, bottom-right on Team 2) while scratch streaks angle diagonally into the center VS seam.
-  - Completely removed the artificial SVG scratch overlay and polygon wash from the left side, keeping the texture purely derived from the official texture asset.
-  - Added intelligent contrasting secondary color fallbacks (`getContrastingSecondaryHex` and `DEFAULT_COACH_SECONDARY_COLORS`) for all roster coaches, preventing monochromatic washouts and guaranteeing distinct secondary color splashes and text gradients.
-- **Bold Dual-Tone Chiseled Split Text Gradient**:
-  - Replaced flat two-point linear text fades with a bold **Chiseled Split Gradient** (`linear-gradient(180deg, var(--team-sec) 0%, var(--team-sec) 42%, var(--team-pri) 58%, var(--team-pri) 100%)`), giving every letter sharp, clearly separated color zones and eliminating muddy sRGB middle tones.
-  - Enhanced text outlines with a **High-Contrast Double Shadow** (`0 3px 6px rgba(0,0,0,0.95), 0 0 2px rgba(0,0,0,0.9), 0 0 1px rgba(0,0,0,0.95)`), preserving heavy broadcast depth while keeping dark secondary colors crisp and razor-sharp against shadows and backgrounds.
-  - Seamlessly applied to all typography tiers: single-line names, two-line stacked mascots (`.primetime-cfb-team-name-l1`, `.primetime-cfb-team-name-l2`), small prefix eyebrows (`.primetime-cfb-team-name-prefix`), and live previews.
-- **1:1 Canvas Generator & Export Alignment**:
-  - Synchronized `generateMatchCardDataUrl` with 100% solid opacity (`hctx.globalAlpha = 1.0`), the 42%/58% chiseled split gradient, and matching double-shadow depths directly onto downloadable match cards.
-- **Persistence & Cloud Sync**:
-  - Persisted coach secondary colors into `coachSecondaryColors` across `localStorage` (`'draftdex-coach-secondary-colors'`) and cloud profiles (`profiles[p].secondaryColor`) via `persistLeague()`.
+### Unified Single-Color Broadcast Branding & Metallic Typography
+- **Streamlined Single Team Color System**:
+  - Retained the ESPN College Football-style split layout, two-line mascot typography, and battle ribbon ticker while reverting coach branding to a unified primary color setup.
+  - Removed secondary color storage, secondary color pickers, and secondary splash backgrounds.
+  - Aligned team name headers to a crisp metallic white-to-primary text gradient (`linear-gradient(180deg, #ffffff 0%, #f8fafc 35%, var(--team-name-col2, var(--team-pri, #cbd5e1)) 100%)`).
+  - Synchronized match card canvas exporter (`generateMatchCardDataUrl`) with the single primary color system and metallic gradients.
 
 ---
 
