@@ -19682,7 +19682,6 @@ async function syncFromCloud(force = false){
 
 // Sync on mobile wake / tab visibility / window focus
 var lastCloudCheckTime = 0;
-var lastPlannerPullTime = 0;
 function handleAppForeground(forced = false){
   if(document.hidden || isSandboxMode()) return;
   let now = Date.now();
@@ -19693,13 +19692,6 @@ function handleAppForeground(forced = false){
   if(forced || isDraftRoom || (now - lastCloudCheckTime > 8000)){
     lastCloudCheckTime = now;
     syncFromCloud(isDraftRoom);
-  }
-  if(typeof pullRemoteTeams === 'function' && typeof accountKey === 'function' && accountKey() !== 'guest'){
-    // Throttle background planner pulls to at least 30 seconds to conserve usage and sync silently
-    if(forced || (now - lastPlannerPullTime > 30000)){
-      lastPlannerPullTime = now;
-      pullRemoteTeams(true, false);
-    }
   }
   setupLeagueStateRealtime();
   setupDraftRealtime();
