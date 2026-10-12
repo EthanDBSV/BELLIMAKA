@@ -19682,6 +19682,7 @@ async function syncFromCloud(force = false){
 
 // Sync on mobile wake / tab visibility / window focus
 var lastCloudCheckTime = 0;
+var lastPlannerPullTime = 0;
 function handleAppForeground(forced = false){
   if(document.hidden || isSandboxMode()) return;
   let now = Date.now();
@@ -19694,7 +19695,11 @@ function handleAppForeground(forced = false){
     syncFromCloud(isDraftRoom);
   }
   if(typeof pullRemoteTeams === 'function' && typeof accountKey === 'function' && accountKey() !== 'guest'){
-    pullRemoteTeams(true);
+    // Throttle background planner pulls to at least 30 seconds to conserve usage and sync silently
+    if(forced || (now - lastPlannerPullTime > 30000)){
+      lastPlannerPullTime = now;
+      pullRemoteTeams(true, false);
+    }
   }
   setupLeagueStateRealtime();
   setupDraftRealtime();
@@ -35770,10 +35775,10 @@ function schedulePushTeams(){
   }, 400);
 }
 
-async function pullRemoteTeams(force=false){
+async function pullRemoteTeams(force=false, showToast=false){
   let user = getPlannerUsername();
   if(!user || isSandboxMode()){
-    if(force && typeof showDraftToast === 'function'){
+    if(showToast && typeof showDraftToast === 'function'){
       showDraftToast('Please sign in to sync draft plans across devices', 'error');
     }
     return false;
@@ -35784,7 +35789,7 @@ async function pullRemoteTeams(force=false){
 
   let cfUrl = typeof getCloudflareUrl === 'function' ? getCloudflareUrl() : '';
   if(!cfUrl){
-    if(force && typeof showDraftToast === 'function'){
+    if(showToast && typeof showDraftToast === 'function'){
       showDraftToast('Cloud backend URL not configured', 'error');
     }
     return false;
@@ -35794,7 +35799,7 @@ async function pullRemoteTeams(force=false){
     // Simple CORS GET request: no custom headers to avoid OPTIONS preflight failure on mobile
     let res = await fetch(`${cfUrl}/api/user/planner?username=${encodeURIComponent(user)}&_t=${Date.now()}`);
     if(!res.ok){
-      if(force && typeof showDraftToast === 'function'){
+      if(showToast && typeof showDraftToast === 'function'){
         showDraftToast('Could not reach cloud server', 'error');
       }
       return false;
@@ -35874,7 +35879,7 @@ async function pullRemoteTeams(force=false){
       refreshBuilder();
     }
 
-    if(force && typeof showDraftToast === 'function'){
+    if(showToast && typeof showDraftToast === 'function'){
       let totalPlans = (teamStore.teams || []).length;
       if(totalPlans > 0){
         showDraftToast(`✓ Synced ${totalPlans} draft ${totalPlans === 1 ? 'plan' : 'plans'} with cloud!`);
@@ -35885,7 +35890,7 @@ async function pullRemoteTeams(force=false){
     return true;
   }catch(e){
     console.warn('Failed to pull planner teams from cloud:', e);
-    if(force && typeof showDraftToast === 'function'){
+    if(showToast && typeof showDraftToast === 'function'){
       showDraftToast('⚠️ Sync error: ' + (e.message || 'Network issue'), 'error');
     }
     return false;
@@ -35912,7 +35917,7 @@ async function manualSyncPlanner(btn){
   }
 
   try {
-    await pullRemoteTeams(true);
+    await pullRemoteTeams(true, true);
   } finally {
     if(btn){
       btn.disabled = false;
@@ -38281,6 +38286,13 @@ function openDraftConfirmationModal(tId, monName, cost, tierName){
             <button class="btn ghost" style="color:#ffd166;border-color:#5a441c;width:100%" onclick="addTeamMon('${jsArg(monName)}', ${cost});closeModal()">
               📝 Add to My Private Team Plan
             </button>
+
+            ${moderator ? `
+              <button class="btn ghost" style="color:#ffd166;border-color:#5a4218;width:100%;font-weight:700" onclick="openEditBoardPokemonModal('${jsArg(t.id)}', '${jsArg(monName)}', ${cost}, '${jsArg(tierName)}')">
+                ✏️ Edit Pokémon / Move Tier (Moderator)
+              </button>
+            ` : ''}
+
             <button class="btn ghost" onclick="closeModal()">Cancel</button>
           </div>
         </div>
@@ -38919,9 +38931,9 @@ function renderDraftBoardTierColumns(t){
 
             return `
               <div class="draft-mon-card ${isDrafted ? 'drafted' : ''}" style="${isDrafted ? '' : `border-left:3px solid ${theme.accent};background:linear-gradient(90deg, ${theme.glow} 0%, #171722 100%);`}" onclick="${isDrafted ? '' : `openDraftConfirmationModal('${jsArg(t.id)}', '${jsArg(mon)}', ${tier.cost}, '${jsArg(tier.name)}')`}">
-                <div style="display:flex;align-items:center;gap:8px;min-width:0">
+                <div style="display:flex;align-items:center;gap:8px;min-width:0;flex:1">
                   <img src="${esc(spriteUrl)}" class="draft-sprite" alt="${esc(mon)}" loading="lazy" onerror="handleSpriteError(this)">
-                  <div style="min-width:0">
+                  <div style="min-width:0;flex:1">
                     <div class="draft-mon-name" title="${esc(mon)}">${esc(mon)}</div>
                     ${isDrafted && draftInfo ? `
                       <div style="font-size:9px;color:#ff8e95;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
@@ -38931,17 +38943,8 @@ function renderDraftBoardTierColumns(t){
                   </div>
                 </div>
 
-                <div style="display:flex;align-items:center;gap:4px">
-                  ${!isDrafted ? `
-                    <button class="btn ghost btn-sm" style="padding:1px 6px!important;font-size:9.5px!important;color:#60a5fa;border-color:#1e3a8a;font-weight:700" title="Reserve in your Draft Bank" onclick="event.stopPropagation();setDraftBankMon('${jsArg(t.id)}', '${jsArg(mon)}', ${tier.cost})">🏦 Bank</button>
-                  ` : ''}
-                  ${moderator ? `
-                    <button class="btn ghost btn-sm" style="padding:1px 5px!important;font-size:9px!important;color:#ffd166;border-color:#5a4218" title="Edit / Move Tier" onclick="event.stopPropagation();openEditBoardPokemonModal('${jsArg(t.id)}', '${jsArg(mon)}', ${tier.cost}, '${jsArg(tier.name)}')">✏️</button>
-                  ` : ''}
-                </div>
-
                 ${isDrafted ? `
-                  <span style="font-size:11px;color:#6b6a75;font-weight:700">Picked</span>
+                  <span style="font-size:11px;color:#6b6a75;font-weight:700;flex:none">Picked</span>
                 ` : ''}
               </div>
             `;
@@ -39562,18 +39565,13 @@ function renderOffseasonTierColumns(){
 
             return `
               <div class="draft-mon-card" style="border-left:3px solid ${theme.accent};background:linear-gradient(90deg, ${theme.glow} 0%, #171722 100%);cursor:pointer" onclick="addMonToPlannerFromBoard('${jsArg(mon)}', ${tier.cost})">
-                <div style="display:flex;align-items:center;gap:8px;min-width:0">
+                <div style="display:flex;align-items:center;gap:8px;min-width:0;flex:1">
                   <img src="${esc(spriteUrl)}" class="draft-sprite" alt="${esc(mon)}" loading="lazy" onerror="handleSpriteError(this)">
-                  <div style="min-width:0">
+                  <div style="min-width:0;flex:1">
                     <div class="draft-mon-name" title="${esc(mon)}">${esc(mon)}</div>
                     <div style="font-size:9px;color:#a09fa8">+ Add to plan</div>
                   </div>
                 </div>
-                ${moderator ? `
-                  <div style="display:flex;align-items:center;gap:6px">
-                    <button class="btn ghost btn-sm" style="padding:1px 5px!important;font-size:9px!important;color:#ffd166;border-color:#5a4218" title="Edit / Move Tier" onclick="event.stopPropagation();openEditBoardPokemonModal(null, '${jsArg(mon)}', ${tier.cost}, '${jsArg(tier.name)}')">✏️</button>
-                  </div>
-                ` : ''}
               </div>
             `;
           }).join('') || '<div style="padding:14px;font-size:11px;color:#6b6a75;text-align:center">No matches in this tier</div>'}
