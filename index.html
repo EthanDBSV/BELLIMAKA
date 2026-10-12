@@ -9206,15 +9206,23 @@ function rawToImpactScore(raw) {
   if(raw == null || isNaN(raw)) return 1.0;
   raw = Number(raw);
   if(raw <= 0) return 1.0;
-  // If already on the 1-10 scale
-  if(raw <= 10.0) return Number(Math.min(10.0, Math.max(1.0, raw)).toFixed(2));
-  let frac = Math.min(1, Math.max(0, raw / 800));
-  let score = 1.0 + 9.0 * Math.pow(frac, 0.55);
+  let frac = Math.min(1, Math.max(0, raw / 650));
+  let score = 1.0 + 9.0 * Math.pow(frac, 0.48);
   return Number(Math.min(10.0, Math.max(1.0, score)).toFixed(2));
 }
 
 function calculateMonImpactScore(p) {
   if(!p) return 1.0;
+  let hasStats = (p.kills != null || p.damageDealt != null || p.fainted != null || p.hpHealed != null || p.supportScore != null);
+  if(hasStats) {
+    let kills = Number(p.kills) || 0;
+    let dmg = Number(p.damageDealt) || 0;
+    let fainted = Boolean(p.fainted);
+    let heal = Number(p.hpHealed) || 0;
+    let support = Number(p.supportScore) || 0;
+    let raw = (kills * 150) + Math.round(dmg) + (fainted ? 0 : 75) + Math.round(heal * 0.5) + support;
+    return rawToImpactScore(raw);
+  }
   if(p.impactScore != null && p.impactScore !== '') {
     let imp = Number(p.impactScore);
     if(!isNaN(imp)) {
@@ -9222,13 +9230,7 @@ function calculateMonImpactScore(p) {
       return rawToImpactScore(imp);
     }
   }
-  let kills = Number(p.kills) || 0;
-  let dmg = Number(p.damageDealt) || 0;
-  let fainted = Boolean(p.fainted);
-  let heal = Number(p.hpHealed) || 0;
-  let support = Number(p.supportScore) || 0;
-  let raw = (kills * 150) + Math.round(dmg) + (fainted ? 0 : 75) + Math.round(heal * 0.5) + support;
-  return rawToImpactScore(raw);
+  return 1.0;
 }
 
 function formatImpactScore(val) {
@@ -13893,10 +13895,10 @@ function openAwardsRatingGuideModal() {
                 Rating (1.0 – 10.0) = Standardized from (KOs × 150) + Damage Dealt% + (Survived × 75) + (Healed% × 0.5) + Support
               </div>
               <div class="awards-formula-grid">
-                <div style="background:#12121b;padding:6px 10px;border-radius:6px;border:1px solid #262638;font-size:11px;color:#cbd5e1">🌟 <b>9.0 – 10.0:</b> Masterclass / MVP takeover performance (e.g. 3–4+ KOs, sweep).</div>
-                <div style="background:#12121b;padding:6px 10px;border-radius:6px;border:1px solid #262638;font-size:11px;color:#cbd5e1">⚡ <b>7.5 – 8.9:</b> High impact (Multiple KOs, heavy damage, positive trade).</div>
-                <div style="background:#12121b;padding:6px 10px;border-radius:6px;border:1px solid #262638;font-size:11px;color:#cbd5e1">🛡️ <b>5.5 – 7.4:</b> Solid battle contribution / standard trades &amp; support.</div>
-                <div style="background:#12121b;padding:6px 10px;border-radius:6px;border:1px solid #262638;font-size:11px;color:#cbd5e1">📉 <b>1.0 – 5.4:</b> Low battle presence / early faint / sacrificed.</div>
+                <div style="background:#12121b;padding:6px 10px;border-radius:6px;border:1px solid #262638;font-size:11px;color:#cbd5e1">🌟 <b>8.8 – 10.0:</b> Masterclass / Carry (2–3+ KOs, heavy damage, solo sweep).</div>
+                <div style="background:#12121b;padding:6px 10px;border-radius:6px;border:1px solid #262638;font-size:11px;color:#cbd5e1">⚡ <b>7.2 – 8.7:</b> High Impact (Multiple KOs or 1 KO + ~100% positive trade &amp; support).</div>
+                <div style="background:#12121b;padding:6px 10px;border-radius:6px;border:1px solid #262638;font-size:11px;color:#cbd5e1">🛡️ <b>5.0 – 7.1:</b> Solid Contribution / standard trades &amp; positioning.</div>
+                <div style="background:#12121b;padding:6px 10px;border-radius:6px;border:1px solid #262638;font-size:11px;color:#cbd5e1">📉 <b>1.0 – 4.9:</b> Low battle presence / early faint / sacrificed lead.</div>
               </div>
             </div>
           </div>
@@ -14175,7 +14177,7 @@ function getTournamentPokemonStatsMap(t, coachFilter) {
   let cacheKey = targetNorm || '__global__';
 
   if(!t._cachedMonStatsMaps) t._cachedMonStatsMaps = {};
-  if(t._cachedMonStatsVersion === 11 && t._cachedMonStatsMaps[cacheKey] && t._cachedMonStatsTime && (Date.now() - t._cachedMonStatsTime < 30000)) {
+  if(t._cachedMonStatsVersion === 12 && t._cachedMonStatsMaps[cacheKey] && t._cachedMonStatsTime && (Date.now() - t._cachedMonStatsTime < 30000)) {
     return t._cachedMonStatsMaps[cacheKey];
   }
 
@@ -14394,7 +14396,7 @@ function getTournamentPokemonStatsMap(t, coachFilter) {
   });
 
   t._cachedMonStatsMaps[cacheKey] = map;
-  t._cachedMonStatsVersion = 11;
+  t._cachedMonStatsVersion = 12;
   t._cachedMonStatsTime = Date.now();
   return map;
 }
