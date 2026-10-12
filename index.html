@@ -9216,8 +9216,8 @@ function rawToImpactScore(raw) {
   if(raw == null || isNaN(raw)) return 0.0;
   raw = Number(raw);
   if(raw <= 0) return 0.0;
-  let frac = Math.min(1, Math.max(0, raw / 750));
-  let score = 100.0 * Math.pow(frac, 0.52);
+  let frac = Math.min(1, Math.max(0, raw / 525));
+  let score = 100.0 * Math.pow(frac, 0.34);
   return Number(Math.min(100.0, Math.max(0.0, score)).toFixed(2));
 }
 
@@ -11376,7 +11376,7 @@ function renderMatchStatsBoxScoreHtml(stats, p1, p2, t, matchKey, gameNum) {
                         </div>
                       ` : ''}
                     </td>
-                    <td style="text-align:center;font:800 15px 'Barlow Condensed';color:${getImpactScoreColor(monImpact)};${isTopImpact ? 'text-shadow:0 0 8px rgba(255,209,102,0.85), 0 0 16px rgba(255,209,102,0.45);' : ''}" title="Impact Rating: ${formatImpactScore(monImpact)}${isTopImpact ? ' (Side MVP)' : ''} (KOs: ${m.kills || 0}, Damage: ${Math.round(m.damageDealt || 0)}%, Survived: ${m.fainted ? 'No' : 'Yes'}, Heal: ${Math.round(m.hpHealed || 0)}%, Support: +${m.supportScore || 0})">
+                    <td style="text-align:center;font:800 15px 'Barlow Condensed';color:${getImpactScoreColor(monImpact)};${isTopImpact ? 'text-shadow:0 0 1.5px #ffd166, 0 0 3px rgba(255,209,102,0.65);' : ''}" title="Impact Rating: ${formatImpactScore(monImpact)}${isTopImpact ? ' (Side MVP)' : ''} (KOs: ${m.kills || 0}, Damage: ${Math.round(m.damageDealt || 0)}%, Survived: ${m.fainted ? 'No' : 'Yes'}, Heal: ${Math.round(m.hpHealed || 0)}%, Support: +${m.supportScore || 0})">
                       ${formatImpactScore(monImpact)}
                     </td>
                     <td style="text-align:center;font:800 15px 'Barlow Condensed';color:${m.kills > 0 ? '#fb923c' : '#646270'}">
@@ -11454,7 +11454,7 @@ function renderMatchStatsBoxScoreHtml(stats, p1, p2, t, matchKey, gameNum) {
               <div style="display:inline-flex;align-items:baseline;gap:5px"><span style="color:#8e8c95">Damage Taken:</span> <b style="color:#f5f3f0;font-size:14px">${Math.round(mvp.damageTaken)}</b></div>
               ${(mvp.supportScore && mvp.supportScore > 0) ? `<div style="display:inline-flex;align-items:baseline;gap:5px"><span style="color:#8e8c95">Support:</span> <b style="color:#c084fc;font-size:14px">+${mvp.supportScore}</b></div>` : ''}
               <div style="display:inline-flex;align-items:baseline;gap:5px"><span style="color:#8e8c95">Status:</span> ${mvp.fainted ? '<b style="color:#ff8a90;font-size:14px">Fainted</b>' : '<b style="color:#4ade80;font-size:14px">Survived</b>'}</div>
-              <div style="display:inline-flex;align-items:baseline;gap:5px"><span style="color:#8e8c95">Impact Rating:</span> <b style="color:${getImpactScoreColor(mvp.impactScore)};font-size:14px;text-shadow:0 0 8px rgba(255,209,102,0.85), 0 0 16px rgba(255,209,102,0.45)">${formatImpactScore(mvp.impactScore)}</b></div>
+              <div style="display:inline-flex;align-items:baseline;gap:5px"><span style="color:#8e8c95">Impact Rating:</span> <b style="color:${getImpactScoreColor(mvp.impactScore)};font-size:14px;text-shadow:0 0 1.5px #ffd166, 0 0 3px rgba(255,209,102,0.65)">${formatImpactScore(mvp.impactScore)}</b></div>
             </div>
             ${mvp.moves && mvp.moves.length > 0 ? `
               <div style="margin-top:8px;display:flex;gap:4px;flex-wrap:wrap;align-items:center">
@@ -14188,7 +14188,7 @@ function getTournamentPokemonStatsMap(t, coachFilter) {
   let cacheKey = targetNorm || '__global__';
 
   if(!t._cachedMonStatsMaps) t._cachedMonStatsMaps = {};
-  if(t._cachedMonStatsVersion === 13 && t._cachedMonStatsMaps[cacheKey] && t._cachedMonStatsTime && (Date.now() - t._cachedMonStatsTime < 30000)) {
+  if(t._cachedMonStatsVersion === 14 && t._cachedMonStatsMaps[cacheKey] && t._cachedMonStatsTime && (Date.now() - t._cachedMonStatsTime < 30000)) {
     return t._cachedMonStatsMaps[cacheKey];
   }
 
@@ -14407,7 +14407,7 @@ function getTournamentPokemonStatsMap(t, coachFilter) {
   });
 
   t._cachedMonStatsMaps[cacheKey] = map;
-  t._cachedMonStatsVersion = 13;
+  t._cachedMonStatsVersion = 14;
   t._cachedMonStatsTime = Date.now();
   return map;
 }

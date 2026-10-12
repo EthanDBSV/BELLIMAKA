@@ -38,19 +38,19 @@ Format: `v[MAJOR].[MINOR].[PATCH]` — Major = major system overhauls, Minor = n
   - Added `overdraft` (`PEN`) metric to `STANDING_METRICS` for ranking coaches with the fewest overdraft penalty points.
   - Tournament directors can assign custom coach penalties via the updated **⚠️ Overdraft Penalties & Sanctions** section in `openTiebreakerEditor`.
 - **Standardized 0.0 – 100.0 Battle Impact Rating System**:
-  - **Calibrated 0.0 to 100.0 Scale**: Reworked Impact Scores into an intuitive, standardized rating scale from `0.0` to `100.0` with precision to the tenths decimal place (e.g. `93.5`, `83.1`, `64.9`).
-  - **Power-Curved Performance Model** (`rawToImpactScore`, `calculateMonImpactScore`): Evaluates full battle stat lines (KOs, % damage dealt, survival, HP healed, and support score) mapped onto a calibrated power curve (`power = 0.52`, 750 baseline) ensuring standout carry performances are properly rewarded without excessive compression:
-    - `85.0 – 100.0` (🔷 **Blue**): Masterclass / Carry (2–3+ KOs, massive board damage, solo-sweep; e.g. 3 KOs + 140% dmg + survived = `93.6`).
-    - `70.0 – 84.9` (🟢 **Green**): High Impact (Multiple KOs or 1 KO + ~100% positive trades & support).
+  - **Calibrated 0.0 to 100.0 Scale**: Reworked Impact Scores into an intuitive, standardized rating scale from `0.0` to `100.0` with precision to the tenths decimal place (e.g. `91.4`, `87.1`, `80.5`, `65.0`).
+  - **Performance Curve Calibration** (`rawToImpactScore`, `calculateMonImpactScore`): Evaluates full battle stat lines (KOs, % damage dealt, survival, HP healed, and support score) mapped onto a calibrated power curve (`power = 0.34`, 525 baseline) ensuring standout carry and tournament all-star performances reliably rack up elite scores into the 80s and 90s:
+    - `85.0 – 100.0` (🔷 **Blue**): Masterclass / Carry (Superstar performers, tournament MVPs, and dominant sweeps; e.g. Mega Charizard Y reaches `91.4`, Mega Eelektross reaches `87.1`, with 1st Team All-Tournament averaging ~84–92).
+    - `70.0 – 84.9` (🟢 **Green**): High Impact (Consistent tournament contributors and 2nd Team All-Tournament performers averaging in the 79–83 range).
     - `51.0 – 69.9` (🟠 **Orange**): Solid Contribution (Standard positive trades, chip damage & positioning).
     - `0.0 – 50.9` (🔴 **Red**): Low battle presence / early faint / sacrificed lead.
-  - **Color-Coded Weights & Side MVP Yellow Glow**:
+  - **Color-Coded Weights & Tight Conforming MVP Yellow Contour**:
     - Impact ratings across replay tables, Match MVP cards, All-Tournament teams, primetime matchups, and roster sheets are color-coded into the 4 tiers (Blue, Green, Orange, Red).
-    - Retired the lightning bolt `⚡` for squad side MVPs in favor of a clean, subtle yellow text-shadow glow directly on the performer's impact score.
+    - Retired the lightning bolt `⚡` for squad side MVPs in favor of a crisp, tight 1–3px yellow radiant contour shadow (`text-shadow: 0 0 1.5px #ffd166, 0 0 3px rgba(255, 209, 102, 0.65)`) hugging the exact glyph outline of the numbers without blurry background bleed.
   - **Clean Labels ("Average Impact per Game")**:
     - Updated All-Tournament Team cards to display `"Average Impact per Game"` instead of `"Avg Impact / 10"`.
     - Removed redundant `"/ 10"` and `"/ 100"` suffixes from team roster sheets, MVP cards, and replay tooltips as the 100-point scale is self-explanatory.
-  - **Backward Compatibility & Cache Migration**: Pre-existing replays and legacy caches automatically convert onto the 0.0–100.0 scale, and tournament stats cache version was bumped to `13`.
+  - **Backward Compatibility & Cache Migration**: Pre-existing replays and legacy caches automatically convert onto the 0.0–100.0 scale, and tournament stats cache version was bumped to `14`.
 
 ---
 
