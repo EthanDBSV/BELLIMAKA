@@ -37,6 +37,18 @@ Format: `v[MAJOR].[MINOR].[PATCH]` — Major = major system overhauls, Minor = n
 - **Standings Overdraft Penalty Tiebreaker**:
   - Added `overdraft` (`PEN`) metric to `STANDING_METRICS` for ranking coaches with the fewest overdraft penalty points.
   - Tournament directors can assign custom coach penalties via the updated **⚠️ Overdraft Penalties & Sanctions** section in `openTiebreakerEditor`.
+- **Standardized 1.0 – 10.0 Battle Impact Rating System**:
+  - **Calibrated 1.0 to 10.0 Scale**: Reworked raw, unscaled Impact Scores into an intuitive, standardized rating scale from `1.0` to `10.0` with decimals available to the tenths place (e.g. `9.5`, `7.2`, `6.0`).
+  - **Power-Curved Performance Model** (`rawToImpactScore`, `calculateMonImpactScore`): Evaluates full battle stat lines (KOs, % damage dealt, survival, HP healed, and support score) through an exponent-calibrated power curve (`power = 0.55`, 800 baseline):
+    - `9.0 – 10.0`: Masterclass / Carry (3–4+ KOs, massive board damage, solo-sweep; e.g. 3 KOs + 180% dmg + survived = `9.5`).
+    - `7.5 – 8.9`: High Impact (Multiple KOs, positive trades, heavy offensive pressure, clutch survival).
+    - `5.5 – 7.4`: Solid Contribution (Standard positive trades, ~1 KO + 80–100% damage dealt, key support).
+    - `3.5 – 5.4`: Below Average (Modest chip damage, trading negatively, or early defensive pressure without breakthrough).
+    - `1.0 – 3.4`: Minimal / Sacked (Early faint, sacked on lead with minimal contribution or chip damage).
+  - **Replay Breakdown & Match MVP**: Showdown replay squad breakdown tables render formatted tenths ratings with detailed hover tooltips, and Game MVPs display their rating formatted out of 10 (`9.5 / 10`).
+  - **All-Tournament Teams & Major Awards**: Top 12 Pokémon honor teams rank by Average Impact Rating per Game (`Avg Impact / 10`). Finals MVP and Regular Season MVP stat lines and the Awards explanation modal display standardized 1.0–10.0 metrics.
+  - **Primetime Spotlight & Team Planner Roster Cards**: Primetime featured matchup mon badges display `⚡[Rating]` with `/ 10` tooltips, and Team Planner roster stat strips render `Impact [Rating] / 10`.
+  - **Backward Compatibility & Cache Migration**: Pre-existing replays and saved tournament caches with legacy scores automatically convert via `rawToImpactScore`, and tournament stats cache version was bumped to `11`.
 
 ---
 

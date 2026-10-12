@@ -9202,6 +9202,43 @@ function resolvePokemonCoach(p, c1, c2, tournament, isSwapped) {
   return (curCoach && !curCoach.toLowerCase().startsWith('player ')) ? curCoach : (c1 || c2 || '');
 }
 
+function rawToImpactScore(raw) {
+  if(raw == null || isNaN(raw)) return 1.0;
+  raw = Number(raw);
+  if(raw <= 0) return 1.0;
+  // If already on the 1-10 scale
+  if(raw <= 10.0) return Number(Math.min(10.0, Math.max(1.0, raw)).toFixed(2));
+  let frac = Math.min(1, Math.max(0, raw / 800));
+  let score = 1.0 + 9.0 * Math.pow(frac, 0.55);
+  return Number(Math.min(10.0, Math.max(1.0, score)).toFixed(2));
+}
+
+function calculateMonImpactScore(p) {
+  if(!p) return 1.0;
+  if(p.impactScore != null && p.impactScore !== '') {
+    let imp = Number(p.impactScore);
+    if(!isNaN(imp)) {
+      if(imp <= 10.0) return Math.min(10.0, Math.max(1.0, imp));
+      return rawToImpactScore(imp);
+    }
+  }
+  let kills = Number(p.kills) || 0;
+  let dmg = Number(p.damageDealt) || 0;
+  let fainted = Boolean(p.fainted);
+  let heal = Number(p.hpHealed) || 0;
+  let support = Number(p.supportScore) || 0;
+  let raw = (kills * 150) + Math.round(dmg) + (fainted ? 0 : 75) + Math.round(heal * 0.5) + support;
+  return rawToImpactScore(raw);
+}
+
+function formatImpactScore(val) {
+  if(val == null || isNaN(val) || val === '') return '—';
+  let num = Number(val);
+  if(num <= 0) return '—';
+  if(num > 10.0) num = rawToImpactScore(num);
+  return num.toFixed(1);
+}
+
 function parseShowdownBattleLog(logText, meta = {}) {
   if(!logText || typeof logText !== 'string') return null;
   let lines = logText.split('\n');
@@ -10004,7 +10041,7 @@ function parseShowdownBattleLog(logText, meta = {}) {
   let mvpMon = null;
   for(let key in result.pokemon){
     let p = result.pokemon[key];
-    let score = (p.kills * 150) + Math.round(p.damageDealt) + (p.fainted ? 0 : 75) + Math.round(p.hpHealed * 0.5) + (p.supportScore || 0);
+    let score = calculateMonImpactScore(p);
     p.impactScore = score;
     if(score > bestScore){
       bestScore = score;
@@ -10012,7 +10049,7 @@ function parseShowdownBattleLog(logText, meta = {}) {
     }
   }
   result.mvp = mvpMon;
-  result.version = 10;
+  result.version = 11;
 
   return result;
 }
@@ -11214,7 +11251,7 @@ function renderMatchStatsBoxScoreHtml(stats, p1, p2, t, matchKey, gameNum) {
             if(!existing.supportActions.includes(a)) existing.supportActions.push(a);
           });
         }
-        existing.impactScore = (existing.kills * 150) + Math.round(existing.damageDealt) + (existing.fainted ? 0 : 75) + Math.round(existing.hpHealed * 0.5) + (existing.supportScore || 0);
+        existing.impactScore = calculateMonImpactScore(existing);
         if(m.moves) {
           m.moves.forEach(mv => {
             if(!existing.moves.includes(mv)) existing.moves.push(mv);
@@ -11275,8 +11312,7 @@ function renderMatchStatsBoxScoreHtml(stats, p1, p2, t, matchKey, gameNum) {
     });
 
     let getMonImpact = m => {
-      if(m.impactScore != null) return m.impactScore;
-      return ((m.kills || 0) * 150) + Math.round(m.damageDealt || 0) + (m.fainted ? 0 : 75) + Math.round((m.hpHealed || 0) * 0.5) + (m.supportScore || 0);
+      return calculateMonImpactScore(m);
     };
     let maxSquadImpact = mons.length ? Math.max(...mons.map(getMonImpact)) : 0;
 
@@ -11305,7 +11341,7 @@ function renderMatchStatsBoxScoreHtml(stats, p1, p2, t, matchKey, gameNum) {
                 let sprite = (typeof resolvePokemonData === 'function' ? resolvePokemonData(m.name)?.sprite : null) || (typeof getPokemonSpriteUrl === 'function' ? getPokemonSpriteUrl(m.name.toLowerCase()) : '') || m.sprite || '';
                 let monImpact = getMonImpact(m);
                 let isTopImpact = monImpact > 0 && monImpact === maxSquadImpact;
-                let faintTooltip = m.fainted ? `Fainted Turn ${m.faintTurn || '?'}` : 'Survived the match (+75 Impact bonus)';
+                let faintTooltip = m.fainted ? `Fainted Turn ${m.faintTurn || '?'}` : 'Survived the match (Survival bonus applied)';
                 let spriteStyle = m.fainted ? 'opacity:0.45;filter:grayscale(100%);transition:all .15s' : 'opacity:1;filter:none';
                 let nameColor = m.fainted ? '#8e8c95' : '#ffffff';
                 let supportBreakdown = (m.supportScore && m.supportScore > 0) ? ` + Support: +${m.supportScore}${m.supportActions && m.supportActions.length ? ' [' + m.supportActions.slice(0, 3).join(', ') + (m.supportActions.length > 3 ? '...' : '') + ']' : ''}` : '';
@@ -11326,9 +11362,9 @@ function renderMatchStatsBoxScoreHtml(stats, p1, p2, t, matchKey, gameNum) {
                         </div>
                       ` : ''}
                     </td>
-                    <td style="position:relative;text-align:center;font:800 15px 'Barlow Condensed';color:#38bdf8" title="Impact Score: ${monImpact} (KOs: ${(m.kills || 0) * 150} + Dmg: ${Math.round(m.damageDealt || 0)}${supportBreakdown} + ${m.fainted ? 'Fainted: +0' : 'Survived: +75'} + Heal: ${Math.round((m.hpHealed || 0) * 0.5)})">
+                    <td style="position:relative;text-align:center;font:800 15px 'Barlow Condensed';color:#38bdf8" title="Impact Rating: ${formatImpactScore(monImpact)} / 10.0 (KOs: ${m.kills || 0}, Damage: ${Math.round(m.damageDealt || 0)}%, Survived: ${m.fainted ? 'No' : 'Yes'}, Heal: ${Math.round(m.hpHealed || 0)}%, Support: +${m.supportScore || 0})">
                       ${isTopImpact ? `<span style="position:absolute;top:4px;left:4px;font-size:10px;color:#ffd166;line-height:1;pointer-events:none" title="Squad High Impact Performer">⚡</span>` : ''}
-                      ${monImpact}
+                      ${formatImpactScore(monImpact)}
                     </td>
                     <td style="text-align:center;font:800 15px 'Barlow Condensed';color:${m.kills > 0 ? '#fb923c' : '#646270'}">
                       ${m.kills}
@@ -11405,7 +11441,7 @@ function renderMatchStatsBoxScoreHtml(stats, p1, p2, t, matchKey, gameNum) {
               <div style="display:inline-flex;align-items:baseline;gap:5px"><span style="color:#8e8c95">Damage Taken:</span> <b style="color:#f5f3f0;font-size:14px">${Math.round(mvp.damageTaken)}</b></div>
               ${(mvp.supportScore && mvp.supportScore > 0) ? `<div style="display:inline-flex;align-items:baseline;gap:5px"><span style="color:#8e8c95">Support:</span> <b style="color:#c084fc;font-size:14px">+${mvp.supportScore}</b></div>` : ''}
               <div style="display:inline-flex;align-items:baseline;gap:5px"><span style="color:#8e8c95">Status:</span> ${mvp.fainted ? '<b style="color:#ff8a90;font-size:14px">Fainted</b>' : '<b style="color:#4ade80;font-size:14px">Survived</b>'}</div>
-              <div style="display:inline-flex;align-items:baseline;gap:5px"><span style="color:#8e8c95">Impact Score:</span> <b style="color:#38bdf8;font-size:14px">${mvp.impactScore}</b></div>
+              <div style="display:inline-flex;align-items:baseline;gap:5px"><span style="color:#8e8c95">Impact Rating:</span> <b style="color:#38bdf8;font-size:14px">${formatImpactScore(mvp.impactScore)} <span style="font-size:11px;color:#8e8c95">/ 10</span></b></div>
             </div>
             ${mvp.moves && mvp.moves.length > 0 ? `
               <div style="margin-top:8px;display:flex;gap:4px;flex-wrap:wrap;align-items:center">
@@ -12619,7 +12655,7 @@ function calculateTeamOfTheSeason(t) {
       let damageDealt = p.damageDealt || 0;
       let hpHealed = p.hpHealed || 0;
       let fainted = Boolean(p.fainted);
-      let impact = p.impactScore != null ? p.impactScore : ((kills * 150) + Math.round(damageDealt) + (fainted ? 0 : 75) + Math.round(hpHealed * 0.5) + (p.supportScore || 0));
+      let impact = calculateMonImpactScore(p);
 
       if(!gfGameGroup.has(gKey)) {
         let canonicalSprite = (typeof resolvePokemonData === 'function' ? resolvePokemonData(cleanName)?.sprite : null) || (typeof getPokemonSpriteUrl === 'function' ? getPokemonSpriteUrl(cleanName.toLowerCase()) : '') || p.sprite;
@@ -12818,11 +12854,7 @@ function calculateTeamOfTheSeason(t) {
       let topMon = null;
       let topScore = -1;
       pList.forEach(p => {
-        let kills = p.kills || 0;
-        let damageDealt = p.damageDealt || 0;
-        let hpHealed = p.hpHealed || 0;
-        let fainted = Boolean(p.fainted);
-        let curScore = p.impactScore != null ? p.impactScore : ((kills * 150) + Math.round(damageDealt) + (fainted ? 0 : 75) + Math.round(hpHealed * 0.5) + (p.supportScore || 0));
+        let curScore = calculateMonImpactScore(p);
         if(curScore > topScore) {
           topScore = curScore;
           topMon = p;
@@ -12852,7 +12884,7 @@ function calculateTeamOfTheSeason(t) {
       let hpHealed = p.hpHealed || 0;
       let fainted = Boolean(p.fainted);
       let supportScore = p.supportScore || 0;
-      let curImpact = p.impactScore != null ? p.impactScore : ((kills * 150) + Math.round(damageDealt) + (fainted ? 0 : 75) + Math.round(hpHealed * 0.5) + supportScore);
+      let curImpact = calculateMonImpactScore(p);
 
       if(!replayGameGroup.has(gKey)) {
         let canonicalSprite = (typeof resolvePokemonData === 'function' ? resolvePokemonData(cleanName)?.sprite : null) || (typeof getPokemonSpriteUrl === 'function' ? getPokemonSpriteUrl(cleanName.toLowerCase()) : '') || p.sprite;
@@ -13235,9 +13267,9 @@ function calculateTeamOfTheSeason(t) {
         tierIcon,
         slotNum,
         mon,
-        statVal: Math.round(mon.avgImpactScore),
-        statUnit: 'Avg Impact / Game',
-        statBreakdown: `${kpg} KOs/g • ${dpg} Dmg/g • ${spg} Supp/g`,
+        statVal: formatImpactScore(mon.avgImpactScore),
+        statUnit: 'Avg Impact / 10',
+        statBreakdown: `${kpg} KOs/g • ${dpg}% Dmg/g • ${spg} Supp/g`,
         tags: getMonLeaderTags(mon.name),
         heroColor: '#38bdf8'
       };
@@ -13293,8 +13325,8 @@ function renderMajorAwardsCardsHtml(major, t, isCompact = false) {
       badgeBg: 'rgba(245,158,11,0.16)',
       badgeBorder: 'rgba(245,158,11,0.4)',
       mon: major.finalsMvp,
-      statVal: major.finalsMvp ? String(Math.round(major.finalsMvp.avgImpact)) : 'TBD',
-      statUnit: major.finalsMvp ? 'Finals Avg Impact / Game' : 'Finals',
+      statVal: major.finalsMvp ? formatImpactScore(major.finalsMvp.avgImpact) : 'TBD',
+      statUnit: major.finalsMvp ? 'Finals Avg Impact / 10' : 'Finals',
       subMetric: major.finalsMvp ? `${major.finalsMvp.games} Finals ${major.finalsMvp.games === 1 ? 'Game' : 'Games'} (incl. Reset)` : 'Decided in Finals (Champion Team)'
     },
     {
@@ -13308,7 +13340,7 @@ function renderMajorAwardsCardsHtml(major, t, isCompact = false) {
       mon: major.mvp,
       statVal: major.mvp ? `${major.mvp.regMatchMvps || major.mvp.matchMvps || 0} MVPs` : '\u2014',
       statUnit: 'Regular Season MVPs',
-      subMetric: major.mvp ? `${major.mvp.regGames || major.mvp.games} Reg Games \u2022 ${Math.round(major.mvp.regAvgImpactScore || major.mvp.avgImpactScore)} Avg Impact \u2022 ${major.mvp.regKills || major.mvp.totalKills} KOs` : 'Min 5 Appearances'
+      subMetric: major.mvp ? `${major.mvp.regGames || major.mvp.games} Reg Games \u2022 ${formatImpactScore(major.mvp.regAvgImpactScore || major.mvp.avgImpactScore)} / 10 Avg Impact \u2022 ${major.mvp.regKills || major.mvp.totalKills} KOs` : 'Min 5 Appearances'
     }
   ];
 
@@ -13846,25 +13878,25 @@ function openAwardsRatingGuideModal() {
                 Selection Criteria &amp; Tiebreakers
               </div>
               <ol style="margin:0;padding-left:18px;font-size:12px;color:#e2e8f0;display:flex;flex-direction:column;gap:3px">
-                <li><b>Primary:</b> Most <b>Regular Season Match MVP Awards</b> won (highest single-game Impact Score on the winning team).</li>
+                <li><b>Primary:</b> Most <b>Regular Season Match MVP Awards</b> won (highest single-game Impact Rating on the winning team).</li>
                 <li><b>1st Tiebreaker:</b> Total Overall Match MVPs won.</li>
-                <li><b>2nd Tiebreaker:</b> Total Regular Season Impact Score.</li>
-                <li><b>3rd Tiebreaker:</b> Regular Season Average Impact per Game.</li>
+                <li><b>2nd Tiebreaker:</b> Total Regular Season Impact Rating.</li>
+                <li><b>3rd Tiebreaker:</b> Regular Season Average Impact Rating per Game.</li>
                 <li><b>4th Tiebreaker:</b> Total Regular Season KOs.</li>
               </ol>
             </div>
             <div style="background:#1a1824;border:1px solid rgba(255,209,102,0.25);border-radius:8px;padding:12px 14px">
               <div style="font:800 11px 'Barlow Condensed',sans-serif;letter-spacing:.8px;text-transform:uppercase;color:#ffd166;margin-bottom:6px">
-                ⚡ Single-Game Impact Score Equation (Used for Match MVPs)
+                ⚡ Standardized 1.0 – 10.0 Impact Rating System (Used for Match MVPs)
               </div>
               <div style="font-family:'Courier New',monospace;font-size:12px;font-weight:700;color:#ffffff;background:#0d0d12;padding:8px 12px;border-radius:6px;border:1px solid #2b2b3d;margin-bottom:8px;overflow-x:auto;-webkit-overflow-scrolling:touch;white-space:nowrap">
-                Impact Score = (KOs × 150) + Damage Dealt + (Survived × 75) + (HP Healed × 0.5) + Support Score
+                Rating (1.0 – 10.0) = Standardized from (KOs × 150) + Damage Dealt% + (Survived × 75) + (Healed% × 0.5) + Support
               </div>
               <div class="awards-formula-grid">
-                <div style="background:#12121b;padding:6px 10px;border-radius:6px;border:1px solid #262638;font-size:11px;color:#cbd5e1">🎯 <b>KOs × 150:</b> Decisive elimination reward.</div>
-                <div style="background:#12121b;padding:6px 10px;border-radius:6px;border:1px solid #262638;font-size:11px;color:#cbd5e1">💥 <b>Damage Dealt:</b> 1:1 points for HP damage.</div>
-                <div style="background:#12121b;padding:6px 10px;border-radius:6px;border:1px solid #262638;font-size:11px;color:#cbd5e1">🛡️ <b>Survived × 75:</b> +75 survival bonus.</div>
-                <div style="background:#12121b;padding:6px 10px;border-radius:6px;border:1px solid #262638;font-size:11px;color:#cbd5e1">💚 <b>HP Healed × 0.5:</b> 50% credit for recovery.</div>
+                <div style="background:#12121b;padding:6px 10px;border-radius:6px;border:1px solid #262638;font-size:11px;color:#cbd5e1">🌟 <b>9.0 – 10.0:</b> Masterclass / MVP takeover performance (e.g. 3–4+ KOs, sweep).</div>
+                <div style="background:#12121b;padding:6px 10px;border-radius:6px;border:1px solid #262638;font-size:11px;color:#cbd5e1">⚡ <b>7.5 – 8.9:</b> High impact (Multiple KOs, heavy damage, positive trade).</div>
+                <div style="background:#12121b;padding:6px 10px;border-radius:6px;border:1px solid #262638;font-size:11px;color:#cbd5e1">🛡️ <b>5.5 – 7.4:</b> Solid battle contribution / standard trades &amp; support.</div>
+                <div style="background:#12121b;padding:6px 10px;border-radius:6px;border:1px solid #262638;font-size:11px;color:#cbd5e1">📉 <b>1.0 – 5.4:</b> Low battle presence / early faint / sacrificed.</div>
               </div>
             </div>
           </div>
@@ -13888,10 +13920,10 @@ function openAwardsRatingGuideModal() {
                 📊 Finals MVP Rating Equation
               </div>
               <div style="font-family:'Courier New',monospace;font-size:12px;font-weight:700;color:#ffffff;background:#0b1117;padding:8px 12px;border-radius:6px;border:1px solid #1e3245;margin-bottom:8px;overflow-x:auto;-webkit-overflow-scrolling:touch;white-space:nowrap">
-                Finals Rating = (Total Grand Finals Impact Score) / (Grand Finals Games Brought)
+                Finals Rating = (Total Grand Finals Impact Rating) / (Grand Finals Games Brought)
               </div>
               <div style="font-size:11px;color:#94a3b8">
-                <b>Tiebreakers:</b> Total Grand Finals Impact Score → Total Grand Finals KOs → Regular Season Impact Score.
+                <b>Tiebreakers:</b> Total Grand Finals Impact Rating → Total Grand Finals KOs → Regular Season Impact Rating.
               </div>
             </div>
           </div>
@@ -13908,20 +13940,20 @@ function openAwardsRatingGuideModal() {
               </span>
             </div>
             <p style="margin:0 0 10px;color:#94a3b8;font-size:12px;line-height:1.45">
-              All-Tournament Teams honor the top 12 individual Pokémon across the entire tournament, ranked strictly by <b>Average Impact Score per Game</b> (must participate in at least 60% of their coach's tournament battles, rounded down). Arbitrary role divisions like DPS and Tank have been retired in favor of universal holistic battle impact.
+              All-Tournament Teams honor the top 12 individual Pokémon across the entire tournament, ranked strictly by <b>Average Impact Rating per Game</b> (must participate in at least 60% of their coach's tournament battles, rounded down). Arbitrary role divisions like DPS and Tank have been retired in favor of universal holistic battle impact.
             </p>
             <div style="background:#0f1722;border:1px solid rgba(56,189,248,0.25);border-radius:8px;padding:12px 14px">
               <div style="font:800 11px 'Barlow Condensed',sans-serif;letter-spacing:.8px;text-transform:uppercase;color:#7dd3fc;margin-bottom:6px">
                 ⚡ All-Tournament Impact Rating Equation
               </div>
               <div style="font-family:'Courier New',monospace;font-size:12px;font-weight:700;color:#ffffff;background:#091017;padding:8px 12px;border-radius:6px;border:1px solid #1c3245;margin-bottom:8px;overflow-x:auto;-webkit-overflow-scrolling:touch;white-space:nowrap">
-                Avg Impact Score = (Total Tournament Impact Score) / (Tournament Games Brought)
+                Avg Impact Rating = (Total Tournament Impact Rating) / (Tournament Games Brought)
               </div>
               <div style="font-size:11px;color:#94a3b8;line-height:1.5">
-                • <b>1st Team (Slots 1–4):</b> Ranks #1 through #4 overall in tournament Average Impact Score.<br>
-                • <b>2nd Team (Slots 5–8):</b> Ranks #5 through #8 overall in tournament Average Impact Score.<br>
-                • <b>3rd Team (Slots 9–12):</b> Ranks #9 through #12 overall in tournament Average Impact Score.<br>
-                • <b>Tiebreakers:</b> Total Impact Score → Total KOs → Total Damage Dealt.
+                • <b>1st Team (Slots 1–4):</b> Ranks #1 through #4 overall in tournament Average Impact Rating.<br>
+                • <b>2nd Team (Slots 5–8):</b> Ranks #5 through #8 overall in tournament Average Impact Rating.<br>
+                • <b>3rd Team (Slots 9–12):</b> Ranks #9 through #12 overall in tournament Average Impact Rating.<br>
+                • <b>Tiebreakers:</b> Total Impact Rating → Total KOs → Total Damage Dealt.
               </div>
             </div>
           </div>
@@ -14143,7 +14175,7 @@ function getTournamentPokemonStatsMap(t, coachFilter) {
   let cacheKey = targetNorm || '__global__';
 
   if(!t._cachedMonStatsMaps) t._cachedMonStatsMaps = {};
-  if(t._cachedMonStatsVersion === 10 && t._cachedMonStatsMaps[cacheKey] && t._cachedMonStatsTime && (Date.now() - t._cachedMonStatsTime < 30000)) {
+  if(t._cachedMonStatsVersion === 11 && t._cachedMonStatsMaps[cacheKey] && t._cachedMonStatsTime && (Date.now() - t._cachedMonStatsTime < 30000)) {
     return t._cachedMonStatsMaps[cacheKey];
   }
 
@@ -14298,7 +14330,7 @@ function getTournamentPokemonStatsMap(t, coachFilter) {
       gEntry.taken += (p.damageTaken || 0);
       gEntry.healed += (p.hpHealed || 0);
       gEntry.support += (p.supportScore || 0);
-      let pImp = (p.impactScore != null && p.impactScore !== '') ? Number(p.impactScore) : (((p.kills || 0) * 150) + Math.round(p.damageDealt || 0) + (p.fainted ? 0 : 75) + Math.round((p.hpHealed || 0) * 0.5) + (p.supportScore || 0));
+      let pImp = calculateMonImpactScore(p);
       gEntry.impact += pImp;
     });
 
@@ -14362,7 +14394,7 @@ function getTournamentPokemonStatsMap(t, coachFilter) {
   });
 
   t._cachedMonStatsMaps[cacheKey] = map;
-  t._cachedMonStatsVersion = 10;
+  t._cachedMonStatsVersion = 11;
   t._cachedMonStatsTime = Date.now();
   return map;
 }
@@ -21708,7 +21740,7 @@ function getMatchupShowcasePokemon(tourn, m, coach) {
           let bk = normalizeBaseSpecies(name);
           let kills = p.kills || 0;
           let dmg = p.damageDealt || 0;
-          let imp = p.impactScore != null ? p.impactScore : (kills * 150 + Math.round(dmg) + (p.fainted ? 0 : 75) + Math.round((p.hpHealed || 0) * 0.5) + (p.supportScore || 0));
+          let imp = calculateMonImpactScore(p);
           if(!matchMonMap[bk]) {
             matchMonMap[bk] = {
               name: name,
@@ -21750,13 +21782,15 @@ function getMatchupShowcasePokemon(tourn, m, coach) {
       seasonSeenBk.add(bk);
       let totalKills = s.kills || 0;
       let totalDmg = s.dmg || 0;
-      let totalImpact = (s.impact && s.impact > 0) ? s.impact : ((totalKills * 150) + Math.round(totalDmg) + (s.games * 50));
+      let curAvgImp = s.avgImpactScore != null ? Number(s.avgImpactScore) : (s.impact ? (s.impact / Math.max(1, s.games)) : 0);
+      if(curAvgImp > 10.0) curAvgImp = rawToImpactScore(curAvgImp);
+      let totalImpact = (s.impact && s.impact > 0) ? (s.impact > 10.0 * Math.max(1, s.games) ? (curAvgImp * Math.max(1, s.games)) : s.impact) : (curAvgImp * Math.max(1, s.games));
       seasonList.push({
         name: s.name,
         kills: totalKills,
         damage: totalDmg,
         impact: totalImpact,
-        avgImpact: s.avgImpactScore || (totalImpact / Math.max(1, s.games)),
+        avgImpact: curAvgImp,
         games: s.games
       });
     }
@@ -21764,8 +21798,8 @@ function getMatchupShowcasePokemon(tourn, m, coach) {
 
   // Sort season performers primarily by Impact Score, then kills & damage
   seasonList.sort((a, b) => {
-    let scoreA = (a.impact || 0) * 1.0 + (a.kills || 0) * 75 + (a.damage || 0) * 0.12;
-    let scoreB = (b.impact || 0) * 1.0 + (b.kills || 0) * 75 + (b.damage || 0) * 0.12;
+    let scoreA = (a.avgImpact || 0) * 10 + (a.impact || 0) * 2 + (a.kills || 0) * 4;
+    let scoreB = (b.avgImpact || 0) * 10 + (b.impact || 0) * 2 + (b.kills || 0) * 4;
     if(scoreB !== scoreA) return scoreB - scoreA;
     if((b.kills || 0) !== (a.kills || 0)) return (b.kills || 0) - (a.kills || 0);
     return (b.games || 0) - (a.games || 0);
@@ -21775,8 +21809,8 @@ function getMatchupShowcasePokemon(tourn, m, coach) {
   if(Object.keys(matchMonMap).length) {
     let matchScored = Object.values(matchMonMap);
     matchScored.sort((a, b) => {
-      let sa = (a.impact || 0) + (a.kills || 0) * 60;
-      let sb = (b.impact || 0) + (b.kills || 0) * 60;
+      let sa = (a.impact || 0) * 5 + (a.kills || 0) * 3;
+      let sb = (b.impact || 0) * 5 + (b.kills || 0) * 3;
       return sb - sa;
     });
     matchScored.forEach(item => {
@@ -22109,15 +22143,18 @@ function matchupOfTheWeekCard(t){
     return list.slice(0, 4).map(item => {
       let name = typeof item === 'object' ? (item.name || '') : String(item || '');
       let kills = typeof item === 'object' ? (item.kills || 0) : 0;
-      let impact = typeof item === 'object' ? (item.impact || 0) : 0;
+      let rawImpact = typeof item === 'object' ? (item.impact || 0) : 0;
+      let games = typeof item === 'object' ? Math.max(1, item.games || 1) : 1;
+      let monImp = (typeof item === 'object' && item.avgImpact != null) ? item.avgImpact : (rawImpact / games);
+      if(monImp > 10.0) monImp = rawToImpactScore(monImp);
       let spr = (typeof monSprite === 'function') ? monSprite(name) : (typeof pokeSprite === 'function' ? pokeSprite(name) : '');
       let badgeHtml = '';
       if(kills > 0) {
         badgeHtml = `<span class="primetime-mon-stat-badge kills">${kills} KO</span>`;
-      } else if(impact > 0) {
-        badgeHtml = `<span class="primetime-mon-stat-badge impact">⚡${Math.round(impact)}</span>`;
+      } else if(monImp > 0) {
+        badgeHtml = `<span class="primetime-mon-stat-badge impact">⚡${formatImpactScore(monImp)}</span>`;
       }
-      let tooltip = name + (kills > 0 ? ` · ${kills} KO` : '') + (impact > 0 ? ` · Impact: ${Math.round(impact)}` : '');
+      let tooltip = name + (kills > 0 ? ` · ${kills} KO` : '') + (monImp > 0 ? ` · Impact: ${formatImpactScore(monImp)} / 10` : '');
       return `<div class="primetime-cfb-mon-card primetime-mon-card" title="${esc(tooltip)}">
         <img class="primetime-cfb-mon-img primetime-mon-img" src="${esc(spr)}" alt="${esc(name)}" loading="lazy" onerror="handleSpriteError(this)" />
         ${badgeHtml}
@@ -35239,8 +35276,8 @@ function TeamRosterDetailView(t, p){
                         <span style="font-size:11px;font-weight:800;background:rgba(255,255,255,0.06);color:#f1f5f9;padding:2px 8px;border-radius:4px;border:1px solid rgba(255,255,255,0.1);display:inline-flex;align-items:center;gap:4px" title="Official Games Brought Out">
                           <span style="color:#94a3b8;font-size:9px;letter-spacing:.5px;text-transform:uppercase">Apps</span> <b>${s.stat.games}</b>
                         </span>
-                        <span style="font-size:11px;font-weight:800;background:rgba(56,189,248,0.08);color:#38bdf8;padding:2px 8px;border-radius:4px;border:1px solid rgba(56,189,248,0.25);display:inline-flex;align-items:center;gap:4px" title="Average Impact Score per Game: ${Math.round(s.stat.avgImpactScore || 0)} (Total Impact: ${Math.round(s.stat.impact || 0)}${s.stat.support ? ', Support: ' + Math.round(s.stat.support) : ''})">
-                          <span style="color:#0284c7;font-size:9px;letter-spacing:.5px;text-transform:uppercase">Impact</span> <b>${Math.round(s.stat.avgImpactScore || 0)}</b> <small style="opacity:0.85;font-weight:700">/g</small>
+                        <span style="font-size:11px;font-weight:800;background:rgba(56,189,248,0.08);color:#38bdf8;padding:2px 8px;border-radius:4px;border:1px solid rgba(56,189,248,0.25);display:inline-flex;align-items:center;gap:4px" title="Average Impact Rating per Game: ${formatImpactScore(s.stat.avgImpactScore)} / 10 (Total Impact: ${formatImpactScore(s.stat.impact)}${s.stat.support ? ', Support: ' + Math.round(s.stat.support) : ''})">
+                          <span style="color:#0284c7;font-size:9px;letter-spacing:.5px;text-transform:uppercase">Impact</span> <b>${formatImpactScore(s.stat.avgImpactScore)}</b> <small style="opacity:0.85;font-weight:700">/ 10</small>
                         </span>
                         ${(s.stat.support && s.stat.support > 0) ? `
                           <span style="font-size:11px;font-weight:800;background:rgba(168,85,247,0.08);color:#c084fc;padding:2px 8px;border-radius:4px;border:1px solid rgba(168,85,247,0.25);display:inline-flex;align-items:center;gap:4px" title="Total Support Points: ${Math.round(s.stat.support)} (${s.stat.supportPerGame.toFixed(1)}/g)">
