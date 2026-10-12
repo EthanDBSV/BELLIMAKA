@@ -37,17 +37,20 @@ Format: `v[MAJOR].[MINOR].[PATCH]` — Major = major system overhauls, Minor = n
 - **Standings Overdraft Penalty Tiebreaker**:
   - Added `overdraft` (`PEN`) metric to `STANDING_METRICS` for ranking coaches with the fewest overdraft penalty points.
   - Tournament directors can assign custom coach penalties via the updated **⚠️ Overdraft Penalties & Sanctions** section in `openTiebreakerEditor`.
-- **Standardized 1.0 – 10.0 Battle Impact Rating System**:
-  - **Calibrated 1.0 to 10.0 Scale**: Reworked raw, unscaled Impact Scores into an intuitive, standardized rating scale from `1.0` to `10.0` with decimals available to the tenths place (e.g. `9.5`, `7.2`, `6.0`).
-  - **Power-Curved Performance Model** (`rawToImpactScore`, `calculateMonImpactScore`): Evaluates full battle stat lines (KOs, % damage dealt, survival, HP healed, and support score) through an exponent-calibrated power curve (`power = 0.48`, 650 baseline):
-    - `8.8 – 10.0`: Masterclass / Carry (2–3+ KOs, massive board damage, solo-sweep; e.g. 2 KOs + 150% dmg + survived = `9.1`).
-    - `7.2 – 8.7`: High Impact (Multiple KOs or 1 KO + ~100% positive trades & support).
-    - `5.0 – 7.1`: Solid Contribution (Standard positive trades, chip damage & positioning).
-    - `1.0 – 4.9`: Low battle presence / early faint / sacrificed lead.
-  - **Replay Breakdown & Match MVP**: Showdown replay squad breakdown tables render formatted tenths ratings with detailed hover tooltips, and Game MVPs display their rating formatted out of 10 (`9.5 / 10`).
-  - **All-Tournament Teams & Major Awards**: Top 12 Pokémon honor teams rank by Average Impact Rating per Game (`Avg Impact / 10`). Finals MVP and Regular Season MVP stat lines and the Awards explanation modal display standardized 1.0–10.0 metrics.
-  - **Primetime Spotlight & Team Planner Roster Cards**: Primetime featured matchup mon badges display `⚡[Rating]` with `/ 10` tooltips, and Team Planner roster stat strips render `Impact [Rating] / 10`.
-  - **Backward Compatibility & Cache Migration**: Pre-existing replays and saved tournament caches with legacy scores automatically convert via `rawToImpactScore`, and tournament stats cache version was bumped to `12`.
+- **Standardized 0.0 – 100.0 Battle Impact Rating System**:
+  - **Calibrated 0.0 to 100.0 Scale**: Reworked Impact Scores into an intuitive, standardized rating scale from `0.0` to `100.0` with precision to the tenths decimal place (e.g. `93.5`, `83.1`, `64.9`).
+  - **Power-Curved Performance Model** (`rawToImpactScore`, `calculateMonImpactScore`): Evaluates full battle stat lines (KOs, % damage dealt, survival, HP healed, and support score) mapped onto a calibrated power curve (`power = 0.52`, 750 baseline) ensuring standout carry performances are properly rewarded without excessive compression:
+    - `85.0 – 100.0` (🔷 **Blue**): Masterclass / Carry (2–3+ KOs, massive board damage, solo-sweep; e.g. 3 KOs + 140% dmg + survived = `93.6`).
+    - `70.0 – 84.9` (🟢 **Green**): High Impact (Multiple KOs or 1 KO + ~100% positive trades & support).
+    - `51.0 – 69.9` (🟠 **Orange**): Solid Contribution (Standard positive trades, chip damage & positioning).
+    - `0.0 – 50.9` (🔴 **Red**): Low battle presence / early faint / sacrificed lead.
+  - **Color-Coded Weights & Side MVP Yellow Glow**:
+    - Impact ratings across replay tables, Match MVP cards, All-Tournament teams, primetime matchups, and roster sheets are color-coded into the 4 tiers (Blue, Green, Orange, Red).
+    - Retired the lightning bolt `⚡` for squad side MVPs in favor of a clean, subtle yellow text-shadow glow directly on the performer's impact score.
+  - **Clean Labels ("Average Impact per Game")**:
+    - Updated All-Tournament Team cards to display `"Average Impact per Game"` instead of `"Avg Impact / 10"`.
+    - Removed redundant `"/ 10"` and `"/ 100"` suffixes from team roster sheets, MVP cards, and replay tooltips as the 100-point scale is self-explanatory.
+  - **Backward Compatibility & Cache Migration**: Pre-existing replays and legacy caches automatically convert onto the 0.0–100.0 scale, and tournament stats cache version was bumped to `13`.
 
 ---
 
