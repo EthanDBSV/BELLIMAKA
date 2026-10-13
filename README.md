@@ -18,6 +18,8 @@ Format: `v[MAJOR].[MINOR].[PATCH]` — Major = major system overhauls, Minor = n
 - **Customizable Tiebreakers & 2-Column Split Standings**:
   - Uses the customizable standings tiebreaker engine (`getStand` + `getStandingsCriteria`) with full access to the `⚖️ Ranking criteria` editor on the Standings view (`W-L`, `H2H`, `GD`, `GW`, `SOS`, `FR`, `Overdraft`).
   - Displays on the 2-column desktop split board (`LEAGUE PHASE ADVANCERS` vs `THE HUNT` / `FINAL PLACEMENT`) and integrates with mathematical clinch/elimination solvers (`isMathematicallyClinched`, `isMathematicallyEliminated`) and Monte Carlo Playoff Odds (`simulateTournamentOdds`).
+- **Popup Text-Selection Drag Dismissal Protection**:
+  - Added capture-phase `mousedown`/`mouseup` (and `touchstart`/`touchend`) target verification on `.modal-wrap` backdrop clicks so dragging to highlight text inside an `<input>` or `<textarea>` and releasing the mouse button outside the popup window never accidentally dismisses the modal.
 
 ---
 
