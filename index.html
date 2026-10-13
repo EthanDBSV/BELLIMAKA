@@ -2252,8 +2252,11 @@ details[open] > .past-tourney-summary .past-chevron{transform:rotate(180deg);col
 .nyt-rank-num.leader{background:linear-gradient(135deg,#ffd166 0%,#c99320 100%)!important;color:#161002!important;border-color:#ffe699!important;box-shadow:0 0 10px rgba(255,209,102,0.35)}
 
 .nyt-coach-cell{display:flex;align-items:center;gap:13px;min-width:200px}
-.nyt-coach-avatar{width:42px;height:42px;border-radius:50%;flex:none;background-size:cover;background-position:center;display:grid;place-items:center;font:900 16px 'Barlow Condensed',sans-serif;color:#fff;border:2px solid rgba(255,255,255,0.18);box-shadow:0 3px 10px rgba(0,0,0,0.45)}
+.nyt-coach-avatar{width:42px;height:42px;border-radius:50%;flex:none;background-size:cover;background-position:center;display:grid;place-items:center;font:900 16px 'Barlow Condensed',sans-serif;color:#fff;border:2px solid rgba(255,255,255,0.18);box-shadow:0 3px 10px rgba(0,0,0,0.45);cursor:pointer;transition:transform .15s ease}
+.nyt-coach-avatar:hover{transform:scale(1.08)}
 .nyt-coach-name{font:800 18px/1.1 'Barlow Condensed',sans-serif;letter-spacing:.4px;color:#ffffff;display:flex;align-items:center;gap:7px;white-space:nowrap}
+.nyt-coach-name-btn{font:800 18px/1.1 'Barlow Condensed',sans-serif!important;letter-spacing:.4px!important;color:#ffffff!important;border:0!important;background:none!important;padding:0!important;cursor:pointer!important;text-align:left;transition:color .15s ease,text-decoration .15s ease}
+.nyt-coach-name-btn:hover{color:#ffd166!important;text-decoration:underline!important}
 .nyt-coach-sub{font:600 12px/1.25 'Plus Jakarta Sans',sans-serif;color:#9d9ba6;margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:240px}
 
 .nyt-prob-wrap{display:flex;align-items:center;gap:10px;min-width:165px}
@@ -18295,7 +18298,11 @@ function getTournamentTopCutModel(t){
       completedList,
       champion,
       runnerUp,
-      thirdPlace
+      thirdPlace,
+      count,
+      isSingleElim,
+      stage2,
+      seededNames
     };
   } finally {
     _inGetTournamentTopCutModel = false;
@@ -25548,8 +25555,8 @@ function simulateTopCutBracketOdds(tourn, runs = 2500, rng = Math.random, passed
       let l = m.loser && isKnownPlayer(m.loser) ? m.loser : (m.p1 === m.winner ? m.p2 : m.p1);
       return { winner: m.winner, loser: isKnownPlayer(l) ? l : null };
     }
-    let p1 = (m && m.p1 && isKnownPlayer(m.p1)) ? m.p1 : simP1;
-    let p2 = (m && m.p2 && isKnownPlayer(m.p2)) ? m.p2 : simP2;
+    let p1 = (simP1 && isKnownPlayer(simP1)) ? simP1 : ((m && m.p1 && isKnownPlayer(m.p1)) ? m.p1 : null);
+    let p2 = (simP2 && isKnownPlayer(simP2)) ? simP2 : ((m && m.p2 && isKnownPlayer(m.p2)) ? m.p2 : null);
     let hypo = tourn._whatIfTopCutPicks?.[mId];
     if(hypo && hypo.winner && (hypo.winner === p1 || hypo.winner === p2)){
       let w = hypo.winner;
@@ -25564,13 +25571,17 @@ function simulateTopCutBracketOdds(tourn, runs = 2500, rng = Math.random, passed
     return { winner: p1Wins ? p1 : p2, loser: p1Wins ? p2 : p1 };
   }
 
-  let seeded = model.seededNames || qNames;
+  let stage2 = model.stage2 || tourn.stage2Format || 'double_elimination';
+  let isSingleElim = (model.isSingleElim !== undefined) ? model.isSingleElim : (stage2 === 'single_elimination');
+  let count = model.count || (qualifiers.length > 4 ? 8 : (qualifiers.length > 2 ? 4 : 2));
+  let seeded = (model.seededNames && model.seededNames.length >= count) ? model.seededNames : qualifiers.map(q => q.name);
+  while(seeded.length < count) seeded.push(null);
 
   for(let r = 0; r < runs; r++){
     let wbChamp = null, lbChamp = null, champ = null;
 
-    if(model.isSingleElim){
-      if(model.count === 8){
+    if(isSingleElim){
+      if(count === 8){
         let qf1 = simMatch('qf1', seeded[0], seeded[7] || 'BYE');
         let qf2 = simMatch('qf2', seeded[3], seeded[4]);
         let qf3 = simMatch('qf3', seeded[1], seeded[6] || 'BYE');
@@ -25581,7 +25592,7 @@ function simulateTopCutBracketOdds(tourn, runs = 2500, rng = Math.random, passed
         if(sf2.winner && finalsCounts[sf2.winner] !== undefined) finalsCounts[sf2.winner]++;
         let fin = simMatch('finals', sf1.winner, sf2.winner);
         champ = fin.winner;
-      } else if(model.count === 4){
+      } else if(count === 4){
         let sf1 = simMatch('sf1', seeded[0], seeded[3]);
         let sf2 = simMatch('sf2', seeded[1], seeded[2]);
         if(sf1.winner && finalsCounts[sf1.winner] !== undefined) finalsCounts[sf1.winner]++;
@@ -25595,7 +25606,7 @@ function simulateTopCutBracketOdds(tourn, runs = 2500, rng = Math.random, passed
         let fin = simMatch('finals', p1, p2);
         champ = fin.winner;
       }
-    } else if(model.count === 8){
+    } else if(count === 8){
       let wb1 = simMatch('wb1', seeded[0], seeded[7] || 'BYE');
       let wb2 = simMatch('wb2', seeded[3], seeded[4]);
       let wb3 = simMatch('wb3', seeded[1], seeded[6] || 'BYE');
@@ -25678,13 +25689,13 @@ function simulateTopCutBracketOdds(tourn, runs = 2500, rng = Math.random, passed
 
     let gf1 = byId['gf1'] || byId['finals'];
     let gf2 = byId['gf2'];
-    let isTournamentDone = (gf2 && gf2.isDone && gf2.winner) || (gf1 && gf1.isDone && gf1.winner && (model.isSingleElim || gf1.winner === gf1.p1));
-    let actualChamp = (gf2 && gf2.isDone && gf2.winner) ? gf2.winner : ((gf1 && gf1.isDone && gf1.winner && (model.isSingleElim || gf1.winner === gf1.p1)) ? gf1.winner : null);
+    let isTournamentDone = (gf2 && gf2.isDone && gf2.winner) || (gf1 && gf1.isDone && gf1.winner && (isSingleElim || gf1.winner === gf1.p1));
+    let actualChamp = (gf2 && gf2.isDone && gf2.winner) ? gf2.winner : ((gf1 && gf1.isDone && gf1.winner && (isSingleElim || gf1.winner === gf1.p1)) ? gf1.winner : null);
 
     let isEliminated = false;
     if(actualChamp){
       isEliminated = (actualChamp !== p);
-    } else if(model.isSingleElim){
+    } else if(isSingleElim){
       // Check if lost in main bracket (excluding 3rd place match)
       let mainLost = wbMatches.some(m => m.isDone && m.winner && (m.p1 === p || m.p2 === p) && m.winner !== p)
         || (gf1 && gf1.isDone && gf1.winner && (gf1.p1 === p || gf1.p2 === p) && gf1.winner !== p);
@@ -25721,8 +25732,8 @@ function simulateTopCutBracketOdds(tourn, runs = 2500, rng = Math.random, passed
     }
 
     let inGf = !isEliminated && ((gf1 && (gf1.p1 === p || gf1.p2 === p)) || (gf2 && (gf2.p1 === p || gf2.p2 === p)));
-    let inLower = !model.isSingleElim && !isEliminated && tcLosses >= 1;
-    let livesLeft = isEliminated ? 0 : (model.isSingleElim ? 1 : (inLower ? 1 : 2));
+    let inLower = !isSingleElim && !isEliminated && tcLosses >= 1;
+    let livesLeft = isEliminated ? 0 : (isSingleElim ? 1 : (inLower ? 1 : 2));
 
     let bracketStatus = 'upper';
     let bracketBadgeText = '🛡️ UPPER BRACKET · 2 LIVES';
@@ -25762,7 +25773,7 @@ function simulateTopCutBracketOdds(tourn, runs = 2500, rng = Math.random, passed
         pathHeadline = `Lower Bracket Champion in Grand Finals`;
         pathDetail = `Must win Set 1 to force Bracket Reset + win Set 2 for the Championship`;
       }
-    } else if(model.isSingleElim){
+    } else if(isSingleElim){
       bracketStatus = 'single_alive';
       bracketBadgeText = '⚔️ SINGLE ELIMINATION';
       bracketBadgeCls = 'destiny';
@@ -36852,12 +36863,11 @@ function renderNytPhase1Row(x, rowIdx, cut, t, sim, totalPlayed, isFocused){
       </td>
       <td>
         <div class="nyt-coach-cell">
-          <div class="nyt-coach-avatar" ${faceStyle}>${faceLetter}</div>
+          <div class="nyt-coach-avatar" ${faceStyle} onclick="event.stopPropagation();openProfile('${jsArg(x.player)}')" title="View ${esc(x.player)}'s Profile">${faceLetter}</div>
           <div style="min-width:0;flex:1">
             <div class="nyt-coach-name">
-              <span>${esc(x.player)}</span>
+              <button type="button" class="player-link nyt-coach-name-btn" onclick="event.stopPropagation();openProfile('${jsArg(x.player)}')" title="View ${esc(x.player)}'s Profile">${esc(x.player)}</button>
               ${x.ovrObj ? x.ovrObj.badgeHtml : `<span class="ovr-badge-pill ovr-silver">${x.ovr}</span>`}
-              <button class="btn ghost btn-sm" style="padding:1px 6px;font-size:10px;line-height:1.3;margin-left:2px;opacity:0.75" onclick="event.stopPropagation();openProfile('${jsArg(x.player)}')" title="Open ${esc(x.player)}'s Coach Profile">↗</button>
             </div>
             <div class="nyt-coach-sub">${esc(teamName(t, x.player))} · Standing #${x.currentRank}</div>
           </div>
@@ -37092,12 +37102,11 @@ function renderNytPhase2Row(x, idx, t, topCutSim, isFocused){
       </td>
       <td>
         <div class="nyt-coach-cell">
-          <div class="nyt-coach-avatar" ${faceStyle}>${faceLetter}</div>
+          <div class="nyt-coach-avatar" ${faceStyle} onclick="event.stopPropagation();openProfile('${jsArg(x.player)}')" title="View ${esc(x.player)}'s Profile">${faceLetter}</div>
           <div style="min-width:0;flex:1">
             <div class="nyt-coach-name">
-              <span>${esc(x.player)}</span>
+              <button type="button" class="player-link nyt-coach-name-btn" onclick="event.stopPropagation();openProfile('${jsArg(x.player)}')" title="View ${esc(x.player)}'s Profile">${esc(x.player)}</button>
               ${x.ovrObj ? x.ovrObj.badgeHtml : `<span class="ovr-badge-pill ovr-silver">${x.ovr}</span>`}
-              <button class="btn ghost btn-sm" style="padding:1px 6px;font-size:10px;line-height:1.3;margin-left:2px;opacity:0.75" onclick="event.stopPropagation();openProfile('${jsArg(x.player)}')" title="Open ${esc(x.player)}'s Coach Profile">↗</button>
             </div>
             <div class="nyt-coach-sub">${esc(teamName(t, x.player))} · Seed ${esc(x.seedLabel)}</div>
           </div>
