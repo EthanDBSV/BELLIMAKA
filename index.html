@@ -7864,6 +7864,9 @@ try{
       if(!t) return;
       if(Array.isArray(t.standingsCriteria)){
         t.standingsCriteria = t.standingsCriteria.filter(c => c !== 'ovr');
+        if(isLeaguePhase(t) && t.standingsCriteria.length === 4 && t.standingsCriteria[0] === 'wl' && t.standingsCriteria[1] === 'gw' && t.standingsCriteria[2] === 'gd' && t.standingsCriteria[3] === 'h2h'){
+          t.standingsCriteria = ['wl', 'sos', 'gw', 'gd'];
+        }
       }
       // Self-healing: if cached tournament is marked as 'draft', but the draft is already finished
       // (matches generated, picks complete, or saved rosters are full), heal the phase immediately
@@ -8642,10 +8645,11 @@ function createTournament(){
     season: assignedSeason,
     badgeLabel,
     status:'ONGOING',
-    phase: enableDraft ? 'draft' : (stage1Format === 'swiss' ? 'swiss' : 'group'),
+    phase: enableDraft ? 'draft' : (stage1Format === 'swiss' ? 'swiss' : (stage1Format === 'league_phase' ? 'league_phase' : 'group')),
     hasDraft: enableDraft,
     stage1Format,
     stage2Format,
+    standingsCriteria: (stage1Format === 'league_phase' ? ['wl', 'sos', 'gw', 'gd'] : ['wl', 'gw', 'gd', 'h2h']),
     swissRounds,
     swissCut,
     swissStyle,
@@ -24487,7 +24491,8 @@ function evaluateStandingsForMatches(members, matchesList, criteria, t) {
   let metrics = (typeof STANDING_METRICS !== 'undefined' && STANDING_METRICS) ? STANDING_METRICS : {
     wl: { compare: (a, b) => (b.w - a.w) || (a.l - b.l) },
     gw: { compare: (a, b) => b.gw - a.gw },
-    gd: { compare: (a, b) => (b.gw - a.gl) - (a.gw - a.gl) },
+    gd: { compare: (a, b) => (b.gw - b.gl) - (a.gw - a.gl) },
+    sos: { compare: (a, b) => (b.sos || 0) - (a.sos || 0) },
     h2h: { compare: (a, b) => {
       let ah = a.results ? a.results[b.p] : undefined;
       let bh = b.results ? b.results[a.p] : undefined;
@@ -24495,7 +24500,7 @@ function evaluateStandingsForMatches(members, matchesList, criteria, t) {
       return 0;
     }}
   };
-  let critList = (typeof getStandingsCriteria === 'function') ? getStandingsCriteria(t) : (criteria || ['wl', 'gw', 'gd', 'h2h']);
+  let critList = (typeof getStandingsCriteria === 'function') ? getStandingsCriteria(t) : (criteria || (isLeaguePhase(t) ? ['wl', 'sos', 'gw', 'gd'] : ['wl', 'gw', 'gd', 'h2h']));
   if(critList.includes('sos')){
     Object.values(s).forEach(item => {
       let oppWins = 0;
@@ -24525,6 +24530,7 @@ function evaluateStandingsForMatches(members, matchesList, criteria, t) {
     });
   }
   let list = Object.values(s);
+  list.forEach(item => { item.diff = item.gw - item.gl; });
   list = sortStandingsWithCriteria(list, critList, metrics);
   return list;
 }
@@ -26963,7 +26969,7 @@ var STANDING_METRICS = {
   },
   wl: {
     id: 'wl',
-    label: 'W-L',
+    label: 'RECORD',
     name: 'Match Record',
     shortDesc: 'Wins - Losses',
     desc: 'Match wins, then fewest match losses',
@@ -26981,7 +26987,7 @@ var STANDING_METRICS = {
   },
   gd: {
     id: 'gd',
-    label: 'GD',
+    label: 'DIFF',
     name: 'Game Differential',
     shortDesc: 'Games Won minus Games Lost',
     desc: 'Net game differential (GW - GL)',
@@ -27055,13 +27061,17 @@ var STANDING_METRICS = {
 
 function getStandingsCriteria(t){
   if(t && Array.isArray(t.standingsCriteria) && t.standingsCriteria.length){
-    let valid = t.standingsCriteria.filter(c => STANDING_METRICS[c] && c !== 'ovr');
+    let sm = (typeof STANDING_METRICS !== 'undefined' && STANDING_METRICS) ? STANDING_METRICS : null;
+    let valid = t.standingsCriteria.filter(c => (!sm || sm[c]) && c !== 'ovr');
     if(valid.length){
+      if(isLeaguePhase(t) && valid.length === 4 && valid[0] === 'wl' && valid[1] === 'gw' && valid[2] === 'gd' && valid[3] === 'h2h'){
+        valid = ['wl', 'sos', 'gw', 'gd'];
+      }
       t.standingsCriteria = valid;
       return valid;
     }
   }
-  return ['wl', 'gw', 'gd', 'h2h'];
+  return isLeaguePhase(t) ? ['wl', 'sos', 'gw', 'gd'] : ['wl', 'gw', 'gd', 'h2h'];
 }
 
 function sortStandingsWithCriteria(teamsList, criteriaList, metricsMap) {
@@ -27189,6 +27199,9 @@ function getStand(t=activeT(),group=null){
   });
 
   let list=Object.values(s);
+  list.forEach(item => {
+    item.diff = item.gw - item.gl;
+  });
   let criteria = getStandingsCriteria(t);
   let needsSos = criteria.includes('sos');
   let needsFr = criteria.includes('fr');
@@ -27685,7 +27698,7 @@ function removeTiebreakerCriteria(tId, critId){
 function resetTiebreakerCriteria(tId){
   let t = (tId ? tournamentData[tId] : null) || ongoingT() || activeT();
   if(!t || !canManageTournament(t)) return;
-  t.standingsCriteria = ['wl', 'gw', 'gd', 'h2h'];
+  t.standingsCriteria = isLeaguePhase(t) ? ['wl', 'sos', 'gw', 'gd'] : ['wl', 'gw', 'gd', 'h2h'];
   persistLeague();
   openTiebreakerEditor(t.id);
   render();
@@ -36958,11 +36971,10 @@ function renderNytPhase1PickerRail(t, baseSim, activeWhatIfCount){
       <div class="nyt-picker-filters">
         ${focusCoach ? `
           <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 11px;background:rgba(255,209,102,0.1);border:1px solid rgba(255,209,102,0.35);border-radius:7px">
-            <div style="font:800 13px/1 'Barlow Condensed',sans-serif;letter-spacing:.5px;text-transform:uppercase;color:#fde68a">
-              🎯 Schedule: <span style="color:#fff">${esc(focusCoach)}</span> (${filteredMatches.length} left)
+            <div style="font:800 13px/1 'Barlow Condensed',sans-serif;letter-spacing:.5px;text-transform:uppercase;color:#fde68a;display:flex;align-items:center;gap:6px">
+              🎯 Schedule: <button type="button" class="player-link nyt-coach-name-btn" style="font-size:14px!important;vertical-align:baseline" onclick="openProfile('${jsArg(focusCoach)}')" title="View ${esc(focusCoach)}'s Profile">${esc(focusCoach)}</button> (${filteredMatches.length} left)
             </div>
             <div style="display:flex;gap:5px">
-              <button class="btn ghost btn-sm" style="padding:3px 8px;font-size:10px" onclick="openProfile('${jsArg(focusCoach)}')">Profile ↗</button>
               <button class="btn ghost btn-sm" style="padding:3px 8px;font-size:10px;color:#ff8a90" onclick="togglePlayoffOddsCoachFocus(null)">Clear ✕</button>
             </div>
           </div>
@@ -37192,7 +37204,7 @@ function renderNytPhase2PickerRail(t, activeWhatIfCount){
       ${focusCoach ? `
         <div class="nyt-picker-filters">
           <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 11px;background:rgba(255,209,102,0.1);border:1px solid rgba(255,209,102,0.35);border-radius:7px">
-            <span style="font:800 13px/1 'Barlow Condensed',sans-serif;letter-spacing:.5px;text-transform:uppercase;color:#fde68a">🎯 Filtering: <b style="color:#fff">${esc(focusCoach)}</b></span>
+            <span style="font:800 13px/1 'Barlow Condensed',sans-serif;letter-spacing:.5px;text-transform:uppercase;color:#fde68a;display:inline-flex;align-items:center;gap:5px">🎯 Filtering: <button type="button" class="player-link nyt-coach-name-btn" style="font-size:13px!important;vertical-align:baseline" onclick="openProfile('${jsArg(focusCoach)}')" title="View ${esc(focusCoach)}'s Profile">${esc(focusCoach)}</button></span>
             <button class="btn ghost btn-sm" style="padding:3px 8px;font-size:10px;color:#ff8a90" onclick="togglePlayoffOddsCoachFocus(null)">Show All ✕</button>
           </div>
         </div>
