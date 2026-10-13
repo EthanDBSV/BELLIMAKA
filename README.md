@@ -3,6 +3,24 @@
 All notable changes to the Bellimaka Pokémon Draft League platform are documented here.
 Format: `v[MAJOR].[MINOR].[PATCH]` — Major = major system overhauls, Minor = new features, Patch = bug fixes and visual improvements.
 
+## [v3.1.0] — 2026-10-12
+
+### League Phase Competitive Format (Random No-Rematch Single-Table Stage)
+- **New Stage 1 Competitive Format (`league_phase`)**:
+  - Added **League Phase (Random No-Rematch)** (`stage1Format === 'league_phase'`) to the Tournament Creator alongside Round Robin Groups and Swiss System.
+  - Combines a unified single-table League Phase standings board with round-by-round progression (`t.swissRounds`, default 4 rounds, max $N - 1$ for even player counts or $N$ for odd player counts).
+  - Full-field active pool: every coach competes in every round through the final round, with the Top $K$ (`t.swissCut`) advancing to the Championship Top Cut bracket.
+- **Lookahead Random No-Rematch Pairing Engine (`generateLeaguePhaseRound`)**:
+  - Pairs coaches completely at random each round (independent of W-L record) while strictly guaranteeing **zero rematches** across the entire League Phase.
+  - Uses Minimum Remaining Values (MRV) graph matching (`findSingleRandomMatchingNoRematch`) combined with multi-round lookahead verification (`canExtendLeagueRounds`) so early random rounds never trap later rounds in an un-matchable graph cycle (such as 4-cycles in $K_6$ when running up to $N - 1$ rounds).
+  - For odd player counts, automatically assigns at most one random `BYE` (2–0 win) per coach across the stage before verifying the remaining pool can complete all future rounds without rematches.
+  - Supports round-by-round unlocking (`🎲 Pair Round N`), live re-drawing of unstarted rounds (`🎲 Re-pair Round N`), and transition to Top Cut (`🏆 End League Phase & Start Playoffs`) once all configured rounds are complete.
+- **Customizable Tiebreakers & 2-Column Split Standings**:
+  - Uses the customizable standings tiebreaker engine (`getStand` + `getStandingsCriteria`) with full access to the `⚖️ Ranking criteria` editor on the Standings view (`W-L`, `H2H`, `GD`, `GW`, `SOS`, `FR`, `Overdraft`).
+  - Displays on the 2-column desktop split board (`LEAGUE PHASE ADVANCERS` vs `THE HUNT` / `FINAL PLACEMENT`) and integrates with mathematical clinch/elimination solvers (`isMathematicallyClinched`, `isMathematicallyEliminated`) and Monte Carlo Playoff Odds (`simulateTournamentOdds`).
+
+---
+
 ## [v3.0.1] — 2026-10-12
 
 ### Replay Parser `Ally Switch` (`|swap|`) Slot Tracking & Stat Attribution Fix
