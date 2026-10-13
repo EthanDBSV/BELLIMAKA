@@ -2207,74 +2207,101 @@ details[open] > .past-tourney-summary .past-chevron{transform:rotate(180deg);col
 .m-player-chip:hover{border-color:#5c242c;color:#fff;background:#242430}
 .m-player-chip.active{background:var(--red);color:#fff;border-color:var(--red);box-shadow:0 2px 8px rgba(239,48,56,0.4)}
 .m-player-chip-face{width:16px;height:16px;border-radius:50%;flex:none;background-size:cover;background-position:center;display:grid;place-items:center;font:800 9px 'Barlow Condensed';color:#fff;border:1px solid #ffffff30}
-/* ------------------------------------------------------------ Betting / Analytics Probability Dashboard ------------------------------------------------------------ */
-.odds-dashboard{display:flex;flex-direction:column;gap:20px;width:100%}
+/* ------------------------------------------------------------ NYT / The Athletic Playoff & Championship Simulator ------------------------------------------------------------ */
+.odds-dashboard{display:flex;flex-direction:column;gap:18px;width:100%;font-family:'DM Sans',-apple-system,BlinkMacSystemFont,sans-serif}
 .odds-hero{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:14px}
-.odds-metric-card{background:#14141a;border:1px solid #2d2d38;border-radius:10px;padding:16px 18px;display:flex;align-items:center;gap:14px;position:relative;overflow:hidden}
-.odds-metric-card.gold{border-color:#7a581e;background:linear-gradient(135deg,#261c0d,#141419 65%)}
-.odds-metric-card.red{border-color:#78242f;background:linear-gradient(135deg,#2b1318,#141419 65%)}
-.odds-metric-card.green{border-color:#1f6e46;background:linear-gradient(135deg,#0f291e,#141419 65%)}
-.odds-metric-icon{font-size:28px;flex:none}
+.odds-metric-card{background:#13141c;border:1px solid #262836;border-radius:10px;padding:15px 18px;display:flex;align-items:center;gap:14px;position:relative;overflow:hidden}
+.odds-metric-card.gold{border-color:rgba(255,209,102,0.32);background:linear-gradient(135deg,rgba(255,209,102,0.08),#13141c 65%)}
+.odds-metric-card.red{border-color:rgba(239,48,56,0.32);background:linear-gradient(135deg,rgba(239,48,56,0.08),#13141c 65%)}
+.odds-metric-card.green{border-color:rgba(52,211,153,0.32);background:linear-gradient(135deg,rgba(52,211,153,0.08),#13141c 65%)}
+.odds-metric-icon{font-size:26px;flex:none}
 .odds-metric-body{min-width:0;flex:1}
-.odds-metric-label{font-size:10px;font-weight:800;letter-spacing:.8px;text-transform:uppercase;color:#9d9ba4}
-.odds-metric-val{font:800 24px 'Barlow Condensed';letter-spacing:.3px;color:#f5f3f0;margin:2px 0}
-.odds-metric-sub{font-size:11px;color:#8e8c95}
+.odds-metric-label{font:700 10px/1.2 'DM Sans',sans-serif;letter-spacing:.7px;text-transform:uppercase;color:#94a3b8}
+.odds-metric-val{font:800 20px/1.2 'DM Sans',sans-serif;letter-spacing:-.2px;color:#f8fafc;margin:3px 0 2px;font-variant-numeric:tabular-nums}
+.odds-metric-sub{font:500 11.5px/1.35 'DM Sans',sans-serif;color:#94a3b8}
 
-.odds-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
-@media(max-width:1180px){.odds-grid{grid-template-columns:repeat(2,1fr)}}
-@media(max-width:720px){.odds-grid{grid-template-columns:1fr}}
-.odds-contender-card{background:#14141b;border:1px solid #2b2b38;border-radius:10px;padding:16px;display:flex;flex-direction:column;gap:12px;position:relative;transition:border-color .15s,transform .15s,box-shadow .15s;cursor:pointer}
-.odds-contender-card:hover{border-color:#5c242c;transform:translateY(-2px);background:#171722}
-.odds-contender-card.tier-1{border-color:#e0ad2b;background:linear-gradient(145deg,#2a1f0a,#131318 60%);box-shadow:0 6px 20px rgba(224,173,43,0.12)}
-.odds-contender-card.tier-2{border-color:#ff4d58;background:linear-gradient(145deg,#2b1216,#131318 60%);box-shadow:0 6px 20px rgba(239,48,56,0.12)}
-.odds-contender-card.tier-3{border-color:#a855f7;background:linear-gradient(145deg,#23142e,#131318 60%)}
-.odds-contender-card.tier-clinched{border-color:#22c55e;background:linear-gradient(145deg,#0f291e,#13131a 62%);box-shadow:0 6px 20px rgba(34,197,94,0.12)}
-.odds-contender-card.tier-position{border-color:#38bdf8;background:linear-gradient(145deg,#102334,#13131a 62%);box-shadow:0 6px 18px rgba(56,189,248,0.08)}
-.odds-contender-card.tier-bubble{border-color:#f59e0b;background:linear-gradient(145deg,#281d0b,#13131a 62%);box-shadow:0 6px 18px rgba(245,158,11,0.08)}
-.odds-contender-card.tier-eliminated{border-color:#2a2228;background:#111116;opacity:.78}
+.nyt-sim-layout{display:grid;grid-template-columns:minmax(0,1fr) 390px;gap:20px;align-items:start}
+@media(max-width:1160px){.nyt-sim-layout{grid-template-columns:1fr}}
 
-.odds-head-row{display:flex;align-items:center;justify-content:space-between;gap:12px}
-.odds-trainer-info{display:flex;align-items:center;gap:10px;min-width:0}
-.odds-badge-chip{font:800 11px 'Barlow Condensed';letter-spacing:.8px;padding:3px 9px;border-radius:4px;text-transform:uppercase;white-space:nowrap;display:inline-flex;align-items:center;gap:4px}
-.odds-badge-chip.fav{background:#382711;color:#ffd166;border:1px solid #78531e}
-.odds-badge-chip.contender{background:#381419;color:#ff8e95;border:1px solid #73242f}
-.odds-badge-chip.darkhorse{background:#2b1836;color:#dca2f5;border:1px solid #5a3070}
-.odds-badge-chip.longshot{background:#1a1a24;color:#a09fa8;border:1px solid #363644}
-.odds-badge-chip.clinched{background:#0f2e1f;color:#4ade80;border:1px solid #1f7a4c}
-.odds-badge-chip.destiny{background:#11283b;color:#7dd3fc;border:1px solid #1e5278}
-.odds-badge-chip.bubble{background:#33230c;color:#fbbf24;border:1px solid #784f15}
-.odds-badge-chip.mustwin{background:#381419;color:#fca5a5;border:1px solid #7f232e}
-.odds-badge-chip.eliminated{background:#1e1920;color:#8e8c95;border:1px solid #352c38}
+.nyt-table-card{background:#12131a;border:1px solid #252736;border-radius:12px;overflow:hidden;box-shadow:0 10px 30px rgba(0,0,0,0.4)}
+.nyt-table-toolbar{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;padding:14px 18px;background:#161822;border-bottom:1px solid #252736}
+.nyt-toolbar-left{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.nyt-toolbar-right{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.nyt-pill-btn{border:1px solid #2e3144;background:#1b1d29;color:#cbd5e1;font:700 11.5px/1 'DM Sans',sans-serif;padding:7px 12px;border-radius:6px;cursor:pointer;transition:all .14s ease;display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
+.nyt-pill-btn:hover{background:#252838;color:#fff;border-color:#474b66}
+.nyt-pill-btn.active{background:#ef3038;color:#fff;border-color:#ef3038;box-shadow:0 2px 10px rgba(239,48,56,0.3)}
 
-.odds-bar-container{display:flex;flex-direction:column;gap:5px}
-.odds-bar-header{display:flex;justify-content:space-between;align-items:baseline;font-size:11px}
-.odds-bar-title{font-weight:700;color:#c4c1cc;text-transform:uppercase;letter-spacing:.4px;font-size:10px}
-.odds-bar-pct{font:800 20px 'Barlow Condensed';color:#f5f3f0;font-variant-numeric:tabular-nums}
-.odds-bar-track{height:9px;background:#202028;border-radius:6px;overflow:hidden;border:1px solid #30303c}
-.odds-bar-fill{height:100%;border-radius:6px;transition:width .4s ease}
+.nyt-whatif-banner{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;padding:10px 18px;background:linear-gradient(90deg,rgba(255,209,102,0.12),rgba(56,189,248,0.08));border-bottom:1px solid rgba(255,209,102,0.28);font:600 12px/1.4 'DM Sans',sans-serif;color:#fef3c7}
+.nyt-table-scroll{width:100%;overflow-x:auto;-webkit-overflow-scrolling:touch}
+.nyt-table{width:100%;border-collapse:collapse;font-family:'DM Sans',-apple-system,BlinkMacSystemFont,sans-serif;font-variant-numeric:tabular-nums;min-width:740px}
+.nyt-table thead th{padding:11px 12px;background:#141620;border-bottom:1px solid #26293a;font:700 10.5px/1.2 'DM Sans',sans-serif;letter-spacing:.65px;text-transform:uppercase;color:#94a3b8;text-align:left;white-space:nowrap;user-select:none}
+.nyt-table thead th.num,.nyt-table tbody td.num{text-align:center}
+.nyt-table thead th.prob-col{text-align:left;padding-left:14px}
+.nyt-table tbody tr.nyt-row{border-bottom:1px solid #1e202d;transition:background .12s ease;cursor:pointer}
+.nyt-table tbody tr.nyt-row:hover{background:#191b27}
+.nyt-table tbody tr.nyt-row.is-focused{background:rgba(56,189,248,0.09);box-shadow:inset 3px 0 0 #38bdf8}
+.nyt-table tbody tr.nyt-row.is-eliminated{opacity:0.62}
+.nyt-table tbody td{padding:11px 12px;vertical-align:middle;font-size:13px;color:#e2e8f0}
 
-.odds-submetrics{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;background:#0d0d12;border:1px solid #23232c;border-radius:6px;padding:8px 10px;text-align:center}
-.odds-submetric-val{font:800 14px 'Barlow Condensed';color:#f5f3f0}
-.odds-submetric-lbl{font-size:9px;font-weight:700;letter-spacing:.4px;color:#8e8c95;text-transform:uppercase;margin-top:1px}
+.nyt-cutline-tr td{padding:0!important;background:#101118;border-bottom:none!important}
+.nyt-cutline-bar{display:flex;align-items:center;gap:12px;padding:6px 18px;background:rgba(255,209,102,0.06);border-top:1px dashed rgba(255,209,102,0.45);border-bottom:1px dashed rgba(255,209,102,0.45);font:800 10.5px/1 'DM Sans',sans-serif;letter-spacing:1px;text-transform:uppercase;color:#ffd166}
+.nyt-cutline-bar::before,.nyt-cutline-bar::after{content:'';flex:1;height:1px;background:linear-gradient(90deg,transparent,rgba(255,209,102,0.28),transparent)}
 
-.odds-scenario-box{background:#0f0f15;border:1px solid #262634;border-left:3px solid #4b5563;border-radius:6px;padding:8px 10px;display:flex;flex-direction:column;gap:2px}
-.odds-scenario-box.clinched{border-left-color:#22c55e;background:rgba(34,197,94,0.05)}
-.odds-scenario-box.destiny{border-left-color:#38bdf8;background:rgba(56,189,248,0.05)}
-.odds-scenario-box.bubble{border-left-color:#f59e0b;background:rgba(245,158,11,0.05)}
-.odds-scenario-box.mustwin{border-left-color:#ef4444;background:rgba(239,68,68,0.06)}
-.odds-scenario-box.eliminated{border-left-color:#52525b;background:rgba(255,255,255,0.02)}
-.odds-scenario-headline{font-size:11.5px;font-weight:800;color:#f1f5f9;line-height:1.35}
-.odds-scenario-detail{font-size:10.5px;color:#94a3b8;line-height:1.35}
+.nyt-rank-num{display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:6px;font:700 12px/1 'DM Sans',sans-serif;color:#94a3b8;background:#1a1c28;border:1px solid #2a2d3e}
+.nyt-rank-num.in-cut{color:#ffd166;background:rgba(255,209,102,0.12);border-color:rgba(255,209,102,0.35)}
+.nyt-rank-num.clinched{color:#4ade80;background:rgba(74,222,128,0.14);border-color:rgba(74,222,128,0.4)}
 
-.odds-tier-section{display:flex;flex-direction:column;gap:12px;margin-top:6px}
-.odds-tier-section-head{display:flex;align-items:center;justify-content:space-between;gap:10px;padding-bottom:6px;border-bottom:1px solid #262634;flex-wrap:wrap}
-.odds-tier-section-title{font:800 18px 'Barlow Condensed';letter-spacing:.6px;text-transform:uppercase;color:#f5f3f0;display:flex;align-items:center;gap:8px;margin:0}
-.odds-tier-section-sub{font-size:11px;color:#8e8c95;font-weight:700}
+.nyt-coach-cell{display:flex;align-items:center;gap:10px;min-width:170px}
+.nyt-avatar{width:34px;height:34px;border-radius:50%;flex:none;background-size:cover;background-position:center;display:grid;place-items:center;font:700 13px 'DM Sans',sans-serif;color:#fff;border:1.5px solid rgba(255,255,255,0.16)}
+.nyt-coach-meta{min-width:0;display:flex;flex-direction:column;gap:2px}
+.nyt-coach-top{display:flex;align-items:center;gap:6px;flex-wrap:nowrap}
+.nyt-coach-name{font:700 14px/1.15 'DM Sans',sans-serif;color:#f8fafc;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.nyt-ovr-tag{font:700 10px/1 'DM Sans',sans-serif;padding:2px 5px;border-radius:4px;background:#222534;color:#cbd5e1;border:1px solid #35394f}
+.nyt-team-sub{font:500 11px/1.15 'DM Sans',sans-serif;color:#8b95a7;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:185px}
 
-.odds-scenarios-panel{background:#121218;border:1px solid #2b2b3a;border-radius:10px;padding:18px;margin-bottom:20px}
-.odds-scenarios-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:10px;margin-top:12px}
-.odds-scenario-row{background:#171720;border:1px solid #282836;border-radius:8px;padding:10px 12px;display:flex;align-items:flex-start;justify-content:space-between;gap:10px;cursor:pointer;transition:border-color .15s}
-.odds-scenario-row:hover{border-color:#4b4b62}
+.nyt-prob-wrap{display:flex;align-items:center;gap:9px;min-width:140px}
+.nyt-prob-track{width:64px;height:7px;background:#1e2130;border-radius:99px;overflow:hidden;flex:none;border:1px solid rgba(255,255,255,0.06)}
+.nyt-prob-fill{height:100%;border-radius:99px;transition:width .25s ease}
+.nyt-heat-pill{display:inline-flex;align-items:center;justify-content:center;min-width:48px;padding:4px 8px;border-radius:6px;font:700 12.5px/1 'DM Sans',sans-serif;letter-spacing:-.1px;text-align:center;font-variant-numeric:tabular-nums;border:1px solid transparent}
+.nyt-delta{display:inline-flex;align-items:center;font:700 10.5px/1 'DM Sans',sans-serif;padding:2px 5px;border-radius:4px;white-space:nowrap}
+.nyt-delta.pos{color:#4ade80;background:rgba(74,222,128,0.14);border:1px solid rgba(74,222,128,0.3)}
+.nyt-delta.neg{color:#fb7185;background:rgba(251,113,133,0.14);border:1px solid rgba(251,113,133,0.3)}
+
+.nyt-status-chip{display:inline-flex;align-items:center;gap:4px;font:700 10px/1 'DM Sans',sans-serif;letter-spacing:.4px;text-transform:uppercase;padding:3.5px 7px;border-radius:5px;white-space:nowrap}
+.nyt-status-chip.clinched{background:rgba(34,197,94,0.14);color:#4ade80;border:1px solid rgba(34,197,94,0.35)}
+.nyt-status-chip.destiny{background:rgba(56,189,248,0.14);color:#7dd3fc;border:1px solid rgba(56,189,248,0.35)}
+.nyt-status-chip.bubble{background:rgba(245,158,11,0.14);color:#fcd34d;border:1px solid rgba(245,158,11,0.35)}
+.nyt-status-chip.mustwin{background:rgba(244,63,94,0.15);color:#fda4af;border:1px solid rgba(244,63,94,0.38)}
+.nyt-status-chip.eliminated{background:rgba(148,163,184,0.1);color:#94a3b8;border:1px solid rgba(148,163,184,0.22)}
+.nyt-status-chip.fav{background:rgba(255,209,102,0.15);color:#ffd166;border:1px solid rgba(255,209,102,0.4)}
+
+.nyt-scenario-cell{display:flex;flex-direction:column;gap:3px;min-width:210px;max-width:310px}
+.nyt-scenario-top{display:flex;align-items:center;gap:6px;flex-wrap:wrap;font:600 12px/1.3 'DM Sans',sans-serif;color:#f1f5f9}
+.nyt-scenario-sub{font:400 11px/1.35 'DM Sans',sans-serif;color:#8b95a7}
+
+/* Right Rail: Interactive What-If Match Simulator */
+.nyt-picker-rail{background:#12131a;border:1px solid #252736;border-radius:12px;overflow:hidden;position:sticky;top:86px;display:flex;flex-direction:column;max-height:calc(100vh - 104px);box-shadow:0 10px 30px rgba(0,0,0,0.4)}
+@media(max-width:1160px){.nyt-picker-rail{position:static;max-height:none}}
+.nyt-picker-head{padding:15px 16px 12px;background:#161822;border-bottom:1px solid #252736}
+.nyt-picker-title-row{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.nyt-picker-title{font:700 14.5px/1.2 'DM Sans',sans-serif;color:#f8fafc;display:flex;align-items:center;gap:7px}
+.nyt-picker-sub{font:400 11.5px/1.4 'DM Sans',sans-serif;color:#94a3b8;margin-top:4px}
+.nyt-picker-filters{padding:10px 14px;background:#14151e;border-bottom:1px solid #222432;display:flex;flex-direction:column;gap:8px}
+.nyt-picker-list{padding:12px 14px;overflow-y:auto;display:flex;flex-direction:column;gap:10px;flex:1}
+.nyt-match-card{background:#171924;border:1px solid #282b3d;border-radius:9px;padding:10px 11px;display:flex;flex-direction:column;gap:8px;transition:border-color .14s ease}
+.nyt-match-card.has-pick{border-color:rgba(255,209,102,0.55);background:linear-gradient(180deg,rgba(255,209,102,0.06),#171924)}
+.nyt-match-meta{display:flex;align-items:center;justify-content:space-between;gap:8px;font:600 10.5px/1 'DM Sans',sans-serif;color:#8b95a7;text-transform:uppercase;letter-spacing:.4px}
+.nyt-match-sides{display:grid;grid-template-columns:1fr 1fr;gap:7px}
+.nyt-side-btn{border:1px solid #2c3044;background:#12141d;color:#e2e8f0;border-radius:7px;padding:8px 9px;cursor:pointer;display:flex;align-items:center;justify-content:space-between;gap:6px;text-align:left;transition:all .14s ease;font-family:'DM Sans',sans-serif;min-width:0}
+.nyt-side-btn:hover{border-color:#4b5275;background:#1b1e2b}
+.nyt-side-btn.picked{background:rgba(52,211,153,0.14);border-color:#34d399;color:#fff;box-shadow:0 0 12px rgba(52,211,153,0.18)}
+.nyt-side-btn.picked-loss{opacity:0.48}
+.nyt-side-name{font:700 12.5px/1.15 'DM Sans',sans-serif;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.nyt-side-prob{font:700 11px/1 'DM Sans',sans-serif;color:#94a3b8;flex:none;font-variant-numeric:tabular-nums}
+.nyt-side-btn.picked .nyt-side-prob{color:#6ee7b7}
+.nyt-score-strip{display:flex;align-items:center;justify-content:space-between;gap:6px;padding-top:4px;border-top:1px solid rgba(255,255,255,0.06);font:600 10.5px/1 'DM Sans',sans-serif;color:#94a3b8}
+.nyt-score-chip{border:1px solid #32364d;background:#12141d;color:#cbd5e1;font:700 10px/1 'DM Sans',sans-serif;padding:3.5px 8px;border-radius:4px;cursor:pointer;transition:all .12s}
+.nyt-score-chip.active{background:#ffd166;color:#111;border-color:#ffd166}
 /* ------------------------------------------------------------ Draft Tools Layout ------------------------------------------------------------ */
 .tools-layout{display:grid;grid-template-columns:minmax(0,1fr) 350px;gap:18px;align-items:start}
 .builder{padding:18px;position:sticky;top:96px;max-height:calc(100vh - 120px);overflow:auto}
@@ -25520,6 +25547,12 @@ function simulateTopCutBracketOdds(tourn, runs = 2500, rng = Math.random, passed
     }
     let p1 = (m && m.p1 && isKnownPlayer(m.p1)) ? m.p1 : simP1;
     let p2 = (m && m.p2 && isKnownPlayer(m.p2)) ? m.p2 : simP2;
+    let hypo = tourn._whatIfTopCutPicks?.[mId];
+    if(hypo && hypo.winner && (hypo.winner === p1 || hypo.winner === p2)){
+      let w = hypo.winner;
+      let l = (w === p1) ? p2 : p1;
+      return { winner: w, loser: isKnownPlayer(l) ? l : null };
+    }
     if(p1 && (!p2 || p2 === 'BYE')) return { winner: p1, loser: null };
     if(p2 && (!p1 || p1 === 'BYE')) return { winner: p2, loser: null };
     if(!p1 || !p2) return { winner: p1 || p2 || null, loser: null };
@@ -36502,6 +36535,23 @@ function playoffForm(p,t){return Math.round(100/(1+Math.exp(-(playoffRating(p,t)
 var playoffOddsTab = 'title';
 window.playoffOddsPhaseView = null;
 window.playoffOddsGroupFilter = 'ALL';
+window.playoffOddsFocusCoach = null;
+window.playoffOddsRoundFilter = 'ALL';
+window.playoffOddsSortBy = 'odds';
+window.playoffOddsWhatIf = {};
+window.playoffOddsTopCutWhatIf = {};
+window._playoffOddsWhatIfTourId = null;
+
+function ensurePlayoffOddsWhatIfState(t){
+  let tid = t ? (t.id || t.name || 'default') : 'default';
+  if(window._playoffOddsWhatIfTourId !== tid){
+    window._playoffOddsWhatIfTourId = tid;
+    window.playoffOddsWhatIf = {};
+    window.playoffOddsTopCutWhatIf = {};
+    window.playoffOddsFocusCoach = null;
+    window.playoffOddsRoundFilter = 'ALL';
+  }
+}
 
 function setPlayoffOddsPhaseView(phase){
   window.playoffOddsPhaseView = phase;
@@ -36513,241 +36563,660 @@ function setPlayoffOddsGroupFilter(groupName){
   render();
 }
 
-function renderPhase1PlayoffCard(x, idx, t, sim, cut, totalPlayed){
+function setPlayoffOddsSortBy(sortMode){
+  window.playoffOddsSortBy = sortMode || 'odds';
+  render();
+}
+
+function togglePlayoffOddsCoachFocus(coachName){
+  if(!coachName) window.playoffOddsFocusCoach = null;
+  else if(window.playoffOddsFocusCoach === coachName) window.playoffOddsFocusCoach = null;
+  else {
+    window.playoffOddsFocusCoach = coachName;
+    window.playoffOddsRoundFilter = 'ALL';
+  }
+  render();
+}
+
+function setPlayoffOddsRoundFilter(roundVal){
+  window.playoffOddsRoundFilter = (roundVal === undefined || roundVal === null) ? 'ALL' : String(roundVal);
+  render();
+}
+
+function togglePlayoffWhatIfWinner(matchIdx, winnerName, defaultScore){
+  let key = String(matchIdx);
+  let cur = window.playoffOddsWhatIf[key];
+  if(cur && cur.winner === winnerName){
+    delete window.playoffOddsWhatIf[key];
+  } else {
+    window.playoffOddsWhatIf[key] = {
+      winner: winnerName,
+      score: (cur && cur.score) ? cur.score : (defaultScore || '2-0')
+    };
+  }
+  render();
+}
+
+function setPlayoffWhatIfScore(matchIdx, scoreStr){
+  let key = String(matchIdx);
+  if(window.playoffOddsWhatIf[key]){
+    window.playoffOddsWhatIf[key].score = scoreStr || '2-0';
+    render();
+  }
+}
+
+function resetPlayoffWhatIf(){
+  window.playoffOddsWhatIf = {};
+  window.playoffOddsTopCutWhatIf = {};
+  render();
+}
+
+function toggleTopCutWhatIfWinner(matchId, winnerName, defaultScore){
+  let key = String(matchId);
+  let cur = window.playoffOddsTopCutWhatIf[key];
+  if(cur && cur.winner === winnerName){
+    delete window.playoffOddsTopCutWhatIf[key];
+  } else {
+    window.playoffOddsTopCutWhatIf[key] = {
+      winner: winnerName,
+      score: (cur && cur.score) ? cur.score : (defaultScore || '2-0')
+    };
+  }
+  render();
+}
+
+function setTopCutWhatIfScore(matchId, scoreStr){
+  let key = String(matchId);
+  if(window.playoffOddsTopCutWhatIf[key]){
+    window.playoffOddsTopCutWhatIf[key].score = scoreStr || '2-0';
+    render();
+  }
+}
+
+function getNytHeatPillStyle(pct, isClinched, isEliminated, isGoldAccent){
+  if(isClinched || pct >= 99.5){
+    return isGoldAccent
+      ? 'background:rgba(255,209,102,0.22);color:#ffd166;border:1px solid rgba(255,209,102,0.5)'
+      : 'background:rgba(16,185,129,0.22);color:#6ee7b7;border:1px solid rgba(16,185,129,0.5)';
+  }
+  if(isEliminated || pct <= 0){
+    return 'background:rgba(148,163,184,0.08);color:#64748b;border:1px solid rgba(148,163,184,0.18)';
+  }
+  if(isGoldAccent){
+    if(pct >= 45) return 'background:rgba(255,209,102,0.18);color:#ffd166;border:1px solid rgba(255,209,102,0.42)';
+    if(pct >= 20) return 'background:rgba(255,209,102,0.11);color:#fde68a;border:1px solid rgba(255,209,102,0.28)';
+    if(pct >= 5)  return 'background:rgba(255,255,255,0.06);color:#cbd5e1;border:1px solid rgba(255,255,255,0.14)';
+    return 'background:rgba(255,255,255,0.03);color:#64748b;border:1px solid rgba(255,255,255,0.08)';
+  }
+  if(pct >= 80) return 'background:rgba(16,185,129,0.18);color:#6ee7b7;border:1px solid rgba(16,185,129,0.4)';
+  if(pct >= 60) return 'background:rgba(52,211,153,0.12);color:#a7f3d0;border:1px solid rgba(52,211,153,0.3)';
+  if(pct >= 40) return 'background:rgba(250,204,21,0.14);color:#fde047;border:1px solid rgba(250,204,21,0.34)';
+  if(pct >= 20) return 'background:rgba(251,146,60,0.14);color:#fdba74;border:1px solid rgba(251,146,60,0.34)';
+  return 'background:rgba(248,113,113,0.14);color:#fca5a5;border:1px solid rgba(248,113,113,0.32)';
+}
+
+function getNytBarColor(pct, isClinched, isEliminated, isGoldAccent){
+  if(isEliminated || pct <= 0) return 'rgba(148,163,184,0.2)';
+  if(isGoldAccent){
+    if(pct >= 40) return 'linear-gradient(90deg,#f59e0b,#ffd166)';
+    if(pct >= 15) return 'linear-gradient(90deg,#d97706,#fbbf24)';
+    return 'linear-gradient(90deg,#64748b,#94a3b8)';
+  }
+  if(isClinched || pct >= 75) return 'linear-gradient(90deg,#059669,#34d399)';
+  if(pct >= 45) return 'linear-gradient(90deg,#d97706,#ffd166)';
+  if(pct >= 20) return 'linear-gradient(90deg,#ea580c,#fb923c)';
+  return 'linear-gradient(90deg,#dc2626,#f87171)';
+}
+
+function formatNytDeltaBadge(delta){
+  if(delta === null || delta === undefined || Math.abs(delta) < 0.5) return '';
+  let rounded = Math.round(delta);
+  if(rounded === 0) rounded = delta > 0 ? 1 : -1;
+  if(rounded > 0){
+    return `<span class="nyt-delta up" title="Change from hypothetical What-If picks">▲ +${rounded}%</span>`;
+  }
+  return `<span class="nyt-delta down" title="Change from hypothetical What-If picks">▼ ${rounded}%</span>`;
+}
+
+function computeWhatIfStage1Sim(t, baseSim){
+  let picks = window.playoffOddsWhatIf || {};
+  let keys = Object.keys(picks);
+  if(!keys.length) return { sim: baseSim, activeCount: 0 };
+
+  let clonedT = Object.assign({}, t);
+  clonedT.matches = (t.matches || []).map((m, idx) => {
+    let pick = picks[String(idx)];
+    if(!pick || (m.as !== '' && m.as != null && m.bs !== '' && m.bs != null)) return m;
+    let loseScore = pick.score === '2-1' ? 1 : 0;
+    if(pick.winner === m.a){
+      return Object.assign({}, m, { as: 2, bs: loseScore });
+    } else if(pick.winner === m.b){
+      return Object.assign({}, m, { as: loseScore, bs: 2 });
+    }
+    return m;
+  });
+
+  let activeCount = 0;
+  for(let k of keys){
+    let m = (t.matches || [])[Number(k)];
+    if(m && (m.as === '' || m.as == null || m.bs === '' || m.bs == null)) activeCount++;
+  }
+  if(activeCount === 0) return { sim: baseSim, activeCount: 0 };
+
+  let seedStr = `whatif_${t.id || t.name}_${JSON.stringify(picks)}`;
+  let prng = createPrng(seedStr);
+  let hypoSim = simulateTournamentOdds(clonedT, 1200, prng);
+
+  for(let p of Object.keys(hypoSim)){
+    if(baseSim[p]){
+      hypoSim[p].topCutDelta = hypoSim[p].topCutPct - baseSim[p].topCutPct;
+      hypoSim[p].firstSeedDelta = (hypoSim[p].firstSeedPct || 0) - (baseSim[p].firstSeedPct || 0);
+      hypoSim[p].baseTopCutPct = baseSim[p].topCutPct;
+      hypoSim[p].baseFirstSeedPct = baseSim[p].firstSeedPct || 0;
+    }
+  }
+  return { sim: hypoSim, activeCount };
+}
+
+function computeWhatIfTopCutSim(t, baseTopCutSim){
+  let picks = window.playoffOddsTopCutWhatIf || {};
+  let keys = Object.keys(picks);
+  if(!keys.length || !baseTopCutSim) return { topCutSim: baseTopCutSim, activeCount: 0 };
+
+  let model = (typeof getTournamentTopCutModel === 'function') ? getTournamentTopCutModel(t) : null;
+  let allBr = model
+    ? [
+        ...(model.wbRounds || []).flatMap(r => r.matches || []),
+        ...(model.lbRounds || []).flatMap(r => r.matches || []),
+        ...(model.gfMatches || [])
+      ]
+    : [];
+
+  let activeCount = 0;
+  let validPicks = {};
+  for(let m of allBr){
+    let pick = m && m.id ? picks[String(m.id)] : null;
+    let p1 = m?.p1 || m?.a;
+    let p2 = m?.p2 || m?.b;
+    if(pick && p1 && p2 && p1 !== 'BYE' && p2 !== 'BYE' && !m.isDone && !m.winner){
+      if(pick.winner === p1 || pick.winner === p2){
+        validPicks[String(m.id)] = pick;
+        activeCount++;
+      }
+    }
+  }
+  if(activeCount === 0) return { topCutSim: baseTopCutSim, activeCount: 0 };
+
+  let clonedT = Object.assign({}, t, { _whatIfTopCutPicks: validPicks });
+  let seedStr = `whatif_tc_${t.id || t.name}_${JSON.stringify(validPicks)}`;
+  let prng = createPrng(seedStr);
+  let hypoTc = simulateTopCutBracketOdds(clonedT, 1200, prng);
+  if(!hypoTc || !hypoTc.entries) return { topCutSim: baseTopCutSim, activeCount: 0 };
+
+  let baseMap = {};
+  (baseTopCutSim.entries || []).forEach(e => { baseMap[e.player] = e; });
+  (hypoTc.entries || []).forEach(e => {
+    let b = baseMap[e.player];
+    if(b){
+      e.champDelta = e.champPct - b.champPct;
+      e.finalsDelta = e.finalsPct - b.finalsPct;
+    }
+  });
+  return { topCutSim: hypoTc, activeCount };
+}
+
+function renderNytPhase1Row(x, rowIdx, cut, t, sim, totalPlayed, isFocused){
   let sc = x.scenario || {
     status: 'contending',
-    badgeText: '⚡ IN CONTENTION',
+    badgeText: '⚡ IN THE HUNT',
     badgeClass: 'bubble',
-    tierClass: 'tier-bubble',
     headline: 'Playoff Race Open',
     detail: `${x.unplayedCount} matches remaining.`
   };
 
   let isClinched = x.clinchStatus === 'clinched';
   let isEliminated = x.clinchStatus === 'eliminated';
-  let isDarkHorse = !isClinched && !isEliminated && totalPlayed === 0 && isOddsDarkHorse(x, idx, Object.keys(sim).length);
 
-  let badgeHtml = `<span class="odds-badge-chip ${esc(sc.badgeClass || 'bubble')}">${esc(sc.badgeText)}</span>`;
+  let chipCls = sc.badgeClass || 'bubble';
+  let chipText = sc.badgeText || '⚡ IN THE HUNT';
   if(totalPlayed === 0 && !isClinched && !isEliminated){
-    if(idx === 0) badgeHtml = `<span class="odds-badge-chip fav">👑 #1 Seed Fav</span>`;
-    else if(x.currentRank <= cut) badgeHtml = `<span class="odds-badge-chip destiny">🛡️ Projected Cut</span>`;
-    else if(isDarkHorse) badgeHtml = `<span class="odds-badge-chip darkhorse">🔥 Dark Horse</span>`;
-    else badgeHtml = `<span class="odds-badge-chip bubble">⚔️ In The Hunt</span>`;
+    if(rowIdx === 0){ chipCls = 'fav'; chipText = '👑 #1 SEED FAV'; }
+    else if(rowIdx < cut){ chipCls = 'destiny'; chipText = '🛡️ PROJECTED CUT'; }
+    else if(x.topCutPct >= 30){ chipCls = 'bubble'; chipText = '⚔️ BUBBLE CONTENDER'; }
+    else { chipCls = 'darkhorse'; chipText = '🔥 DARK HORSE'; }
   }
-
-  let barPct = isClinched ? 100 : (isEliminated ? 0 : Math.min(100, Math.max(x.topCutPct > 0 ? 2 : 0, +x.topCutPct.toFixed(1))));
-  let barGradient = (isClinched || x.topCutPct >= 75)
-    ? 'linear-gradient(90deg,#34d399,#10b981)'
-    : (x.topCutPct >= 40
-      ? 'linear-gradient(90deg,#ffd166,#f59e0b)'
-      : 'linear-gradient(90deg,#ff8e95,#ef3038)');
 
   let faceImg = (typeof profilePictures !== 'undefined' && profilePictures[x.player]) || (typeof teamCovers !== 'undefined' && teamCovers[x.player]) || '';
   let faceArt = faceImg ? `url('${esc(faceImg)}')` : fallbackArt(x.player);
   let faceLetter = faceImg ? '' : esc((x.player||'?')[0]);
-  let faceStyle = `style="background-image:${faceArt};background-size:cover;background-position:center;width:36px;height:36px;border-radius:50%;flex:none;display:grid;place-items:center;border:1px solid #ffffff22;font:800 13px 'Barlow Condensed'"`;
-
-  let sosOvr = x.sosOvr || x.avgGroupOvr || 75;
-  let remSosOvr = (x.remSosOvr !== undefined) ? x.remSosOvr : (x.remainingOpponents && x.remainingOpponents.length ? Math.round(x.remainingOpponents.reduce((sum, opp) => sum + (sim[opp]?.ovr || 75), 0) / x.remainingOpponents.length) : null);
-  let sosDifficultyLabel = remSosOvr !== null
-    ? (remSosOvr >= 82 ? '<span style="color:#ff8e95;font-weight:700">Hard</span>' : (remSosOvr >= 76 ? '<span style="color:#ffd166;font-weight:700">Balanced</span>' : '<span style="color:#4bdd91;font-weight:700">Favorable</span>'))
-    : '<span style="color:#4bdd91;font-weight:700">Complete</span>';
+  let faceStyle = `style="background-image:${faceArt}"`;
 
   let gdVal = (x.form?.gw || 0) - (x.form?.gl || 0);
   let gdStr = (gdVal >= 0 ? '+' : '') + gdVal;
-  let rankInside = x.currentRank <= cut;
-  let rankBadgeStyle = isClinched
+  let gdColor = gdVal > 0 ? '#6ee7b7' : (gdVal < 0 ? '#fca5a5' : '#94a3b8');
+
+  let remSosOvr = (x.remSosOvr !== undefined) ? x.remSosOvr : (x.remainingOpponents && x.remainingOpponents.length ? Math.round(x.remainingOpponents.reduce((sum, opp) => sum + (sim[opp]?.ovr || 75), 0) / x.remainingOpponents.length) : null);
+  let sosBadge = remSosOvr !== null
+    ? (remSosOvr >= 82
+        ? `<span style="color:#fca5a5;font-weight:700">${remSosOvr} · Hard</span>`
+        : (remSosOvr >= 76
+            ? `<span style="color:#fde047;font-weight:700">${remSosOvr} · Avg</span>`
+            : `<span style="color:#6ee7b7;font-weight:700">${remSosOvr} · Easy</span>`))
+    : `<span style="color:#64748b">Done</span>`;
+
+  let cutPctVal = isClinched ? 100 : (isEliminated ? 0 : +x.topCutPct.toFixed(1));
+  let cutBarW = isClinched ? 100 : (isEliminated ? 0 : Math.min(100, Math.max(cutPctVal > 0 ? 3 : 0, cutPctVal)));
+  let cutDisplay = isClinched ? '✓ LOCK' : (isEliminated ? '✗ OUT' : (x.topCutDisplay || `${Math.round(x.topCutPct)}%`));
+  let cutPillStyle = getNytHeatPillStyle(cutPctVal, isClinched, isEliminated, false);
+  let cutBarColor = getNytBarColor(cutPctVal, isClinched, isEliminated, false);
+
+  let seed1Val = isEliminated ? 0 : +(x.firstSeedPct || 0).toFixed(1);
+  let seed1Display = seed1Val >= 99.5 ? '>99%' : (seed1Val > 0 && seed1Val < 1 ? '<1%' : `${Math.round(seed1Val)}%`);
+  let seed1PillStyle = getNytHeatPillStyle(seed1Val, seed1Val >= 99.5, seed1Val <= 0, true);
+
+  let rankInside = rowIdx < cut;
+  let rankStyle = isClinched
     ? 'background:rgba(16,185,129,0.2);color:#6ee7b7;border:1px solid rgba(16,185,129,0.45)'
     : (rankInside
-      ? 'background:rgba(255,209,102,0.16);color:#ffd166;border:1px solid rgba(255,209,102,0.38)'
-      : 'background:rgba(255,255,255,0.06);color:#9d9ba6;border:1px solid rgba(255,255,255,0.12)');
+        ? 'background:rgba(255,209,102,0.16);color:#ffd166;border:1px solid rgba(255,209,102,0.38)'
+        : 'background:rgba(255,255,255,0.05);color:#94a3b8;border:1px solid rgba(255,255,255,0.1)');
 
-  let thirdMetricVal = `${x.unplayedCount} left`;
-  let thirdMetricLbl = `${esc(x.group)} Schedule`;
-  if(!isClinched && !isEliminated && x.winNextCutPct !== null && x.loseNextCutPct !== null && x.unplayedCount > 0){
-    thirdMetricVal = `<span style="color:#6ee7b7">${Math.round(x.winNextCutPct)}%</span> <span style="color:#6b6a75;font-size:11px">/</span> <span style="color:#fca5a5">${Math.round(x.loseNextCutPct)}%</span>`;
-    thirdMetricLbl = `If Win / Lose Next`;
+  // Concise 1-line leverage/scenario callout
+  let leverageText = esc(sc.detail || '');
+  if(!isClinched && !isEliminated && x.nextMatch && x.winNextCutPct !== null && x.loseNextCutPct !== null){
+    leverageText = `Next vs <b style="color:#f1f5f9">${esc(x.nextMatch.opponent)}</b> (${x.nextMatch.winProb}%): Win → <b style="color:#6ee7b7">${Math.round(x.winNextCutPct)}%</b> · Lose → <b style="color:#fca5a5">${Math.round(x.loseNextCutPct)}%</b>`;
+  } else if(totalPlayed === 0 && x.nextMatch){
+    leverageText = `Opens vs <b style="color:#f1f5f9">${esc(x.nextMatch.opponent)}</b> (${x.nextMatch.winProb}% win chance) · Avg Finish #${x.avgSeed || (rowIdx + 1)}`;
   }
 
+  let rowCls = [
+    isFocused ? 'is-focused' : '',
+    isEliminated ? 'is-eliminated' : ''
+  ].filter(Boolean).join(' ');
+
   return `
-    <div class="odds-contender-card ${esc(sc.tierClass || '')}" onclick="openProfile('${jsArg(x.player)}')">
-      <div class="odds-head-row">
-        <div class="odds-trainer-info">
-          <div class="m-slot-avatar" ${faceStyle}>${faceLetter}</div>
-          <div style="min-width:0">
-            <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
-              <span style="font:800 11px 'Barlow Condensed';padding:1px 6px;border-radius:4px;${rankBadgeStyle}">#${x.currentRank}</span>
-              <span style="font:800 16px 'Barlow Condensed';letter-spacing:.3px;color:#fff">${esc(x.player)}</span>
+    <tr class="${rowCls}" onclick="togglePlayoffOddsCoachFocus('${jsArg(x.player)}')" title="Click to filter ${esc(x.player)}'s remaining matches in the What-If Simulator">
+      <td style="width:44px;text-align:center">
+        <span class="nyt-rank-num" style="${rankStyle}">${rowIdx + 1}</span>
+      </td>
+      <td>
+        <div class="nyt-coach-cell">
+          <div class="nyt-coach-avatar" ${faceStyle}>${faceLetter}</div>
+          <div style="min-width:0;flex:1">
+            <div class="nyt-coach-name">
+              <span>${esc(x.player)}</span>
               ${x.ovrObj ? x.ovrObj.badgeHtml : `<span class="ovr-badge-pill ovr-silver">${x.ovr}</span>`}
+              <button class="btn ghost btn-sm" style="padding:1px 6px;font-size:10px;line-height:1.3;margin-left:2px;opacity:0.75" onclick="event.stopPropagation();openProfile('${jsArg(x.player)}')" title="Open ${esc(x.player)}'s Coach Profile">↗</button>
             </div>
-            <div style="font-size:10px;color:#8e8c95;text-transform:uppercase;font-weight:700;margin-top:2px;display:flex;align-items:center;gap:6px">
-              <span>${esc(teamName(t, x.player))}</span>
-              <span style="color:#555">•</span>
-              <span style="color:#d5d4dc">${x.form.w}-${x.form.l} <span style="color:${gdVal>=0?'#86efac':'#fca5a5'}">(${gdStr})</span></span>
-            </div>
+            <div class="nyt-coach-sub">${esc(teamName(t, x.player))} · Standing #${x.currentRank}</div>
           </div>
         </div>
-        <div style="text-align:right;flex-shrink:0">
-          ${badgeHtml}
-          <div style="font:800 12px 'Barlow Condensed';color:#b5b3be;margin-top:4px;letter-spacing:.3px">Proj: <b style="color:#ffd166">${x.projWins}–${x.projLosses}</b></div>
+      </td>
+      <td class="num" style="white-space:nowrap">
+        <span style="font-weight:700;color:#f8fafc">${x.form.w}–${x.form.l}</span>
+        <span style="font-size:11px;color:${gdColor};margin-left:4px">(${gdStr})</span>
+      </td>
+      <td class="num" style="white-space:nowrap;color:#cbd5e1;font-weight:600">
+        ${x.projWins}–${x.projLosses}
+      </td>
+      <td class="num" style="white-space:nowrap;font-size:12px">
+        ${sosBadge}
+      </td>
+      <td>
+        <div class="nyt-prob-wrap">
+          <div class="nyt-prob-track">
+            <div class="nyt-prob-fill" style="width:${cutBarW}%;background:${cutBarColor}"></div>
+          </div>
+          <span class="nyt-heat-pill" style="${cutPillStyle}">${cutDisplay}</span>
+          ${formatNytDeltaBadge(x.topCutDelta)}
         </div>
-      </div>
+      </td>
+      <td class="num" style="white-space:nowrap">
+        <span class="nyt-heat-pill" style="${seed1PillStyle}">${seed1Display}</span>
+        ${formatNytDeltaBadge(x.firstSeedDelta)}
+      </td>
+      <td>
+        <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+          <span class="nyt-status-chip ${esc(chipCls)}">${esc(chipText)}</span>
+          ${x.unplayedCount > 0 ? `<span style="font-size:10px;color:#64748b;font-weight:600">${x.unplayedCount} left</span>` : ''}
+        </div>
+        <div class="nyt-scenario-line">${leverageText}</div>
+      </td>
+    </tr>
+  `;
+}
 
-      <!-- Primary Visual Bar: Top Cut Qualification Equity -->
-      <div class="odds-bar-container">
-        <div class="odds-bar-header">
-          <span class="odds-bar-title">Top Cut Qualification Odds</span>
-          <span class="odds-bar-pct" style="color:${isClinched || x.topCutPct >= 75 ? '#6ee7b7' : (x.topCutPct >= 40 ? '#ffd166' : '#fca5a5')}">${x.topCutDisplay || (x.topCutPct + '%')}</span>
-        </div>
-        <div class="odds-bar-track">
-          <div class="odds-bar-fill" style="width:${barPct}%;background:${barGradient}"></div>
-        </div>
-      </div>
+function renderNytPhase1PickerRail(t, baseSim, activeWhatIfCount){
+  let focusCoach = window.playoffOddsFocusCoach || null;
+  let roundFilter = window.playoffOddsRoundFilter || 'ALL';
+  let groupFilter = window.playoffOddsGroupFilter || 'ALL';
+  let picks = window.playoffOddsWhatIf || {};
 
-      <!-- Phase 1 Playoff Race Sub-Metrics -->
-      <div class="odds-submetrics">
+  // Gather all Stage 1 unplayed matches with their original index in t.matches
+  let unplayed = [];
+  let roundsSet = new Set();
+  (t.matches || []).forEach((m, idx) => {
+    if(!m || !m.a || !m.b || m.a === 'BYE' || m.b === 'BYE') return;
+    if(groupFilter !== 'ALL' && m.group && m.group !== groupFilter) return;
+    let isPlayed = (m.as !== '' && m.as != null && m.bs !== '' && m.bs != null);
+    if(isPlayed) return;
+    let rLabel = m.round != null ? `R${m.round}` : (m.group || 'Match');
+    roundsSet.add(rLabel);
+    unplayed.push({ m, idx, rLabel });
+  });
+
+  let roundOptions = Array.from(roundsSet);
+  if(roundFilter !== 'ALL' && !roundsSet.has(roundFilter)){
+    roundFilter = 'ALL';
+  }
+
+  let filteredMatches = unplayed.filter(item => {
+    if(focusCoach && item.m.a !== focusCoach && item.m.b !== focusCoach) return false;
+    if(roundFilter !== 'ALL' && item.rLabel !== roundFilter) return false;
+    return true;
+  });
+
+  // Sort matches: picked matches or matches with highest playoff leverage first, then by round
+  filteredMatches.sort((a, b) => {
+    let aPicked = picks[String(a.idx)] ? 1 : 0;
+    let bPicked = picks[String(b.idx)] ? 1 : 0;
+    if(focusCoach && aPicked !== bPicked) return bPicked - aPicked;
+    return a.idx - b.idx;
+  });
+
+  let visibleMatches = filteredMatches.slice(0, 18);
+
+  return `
+    <div class="nyt-picker-rail">
+      <div class="nyt-picker-head">
         <div>
-          <div class="odds-submetric-val" style="color:#ffd166">${x.firstSeedPct || 0}%</div>
-          <div class="odds-submetric-lbl">#1 Seed Odds</div>
+          <div class="nyt-picker-title">🎛️ "What-If" Match Simulator</div>
+          <div class="nyt-picker-sub">Click a coach to hypothetically win &amp; recalculate live table odds</div>
         </div>
-        <div>
-          <div class="odds-submetric-val" style="color:#f5f3f0">#${x.avgSeed || x.currentRank}</div>
-          <div class="odds-submetric-lbl">Avg Finish</div>
-        </div>
-        <div>
-          <div class="odds-submetric-val">${thirdMetricVal}</div>
-          <div class="odds-submetric-lbl">${thirdMetricLbl}</div>
-        </div>
+        ${activeWhatIfCount > 0 ? `
+          <button class="btn ghost btn-sm" style="border-color:rgba(255,209,102,0.4);color:#ffd166;font-size:11px;padding:4px 9px" onclick="resetPlayoffWhatIf()">↺ Reset (${activeWhatIfCount})</button>
+        ` : ''}
       </div>
 
-      <!-- Mathematically Verified Playoff Scenario Box -->
-      <div class="odds-scenario-box ${esc(sc.badgeClass || 'bubble')}">
-        <div class="odds-scenario-title">
-          <span>${esc(sc.headline)}</span>
-          ${x.unplayedCount > 0 ? `<span style="font-size:10px;color:#9d9ba6;font-weight:700">${x.unplayedCount} Match${x.unplayedCount===1?'':'es'} Left</span>` : ''}
-        </div>
-        <div class="odds-scenario-detail">${esc(sc.detail)}</div>
+      <div class="nyt-picker-filters">
+        ${focusCoach ? `
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:7px 10px;background:rgba(255,209,102,0.1);border:1px solid rgba(255,209,102,0.3);border-radius:7px">
+            <div style="font-size:11px;color:#fde68a;font-weight:700">
+              🎯 Schedule: <span style="color:#fff">${esc(focusCoach)}</span> (${filteredMatches.length} left)
+            </div>
+            <div style="display:flex;gap:4px">
+              <button class="btn ghost btn-sm" style="padding:2px 7px;font-size:10px" onclick="openProfile('${jsArg(focusCoach)}')">Profile ↗</button>
+              <button class="btn ghost btn-sm" style="padding:2px 7px;font-size:10px;color:#fca5a5" onclick="togglePlayoffOddsCoachFocus(null)">Clear ✕</button>
+            </div>
+          </div>
+        ` : `
+          <div style="font-size:11px;color:#94a3b8;display:flex;align-items:center;justify-content:space-between">
+            <span>💡 Tip: Click any row in the table to filter by coach</span>
+            <span style="color:#cbd5e1;font-weight:700">${unplayed.length} unplayed</span>
+          </div>
+        `}
+
+        ${roundOptions.length > 1 ? `
+          <div class="nyt-filter-pills">
+            <button class="nyt-filter-pill ${roundFilter === 'ALL' ? 'active' : ''}" onclick="setPlayoffOddsRoundFilter('ALL')">All (${focusCoach ? filteredMatches.length : unplayed.length})</button>
+            ${roundOptions.map(r => `
+              <button class="nyt-filter-pill ${roundFilter === r ? 'active' : ''}" onclick="setPlayoffOddsRoundFilter('${jsArg(r)}')">${esc(r)}</button>
+            `).join('')}
+          </div>
+        ` : ''}
       </div>
 
-      <!-- Strength of Schedule Strip -->
-      <div style="display:flex;align-items:center;justify-content:space-between;padding-top:8px;border-top:1px solid #20202a;font-size:11px;color:#8e8c95">
-        <span><b>Schedule SOS:</b> <span style="color:#ffd166;font-weight:800">${sosOvr} OVR</span></span>
-        <span><b>Remaining SOS:</b> <span style="color:#f5f3f0;font-weight:800">${remSosOvr !== null ? remSosOvr + ' OVR' : 'Done'}</span> <small>(${sosDifficultyLabel})</small></span>
+      <div class="nyt-picker-list">
+        ${visibleMatches.length === 0 ? `
+          <div style="padding:28px 14px;text-align:center;color:#64748b;font-size:12px">
+            ${unplayed.length === 0
+              ? '✅ All Stage 1 matches have been completed!'
+              : 'No unplayed matches match the current filter.'}
+          </div>
+        ` : visibleMatches.map(item => {
+          let m = item.m;
+          let pick = picks[String(item.idx)] || null;
+          let wpA = Math.round(winChance(m.a, m.b, t) * 100);
+          let wpB = 100 - wpA;
+          let recA = baseSim[m.a]?.form ? `${baseSim[m.a].form.w}-${baseSim[m.a].form.l}` : '0-0';
+          let recB = baseSim[m.b]?.form ? `${baseSim[m.b].form.w}-${baseSim[m.b].form.l}` : '0-0';
+          let isAWinner = pick && pick.winner === m.a;
+          let isBWinner = pick && pick.winner === m.b;
+
+          return `
+            <div class="nyt-match-card ${pick ? 'has-pick' : ''}">
+              <div class="nyt-match-meta">
+                <span>${esc(item.rLabel)}${m.group && m.group !== item.rLabel ? ` · ${esc(m.group)}` : ''}</span>
+                ${pick ? `
+                  <span style="color:#ffd166;cursor:pointer" onclick="togglePlayoffWhatIfWinner(${item.idx}, '${jsArg(pick.winner)}')">✓ Hypothetical Pick · Clear ✕</span>
+                ` : `
+                  <span>Win Prob: ${wpA}% – ${wpB}%</span>
+                `}
+              </div>
+              <div class="nyt-match-sides">
+                <button type="button" class="nyt-side-btn ${isAWinner ? 'picked-win' : (isBWinner ? 'picked-loss' : '')}" onclick="togglePlayoffWhatIfWinner(${item.idx}, '${jsArg(m.a)}', '2-0')">
+                  <div style="min-width:0">
+                    <div class="nyt-side-name">${esc(m.a)}</div>
+                    <div style="font-size:10px;color:#64748b;font-weight:600">${recA}</div>
+                  </div>
+                  <span class="nyt-side-prob" style="color:${isAWinner ? '#6ee7b7' : (wpA >= 55 ? '#cbd5e1' : '#94a3b8')}">${isAWinner ? 'WIN' : `${wpA}%`}</span>
+                </button>
+                <span class="nyt-vs-tag">VS</span>
+                <button type="button" class="nyt-side-btn ${isBWinner ? 'picked-win' : (isAWinner ? 'picked-loss' : '')}" onclick="togglePlayoffWhatIfWinner(${item.idx}, '${jsArg(m.b)}', '2-0')">
+                  <div style="min-width:0">
+                    <div class="nyt-side-name">${esc(m.b)}</div>
+                    <div style="font-size:10px;color:#64748b;font-weight:600">${recB}</div>
+                  </div>
+                  <span class="nyt-side-prob" style="color:${isBWinner ? '#6ee7b7' : (wpB >= 55 ? '#cbd5e1' : '#94a3b8')}">${isBWinner ? 'WIN' : `${wpB}%`}</span>
+                </button>
+              </div>
+              ${pick ? `
+                <div class="nyt-score-bar">
+                  <span class="nyt-score-lbl">${esc(pick.winner)} wins set:</span>
+                  <div class="nyt-score-opts">
+                    <button type="button" class="nyt-score-chip ${pick.score !== '2-1' ? 'active' : ''}" onclick="setPlayoffWhatIfScore(${item.idx}, '2-0')">2–0 Sweep</button>
+                    <button type="button" class="nyt-score-chip ${pick.score === '2-1' ? 'active' : ''}" onclick="setPlayoffWhatIfScore(${item.idx}, '2-1')">2–1 Close</button>
+                  </div>
+                </div>
+              ` : ''}
+            </div>
+          `;
+        }).join('')}
+        ${filteredMatches.length > visibleMatches.length ? `
+          <div style="text-align:center;padding:8px;font-size:11px;color:#94a3b8">
+            Showing ${visibleMatches.length} of ${filteredMatches.length} unplayed matches. Filter by round or click a coach row to narrow down.
+          </div>
+        ` : ''}
       </div>
     </div>
   `;
 }
 
-function renderPhase2TopCutCard(x, idx, t, topCutSim){
+function renderNytPhase2Row(x, idx, t, topCutSim, isFocused){
   let isElim = x.bracketStatus === 'eliminated';
   let isChamp = x.bracketStatus === 'champion';
   let isFav = (idx === 0 && !isElim);
 
-  let tierCls = isChamp || isFav
-    ? 'tier-1'
-    : (isElim ? 'tier-eliminated' : (x.lives === 2 ? 'tier-position' : 'tier-bubble'));
-
-  let barPct = isChamp ? 100 : (isElim ? 0 : Math.min(100, Math.max(x.champPct > 0 ? 2 : 0, +x.champPct.toFixed(1))));
-  let barGradient = isChamp || isFav
-    ? 'linear-gradient(90deg,#ffd166,#ef3038)'
-    : (x.lives === 2
-      ? 'linear-gradient(90deg,#34d399,#10b981)'
-      : 'linear-gradient(90deg,#ff8e95,#ef3038)');
-
   let faceImg = (typeof profilePictures !== 'undefined' && profilePictures[x.player]) || (typeof teamCovers !== 'undefined' && teamCovers[x.player]) || '';
   let faceArt = faceImg ? `url('${esc(faceImg)}')` : fallbackArt(x.player);
   let faceLetter = faceImg ? '' : esc((x.player||'?')[0]);
-  let faceStyle = `style="background-image:${faceArt};background-size:cover;background-position:center;width:36px;height:36px;border-radius:50%;flex:none;display:grid;place-items:center;border:1px solid #ffffff22;font:800 13px 'Barlow Condensed'"`;
+  let faceStyle = `style="background-image:${faceArt}"`;
 
-  let livesLabel = isChamp
-    ? '<span style="color:#ffd166">🏆 Champion</span>'
+  let statusChipCls = isChamp ? 'clinched' : (isElim ? 'eliminated' : (x.lives === 2 ? 'destiny' : 'mustwin'));
+  let statusChipTxt = isChamp
+    ? '👑 CHAMPION'
     : (isElim
-      ? '<span style="color:#7d7b88">0 Lives (Out)</span>'
-      : (topCutSim.isSingleElim
-        ? '<span style="color:#fcd34d">Single Elim</span>'
-        : (x.lives === 2
-          ? '<span style="color:#6ee7b7">2 Lives (Upper)</span>'
-          : '<span style="color:#fca5a5">1 Life (Lower)</span>')));
+        ? '✗ ELIMINATED'
+        : (topCutSim.isSingleElim
+            ? '⚡ SINGLE ELIM'
+            : (x.lives === 2 ? '🛡️ UPPER · 2 LIVES' : '⚠️ LOWER · 1 LIFE')));
 
-  let nextMatchVal = 'Awaiting';
-  let nextMatchLbl = 'Next Matchup';
-  if(isChamp){
-    nextMatchVal = 'Crowned';
-    nextMatchLbl = 'Tournament Status';
-  } else if(isElim){
-    nextMatchVal = 'Eliminated';
-    nextMatchLbl = 'Bracket Finish';
-  } else if(x.nextMatch && x.nextMatch.opponent){
-    let wpColor = x.nextMatch.winProb >= 55 ? '#6ee7b7' : (x.nextMatch.winProb >= 45 ? '#ffd166' : '#fca5a5');
-    nextMatchVal = `<span style="color:#fff">vs ${esc(x.nextMatch.opponent)}</span> <span style="color:${wpColor}">(${x.nextMatch.winProb}%)</span>`;
-    nextMatchLbl = esc(x.nextMatch.label || 'Next Matchup');
-  } else if(x.nextMatch){
-    nextMatchVal = 'TBD Opponent';
-    nextMatchLbl = esc(x.nextMatch.label || 'Next Matchup');
+  let finalsVal = isChamp ? 100 : (isElim && x.finalsPct <= 0 ? 0 : +x.finalsPct.toFixed(1));
+  let finalsBarW = Math.min(100, Math.max(finalsVal > 0 ? 3 : 0, finalsVal));
+  let finalsPillStyle = getNytHeatPillStyle(finalsVal, finalsVal >= 99.5, isElim && finalsVal <= 0, false);
+  let finalsBarColor = getNytBarColor(finalsVal, finalsVal >= 99.5, isElim && finalsVal <= 0, false);
+
+  let champVal = isChamp ? 100 : (isElim ? 0 : +x.champPct.toFixed(1));
+  let champBarW = Math.min(100, Math.max(champVal > 0 ? 3 : 0, champVal));
+  let champPillStyle = getNytHeatPillStyle(champVal, isChamp, isElim, true);
+  let champBarColor = getNytBarColor(champVal, isChamp, isElim, true);
+
+  let nextLine = esc(x.pathDetail || '');
+  if(!isChamp && !isElim && x.nextMatch && x.nextMatch.opponent){
+    let wp = x.nextMatch.winProb;
+    let wpCol = wp >= 55 ? '#6ee7b7' : (wp >= 45 ? '#fde047' : '#fca5a5');
+    nextLine = `<b style="color:#f8fafc">${esc(x.nextMatch.label || 'Next Set')}:</b> vs <b style="color:#fff">${esc(x.nextMatch.opponent)}</b> (<span style="color:${wpCol};font-weight:700">${wp}% win chance</span>)`;
   }
 
+  let seedStyle = isChamp || isFav
+    ? 'background:rgba(255,209,102,0.18);color:#ffd166;border:1px solid rgba(255,209,102,0.42)'
+    : 'background:rgba(255,255,255,0.06);color:#cbd5e1;border:1px solid rgba(255,255,255,0.12)';
+
   return `
-    <div class="odds-contender-card ${tierCls}" onclick="openProfile('${jsArg(x.player)}')">
-      <div class="odds-head-row">
-        <div class="odds-trainer-info">
-          <div class="m-slot-avatar" ${faceStyle}>${faceLetter}</div>
-          <div style="min-width:0">
-            <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
-              <span style="font:800 11px 'Barlow Condensed';padding:1px 6px;border-radius:4px;background:rgba(255,209,102,0.16);color:#ffd166;border:1px solid rgba(255,209,102,0.38)">Seed #${x.seed} (${esc(x.seedLabel)})</span>
-              <span style="font:800 16px 'Barlow Condensed';letter-spacing:.3px;color:#fff">${esc(x.player)}</span>
+    <tr class="${isFocused ? 'is-focused' : ''} ${isElim ? 'is-eliminated' : ''}" onclick="togglePlayoffOddsCoachFocus('${jsArg(x.player)}')">
+      <td style="width:58px;text-align:center">
+        <span class="nyt-rank-num" style="width:auto;padding:0 7px;${seedStyle}">#${x.seed}</span>
+      </td>
+      <td>
+        <div class="nyt-coach-cell">
+          <div class="nyt-coach-avatar" ${faceStyle}>${faceLetter}</div>
+          <div style="min-width:0;flex:1">
+            <div class="nyt-coach-name">
+              <span>${esc(x.player)}</span>
               ${x.ovrObj ? x.ovrObj.badgeHtml : `<span class="ovr-badge-pill ovr-silver">${x.ovr}</span>`}
+              <button class="btn ghost btn-sm" style="padding:1px 6px;font-size:10px;line-height:1.3;margin-left:2px;opacity:0.75" onclick="event.stopPropagation();openProfile('${jsArg(x.player)}')" title="Open ${esc(x.player)}'s Coach Profile">↗</button>
             </div>
-            <div style="font-size:10px;color:#8e8c95;text-transform:uppercase;font-weight:700;margin-top:2px">
-              ${esc(teamName(t, x.player))}
-            </div>
+            <div class="nyt-coach-sub">${esc(teamName(t, x.player))} · Seed ${esc(x.seedLabel)}</div>
           </div>
         </div>
-        <div style="text-align:right;flex-shrink:0">
-          <span class="odds-badge-chip ${esc(x.bracketBadgeClass || 'contender')}">${esc(x.bracketBadgeText)}</span>
-          <div style="font:800 15px 'Barlow Condensed';color:#ffd166;margin-top:3px">${x.moneyline} ${x.decimalOdds !== '—' ? `<span style="font-size:11px;color:#aaa">(${x.decimalOdds})</span>` : ''}</div>
+      </td>
+      <td>
+        <span class="nyt-status-chip ${statusChipCls}">${statusChipTxt}</span>
+        <div style="font-size:11px;color:#94a3b8;margin-top:3px">Bracket: <b style="color:#e2e8f0">${esc(x.playoffRecord)}</b> · Stage 1: ${esc(x.stage1Record)}</div>
+      </td>
+      <td>
+        <div class="nyt-prob-wrap">
+          <div class="nyt-prob-track">
+            <div class="nyt-prob-fill" style="width:${finalsBarW}%;background:${finalsBarColor}"></div>
+          </div>
+          <span class="nyt-heat-pill" style="${finalsPillStyle}">${Math.round(finalsVal)}%</span>
+          ${formatNytDeltaBadge(x.finalsDelta)}
         </div>
-      </div>
+      </td>
+      <td>
+        <div class="nyt-prob-wrap">
+          <div class="nyt-prob-track">
+            <div class="nyt-prob-fill" style="width:${champBarW}%;background:${champBarColor}"></div>
+          </div>
+          <span class="nyt-heat-pill" style="${champPillStyle}">${isChamp ? '👑 100%' : (isElim ? '0%' : `${champVal}%`)}</span>
+          ${formatNytDeltaBadge(x.champDelta)}
+        </div>
+      </td>
+      <td class="num" style="white-space:nowrap;font-weight:700;color:#ffd166">
+        ${x.moneyline}
+        ${x.decimalOdds !== '—' ? `<div style="font-size:10px;color:#64748b;font-weight:600">${x.decimalOdds}</div>` : ''}
+      </td>
+      <td>
+        <div style="font-size:12px;font-weight:700;color:#e2e8f0">${esc(x.pathHeadline)}</div>
+        <div class="nyt-scenario-line">${nextLine}</div>
+      </td>
+    </tr>
+  `;
+}
 
-      <!-- Primary Visual Bar: Championship Title Equity -->
-      <div class="odds-bar-container">
-        <div class="odds-bar-header">
-          <span class="odds-bar-title">Championship Title Equity</span>
-          <span class="odds-bar-pct">${x.champPct}%</span>
-        </div>
-        <div class="odds-bar-track">
-          <div class="odds-bar-fill" style="width:${barPct}%;background:${barGradient}"></div>
-        </div>
-      </div>
+function renderNytPhase2PickerRail(t, activeWhatIfCount){
+  let picks = window.playoffOddsTopCutWhatIf || {};
+  let focusCoach = window.playoffOddsFocusCoach || null;
+  let unplayedSets = [];
 
-      <!-- Phase 2 Top Cut Sub-Metrics -->
-      <div class="odds-submetrics">
+  let model = (typeof getTournamentTopCutModel === 'function') ? getTournamentTopCutModel(t) : null;
+  if(model){
+    let addRounds = (rounds, prefix) => {
+      (rounds || []).forEach((rObj, rIdx) => {
+        let rLabel = rObj.title || `${prefix} R${rIdx + 1}`;
+        (rObj.matches || []).forEach(m => {
+          let p1 = m?.p1 || m?.a;
+          let p2 = m?.p2 || m?.b;
+          if(!m || !p1 || !p2 || p1 === 'BYE' || p2 === 'BYE' || !isKnownPlayer(p1) || !isKnownPlayer(p2) || m.isDone || m.winner) return;
+          unplayedSets.push({ m: { id: m.id, a: p1, b: p2 }, label: m.label || rLabel });
+        });
+      });
+    };
+    addRounds(model.wbRounds, 'Upper');
+    addRounds(model.lbRounds, 'Lower');
+    (model.gfMatches || []).forEach((m, idx) => {
+      let p1 = m?.p1 || m?.a;
+      let p2 = m?.p2 || m?.b;
+      if(m && p1 && p2 && p1 !== 'BYE' && p2 !== 'BYE' && isKnownPlayer(p1) && isKnownPlayer(p2) && !m.isDone && !m.winner){
+        unplayedSets.push({ m: { id: m.id, a: p1, b: p2 }, label: m.label || (idx === 0 ? 'Grand Finals' : 'Grand Finals Reset') });
+      }
+    });
+  }
+
+  let filteredSets = focusCoach
+    ? unplayedSets.filter(s => s.m.a === focusCoach || s.m.b === focusCoach)
+    : unplayedSets;
+
+  return `
+    <div class="nyt-picker-rail">
+      <div class="nyt-picker-head">
         <div>
-          <div class="odds-submetric-val" style="color:${x.finalsPct>=75?'#6ee7b7':x.finalsPct>=35?'#ffd166':'#f5f3f0'}">${x.finalsPct}%</div>
-          <div class="odds-submetric-lbl">Grand Finals</div>
+          <div class="nyt-picker-title">🏆 Bracket "What-If" Picker</div>
+          <div class="nyt-picker-sub">Pick active Top Cut sets to simulate title equity swings</div>
         </div>
-        <div>
-          <div class="odds-submetric-val">${livesLabel}</div>
-          <div class="odds-submetric-lbl">Bracket Status</div>
-        </div>
-        <div>
-          <div class="odds-submetric-val" style="font-size:15px">${nextMatchVal}</div>
-          <div class="odds-submetric-lbl">${nextMatchLbl}</div>
-        </div>
+        ${activeWhatIfCount > 0 ? `
+          <button class="btn ghost btn-sm" style="border-color:rgba(255,209,102,0.4);color:#ffd166;font-size:11px;padding:4px 9px" onclick="resetPlayoffWhatIf()">↺ Reset (${activeWhatIfCount})</button>
+        ` : ''}
       </div>
-
-      <!-- Bracket Path Box -->
-      <div class="odds-scenario-box ${esc(x.bracketBadgeClass || 'contender')}">
-        <div class="odds-scenario-title">
-          <span>${esc(x.pathHeadline)}</span>
-          <span style="font-size:10px;color:#9d9ba6;font-weight:700">Playoffs: ${esc(x.playoffRecord)}</span>
+      ${focusCoach ? `
+        <div class="nyt-picker-filters">
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:7px 10px;background:rgba(255,209,102,0.1);border:1px solid rgba(255,209,102,0.3);border-radius:7px">
+            <span style="font-size:11px;color:#fde68a;font-weight:700">🎯 Filtering: <b style="color:#fff">${esc(focusCoach)}</b></span>
+            <button class="btn ghost btn-sm" style="padding:2px 7px;font-size:10px;color:#fca5a5" onclick="togglePlayoffOddsCoachFocus(null)">Show All ✕</button>
+          </div>
         </div>
-        <div class="odds-scenario-detail">${esc(x.pathDetail)}</div>
-      </div>
-
-      <!-- Stage 1 & Playoff Record Footer -->
-      <div style="display:flex;align-items:center;justify-content:space-between;padding-top:8px;border-top:1px solid #20202a;font-size:11px;color:#8e8c95">
-        <span><b>${esc(getStage1Label(t))}:</b> <span style="color:#f5f3f0;font-weight:800">${esc(x.stage1Record)} (${esc(x.stage1GD)})</span></span>
-        <span><b>Bracket Record:</b> <span style="color:#ffd166;font-weight:800">${esc(x.playoffRecord)}</span></span>
+      ` : ''}
+      <div class="nyt-picker-list">
+        ${filteredSets.length === 0 ? `
+          <div style="padding:28px 14px;text-align:center;color:#64748b;font-size:12px">
+            ${unplayedSets.length === 0 ? '🏆 All currently paired bracket sets are complete!' : `No active paired bracket set found for ${esc(focusCoach)}.`}
+          </div>
+        ` : filteredSets.map(item => {
+          let m = item.m;
+          let pick = picks[String(m.id)] || null;
+          let wpA = Math.round(winChance(m.a, m.b, t) * 100);
+          let wpB = 100 - wpA;
+          let isAWinner = pick && pick.winner === m.a;
+          let isBWinner = pick && pick.winner === m.b;
+          return `
+            <div class="nyt-match-card ${pick ? 'has-pick' : ''}">
+              <div class="nyt-match-meta">
+                <span>${esc(item.label)}</span>
+                ${pick ? `<span style="color:#ffd166;cursor:pointer" onclick="toggleTopCutWhatIfWinner('${jsArg(m.id)}', '${jsArg(pick.winner)}')">✓ Picked · Clear ✕</span>` : `<span>${wpA}% – ${wpB}%</span>`}
+              </div>
+              <div class="nyt-match-sides">
+                <button type="button" class="nyt-side-btn ${isAWinner ? 'picked-win' : (isBWinner ? 'picked-loss' : '')}" onclick="toggleTopCutWhatIfWinner('${jsArg(m.id)}', '${jsArg(m.a)}', '2-0')">
+                  <span class="nyt-side-name">${esc(m.a)}</span>
+                  <span class="nyt-side-prob">${isAWinner ? 'WIN' : `${wpA}%`}</span>
+                </button>
+                <span class="nyt-vs-tag">VS</span>
+                <button type="button" class="nyt-side-btn ${isBWinner ? 'picked-win' : (isAWinner ? 'picked-loss' : '')}" onclick="toggleTopCutWhatIfWinner('${jsArg(m.id)}', '${jsArg(m.b)}', '2-0')">
+                  <span class="nyt-side-name">${esc(m.b)}</span>
+                  <span class="nyt-side-prob">${isBWinner ? 'WIN' : `${wpB}%`}</span>
+                </button>
+              </div>
+              ${pick ? `
+                <div class="nyt-score-bar">
+                  <span class="nyt-score-lbl">${esc(pick.winner)} wins set:</span>
+                  <div class="nyt-score-opts">
+                    <button type="button" class="nyt-score-chip ${pick.score !== '2-1' ? 'active' : ''}" onclick="setTopCutWhatIfScore('${jsArg(m.id)}', '2-0')">2–0</button>
+                    <button type="button" class="nyt-score-chip ${pick.score === '2-1' ? 'active' : ''}" onclick="setTopCutWhatIfScore('${jsArg(m.id)}', '2-1')">2–1</button>
+                  </div>
+                </div>
+              ` : ''}
+            </div>
+          `;
+        }).join('')}
       </div>
     </div>
   `;
@@ -36757,14 +37226,16 @@ function playoffOdds(){
   let t = ongoingT() || activeT();
   if(!t) return noTournament('Playoff Odds');
 
+  ensurePlayoffOddsWhatIfState(t);
+
   let d = ensureTournamentDraft(t);
   let isDraftPhase = (t.phase === 'draft' || (t.hasDraft && d && d.status !== 'completed' && t.phase !== 'group' && t.phase !== 'groups' && t.phase !== 'swiss' && t.phase !== 'league_phase' && t.phase !== 'topcut' && t.phase !== 'complete'));
   if(isDraftPhase){
     return head('Playoff & Championship Odds', (t.season || '') + ': ' + t.name + ' · Locked During Draft') + `
       <div class="card empty" style="padding:48px 20px;text-align:center;max-width:560px;margin:30px auto;background:#14141c;border:1px solid #2b2b3a;border-radius:12px;box-shadow:0 8px 30px rgba(0,0,0,0.5)">
         <div style="font-size:44px;margin-bottom:12px">🔒</div>
-        <div class="card-title" style="font:800 22px 'Barlow Condensed';letter-spacing:.5px;color:#f5f3f0">Playoff Odds Locked During Draft</div>
-        <p class="sub" style="margin:10px auto 20px;line-height:1.55;font-size:13px;color:#9d9ba6;max-width:440px">Playoff qualification & championship simulations are calibrated on final team rosters and schedule SOS. Odds will automatically calculate and unlock the moment the draft concludes and fixtures begin!</p>
+        <div class="card-title" style="font:800 22px 'DM Sans',sans-serif;color:#f5f3f0">Playoff Simulator Locked During Draft</div>
+        <p class="sub" style="margin:10px auto 20px;line-height:1.55;font-size:13px;color:#9d9ba6;max-width:440px">Playoff qualification &amp; championship simulations are calibrated on final team rosters and schedule SOS. Odds will automatically calculate and unlock the moment the draft concludes and fixtures begin!</p>
         <button class="btn" style="padding:10px 24px;font-weight:800" onclick="go('Draft')">Go to Live Draft Room →</button>
       </div>
     `;
@@ -36775,97 +37246,121 @@ function playoffOdds(){
   let groupNames = Object.keys(groups);
   let stage1Label = getStage1Label(t);
   let snapshot = getOrComputeTournamentOdds(t);
-  let sim = snapshot.sim || {};
-  let topCutSim = snapshot.topCutSim || null;
+  let baseSim = snapshot.sim || {};
+  let baseTopCutSim = snapshot.topCutSim || null;
 
   let isTopCutPhase = Boolean(t.phase === 'topcut' || t.status === 'COMPLETE' || t.phase === 'complete' || t.phase === 'completed');
   let activePhaseView = isTopCutPhase ? (window.playoffOddsPhaseView || 'topcut') : 'stage1';
-  if(activePhaseView === 'topcut' && (!topCutSim || !topCutSim.entries || !topCutSim.entries.length)){
+  if(activePhaseView === 'topcut' && (!baseTopCutSim || !baseTopCutSim.entries || !baseTopCutSim.entries.length)){
     activePhaseView = 'stage1';
   }
 
-  // Optional Phase Switcher when Top Cut is active so users can view either Phase 2 (default) or Phase 1 Archive
   let phaseToggleHtml = isTopCutPhase ? `
-    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:16px;padding:10px 14px;background:#13131b;border:1px solid #262636;border-radius:10px">
-      <div style="display:flex;align-items:center;gap:8px">
-        <span style="font-size:16px">${activePhaseView === 'topcut' ? '🏆' : '📊'}</span>
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:16px;padding:12px 16px;background:#13141c;border:1px solid #242636;border-radius:10px;font-family:'DM Sans',sans-serif">
+      <div style="display:flex;align-items:center;gap:10px">
+        <span style="font-size:18px">${activePhaseView === 'topcut' ? '🏆' : '📊'}</span>
         <div>
-          <div style="font:800 14px 'Barlow Condensed';letter-spacing:.4px;color:#f5f3f0;text-transform:uppercase">${activePhaseView === 'topcut' ? 'Phase 2: Top Cut Championship Predictor' : `Phase 1 Archive: ${stage1Label} Playoff Odds`}</div>
-          <div style="font-size:11px;color:#8e8c95">${activePhaseView === 'topcut' ? 'Live Monte Carlo simulation of the active Top Cut championship bracket' : `Final qualification & seeding probabilities from the ${stage1Label.toLowerCase()}`}</div>
+          <div style="font-size:14px;font-weight:800;color:#f8fafc">${activePhaseView === 'topcut' ? 'Phase 2: Top Cut Championship Simulator' : `Phase 1 Archive: ${stage1Label} Playoff Projections`}</div>
+          <div style="font-size:12px;color:#94a3b8">${activePhaseView === 'topcut' ? 'Interactive Monte Carlo bracket table & What-If set picker' : `Qualification & #1 seed projections from the ${stage1Label.toLowerCase()}`}</div>
         </div>
       </div>
       <div style="display:flex;gap:6px">
-        <button class="btn ${activePhaseView === 'topcut' ? '' : 'ghost'} btn-sm" onclick="setPlayoffOddsPhaseView('topcut')">🏆 Top Cut Predictor</button>
-        <button class="btn ${activePhaseView === 'stage1' ? '' : 'ghost'} btn-sm" onclick="setPlayoffOddsPhaseView('stage1')">📊 ${esc(stage1Label)} Race</button>
+        <button class="btn ${activePhaseView === 'topcut' ? '' : 'ghost'} btn-sm" onclick="setPlayoffOddsPhaseView('topcut')">🏆 Top Cut Simulator</button>
+        <button class="btn ${activePhaseView === 'stage1' ? '' : 'ghost'} btn-sm" onclick="setPlayoffOddsPhaseView('stage1')">📊 ${esc(stage1Label)} Table</button>
       </div>
     </div>
   ` : '';
 
   // ============================================================================
-  // PHASE 2 VIEW: TOP CUT CHAMPIONSHIP PREDICTOR
+  // PHASE 2 VIEW: TOP CUT CHAMPIONSHIP SIMULATOR (NYT / THE ATHLETIC TABLE)
   // ============================================================================
-  if(activePhaseView === 'topcut' && topCutSim && topCutSim.entries && topCutSim.entries.length){
+  if(activePhaseView === 'topcut' && baseTopCutSim && baseTopCutSim.entries && baseTopCutSim.entries.length){
+    let whatIfTc = computeWhatIfTopCutSim(t, baseTopCutSim);
+    let topCutSim = whatIfTc.topCutSim;
+    let activeWhatIfCount = whatIfTc.activeCount;
     let entries = topCutSim.entries;
     let titleFav = entries[0] || { player: 'TBD', champPct: 0, moneyline: '+100', decimalOdds: '2.00x' };
     let finalsFav = [...entries].sort((a, b) => b.finalsPct - a.finalsPct || b.champPct - a.champPct)[0] || titleFav;
     let aliveCount = entries.filter(e => e.bracketStatus !== 'eliminated').length;
 
-    let html = head('Championship Bracket Predictor', `${t.name} (${t.season || 'In-Season'}) · Phase 2: Top Cut Title & Grand Finals Calculator`);
+    let html = head('Championship Bracket Simulator', `${t.name} (${t.season || 'In-Season'}) · Interactive Top Cut Projections & What-If Picker`);
     html += phaseToggleHtml;
 
     html += `
-      <div class="odds-hero" style="margin-bottom:20px">
+      <div class="odds-hero" style="margin-bottom:18px;font-family:'DM Sans',sans-serif">
         <div class="odds-metric-card gold">
           <div class="odds-metric-icon">👑</div>
           <div class="odds-metric-body">
             <div class="odds-metric-label">${titleFav.bracketStatus === 'champion' ? 'Tournament Champion' : 'Projected Title Favorite'}</div>
-            <div class="odds-metric-val">${esc(titleFav.player)} <span style="font-size:18px;color:#ffd166">(${titleFav.champPct}%)</span></div>
-            <div class="odds-metric-sub">Implied Title Odds: <b>${titleFav.moneyline}</b> ${titleFav.decimalOdds !== '—' ? `(${titleFav.decimalOdds})` : ''}</div>
+            <div class="odds-metric-val" style="font-family:'DM Sans',sans-serif;font-size:22px">${esc(titleFav.player)} <span style="font-size:17px;color:#ffd166">(${titleFav.champPct}%)</span></div>
+            <div class="odds-metric-sub">Implied Moneyline: <b>${titleFav.moneyline}</b> ${titleFav.decimalOdds !== '—' ? `(${titleFav.decimalOdds})` : ''}</div>
           </div>
         </div>
         <div class="odds-metric-card red">
           <div class="odds-metric-icon">🔥</div>
           <div class="odds-metric-body">
             <div class="odds-metric-label">Grand Finals Favorite</div>
-            <div class="odds-metric-val">${esc(finalsFav.player)} <span style="font-size:18px;color:#ff8e95">(${finalsFav.finalsPct}%)</span></div>
+            <div class="odds-metric-val" style="font-family:'DM Sans',sans-serif;font-size:22px">${esc(finalsFav.player)} <span style="font-size:17px;color:#ff8e95">(${finalsFav.finalsPct}%)</span></div>
             <div class="odds-metric-sub">${esc(finalsFav.bracketBadgeText)} · Seed #${finalsFav.seed}</div>
           </div>
         </div>
         <div class="odds-metric-card green">
-          <div class="odds-metric-icon">🏆</div>
+          <div class="odds-metric-icon">🎛️</div>
           <div class="odds-metric-body">
-            <div class="odds-metric-label">Live Bracket Simulation</div>
-            <div class="odds-metric-val">${aliveCount} of ${entries.length} Contenders Alive</div>
-            <div class="odds-metric-sub">2,500 Runs · ${topCutSim.isSingleElim ? 'Single-Elimination' : 'Double-Elimination + Bracket Reset'} (${topCutSim.completedMatches}/${topCutSim.totalMatches} Sets Played)</div>
+            <div class="odds-metric-label">Interactive Bracket Model</div>
+            <div class="odds-metric-val" style="font-family:'DM Sans',sans-serif;font-size:22px">${aliveCount} of ${entries.length} Alive</div>
+            <div class="odds-metric-sub">${activeWhatIfCount > 0 ? `<b style="color:#ffd166">${activeWhatIfCount} Hypothetical Set Pick(s) Active</b>` : `${topCutSim.completedMatches}/${topCutSim.totalMatches} Sets Played · Pick sets on the right →`}</div>
           </div>
         </div>
       </div>
 
-      <div class="odds-grid">
-        ${entries.map((x, idx) => renderPhase2TopCutCard(x, idx, t, topCutSim)).join('')}
-      </div>
+      <div class="nyt-sim-layout">
+        <div class="nyt-table-card">
+          <div class="nyt-table-topbar">
+            <div>
+              <div class="nyt-table-title">🏆 Top Cut Championship Projections</div>
+              <div class="nyt-table-sub">Click any contender row to filter their bracket sets in the What-If Picker</div>
+            </div>
+            ${activeWhatIfCount > 0 ? `
+              <div style="display:flex;align-items:center;gap:8px;padding:5px 10px;background:rgba(255,209,102,0.12);border:1px solid rgba(255,209,102,0.35);border-radius:7px;font-size:11px;color:#fde68a;font-weight:700">
+                <span>🧪 ${activeWhatIfCount} What-If Pick${activeWhatIfCount === 1 ? '' : 's'} Active</span>
+                <button class="btn ghost btn-sm" style="padding:2px 7px;font-size:10px" onclick="resetPlayoffWhatIf()">Reset</button>
+              </div>
+            ` : ''}
+          </div>
+          <div class="nyt-table-scroll">
+            <table class="nyt-table">
+              <thead>
+                <tr>
+                  <th style="text-align:center">Seed</th>
+                  <th>Coach &amp; Team</th>
+                  <th>Bracket Status</th>
+                  <th>Make Finals %</th>
+                  <th>Win Title %</th>
+                  <th class="num">Line</th>
+                  <th>Next Matchup &amp; Title Path</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${entries.map((x, idx) => renderNytPhase2Row(x, idx, t, topCutSim, window.playoffOddsFocusCoach === x.player)).join('')}
+              </tbody>
+            </table>
+          </div>
+        </div>
 
-      <p class="sub" style="margin-top:20px;font-size:11px;color:#8e8c95;line-height:1.6">
-        <b>About the Phase 2 Championship Predictor:</b> Runs 2,500 live bracket simulations starting from the exact current state of the Top Cut bracket. Every unplayed Upper Bracket, Lower Bracket, and Grand Finals set (including the Double-Elimination Bracket Reset when the Lower Bracket winner takes Set 1) is simulated using balanced head-to-head win probabilities weighted by live tournament match &amp; game differentials, playoff wins, and baseline OVR.
-      </p>
+        ${renderNytPhase2PickerRail(t, activeWhatIfCount)}
+      </div>
     `;
     return html;
   }
 
   // ============================================================================
-  // PHASE 1 VIEW: OPENING STAGE PLAYOFF ODDS & SCENARIO CALCULATOR
+  // PHASE 1 VIEW: OPENING STAGE PLAYOFF SIMULATOR (NYT / THE ATHLETIC TABLE)
   // ============================================================================
-  let allList = Object.values(sim).sort((a, b) => {
-    let aClinch = a.clinchStatus === 'clinched' ? 1 : 0;
-    let bClinch = b.clinchStatus === 'clinched' ? 1 : 0;
-    if(bClinch !== aClinch) return bClinch - aClinch;
-    if(b.topCutPct !== a.topCutPct) return b.topCutPct - a.topCutPct;
-    if((b.firstSeedPct || 0) !== (a.firstSeedPct || 0)) return (b.firstSeedPct || 0) - (a.firstSeedPct || 0);
-    if(a.currentRank !== b.currentRank) return a.currentRank - b.currentRank;
-    return b.ovr - a.ovr;
-  });
+  let whatIfRes = computeWhatIfStage1Sim(t, baseSim);
+  let sim = whatIfRes.sim;
+  let activeWhatIfCount = whatIfRes.activeCount;
 
-  // Compute stage progress
   let totalMatches = 0, totalPlayed = 0;
   for(let g of groupNames){
     let gm = groupMatches(t, g);
@@ -36875,154 +37370,153 @@ function playoffOdds(){
 
   let selectedGroup = window.playoffOddsGroupFilter || 'ALL';
   if(selectedGroup !== 'ALL' && !groups[selectedGroup]) selectedGroup = 'ALL';
-  let filteredList = selectedGroup === 'ALL' ? allList : allList.filter(x => x.group === selectedGroup);
 
-  let raceLeader = [...filteredList].sort((a, b) => b.topCutPct - a.topCutPct || (b.firstSeedPct || 0) - (a.firstSeedPct || 0))[0] || { player: 'None', topCutPct: 0, topCutDisplay: '0%', firstSeedPct: 0 };
-  let seed1Leader = [...filteredList].sort((a, b) => (b.firstSeedPct || 0) - (a.firstSeedPct || 0) || b.topCutPct - a.topCutPct)[0] || raceLeader;
+  let sortMode = window.playoffOddsSortBy || 'odds';
+  let sortEntries = (list) => {
+    return [...list].sort((a, b) => {
+      if(sortMode === 'standings'){
+        if(a.currentRank !== b.currentRank) return a.currentRank - b.currentRank;
+        if(b.topCutPct !== a.topCutPct) return b.topCutPct - a.topCutPct;
+        return b.ovr - a.ovr;
+      }
+      let aClinch = a.clinchStatus === 'clinched' ? 1 : 0;
+      let bClinch = b.clinchStatus === 'clinched' ? 1 : 0;
+      if(bClinch !== aClinch) return bClinch - aClinch;
+      if(b.topCutPct !== a.topCutPct) return b.topCutPct - a.topCutPct;
+      if((b.firstSeedPct || 0) !== (a.firstSeedPct || 0)) return (b.firstSeedPct || 0) - (a.firstSeedPct || 0);
+      if(a.currentRank !== b.currentRank) return a.currentRank - b.currentRank;
+      return b.ovr - a.ovr;
+    });
+  };
 
+  let allList = sortEntries(Object.values(sim));
+  let filteredList = selectedGroup === 'ALL' ? allList : sortEntries(allList.filter(x => x.group === selectedGroup));
+
+  let seed1Leader = [...filteredList].sort((a, b) => (b.firstSeedPct || 0) - (a.firstSeedPct || 0) || b.topCutPct - a.topCutPct)[0] || { player: 'None', topCutPct: 0, topCutDisplay: '0%', firstSeedPct: 0, projWins: 0, projLosses: 0 };
   let totalCutSpots = cut * (selectedGroup === 'ALL' ? groupNames.length : 1);
   let clinchedCoaches = filteredList.filter(x => x.clinchStatus === 'clinched');
-  let targetWins = raceLeader.targetWinThreshold || Math.max(1, Math.ceil((raceLeader.totalScheduled || 5) * 0.55));
+  let targetWins = seed1Leader.targetWinThreshold || Math.max(1, Math.ceil((seed1Leader.totalScheduled || 5) * 0.55));
 
-  let html = head('Playoff Race & Qualification Predictor', `${t.name} (${t.season || 'In-Season'}) · Phase 1: ${stage1Label} Top Cut Odds & Clinch Scenarios`);
+  let html = head('Playoff Race & Qualification Simulator', `${t.name} (${t.season || 'In-Season'}) · Interactive ${stage1Label} Projections & What-If Calculator`);
   html += phaseToggleHtml;
 
-  // Phase 1 Hero Summary Cards
+  // Compact Editorial Summary Strip
   html += `
-    <div class="odds-hero" style="margin-bottom:18px">
+    <div class="odds-hero" style="margin-bottom:16px;font-family:'DM Sans',sans-serif">
       <div class="odds-metric-card gold">
         <div class="odds-metric-icon">👑</div>
         <div class="odds-metric-body">
-          <div class="odds-metric-label">#1 Seed &amp; Playoff Race Leader</div>
-          <div class="odds-metric-val">${esc(seed1Leader.player)} <span style="font-size:18px;color:#ffd166">(${seed1Leader.topCutDisplay || (seed1Leader.topCutPct + '%')} Cut)</span></div>
-          <div class="odds-metric-sub"><b>${seed1Leader.firstSeedPct || 0}%</b> #1 Seed Equity · Proj Record: <b>${seed1Leader.projWins}–${seed1Leader.projLosses}</b></div>
+          <div class="odds-metric-label">#1 Seed &amp; Qualification Leader</div>
+          <div class="odds-metric-val" style="font-family:'DM Sans',sans-serif;font-size:21px">${esc(seed1Leader.player)} <span style="font-size:16px;color:#ffd166">(${seed1Leader.topCutDisplay || (Math.round(seed1Leader.topCutPct) + '%')} Cut)</span></div>
+          <div class="odds-metric-sub"><b>${Math.round(seed1Leader.firstSeedPct || 0)}%</b> #1 Seed Equity · Projected Finish: <b>${seed1Leader.projWins}–${seed1Leader.projLosses}</b></div>
         </div>
       </div>
       <div class="odds-metric-card green">
-        <div class="odds-metric-icon">🛡️</div>
+        <div class="odds-metric-icon">✂️</div>
         <div class="odds-metric-body">
-          <div class="odds-metric-label">Top Cut Qualification Line</div>
-          <div class="odds-metric-val">Top ${cut} ${groupNames.length > 1 ? 'Per Group' : 'Overall'} Advance <span style="font-size:16px;color:#6ee7b7">(${clinchedCoaches.length}/${totalCutSpots} Clinched)</span></div>
-          <div class="odds-metric-sub">Projected Cutline Target: <b>~${targetWins} Wins</b> + Game Diff Tiebreaker</div>
+          <div class="odds-metric-label">Playoff Cutline Rule</div>
+          <div class="odds-metric-val" style="font-family:'DM Sans',sans-serif;font-size:21px">Top ${cut} ${groupNames.length > 1 ? 'Per Group' : 'Coaches'} Advance <span style="font-size:15px;color:#6ee7b7">(${clinchedCoaches.length}/${totalCutSpots} Locked)</span></div>
+          <div class="odds-metric-sub">Projected Cutline Target: <b>~${targetWins} Wins</b> + Tiebreakers</div>
         </div>
       </div>
       <div class="odds-metric-card">
-        <div class="odds-metric-icon">🎲</div>
+        <div class="odds-metric-icon">🎛️</div>
         <div class="odds-metric-body">
-          <div class="odds-metric-label">${esc(stage1Label)} Progress &amp; Engine</div>
-          <div class="odds-metric-val">${totalPlayed} / ${totalMatches} Matches Played</div>
-          <div class="odds-metric-sub">2,500 Monte Carlo Runs + Exact Tiebreaker Scenario Solver</div>
+          <div class="odds-metric-label">Interactive "What-If" Engine</div>
+          <div class="odds-metric-val" style="font-family:'DM Sans',sans-serif;font-size:21px">${activeWhatIfCount > 0 ? `<span style="color:#ffd166">${activeWhatIfCount} What-If Pick${activeWhatIfCount === 1 ? '' : 's'} Active</span>` : `${totalPlayed} / ${totalMatches} Played`}</div>
+          <div class="odds-metric-sub">${activeWhatIfCount > 0 ? 'Showing live ▲/▼ probability swings in table below' : 'Pick match winners on the right to test playoff scenarios →'}</div>
         </div>
       </div>
     </div>
   `;
 
-  // Group Filter Tabs (for multi-group tournaments)
-  if(groupNames.length > 1){
-    html += `
-      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:16px">
-        <button class="btn ${selectedGroup === 'ALL' ? '' : 'ghost'} btn-sm" onclick="setPlayoffOddsGroupFilter('ALL')">All Groups (${allList.length})</button>
-        ${groupNames.map(g => `
-          <button class="btn ${selectedGroup === g ? '' : 'ghost'} btn-sm" onclick="setPlayoffOddsGroupFilter('${jsArg(g)}')">${esc(g)} (Top ${cut})</button>
-        `).join('')}
-      </div>
-    `;
-  }
+  // Build table body sections (if multiple groups and 'ALL' is selected, show each group cleanly with its own Top K cutline)
+  let groupsToRender = (groupNames.length > 1 && selectedGroup === 'ALL') ? groupNames : [selectedGroup === 'ALL' ? (groupNames[0] || 'Standings') : selectedGroup];
 
-  // Live Playoff Scenarios Spotlight Panel (when matches are underway)
-  if(totalPlayed > 0){
-    let winAndInList = filteredList.filter(x => x.clinchStatus === null && x.scenario && (x.scenario.winAndIn || x.scenario.controlsDestiny));
-    let mustWinList = filteredList.filter(x => x.clinchStatus === null && x.scenario && (x.scenario.mustWin || x.scenario.needsHelp));
-    let elimList = filteredList.filter(x => x.clinchStatus === 'eliminated');
-
-    if(clinchedCoaches.length || winAndInList.length || mustWinList.length || elimList.length){
-      html += `
-        <div class="odds-scenarios-panel">
-          <div class="odds-scenarios-header">
-            <div style="display:flex;align-items:center;gap:8px">
-              <span style="font-size:18px">🔥</span>
-              <div>
-                <div style="font:800 16px 'Barlow Condensed';letter-spacing:.4px;color:#fff;text-transform:uppercase">Live Playoff Picture &amp; Exact Clinch Scenarios</div>
-                <div style="font-size:11px;color:#9d9ba6">Calculated directly against official tournament tiebreakers (Wins → Head-to-Head / Game Diff → Buchholz / Game Win %)</div>
-              </div>
-            </div>
-            <span class="tag" style="background:#1c1c28;color:#ffd166;border:1px solid #38384e;font-size:10px">${totalMatches - totalPlayed} Matches Remaining</span>
-          </div>
-          <div class="odds-scenarios-grid">
-            ${clinchedCoaches.length ? `
-              <div class="odds-scenario-box clinched" style="margin:0">
-                <div class="odds-scenario-title" style="color:#6ee7b7">✅ Clinched Top Cut (${clinchedCoaches.length})</div>
-                <div class="odds-scenario-detail">${clinchedCoaches.map(x => `<b>${esc(x.player)}</b> (${x.form.w}-${x.form.l})`).join(', ')} locked into the championship bracket.</div>
-              </div>
-            ` : ''}
-            ${winAndInList.length ? `
-              <div class="odds-scenario-box destiny" style="margin:0">
-                <div class="odds-scenario-title" style="color:#93c5fd">🎯 Controls Own Destiny (${winAndInList.length})</div>
-                <div class="odds-scenario-detail">${winAndInList.slice(0, 5).map(x => `<b>${esc(x.player)}</b> (${x.scenario.winAndIn ? 'Win & In' : 'Wins out → In'})`).join(' · ')}${winAndInList.length > 5 ? ` +${winAndInList.length - 5} more` : ''}</div>
-              </div>
-            ` : ''}
-            ${mustWinList.length ? `
-              <div class="odds-scenario-box mustwin" style="margin:0">
-                <div class="odds-scenario-title" style="color:#fca5a5">🚨 Bubble &amp; Must-Win Watch (${mustWinList.length})</div>
-                <div class="odds-scenario-detail">${mustWinList.slice(0, 5).map(x => `<b>${esc(x.player)}</b> (${x.scenario.mustWin ? 'Eliminated with loss' : 'Needs outside help'})`).join(' · ')}${mustWinList.length > 5 ? ` +${mustWinList.length - 5} more` : ''}</div>
-              </div>
-            ` : ''}
-            ${elimList.length ? `
-              <div class="odds-scenario-box eliminated" style="margin:0">
-                <div class="odds-scenario-title" style="color:#9ca3af">❌ Eliminated From Top Cut (${elimList.length})</div>
-                <div class="odds-scenario-detail">${elimList.map(x => `<b>${esc(x.player)}</b> (${x.form.w}-${x.form.l})`).join(', ')} can no longer reach the Top ${cut} cutline.</div>
-              </div>
-            ` : ''}
-          </div>
-        </div>
+  let buildGroupRowsHtml = (gName, showGroupBanner) => {
+    let gItems = sortEntries(Object.values(sim).filter(x => !gName || groupNames.length <= 1 || x.group === gName));
+    let rowsHtml = '';
+    if(showGroupBanner){
+      rowsHtml += `
+        <tr>
+          <td colspan="8" style="background:#171824;padding:9px 14px;font-weight:800;font-size:12px;color:#ffd166;letter-spacing:0.6px;text-transform:uppercase;border-bottom:1px solid #26283a">
+            🏁 ${esc(gName)} — Top ${cut} Advance to Playoffs
+          </td>
+        </tr>
       `;
     }
-  }
-
-  // Group into Playoff Picture Tiers for clear visual hierarchy
-  let tierInside = filteredList.filter(x => x.clinchStatus === 'clinched' || (x.clinchStatus !== 'eliminated' && x.currentRank <= cut));
-  let tierBubble = filteredList.filter(x => x.clinchStatus !== 'clinched' && x.clinchStatus !== 'eliminated' && x.currentRank > cut && x.topCutPct >= 10);
-  let tierOutside = filteredList.filter(x => x.clinchStatus === 'eliminated' || (x.clinchStatus !== 'clinched' && x.currentRank > cut && x.topCutPct < 10));
-
-  let renderTierBlock = (title, pillText, pillStyle, items) => {
-    if(!items.length) return '';
-    return `
-      <div class="odds-tier-section">
-        <div class="odds-tier-header">
-          <div class="odds-tier-title">${title}</div>
-          <span class="odds-tier-pill" style="${pillStyle}">${pillText}</span>
-        </div>
-        <div class="odds-grid">
-          ${items.map(x => renderPhase1PlayoffCard(x, allList.indexOf(x), t, sim, cut, totalPlayed)).join('')}
-        </div>
-      </div>
-    `;
+    gItems.forEach((x, idx) => {
+      rowsHtml += renderNytPhase1Row(x, idx, cut, t, sim, totalPlayed, window.playoffOddsFocusCoach === x.player);
+      if(idx === cut - 1 && idx < gItems.length - 1){
+        rowsHtml += `
+          <tr class="nyt-cutline-tr">
+            <td colspan="8">
+              <div class="nyt-cutline-bar">
+                <span>▲ TOP ${cut} PLAYOFF CUTLINE (${esc(gName)}) · PROJECTED QUALIFIERS ABOVE ▲</span>
+                <span>▼ BUBBLE &amp; CHASERS BELOW ▼</span>
+              </div>
+            </td>
+          </tr>
+        `;
+      }
+    });
+    return rowsHtml;
   };
 
-  html += renderTierBlock(
-    `🛡️ Inside Playoff Cutline (Top ${cut}${groupNames.length > 1 && selectedGroup === 'ALL' ? ' Per Group' : ''})`,
-    `${tierInside.length} Coach${tierInside.length === 1 ? '' : 'es'}`,
-    'background:rgba(16,185,129,0.14);color:#6ee7b7;border:1px solid rgba(16,185,129,0.35)',
-    tierInside
-  );
-
-  html += renderTierBlock(
-    `⚔️ On The Bubble &amp; In The Hunt`,
-    `${tierBubble.length} Coach${tierBubble.length === 1 ? '' : 'es'}`,
-    'background:rgba(245,158,11,0.15);color:#fcd34d;border:1px solid rgba(245,158,11,0.35)',
-    tierBubble
-  );
-
-  html += renderTierBlock(
-    `🎲 Longshots &amp; Eliminated`,
-    `${tierOutside.length} Coach${tierOutside.length === 1 ? '' : 'es'}`,
-    'background:rgba(148,163,184,0.12);color:#94a3b8;border:1px solid rgba(148,163,184,0.25)',
-    tierOutside
-  );
+  let tableBodyHtml = groupsToRender.map(g => buildGroupRowsHtml(g, groupNames.length > 1 && selectedGroup === 'ALL')).join('');
 
   html += `
-    <p class="sub" style="margin-top:20px;font-size:11px;color:#8e8c95;line-height:1.6">
-      <b>About the Phase 1 Playoff Race Model:</b> Runs 2,500 Monte Carlo simulations of the ${esc(stage1Label.toLowerCase())}. Pre-tournament baseline ratings are calibrated with balanced parity so no coach starts with runaway odds at 0–0, and live tournament performance (match W–L, game differential, and remaining opponent SOS) rapidly takes over as games are reported. In the final rounds, an exact combinatorial tiebreaker solver verifies every coach's true clinch, win-and-in, and elimination scenarios. Once Top Cut begins, this page automatically transitions to the <b>Phase 2 Championship Bracket Predictor</b>.
+    <div class="nyt-sim-layout">
+      <!-- LEFT COLUMN: NYT / THE ATHLETIC EDITORIAL PLAYOFF PROJECTIONS TABLE -->
+      <div class="nyt-table-card">
+        <div class="nyt-table-topbar">
+          <div>
+            <div class="nyt-table-title">📊 ${esc(stage1Label)} Playoff &amp; Seeding Projections</div>
+            <div class="nyt-table-sub">Click any coach row to focus their remaining schedule in the What-If Simulator →</div>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+            ${groupNames.length > 1 ? `
+              <div class="nyt-filter-pills">
+                <button class="nyt-filter-pill ${selectedGroup === 'ALL' ? 'active' : ''}" onclick="setPlayoffOddsGroupFilter('ALL')">All Groups</button>
+                ${groupNames.map(g => `
+                  <button class="nyt-filter-pill ${selectedGroup === g ? 'active' : ''}" onclick="setPlayoffOddsGroupFilter('${jsArg(g)}')">${esc(g)}</button>
+                `).join('')}
+              </div>
+            ` : ''}
+            <div class="nyt-filter-pills">
+              <button class="nyt-filter-pill ${sortMode === 'odds' ? 'active' : ''}" onclick="setPlayoffOddsSortBy('odds')">Sort: Playoff %</button>
+              <button class="nyt-filter-pill ${sortMode === 'standings' ? 'active' : ''}" onclick="setPlayoffOddsSortBy('standings')">Sort: Standings</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="nyt-table-scroll">
+          <table class="nyt-table">
+            <thead>
+              <tr>
+                <th style="text-align:center">#</th>
+                <th>Coach &amp; Team</th>
+                <th class="num">Record (GD)</th>
+                <th class="num">Proj. Rec</th>
+                <th class="num">Rem. SOS</th>
+                <th>Make Top Cut %</th>
+                <th class="num">#1 Seed %</th>
+                <th>Status &amp; Next Match Leverage</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${tableBodyHtml}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- RIGHT COLUMN: INTERACTIVE "WHAT-IF" MATCH SIMULATOR RAIL -->
+      ${renderNytPhase1PickerRail(t, sim, activeWhatIfCount)}
+    </div>
+
+    <p class="sub" style="margin-top:16px;font-size:11px;color:#64748b;line-height:1.6;font-family:'DM Sans',sans-serif">
+      <b>Methodology:</b> Probabilities are simulated across 2,500 Monte Carlo tournament runs (with live 1,200-run recalculations when testing hypothetical "What-If" picks) alongside an exact combinatorial tiebreaker solver for official clinch, win-and-in, and elimination scenarios.
     </p>
   `;
 
