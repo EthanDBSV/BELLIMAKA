@@ -7783,7 +7783,7 @@ try{
         let hasMatches = Array.isArray(t.matches) && t.matches.length > 0;
         let rostersFull = Boolean(t.players && t.players.length > 0 && t.players.every(p => (savedRosters?.[p]?.length || t.rosters?.[p]?.length || 0) >= (d?.maxRosterSize || 10)));
         if(hasMatches || (picksCount >= totalExpectedPicks && totalExpectedPicks > 0) || rostersFull){
-          t.phase = (getStage1Format(t) === 'swiss' ? 'swiss' : 'group');
+          t.phase = (getStage1Format(t) === 'league_phase' ? 'league_phase' : (getStage1Format(t) === 'swiss' ? 'swiss' : 'group'));
           if(d) d.status = 'completed';
         }
       }
@@ -7846,9 +7846,18 @@ try{
 addEventListener('beforeunload',()=>{clearTimeout(syncTimer);flushSync()});
 /* Group-stage and flexible-cut upgrades */
 
-/* Stage 1 & Stage 2 format helpers & Swiss engine */
+/* Stage 1 & Stage 2 format helpers & Swiss / League Phase engine */
 function getStage1Format(t){ return t?.stage1Format || 'round_robin'; }
 function getStage2Format(t){ return t?.stage2Format || 'double_elimination'; }
+function isLeaguePhase(t){ return getStage1Format(t) === 'league_phase'; }
+function isSwissStage(t){ return getStage1Format(t) === 'swiss'; }
+function isRoundBasedStage1(t){ let f = getStage1Format(t); return f === 'swiss' || f === 'league_phase'; }
+function getStage1Label(t){
+  let f = getStage1Format(t);
+  if(f === 'league_phase') return 'League Phase';
+  if(f === 'swiss') return 'Swiss Stage';
+  return 'Group Stage';
+}
 
 function getSwissThresholds(t){
   let rounds = Math.max(2, Number(t?.swissRounds) || 4);
@@ -8138,9 +8147,160 @@ function generateSwissRound(t, roundNum = 1){
   return matches;
 }
 
+function shufflePoolRandom(arr){
+  let a = arr.slice();
+  for(let i = a.length - 1; i > 0; i--){
+    let j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+function findSingleRandomMatchingNoRematch(players, playedSet, budget = { steps: 6000 }){
+  function solve(rem){
+    if(rem.length === 0) return [];
+    if(--budget.steps <= 0) return null;
+    let bestIdx = 0;
+    let bestNeighbors = null;
+    for(let i = 0; i < rem.length; i++){
+      let p1 = rem[i];
+      let nbrs = [];
+      for(let j = 0; j < rem.length; j++){
+        if(i === j) continue;
+        let p2 = rem[j];
+        let key = p1 < p2 ? p1 + '::' + p2 : p2 + '::' + p1;
+        if(!playedSet.has(key)) nbrs.push(p2);
+      }
+      if(nbrs.length === 0) return null;
+      if(bestNeighbors === null || nbrs.length < bestNeighbors.length){
+        bestIdx = i;
+        bestNeighbors = nbrs;
+        if(nbrs.length === 1) break;
+      }
+    }
+    let p1 = rem[bestIdx];
+    let candidates = shufflePoolRandom(bestNeighbors);
+    for(let p2 of candidates){
+      let nextRem = rem.filter(x => x !== p1 && x !== p2);
+      let sub = solve(nextRem);
+      if(sub !== null) return [[p1, p2], ...sub];
+    }
+    return null;
+  }
+  return solve(shufflePoolRandom(players));
+}
+
+function canExtendLeagueRounds(players, playedSet, k, totalBudget = { steps: 12000 }){
+  if(k <= 0) return true;
+  if(totalBudget.steps <= 0) return false;
+  let m = findSingleRandomMatchingNoRematch(players, playedSet, totalBudget);
+  if(!m) return false;
+  if(k === 1) return true;
+  for(let attempt = 0; attempt < 4; attempt++){
+    let matchToTry = attempt === 0 ? m : findSingleRandomMatchingNoRematch(players, playedSet, totalBudget);
+    if(!matchToTry) break;
+    let nextPlayed = new Set(playedSet);
+    for(let [a, b] of matchToTry){
+      nextPlayed.add(a < b ? a + '::' + b : b + '::' + a);
+    }
+    if(canExtendLeagueRounds(players, nextPlayed, k - 1, totalBudget)) return true;
+  }
+  return false;
+}
+
+function generateLeaguePhaseRound(t, roundNum = 1){
+  let players = (t.players || []).slice();
+  if(players.length < 2) return [];
+
+  let totalRounds = Math.max(2, Number(t.swissRounds) || 4);
+  let played = new Set();
+  let byesGiven = new Set();
+
+  (t.matches || []).forEach(m => {
+    let mR = parseInt(String(m.round || '').replace(/\D+/g, '')) || 1;
+    if(mR >= roundNum) return;
+    if(m.b === 'BYE') byesGiven.add(m.a);
+    else if(m.a === 'BYE') byesGiven.add(m.b);
+    else if(m.a && m.b){
+      let k = m.a < m.b ? m.a + '::' + m.b : m.b + '::' + m.a;
+      played.add(k);
+    }
+  });
+
+  let candidates = shufflePoolRandom(players);
+  let matches = [];
+
+  if(candidates.length % 2 === 1){
+    let noByeIndices = [];
+    for(let i = 0; i < candidates.length; i++){
+      if(!byesGiven.has(candidates[i])) noByeIndices.push(i);
+    }
+    let pickPool = noByeIndices.length > 0 ? noByeIndices : candidates.map((_, i) => i);
+    let byeIdx = pickPool[Math.floor(Math.random() * pickPool.length)];
+    let byePlayer = candidates.splice(byeIdx, 1)[0];
+    matches.push({
+      id: 'league-' + roundNum + '-bye',
+      round: 'Round ' + roundNum,
+      a: byePlayer,
+      b: 'BYE',
+      as: '2',
+      bs: '0',
+      date: 'BYE',
+      group: 'League Phase'
+    });
+  }
+
+  let remainingFutureRounds = Math.max(0, Math.min(totalRounds - roundNum, candidates.length - 1 - roundNum));
+  let pairs = null;
+  for(let attempt = 0; attempt < 25; attempt++){
+    let m = findSingleRandomMatchingNoRematch(candidates, played, { steps: 8000 });
+    if(!m) break;
+    if(remainingFutureRounds <= 0){
+      pairs = m;
+      break;
+    }
+    let nextPlayed = new Set(played);
+    for(let [a, b] of m){
+      nextPlayed.add(a < b ? a + '::' + b : b + '::' + a);
+    }
+    if(canExtendLeagueRounds(candidates, nextPlayed, remainingFutureRounds, { steps: 12000 })){
+      pairs = m;
+      break;
+    }
+    if(!pairs) pairs = m;
+  }
+
+  if(!pairs){
+    pairs = findSingleRandomMatchingNoRematch(candidates, played, { steps: 20000 });
+  }
+  if(!pairs){
+    pairs = [];
+    for(let i = 0; i < candidates.length; i += 2){
+      if(candidates[i + 1]) pairs.push([candidates[i], candidates[i + 1]]);
+    }
+  }
+
+  pairs.forEach((pair, idx) => {
+    matches.push({
+      id: 'league-' + roundNum + '-' + (idx + 1),
+      round: 'Round ' + roundNum,
+      a: pair[0],
+      b: pair[1],
+      as: '',
+      bs: '',
+      date: 'TBD',
+      group: 'League Phase'
+    });
+  });
+
+  return matches;
+}
+
 function pairSwissNextRound(targetT = null){
   let t = targetT || (viewTournament ? tournamentData[viewTournament] : null) || ongoingT();
   if(!t || !canManageTournament(t)) return;
+  let isLeague = isLeaguePhase(t);
+  let stageLabel = isLeague ? 'League Phase' : 'Swiss stage';
   let curRound = t.swissCurrentRound || 1;
   let curRoundMatches = (t.matches || []).filter(m => m.round === 'Round ' + curRound);
   let uncompleted = curRoundMatches.filter(m => m.b !== 'BYE' && m.a !== 'BYE' && (m.as === '' || m.as == null || m.bs === '' || m.bs == null));
@@ -8149,23 +8309,24 @@ function pairSwissNextRound(targetT = null){
     return;
   }
   
-  let stand = getSwissStand(t);
-  let inContention = stand.filter(x => x.status === 'in_contention');
   let totalRounds = t.swissRounds || 4;
-  let { isEliminationStyle } = getSwissThresholds(t);
-
-  if(isEliminationStyle && inContention.length === 0){
-    alert(`All participants have finished their Swiss stage runs (clinched or eliminated)! You can now advance to Top Cut.`);
-    return;
+  if(!isLeague){
+    let stand = getSwissStand(t);
+    let inContention = stand.filter(x => x.status === 'in_contention');
+    let { isEliminationStyle } = getSwissThresholds(t);
+    if(isEliminationStyle && inContention.length === 0){
+      alert(`All participants have finished their Swiss stage runs (clinched or eliminated)! You can now advance to Top Cut.`);
+      return;
+    }
   }
 
   let nextRound = curRound + 1;
   if(nextRound > totalRounds){
-    alert(`All ${totalRounds} Swiss rounds have been completed! You can now end the Swiss stage and advance to Top Cut.`);
+    alert(`All ${totalRounds} ${stageLabel} rounds have been completed! You can now end the ${stageLabel} and advance to Top Cut.`);
     return;
   }
 
-  let newMatches = generateSwissRound(t, nextRound);
+  let newMatches = isLeague ? generateLeaguePhaseRound(t, nextRound) : generateSwissRound(t, nextRound);
   if(newMatches.length === 0){
     alert(`No further active pairings are needed! You can now advance to Top Cut.`);
     return;
@@ -8179,6 +8340,7 @@ function pairSwissNextRound(targetT = null){
 function repairCurrentSwissRound(targetT = null){
   let t = targetT || (viewTournament ? tournamentData[viewTournament] : null) || ongoingT();
   if(!t || !canManageTournament(t)) return;
+  let isLeague = isLeaguePhase(t);
   let curRound = t.swissCurrentRound || 1;
   let curRoundMatches = (t.matches || []).filter(m => m.round === 'Round ' + curRound);
   let reported = curRoundMatches.filter(m => m.b !== 'BYE' && m.a !== 'BYE' && m.as !== '' && m.as != null && m.bs !== '' && m.bs != null);
@@ -8188,7 +8350,7 @@ function repairCurrentSwissRound(targetT = null){
     if(!confirm(`Re-generate pairings for Round ${curRound}?`)) return;
   }
   t.matches = (t.matches || []).filter(m => m.round !== 'Round ' + curRound);
-  let freshMatches = generateSwissRound(t, curRound);
+  let freshMatches = isLeague ? generateLeaguePhaseRound(t, curRound) : generateSwissRound(t, curRound);
   t.matches = (t.matches || []).concat(freshMatches);
   persistLeague();
   render();
@@ -8203,6 +8365,8 @@ async function endFirstPhase(targetT = null){
   }
   if(t.stage1Format === 'swiss'){
     t.finalStandings = { 'Swiss Stage': getSwissStand(t).map(x => x.p) };
+  } else if(t.stage1Format === 'league_phase'){
+    t.finalStandings = { 'League Phase': getStand(t, 'League Phase').map(x => x.p) };
   } else {
     t.finalStandings = Object.fromEntries(Object.keys(groupsOf(t)).map(g => [g, getStand(t, g).map(x => x.p)]));
   }
@@ -8216,11 +8380,12 @@ async function endFirstPhase(targetT = null){
 async function endSwissStage(targetT = null){ return await endFirstPhase(targetT); }
 
 function groupMatches(t,g){
-  if(t?.stage1Format === 'swiss') return (t?.matches || []);
+  if(isRoundBasedStage1(t)) return (t?.matches || []);
   return (t?.matches||[]).filter(m=>(m.group||'Group A')===g);
 }
 function groupSchedule(t){
   if(t?.stage1Format === 'swiss') return generateSwissRound(t, 1);
+  if(t?.stage1Format === 'league_phase') return generateLeaguePhaseRound(t, 1);
   let buckets=groupsOf(t);
   return Object.entries(buckets).flatMap(([g,ps])=>rr(ps).map(m=>({...m,group:g})));
 }
@@ -8230,6 +8395,11 @@ function qualified(t){
     let swissStand = getSwissStand(t);
     let cutCount = advancePerGroup(t);
     return swissStand.slice(0, cutCount).map((x, i) => ({ ...x, group: 'Swiss Stage', groupSeed: i + 1 }));
+  }
+  if(t?.stage1Format === 'league_phase'){
+    let leagueStand = getStand(t, 'League Phase');
+    let cutCount = advancePerGroup(t);
+    return leagueStand.slice(0, cutCount).map((x, i) => ({ ...x, group: 'League Phase', groupSeed: i + 1 }));
   }
   return Object.keys(groupsOf(t)).flatMap(g=>getStand(t,g).slice(0,advancePerGroup(t)).map((x,i)=>({...x,group:g,groupSeed:i+1}))).sort((a,b)=>{
     if(a.groupSeed !== b.groupSeed) return a.groupSeed - b.groupSeed;
@@ -8336,8 +8506,10 @@ function createTournament(){
   let swissWinsToAdvance = Math.max(1, +(document.querySelector('#swissWinsToAdvance')?.value || defaultWinsToAdvance));
   let swissLossesToEliminate = Math.max(1, +(document.querySelector('#swissLossesToEliminate')?.value || defaultLossesToEliminate));
 
-  let groupCount = (stage1Format === 'swiss') ? 1 : Math.min(+(document.querySelector('#gc')?.value || 1), selected.length);
-  let perGroup = (stage1Format === 'swiss') ? swissCut : Math.max(1, +(document.querySelector('#ap')?.value || 1));
+  let isRoundStage = (stage1Format === 'swiss' || stage1Format === 'league_phase');
+  let groupCount = isRoundStage ? 1 : Math.min(+(document.querySelector('#gc')?.value || 1), selected.length);
+  let perGroup = isRoundStage ? swissCut : Math.max(1, +(document.querySelector('#ap')?.value || 1));
+  if(stage1Format === 'league_phase') swissStyle = 'full';
   let enableDraft = document.querySelector('#enableDraft')?.checked ?? true;
   let draftBudget = Math.max(0, +(document.querySelector('#draftBudget')?.value || 100));
   let draftRounds = Math.max(1, +(document.querySelector('#draftRounds')?.value || 10));
@@ -8428,7 +8600,7 @@ function createTournament(){
   }
   window.creatorSelectedDraftBoard = 'offseason';
   window.creatorCustomDraftBoard = null;
-  tournamentData[id].matches = (stage1Format === 'swiss') ? generateSwissRound(tournamentData[id], 1) : groupSchedule(tournamentData[id]);
+  tournamentData[id].matches = groupSchedule(tournamentData[id]);
   syncTournamentSeasons();
   viewTournament=id;
   current= enableDraft ? 'Draft' : 'Tournament Detail';
@@ -14720,7 +14892,7 @@ function openTournamentRecordEditor(id){
           <select id="recordPhase" style="background:#181822;border:1px solid #363646;border-radius:6px;padding:10px 12px;color:#f5f3f0">
             ${(t.status === 'COMPLETE' || t.phase === 'complete') ? `<option value="complete" ${t.phase === 'complete' || t.status === 'COMPLETE' ? 'selected' : ''}>Archived / Complete</option>` : ''}
             <option value="draft" ${t.phase === 'draft' ? 'selected' : ''}>Live Draft Room</option>
-            <option value="${getStage1Format(t) === 'swiss' ? 'swiss' : 'group'}" ${t.phase === 'group' || t.phase === 'swiss' || (!t.phase && t.status !== 'COMPLETE') ? 'selected' : ''}>${getStage1Format(t) === 'swiss' ? 'Swiss Stage' : 'Group Stage'}</option>
+            <option value="${isLeaguePhase(t) ? 'league_phase' : (isSwissStage(t) ? 'swiss' : 'group')}" ${t.phase === 'group' || t.phase === 'swiss' || t.phase === 'league_phase' || (!t.phase && t.status !== 'COMPLETE') ? 'selected' : ''}>${getStage1Label(t)}</option>
             <option value="topcut" ${t.phase === 'topcut' ? 'selected' : ''}>Top Cut Playoffs</option>
           </select>
         </div>
@@ -15100,6 +15272,9 @@ function saveProfile(p, returnToProfile = false){
 function groupsOf(t){
   if(t && t.stage1Format === 'swiss'){
     return { 'Swiss Stage': (t.players || []).slice() };
+  }
+  if(t && t.stage1Format === 'league_phase'){
+    return { 'League Phase': (t.players || []).slice() };
   }
   if(t && t.groups && typeof t.groups === 'object' && !Array.isArray(t.groups)) {
     return t.groups;
@@ -17424,7 +17599,7 @@ function cleanGroupLetter(gName, idx){
 
 function getTournamentTopCutSeedLabel(t, pName, numericSeed){
   if(!t || !pName) return numericSeed != null ? String(numericSeed) : '';
-  if(t.stage1Format === 'swiss') return String(numericSeed != null ? numericSeed : '');
+  if(isRoundBasedStage1(t)) return String(numericSeed != null ? numericSeed : '');
   
   let groups = groupsOf(t);
   let groupKeys = Object.keys(groups);
@@ -17475,7 +17650,7 @@ function getTournamentTopCutModel(t){
   let seededNames = qualifiers.map(q => q.name);
   while(seededNames.length < count) seededNames.push(null);
 
-  let isMultiGroup = (Object.keys(groupsOf(t)).length > 1 && t?.stage1Format !== 'swiss');
+  let isMultiGroup = (Object.keys(groupsOf(t)).length > 1 && !isRoundBasedStage1(t));
   let sLabel = (idx, fallback) => {
     let name = seededNames[idx];
     if(name && seedMap[name]) return seedMap[name];
@@ -18082,7 +18257,7 @@ function openReseedBracketModal(){
     let size = nextPow2(Math.max(2, count));
     let s = currentSeeds.slice();
     while(s.length < size) s.push(null);
-    let isMultiGroup = (Object.keys(groupsOf(t)).length > 1 && t?.stage1Format !== 'swiss');
+    let isMultiGroup = (Object.keys(groupsOf(t)).length > 1 && !isRoundBasedStage1(t));
     let sLab = (name, numericFallback) => {
       if(name) return getTournamentTopCutSeedLabel(t, name, numericFallback);
       return numericFallback;
@@ -18596,7 +18771,7 @@ function renderTournamentProgressionTabHtml(t){
                   `).join('')}
                 </div>
               ` : `
-                <div class="prog-no-accolades">Group Stage Competitor</div>
+                <div class="prog-no-accolades">${getStage1Label(t)} Competitor</div>
               `}
             </div>
           </div>
@@ -18608,7 +18783,7 @@ function renderTournamentProgressionTabHtml(t){
           </div>
           <div class="prog-ovr-arrow">➔</div>
           <div class="prog-ovr-box">
-            <div class="prog-ovr-lbl" title="Coach rating at conclusion of Group Stage">GROUP OVR</div>
+            <div class="prog-ovr-lbl" title="Coach rating at conclusion of ${getStage1Label(t)}">${isLeaguePhase(t) ? 'LEAGUE OVR' : (isSwissStage(t) ? 'SWISS OVR' : 'GROUP OVR')}</div>
             <div class="prog-ovr-val">${ps.gOvr.badgeHtml}</div>
           </div>
           <div class="prog-ovr-arrow">➔</div>
@@ -20946,6 +21121,7 @@ function openCreator(){
                   </label>
                   <select id="stage1Format" onchange="onCreatorStage1FormatChange(this.value)">
                     <option value="round_robin" selected>Round Robin Groups (Default)</option>
+                    <option value="league_phase">League Phase (Random Pairings)</option>
                     <option value="swiss">Swiss System Stage</option>
                   </select>
                 </div>
@@ -20967,24 +21143,28 @@ function openCreator(){
                   <div class="field"><label>Advance per group to Top Cut</label><input id="ap" type="number" min="1" max="10" value="2"></div>
                 </div>
 
-                <!-- Dynamic Phase 1 Options: Swiss Stage -->
+                <!-- Dynamic Phase 1 Options: Swiss Stage / League Phase -->
                 <div id="creatorSwissOptions" style="display:none">
                   <div class="field">
                     <label style="display:flex;justify-content:space-between">
-                      <span>Swiss Stage Rounds</span>
+                      <span id="swissRoundsTitleLabel">Swiss Stage Rounds</span>
                       <span id="swissRecommendedLabel" style="font-size:9px;color:#ffd166;font-weight:700">3–4 rounds recommended</span>
                     </label>
-                    <input id="swissRounds" type="number" min="2" max="10" value="4" placeholder="4" oninput="this.dataset.userEdited='true';updateSwissCreatorDefaults()">
+                    <input id="swissRounds" type="number" min="2" max="14" value="4" placeholder="4" oninput="this.dataset.userEdited='true';updateSwissCreatorDefaults()">
                   </div>
                   <div class="field">
                     <label>Advancing to Top Cut Playoffs</label>
                     <select id="swissCut">
                       <option value="2">Top 2 Qualify</option>
                       <option value="4" selected>Top 4 Qualify</option>
+                      <option value="6">Top 6 Qualify</option>
                       <option value="8">Top 8 Qualify</option>
                     </select>
                   </div>
-                  <div class="field" style="grid-column:1/-1">
+                  <div id="creatorLeaguePhaseNote" style="display:none;grid-column:1/-1;background:#151824;border:1px solid #2b3554;border-radius:6px;padding:9px 12px;font-size:11px;color:#cbd5e1;line-height:1.4">
+                    🎲 <b style="color:#93c5fd">League Phase Rules:</b> Random pairings generated round-by-round (independent of W-L record) · All coaches play every round · Strictly no rematches during the stage.
+                  </div>
+                  <div id="creatorSwissPoolField" class="field" style="grid-column:1/-1">
                     <label style="display:flex;justify-content:space-between;align-items:center">
                       <span>Swiss Pairing Pool Format</span>
                       <span class="tag" style="font-size:8.5px;background:#153b29;color:#77e8a8;border:1px solid #238048">Esports Standard</span>
@@ -21352,22 +21532,43 @@ function updateSwissCreatorDefaults(){
 
 function updateCreatorSwissRecommendations(){
   let count = document.querySelectorAll('.profileChoice:checked').length;
+  let fmt = document.querySelector('#stage1Format')?.value || 'round_robin';
   let recRounds = Math.max(2, Math.ceil(Math.log2(count || 8)));
+  let maxNoRematch = count > 1 ? (count % 2 === 0 ? count - 1 : count) : 14;
   let recEl = document.getElementById('swissRecommendedLabel');
-  if(recEl) recEl.textContent = `${recRounds} rounds recommended for ${count || 0} trainers`;
+  if(recEl){
+    recEl.textContent = fmt === 'league_phase'
+      ? `${recRounds}–${Math.min(maxNoRematch, recRounds + 2)} rounds recommended (max ${maxNoRematch} w/o rematches)`
+      : `${recRounds} rounds recommended for ${count || 0} trainers`;
+  }
   let roundsInput = document.getElementById('swissRounds');
-  if(roundsInput && !roundsInput.dataset.userEdited){
-    roundsInput.value = recRounds;
+  if(roundsInput){
+    roundsInput.max = String(Math.max(2, maxNoRematch));
+    if(!roundsInput.dataset.userEdited){
+      roundsInput.value = fmt === 'league_phase' ? Math.min(maxNoRematch, Math.max(4, recRounds)) : recRounds;
+    }
   }
   updateSwissCreatorDefaults();
 }
 
 function onCreatorStage1FormatChange(val){
   let isSwiss = (val === 'swiss');
+  let isLeague = (val === 'league_phase');
+  let isRoundBased = (isSwiss || isLeague);
   let rrEl = document.getElementById('creatorRoundRobinOptions');
   let swEl = document.getElementById('creatorSwissOptions');
-  if(rrEl) rrEl.style.display = isSwiss ? 'none' : 'contents';
-  if(swEl) swEl.style.display = isSwiss ? 'contents' : 'none';
+  let titleLbl = document.getElementById('swissRoundsTitleLabel');
+  let poolField = document.getElementById('creatorSwissPoolField');
+  let threshEl = document.getElementById('creatorSwissThresholds');
+  let leagueNote = document.getElementById('creatorLeaguePhaseNote');
+  let styleSel = document.getElementById('swissStyle');
+
+  if(rrEl) rrEl.style.display = isRoundBased ? 'none' : 'contents';
+  if(swEl) swEl.style.display = isRoundBased ? 'contents' : 'none';
+  if(titleLbl) titleLbl.textContent = isLeague ? 'League Phase Rounds' : 'Swiss Stage Rounds';
+  if(poolField) poolField.style.display = isSwiss ? 'block' : 'none';
+  if(threshEl) threshEl.style.display = (isSwiss && (!styleSel || styleSel.value !== 'full')) ? 'contents' : 'none';
+  if(leagueNote) leagueNote.style.display = isLeague ? 'block' : 'none';
   updateCreatorSwissRecommendations();
 }
 
@@ -22513,7 +22714,7 @@ function draftStageHeroCard(t){
                 <span>⏳</span> ${turn.isComplete ? 'DRAFT STATUS' : 'ON THE CLOCK'}
               </div>
               <div style="font:800 20px 'Barlow Condensed';color:#fff;line-height:1.15;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${turn.isComplete ? 'Draft Completed' : esc(curPlayer)}</div>
-              <div style="font-size:12px;color:#a09fa8;line-height:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${turn.isComplete ? 'Ready for Group Stage' : esc(teamName(t, curPlayer))}</div>
+              <div style="font-size:12px;color:#a09fa8;line-height:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${turn.isComplete ? `Ready for ${getStage1Label(t)}` : esc(teamName(t, curPlayer))}</div>
             </div>
           </div>
 
@@ -22676,7 +22877,7 @@ function Home(){
         <div class="tourney-hero-content">
           <div>
             <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-              <span class="status"><i></i>${isDraftPhase ? 'DRAFT ROOM LIVE' : (isTopCutPhase ? 'TOP CUT PLAYOFFS LIVE' : (getStage1Format(t) === 'swiss' ? 'SWISS STAGE LIVE' : 'GROUP STAGE LIVE'))}</span>
+              <span class="status"><i></i>${isDraftPhase ? 'DRAFT ROOM LIVE' : (isTopCutPhase ? 'TOP CUT PLAYOFFS LIVE' : (isLeaguePhase(t) ? 'LEAGUE PHASE LIVE' : (isSwissStage(t) ? 'SWISS STAGE LIVE' : 'GROUP STAGE LIVE')))}</span>
               <span class="status status-grey">${esc(t.season ? t.season.toUpperCase() : 'IN-SEASON')}</span>
             </div>
 
@@ -22688,7 +22889,7 @@ function Home(){
 
           <div class="tourney-hero-actions-bar">
             <div class="tourney-hero-primary-actions">
-              <button class="btn btn-sm hero-primary-btn" style="font-weight:800" onclick="current='${target}';render()">${isDraftPhase ? 'Enter Live Draft Room →' : (isTopCutPhase ? 'View Championship Bracket →' : (getStage1Format(t) === 'swiss' ? 'View Swiss Matches →' : 'View Group Matches →'))}</button>
+              <button class="btn btn-sm hero-primary-btn" style="font-weight:800" onclick="current='${target}';render()">${isDraftPhase ? 'Enter Live Draft Room →' : (isTopCutPhase ? 'View Championship Bracket →' : (isLeaguePhase(t) ? 'View League Matches →' : (isSwissStage(t) ? 'View Swiss Matches →' : 'View Group Matches →')))}</button>
               ${isDraftPhase ? `
                 <button class="btn ghost btn-sm hero-secondary-btn" onclick="go('Teams')">View Rosters</button>
               ` : `
@@ -22718,12 +22919,12 @@ function Home(){
         <div class="in-season-metrics-grid">
           <div class="card pulse-stat-box">
             <span class="pulse-stat-label">Tournament Phase</span>
-            <div class="pulse-stat-val">${isDraftPhase ? 'Live Draft' : (isTopCutPhase ? 'Top Cut Playoffs' : (getStage1Format(t) === 'swiss' ? 'Swiss Stage' : 'Group Stage'))}</div>
+            <div class="pulse-stat-val">${isDraftPhase ? 'Live Draft' : (isTopCutPhase ? 'Top Cut Playoffs' : getStage1Label(t))}</div>
             <div class="pulse-stat-sub">${t.players.length} Competitors</div>
           </div>
 
           <div class="card pulse-stat-box">
-            <span class="pulse-stat-label">${isDraftPhase ? 'Draft Picks Made' : (isTopCutPhase ? 'Playoff Fixtures' : (getStage1Format(t) === 'swiss' ? 'Swiss Fixtures' : 'Group Fixtures'))}</span>
+            <span class="pulse-stat-label">${isDraftPhase ? 'Draft Picks Made' : (isTopCutPhase ? 'Playoff Fixtures' : (isLeaguePhase(t) ? 'League Fixtures' : (isSwissStage(t) ? 'Swiss Fixtures' : 'Group Fixtures')))}</span>
             <div class="pulse-stat-val">${isDraftPhase && turn ? `${turn.currentPickNumber - 1} <small style="font-size:12px;color:#8e8c95;font-weight:700">/ ${turn.totalPicks}</small>` : `${activePhaseCompleted} <small style="font-size:12px;color:#8e8c95;font-weight:700">/ ${activePhaseTotal}</small>`}</div>
             <div class="progress" style="margin-top:4px;height:4px"><span style="width:${isDraftPhase ? draftPct : completionPct}%;${isTopCutPhase ? 'background:#ffd166;' : ''}"></span></div>
           </div>
@@ -22737,7 +22938,7 @@ function Home(){
 
             <div class="card pulse-stat-box" style="cursor:pointer" onclick="go('Standings')" title="Click to view Standings & Cutoff Lines">
               <span class="pulse-stat-label" style="display:flex;justify-content:space-between;align-items:center"><span>Top Cut Cutoff</span><span style="color:#ffd166;font-size:10px">↗</span></span>
-              <div class="pulse-stat-val">${getStage1Format(t) === 'swiss' ? 'Top ' + advancePerGroup(t) + ' Advance' : 'Top ' + advancePerGroup(t) + ' Per Group'}</div>
+              <div class="pulse-stat-val">${isRoundBasedStage1(t) ? 'Top ' + advancePerGroup(t) + ' Advance' : 'Top ' + advancePerGroup(t) + ' Per Group'}</div>
               <div class="pulse-stat-sub" style="color:#ffd166;font-weight:700">Open Full Standings Tab →</div>
             </div>
           ` : ''}
@@ -22768,7 +22969,7 @@ function Home(){
 
 
 function advancePerGroup(t){
-  if(t?.stage1Format === 'swiss') return Math.max(1, Number(t.swissCut) || 4);
+  if(isRoundBasedStage1(t)) return Math.max(1, Number(t.swissCut) || Number(t.advancePerGroup) || 4);
   if(Number.isFinite(Number(t?.advancePerGroup)))return Math.max(1,Number(t.advancePerGroup));
   if(Number.isFinite(Number(t?.advance)))return Math.max(1,Number(t.advance));
   let groups=Object.keys(groupsOf(t)).length,total=Number(t?.id==='scarlet'?cut:t?.advance||1);
@@ -22778,17 +22979,18 @@ function advancePerGroup(t){
 function openSettings(){
   let t=ongoingT();
   if(!t) return;
-  let isSwiss = (t.stage1Format === 'swiss');
-  if(isSwiss){
+  if(isRoundBasedStage1(t)){
+    let isLeague = isLeaguePhase(t);
     document.querySelector('#modal').innerHTML=`<div class="modal-wrap" onclick="if(event.target===this)closeModal()"><div class="modal" style="max-width:430px">
-      <div class="modal-head"><div><div class="eyebrow">Moderator setting</div><h2>Swiss qualification</h2></div><button class="close" onclick="closeModal()">×</button></div>
+      <div class="modal-head"><div><div class="eyebrow">Moderator setting</div><h2>${isLeague ? 'League Phase qualification' : 'Swiss qualification'}</h2></div><button class="close" onclick="closeModal()">×</button></div>
       <div class="field"><label>Trainers advancing to Top Cut Playoffs</label><select id="cutSelect">
         <option value="2" ${advancePerGroup(t)===2?'selected':''}>Top 2</option>
         <option value="4" ${advancePerGroup(t)===4?'selected':''}>Top 4</option>
+        <option value="6" ${advancePerGroup(t)===6?'selected':''}>Top 6</option>
         <option value="8" ${advancePerGroup(t)===8?'selected':''}>Top 8</option>
       </select></div>
-      <div class="field"><label>Total Swiss Rounds</label><input id="roundsSelect" type="number" min="2" max="10" value="${t.swissRounds || 4}"></div>
-      <p class="sub">This updates the playoff qualification cutoff line and Swiss schedule.</p>
+      <div class="field"><label>Total ${isLeague ? 'League Phase' : 'Swiss'} Rounds</label><input id="roundsSelect" type="number" min="2" max="15" value="${t.swissRounds || 4}"></div>
+      <p class="sub">This updates the playoff qualification cutoff line and ${isLeague ? 'League Phase' : 'Swiss'} schedule.</p>
       <div class="creator-actions"><button class="btn" onclick="saveQualification()">Save qualification</button></div>
     </div></div>`;
     return;
@@ -22801,8 +23003,9 @@ function saveQualification(){
   let t=ongoingT();
   if(!t) return;
   let value=Math.max(1,+document.querySelector('#cutSelect').value||1);
-  if(t.stage1Format === 'swiss'){
+  if(isRoundBasedStage1(t)){
     t.swissCut = value;
+    t.advancePerGroup = value;
     let roundsVal = +document.querySelector('#roundsSelect')?.value;
     if(roundsVal && roundsVal >= 2) t.swissRounds = roundsVal;
   } else {
@@ -22833,7 +23036,7 @@ function isTournamentGroupStageOfficial(t){
   if(t.status === 'COMPLETE') return true;
   if(t.phase === 'topcut' || t.phase === 'complete') return true;
   if(t.finalStandings && Object.keys(t.finalStandings).length > 0) return true;
-  if(t.bracketManagerData && t.phase !== 'groups' && t.phase !== 'group' && t.phase !== 'swiss' && t.phase !== 'draft') return true;
+  if(t.bracketManagerData && t.phase !== 'groups' && t.phase !== 'group' && t.phase !== 'swiss' && t.phase !== 'league_phase' && t.phase !== 'draft') return true;
   return false;
 }
 
@@ -23032,7 +23235,7 @@ function tournamentCard(t){
     : (t.season ? t.season.toUpperCase() : (t.status || 'TOURNAMENT'));
   let champLine = t.champion
     ? `<div class="archive-champion">Champion: ${esc(t.champion.toUpperCase())}</div>`
-    : `<div class="archive-regulation" style="color:#8e8c95">${(t.phase==='topcut'?'Top Cut':(getStage1Format(t)==='swiss'?'Swiss Stage':'Group Stage'))} · ${t.players.length} Trainers</div>`;
+    : `<div class="archive-regulation" style="color:#8e8c95">${(t.phase==='topcut'?'Top Cut':getStage1Label(t))} · ${t.players.length} Trainers</div>`;
   return `<button class="card archive-card" ${bgStyle} onclick="openTournament('${t.id}')">
     <div class="archive-season-badge"><i></i>${esc(badgeText)}</div>
     <div class="archive-title">${esc(t.name)}</div>
@@ -24157,8 +24360,16 @@ function isGroupComplete(t,g){let ms=groupMatches(t,g);return ms.length>0&&ms.ev
 
 function evaluateStandingsForMatches(members, matchesList, criteria, t) {
   let s = {};
-  members.forEach(p => s[p] = { p, w: 0, l: 0, gw: 0, gl: 0, h2h: 0, h2hWins: 0, faintsDealt: 0, faintsTaken: 0, results: {} });
+  members.forEach(p => s[p] = { p, w: 0, l: 0, gw: 0, gl: 0, h2h: 0, h2hWins: 0, sos: 0, faintsDealt: 0, faintsTaken: 0, results: {}, overdraftPenalty: +(t?.overdraftPenalties?.[p] || 0) });
   matchesList.forEach(m => {
+    if (m.b === 'BYE' && s[m.a]) {
+      s[m.a].w++; s[m.a].gw += 2;
+      return;
+    }
+    if (m.a === 'BYE' && s[m.b]) {
+      s[m.b].w++; s[m.b].gw += 2;
+      return;
+    }
     let a = s[m.a], b = s[m.b];
     if (!a || !b) return;
     a.gw += +m.as; a.gl += +m.bs; b.gw += +m.bs; b.gl += +m.as;
@@ -24171,7 +24382,7 @@ function evaluateStandingsForMatches(members, matchesList, criteria, t) {
   let metrics = (typeof STANDING_METRICS !== 'undefined' && STANDING_METRICS) ? STANDING_METRICS : {
     wl: { compare: (a, b) => (b.w - a.w) || (a.l - b.l) },
     gw: { compare: (a, b) => b.gw - a.gw },
-    gd: { compare: (a, b) => (b.gw - b.gl) - (a.gw - a.gl) },
+    gd: { compare: (a, b) => (b.gw - a.gl) - (a.gw - a.gl) },
     h2h: { compare: (a, b) => {
       let ah = a.results ? a.results[b.p] : undefined;
       let bh = b.results ? b.results[a.p] : undefined;
@@ -24180,6 +24391,16 @@ function evaluateStandingsForMatches(members, matchesList, criteria, t) {
     }}
   };
   let critList = (typeof getStandingsCriteria === 'function') ? getStandingsCriteria(t) : (criteria || ['wl', 'gw', 'gd', 'h2h']);
+  if(critList.includes('sos')){
+    Object.values(s).forEach(item => {
+      let oppWins = 0;
+      matchesList.forEach(m => {
+        if(m.a === item.p && s[m.b]) oppWins += s[m.b].w;
+        else if(m.b === item.p && s[m.a]) oppWins += s[m.a].w;
+      });
+      item.sos = oppWins;
+    });
+  }
   if(critList.includes('fr')){
     matchesList.forEach(m => {
       let replays = Array.isArray(m.replays) ? m.replays : [];
@@ -24204,23 +24425,37 @@ function evaluateStandingsForMatches(members, matchesList, criteria, t) {
 }
 
 function isMathematicallyClinched(t, p) {
+  if (!t || !p) return false;
+  if (isSwissStage(t)) {
+    let row = getSwissStand(t).find(x => x.p === p);
+    return row?.status === 'clinched';
+  }
   let g = Object.entries(groupsOf(t)).find(([, ps]) => ps.includes(p))?.[0];
   if (!g) return false;
   let ps = groupsOf(t)[g], cut = advancePerGroup(t);
   if (ps.length <= cut) return true;
 
   let allMatches = groupMatches(t, g);
-  let played = allMatches.filter(m => m.as !== '' && m.as != null && m.bs !== '' && m.bs != null);
-  let unplayed = allMatches.filter(m => m.as === '' || m.as == null || m.bs === '' || m.bs == null);
+  let played = allMatches.filter(m => m.b === 'BYE' || m.a === 'BYE' || (m.as !== '' && m.as != null && m.bs !== '' && m.bs != null));
+  let unplayed = allMatches.filter(m => m.b !== 'BYE' && m.a !== 'BYE' && (m.as === '' || m.as == null || m.bs === '' || m.bs == null));
 
-  if (unplayed.length === 0) {
+  let isLeague = isLeaguePhase(t);
+  let totalRounds = isLeague ? Math.max(2, Number(t.swissRounds) || 4) : 0;
+  let generatedRounds = isLeague ? Math.max(Number(t.swissCurrentRound) || 1, new Set(allMatches.map(m => m.round || 'Round 1')).size) : 0;
+  let hasUngeneratedRounds = isLeague && t.phase !== 'topcut' && t.status !== 'COMPLETE' && generatedRounds < totalRounds;
+
+  if (unplayed.length === 0 && !hasUngeneratedRounds) {
     let finalStand = evaluateStandingsForMatches(ps, played, null, t);
     return finalStand.findIndex(x => x.p === p) < cut;
   }
 
-  let wins = {}, remaining = {};
-  ps.forEach(x => { wins[x] = 0; remaining[x] = 0; });
+  let wins = {}, playedCount = {}, remaining = {};
+  ps.forEach(x => { wins[x] = 0; playedCount[x] = 0; remaining[x] = 0; });
   played.forEach(m => {
+    if (m.b === 'BYE' && wins[m.a] !== undefined) { wins[m.a]++; playedCount[m.a]++; return; }
+    if (m.a === 'BYE' && wins[m.b] !== undefined) { wins[m.b]++; playedCount[m.b]++; return; }
+    if (playedCount[m.a] !== undefined) playedCount[m.a]++;
+    if (playedCount[m.b] !== undefined) playedCount[m.b]++;
     if (+m.as > +m.bs) wins[m.a] = (wins[m.a] || 0) + 1;
     else if (+m.bs > +m.as) wins[m.b] = (wins[m.b] || 0) + 1;
   });
@@ -24228,10 +24463,19 @@ function isMathematicallyClinched(t, p) {
     remaining[m.a] = (remaining[m.a] || 0) + 1;
     remaining[m.b] = (remaining[m.b] || 0) + 1;
   });
+  if (hasUngeneratedRounds) {
+    ps.forEach(x => {
+      let totalLeft = Math.max(0, totalRounds - (playedCount[x] || 0));
+      if (totalLeft > (remaining[x] || 0)) remaining[x] = totalLeft;
+    });
+  }
 
   let minWins = wins[p] || 0;
   if (ps.filter(x => x !== p && ((wins[x] || 0) + (remaining[x] || 0)) >= minWins).length < cut) {
     return true;
+  }
+  if (hasUngeneratedRounds) {
+    return false;
   }
 
   // Worst-case scenario for p: p loses 0-2 in every unplayed match involving p
@@ -24300,23 +24544,37 @@ function isMathematicallyClinched(t, p) {
 }
 
 function isMathematicallyEliminated(t, p) {
+  if (!t || !p) return true;
+  if (isSwissStage(t)) {
+    let row = getSwissStand(t).find(x => x.p === p);
+    return row?.status === 'eliminated';
+  }
   let g = Object.entries(groupsOf(t)).find(([, ps]) => ps.includes(p))?.[0];
   if (!g) return true;
   let ps = groupsOf(t)[g], cut = advancePerGroup(t);
   if (ps.length <= cut) return false;
 
   let allMatches = groupMatches(t, g);
-  let played = allMatches.filter(m => m.as !== '' && m.as != null && m.bs !== '' && m.bs != null);
-  let unplayed = allMatches.filter(m => m.as === '' || m.as == null || m.bs === '' || m.bs == null);
+  let played = allMatches.filter(m => m.b === 'BYE' || m.a === 'BYE' || (m.as !== '' && m.as != null && m.bs !== '' && m.bs != null));
+  let unplayed = allMatches.filter(m => m.b !== 'BYE' && m.a !== 'BYE' && (m.as === '' || m.as == null || m.bs === '' || m.bs == null));
 
-  if (unplayed.length === 0) {
+  let isLeague = isLeaguePhase(t);
+  let totalRounds = isLeague ? Math.max(2, Number(t.swissRounds) || 4) : 0;
+  let generatedRounds = isLeague ? Math.max(Number(t.swissCurrentRound) || 1, new Set(allMatches.map(m => m.round || 'Round 1')).size) : 0;
+  let hasUngeneratedRounds = isLeague && t.phase !== 'topcut' && t.status !== 'COMPLETE' && generatedRounds < totalRounds;
+
+  if (unplayed.length === 0 && !hasUngeneratedRounds) {
     let finalStand = evaluateStandingsForMatches(ps, played, null, t);
     return finalStand.findIndex(x => x.p === p) >= cut;
   }
 
-  let wins = {}, remaining = {};
-  ps.forEach(x => { wins[x] = 0; remaining[x] = 0; });
+  let wins = {}, playedCount = {}, remaining = {};
+  ps.forEach(x => { wins[x] = 0; playedCount[x] = 0; remaining[x] = 0; });
   played.forEach(m => {
+    if (m.b === 'BYE' && wins[m.a] !== undefined) { wins[m.a]++; playedCount[m.a]++; return; }
+    if (m.a === 'BYE' && wins[m.b] !== undefined) { wins[m.b]++; playedCount[m.b]++; return; }
+    if (playedCount[m.a] !== undefined) playedCount[m.a]++;
+    if (playedCount[m.b] !== undefined) playedCount[m.b]++;
     if (+m.as > +m.bs) wins[m.a] = (wins[m.a] || 0) + 1;
     else if (+m.bs > +m.as) wins[m.b] = (wins[m.b] || 0) + 1;
   });
@@ -24324,10 +24582,17 @@ function isMathematicallyEliminated(t, p) {
     remaining[m.a] = (remaining[m.a] || 0) + 1;
     remaining[m.b] = (remaining[m.b] || 0) + 1;
   });
+  if (hasUngeneratedRounds) {
+    ps.forEach(x => {
+      let totalLeft = Math.max(0, totalRounds - (playedCount[x] || 0));
+      if (totalLeft > (remaining[x] || 0)) remaining[x] = totalLeft;
+    });
+  }
 
   let maxWins = (wins[p] || 0) + (remaining[p] || 0);
 
   if (ps.filter(x => x !== p && (wins[x] || 0) > maxWins).length >= cut) return true;
+  if (hasUngeneratedRounds) return false;
   if (ps.filter(x => x !== p && ((wins[x] || 0) + (remaining[x] || 0)) > maxWins).length < cut) return false;
 
   // Best-case scenario for p: p sweeps 2-0 in all unplayed matches involving p
@@ -24462,6 +24727,12 @@ function simulateTournamentOdds(tourn, runs = 2000, rng = Math.random, passedLea
   let champCounts = Object.fromEntries(players.map(p => [p, 0]));
 
   let groupMatchList = tourn.matches || [];
+  let isRoundBased = isRoundBasedStage1(tourn);
+  let totalStage1Rounds = isRoundBased ? Math.max(2, Number(tourn.swissRounds) || 4) : 0;
+  let generatedRounds = isRoundBased ? Math.max(Number(tourn.swissCurrentRound) || 1, new Set(groupMatchList.map(m => m.round || 'Round 1')).size) : 0;
+  let extraRoundsToSim = (isRoundBased && tourn.phase !== 'topcut' && tourn.status !== 'COMPLETE')
+    ? Math.max(0, totalStage1Rounds - generatedRounds)
+    : 0;
 
   for(let r = 0; r < runs; r++){
     let groupResults = {};
@@ -24469,11 +24740,26 @@ function simulateTournamentOdds(tourn, runs = 2000, rng = Math.random, passedLea
       groupResults[g] = Object.fromEntries(ps.map(p => [p, { p, w: 0, l: 0, gw: 0, gl: 0, h2h: {} }]));
     }
 
+    let playedPairsInSim = new Set();
+
     groupMatchList.forEach(m => {
       let g = m.group || Object.keys(groups)[0];
+      if(m.b === 'BYE' && groupResults[g]?.[m.a]){
+        groupResults[g][m.a].w++;
+        groupResults[g][m.a].gw += 2;
+        return;
+      }
+      if(m.a === 'BYE' && groupResults[g]?.[m.b]){
+        groupResults[g][m.b].w++;
+        groupResults[g][m.b].gw += 2;
+        return;
+      }
       let aObj = groupResults[g]?.[m.a];
       let bObj = groupResults[g]?.[m.b];
       if(!aObj || !bObj) return;
+
+      playedPairsInSim.add(m.a + '|' + m.b);
+      playedPairsInSim.add(m.b + '|' + m.a);
 
       let sa, sb;
       if(m.as !== '' && m.as != null && m.bs !== '' && m.bs != null){
@@ -24497,6 +24783,67 @@ function simulateTournamentOdds(tourn, runs = 2000, rng = Math.random, passedLea
         bObj.h2h[m.a] = 1; aObj.h2h[m.b] = 0;
       }
     });
+
+    if(extraRoundsToSim > 0){
+      let gKey = Object.keys(groups)[0];
+      let gMap = groupResults[gKey] || {};
+      let poolBase = Object.keys(gMap);
+      for(let er = 0; er < extraRoundsToSim; er++){
+        let pool = poolBase.slice();
+        for(let i = pool.length - 1; i > 0; i--){
+          let j = Math.floor(rng() * (i + 1));
+          let tmp = pool[i]; pool[i] = pool[j]; pool[j] = tmp;
+        }
+        if(isSwissStage(tourn)){
+          pool.sort((pa, pb) => (gMap[pb].w - gMap[pa].w) || (gMap[pa].l - gMap[pb].l));
+        }
+        let used = new Set();
+        if(pool.length % 2 === 1){
+          let byeP = pool[pool.length - 1];
+          used.add(byeP);
+          gMap[byeP].w++;
+          gMap[byeP].gw += 2;
+        }
+        for(let i = 0; i < pool.length; i++){
+          let pA = pool[i];
+          if(used.has(pA)) continue;
+          let pB = null;
+          for(let j = i + 1; j < pool.length; j++){
+            let cand = pool[j];
+            if(!used.has(cand) && !playedPairsInSim.has(pA + '|' + cand)){
+              pB = cand;
+              break;
+            }
+          }
+          if(!pB){
+            for(let j = i + 1; j < pool.length; j++){
+              if(!used.has(pool[j])){ pB = pool[j]; break; }
+            }
+          }
+          if(!pB) continue;
+          used.add(pA);
+          used.add(pB);
+          playedPairsInSim.add(pA + '|' + pB);
+          playedPairsInSim.add(pB + '|' + pA);
+
+          let aObj = gMap[pA], bObj = gMap[pB];
+          let pWin = matchProbMatrix[pA + '|' + pB] || 0.5;
+          let aWon = rng() < pWin;
+          let sweep = rng() < 0.55;
+          let sa = aWon ? 2 : (sweep ? 0 : 1);
+          let sb = aWon ? (sweep ? 0 : 1) : 2;
+          aObj.gw += sa; aObj.gl += sb;
+          bObj.gw += sb; bObj.gl += sa;
+          if(sa > sb){
+            aObj.w++; bObj.l++;
+            aObj.h2h[pB] = 1; bObj.h2h[pA] = 0;
+          } else {
+            bObj.w++; aObj.l++;
+            bObj.h2h[pA] = 1; aObj.h2h[pB] = 0;
+          }
+        }
+      }
+    }
 
     let qualifiers = [];
     for(let [g, ps] of Object.entries(groups)){
@@ -24560,7 +24907,7 @@ function simulateTournamentOdds(tourn, runs = 2000, rng = Math.random, passedLea
     let gOpponents = (groups[gName] || []).filter(x => x !== p);
     let avgGroupOvr = Math.round(gOpponents.reduce((sum, opp) => sum + (playerPowers[opp]?.ovr || 70), 0) / (gOpponents.length || 1));
     
-    let unplayed = (tourn.matches || []).filter(m => (m.a === p || m.b === p) && (m.as === '' || m.as == null));
+    let unplayed = (tourn.matches || []).filter(m => (m.a === p || m.b === p) && m.b !== 'BYE' && m.a !== 'BYE' && (m.as === '' || m.as == null));
     let remainingOpponents = unplayed.map(m => m.a === p ? m.b : m.a);
 
     let remSosOvr = remainingOpponents.length
@@ -24571,8 +24918,9 @@ function simulateTournamentOdds(tourn, runs = 2000, rng = Math.random, passedLea
     let isClinched = (typeof isMathematicallyClinched === 'function') ? isMathematicallyClinched(tourn, p) : false;
     let isElim = (typeof isMathematicallyEliminated === 'function') ? isMathematicallyEliminated(tourn, p) : false;
 
+    let totalUnplayedForCoach = unplayed.length + extraRoundsToSim;
     let topCutDisplay = `${topCutPct}%`;
-    if(unplayed.length > 0){
+    if(totalUnplayedForCoach > 0){
       if(topCutPct >= 100 && !isClinched){
         topCutDisplay = '>99%';
       } else if(topCutPct <= 0 && !isElim){
@@ -24590,7 +24938,7 @@ function simulateTournamentOdds(tourn, runs = 2000, rng = Math.random, passedLea
       avgGroupOvr,
       sosOvr,
       remSosOvr,
-      unplayedCount: unplayed.length,
+      unplayedCount: totalUnplayedForCoach,
       remainingOpponents,
       topCutPct,
       topCutDisplay,
@@ -24609,7 +24957,9 @@ function getTournamentOddsChecksum(t){
   let cut = advancePerGroup(t);
   return JSON.stringify({
     id: t.id,
-    matches: (t.matches || []).map(m => [m.a, m.b, m.as, m.bs, m.group]),
+    stage1Format: getStage1Format(t),
+    swissRounds: t.swissRounds || 4,
+    matches: (t.matches || []).map(m => [m.a, m.b, m.as, m.bs, m.group, m.round]),
     advance: cut,
     groups: t.groupAssignments || {},
     players: t.players,
@@ -25287,9 +25637,9 @@ function renderMatchRow(m, i, t){
     headerBadge = `<span style="color:#ffd166;font-weight:800">AWAITING SCORE</span>`;
   }
 
-  let isSwissMatch = (getStage1Format(t) === 'swiss') && (t.phase !== 'topcut') && (m.group === 'Swiss Stage' || String(m.round || '').toLowerCase().includes('round'));
-  let aRec = (isSwissMatch && a !== 'BYE') ? `<span class="m-slot-swiss-rec" style="font-size:13px;font-weight:800;color:#ffd166;margin-left:6px">${getSwissMatchRecord(t, a, m.round)}</span>` : '';
-  let bRec = (isSwissMatch && b !== 'BYE') ? `<span class="m-slot-swiss-rec" style="font-size:13px;font-weight:800;color:#ffd166;margin-left:6px">${getSwissMatchRecord(t, b, m.round)}</span>` : '';
+  let isRoundMatch = isRoundBasedStage1(t) && (t.phase !== 'topcut') && (m.group === 'Swiss Stage' || m.group === 'League Phase' || String(m.round || '').toLowerCase().includes('round'));
+  let aRec = (isRoundMatch && a !== 'BYE') ? `<span class="m-slot-swiss-rec" style="font-size:13px;font-weight:800;color:#ffd166;margin-left:6px">${getSwissMatchRecord(t, a, m.round)}</span>` : '';
+  let bRec = (isRoundMatch && b !== 'BYE') ? `<span class="m-slot-swiss-rec" style="font-size:13px;font-weight:800;color:#ffd166;margin-left:6px">${getSwissMatchRecord(t, b, m.round)}</span>` : '';
 
   let aNameHtml = (a === 'BYE') ? '<span style="color:#8e8c95;font-weight:700">BYE</span>' : playerLink(a);
   let bNameHtml = (b === 'BYE') ? '<span style="color:#8e8c95;font-weight:700">BYE</span>' : playerLink(b);
@@ -25384,18 +25734,21 @@ function Matches(){
     return renderDraftLockedMatches(t);
   }
 
-  let isSwiss = (t.stage1Format === 'swiss');
+  let isSwiss = isSwissStage(t);
+  let isLeague = isLeaguePhase(t);
+  let isRoundBased = isRoundBasedStage1(t);
+  let stageLabel = getStage1Label(t);
   let matchGroups = new Set();
   (t.matches || []).forEach(m => {
     if(m.group) matchGroups.add(m.group);
   });
-  let groups = isSwiss ? ['Swiss Stage'] : Array.from(new Set([...Object.keys(groupsOf(t)), ...matchGroups]));
+  let groups = isLeague ? ['League Phase'] : (isSwiss ? ['Swiss Stage'] : Array.from(new Set([...Object.keys(groupsOf(t)), ...matchGroups])));
   if(!groups.length) groups = ['Group A'];
   let allMatches = t.matches || [];
   let totalMatches = allMatches.length;
   let reportedMatches = allMatches.filter(m => m.b === 'BYE' || m.a === 'BYE' || (m.as !== '' && m.as != null && m.bs !== '' && m.bs != null)).length;
 
-  let swissRoundsList = isSwiss ? Array.from(new Set(allMatches.map(m => m.round || 'Round 1'))).sort((a,b) => {
+  let swissRoundsList = isRoundBased ? Array.from(new Set(allMatches.map(m => m.round || 'Round 1'))).sort((a,b) => {
     let na = parseInt(a.replace(/\D/g, '')) || 0;
     let nb = parseInt(b.replace(/\D/g, '')) || 0;
     return na - nb;
@@ -25403,30 +25756,28 @@ function Matches(){
 
   let curRound = t.swissCurrentRound || (swissRoundsList.length ? parseInt(swissRoundsList[swissRoundsList.length - 1].replace(/\D/g, '')) : 1);
   let totalRounds = t.swissRounds || 4;
-  let curRoundMatches = isSwiss ? allMatches.filter(m => m.round === 'Round ' + curRound) : [];
-  let curRoundDone = isSwiss && curRoundMatches.length > 0 && curRoundMatches.every(m => m.b === 'BYE' || m.a === 'BYE' || (m.as !== '' && m.as != null && m.bs !== '' && m.bs != null));
+  let curRoundMatches = isRoundBased ? allMatches.filter(m => m.round === 'Round ' + curRound) : [];
+  let curRoundDone = isRoundBased && curRoundMatches.length > 0 && curRoundMatches.every(m => m.b === 'BYE' || m.a === 'BYE' || (m.as !== '' && m.as != null && m.bs !== '' && m.bs != null));
 
   let swissStand = isSwiss ? getSwissStand(t) : [];
-  let inContention = isSwiss ? swissStand.filter(x => x.status === 'in_contention') : [];
-  let clinchedList = isSwiss ? swissStand.filter(x => x.status === 'clinched') : [];
-  let elimList = isSwiss ? swissStand.filter(x => x.status === 'eliminated') : [];
+  let inContention = isLeague ? (t.players || []) : (isSwiss ? swissStand.filter(x => x.status === 'in_contention') : []);
   let { isEliminationStyle } = isSwiss ? getSwissThresholds(t) : { isEliminationStyle: false };
-  let swissStageOver = isSwiss && curRoundDone && (curRound >= totalRounds || (isEliminationStyle && inContention.length === 0));
-  let canPairNext = isSwiss && curRoundDone && !swissStageOver && (curRound < totalRounds) && (inContention.length > 0);
+  let swissStageOver = isRoundBased && curRoundDone && (curRound >= totalRounds || (!isLeague && isEliminationStyle && inContention.length === 0));
+  let canPairNext = isRoundBased && curRoundDone && !swissStageOver && (curRound < totalRounds) && (inContention.length > 0);
 
-  let visibleSections = isSwiss
+  let visibleSections = isRoundBased
     ? (matchGroupTab === 'all' ? swissRoundsList : swissRoundsList.filter(r => r === matchGroupTab))
     : (matchGroupTab === 'all' ? groups : groups.filter(g => g === matchGroupTab));
 
   let modActions = (canManageTournament(t) && t.status === 'ONGOING' && t.phase !== 'topcut') ? (
-    isSwiss ? `
+    isRoundBased ? `
       <div style="display:flex;align-items:center;flex-wrap:wrap;gap:8px">
-        ${canPairNext ? `<button class="btn" style="padding:6px 13px;font-size:11px;background:#2563eb" onclick="pairSwissNextRound()">🎲 Pair Round ${curRound + 1} (${inContention.length} active)</button>` : ''}
-        ${swissStageOver ? `<button class="btn" style="padding:6px 13px;font-size:11px;background:#10b981;border-color:#34d399" onclick="endFirstPhase()">🏆 End Swiss Stage · Start Top Cut</button>` : ''}
+        ${canPairNext ? `<button class="btn" style="padding:6px 13px;font-size:11px;background:#2563eb" onclick="pairSwissNextRound()">🎲 Pair Round ${curRound + 1}${isLeague ? '' : ` (${inContention.length} active)`}</button>` : ''}
+        ${swissStageOver ? `<button class="btn" style="padding:6px 13px;font-size:11px;background:#10b981;border-color:#34d399" onclick="endFirstPhase()">🏆 End ${stageLabel} · Start Top Cut</button>` : ''}
         <button class="btn ghost" style="padding:6px 11px;font-size:11px" onclick="repairCurrentSwissRound()">🎲 Re-pair Round ${curRound}</button>
         <button class="btn ghost" style="padding:6px 11px;font-size:11px" onclick="addCustom()">⚡ Custom match</button>
         <button class="btn ghost" style="padding:6px 11px;font-size:11px;color:#ff9ba1;border-color:#4a242a" onclick="resetGroupStageScores()">➔ Reset scores</button>
-        ${!swissStageOver && !canPairNext && !curRoundDone ? `<button class="btn ghost" style="padding:6px 13px;font-size:11px" onclick="endFirstPhase()">🏆 Conclude Swiss stage</button>` : ''}
+        ${!swissStageOver && !canPairNext && !curRoundDone ? `<button class="btn ghost" style="padding:6px 13px;font-size:11px" onclick="endFirstPhase()">🏆 Conclude ${stageLabel}</button>` : ''}
       </div>
     ` : `
       <div style="display:flex;align-items:center;flex-wrap:wrap;gap:8px">
@@ -25452,8 +25803,8 @@ function Matches(){
   };
 
   let playersList = t.players || [];
-  let stageSubtitle = isSwiss 
-    ? (t.name + ` · Swiss stage fixtures (Round ${curRound} of ${totalRounds})${t.status === 'COMPLETE' ? ' · Archived' : ''}`) 
+  let stageSubtitle = isRoundBased 
+    ? (t.name + ` · ${stageLabel.toLowerCase()} fixtures (Round ${curRound} of ${totalRounds})${t.status === 'COMPLETE' ? ' · Archived' : ''}`) 
     : (t.name + ` · group stage fixtures${t.status === 'COMPLETE' ? ' · Archived' : ''}`);
 
   return head('Matches', stageSubtitle, modActions) + `
@@ -25462,8 +25813,8 @@ function Matches(){
         <div style="display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px;width:100%">
           <div style="display:flex;flex-wrap:wrap;align-items:center;gap:12px">
             <div class="match-filter-tabs">
-              <button class="m-tab ${matchGroupTab === 'all' ? 'active' : ''}" onclick="matchGroupTab='all';render()">${isSwiss ? 'All Rounds' : 'All Groups'}</button>
-              ${(isSwiss ? swissRoundsList : groups).map(item => `<button class="m-tab ${matchGroupTab === item ? 'active' : ''}" onclick="matchGroupTab='${item}';render()">${esc(item)}</button>`).join('')}
+              <button class="m-tab ${matchGroupTab === 'all' ? 'active' : ''}" onclick="matchGroupTab='all';render()">${isRoundBased ? 'All Rounds' : 'All Groups'}</button>
+              ${(isRoundBased ? swissRoundsList : groups).map(item => `<button class="m-tab ${matchGroupTab === item ? 'active' : ''}" onclick="matchGroupTab='${item}';render()">${esc(item)}</button>`).join('')}
             </div>
 
             <span style="color:#4a4a58">|</span>
@@ -25500,7 +25851,7 @@ function Matches(){
 
       <div>
         ${visibleSections.map(sec => {
-          let sMatches = isSwiss ? (t.matches || []).filter(m => (m.round || 'Round 1') === sec) : (t.matches || []).filter(m => (m.group || 'Group A') === sec);
+          let sMatches = isRoundBased ? (t.matches || []).filter(m => (m.round || 'Round 1') === sec) : (t.matches || []).filter(m => (m.group || 'Group A') === sec);
           let filtered = sMatches.filter(filterMatch);
           let sReported = sMatches.filter(m => m.b === 'BYE' || m.a === 'BYE' || (m.as !== '' && m.as != null && m.bs !== '' && m.bs != null)).length;
           let isDone = sMatches.length > 0 && sReported === sMatches.length;
@@ -25516,7 +25867,7 @@ function Matches(){
                 </div>
                 <div style="display:flex;align-items:center;gap:12px">
                   <span style="font-size:11px;color:#8e8c95;font-weight:700">
-                    ${isDone ? (isSwiss ? '✨ Round Complete' : '✨ Group Stage Complete') : `${sMatches.length - sReported} matches remaining`}
+                    ${isDone ? (isRoundBased ? '✨ Round Complete' : '✨ Group Stage Complete') : `${sMatches.length - sReported} matches remaining`}
                   </span>
                   <button class="btn ghost btn-sm group-collapse-btn" style="padding:4px 8px!important;min-width:28px;height:28px;display:inline-flex;align-items:center;justify-content:center;font-size:11px;color:#c0bec8;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.14);border-radius:6px;cursor:pointer" onclick="event.stopPropagation();toggleGroupCollapse('${jsArg(sec)}')" title="${isCollapsed ? 'Extend / Open ' + esc(sec) : 'Minimize / Close ' + esc(sec)}">
                     <span class="group-toggle-arrow">${arrowIcon}</span>
@@ -25537,7 +25888,7 @@ function Matches(){
 
 function matchesView(t=activeT(), editable=canManageTournament(t)){
   if(!t) return '';
-  if(getStage1Format(t) === 'swiss'){
+  if(isRoundBasedStage1(t)){
     let allMatches = t.matches || [];
     let rounds = Array.from(new Set(allMatches.map(m => m.round || 'Round 1'))).sort((a,b) => {
       let na = parseInt(a.replace(/\D/g, '')) || 0;
@@ -25905,8 +26256,16 @@ function getStand(t=activeT(),group=null){
   if(getStage1Format(t) === 'swiss') return getSwissStand(t);
   let buckets=groupsOf(t),g=group||Object.keys(buckets)[0],members=buckets[g]||t.players,s={};
   members.forEach(p=>s[p]={p,w:0,l:0,gw:0,gl:0,h2h:0,h2hWins:0,sos:0,faintsDealt:0,faintsTaken:0,results:{},overdraftPenalty:+(t.overdraftPenalties?.[p]||0)});
-  let matches = groupMatches(t,g).filter(m=>m.as!==''&&m.as!=null&&m.bs!==''&&m.bs!=null);
+  let matches = groupMatches(t,g).filter(m=>m.b==='BYE'||m.a==='BYE'||(m.as!==''&&m.as!=null&&m.bs!==''&&m.bs!=null));
   matches.forEach(m=>{
+    if(m.b === 'BYE' && s[m.a]){
+      s[m.a].w++; s[m.a].gw += 2;
+      return;
+    }
+    if(m.a === 'BYE' && s[m.b]){
+      s[m.b].w++; s[m.b].gw += 2;
+      return;
+    }
     let a=s[m.a],b=s[m.b];
     if(!a||!b)return;
     a.gw+=+m.as;a.gl+=+m.bs;b.gw+=+m.bs;b.gl+=+m.as;
@@ -25964,12 +26323,14 @@ function getStand(t=activeT(),group=null){
 
 function standingTable(t, g, opts = {}){
   if(!t) return '';
-  let isSwiss = getStage1Format(t) === 'swiss';
+  let isSwiss = isSwissStage(t);
+  let isLeague = isLeaguePhase(t);
+  let isRoundBased = isRoundBasedStage1(t);
   let fullList = isSwiss ? getSwissStand(t) : getStand(t, g);
   if(!fullList || !fullList.length){
-    let emptyTitle = opts.title || `${esc(g || (isSwiss ? 'SWISS STAGE' : 'GROUP'))} STANDINGS`;
+    let emptyTitle = opts.title || `${esc(g || (isSwiss ? 'SWISS STAGE' : (isLeague ? 'LEAGUE PHASE' : 'GROUP')))} STANDINGS`;
     return `
-      <div class="bcast-group-card ${isSwiss ? 'swiss-card' : ''}${opts.cardClass ? ' ' + opts.cardClass : ''}">
+      <div class="bcast-group-card ${isRoundBased ? 'swiss-card' : ''}${opts.cardClass ? ' ' + opts.cardClass : ''}">
         <div class="bcast-group-head">
           <span class="bcast-group-title">${emptyTitle}</span>
         </div>
@@ -26136,10 +26497,10 @@ function standingTable(t, g, opts = {}){
     `);
   });
 
-  let titleText = opts.title !== undefined ? opts.title : (isSwiss ? 'SWISS STAGE STANDINGS' : `${esc(g)} STANDINGS`);
+  let titleText = opts.title !== undefined ? opts.title : (isSwiss ? 'SWISS STAGE STANDINGS' : (isLeague ? 'LEAGUE PHASE STANDINGS' : `${esc(g)} STANDINGS`));
   let advanceTagText = opts.advanceTag !== undefined ? opts.advanceTag : (isPastT 
-    ? (isSwiss ? 'FINAL SWISS STANDINGS' : 'FINAL GROUP STANDINGS')
-    : (isSwiss ? `TOP ${cut} ADVANCE TO PLAYOFFS` : `TOP ${cut} ADVANCE`));
+    ? (isSwiss ? 'FINAL SWISS STANDINGS' : (isLeague ? 'FINAL LEAGUE STANDINGS' : 'FINAL GROUP STANDINGS'))
+    : (isRoundBased ? `TOP ${cut} ADVANCE TO PLAYOFFS` : `TOP ${cut} ADVANCE`));
   let advanceTagClass = opts.advanceTagClass !== undefined ? opts.advanceTagClass : (isPastT ? 'final' : '');
   let headerIcon = opts.icon !== undefined ? opts.icon : (isPastT ? '🏆' : '⚔️');
   let cardExtraClass = opts.cardClass ? ` ${opts.cardClass}` : '';
@@ -26149,7 +26510,7 @@ function standingTable(t, g, opts = {}){
   `).join('');
 
   return `
-    <div class="bcast-group-card ${isSwiss ? 'swiss-card' : ''}${cardExtraClass}">
+    <div class="bcast-group-card ${isRoundBased ? 'swiss-card' : ''}${cardExtraClass}">
       <div class="bcast-group-head">
         <div class="bcast-group-title-wrap">
           <span class="bcast-group-icon">${headerIcon}</span>
@@ -26180,7 +26541,8 @@ function standingTable(t, g, opts = {}){
 
 function renderSingleStageOrSwissStandings(t, stageName){
   if(!t) return '';
-  let isSwiss = getStage1Format(t) === 'swiss';
+  let isSwiss = isSwissStage(t);
+  let isLeague = isLeaguePhase(t);
   let fullList = isSwiss ? getSwissStand(t) : getStand(t, stageName);
   if(!fullList || !fullList.length){
     return `<div class="card table-wrap bcast-card-wrap" style="max-width:100%">${standingTable(t, stageName)}</div>`;
@@ -26193,8 +26555,8 @@ function renderSingleStageOrSwissStandings(t, stageName){
 
   if(cut > 0 && cut < fullList.length){
     let leftTitle = isPastT 
-      ? (isSwiss ? 'SWISS PLAYOFF ADVANCERS' : `${esc(stageName || 'GROUP')} ADVANCERS (TOP ${cut})`)
-      : (isSwiss ? `SWISS TOP SEEDS (TOP ${cut})` : `${esc(stageName || 'STAGE')} TOP SEEDS (TOP ${cut})`);
+      ? (isSwiss ? 'SWISS PLAYOFF ADVANCERS' : (isLeague ? `LEAGUE PHASE ADVANCERS (TOP ${cut})` : `${esc(stageName || 'GROUP')} ADVANCERS (TOP ${cut})`))
+      : (isSwiss ? `SWISS TOP SEEDS (TOP ${cut})` : (isLeague ? `LEAGUE PHASE TOP SEEDS (TOP ${cut})` : `${esc(stageName || 'STAGE')} TOP SEEDS (TOP ${cut})`));
     let leftTag = isPastT ? 'QUALIFIED FOR TOP CUT' : `TOP ${cut} ADVANCE`;
     let leftTagClass = isPastT ? 'qualify' : '';
     let leftIcon = '🏆';
@@ -26848,12 +27210,15 @@ function Standings(){
   if(t.phase === 'draft' && t.status === 'ONGOING'){
     return renderDraftLockedStandings(t);
   }
-  let isSwiss = getStage1Format(t) === 'swiss';
+  let isSwiss = isSwissStage(t);
+  let isLeague = isLeaguePhase(t);
   let groups = Object.keys(groupsOf(t));
   let controls = canManageTournament(t) ? (
     isSwiss 
       ? `<div><button class="btn ghost" onclick="openRankingEditor()">Arrange rankings</button> <button class="btn ghost" onclick="openSettings()">Edit qualification</button></div>`
-      : `<div><button class="btn ghost" onclick="openGroupPlacementEditor()">👥 Arrange groups</button> <button class="btn ghost" onclick="openRankingEditor()">Arrange rankings</button> <button class="btn ghost" onclick="openTiebreakerEditor('${jsArg(t.id)}')">⚖️ Ranking criteria</button> <button class="btn ghost" onclick="openSettings()">Edit qualification</button></div>`
+      : (isLeague
+        ? `<div><button class="btn ghost" onclick="openRankingEditor()">Arrange rankings</button> <button class="btn ghost" onclick="openTiebreakerEditor('${jsArg(t.id)}')">⚖️ Ranking criteria</button> <button class="btn ghost" onclick="openSettings()">Edit qualification</button></div>`
+        : `<div><button class="btn ghost" onclick="openGroupPlacementEditor()">👥 Arrange groups</button> <button class="btn ghost" onclick="openRankingEditor()">Arrange rankings</button> <button class="btn ghost" onclick="openTiebreakerEditor('${jsArg(t.id)}')">⚖️ Ranking criteria</button> <button class="btn ghost" onclick="openSettings()">Edit qualification</button></div>`)
   ) : '';
 
   if(isSwiss){
@@ -26862,6 +27227,9 @@ function Standings(){
 
   let criteria = getStandingsCriteria(t);
   let orderDesc = criteria.map(c => `${STANDING_METRICS[c]?.name || c.toUpperCase()} (${STANDING_METRICS[c]?.label || c.toUpperCase()})`).join(' → ');
+  if(isLeague){
+    return head('Standings', t.name + ' · League Phase', controls) + renderSingleStageOrSwissStandings(t, 'League Phase') + `<p class="sub" style="margin-top:12px">League Phase ranking order: <b>${orderDesc}</b>.</p>` + renderTournamentAwardsStandingsBannerHtml(t);
+  }
   let groupsHtml = groups.length > 1
     ? `<div class="bcast-groups-grid two-groups">${groups.map(g => `<div class="card table-wrap bcast-card-wrap" style="align-self:start">${standingTable(t, g)}</div>`).join('')}</div>`
     : renderSingleStageOrSwissStandings(t, groups[0] || 'Group Stage');
@@ -31156,7 +31524,7 @@ function renderBallotModalScrollContent(){
     handledKeys.add(champQuestion);
     handledKeys.add(canonicalPredictionEventKey(champQuestion));
 
-    let isSwiss = getStage1Format(t) === 'swiss';
+    let isSwiss = isRoundBasedStage1(t);
     let groups = typeof groupsOf === 'function' ? groupsOf(t) : {};
     let groupsList = Object.keys(groups);
     let games = (t.matches || []).filter(m => m && m.a && m.b && m.a !== 'BYE' && m.b !== 'BYE');
@@ -32372,7 +32740,7 @@ function predictions(t=activeT()){
   let started = (t.matches || []).some(x => x.as !== '' && x.as != null);
   let groups = groupsOf(t);
   let groupsList = Object.keys(groups);
-  let isSwiss = getStage1Format(t) === 'swiss';
+  let isSwiss = isRoundBasedStage1(t);
   setTimeout(() => renderPredictionLeaders(t), 0);
   let leaderboard = leaderboardShell(t);
 
@@ -34379,6 +34747,24 @@ function openLegacyEloGuide(){
 function openSettings(){
   let t=activeT();if(!t||!canManageTournament(t))return;
   window.editingTournamentId=t.id;
+  if(isLeaguePhase(t)){
+    let curCut = t.swissCut || advancePerGroup(t) || 4;
+    let n = (t.players || []).length;
+    let maxRounds = n > 2 ? (n % 2 === 0 ? n - 1 : n) : 15;
+    document.querySelector('#modal').innerHTML=`<div class="modal-wrap" onclick="if(event.target===this)closeModal()"><div class="modal" style="max-width:460px">
+      <div class="modal-head"><div><div class="eyebrow">${moderator ? 'Moderator Setting' : 'Tournament Director'} · ${esc(t.name)}</div><h2>League Phase Settings</h2></div><button class="close" onclick="closeModal()">×</button></div>
+      <div class="field" style="margin-top:14px"><label>Trainers advancing to Top Cut Playoffs</label><select id="cutSelect">
+        <option value="2" ${curCut===2?'selected':''}>Top 2 Qualify</option>
+        <option value="4" ${curCut===4?'selected':''}>Top 4 Qualify</option>
+        <option value="6" ${curCut===6?'selected':''}>Top 6 Qualify</option>
+        <option value="8" ${curCut===8?'selected':''}>Top 8 Qualify</option>
+      </select></div>
+      <div class="field"><label>Total League Phase Rounds</label><input id="roundsSelect" type="number" min="2" max="${maxRounds}" value="${t.swissRounds || 4}"></div>
+      <p class="sub" style="margin-top:10px">All coaches compete across every round with random pairings and zero rematches. Top ${curCut} advance to Playoffs at the conclusion of Round ${t.swissRounds || 4}.</p>
+      <div class="creator-actions"><button class="btn" onclick="saveQualification()">Save settings</button></div>
+    </div></div>`;
+    return;
+  }
   let isSwiss = (t.stage1Format === 'swiss');
   if(isSwiss){
     let curCut = t.swissCut || advancePerGroup(t) || 4;
@@ -34388,6 +34774,7 @@ function openSettings(){
       <div class="field" style="margin-top:14px"><label>Trainers advancing to Top Cut Playoffs</label><select id="cutSelect">
         <option value="2" ${curCut===2?'selected':''}>Top 2 Qualify</option>
         <option value="4" ${curCut===4?'selected':''}>Top 4 Qualify</option>
+        <option value="6" ${curCut===6?'selected':''}>Top 6 Qualify</option>
         <option value="8" ${curCut===8?'selected':''}>Top 8 Qualify</option>
       </select></div>
       <div class="field"><label>Total Swiss Rounds</label><input id="roundsSelect" type="number" min="2" max="10" value="${t.swissRounds || 4}"></div>
@@ -34414,7 +34801,14 @@ function openSettings(){
 function saveQualification(){
   let t=tournamentData[window.editingTournamentId]||activeT();
   if(!t||!canManageTournament(t))return;
-  if(t.stage1Format === 'swiss'){
+  if(isLeaguePhase(t)){
+    let cutVal = Math.max(2, +document.querySelector('#cutSelect')?.value || 4);
+    let roundsVal = Math.max(2, +document.querySelector('#roundsSelect')?.value || 4);
+    t.swissCut = cutVal;
+    t.advancePerGroup = cutVal;
+    t.swissRounds = roundsVal;
+    t.swissStyle = 'full';
+  } else if(t.stage1Format === 'swiss'){
     let cutVal = Math.max(2, +document.querySelector('#cutSelect')?.value || 4);
     let roundsVal = Math.max(2, +document.querySelector('#roundsSelect')?.value || 4);
     let styleVal = document.querySelector('#swissStyleSelect')?.value || 'elimination';
@@ -34801,7 +35195,7 @@ function commitGroupDrawCeremony(){
   if(t.phase === 'draft'){
     let d = ensureTournamentDraft(t);
     d.status = 'completed';
-    t.phase = (getStage1Format(t) === 'swiss') ? 'swiss' : 'group';
+    t.phase = isLeaguePhase(t) ? 'league_phase' : (isSwissStage(t) ? 'swiss' : 'group');
   }
 
   persistLeague();
@@ -34816,12 +35210,14 @@ function renderDraftLockedStandings(t, isDetailTab = false){
   let totalPicks = getDraftTotalPicks(t);
   let completedPicks = d.picks ? d.picks.length : 0;
   let pct = totalPicks > 0 ? Math.min(100, Math.round((completedPicks / totalPicks) * 100)) : 0;
+  let stage1Label = getStage1Label(t);
+  let isRoundBased = isRoundBasedStage1(t);
 
   let modControls = moderator ? `
     <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-top:16px">
-      <button class="btn" style="padding:10px 20px;font-weight:900" onclick="openGroupDrawCeremony('${jsArg(t.id)}')">🎩 Draw Groups Ceremony (Names from Hat) →</button>
-      <button class="btn ghost" onclick="randomizeTournamentGroups('${jsArg(t.id)}')">🎲 Randomize Groups</button>
-      <button class="btn ghost" style="color:#4bdd91;border-color:#2a5438" onclick="completeDraftAndAdvance('${jsArg(t.id)}')">⚡ Finalize Draft & Unlock Group Stage</button>
+      ${!isRoundBased ? `<button class="btn" style="padding:10px 20px;font-weight:900" onclick="openGroupDrawCeremony('${jsArg(t.id)}')">🎩 Draw Groups Ceremony (Names from Hat) →</button>
+      <button class="btn ghost" onclick="randomizeTournamentGroups('${jsArg(t.id)}')">🎲 Randomize Groups</button>` : ''}
+      <button class="btn ghost" style="color:#4bdd91;border-color:#2a5438" onclick="completeDraftAndAdvance('${jsArg(t.id)}')">⚡ Finalize Draft & Unlock ${stage1Label}</button>
     </div>
   ` : '';
 
@@ -34829,9 +35225,9 @@ function renderDraftLockedStandings(t, isDetailTab = false){
     <div class="draft-locked-card">
       <div class="draft-locked-icon">🎯</div>
       <div class="eyebrow" style="color:var(--amber);margin-bottom:4px;letter-spacing:1.2px">DRAFT STAGE IN PROGRESS</div>
-      <h2 style="font:900 28px 'Barlow Condensed';color:#f5f3f0;letter-spacing:.4px;margin:4px 0 10px">Group Stage Standings Locked</h2>
+      <h2 style="font:900 28px 'Barlow Condensed';color:#f5f3f0;letter-spacing:.4px;margin:4px 0 10px">${stage1Label} Standings Locked</h2>
       <p class="sub" style="max-width:520px;margin:0 auto 18px;font-size:13px;line-height:1.5">
-        Group stage standings, division tables, and playoff qualification will unlock once the live draft concludes and rosters are locked.
+        ${stage1Label} standings, table rankings, and playoff qualification will unlock once the live draft concludes and rosters are locked.
       </p>
 
       <!-- Progress bar -->
@@ -34864,12 +35260,14 @@ function renderDraftLockedMatches(t, isDetailTab = false){
   let totalPicks = getDraftTotalPicks(t);
   let completedPicks = d.picks ? d.picks.length : 0;
   let pct = totalPicks > 0 ? Math.min(100, Math.round((completedPicks / totalPicks) * 100)) : 0;
+  let stage1Label = getStage1Label(t);
+  let isRoundBased = isRoundBasedStage1(t);
 
   let modControls = moderator ? `
     <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-top:16px">
-      <button class="btn" style="padding:10px 20px;font-weight:900" onclick="openGroupDrawCeremony('${jsArg(t.id)}')">🎩 Draw Groups Ceremony (Names from Hat) →</button>
-      <button class="btn ghost" onclick="randomizeTournamentGroups('${jsArg(t.id)}')">🎲 Randomize Groups</button>
-      <button class="btn ghost" style="color:#4bdd91;border-color:#2a5438" onclick="completeDraftAndAdvance('${jsArg(t.id)}')">⚡ Finalize Draft & Unlock Group Stage</button>
+      ${!isRoundBased ? `<button class="btn" style="padding:10px 20px;font-weight:900" onclick="openGroupDrawCeremony('${jsArg(t.id)}')">🎩 Draw Groups Ceremony (Names from Hat) →</button>
+      <button class="btn ghost" onclick="randomizeTournamentGroups('${jsArg(t.id)}')">🎲 Randomize Groups</button>` : ''}
+      <button class="btn ghost" style="color:#4bdd91;border-color:#2a5438" onclick="completeDraftAndAdvance('${jsArg(t.id)}')">⚡ Finalize Draft & Unlock ${stage1Label}</button>
     </div>
   ` : '';
 
@@ -34879,7 +35277,7 @@ function renderDraftLockedMatches(t, isDetailTab = false){
       <div class="eyebrow" style="color:var(--amber);margin-bottom:4px;letter-spacing:1.2px">DRAFT STAGE IN PROGRESS</div>
       <h2 style="font:900 28px 'Barlow Condensed';color:#f5f3f0;letter-spacing:.4px;margin:4px 0 10px">Match Fixtures & Schedule Locked</h2>
       <p class="sub" style="max-width:520px;margin:0 auto 18px;font-size:13px;line-height:1.5">
-        Round-robin fixtures, divisional matchups, and score reporting will unlock once all draft picks are submitted and groups are set.
+        ${stage1Label} fixtures, head-to-head matchups, and score reporting will unlock once all draft picks are submitted and rosters are set.
       </p>
 
       <!-- Progress bar -->
@@ -34919,7 +35317,7 @@ function renderDraftLockedTopCut(t, isDetailTab = false){
       <div class="eyebrow" style="color:var(--amber);margin-bottom:4px;letter-spacing:1.2px">DRAFT STAGE IN PROGRESS</div>
       <h2 style="font:900 28px 'Barlow Condensed';color:#f5f3f0;letter-spacing:.4px;margin:4px 0 10px">Championship Top Cut Locked</h2>
       <p class="sub" style="max-width:520px;margin:0 auto 18px;font-size:13px;line-height:1.5">
-        The double-elimination championship bracket and playoff seeds generate after the regular group stage. The live draft is currently underway.
+        The double-elimination championship bracket and playoff seeds generate after the regular ${getStage1Label(t).toLowerCase()}. The live draft is currently underway.
       </p>
 
       <!-- Progress bar -->
@@ -34957,7 +35355,7 @@ function renderDraftLockedPredictions(t, isDetailTab = false){
       <div class="eyebrow" style="color:var(--amber);margin-bottom:4px;letter-spacing:1.2px">DRAFT STAGE IN PROGRESS</div>
       <h2 style="font:900 28px 'Barlow Condensed';color:#f5f3f0;letter-spacing:.4px;margin:4px 0 10px">Tournament Pick'ems Locked</h2>
       <p class="sub" style="max-width:520px;margin:0 auto 18px;font-size:13px;line-height:1.5">
-        Match predictions and champion pick'ems will open for all trainers as soon as the live draft concludes and group schedules are established.
+        Match predictions and champion pick'ems will open for all trainers as soon as the live draft concludes and schedules are established.
       </p>
 
       <!-- Progress bar -->
@@ -35023,8 +35421,10 @@ function swapGroupPlacements(first,second,targetGroup){
 function tournamentDetail(){
   let t=activeT();if(!t)return noTournament();
   window.editingTournamentId=t.id;
-  let isSwiss = (getStage1Format(t) === 'swiss');
-  let stage1TabName = isSwiss ? 'Swiss Stage' : 'Group Stage';
+  let isSwiss = isSwissStage(t);
+  let isLeague = isLeaguePhase(t);
+  let isRoundBased = isRoundBasedStage1(t);
+  let stage1TabName = getStage1Label(t);
   let groups=Object.keys(groupsOf(t));
   let hasDraft = Boolean(t.hasDraft || t.draftData?.picks?.length || t.draftData?.board?.length);
   let isDraftOngoing = (t.status === 'ONGOING' && t.phase === 'draft');
@@ -35038,15 +35438,14 @@ function tournamentDetail(){
         : ['Standings', 'Teams', stage1TabName, 'Top Cut', 'Predictions']);
 
   if(!availableTabs.includes(detailTab)){
-    if(detailTab === 'Group Stage' && isSwiss) detailTab = 'Swiss Stage';
-    else if(detailTab === 'Swiss Stage' && !isSwiss) detailTab = 'Group Stage';
+    if((detailTab === 'Group Stage' || detailTab === 'Swiss Stage' || detailTab === 'League Phase') && availableTabs.includes(stage1TabName)) detailTab = stage1TabName;
     else if((detailTab === 'Awards' || detailTab === 'Progression') && !isFinished) detailTab = isDraftOngoing ? 'Draft' : 'Standings';
     else detailTab = isDraftOngoing ? 'Draft' : 'Standings';
   }
 
   let content=detailTab==='Draft'?DraftRostersView(t)
     :detailTab==='Teams'?renderTournamentTeamsTabHtml(t)
-    :detailTab==='Standings'?(isDraftOngoing ? renderDraftLockedStandings(t, true) : (isSwiss ? renderSingleStageOrSwissStandings(t, 'Swiss Stage') : (groups.length > 1 ? `<div class="bcast-groups-grid two-groups">${groups.map(g=>`<div class="card table-wrap bcast-card-wrap" style="align-self:start">${standingTable(t,g)}</div>`).join('')}</div>` : renderSingleStageOrSwissStandings(t, groups[0] || 'Group Stage'))))
+    :detailTab==='Standings'?(isDraftOngoing ? renderDraftLockedStandings(t, true) : (isRoundBased ? renderSingleStageOrSwissStandings(t, stage1TabName) : (groups.length > 1 ? `<div class="bcast-groups-grid two-groups">${groups.map(g=>`<div class="card table-wrap bcast-card-wrap" style="align-self:start">${standingTable(t,g)}</div>`).join('')}</div>` : renderSingleStageOrSwissStandings(t, groups[0] || 'Group Stage'))))
     :detailTab===stage1TabName?(isDraftOngoing ? renderDraftLockedMatches(t, true) : matchesView(t,false))
     :detailTab==='Top Cut'?(isDraftOngoing ? renderDraftLockedTopCut(t, true) : topCutSection(t,!t.bracketManagerData))
     :detailTab==='Awards'?renderTournamentAwardsTabHtml(t)
@@ -35064,9 +35463,9 @@ function tournamentDetail(){
         ${t.regulation ? `<span style="font-weight:800;color:#f5f3f0"><span style="color:var(--red)">⚔️</span> ${esc(t.regulation)}</span><span style="color:#555460">·</span>` : ''}
         <span><b>${t.players.length}</b> Trainers</span>
         <span style="color:#555460">·</span>
-        <span><b>${isSwiss ? (t.swissRounds || 4) + ' Swiss Rounds' : groups.length + ' Group' + (groups.length===1?'':'s')}</b></span>
+        <span><b>${isLeague ? (t.swissRounds || 4) + ' League Rounds' : (isSwiss ? (t.swissRounds || 4) + ' Swiss Rounds' : groups.length + ' Group' + (groups.length===1?'':'s'))}</b></span>
         <span style="color:#555460">·</span>
-        <span>${isSwiss ? 'Top <b>' + advancePerGroup(t) + '</b> Advance to Playoffs' : 'Top <b>' + advancePerGroup(t) + '</b> Per Group'}</span>
+        <span>${isRoundBased ? 'Top <b>' + advancePerGroup(t) + '</b> Advance to Playoffs' : 'Top <b>' + advancePerGroup(t) + '</b> Per Group'}</span>
         ${(t.start || t.end) ? `
           <span style="color:#555460">·</span>
           <span>📅 ${esc(t.start || '')} → ${esc(t.end || '')}</span>
@@ -35088,6 +35487,7 @@ function openTournamentEdit(id){
   if(!canManageTournament(t))return;
   window.editingTournamentId=t.id;
   let locked=t.phase==='topcut';
+  let groupsLocked = locked || isRoundBasedStage1(t);
   let canEditDraft = Boolean(t.hasDraft || t.draftData || t.draftData?.picks?.length || t.draftData?.board?.length || t.status === 'COMPLETE' || t.phase === 'draft');
   let mgrs = getTournamentManagers(t);
   let mgrSubtitle = mgrs.length ? (mgrs.length > 1 ? ` · Directors: ${mgrs.map(esc).join(', ')}` : ` · Director: ${esc(mgrs[0])}`) : '';
@@ -35154,13 +35554,13 @@ function openTournamentEdit(id){
           <div class="edit-hub-card-arrow">›</div>
         </div>
 
-        <div class="edit-hub-card ${locked ? 'disabled' : ''}" ${locked ? 'title="Locked during Top Cut playoffs"' : `onclick="openGroupPlacementEditor()"`}>
+        <div class="edit-hub-card ${groupsLocked ? 'disabled' : ''}" ${groupsLocked ? `title="${locked ? 'Locked during Top Cut playoffs' : 'Single-table format uses round pairings'}"` : `onclick="openGroupPlacementEditor()"`}>
           <div class="edit-hub-card-icon">🏆</div>
           <div class="edit-hub-card-content">
             <div class="edit-hub-card-title">Arrange &amp; Draw Groups</div>
-            <div class="edit-hub-card-desc">${locked ? 'Locked while Top Cut playoffs are active' : 'Group draw, seeding, and pool assignments'}</div>
+            <div class="edit-hub-card-desc">${locked ? 'Locked while Top Cut playoffs are active' : (isRoundBasedStage1(t) ? `${getStage1Label(t)} uses single-table round pairings` : 'Group draw, seeding, and pool assignments')}</div>
           </div>
-          <div class="edit-hub-card-arrow">${locked ? '🔒' : '›'}</div>
+          <div class="edit-hub-card-arrow">${groupsLocked ? '🔒' : '›'}</div>
         </div>
 
         <div class="edit-hub-card" onclick="openSettings()">
@@ -35241,7 +35641,7 @@ function playoffOdds(){
   if(!t) return noTournament('Playoff Odds');
 
   let d = ensureTournamentDraft(t);
-  let isDraftPhase = (t.phase === 'draft' || (t.hasDraft && d && d.status !== 'completed' && t.phase !== 'group' && t.phase !== 'groups' && t.phase !== 'swiss' && t.phase !== 'topcut' && t.phase !== 'complete'));
+  let isDraftPhase = (t.phase === 'draft' || (t.hasDraft && d && d.status !== 'completed' && t.phase !== 'group' && t.phase !== 'groups' && t.phase !== 'swiss' && t.phase !== 'league_phase' && t.phase !== 'topcut' && t.phase !== 'complete'));
   if(isDraftPhase){
     return head('Playoff & Championship Odds', (t.season || '') + ': ' + t.name + ' · Locked During Draft') + `
       <div class="card empty" style="padding:48px 20px;text-align:center;max-width:560px;margin:30px auto;background:#14141c;border:1px solid #2b2b3a;border-radius:12px;box-shadow:0 8px 30px rgba(0,0,0,0.5)">
@@ -38894,13 +39294,12 @@ function resumeDraft(tId){
 function completeDraftAndAdvance(tId){
   let t = tournamentData[tId] || activeT();
   if(!t || !canManageTournament(t)) return;
-  let isSwiss = (getStage1Format(t) === 'swiss');
-  let stageName = isSwiss ? 'Swiss Stage' : 'Group Stage';
+  let stageName = getStage1Label(t);
   if(!confirm(`Finish draft for ${t.name} and advance to ${stageName}? All drafted rosters will be locked in.`)) return;
 
   let d = ensureTournamentDraft(t);
   d.status = 'completed';
-  t.phase = isSwiss ? 'swiss' : 'group';
+  t.phase = isLeaguePhase(t) ? 'league_phase' : (isSwissStage(t) ? 'swiss' : 'group');
   current = 'Matches';
   persistLeague();
   render();
@@ -38968,7 +39367,7 @@ function DraftRoom(t){
       ${canManageDraft ? `<button class="btn ghost btn-sm" onclick="openDraftOrderEditor('${jsArg(t.id)}')">🔀 Draft Order</button>` : ''}
       ${canManageDraft ? `<button class="btn ghost btn-sm" onclick="exportDraftBoardCSV('${jsArg(t.id)}')">📥 Export Board (CSV)</button>` : ''}
       ${canManageDraft ? `<button class="btn ghost btn-sm" onclick="openDraftBoardImporter('${jsArg(t.id)}')">📥 Import Sheet</button>` : ''}
-      ${canManageDraft && (d.status === 'completed' || d.picks?.length >= getDraftTotalPicks(t)) ? `<button class="btn btn-sm" style="background:#10b981;border-color:#34d399" onclick="completeDraftAndAdvance('${jsArg(t.id)}')">🏁 Start ${getStage1Format(t) === 'swiss' ? 'Swiss Stage' : 'Group Stage'} →</button>` : ''}
+      ${canManageDraft && (d.status === 'completed' || d.picks?.length >= getDraftTotalPicks(t)) ? `<button class="btn btn-sm" style="background:#10b981;border-color:#34d399" onclick="completeDraftAndAdvance('${jsArg(t.id)}')">🏁 Start ${getStage1Label(t)} →</button>` : ''}
     </div>
   `;
 
@@ -39028,7 +39427,7 @@ function DraftRoom(t){
                 ${turn.isComplete ? 'All Rosters Drafted' : esc(curPlayer)}
               </div>
               <div style="font-size:11px;color:#a09fa8;margin-top:2px">
-                ${turn.isComplete ? 'Ready for Group Stage' : (d.status === 'pending' ? 'First pick when draft starts' : esc(teamName(t, curPlayer)))}
+                ${turn.isComplete ? `Ready for ${getStage1Label(t)}` : (d.status === 'pending' ? 'First pick when draft starts' : esc(teamName(t, curPlayer)))}
               </div>
             </div>
 
@@ -39717,7 +40116,7 @@ function DraftCompletedView(t){
   let totalPicks = (d.picks || []).length;
   let order = getDraftOrderList(t);
   let canManage = canManageTournament(t);
-  let isSwiss = (getStage1Format(t) === 'swiss');
+  let isSwiss = isRoundBasedStage1(t);
   let hasActiveDraft = Boolean(t.hasDraft);
 
   return `
@@ -40115,7 +40514,7 @@ function Board(){
   // 1. If an active in-season tournament is ONGOING:
   if(t && t.status === 'ONGOING'){
     let d = ensureTournamentDraft(t);
-    let isDraftOver = (!t.hasDraft || t.phase !== 'draft' || t.phase === 'group' || t.phase === 'groups' || t.phase === 'swiss' || t.phase === 'topcut' || t.phase === 'complete' || d.status === 'completed');
+    let isDraftOver = (!t.hasDraft || t.phase !== 'draft' || t.phase === 'group' || t.phase === 'groups' || t.phase === 'swiss' || t.phase === 'league_phase' || t.phase === 'topcut' || t.phase === 'complete' || d.status === 'completed');
 
     if(isDraftOver){
       return head('Draft Rosters & Budgets', (t.season || '') + ': ' + t.name + ' · Coach Rosters & Draft Board') + DraftCompletedView(t);
