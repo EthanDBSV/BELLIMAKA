@@ -7792,7 +7792,6 @@ try{
   let savedHistory=JSON.parse(localStorage.getItem('draftdex-history')||'null');
   if(savedHistory)Object.assign(teamHistory,savedHistory);
   let savedCovers=JSON.parse(localStorage.getItem('draftdex-teamcovers')||'null');
-  if(savedCovers)Object.assign(teamCovers,savedCovers);
   let savedPics=JSON.parse(localStorage.getItem('draftdex-profilepics')||'null');
   if(savedPics)Object.assign(profilePictures,savedPics);
   let savedNameLines=JSON.parse(localStorage.getItem('draftdex-coach-namelines')||'null');
@@ -7801,20 +7800,21 @@ try{
   if(savedHashtags)Object.assign(coachHashtags,savedHashtags);
   let savedColors=JSON.parse(localStorage.getItem('draftdex-coach-colors')||'null');
   if(savedColors)Object.assign(coachThemeColors,savedColors);
-  // Auto-convert any team covers into profile pictures
-  let convertedAnyCovers = false;
-  Object.keys(teamCovers).forEach(k => {
-    if(teamCovers[k] && !profilePictures[k]){
-      profilePictures[k] = teamCovers[k];
-      convertedAnyCovers = true;
+  // Migrate any legacy team covers into profilePictures and purge legacy teamCovers storage
+  if(savedCovers && typeof savedCovers === 'object'){
+    let convertedAnyCovers = false;
+    Object.keys(savedCovers).forEach(k => {
+      if(savedCovers[k] && !profilePictures[k]){
+        profilePictures[k] = savedCovers[k];
+        convertedAnyCovers = true;
+      }
+    });
+    if(convertedAnyCovers){
+      try{ localStorage.setItem('draftdex-profilepics', JSON.stringify(profilePictures)); }catch(e){}
     }
-  });
-  if(convertedAnyCovers){
-    try{ localStorage.setItem('draftdex-profilepics', JSON.stringify(profilePictures));
-    localStorage.setItem('draftdex-coach-namelines', JSON.stringify(coachNameLines));
-    localStorage.setItem('draftdex-coach-hashtags', JSON.stringify(coachHashtags));
-    localStorage.setItem('draftdex-coach-colors', JSON.stringify(coachThemeColors)); }catch(e){}
+    try{ localStorage.removeItem('draftdex-teamcovers'); }catch(e){}
   }
+  Object.keys(teamCovers).forEach(k => delete teamCovers[k]);
   let savedPulse=JSON.parse(localStorage.getItem('draftdex-pulsepanels')||'null');
   if(savedPulse)Object.assign(pulsePanelImages,savedPulse);
   let savedDraftCover=localStorage.getItem('draftdex-draft-cover');
@@ -8453,8 +8453,12 @@ function openTeamCoverEditor(p){
 }
 function saveTeamCover(p){
   if(!window.pendingTeamCover){closeModal();return}
-  teamCovers[p]=window.pendingTeamCover;
-  try{ localStorage.setItem('draftdex-teamcovers', JSON.stringify(teamCovers)); }catch(e){}
+  profilePictures[p]=window.pendingTeamCover;
+  delete teamCovers[p];
+  try{
+    localStorage.setItem('draftdex-profilepics', JSON.stringify(profilePictures));
+    localStorage.removeItem('draftdex-teamcovers');
+  }catch(e){}
   window.pendingTeamCover=null;
   if(moderator) pushMediaToCloud();
   persistLeague();
@@ -8463,16 +8467,20 @@ function saveTeamCover(p){
 }
 function removeTeamCover(p){
   delete teamCovers[p];
-  try{ localStorage.setItem('draftdex-teamcovers', JSON.stringify(teamCovers)); }catch(e){}
+  delete profilePictures[p];
+  try{
+    localStorage.setItem('draftdex-profilepics', JSON.stringify(profilePictures));
+    localStorage.removeItem('draftdex-teamcovers');
+  }catch(e){}
   window.pendingTeamCover=null;
   if(moderator) pushMediaToCloud();
   persistLeague();
   closeModal();
   render();
-  if(typeof showDraftToast === 'function') showDraftToast('Team cover removed');
+  if(typeof showDraftToast === 'function') showDraftToast('Coach avatar removed');
 }
 function openProfilePictureEditor(p){
-  let curPic = profilePictures[p] || '';
+  let curPic = profilePictures[p] || teamCovers[p] || '';
 
   openVisualCoverCropper({
     title: p,
@@ -8486,7 +8494,11 @@ function openProfilePictureEditor(p){
     coachName: p,
     onSave: function(croppedDataUrl){
       profilePictures[p] = croppedDataUrl;
-      try{ localStorage.setItem('draftdex-profilepics', JSON.stringify(profilePictures)); }catch(e){}
+      delete teamCovers[p];
+      try{
+        localStorage.setItem('draftdex-profilepics', JSON.stringify(profilePictures));
+        localStorage.removeItem('draftdex-teamcovers');
+      }catch(e){}
       if(moderator) pushMediaToCloud();
       persistLeague();
       if(document.querySelector('#modal')?.innerHTML?.trim()){
@@ -8504,7 +8516,11 @@ function openProfilePictureEditor(p){
 function saveProfilePicture(p){
   if(!window.pendingProfilePicture){closeModal();return}
   profilePictures[p]=window.pendingProfilePicture;
-  try{ localStorage.setItem('draftdex-profilepics', JSON.stringify(profilePictures)); }catch(e){}
+  delete teamCovers[p];
+  try{
+    localStorage.setItem('draftdex-profilepics', JSON.stringify(profilePictures));
+    localStorage.removeItem('draftdex-teamcovers');
+  }catch(e){}
   window.pendingProfilePicture=null;
   if(moderator) pushMediaToCloud();
   persistLeague();
@@ -8513,7 +8529,11 @@ function saveProfilePicture(p){
 }
 function removeProfilePicture(p){
   delete profilePictures[p];
-  try{ localStorage.setItem('draftdex-profilepics', JSON.stringify(profilePictures)); }catch(e){}
+  delete teamCovers[p];
+  try{
+    localStorage.setItem('draftdex-profilepics', JSON.stringify(profilePictures));
+    localStorage.removeItem('draftdex-teamcovers');
+  }catch(e){}
   window.pendingProfilePicture=null;
   if(moderator) pushMediaToCloud();
   persistLeague();
@@ -18493,9 +18513,9 @@ function renderTournamentProgressionTabHtml(t){
       : calculatePlayerOVR(p);
 
     let diff = (fOvr && eOvr) ? (fOvr.ovr - eOvr.ovr) : null;
-    let coverArt = (typeof teamCovers === 'object' && teamCovers[p]) || '';
     let pfpArt = (typeof profilePictures === 'object' && profilePictures[p]) || '';
-    let bannerArt = coverArt || pfpArt || '';
+    let coverArt = (typeof teamCovers === 'object' && teamCovers[p]) || '';
+    let bannerArt = pfpArt || coverArt || '';
     let accolades = getCoachAccoladesForTournament(t, p, tots, fin, inTopCut);
 
     return {
@@ -18860,27 +18880,25 @@ async function fetchMediaFromCloud(){
       localMediaRev = Math.max(Number(m.mediaRev || 0), m._cloudTime || Date.now());
       try { localStorage.setItem('draftdex-media-rev', String(localMediaRev)); } catch(e){}
 
-      if(m.teamCovers){
-        Object.keys(teamCovers).forEach(k => delete teamCovers[k]);
-        Object.assign(teamCovers, m.teamCovers);
-        try { localStorage.setItem('draftdex-teamcovers', JSON.stringify(teamCovers)); } catch(e){}
-      }
       if(m.profilePictures){
         Object.keys(profilePictures).forEach(k => delete profilePictures[k]);
         Object.assign(profilePictures, m.profilePictures);
         try { localStorage.setItem('draftdex-profilepics', JSON.stringify(profilePictures)); } catch(e){}
       }
-      // Ensure all team covers are converted to profile pictures
-      let convertedAnyCloudCovers = false;
-      Object.keys(teamCovers).forEach(k => {
-        if(teamCovers[k] && !profilePictures[k]){
-          profilePictures[k] = teamCovers[k];
-          convertedAnyCloudCovers = true;
+      if(m.teamCovers && typeof m.teamCovers === 'object'){
+        let convertedAnyCloudCovers = false;
+        Object.keys(m.teamCovers).forEach(k => {
+          if(m.teamCovers[k] && !profilePictures[k]){
+            profilePictures[k] = m.teamCovers[k];
+            convertedAnyCloudCovers = true;
+          }
+        });
+        if(convertedAnyCloudCovers){
+          try { localStorage.setItem('draftdex-profilepics', JSON.stringify(profilePictures)); } catch(e){}
         }
-      });
-      if(convertedAnyCloudCovers){
-        try { localStorage.setItem('draftdex-profilepics', JSON.stringify(profilePictures)); } catch(e){}
       }
+      Object.keys(teamCovers).forEach(k => delete teamCovers[k]);
+      try { localStorage.removeItem('draftdex-teamcovers'); } catch(e){}
       if(m.pulsePanelImages){
         Object.keys(pulsePanelImages).forEach(k => delete pulsePanelImages[k]);
         Object.assign(pulsePanelImages, m.pulsePanelImages);
@@ -18914,9 +18932,11 @@ async function pushMediaToCloud(){
   if(isSandboxMode() || bType === 'local') return;
   localMediaRev = Date.now();
   try { localStorage.setItem('draftdex-media-rev', String(localMediaRev)); } catch(e){}
+  Object.keys(teamCovers).forEach(k => delete teamCovers[k]);
+  try { localStorage.removeItem('draftdex-teamcovers'); } catch(e){}
   let mediaPayload = {
     mediaRev: localMediaRev,
-    teamCovers: teamCovers,
+    teamCovers: {},
     profilePictures: profilePictures,
     pulsePanelImages: pulsePanelImages,
     tournamentCovers: tournamentCovers,
@@ -19278,8 +19298,13 @@ function applySharedState(data){
   Object.keys(teamHistory).forEach(k=>delete teamHistory[k]);
   Object.assign(teamHistory, data.teamHistory || {});
 
-  if(data.teamCovers) { Object.keys(teamCovers).forEach(k=>delete teamCovers[k]); Object.assign(teamCovers, data.teamCovers); }
   if(data.profilePictures) { Object.keys(profilePictures).forEach(k=>delete profilePictures[k]); Object.assign(profilePictures, data.profilePictures); }
+  if(data.teamCovers && typeof data.teamCovers === 'object') {
+    Object.keys(data.teamCovers).forEach(k => {
+      if(data.teamCovers[k] && !profilePictures[k]) profilePictures[k] = data.teamCovers[k];
+    });
+  }
+  Object.keys(teamCovers).forEach(k=>delete teamCovers[k]);
   if(data.pulsePanelImages) { Object.keys(pulsePanelImages).forEach(k=>delete pulsePanelImages[k]); Object.assign(pulsePanelImages, data.pulsePanelImages); }
 
   if(data.accountLinks && typeof data.accountLinks === 'object'){
@@ -19307,7 +19332,7 @@ function applySharedState(data){
     localStorage.setItem('draftdex-profiles', JSON.stringify(profiles));
     localStorage.setItem('draftdex-rosters', JSON.stringify(roster));
     localStorage.setItem('draftdex-history', JSON.stringify(teamHistory));
-    localStorage.setItem('draftdex-teamcovers', JSON.stringify(teamCovers));
+    localStorage.removeItem('draftdex-teamcovers');
     localStorage.setItem('draftdex-profilepics', JSON.stringify(profilePictures));
     localStorage.setItem('draftdex-pulsepanels', JSON.stringify(pulsePanelImages));
     if(typeof offseasonDraftBoard !== 'undefined') localStorage.setItem('draftdex-offseason-board', JSON.stringify(offseasonDraftBoard));
@@ -20199,7 +20224,7 @@ function persistLeague(){
     localStorage.setItem('draftdex-profiles', JSON.stringify(profiles));
     localStorage.setItem('draftdex-rosters', JSON.stringify(roster));
     localStorage.setItem('draftdex-history', JSON.stringify(teamHistory));
-    localStorage.setItem('draftdex-teamcovers', JSON.stringify(teamCovers));
+    localStorage.removeItem('draftdex-teamcovers');
     localStorage.setItem('draftdex-profilepics', JSON.stringify(profilePictures));
     localStorage.setItem('draftdex-pulsepanels', JSON.stringify(pulsePanelImages));
     localStorage.setItem('draftdex-coach-namelines', JSON.stringify(coachNameLines));
@@ -22452,8 +22477,8 @@ function draftStageHeroCard(t){
   if(!draftCover){
     try { draftCover = localStorage.getItem('draftdex-draft-cover') || ''; } catch(e){}
   }
-  if(!draftCover && curPlayer && teamCovers[curPlayer]) draftCover = teamCovers[curPlayer];
   if(!draftCover && curPlayer && profilePictures[curPlayer]) draftCover = profilePictures[curPlayer];
+  if(!draftCover && curPlayer && teamCovers[curPlayer]) draftCover = teamCovers[curPlayer];
   if(!draftCover && t.backgroundImage) draftCover = t.backgroundImage;
   if(!draftCover && pulsePanelImages.global) draftCover = pulsePanelImages.global;
   let faceArt = curPlayer ? (profilePictures[curPlayer] ? `url('${esc(profilePictures[curPlayer])}')` : (teamCovers[curPlayer] ? `url('${esc(teamCovers[curPlayer])}')` : fallbackArt(curPlayer))) : '';
@@ -26036,7 +26061,7 @@ function standingTable(t, g, opts = {}){
 
     let coverArt = (typeof teamCovers === 'object' && teamCovers[p]) || '';
     let pfpArt = (typeof profilePictures === 'object' && profilePictures[p]) || '';
-    let bannerArt = coverArt || pfpArt;
+    let bannerArt = pfpArt || coverArt;
     let bannerStyle = bannerArt
       ? `background-image:linear-gradient(90deg,rgba(12,12,18,0.92) 0%,rgba(12,12,18,0.62) 45%,rgba(12,12,18,0.92) 100%),url('${esc(bannerArt)}');background-size:cover;background-position:center;`
       : `background:${fallbackArt(p)};`;

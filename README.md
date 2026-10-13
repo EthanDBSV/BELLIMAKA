@@ -19,6 +19,9 @@ Format: `v[MAJOR].[MINOR].[PATCH]` — Major = major system overhauls, Minor = n
   - Removed `"Minimum 5 appearances"` subtitle from the Offseason Home Page Team of the Season preview and cleaned up the empty-state copy.
   - Removed the `"👑 Moderator Mode: Click on any drafted Pokémon cell below to swap it for an undrafted Pokémon on the board or adjust a coach's roster."` banner from the Draft Board view.
   - Removed the inline parenthetical explanations (e.g. `— Top tournament-wide performers by Average Impact`) next to All-Tournament team headers (`First Team All-Tournament`, `Second Team All-Tournament`, `Third Team All-Tournament`).
+- **Standings Row Background & Legacy `teamCovers` Storage Cleanup**:
+  - Updated Standings row background (`bannerArt = pfpArt || coverArt`), Tournament Progression row banners, and Draft Stage Hero Spotlight cards to prioritize `profilePictures[p]` so updated coach profile pictures display immediately everywhere.
+  - Migrated any remaining legacy `teamCovers` entries into `profilePictures` and purged `teamCovers` (`draftdex-teamcovers` in `localStorage` and `teamCovers` in Cloudflare KV `/api/state?id=media`), eliminating ~756 KB of duplicate/stale base64 images from both browser `localStorage` and cloud storage.
 
 ---
 
