@@ -42051,17 +42051,15 @@ function renderOffseasonTierColumns(){
                 <div style="display:flex;align-items:center;gap:8px;min-width:0;flex:1">
                   <img src="${esc(spriteUrl)}" class="draft-sprite" alt="${esc(mon)}" loading="lazy" onerror="handleSpriteError(this)">
                   <div style="min-width:0;flex:1">
-                    <div class="draft-mon-name" style="display:flex;align-items:center;gap:4px" title="${esc(mon)}">
-                      <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(mon)}</span>
-                      ${(moderator && offseasonQuickEditMode) ? `
-                        <button type="button" class="draft-mon-edit-btn" onclick="event.stopPropagation(); openEditBoardPokemonModal(null, '${jsArg(mon)}', ${tier.cost}, '${jsArg(tier.name)}')" title="Quick edit ${esc(mon)}" style="padding:0 2px!important;margin:0!important;border:none!important;background:transparent!important;font-size:12px;line-height:1;cursor:pointer;flex-shrink:0;opacity:0.85;transition:transform 0.15s ease" onmouseover="this.style.opacity='1';this.style.transform='scale(1.2)'" onmouseout="this.style.opacity='0.85';this.style.transform='scale(1)'">
-                          ✏️
-                        </button>
-                      ` : ''}
-                    </div>
+                    <div class="draft-mon-name" title="${esc(mon)}">${esc(mon)}</div>
                     <div style="font-size:9px;color:#a09fa8">+ Add to plan</div>
                   </div>
                 </div>
+                ${(moderator && offseasonQuickEditMode) ? `
+                  <button type="button" class="draft-mon-edit-btn" onclick="event.stopPropagation(); openEditBoardPokemonModal(null, '${jsArg(mon)}', ${tier.cost}, '${jsArg(tier.name)}')" title="Quick edit ${esc(mon)}" style="display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;margin-left:8px;border:1px solid rgba(255,255,255,0.16);background:rgba(255,255,255,0.08);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);border-radius:6px;font-size:13px;line-height:1;cursor:pointer;flex-shrink:0;box-shadow:0 2px 6px rgba(0,0,0,0.25);transition:all 0.15s ease" onmouseover="this.style.background='rgba(245,158,11,0.18)';this.style.borderColor='rgba(245,158,11,0.5)';this.style.boxShadow='0 0 10px rgba(245,158,11,0.28)';this.style.transform='scale(1.08)'" onmouseout="this.style.background='rgba(255,255,255,0.08)';this.style.borderColor='rgba(255,255,255,0.16)';this.style.boxShadow='0 2px 6px rgba(0,0,0,0.25)';this.style.transform='scale(1)'">
+                    ✏️
+                  </button>
+                ` : ''}
               </div>
             `;
           }).join('') || '<div style="padding:14px;font-size:11px;color:#6b6a75;text-align:center">No matches in this tier</div>'}
