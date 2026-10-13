@@ -15,6 +15,10 @@ Format: `v[MAJOR].[MINOR].[PATCH]` — Major = major system overhauls, Minor = n
 - **Automatic Cache Invalidation & Backup Re-Parsing**:
   - Bumped replay parser `stats.version` to `12` and `_cachedMonStatsVersion` to `16` across all hydration, modal, awards, and persistence pipelines, and synchronized `t.topCutReplays` with `t.bracketManagerData.match[i].replays`.
   - Re-parsed all 20 affected `|swap|` replays in `league_backup.json` to `version: 12` (e.g. in Cagliari Regional `tc_6` Game 1, Ceruledge now properly receives its `Ally Switch`, `Bitter Blade`, `Light Screen`, `Destiny Bond`, 54 HP healed, and KO on Hisuian Lilligant, while Diancie receives its `Trick Room`, `Diamond Storm`, and `Play Rough`).
+- **UI Text & Header Decluttering**:
+  - Removed `"Minimum 5 appearances"` subtitle from the Offseason Home Page Team of the Season preview and cleaned up the empty-state copy.
+  - Removed the `"👑 Moderator Mode: Click on any drafted Pokémon cell below to swap it for an undrafted Pokémon on the board or adjust a coach's roster."` banner from the Draft Board view.
+  - Removed the inline parenthetical explanations (e.g. `— Top tournament-wide performers by Average Impact`) next to All-Tournament team headers (`First Team All-Tournament`, `Second Team All-Tournament`, `Third Team All-Tournament`).
 
 ---
 

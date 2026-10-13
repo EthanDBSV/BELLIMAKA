@@ -13954,7 +13954,7 @@ function renderTeamOfTheSeasonTierSectionHtml(teamList, tierNum, title, sub, col
         <div style="display:flex;align-items:center;gap:8px">
           <span style="font-size:17px">${icon}</span>
           <span style="font:900 19px 'Barlow Condensed';color:${color};letter-spacing:.6px;text-transform:uppercase">${esc(title)}</span>
-          <span style="font-size:12px;color:#94a3b8">\u2014 ${esc(sub)}</span>
+          ${sub ? `<span style="font-size:12px;color:#94a3b8">\u2014 ${esc(sub)}</span>` : ''}
         </div>
         <div style="font-size:11px;color:#8e8c95;font-weight:700">
           4 Pok\u00E9mon Selections
@@ -14272,13 +14272,13 @@ function renderTournamentAwardsTabHtml(t) {
 
           <!-- Frameless Team of the Season Cards -->
           ${!isAll ? `
-            ${curTab === '1' ? renderTeamOfTheSeasonTierSectionHtml(tots.firstTeam, 1, 'First Team All-Tournament', 'Top tournament-wide performers by Average Impact', '#ffd166', '\uD83E\uDD47', false) : ''}
-            ${curTab === '2' ? renderTeamOfTheSeasonTierSectionHtml(tots.secondTeam, 2, 'Second Team All-Tournament', 'Second-tier performers by Average Impact', '#cbd5e1', '\uD83E\uDD48', false) : ''}
-            ${curTab === '3' ? renderTeamOfTheSeasonTierSectionHtml(tots.thirdTeam, 3, 'Third Team All-Tournament', 'Third-tier performers by Average Impact', '#f0a875', '\uD83E\uDD49', false) : ''}
+            ${curTab === '1' ? renderTeamOfTheSeasonTierSectionHtml(tots.firstTeam, 1, 'First Team All-Tournament', '', '#ffd166', '\uD83E\uDD47', false) : ''}
+            ${curTab === '2' ? renderTeamOfTheSeasonTierSectionHtml(tots.secondTeam, 2, 'Second Team All-Tournament', '', '#cbd5e1', '\uD83E\uDD48', false) : ''}
+            ${curTab === '3' ? renderTeamOfTheSeasonTierSectionHtml(tots.thirdTeam, 3, 'Third Team All-Tournament', '', '#f0a875', '\uD83E\uDD49', false) : ''}
           ` : `
-            ${renderTeamOfTheSeasonTierSectionHtml(tots.firstTeam, 1, 'First Team All-Tournament', 'Top tournament-wide performers by Average Impact', '#ffd166', '\uD83E\uDD47', true)}
-            ${renderTeamOfTheSeasonTierSectionHtml(tots.secondTeam, 2, 'Second Team All-Tournament', 'Second-tier performers by Average Impact', '#cbd5e1', '\uD83E\uDD48', true)}
-            ${renderTeamOfTheSeasonTierSectionHtml(tots.thirdTeam, 3, 'Third Team All-Tournament', 'Third-tier performers by Average Impact', '#f0a875', '\uD83E\uDD49', true)}
+            ${renderTeamOfTheSeasonTierSectionHtml(tots.firstTeam, 1, 'First Team All-Tournament', '', '#ffd166', '\uD83E\uDD47', true)}
+            ${renderTeamOfTheSeasonTierSectionHtml(tots.secondTeam, 2, 'Second Team All-Tournament', '', '#cbd5e1', '\uD83E\uDD48', true)}
+            ${renderTeamOfTheSeasonTierSectionHtml(tots.thirdTeam, 3, 'Third Team All-Tournament', '', '#f0a875', '\uD83E\uDD49', true)}
           `}
         ` : `
           <!-- Dedicated Stat Leaderboards View -->
@@ -21580,9 +21580,6 @@ function OffseasonHome(){
             <span>🏆</span> OFFICIAL AWARDS · ${esc(totsTourney?.season || totsTourney?.name || 'LAST SEASON')}
           </div>
           <h2 style="margin:2px 0 0">TEAM OF THE SEASON</h2>
-          <p class="sub" style="margin:2px 0 0;font-size:12px;color:#a09fa8">
-            Minimum 5 appearances
-          </p>
         </div>
         <div style="display:flex;align-items:center;gap:8px">
           ${totsTourney ? `<button class="link" onclick="openTournament('${totsTourney.id}', 'Awards')">VIEW FULL AWARDS & STATS →</button>` : ''}
@@ -21593,7 +21590,7 @@ function OffseasonHome(){
           <span style="font-size:36px">🏆</span>
           <div class="card-title" style="margin-top:10px;font-size:18px">Team of the Season In Progress · ${esc(totsTourney?.name || 'Latest Season')}</div>
           <p class="sub" style="max-width:480px;margin:8px auto 0;font-size:12px;color:#94a3b8;line-height:1.5">
-            Minimum 5 appearances required to qualify for official season honors. As more battle replays are recorded for <b>${esc(totsTourney?.name || '')}</b>, awards will unlock automatically!
+            Official season honors will unlock automatically as more battle replays are recorded for <b>${esc(totsTourney?.name || '')}</b>!
           </p>
           <div style="margin-top:14px">
             <button class="btn ghost btn-sm" onclick="go('Tournaments')">Browse Past Season Awards →</button>
@@ -39597,12 +39594,6 @@ function DraftRostersView(t){
   let canManage = canManageTournament(t);
 
   return `
-    ${canManage ? `
-      <div style="margin-bottom:14px;padding:9px 14px;background:#181524;border:1px solid #3d3554;border-radius:8px;font-size:11px;color:#ffd166;display:flex;align-items:center;gap:8px">
-        <span>👑 <b>${moderator ? 'Moderator Mode' : 'Tournament Director'}:</b> Click on any drafted Pokémon cell below to swap it for an undrafted Pokémon on the board or adjust a coach's roster.</span>
-      </div>
-    ` : ''}
-
     <div class="draft-matrix-scroll-wrap">
       <div class="draft-matrix-board" style="grid-template-columns: 74px repeat(${order.length}, minmax(180px, 1fr));">
         <!-- Top Left Corner Cell -->
