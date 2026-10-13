@@ -20,6 +20,22 @@ Format: `v[MAJOR].[MINOR].[PATCH]` — Major = major system overhauls, Minor = n
   - Displays on the 2-column desktop split board (`LEAGUE PHASE ADVANCERS` vs `THE HUNT` / `FINAL PLACEMENT`) and integrates with mathematical clinch/elimination solvers (`isMathematicallyClinched`, `isMathematicallyEliminated`) and Monte Carlo Playoff Odds (`simulateTournamentOdds`).
 - **Popup Text-Selection Drag Dismissal Protection**:
   - Added capture-phase `mousedown`/`mouseup` (and `touchstart`/`touchend`) target verification on `.modal-wrap` backdrop clicks so dragging to highlight text inside an `<input>` or `<textarea>` and releasing the mouse button outside the popup window never accidentally dismisses the modal.
+- **Two-Phase Playoff Race & Championship Bracket Predictor Overhaul (`playoffOdds`)**:
+  - **Balanced Pre-Tournament Parity & Live Form Takeover (`getPlayerTournamentPower`, `computeCalibratedMatchWinProb`)**:
+    - Removed double-counting between career OVR and raw Elo in `getPlayerTournamentPower` and recalibrated baseline power (`1000 + (ovr - 76) * 4.2`, logistic scale `160`, head-to-head match cap `18%–82%`).
+    - Pre-tournament (`0–0`) head-to-head edges now sit in a realistic `~36%–64%` competitive range so top seeds start around `~45%–52%` Top Cut in a 12-player field instead of `~90%` before a single match is played.
+    - Weighted live tournament performance heavily (`(w - l) * 52 + (gw - gl) * 18` in Stage 1 and `tcWins * 28` in Top Cut) so actual wins, losses, and game differential rapidly overtake pre-tournament priors once matches begin.
+  - **Phase 1: Opening Stage Playoff Odds & Qualification Predictor**:
+    - Dedicated exclusively to **Top Cut Qualification & Seeding** during Round Robin Groups, Swiss Stage, and League Phase (saving Grand Finals % and Championship % for Phase 2).
+    - Displays **Top Cut Qualification Probability** (`topCutDisplay`), **#1 Seed Odds** (`firstSeedPct%`), **Projected Final Record** (`projWins–projLosses`), **Average Finish Seed** (`#${avgSeed}`), **Conditional Next-Match Swing** (`If Win / Lose Next`), and **Schedule & Remaining SOS**.
+    - Organizes contenders into clear Playoff Picture Tiers (`🛡️ Inside Playoff Cutline`, `⚔️ On The Bubble & In The Hunt`, `🎲 Longshots & Eliminated`) with group filter tabs (`All Groups`, `Group A`, `Group B`, ...) and a live **🔥 Playoff Picture & Exact Clinch Scenarios** spotlight panel.
+  - **Mathematically Verified Playoff Scenario Solver (`solveExactCoachPlayoffScenario`, `computeCoachPlayoffScenario`)**:
+    - Evaluates all combinatorial score branches (`2-0`, `2-1`, `1-2`, `0-2`) in the final rounds directly against the tournament's official tiebreaker hierarchy (`evaluateStandingsForMatches` / `getStandingsCriteria(t)`).
+    - Distinguishes exact scenarios without misleading coaches: `✓ Clinched Top Cut`, `⚡ Win or Go Home`, `⚡ Do or Die (2-0)`, `🔥 Win and In`, `🔥 2-0 Clinches`, `🔥 Controls Destiny`, `⚡ Must Win Out`, `⚠️ Must-Win + Help`, `⏳ Awaiting Results` (in the clubhouse), and `✗ Eliminated`.
+  - **Phase 2: Live Top Cut Championship Bracket Predictor (`simulateTopCutBracketOdds`)**:
+    - Automatically activates when the tournament advances to `Top Cut` (`t.phase === 'topcut'`), with a header switcher to toggle back to the Phase 1 Opening Stage Playoff Race archive at any time.
+    - Runs 2,500 Monte Carlo simulations directly from the live `getTournamentTopCutModel(t)` bracket state across Single Elimination and Double Elimination (Upper Bracket, Lower Bracket, Grand Finals Set 1, and the Double-Elimination Bracket Reset `gf2`).
+    - Ranks Top Cut qualifiers on Contender Cards by **Championship Title Equity (`champPct%`)** and **Grand Finals Equity (`finalsPct%`)**, displaying live Bracket Life status (`2 Lives (Upper)`, `1 Life (Lower)`, `Grand Finalist`, `Champion`, or `Eliminated`), next opponent + head-to-head win probability, and exact path to the title.
 
 ---
 
