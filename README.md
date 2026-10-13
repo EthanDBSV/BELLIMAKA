@@ -3,6 +3,21 @@
 All notable changes to the Bellimaka Pokémon Draft League platform are documented here.
 Format: `v[MAJOR].[MINOR].[PATCH]` — Major = major system overhauls, Minor = new features, Patch = bug fixes and visual improvements.
 
+## [v3.0.1] — 2026-10-12
+
+### Replay Parser `Ally Switch` (`|swap|`) Slot Tracking & Stat Attribution Fix
+- **Active Field Slot Swapping (`|swap|`)**:
+  - Fixed a bug in `parseShowdownBattleLog` where Pokémon Showdown `|swap|<slot>: <nickname>|<posIndex>|[from] move: Ally Switch` events were ignored, leaving `activeSlots` mapped to the pre-swap field slots (`p1a`/`p1b` or `p2a`/`p2b`).
+  - Added a dedicated `cmd === 'swap'` handler that swaps `activeSlots[fromSlot]` and `activeSlots[toSlot]` (mapping position indices `0 ➔ 'a'`, `1 ➔ 'b'`, `2 ➔ 'c'`) and updates `lastAttackerSlot` so all subsequent moves, KOs, damage dealt, damage taken, healing, and support points are attributed to the actual Pokémon occupying that slot.
+  - Also resolved secondary percentage-HP `damageDealt` drift on opposing attackers caused by `target.curHp` and `target.maxHp` being read from the unswapped ally's HP state.
+- **Readable Battle Log Rendering**:
+  - Added a `cmd === 'swap'` handler in `formatBattleLogHtml` to display `🔄 <Pokémon> swapped positions with its ally!` in the formatted battle log viewer.
+- **Automatic Cache Invalidation & Backup Re-Parsing**:
+  - Bumped replay parser `stats.version` to `12` and `_cachedMonStatsVersion` to `16` across all hydration, modal, awards, and persistence pipelines, and synchronized `t.topCutReplays` with `t.bracketManagerData.match[i].replays`.
+  - Re-parsed all 20 affected `|swap|` replays in `league_backup.json` to `version: 12` (e.g. in Cagliari Regional `tc_6` Game 1, Ceruledge now properly receives its `Ally Switch`, `Bitter Blade`, `Light Screen`, `Destiny Bond`, 54 HP healed, and KO on Hisuian Lilligant, while Diancie receives its `Trick Room`, `Diamond Storm`, and `Play Rough`).
+
+---
+
 ## [v3.0.0] — 2026-10-12
 
 ### Bellimaka v3.0 Feature Suite — Draft Automation, Team Planner & Profile History
