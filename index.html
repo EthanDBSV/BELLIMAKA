@@ -17946,8 +17946,8 @@ function getTournamentTopCutModel(t){
     let qf4Loser = wb1Matches[3].loser || 'Loser QF 4';
 
     let lb1Matches = [
-      { id:'lb1', title:'LB Round 1 · Match 1', p1:qf1Loser||'BYE', p2:qf2Loser||'Loser QF 2', originP1:'BYE', originP2:'Loser of QF 2' },
-      { id:'lb2', title:'LB Round 1 · Match 2', p1:qf3Loser||'BYE', p2:qf4Loser||'Loser QF 4', originP1:'BYE', originP2:'Loser of QF 4' }
+      { id:'lb1', title:'LB Round 1 · Match 1', p1:qf1Loser||(qualifiers.length <= 7 ? 'BYE' : 'Loser QF 1'), p2:qf2Loser||'Loser QF 2', originP1:(qualifiers.length <= 7 ? 'BYE' : 'Loser of QF 1'), originP2:'Loser of QF 2' },
+      { id:'lb2', title:'LB Round 1 · Match 2', p1:qf3Loser||(qualifiers.length <= 6 ? 'BYE' : 'Loser QF 3'), p2:qf4Loser||'Loser QF 4', originP1:(qualifiers.length <= 6 ? 'BYE' : 'Loser of QF 3'), originP2:'Loser of QF 4' }
     ];
     [1, 2].forEach((num, idx)=>{
       let sm = findStageMatch(bmd, 2, 1, num);
@@ -17955,13 +17955,23 @@ function getTournamentTopCutModel(t){
         applyStageMatch(lb1Matches[idx], sm);
       }
       let m = lb1Matches[idx];
+      let expectedP1 = (idx === 0 ? qf1Loser : qf3Loser);
+      let expectedP2 = (idx === 0 ? qf2Loser : qf4Loser);
+      if(!m.p1 || !isKnownPlayer(m.p1)){
+        m.p1 = (expectedP1 && isKnownPlayer(expectedP1)) ? expectedP1 : (m.p1 || m.originP1 || 'TBD');
+        m.a = m.p1;
+      }
+      if(!m.p2 || !isKnownPlayer(m.p2)){
+        m.p2 = (expectedP2 && isKnownPlayer(expectedP2)) ? expectedP2 : (m.p2 || m.originP2 || 'TBD');
+        m.b = m.p2;
+      }
       let p1IsReal = isKnownPlayer(m.p1);
       let p2IsReal = isKnownPlayer(m.p2);
-      let p1IsBye = m.p1 === 'BYE' || m.originP1 === 'BYE' || !m.p1 || (idx === 0 && qualifiers.length <= 7) || (idx === 1 && qualifiers.length <= 6);
-      let p2IsBye = m.p2 === 'BYE' || m.originP2 === 'BYE' || !m.p2;
+      let p1IsBye = !p1IsReal && (m.p1 === 'BYE' || m.originP1 === 'BYE' || (idx === 0 && qualifiers.length <= 7) || (idx === 1 && qualifiers.length <= 6));
+      let p2IsBye = !p2IsReal && (m.p2 === 'BYE' || m.originP2 === 'BYE');
 
-      if(p1IsBye && !m.p1) m.p1 = 'BYE';
-      if(p2IsBye && !m.p2) m.p2 = 'BYE';
+      if(p1IsBye && !m.p1) { m.p1 = 'BYE'; m.a = 'BYE'; }
+      if(p2IsBye && !m.p2) { m.p2 = 'BYE'; m.b = 'BYE'; }
 
       if(!m.isDone){
         if(p2IsReal && p1IsBye){
@@ -33247,8 +33257,8 @@ function topCutPredictionBracket(t){
 
       let p1IsReal = isKnownPlayer(p1);
       let p2IsReal = isKnownPlayer(p2);
-      let p1IsBye = (p1 === 'BYE' || m.originP1 === 'BYE' || (!p1 && m.originP1 === 'BYE'));
-      let p2IsBye = (p2 === 'BYE' || m.originP2 === 'BYE' || (!p2 && m.originP2 === 'BYE'));
+      let p1IsBye = !p1IsReal && (p1 === 'BYE' || m.originP1 === 'BYE' || (!p1 && m.originP1 === 'BYE'));
+      let p2IsBye = !p2IsReal && (p2 === 'BYE' || m.originP2 === 'BYE' || (!p2 && m.originP2 === 'BYE'));
 
       let isByeAdvance = false;
       let pick = '';
@@ -33355,8 +33365,8 @@ function topCutPredictionBracket(t){
 
       let p1IsReal = isKnownPlayer(p1);
       let p2IsReal = isKnownPlayer(p2);
-      let p1IsBye = (p1 === 'BYE' || m.originP1 === 'BYE' || feed1IsBye);
-      let p2IsBye = (p2 === 'BYE' || m.originP2 === 'BYE' || feed2IsBye);
+      let p1IsBye = !p1IsReal && (p1 === 'BYE' || m.originP1 === 'BYE' || feed1IsBye);
+      let p2IsBye = !p2IsReal && (p2 === 'BYE' || m.originP2 === 'BYE' || feed2IsBye);
 
       let isByeAdvance = false;
       let pick = '';
