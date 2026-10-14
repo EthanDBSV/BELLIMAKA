@@ -6912,8 +6912,12 @@ function resetCoachThemeColor(p) {
   render();
 }
 const pulsePanelImages={};
+function latestTournament(){
+  let sorted = typeof sortedTournamentsChronological === 'function' ? sortedTournamentsChronological() : Object.values(tournamentData || {});
+  return (sorted && sorted.length) ? sorted[sorted.length - 1] : null;
+}
 function ongoingT(){return Object.values(tournamentData).find(t=>t.status==='ONGOING')||null}
-function activeT(){return tournamentData[viewTournament]||ongoingT()||Object.values(tournamentData)[0]||null}
+function activeT(){return (viewTournament && tournamentData[viewTournament])||ongoingT()||latestTournament()||Object.values(tournamentData || {})[0]||null}
 
 function tournamentBadgeLabel(t){
   if(!t) return '';
@@ -15145,7 +15149,7 @@ function deleteTournament(id){
 
   syncTournamentSeasons();
   if(viewTournament===id){
-    viewTournament=ongoingT()?.id||Object.keys(tournamentData)[0]||null;
+    viewTournament=ongoingT()?.id||latestTournament()?.id||null;
   }
   rebuildAllPlayerStats();
   persistLeague();
@@ -16303,7 +16307,7 @@ async function renderDiscordPreviewContent(){
   let bodyEl = document.querySelector('#discordPreviewBody');
   if(!bodyEl) return;
 
-  let t = ongoingT() || activeT() || (typeof tournamentData !== 'undefined' ? Object.values(tournamentData)[0] : null);
+  let t = ongoingT() || activeT() || (typeof tournamentData !== 'undefined' ? (latestTournament() || Object.values(tournamentData)[0]) : null);
   let tourneyName = t?.name || 'Season 4: Bentonville Regional';
 
   if(_discordPreviewState.tab === 'score'){
@@ -37267,9 +37271,10 @@ function renderNytPhase2PickerRail(t, activeWhatIfCount){
   `;
 }
 
-function playoffOdds(){
-  let t = ongoingT() || activeT();
+function playoffOdds(targetT){
+  let t = targetT || ongoingT();
   if(!t) return noTournament('Playoff Odds');
+  viewTournament = t.id;
 
   ensurePlayoffOddsWhatIfState(t);
 
