@@ -63,6 +63,15 @@ Format: `v[MAJOR].[MINOR].[PATCH]` — Major = major system overhauls, Minor = n
 
 - **High-Performance In-Memory & `localStorage` Caching**:
   - Stores fetched Pokémon data in both `_pokemonDetailCache` (memory) and `bellimaka_mon_v3_*` (`localStorage`), enabling subsequent drawer opens to render instantaneously with 0ms network latency.
+- **Team Sheet & Showcase High-Resolution Artwork Upgrade (`getPokemonArtworkUrl`)**:
+  - **Team Roster Detail Sheet (`TeamRosterDetailView`)**: Upgraded coach team sheets from low-resolution Showdown sprites to high-resolution PokeAPI official artwork via `getPokemonArtworkUrl(monName)`.
+  - **Team Showcase Cards (`renderTeamsGridHtml`)**: Upgraded tournament coach showcase overview cards so all 10 roster slots render crisp official artwork.
+  - **Full Mega & Special Form Resolution**: All 97 canonical and community Megas (including **Mega Crabominable** `10315`, **Mega Banette** `10056`, **Mega Froslass** `10285`), Therian Formes (**Landorus-Therian** `10021`, **Thundurus-Therian** `10020`), Necrozma Formes (**Necrozma-Dawn-Wings** `10156`), Rotom appliances, and regional forms resolve to verified PokeAPI official artwork.
+  - **Non-Base Form Fallback Guard**: Megas and special forms without explicit PokeAPI artwork IDs fall back to Showdown Mega sprites rather than degrading to base Pokémon National Dex numbers.
+  - **1-Click Interactive Sidebar Drawer Navigation**: Clicking any Pokémon row on a coach's team sheet seamlessly opens the Drafteon-style detail sidebar drawer (`openPokemonDetailDrawer`) with stats, BST, and abilities, while preserving the point cost edit button independently via `event.stopPropagation()`.
+  - **Automatic Artwork Margin Cropping (`autoTrimArtwork`)**: Automatically crops transparent borders using offscreen canvas trimming, ensuring consistent, edge-to-edge presentation.
+  - **Zero Broken Image Fallback Chain (`handleArtworkFallback`)**: Cascades from PokeAPI Official Artwork $\rightarrow$ Showdown Sprite $\rightarrow$ Local Pokéball icon.
+  - **Real-Time Cold Cache DOM Upgrade**: On cold browser caches, `ensureShowdownDex()` upgrades any rendered team sprites to official artwork in real time as soon as Showdown's Pokedex data arrives.
 
 ---
 

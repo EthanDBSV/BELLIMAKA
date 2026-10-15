@@ -6196,6 +6196,411 @@ function monSprite(name) {
   return resolvePokemonData(name).sprite;
 }
 
+var _trimmedArtworkCache = (typeof window !== 'undefined' && window._trimmedArtworkCache) || new Map();
+if(typeof window !== 'undefined') window._trimmedArtworkCache = _trimmedArtworkCache;
+
+// Official Artwork Form IDs for special forms, megas, and variants (verified with PokeAPI)
+var SPECIAL_FORM_ARTWORK_IDS = window.SPECIAL_FORM_ARTWORK_IDS = {
+  // Therian Formes
+  'landorus-therian': 10021,
+  'landorustherian': 10021,
+  'thundurus-therian': 10020,
+  'thundurustherian': 10020,
+  'tornadus-therian': 10019,
+  'tornadustherian': 10019,
+  'enamorus-therian': 10249,
+  'enamorustherian': 10249,
+
+  // Rotom Appliances
+  'rotom-heat': 10008,
+  'rotomheat': 10008,
+  'rotom-wash': 10009,
+  'rotomwash': 10009,
+  'rotom-frost': 10010,
+  'rotomfrost': 10010,
+  'rotom-fan': 10011,
+  'rotomfan': 10011,
+  'rotom-mow': 10012,
+  'rotommow': 10012,
+
+  // Necrozma
+  'necrozma-dusk': 10155,
+  'necrozmadusk': 10155,
+  'necrozma-duskmane': 10155,
+  'necrozma-dusk-mane': 10155,
+  'necrozmaduskmane': 10155,
+  'necrozma-dawn': 10156,
+  'necrozmadawn': 10156,
+  'necrozma-dawnwings': 10156,
+  'necrozma-dawn-wings': 10156,
+  'necrozmadawnwings': 10156,
+  'necrozma-ultra': 10157,
+  'necrozmaultra': 10157,
+  'ultra-necrozma': 10157,
+  'ultranecrozma': 10157,
+
+  // Ogerpon Masks
+  'ogerpon-wellspring': 10273,
+  'ogerponwellspring': 10273,
+  'ogerpon-wellspring-mask': 10273,
+  'ogerpon-hearthflame': 10274,
+  'ogerponhearthflame': 10274,
+  'ogerpon-hearthflame-mask': 10274,
+  'ogerpon-cornerstone': 10275,
+  'ogerponcornerstone': 10275,
+  'ogerpon-cornerstone-mask': 10275,
+
+  // Calyrex Riders
+  'calyrex-ice': 10193,
+  'calyrexice': 10193,
+  'calyrex-ice-rider': 10193,
+  'calyrexicerider': 10193,
+  'calyrex-shadow': 10194,
+  'calyrexshadow': 10194,
+  'calyrex-shadow-rider': 10194,
+  'calyrexshadowrider': 10194,
+
+  // Urshifu
+  'urshifu-rapid-strike': 10191,
+  'urshifu-rapidstrike': 10191,
+  'urshifurapidstrike': 10191,
+  'urshifu-rapid': 10191,
+
+  // Paldean Tauros Breeds
+  'tauros-paldea-combat': 10250,
+  'tauros-paldeacombat': 10250,
+  'taurospaldeacombat': 10250,
+  'tauros-paldea-combat-breed': 10250,
+  'tauros-paldea-blaze': 10251,
+  'tauros-paldeablaze': 10251,
+  'taurospaldeablaze': 10251,
+  'tauros-paldea-blaze-breed': 10251,
+  'tauros-paldea-aqua': 10252,
+  'tauros-paldeaaqua': 10252,
+  'taurospaldeaaqua': 10252,
+  'tauros-paldea-aqua-breed': 10252,
+
+  // Bloodmoon Ursaluna
+  'ursaluna-bloodmoon': 10272,
+  'ursalunabloodmoon': 10272,
+  'bloodmoon-ursaluna': 10272,
+  'bloodmoonursaluna': 10272,
+
+  // Deoxys
+  'deoxys-attack': 10001,
+  'deoxysattack': 10001,
+  'deoxys-defense': 10002,
+  'deoxysdefense': 10002,
+  'deoxys-speed': 10003,
+  'deoxysspeed': 10003,
+
+  // Origin & Sky Formes
+  'giratina-origin': 10007,
+  'giratinaorigin': 10007,
+  'shaymin-sky': 10006,
+  'shayminsky': 10006,
+  'dialga-origin': 10245,
+  'dialgaorigin': 10245,
+  'palkia-origin': 10246,
+  'palkiaorigin': 10246,
+
+  // Kyurem Fusions
+  'kyurem-black': 10022,
+  'kyuremblack': 10022,
+  'kyurem-white': 10023,
+  'kyuremwhite': 10023,
+
+  // Crowned Zacian & Zamazenta
+  'zacian-crowned': 10188,
+  'zaciancrowned': 10188,
+  'zamazenta-crowned': 10189,
+  'zamazentacrowned': 10189,
+
+  // Palafin & Terapagos
+  'palafin-hero': 10256,
+  'palafinhero': 10256,
+  'terapagos-terastal': 10276,
+  'terapagosterastal': 10276,
+  'terapagos-stellar': 10277,
+  'terapagosstellar': 10277,
+
+  // Megas
+  'charizard-megax': 10034,
+  'charizard-mega-x': 10034,
+  'charizardmegax': 10034,
+  'charizard-megay': 10035,
+  'charizard-mega-y': 10035,
+  'charizardmegay': 10035,
+  'mewtwo-megax': 10043,
+  'mewtwo-mega-x': 10043,
+  'mewtwomegax': 10043,
+  'mewtwo-megay': 10044,
+  'mewtwo-mega-y': 10044,
+  'mewtwomegay': 10044,
+  'venusaur-mega': 10033,
+  'venusaurmega': 10033,
+  'blastoise-mega': 10036,
+  'blastoisemega': 10036,
+  'alakazam-mega': 10037,
+  'alakazammega': 10037,
+  'gengar-mega': 10038,
+  'gengarmega': 10038,
+  'kangaskhan-mega': 10039,
+  'kangaskhanmega': 10039,
+  'pinsir-mega': 10040,
+  'pinsirmega': 10040,
+  'gyarados-mega': 10041,
+  'gyaradosmega': 10041,
+  'aerodactyl-mega': 10042,
+  'aerodactylmega': 10042,
+  'ampharos-mega': 10045,
+  'ampharosmega': 10045,
+  'scizor-mega': 10046,
+  'scizormega': 10046,
+  'heracross-mega': 10047,
+  'heracrossmega': 10047,
+  'houndoom-mega': 10048,
+  'houndoommega': 10048,
+  'tyranitar-mega': 10049,
+  'tyranitarmega': 10049,
+  'blaziken-mega': 10050,
+  'blazikenmega': 10050,
+  'gardevoir-mega': 10051,
+  'gardevoirmega': 10051,
+  'mawile-mega': 10052,
+  'mawilemega': 10052,
+  'aggron-mega': 10053,
+  'aggronmega': 10053,
+  'medicham-mega': 10054,
+  'medichammega': 10054,
+  'manectric-mega': 10055,
+  'manectricmega': 10055,
+  'banette-mega': 10056,
+  'banettemega': 10056,
+  'absol-mega': 10057,
+  'absolmega': 10057,
+  'garchomp-mega': 10058,
+  'garchompmega': 10058,
+  'lucario-mega': 10059,
+  'lucariomega': 10059,
+  'abomasnow-mega': 10060,
+  'abomasnowmega': 10060,
+  'beedrill-mega': 10090,
+  'beedrillmega': 10090,
+  'pidgeot-mega': 10073,
+  'pidgeotmega': 10073,
+  'slowbro-mega': 10071,
+  'slowbromega': 10071,
+  'steelix-mega': 10072,
+  'steelixmega': 10072,
+  'sceptile-mega': 10065,
+  'sceptilemega': 10065,
+  'swampert-mega': 10064,
+  'swampertmega': 10064,
+  'sableye-mega': 10066,
+  'sableyemega': 10066,
+  'sharpedo-mega': 10070,
+  'sharpedomega': 10070,
+  'camerupt-mega': 10087,
+  'cameruptmega': 10087,
+  'altaria-mega': 10067,
+  'altariamega': 10067,
+  'glalie-mega': 10074,
+  'glaliemega': 10074,
+  'salamence-mega': 10089,
+  'salamencemega': 10089,
+  'metagross-mega': 10076,
+  'metagrossmega': 10076,
+  'latias-mega': 10062,
+  'latiasmega': 10062,
+  'latios-mega': 10063,
+  'latiosmega': 10063,
+  'rayquaza-mega': 10079,
+  'rayquazamega': 10079,
+  'lopunny-mega': 10088,
+  'lopunnymega': 10088,
+  'gallade-mega': 10068,
+  'gallademega': 10068,
+  'audino-mega': 10069,
+  'audinomega': 10069,
+  'diancie-mega': 10075,
+  'dianciemega': 10075,
+
+  // Newer & Community Megas (PokeAPI verified)
+  'clefable-mega': 10278,
+  'clefablemega': 10278,
+  'victreebel-mega': 10279,
+  'victreebelmega': 10279,
+  'starmie-mega': 10280,
+  'starmiemega': 10280,
+  'dragonite-mega': 10281,
+  'dragonitemega': 10281,
+  'meganium-mega': 10282,
+  'meganiummega': 10282,
+  'feraligatr-mega': 10283,
+  'feraligatrmega': 10283,
+  'skarmory-mega': 10284,
+  'skarmorymega': 10284,
+  'froslass-mega': 10285,
+  'froslassmega': 10285,
+  'emboar-mega': 10286,
+  'emboarmega': 10286,
+  'excadrill-mega': 10287,
+  'excadrillmega': 10287,
+  'scolipede-mega': 10288,
+  'scolipedemega': 10288,
+  'scrafty-mega': 10289,
+  'scraftymega': 10289,
+  'eelektross-mega': 10290,
+  'eelektrossmega': 10290,
+  'chandelure-mega': 10291,
+  'chandeluremega': 10291,
+  'chesnaught-mega': 10292,
+  'chesnaughtmega': 10292,
+  'delphox-mega': 10293,
+  'delphoxmega': 10293,
+  'greninja-mega': 10294,
+  'greninjamega': 10294,
+  'pyroar-mega': 10295,
+  'pyroarmega': 10295,
+  'floette-mega': 10296,
+  'floettemega': 10296,
+  'malamar-mega': 10297,
+  'malamarmega': 10297,
+  'barbaracle-mega': 10298,
+  'barbaraclemega': 10298,
+  'dragalge-mega': 10299,
+  'dragalgemega': 10299,
+  'hawlucha-mega': 10300,
+  'hawluchamega': 10300,
+  'zygarde-mega': 10301,
+  'zygardemega': 10301,
+  'drampa-mega': 10302,
+  'drampamega': 10302,
+  'falinks-mega': 10303,
+  'falinksmega': 10303,
+  'raichu-mega-x': 10304,
+  'raichu-megax': 10304,
+  'raichumegax': 10304,
+  'raichu-mega-y': 10305,
+  'raichu-megay': 10305,
+  'raichumegay': 10305,
+  'chimecho-mega': 10306,
+  'chimechomega': 10306,
+  'absol-mega-z': 10307,
+  'absol-megaz': 10307,
+  'absolmegaz': 10307,
+  'staraptor-mega': 10308,
+  'staraptormega': 10308,
+  'garchomp-mega-z': 10309,
+  'garchomp-megaz': 10309,
+  'garchompmegaz': 10309,
+  'lucario-mega-z': 10310,
+  'lucario-megaz': 10310,
+  'lucariomegaz': 10310,
+  'heatran-mega': 10311,
+  'heatranmega': 10311,
+  'darkrai-mega': 10312,
+  'darkraimega': 10312,
+  'golurk-mega': 10313,
+  'golurkmega': 10313,
+  'meowstic-male-mega': 10314,
+  'meowstic-m-mega': 10314,
+  'meowsticmmega': 10314,
+  'crabominable-mega': 10315,
+  'crabominablemega': 10315,
+  'golisopod-mega': 10316,
+  'golisopodmega': 10316,
+  'magearna-mega': 10317,
+  'magearnamega': 10317,
+  'magearna-original-mega': 10318,
+  'magearnaoriginalmega': 10318,
+  'zeraora-mega': 10319,
+  'zeraoramega': 10319,
+  'scovillain-mega': 10320,
+  'scovillainmega': 10320,
+  'glimmora-mega': 10321,
+  'glimmoramega': 10321,
+  'tatsugiri-curly-mega': 10322,
+  'tatsugiricurlymega': 10322,
+  'tatsugiri-droopy-mega': 10323,
+  'tatsugiridroopymega': 10323,
+  'tatsugiri-stretchy-mega': 10324,
+  'tatsugiristretchymega': 10324,
+  'baxcalibur-mega': 10325,
+  'baxcaliburmega': 10325,
+  'meowstic-female-mega': 10326,
+  'meowstic-f-mega': 10326,
+  'meowsticfmega': 10326,
+
+  // Regional forms
+  'ninetales-alola': 10104,
+  'ninetalesalola': 10104,
+  'marowak-alola': 10115,
+  'marowakalola': 10115,
+  'raichu-alola': 10100,
+  'raichualola': 10100,
+  'arcanine-hisui': 10230,
+  'arcaninehisui': 10230,
+  'zoroark-hisui': 10239,
+  'zoroarkhisui': 10239,
+  'samurott-hisui': 10236,
+  'samurotthisui': 10236,
+  'decidueye-hisui': 10244,
+  'decidueyehisui': 10244,
+  'typhlosion-hisui': 10233,
+  'typhlosionhisui': 10233,
+  'goodra-hisui': 10242,
+  'goodrahisui': 10242,
+  'sliggoo-hisui': 10241,
+  'sliggoohisui': 10241,
+  'zapdos-galar': 10170,
+  'zapdosgalar': 10170,
+  'moltres-galar': 10171,
+  'moltresgalar': 10171,
+  'articuno-galar': 10169,
+  'articunogalar': 10169,
+  'slowbro-galar': 10165,
+  'slowbrogalar': 10165
+};
+
+function getPokemonArtworkUrl(monName) {
+  if(!monName) return 'Fonts%20%26%20Logos/iconNotFound.png';
+  let resolved = typeof resolvePokemonData === 'function' ? resolvePokemonData(monName) : null;
+  let canonicalName = resolved?.name || monName;
+  let resolvedSlug = resolved?.slug || '';
+  let pokeSlug = typeof toPokeApiSlug === 'function' ? toPokeApiSlug(monName) : '';
+  let cleanRaw = String(monName || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+  let cleanSlug = resolvedSlug.toLowerCase().replace(/[^a-z0-9]/g, '');
+
+  let specialMap = typeof SPECIAL_FORM_ARTWORK_IDS !== 'undefined' ? SPECIAL_FORM_ARTWORK_IDS : (typeof window !== 'undefined' ? window.SPECIAL_FORM_ARTWORK_IDS : null);
+
+  let specialFormId = specialMap ? (
+    specialMap[resolvedSlug] ||
+    specialMap[pokeSlug] ||
+    specialMap[cleanSlug] ||
+    specialMap[cleanRaw]
+  ) : null;
+
+  if(specialFormId) {
+    let url = "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/" + specialFormId + ".png";
+    return (typeof _trimmedArtworkCache !== 'undefined' && _trimmedArtworkCache && _trimmedArtworkCache.get(url)) || url;
+  }
+
+  let isSpecial = (canonicalName.toLowerCase().includes('mega')) || (resolvedSlug.includes('-mega') || resolvedSlug.endsWith('mega'));
+  if(isSpecial) {
+    return pokeSprite(canonicalName);
+  }
+
+  let dexEntry = typeof getPokemonShowdownData === 'function' ? getPokemonShowdownData(canonicalName) : null;
+  if(dexEntry && dexEntry.num) {
+    let url = "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/" + dexEntry.num + ".png";
+    return (typeof _trimmedArtworkCache !== 'undefined' && _trimmedArtworkCache && _trimmedArtworkCache.get(url)) || url;
+  }
+
+  return pokeSprite(canonicalName);
+}
+
 const POKEMON_TYPE_DEFS = {
   Normal: 'pidgey,pidgeotto,pidgeot,pidgeot-mega,rattata,raticate,spearow,fearow,jigglypuff,wigglytuff,meowth,meowth-gmax,persian,farfetch\'d,doduo,dodrio,lickitung,chansey,kangaskhan,kangaskhan-mega,tauros,ditto,eevee,eevee-starter,eevee-gmax,porygon,snorlax,snorlax-gmax,sentret,furret,hoothoot,noctowl,igglybuff,aipom,girafarig,dunsparce,teddiursa,ursaring,porygon2,stantler,smeargle,miltank,blissey,zigzagoon,linoone,taillow,swellow,slakoth,vigoroth,slaking,whismur,loudred,exploud,azurill,skitty,delcatty,spinda,swablu,zangoose,castform,kecleon,starly,staravia,staraptor,bidoof,bibarel,ambipom,buneary,lopunny,lopunny-mega,glameow,purugly,happiny,chatot,munchlax,lickilicky,porygon-z,regigigas,arceus,patrat,watchog,lillipup,herdier,stoutland,pidove,tranquill,unfezant,audino,audino-mega,zorua-hisui,zoroark-hisui,minccino,cinccino,deerling,sawsbuck,bouffalant,rufflet,braviary,meloetta,meloetta-pirouette,bunnelby,diggersby,fletchling,furfrou,pikipek,trumbeak,toucannon,yungoos,gumshoos,gumshoos-totem,stufful,bewear,oranguru,type: null,silvally,komala,drampa,drampa-mega,skwovet,greedent,wooloo,dubwool,wyrdeer,lechonk,oinkologne,oinkologne-f,tandemaus,maushold,maushold-four,squawkabilly,squawkabilly-blue,squawkabilly-yellow,squawkabilly-white,farigiraf,dudunsparce,dudunsparce-three-segment,terapagos,terapagos-terastal,terapagos-stellar,voodoll,scratchet,flox,shox,pokestar smeargle,pokestar giant,pokestar humanoid',
   Fire: 'charmander,charmeleon,charizard,charizard-mega-x,charizard-mega-y,charizard-gmax,vulpix,ninetales,growlithe,growlithe-hisui,arcanine,arcanine-hisui,ponyta,rapidash,marowak-alola,marowak-alola-totem,magmar,flareon,moltres,cyndaquil,quilava,typhlosion,typhlosion-hisui,slugma,magcargo,magby,entei,ho-oh,torchic,combusken,blaziken,blaziken-mega,numel,camerupt,camerupt-mega,torkoal,castform-sunny,chimchar,monferno,infernape,magmortar,heatran,heatran-mega,arceus-fire,tepig,pignite,emboar,emboar-mega,pansear,simisear,darumaka,darmanitan,darmanitan-zen,heatmor,fennekin,braixen,delphox,delphox-mega,fletchinder,talonflame,litleo,pyroar,pyroar-mega,volcanion,litten,torracat,incineroar,oricorio,silvally-fire,turtonator,blacephalon,scorbunny,raboot,cinderace,cinderace-gmax,sizzlipede,centiskorch,centiskorch-gmax,fuecoco,crocalor,skeledirge,charcadet,armarouge,ceruledge,iron moth,gouging fire,embirch,flarelm,pyroak,mollux,smogecko,smoguana,smokomodo,solotl,astrolotl,ramnarok,ramnarok-radiant,pokestar white door,mega charizard x,mega charizard y',
@@ -37879,7 +38284,7 @@ function TeamRosterDetailView(t, p){
     let mon = teamMons[i];
     if(mon){
       let monName = typeof mon === 'string' ? mon : (mon.pokemon || mon.name || '');
-      let sprite = pokeSprite(monName);
+      let sprite = getPokemonArtworkUrl(monName);
       let cost = findPokemonCostOnBoard(t, monName);
       let costDisplay = String(cost);
       let monStat = (typeof findPokemonStatsInMap === 'function') ? findPokemonStatsInMap(monStatsMap, monName) : null;
@@ -37951,9 +38356,9 @@ function TeamRosterDetailView(t, p){
         ${slots.map(s => {
           if(s.filled){
             return `
-              <div class="team-detail-mon-row">
+              <div class="team-detail-mon-row" style="cursor:pointer" onclick="openPokemonDetailDrawer('${jsArg(s.monName)}', ${s.cost}, null, '${jsArg(t.id)}')">
                 <div class="team-detail-mon-left">
-                  <img src="${esc(s.sprite)}" class="team-detail-mon-sprite" alt="${esc(s.monName)}" loading="lazy" onerror="handleSpriteError(this)">
+                  <img src="${esc(s.sprite)}" class="team-detail-mon-sprite" alt="${esc(s.monName)}" loading="lazy" data-mon-name="${esc(s.monName)}" crossOrigin="anonymous" onload="autoTrimArtwork(this)" onerror="handleArtworkFallback(this, '${jsArg(s.monName)}')">
                   <div class="team-detail-mon-info">
                     <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
                       <span class="team-detail-mon-name" title="${esc(s.monName)}">${esc(s.monName)}</span>
@@ -37998,7 +38403,7 @@ function TeamRosterDetailView(t, p){
                 </div>
                 <div class="team-detail-mon-right" style="text-align:right;flex:none">
                   ${canManageTournament(t) ? `
-                    <div class="team-detail-mon-cost" onclick="promptEditPokemonCost('${jsArg(t.id)}', '${jsArg(s.monName)}', ${s.cost})" title="Click to edit draft points" style="cursor:pointer;transition:all .15s" onmouseover="this.style.color='#ffd166';this.style.transform='scale(1.08)'" onmouseout="this.style.color='';this.style.transform=''">
+                    <div class="team-detail-mon-cost" onclick="event.stopPropagation();promptEditPokemonCost('${jsArg(t.id)}', '${jsArg(s.monName)}', ${s.cost})" title="Click to edit draft points" style="cursor:pointer;transition:all .15s" onmouseover="this.style.color='#ffd166';this.style.transform='scale(1.08)'" onmouseout="this.style.color='';this.style.transform=''">
                       ${esc(s.costDisplay)} <span style="font-size:10px;opacity:0.6;margin-left:2px">✎</span>
                     </div>
                   ` : `
@@ -38050,11 +38455,11 @@ function renderTeamsGridHtml(t){
           let mon = teamMons[i];
           if(mon){
             let monName = typeof mon === 'string' ? mon : (mon.pokemon || mon.name || '');
-            let sprite = pokeSprite(monName);
+            let sprite = getPokemonArtworkUrl(monName);
             let types = getPokemonTypes(monName).join(' · ');
             slotsHtml.push(`
               <div class="team-card-sprite-slot filled" title="${esc(monName)} · ${esc(types)}">
-                <img src="${esc(sprite)}" class="team-card-sprite-img" alt="${esc(monName)}" loading="lazy" onerror="handleSpriteError(this)">
+                <img src="${esc(sprite)}" class="team-card-sprite-img" alt="${esc(monName)}" loading="lazy" data-mon-name="${esc(monName)}" crossOrigin="anonymous" onload="autoTrimArtwork(this)" onerror="handleArtworkFallback(this, '${jsArg(monName)}')">
               </div>
             `);
           } else {
@@ -43540,370 +43945,7 @@ var _pokemonDetailCache = new Map();
 var _showdownDex = null;
 var _showdownDexPromise = null;
 
-// Official Artwork Form IDs for special forms, megas, and variants (verified with PokeAPI)
-const SPECIAL_FORM_ARTWORK_IDS = {
-  // Therian Formes
-  'landorus-therian': 10021,
-  'landorustherian': 10021,
-  'thundurus-therian': 10020,
-  'thundurustherian': 10020,
-  'tornadus-therian': 10019,
-  'tornadustherian': 10019,
-  'enamorus-therian': 10249,
-  'enamorustherian': 10249,
-
-  // Rotom Appliances
-  'rotom-heat': 10008,
-  'rotomheat': 10008,
-  'rotom-wash': 10009,
-  'rotomwash': 10009,
-  'rotom-frost': 10010,
-  'rotomfrost': 10010,
-  'rotom-fan': 10011,
-  'rotomfan': 10011,
-  'rotom-mow': 10012,
-  'rotommow': 10012,
-
-  // Necrozma
-  'necrozma-dusk': 10155,
-  'necrozmadusk': 10155,
-  'necrozma-duskmane': 10155,
-  'necrozma-dusk-mane': 10155,
-  'necrozmaduskmane': 10155,
-  'necrozma-dawn': 10156,
-  'necrozmadawn': 10156,
-  'necrozma-dawnwings': 10156,
-  'necrozma-dawn-wings': 10156,
-  'necrozmadawnwings': 10156,
-  'necrozma-ultra': 10157,
-  'necrozmaultra': 10157,
-  'ultra-necrozma': 10157,
-  'ultranecrozma': 10157,
-
-  // Ogerpon Masks
-  'ogerpon-wellspring': 10273,
-  'ogerponwellspring': 10273,
-  'ogerpon-wellspring-mask': 10273,
-  'ogerpon-hearthflame': 10274,
-  'ogerponhearthflame': 10274,
-  'ogerpon-hearthflame-mask': 10274,
-  'ogerpon-cornerstone': 10275,
-  'ogerponcornerstone': 10275,
-  'ogerpon-cornerstone-mask': 10275,
-
-  // Calyrex Riders
-  'calyrex-ice': 10193,
-  'calyrexice': 10193,
-  'calyrex-ice-rider': 10193,
-  'calyrexicerider': 10193,
-  'calyrex-shadow': 10194,
-  'calyrexshadow': 10194,
-  'calyrex-shadow-rider': 10194,
-  'calyrexshadowrider': 10194,
-
-  // Urshifu
-  'urshifu-rapid-strike': 10191,
-  'urshifu-rapidstrike': 10191,
-  'urshifurapidstrike': 10191,
-  'urshifu-rapid': 10191,
-
-  // Paldean Tauros Breeds
-  'tauros-paldea-combat': 10250,
-  'tauros-paldeacombat': 10250,
-  'taurospaldeacombat': 10250,
-  'tauros-paldea-combat-breed': 10250,
-  'tauros-paldea-blaze': 10251,
-  'tauros-paldeablaze': 10251,
-  'taurospaldeablaze': 10251,
-  'tauros-paldea-blaze-breed': 10251,
-  'tauros-paldea-aqua': 10252,
-  'tauros-paldeaaqua': 10252,
-  'taurospaldeaaqua': 10252,
-  'tauros-paldea-aqua-breed': 10252,
-
-  // Bloodmoon Ursaluna
-  'ursaluna-bloodmoon': 10272,
-  'ursalunabloodmoon': 10272,
-  'bloodmoon-ursaluna': 10272,
-  'bloodmoonursaluna': 10272,
-
-  // Deoxys
-  'deoxys-attack': 10001,
-  'deoxysattack': 10001,
-  'deoxys-defense': 10002,
-  'deoxysdefense': 10002,
-  'deoxys-speed': 10003,
-  'deoxysspeed': 10003,
-
-  // Origin & Sky Formes
-  'giratina-origin': 10007,
-  'giratinaorigin': 10007,
-  'shaymin-sky': 10006,
-  'shayminsky': 10006,
-  'dialga-origin': 10245,
-  'dialgaorigin': 10245,
-  'palkia-origin': 10246,
-  'palkiaorigin': 10246,
-
-  // Kyurem Fusions
-  'kyurem-black': 10022,
-  'kyuremblack': 10022,
-  'kyurem-white': 10023,
-  'kyuremwhite': 10023,
-
-  // Crowned Zacian & Zamazenta
-  'zacian-crowned': 10188,
-  'zaciancrowned': 10188,
-  'zamazenta-crowned': 10189,
-  'zamazentacrowned': 10189,
-
-  // Palafin & Terapagos
-  'palafin-hero': 10256,
-  'palafinhero': 10256,
-  'terapagos-terastal': 10276,
-  'terapagosterastal': 10276,
-  'terapagos-stellar': 10277,
-  'terapagosstellar': 10277,
-
-  // Megas
-  'charizard-megax': 10034,
-  'charizard-mega-x': 10034,
-  'charizardmegax': 10034,
-  'charizard-megay': 10035,
-  'charizard-mega-y': 10035,
-  'charizardmegay': 10035,
-  'mewtwo-megax': 10043,
-  'mewtwo-mega-x': 10043,
-  'mewtwomegax': 10043,
-  'mewtwo-megay': 10044,
-  'mewtwo-mega-y': 10044,
-  'mewtwomegay': 10044,
-  'venusaur-mega': 10033,
-  'venusaurmega': 10033,
-  'blastoise-mega': 10036,
-  'blastoisemega': 10036,
-  'alakazam-mega': 10037,
-  'alakazammega': 10037,
-  'gengar-mega': 10038,
-  'gengarmega': 10038,
-  'kangaskhan-mega': 10039,
-  'kangaskhanmega': 10039,
-  'pinsir-mega': 10040,
-  'pinsirmega': 10040,
-  'gyarados-mega': 10041,
-  'gyaradosmega': 10041,
-  'aerodactyl-mega': 10042,
-  'aerodactylmega': 10042,
-  'ampharos-mega': 10045,
-  'ampharosmega': 10045,
-  'scizor-mega': 10046,
-  'scizormega': 10046,
-  'heracross-mega': 10047,
-  'heracrossmega': 10047,
-  'houndoom-mega': 10048,
-  'houndoommega': 10048,
-  'tyranitar-mega': 10049,
-  'tyranitarmega': 10049,
-  'blaziken-mega': 10050,
-  'blazikenmega': 10050,
-  'gardevoir-mega': 10051,
-  'gardevoirmega': 10051,
-  'mawile-mega': 10052,
-  'mawilemega': 10052,
-  'aggron-mega': 10053,
-  'aggronmega': 10053,
-  'medicham-mega': 10054,
-  'medichammega': 10054,
-  'manectric-mega': 10055,
-  'manectricmega': 10055,
-  'banette-mega': 10056,
-  'banettemega': 10056,
-  'absol-mega': 10057,
-  'absolmega': 10057,
-  'garchomp-mega': 10058,
-  'garchompmega': 10058,
-  'lucario-mega': 10059,
-  'lucariomega': 10059,
-  'abomasnow-mega': 10060,
-  'abomasnowmega': 10060,
-  'beedrill-mega': 10090,
-  'beedrillmega': 10090,
-  'pidgeot-mega': 10073,
-  'pidgeotmega': 10073,
-  'slowbro-mega': 10071,
-  'slowbromega': 10071,
-  'steelix-mega': 10072,
-  'steelixmega': 10072,
-  'sceptile-mega': 10065,
-  'sceptilemega': 10065,
-  'swampert-mega': 10064,
-  'swampertmega': 10064,
-  'sableye-mega': 10066,
-  'sableyemega': 10066,
-  'sharpedo-mega': 10070,
-  'sharpedomega': 10070,
-  'camerupt-mega': 10087,
-  'cameruptmega': 10087,
-  'altaria-mega': 10067,
-  'altariamega': 10067,
-  'glalie-mega': 10074,
-  'glaliemega': 10074,
-  'salamence-mega': 10089,
-  'salamencemega': 10089,
-  'metagross-mega': 10076,
-  'metagrossmega': 10076,
-  'latias-mega': 10062,
-  'latiasmega': 10062,
-  'latios-mega': 10063,
-  'latiosmega': 10063,
-  'rayquaza-mega': 10079,
-  'rayquazamega': 10079,
-  'lopunny-mega': 10088,
-  'lopunnymega': 10088,
-  'gallade-mega': 10068,
-  'gallademega': 10068,
-  'audino-mega': 10069,
-  'audinomega': 10069,
-  'diancie-mega': 10075,
-  'dianciemega': 10075,
-
-  // Newer & Community Megas (PokeAPI verified)
-  'clefable-mega': 10278,
-  'clefablemega': 10278,
-  'victreebel-mega': 10279,
-  'victreebelmega': 10279,
-  'starmie-mega': 10280,
-  'starmiemega': 10280,
-  'dragonite-mega': 10281,
-  'dragonitemega': 10281,
-  'meganium-mega': 10282,
-  'meganiummega': 10282,
-  'feraligatr-mega': 10283,
-  'feraligatrmega': 10283,
-  'skarmory-mega': 10284,
-  'skarmorymega': 10284,
-  'froslass-mega': 10285,
-  'froslassmega': 10285,
-  'emboar-mega': 10286,
-  'emboarmega': 10286,
-  'excadrill-mega': 10287,
-  'excadrillmega': 10287,
-  'scolipede-mega': 10288,
-  'scolipedemega': 10288,
-  'scrafty-mega': 10289,
-  'scraftymega': 10289,
-  'eelektross-mega': 10290,
-  'eelektrossmega': 10290,
-  'chandelure-mega': 10291,
-  'chandeluremega': 10291,
-  'chesnaught-mega': 10292,
-  'chesnaughtmega': 10292,
-  'delphox-mega': 10293,
-  'delphoxmega': 10293,
-  'greninja-mega': 10294,
-  'greninjamega': 10294,
-  'pyroar-mega': 10295,
-  'pyroarmega': 10295,
-  'floette-mega': 10296,
-  'floettemega': 10296,
-  'malamar-mega': 10297,
-  'malamarmega': 10297,
-  'barbaracle-mega': 10298,
-  'barbaraclemega': 10298,
-  'dragalge-mega': 10299,
-  'dragalgemega': 10299,
-  'hawlucha-mega': 10300,
-  'hawluchamega': 10300,
-  'zygarde-mega': 10301,
-  'zygardemega': 10301,
-  'drampa-mega': 10302,
-  'drampamega': 10302,
-  'falinks-mega': 10303,
-  'falinksmega': 10303,
-  'raichu-mega-x': 10304,
-  'raichu-megax': 10304,
-  'raichumegax': 10304,
-  'raichu-mega-y': 10305,
-  'raichu-megay': 10305,
-  'raichumegay': 10305,
-  'chimecho-mega': 10306,
-  'chimechomega': 10306,
-  'absol-mega-z': 10307,
-  'absol-megaz': 10307,
-  'absolmegaz': 10307,
-  'staraptor-mega': 10308,
-  'staraptormega': 10308,
-  'garchomp-mega-z': 10309,
-  'garchomp-megaz': 10309,
-  'garchompmegaz': 10309,
-  'lucario-mega-z': 10310,
-  'lucario-megaz': 10310,
-  'lucariomegaz': 10310,
-  'heatran-mega': 10311,
-  'heatranmega': 10311,
-  'darkrai-mega': 10312,
-  'darkraimega': 10312,
-  'golurk-mega': 10313,
-  'golurkmega': 10313,
-  'meowstic-male-mega': 10314,
-  'meowstic-m-mega': 10314,
-  'meowsticmmega': 10314,
-  'crabominable-mega': 10315,
-  'crabominablemega': 10315,
-  'golisopod-mega': 10316,
-  'golisopodmega': 10316,
-  'magearna-mega': 10317,
-  'magearnamega': 10317,
-  'magearna-original-mega': 10318,
-  'magearnaoriginalmega': 10318,
-  'zeraora-mega': 10319,
-  'zeraoramega': 10319,
-  'scovillain-mega': 10320,
-  'scovillainmega': 10320,
-  'glimmora-mega': 10321,
-  'glimmoramega': 10321,
-  'tatsugiri-curly-mega': 10322,
-  'tatsugiricurlymega': 10322,
-  'tatsugiri-droopy-mega': 10323,
-  'tatsugiridroopymega': 10323,
-  'tatsugiri-stretchy-mega': 10324,
-  'tatsugiristretchymega': 10324,
-  'baxcalibur-mega': 10325,
-  'baxcaliburmega': 10325,
-  'meowstic-female-mega': 10326,
-  'meowstic-f-mega': 10326,
-  'meowsticfmega': 10326,
-
-  // Regional forms
-  'ninetales-alola': 10104,
-  'ninetalesalola': 10104,
-  'marowak-alola': 10115,
-  'marowakalola': 10115,
-  'raichu-alola': 10100,
-  'raichualola': 10100,
-  'arcanine-hisui': 10230,
-  'arcaninehisui': 10230,
-  'zoroark-hisui': 10239,
-  'zoroarkhisui': 10239,
-  'samurott-hisui': 10236,
-  'samurotthisui': 10236,
-  'decidueye-hisui': 10244,
-  'decidueyehisui': 10244,
-  'typhlosion-hisui': 10233,
-  'typhlosionhisui': 10233,
-  'goodra-hisui': 10242,
-  'goodrahisui': 10242,
-  'sliggoo-hisui': 10241,
-  'sliggoohisui': 10241,
-  'zapdos-galar': 10170,
-  'zapdosgalar': 10170,
-  'moltres-galar': 10171,
-  'moltresgalar': 10171,
-  'articuno-galar': 10169,
-  'articunogalar': 10169,
-  'slowbro-galar': 10165,
-  'slowbrogalar': 10165
-};
+// Official Artwork Form IDs for special forms, megas, and variants declared globally at line ~6200
 
 async function ensureShowdownDex() {
   if(_showdownDex) return _showdownDex;
@@ -43925,6 +43967,17 @@ async function ensureShowdownDex() {
         _showdownDex = json;
         try {
           localStorage.setItem('bellimaka_showdown_dex_v1', JSON.stringify(json));
+        } catch(e) {}
+        try {
+          document.querySelectorAll('.team-detail-mon-sprite[data-mon-name], .team-card-sprite-img[data-mon-name]').forEach(img => {
+            let mon = img.getAttribute('data-mon-name');
+            if(mon) {
+              let newSrc = getPokemonArtworkUrl(mon);
+              if(newSrc && img.src !== newSrc && !img.src.includes('official-artwork')) {
+                img.src = newSrc;
+              }
+            }
+          });
         } catch(e) {}
         return json;
       }
