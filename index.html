@@ -17255,8 +17255,13 @@ function shouldApply(incoming, force = false){
   let hasLocalData = Object.keys(tournamentData).length > 0;
 
 
-  // 1. Initial boot, forced sync, or non-moderator viewer: ALWAYS accept authoritative cloud state if valid
-  if(force || !window._initialCloudSyncCompleted || !moderator){
+  // 1. Initial boot, forced sync, or non-moderator viewer: accept authoritative cloud state if valid,
+  // BUT do NOT let forced focus/wake sync clobber recent local moderator draft or board actions!
+  let isRecentLocalAction = (Date.now() - (window._lastLocalDraftActionTime || 0)) < 15000;
+  let isRecentLocalBoardAction = (Date.now() - (window._lastLocalDraftBoardActionTime || 0)) < 15000;
+  let hasPendingLocalEdits = isRecentLocalAction || isRecentLocalBoardAction || (syncTimer !== null);
+
+  if(((force && !hasPendingLocalEdits) || !window._initialCloudSyncCompleted || !moderator)){
     window._initialCloudSyncCompleted = true;
     if(incoming.tournaments && Object.keys(incoming.tournaments).length > 0){
       knownRev = Math.max(knownRev, incomingRev);
@@ -17283,7 +17288,6 @@ function shouldApply(incoming, force = false){
   // 2. Protect draft progress: if incoming cloud draft has new picks or authoritative diff, accept!
   if(incoming.tournaments && typeof incoming.tournaments === 'object'){
     let hasDraftDiff = false;
-    let isRecentLocalAction = (Date.now() - (window._lastLocalDraftActionTime || 0)) < 15000;
     let isRecentStatusAction = (Date.now() - (window._lastLocalDraftStatusActionTime || 0)) < 15000;
     let isRecentOrderAction = (Date.now() - (window._lastLocalDraftOrderActionTime || 0)) < 15000;
     let isEditingOrder = Boolean(window._editingDraftOrderId || document.getElementById('draftOrderListContainer'));
@@ -17330,6 +17334,9 @@ function shouldApply(incoming, force = false){
 
   // 3. If local client has no pending unpushed edits in flight: accept ONLY if cloud revision or timestamp is newer!
   if(syncTimer === null){
+    if(isRecentLocalBoardAction && (incomingTime <= lastLocalUpdate || incomingRev <= knownRev)){
+      return false;
+    }
     if(incomingRev > knownRev || (incomingTime && incomingTime > lastLocalUpdate) || !moderator){
       knownRev = Math.max(knownRev, incomingRev);
       lastLocalUpdate = Math.max(lastLocalUpdate, incomingTime || Date.now());
@@ -19611,6 +19618,10 @@ function applySharedState(data){
     offseasonDraftBoard = data.offseasonDraftBoard;
     try{ localStorage.setItem('draftdex-offseason-board', JSON.stringify(offseasonDraftBoard)); }catch(e){}
   }
+  if(Array.isArray(data.savedDraftBoards)){
+    savedDraftBoards = data.savedDraftBoards;
+    try{ localStorage.setItem('draftdex-saved-boards', JSON.stringify(savedDraftBoards)); }catch(e){}
+  }
   if(typeof data.offseasonDraftBoardPublic !== 'undefined'){
     offseasonDraftBoardPublic = Boolean(data.offseasonDraftBoardPublic);
     try{ localStorage.setItem('draftdex-offseason-board-public', String(offseasonDraftBoardPublic)); }catch(e){}
@@ -19629,6 +19640,7 @@ function applySharedState(data){
     localStorage.setItem('draftdex-profilepics', JSON.stringify(profilePictures));
     localStorage.setItem('draftdex-pulsepanels', JSON.stringify(pulsePanelImages));
     if(typeof offseasonDraftBoard !== 'undefined') localStorage.setItem('draftdex-offseason-board', JSON.stringify(offseasonDraftBoard));
+    if(typeof savedDraftBoards !== 'undefined') localStorage.setItem('draftdex-saved-boards', JSON.stringify(savedDraftBoards));
     if(data.cut) localStorage.setItem('draftdex-cut', data.cut);
     if(data.boardLink) localStorage.setItem('draftdex-board', data.boardLink);
   }catch(e){}
@@ -19969,6 +19981,7 @@ async function syncFromCloud(force = false){
 
               let remoteTime = Number(dJson.updatedAt || 0);
               let isRecentLocalAction = (Date.now() - (window._lastLocalDraftActionTime || 0)) < 15000;
+              let isRecentLocalBoardAction = (Date.now() - (window._lastLocalDraftBoardActionTime || 0)) < 15000;
               let isRecentStatusAction = (Date.now() - (window._lastLocalDraftStatusActionTime || 0)) < 15000;
               let isRecentOrderAction = (Date.now() - (window._lastLocalDraftOrderActionTime || 0)) < 15000;
               let isEditingOrder = Boolean(window._editingDraftOrderId || document.getElementById('draftOrderListContainer'));
@@ -20027,7 +20040,7 @@ async function syncFromCloud(force = false){
                 }
                 if(dJson.draft.pointBudget !== undefined) localD.pointBudget = dJson.draft.pointBudget;
                 if(dJson.draft.maxRosterSize !== undefined) localD.maxRosterSize = dJson.draft.maxRosterSize;
-                if(Array.isArray(dJson.draft.board) && dJson.draft.board.length) localD.board = dJson.draft.board;
+                if(Array.isArray(dJson.draft.board) && dJson.draft.board.length && !isRecentLocalBoardAction) localD.board = dJson.draft.board;
 
                 curT.draftData = localD;
                 curT.draft = localD;
@@ -20487,6 +20500,7 @@ async function flushSync(){
     draftPool: (typeof draftPool !== 'undefined' ? draftPool : null),
     offseasonDraftBoard: (typeof offseasonDraftBoard !== 'undefined' ? offseasonDraftBoard : []),
     offseasonDraftBoardPublic: (typeof offseasonDraftBoardPublic !== 'undefined' ? offseasonDraftBoardPublic : false),
+    savedDraftBoards: (typeof savedDraftBoards !== 'undefined' && Array.isArray(savedDraftBoards) ? savedDraftBoards : []),
     accountLinks: accountLinks
   };
 
@@ -20526,6 +20540,7 @@ function persistLeague(){
     localStorage.setItem('draftdex-coach-colors', JSON.stringify(coachThemeColors));
     if(typeof offseasonDraftBoard !== 'undefined') localStorage.setItem('draftdex-offseason-board', JSON.stringify(offseasonDraftBoard));
     if(typeof offseasonDraftBoardPublic !== 'undefined') localStorage.setItem('draftdex-offseason-board-public', String(offseasonDraftBoardPublic));
+    if(typeof savedDraftBoards !== 'undefined') localStorage.setItem('draftdex-saved-boards', JSON.stringify(savedDraftBoards));
     if(typeof accountLinks!=='undefined') localStorage.setItem('draftdex-accountlinks', JSON.stringify(accountLinks));
   }catch(e){}
   if(!isSandboxMode()){
@@ -30575,6 +30590,7 @@ async function forceCloudSync(){
         spriteStyle: getSpriteStylePreference(),
         draftPool: (typeof draftPool !== 'undefined' ? draftPool : null),
         offseasonDraftBoard: (typeof offseasonDraftBoard !== 'undefined' ? offseasonDraftBoard : []),
+        savedDraftBoards: (typeof savedDraftBoards !== 'undefined' && Array.isArray(savedDraftBoards) ? savedDraftBoards : []),
         accountLinks: accountLinks
       };
       let blob = new Blob([JSON.stringify(backupData, null, 2)], { type: 'application/json' });
@@ -40035,6 +40051,7 @@ function openDraftBoardImporter(tId){
               ${hasOffseason ? `
                 <button type="button" class="btn ghost btn-sm" style="padding:2px 8px!important;font-size:10px!important;color:#93c5fd;border-color:#264366" onclick="loadOffseasonBoardIntoImporter()">📋 Load Offseason Board</button>
               ` : ''}
+              <button type="button" class="btn ghost btn-sm" style="padding:2px 8px!important;font-size:10px!important;color:#ffd166;border-color:#5c4819" onclick="openDraftBoardLibraryModal('${jsArg(t.id)}')">📚 Saved Boards</button>
               <button type="button" class="btn ghost btn-sm" style="padding:2px 8px!important;font-size:10px!important" onclick="loadSampleDraftBoard()">Load Sample Board</button>
               <button type="button" class="btn ghost btn-sm" style="padding:2px 8px!important;font-size:10px!important" onclick="document.getElementById('importDraftText').value=''">Clear</button>
               <button type="button" class="btn ghost btn-sm" style="padding:2px 8px!important;font-size:10px!important;color:#4bdd91;border-color:#205739" onclick="exportDraftBoardCSV('${jsArg(t.id)}')">📥 Export Board (CSV)</button>
@@ -40055,9 +40072,12 @@ Iron Valiant\tKingambit\tRoaring Moon"></textarea>
           ${renderDraftImportPreviewHtml(draftPendingImport)}
         </div>
 
-        <div class="creator-actions" style="margin-top:20px;display:flex;justify-content:space-between">
+        <div class="creator-actions" style="margin-top:20px;display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px">
           <button class="btn ghost" onclick="closeModal()">Cancel</button>
-          <button class="btn" style="padding:10px 24px;font-weight:800" onclick="saveImportedDraftBoard('${jsArg(t.id)}')">💾 Save Draft Board</button>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <button type="button" class="btn ghost" style="padding:10px 16px;font-weight:700;color:#ffd166;border-color:#5c4819" onclick="promptSaveCurrentBoardToLibrary('${jsArg(t.id)}')">💾 Save as Preset</button>
+            <button class="btn" style="padding:10px 24px;font-weight:800" onclick="saveImportedDraftBoard('${jsArg(t.id)}')">💾 Save Draft Board</button>
+          </div>
         </div>
       </div>
     </div>
@@ -40141,6 +40161,51 @@ function handleDraftCsvFileUpload(event){
   if(event.target) event.target.value = '';
 }
 
+function downloadBoardCSV(board, filename){
+  if(!board || !board.length){
+    alert('No draft board data to export.');
+    return;
+  }
+  let sortedTiers = [...board].sort((a,b) => (Number(b.cost) || 0) - (Number(a.cost) || 0));
+  let maxRows = 0;
+  sortedTiers.forEach(t => {
+    let count = (t.pokemon || []).length;
+    if(count > maxRows) maxRows = count;
+  });
+
+  let headerCells = sortedTiers.map(tier => {
+    let label = (tier.name || '').trim();
+    if(!label){
+      label = `${tier.cost} Points`;
+    } else if(!/\b\d+\s*pts?\b/i.test(label) && !/\b\d+\s*points?\b/i.test(label)){
+      label = `${label} (${tier.cost} Pts)`;
+    }
+    return `"${label.replace(/"/g, '""')}"`;
+  });
+
+  let lines = [headerCells.join(',')];
+
+  for(let r = 0; r < maxRows; r++){
+    let row = sortedTiers.map(tier => {
+      let mon = (tier.pokemon && tier.pokemon[r]) ? tier.pokemon[r] : '';
+      return `"${mon.replace(/"/g, '""')}"`;
+    });
+    lines.push(row.join(','));
+  }
+
+  let csvContent = '\uFEFF' + lines.join('\r\n');
+  let blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  let url = URL.createObjectURL(blob);
+  let a = document.createElement('a');
+  a.href = url;
+  a.download = filename || 'draft-board.csv';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+window.downloadBoardCSV = downloadBoardCSV;
+
 function exportDraftBoardCSV(tId){
   if(!moderator && (typeof canManageTournament !== 'function' || (tId && tournamentData[tId] && !canManageTournament(tournamentData[tId])))){
     alert('Moderator or Tournament Director permissions required to export the draft board.');
@@ -40173,53 +40238,497 @@ function exportDraftBoardCSV(tId){
     return;
   }
 
-  let sortedTiers = [...board].sort((a,b) => (Number(b.cost) || 0) - (Number(a.cost) || 0));
-
-  let maxRows = 0;
-  sortedTiers.forEach(t => {
-    let count = (t.pokemon || []).length;
-    if(count > maxRows) maxRows = count;
-  });
-
-  let headerCells = sortedTiers.map(tier => {
-    let label = (tier.name || '').trim();
-    if(!label){
-      label = `${tier.cost} Points`;
-    } else if(!/\b\d+\s*pts?\b/i.test(label) && !/\b\d+\s*points?\b/i.test(label)){
-      label = `${label} (${tier.cost} Pts)`;
-    }
-    return `"${label.replace(/"/g, '""')}"`;
-  });
-
-  let lines = [headerCells.join(',')];
-
-  for(let r = 0; r < maxRows; r++){
-    let row = sortedTiers.map(tier => {
-      let mon = (tier.pokemon && tier.pokemon[r]) ? tier.pokemon[r] : '';
-      return `"${mon.replace(/"/g, '""')}"`;
-    });
-    lines.push(row.join(','));
-  }
-
-  let csvContent = '\uFEFF' + lines.join('\r\n');
-  let blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-  let url = URL.createObjectURL(blob);
-  let a = document.createElement('a');
   let cleanName = t ? (t.name || t.id).toLowerCase().replace(/[^a-z0-9]/g, '-') : 'bellimaka-offseason';
   let filename = `draft-board-${cleanName}.csv`;
-  a.href = url;
-  a.download = filename;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
+  downloadBoardCSV(board, filename);
 
-  let totalMons = sortedTiers.reduce((s, x) => s + (x.pokemon || []).length, 0);
+  let totalMons = board.reduce((s, x) => s + (x.pokemon || []).length, 0);
   if(typeof showDraftToast === 'function'){
-    showDraftToast(`📥 Exported draft board (${sortedTiers.length} tiers, ${totalMons} Pokémon) to ${filename}!`);
+    showDraftToast(`📥 Exported draft board (${board.length} tiers, ${totalMons} Pokémon) to ${filename}!`);
   }
 }
 window.exportDraftBoardCSV = exportDraftBoardCSV;
+
+function exportSavedBoardCSV(boardId){
+  let item = (savedDraftBoards || []).find(b => b.id === boardId);
+  if(!item || !item.tiers || !item.tiers.length){
+    alert('Saved draft board preset not found or is empty.');
+    return;
+  }
+  let cleanName = (item.name || 'saved-board').toLowerCase().replace(/[^a-z0-9]/g, '-');
+  downloadBoardCSV(item.tiers, `draft-board-${cleanName}.csv`);
+  if(typeof showDraftToast === 'function'){
+    showDraftToast(`📥 Exported saved board "${item.name}"!`);
+  }
+}
+window.exportSavedBoardCSV = exportSavedBoardCSV;
+
+function getCurrentDraftBoardForContext(targetTourneyId){
+  let t = targetTourneyId ? (tournamentData[targetTourneyId] || null) : null;
+  if(t && t.draftData && Array.isArray(t.draftData.board) && t.draftData.board.length > 0){
+    return { board: t.draftData.board, name: t.name || 'Tournament Board', tourney: t };
+  }
+  if(draftPendingImport && Array.isArray(draftPendingImport.tiers) && draftPendingImport.tiers.length > 0){
+    return { board: draftPendingImport.tiers, name: 'Parsed Import Board', tourney: t };
+  }
+  if(typeof getOffseasonDraftBoard === 'function' && getOffseasonDraftBoard().length > 0){
+    return { board: getOffseasonDraftBoard(), name: 'Offseason Draft Board', tourney: null };
+  }
+  let curT = (typeof ongoingT === 'function' ? ongoingT() : null) || (typeof activeT === 'function' ? activeT() : null);
+  if(curT && curT.draftData && Array.isArray(curT.draftData.board) && curT.draftData.board.length > 0){
+    return { board: curT.draftData.board, name: curT.name || 'Tournament Board', tourney: curT };
+  }
+  return { board: [], name: '', tourney: null };
+}
+
+function promptSaveCurrentBoardToLibrary(targetTourneyId = null){
+  if(!moderator && (typeof canManageTournament !== 'function' || (targetTourneyId && tournamentData[targetTourneyId] && !canManageTournament(tournamentData[targetTourneyId])))){
+    alert('Moderator or Tournament Director permissions required.');
+    return;
+  }
+
+  // Check if there is pending unparsed text in the importer
+  let textarea = document.getElementById('importDraftText');
+  if((!draftPendingImport || !draftPendingImport.tiers || !draftPendingImport.tiers.length) && textarea && textarea.value && textarea.value.trim()){
+    let p = parseDraftBoardData(textarea.value);
+    if(p && p.tiers && p.tiers.length) draftPendingImport = p;
+  }
+
+  let ctx = getCurrentDraftBoardForContext(targetTourneyId);
+  if(!ctx.board || !ctx.board.length){
+    alert('No draft board is currently loaded to save. Import or load a draft board first.');
+    return;
+  }
+
+  let defaultName = ctx.name || 'Draft Board Preset';
+  let dStr = new Date().toLocaleDateString(undefined, { month:'short', day:'numeric' });
+  let name = prompt('Enter a name for this saved draft board preset:', `${defaultName} (${dStr})`);
+  if(!name || !name.trim()) return;
+  name = name.trim();
+
+  let totalMons = ctx.board.reduce((s, x) => s + (x.pokemon || []).length, 0);
+  let newRecord = {
+    id: 'sboard_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5),
+    name: name,
+    createdAt: Date.now(),
+    updatedAt: Date.now(),
+    totalMons: totalMons,
+    tierCount: ctx.board.length,
+    tiers: JSON.parse(JSON.stringify(ctx.board))
+  };
+
+  if(!Array.isArray(savedDraftBoards)) savedDraftBoards = [];
+  savedDraftBoards.unshift(newRecord);
+
+  try {
+    localStorage.setItem('draftdex-saved-boards', JSON.stringify(savedDraftBoards));
+  } catch(e){}
+
+  persistLeague();
+  if(!isSandboxMode()){
+    clearTimeout(syncTimer);
+    syncTimer = null;
+    flushSync();
+  }
+
+  if(typeof showDraftToast === 'function'){
+    showDraftToast(`💾 Saved "${name}" (${ctx.board.length} tiers, ${totalMons} Pokémon) to library!`);
+  }
+
+  // If library modal is currently open, refresh it
+  let libContainer = document.getElementById('draftBoardLibraryCardsList');
+  if(libContainer){
+    libContainer.innerHTML = renderDraftBoardLibraryCardsHtml(targetTourneyId);
+  }
+}
+window.promptSaveCurrentBoardToLibrary = promptSaveCurrentBoardToLibrary;
+
+function loadBoardFromLibrary(boardId, targetTourneyId = null){
+  let item = (savedDraftBoards || []).find(b => b.id === boardId);
+  if(!item || !item.tiers || !item.tiers.length){
+    alert('Saved draft board preset not found or is empty.');
+    return;
+  }
+
+  let t = targetTourneyId ? (tournamentData[targetTourneyId] || null) : null;
+  if(!t){
+    let curT = (typeof ongoingT === 'function' ? ongoingT() : null) || (typeof activeT === 'function' ? activeT() : null);
+    if(curT && curT.status === 'ONGOING' && curT.phase === 'draft'){
+      t = curT;
+    }
+  }
+
+  if(t){
+    if(!canManageTournament(t)){
+      alert('You do not have permission to modify this tournament.');
+      return;
+    }
+    if(!confirm(`Load preset "${item.name}" into ${t.name}?\n\nThis will set the tournament's draft board (${item.tiers.length} tiers, ${item.totalMons || 0} Pokémon).`)){
+      return;
+    }
+    let d = ensureTournamentDraft(t);
+    d.board = JSON.parse(JSON.stringify(item.tiers));
+    t.hasDraft = true;
+
+    window._lastLocalDraftActionTime = Date.now();
+    window._lastLocalDraftBoardActionTime = Date.now();
+    lastLocalUpdate = Date.now();
+    knownRev = (knownRev || 0) + 1;
+
+    persistLeague();
+    if(!isSandboxMode()){
+      clearTimeout(syncTimer);
+      syncTimer = null;
+      flushSync();
+      if(typeof syncDraftStateToCloud === 'function') syncDraftStateToCloud(t);
+    }
+    closeModal();
+    render();
+    if(typeof showDraftToast === 'function'){
+      showDraftToast(`🚀 Successfully loaded "${item.name}" into ${t.name}!`);
+    }
+  } else {
+    // Load into Offseason Draft Board
+    if(!moderator){
+      alert('Moderator permissions required to update the offseason draft board.');
+      return;
+    }
+    if(!confirm(`Load preset "${item.name}" as the active Offseason Draft Board?\n\nThis will set the board (${item.tiers.length} tiers, ${item.totalMons || 0} Pokémon) for the league.`)){
+      return;
+    }
+    offseasonDraftBoard = JSON.parse(JSON.stringify(item.tiers));
+    offseasonDraftBoardPublic = false;
+    try {
+      localStorage.setItem('draftdex-offseason-board', JSON.stringify(offseasonDraftBoard));
+      localStorage.setItem('draftdex-offseason-board-public', 'false');
+    } catch(e){}
+
+    window._lastLocalDraftActionTime = Date.now();
+    window._lastLocalDraftBoardActionTime = Date.now();
+    lastLocalUpdate = Date.now();
+    knownRev = (knownRev || 0) + 1;
+
+    persistLeague();
+    if(!isSandboxMode()){
+      clearTimeout(syncTimer);
+      syncTimer = null;
+      flushSync();
+    }
+    closeModal();
+    render();
+    if(typeof showDraftToast === 'function'){
+      showDraftToast(`🚀 Loaded "${item.name}" into Offseason Draft Board!`);
+    }
+  }
+}
+window.loadBoardFromLibrary = loadBoardFromLibrary;
+
+function loadSavedBoardIntoImporter(boardId, targetTourneyId = null){
+  let item = (savedDraftBoards || []).find(b => b.id === boardId);
+  if(!item || !item.tiers || !item.tiers.length){
+    alert('Saved draft board not found or is empty.');
+    return;
+  }
+  draftPendingImport = {
+    tiers: JSON.parse(JSON.stringify(item.tiers)),
+    totalMons: item.totalMons || item.tiers.reduce((s,x)=>s+(x.pokemon||[]).length,0)
+  };
+
+  let sortedTiers = [...item.tiers].sort((a,b) => (Number(b.cost) || 0) - (Number(a.cost) || 0));
+  let maxRows = 0;
+  sortedTiers.forEach(tr => {
+    let c = (tr.pokemon || []).length;
+    if(c > maxRows) maxRows = c;
+  });
+  let headerCells = sortedTiers.map(tier => {
+    let label = (tier.name || '').trim();
+    if(!label) label = `${tier.cost} Points`;
+    else if(!/\b\d+\s*pts?\b/i.test(label) && !/\b\d+\s*points?\b/i.test(label)) label = `${label} (${tier.cost} Pts)`;
+    return label;
+  });
+  let lines = [headerCells.join('\t')];
+  for(let r = 0; r < maxRows; r++){
+    let row = sortedTiers.map(tier => (tier.pokemon && tier.pokemon[r]) ? tier.pokemon[r] : '');
+    lines.push(row.join('\t'));
+  }
+  let generatedText = lines.join('\n');
+
+  if(targetTourneyId){
+    openDraftBoardImporter(targetTourneyId);
+  } else {
+    openOffseasonDraftBoardImporter();
+  }
+
+  setTimeout(() => {
+    let textarea = document.getElementById('importDraftText');
+    if(textarea) textarea.value = generatedText;
+    let previewHost = document.getElementById('draftImportPreviewArea');
+    if(previewHost) previewHost.innerHTML = renderDraftImportPreviewHtml(draftPendingImport);
+  }, 20);
+
+  if(typeof showDraftToast === 'function'){
+    showDraftToast(`📋 Loaded preset "${item.name}" into importer!`);
+  }
+}
+window.loadSavedBoardIntoImporter = loadSavedBoardIntoImporter;
+
+function overwriteBoardInLibrary(boardId, targetTourneyId = null){
+  let item = (savedDraftBoards || []).find(b => b.id === boardId);
+  if(!item) return;
+
+  let ctx = getCurrentDraftBoardForContext(targetTourneyId);
+  if(!ctx.board || !ctx.board.length){
+    alert('No active draft board found to overwrite with. Load or import a draft board first.');
+    return;
+  }
+
+  let totalMons = ctx.board.reduce((s, x) => s + (x.pokemon || []).length, 0);
+  if(!confirm(`Overwrite "${item.name}" with the currently active board (${ctx.board.length} tiers, ${totalMons} Pokémon)?`)){
+    return;
+  }
+
+  item.tiers = JSON.parse(JSON.stringify(ctx.board));
+  item.totalMons = totalMons;
+  item.tierCount = ctx.board.length;
+  item.updatedAt = Date.now();
+
+  try {
+    localStorage.setItem('draftdex-saved-boards', JSON.stringify(savedDraftBoards));
+  } catch(e){}
+
+  persistLeague();
+  if(!isSandboxMode()){
+    clearTimeout(syncTimer);
+    syncTimer = null;
+    flushSync();
+  }
+
+  let listHost = document.getElementById('draftBoardLibraryCardsList');
+  if(listHost){
+    listHost.innerHTML = renderDraftBoardLibraryCardsHtml(targetTourneyId);
+  }
+  if(typeof showDraftToast === 'function'){
+    showDraftToast(`🔄 Overwrote "${item.name}" with current board!`);
+  }
+}
+window.overwriteBoardInLibrary = overwriteBoardInLibrary;
+
+function renameBoardInLibrary(boardId, targetTourneyId = null){
+  let item = (savedDraftBoards || []).find(b => b.id === boardId);
+  if(!item) return;
+
+  let newName = prompt('Enter a new name for this draft board preset:', item.name);
+  if(!newName || !newName.trim() || newName.trim() === item.name) return;
+
+  item.name = newName.trim();
+  item.updatedAt = Date.now();
+
+  try {
+    localStorage.setItem('draftdex-saved-boards', JSON.stringify(savedDraftBoards));
+  } catch(e){}
+
+  persistLeague();
+  if(!isSandboxMode()){
+    clearTimeout(syncTimer);
+    syncTimer = null;
+    flushSync();
+  }
+
+  let listHost = document.getElementById('draftBoardLibraryCardsList');
+  if(listHost){
+    listHost.innerHTML = renderDraftBoardLibraryCardsHtml(targetTourneyId);
+  }
+  if(typeof showDraftToast === 'function'){
+    showDraftToast(`✏️ Renamed preset to "${item.name}"!`);
+  }
+}
+window.renameBoardInLibrary = renameBoardInLibrary;
+
+function deleteBoardFromLibrary(boardId, targetTourneyId = null){
+  let item = (savedDraftBoards || []).find(b => b.id === boardId);
+  if(!item) return;
+
+  if(!confirm(`Are you sure you want to delete "${item.name}" from your saved draft boards library?\n\nThis cannot be undone.`)){
+    return;
+  }
+
+  savedDraftBoards = savedDraftBoards.filter(b => b.id !== boardId);
+
+  try {
+    localStorage.setItem('draftdex-saved-boards', JSON.stringify(savedDraftBoards));
+  } catch(e){}
+
+  persistLeague();
+  if(!isSandboxMode()){
+    clearTimeout(syncTimer);
+    syncTimer = null;
+    flushSync();
+  }
+
+  let listHost = document.getElementById('draftBoardLibraryCardsList');
+  if(listHost){
+    listHost.innerHTML = renderDraftBoardLibraryCardsHtml(targetTourneyId);
+  }
+  if(typeof showDraftToast === 'function'){
+    showDraftToast(`🗑️ Deleted "${item.name}" from library.`);
+  }
+}
+window.deleteBoardFromLibrary = deleteBoardFromLibrary;
+
+function filterDraftBoardLibraryCards(val){
+  let q = (val || '').toLowerCase().trim();
+  let cards = document.querySelectorAll('.draft-board-library-card');
+  cards.forEach(card => {
+    let text = (card.getAttribute('data-search') || '').toLowerCase();
+    card.style.display = (!q || text.includes(q)) ? 'block' : 'none';
+  });
+  let visibleCount = Array.from(cards).filter(c => c.style.display !== 'none').length;
+  let emptyMsg = document.getElementById('draftBoardLibraryEmptySearch');
+  if(emptyMsg){
+    emptyMsg.style.display = (visibleCount === 0 && cards.length > 0) ? 'block' : 'none';
+  }
+}
+window.filterDraftBoardLibraryCards = filterDraftBoardLibraryCards;
+
+function renderDraftBoardLibraryCardsHtml(targetTourneyId = null){
+  if(!Array.isArray(savedDraftBoards) || !savedDraftBoards.length){
+    return `
+      <div style="text-align:center;padding:48px 20px;border:1px dashed #2d2d3c;border-radius:10px;background:#14141c">
+        <span style="font-size:42px">📚</span>
+        <div style="font-size:16px;font-weight:700;color:#ffd166;margin-top:10px">No Saved Draft Boards Yet</div>
+        <p style="font-size:12px;color:#8e8c95;max-width:440px;margin:8px auto 16px;line-height:1.5">
+          Save your current active draft board or any imported table as a reusable preset. You can load it back anytime with one click!
+        </p>
+        <button class="btn" onclick="promptSaveCurrentBoardToLibrary(${targetTourneyId ? `'${jsArg(targetTourneyId)}'` : 'null'})">
+          💾 Save Current Board to Library
+        </button>
+      </div>
+    `;
+  }
+
+  let t = targetTourneyId ? tournamentData[targetTourneyId] : null;
+  let canManage = moderator || (t && canManageTournament(t));
+
+  return `
+    <div style="display:flex;flex-direction:column;gap:12px">
+      ${savedDraftBoards.map((b) => {
+        let totalMons = b.totalMons || (b.tiers || []).reduce((s, x) => s + (x.pokemon || []).length, 0);
+        let tierCount = b.tierCount || (b.tiers || []).length;
+        let dateStr = b.updatedAt ? new Date(b.updatedAt).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' }) : 'Unknown date';
+        let searchKeywords = `${b.name} ${totalMons} mons ${tierCount} tiers`.toLowerCase();
+
+        return `
+          <div class="draft-board-library-card" data-search="${esc(searchKeywords)}" style="background:#15151e;border:1px solid #2a2a3a;border-radius:10px;padding:14px 16px;display:flex;flex-direction:column;gap:10px;transition:border-color 0.2s ease">
+            <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap">
+              <div style="min-width:0;flex:1">
+                <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+                  <span style="font-size:15px;font-weight:800;color:#f5f3f0;letter-spacing:0.3px">${esc(b.name)}</span>
+                  <span class="tag" style="background:#22222f;color:#ffd166;border:1px solid #3d3d52;font-size:10px;font-weight:700">${tierCount} Tiers</span>
+                  <span class="tag" style="background:#1d293d;color:#93c5fd;border:1px solid #2a4163;font-size:10px;font-weight:700">${totalMons} Pokémon</span>
+                </div>
+                <div style="font-size:11px;color:#7e7c88;margin-top:4px">
+                  Saved: ${esc(dateStr)}
+                </div>
+              </div>
+
+              <!-- Quick Actions -->
+              <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+                ${canManage ? `
+                  <button class="btn btn-sm" style="font-size:11px;font-weight:800;background:linear-gradient(135deg,#ffd166,#f59e0b);color:#111;border:0;padding:5px 12px" onclick="loadBoardFromLibrary('${jsArg(b.id)}', ${targetTourneyId ? `'${jsArg(targetTourneyId)}'` : 'null'})" title="Load this draft board preset">
+                    🚀 Load This Board
+                  </button>
+                  <button class="btn ghost btn-sm" style="font-size:11px;padding:5px 10px;color:#ffd166;border-color:#5c4819" onclick="loadSavedBoardIntoImporter('${jsArg(b.id)}', ${targetTourneyId ? `'${jsArg(targetTourneyId)}'` : 'null'})" title="Open this preset in the importer to edit text">
+                    📋 Edit in Importer
+                  </button>
+                ` : ''}
+                <button class="btn ghost btn-sm" style="font-size:11px;padding:5px 10px;color:#4bdd91;border-color:#205739" onclick="exportSavedBoardCSV('${jsArg(b.id)}')" title="Export as CSV spreadsheet">
+                  📥 Export CSV
+                </button>
+                ${canManage ? `
+                  <button class="btn ghost btn-sm" style="font-size:11px;padding:5px 10px;color:#93c5fd;border-color:#2a4163" onclick="overwriteBoardInLibrary('${jsArg(b.id)}', ${targetTourneyId ? `'${jsArg(targetTourneyId)}'` : 'null'})" title="Overwrite preset with current board">
+                    🔄 Overwrite
+                  </button>
+                  <button class="btn ghost btn-sm" style="font-size:11px;padding:5px 10px;color:#d4d2dc;border-color:#3a3a4c" onclick="renameBoardInLibrary('${jsArg(b.id)}', ${targetTourneyId ? `'${jsArg(targetTourneyId)}'` : 'null'})" title="Rename preset">
+                    ✏️ Rename
+                  </button>
+                  <button class="btn ghost btn-sm" style="font-size:11px;padding:5px 10px;color:#ff8e95;border-color:#5a242c" onclick="deleteBoardFromLibrary('${jsArg(b.id)}', ${targetTourneyId ? `'${jsArg(targetTourneyId)}'` : 'null'})" title="Delete preset">
+                    🗑️ Delete
+                  </button>
+                ` : ''}
+              </div>
+            </div>
+
+            <!-- Tier Pills Preview Strip -->
+            ${(b.tiers && b.tiers.length) ? `
+              <div style="display:flex;gap:6px;flex-wrap:wrap;padding-top:8px;border-top:1px solid #20202d">
+                ${b.tiers.slice(0, 10).map(tr => {
+                  let count = (tr.pokemon || []).length;
+                  let costStr = tr.cost ? `${tr.cost} pts` : '';
+                  return `
+                    <div style="display:inline-flex;align-items:center;gap:4px;background:#1a1a24;border:1px solid #2b2b3b;border-radius:4px;padding:2px 7px;font-size:10px">
+                      <span style="font-weight:700;color:#c5c3ce">${esc(tr.name || (costStr || 'Tier'))}</span>
+                      <span style="color:#7e7c88">(${count})</span>
+                    </div>
+                  `;
+                }).join('')}
+                ${b.tiers.length > 10 ? `<span style="font-size:10px;color:#7e7c88;align-self:center">+${b.tiers.length - 10} more</span>` : ''}
+              </div>
+            ` : ''}
+          </div>
+        `;
+      }).join('')}
+      <div id="draftBoardLibraryEmptySearch" style="display:none;text-align:center;padding:28px 14px;color:#8e8c95;font-size:12px">
+        No saved draft boards match your search.
+      </div>
+    </div>
+  `;
+}
+window.renderDraftBoardLibraryCardsHtml = renderDraftBoardLibraryCardsHtml;
+
+function openDraftBoardLibraryModal(targetTourneyId = null){
+  let t = targetTourneyId ? tournamentData[targetTourneyId] : null;
+  let contextLabel = t ? `Tournament: ${t.name}` : 'Offseason / General';
+  let canManage = moderator || (t && canManageTournament(t));
+
+  document.querySelector('#modal').innerHTML = `
+    <div class="modal-wrap">
+      <div class="modal" style="max-width:860px;width:95%">
+        <div class="modal-head">
+          <div>
+            <div class="eyebrow" style="color:var(--gold)">Draftdex · Presets Library</div>
+            <h2>📚 Saved Draft Boards</h2>
+            <p class="sub" style="margin-top:2px">Context: <b>${esc(contextLabel)}</b> · Save, load, and manage reusable draft tier setups.</p>
+          </div>
+          <button class="close" onclick="closeModal()">×</button>
+        </div>
+
+        <!-- Controls Toolbar -->
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;margin-top:14px;margin-bottom:12px;flex-wrap:wrap">
+          <div style="flex:1;min-width:200px;max-width:360px">
+            <input id="draftBoardLibrarySearch" type="text" placeholder="Search saved boards..." oninput="filterDraftBoardLibraryCards(this.value)" style="width:100%;padding:8px 12px;background:#181822;border:1px solid #363648;border-radius:6px;color:#f5f3f0;font-size:12px">
+          </div>
+          ${canManage ? `
+            <div style="display:flex;gap:8px">
+              <button class="btn btn-sm" style="font-size:11px;font-weight:800;padding:7px 14px" onclick="promptSaveCurrentBoardToLibrary(${targetTourneyId ? `'${jsArg(targetTourneyId)}'` : 'null'})">
+                💾 + Save Current Board as Preset
+              </button>
+            </div>
+          ` : ''}
+        </div>
+
+        <!-- List Area -->
+        <div id="draftBoardLibraryCardsList" style="max-height:480px;overflow-y:auto;padding-right:4px">
+          ${renderDraftBoardLibraryCardsHtml(targetTourneyId)}
+        </div>
+
+        <div class="creator-actions" style="margin-top:16px;display:flex;justify-content:flex-end">
+          <button class="btn ghost" onclick="closeModal()">Close</button>
+        </div>
+      </div>
+    </div>
+  `;
+}
+window.openDraftBoardLibraryModal = openDraftBoardLibraryModal;
 
 function saveImportedDraftBoard(tId){
   let t = tournamentData[tId] || activeT();
@@ -40242,7 +40751,18 @@ function saveImportedDraftBoard(tId){
   d.board = parsed.tiers;
   t.hasDraft = true;
 
+  window._lastLocalDraftActionTime = Date.now();
+  window._lastLocalDraftBoardActionTime = Date.now();
+  lastLocalUpdate = Date.now();
+  knownRev = (knownRev || 0) + 1;
+
   persistLeague();
+  if(!isSandboxMode()){
+    clearTimeout(syncTimer);
+    syncTimer = null;
+    flushSync();
+    if(typeof syncDraftStateToCloud === 'function') syncDraftStateToCloud(t);
+  }
   closeModal();
   render();
 }
@@ -40633,13 +41153,13 @@ function saveRenamedBoardPokemon(tId, oldMonName, cost, tierName){
 function openDraftConfirmationModal(tId, monName, cost, tierName){
   let t = tournamentData[tId] || ongoingT() || activeT();
   if(!t || t.status === 'COMPLETE' || t.phase !== 'draft'){
-    openOffseasonMonDetailModal(monName, cost);
+    openOffseasonMonDetailModal(monName, cost, t?.id || tId);
     return;
   }
   let d = ensureTournamentDraft(t);
   let turn = getDraftCurrentTurn(t);
   if(!turn || turn.isComplete || !turn.player){
-    openOffseasonMonDetailModal(monName, cost);
+    openOffseasonMonDetailModal(monName, cost, t?.id || tId);
     return;
   }
 
@@ -41497,8 +42017,9 @@ function DraftBoardView(t){
         <div class="card-title" style="margin-top:10px">No Draft Board Imported Yet</div>
         <p class="sub" style="max-width:480px;margin:8px auto 16px">Copy your draft tiers from Google Sheets or Excel and import them to enable live interactive drafting.</p>
         ${canManageTournament(t) ? `
-          <div style="display:flex;gap:10px;justify-content:center">
+          <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap">
             <button class="btn" onclick="openDraftBoardImporter('${jsArg(t.id)}')">📥 Import Google Sheet Board</button>
+            <button class="btn ghost" onclick="openDraftBoardLibraryModal('${jsArg(t.id)}')">📚 Saved Boards Library</button>
             <button class="btn ghost" onclick="loadSampleDraftBoard();saveImportedDraftBoard('${jsArg(t.id)}')">Load Sample Tiers</button>
           </div>
         ` : `<p class="sub">A tournament manager or moderator will import the draft board before drafting starts.</p>`}
@@ -41541,6 +42062,8 @@ function DraftBoardView(t){
             </div>
 
             ${canManageTournament(t) ? `
+              <button class="btn ghost btn-sm" onclick="promptSaveCurrentBoardToLibrary('${jsArg(t.id)}')">💾 Save to Library</button>
+              <button class="btn ghost btn-sm" onclick="openDraftBoardLibraryModal('${jsArg(t.id)}')">📚 Library</button>
               <button class="btn ghost btn-sm" onclick="exportDraftBoardCSV('${jsArg(t.id)}')">📥 Export Board (CSV)</button>
               <button class="btn ghost btn-sm" onclick="openDraftBoardImporter('${jsArg(t.id)}')">⚙️ Edit</button>
             ` : ''}
@@ -41945,6 +42468,7 @@ function reopenDraftPhase(tId){
 var offseasonDraftBoard = [];
 var offseasonDraftBoardPublic = false;
 var offseasonQuickEditMode = false;
+var savedDraftBoards = [];
 try {
   let saved = localStorage.getItem('draftdex-offseason-board');
   if(saved) offseasonDraftBoard = JSON.parse(saved);
@@ -41955,7 +42479,13 @@ try {
   }
   let savedQe = localStorage.getItem('draftdex-offseason-quick-edit');
   if(savedQe !== null) offseasonQuickEditMode = (savedQe === 'true');
+  let savedBoards = localStorage.getItem('draftdex-saved-boards');
+  if(savedBoards) savedDraftBoards = JSON.parse(savedBoards);
+  else if(typeof window !== 'undefined' && Array.isArray(window.__SEED_STATE__?.savedDraftBoards)){
+    savedDraftBoards = window.__SEED_STATE__.savedDraftBoards;
+  }
 } catch(e){}
+if(!Array.isArray(savedDraftBoards)) savedDraftBoards = [];
 
 function isOffseasonDraftBoardPublic(){
   return Boolean(offseasonDraftBoardPublic);
@@ -42203,6 +42733,7 @@ function openOffseasonDraftBoardImporter(){
             <div style="display:flex;gap:6px;flex-wrap:wrap">
               <input type="file" id="offseasonDraftCsvFileInput" accept=".csv,.tsv,.txt" style="display:none" onchange="handleDraftCsvFileUpload(event)">
               <button type="button" class="btn ghost btn-sm" style="padding:2px 8px!important;font-size:10px!important" onclick="document.getElementById('offseasonDraftCsvFileInput').click()">📁 Upload CSV File</button>
+              <button type="button" class="btn ghost btn-sm" style="padding:2px 8px!important;font-size:10px!important;color:#ffd166;border-color:#5c4819" onclick="openDraftBoardLibraryModal()">📚 Saved Boards</button>
               <button type="button" class="btn ghost btn-sm" style="padding:2px 8px!important;font-size:10px!important" onclick="loadSampleDraftBoard()">Load Sample Board</button>
               <button type="button" class="btn ghost btn-sm" style="padding:2px 8px!important;font-size:10px!important" onclick="document.getElementById('importDraftText').value=''">Clear</button>
               <button type="button" class="btn ghost btn-sm" style="padding:2px 8px!important;font-size:10px!important;color:#4bdd91;border-color:#205739" onclick="exportDraftBoardCSV()">📥 Export Board (CSV)</button>
@@ -42223,9 +42754,12 @@ Iron Valiant\tKingambit\tRoaring Moon"></textarea>
           ${renderDraftImportPreviewHtml(draftPendingImport)}
         </div>
 
-        <div class="creator-actions" style="margin-top:20px;display:flex;justify-content:space-between">
+        <div class="creator-actions" style="margin-top:20px;display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px">
           <button class="btn ghost" onclick="closeModal()">Cancel</button>
-          <button class="btn" style="padding:10px 24px;font-weight:800" onclick="saveOffseasonDraftBoard()">💾 Save Draft Board</button>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <button type="button" class="btn ghost" style="padding:10px 16px;font-weight:700;color:#ffd166;border-color:#5c4819" onclick="promptSaveCurrentBoardToLibrary()">💾 Save as Preset</button>
+            <button class="btn" style="padding:10px 24px;font-weight:800" onclick="saveOffseasonDraftBoard()">💾 Save Draft Board</button>
+          </div>
         </div>
       </div>
     </div>
@@ -42249,7 +42783,17 @@ function saveOffseasonDraftBoard(){
     localStorage.setItem('draftdex-offseason-board-public', 'false');
   } catch(e){}
 
+  window._lastLocalDraftActionTime = Date.now();
+  window._lastLocalDraftBoardActionTime = Date.now();
+  lastLocalUpdate = Date.now();
+  knownRev = (knownRev || 0) + 1;
+
   persistLeague();
+  if(!isSandboxMode()){
+    clearTimeout(syncTimer);
+    syncTimer = null;
+    flushSync();
+  }
   closeModal();
   render();
   if(typeof showDraftToast === 'function') showDraftToast('Draft Board saved as Private draft!');
@@ -42264,7 +42808,18 @@ function clearOffseasonDraftBoard(){
     localStorage.removeItem('draftdex-offseason-board');
     localStorage.removeItem('draftdex-offseason-board-public');
   } catch(e){}
+
+  window._lastLocalDraftActionTime = Date.now();
+  window._lastLocalDraftBoardActionTime = Date.now();
+  lastLocalUpdate = Date.now();
+  knownRev = (knownRev || 0) + 1;
+
   persistLeague();
+  if(!isSandboxMode()){
+    clearTimeout(syncTimer);
+    syncTimer = null;
+    flushSync();
+  }
   render();
 }
 
@@ -42281,6 +42836,7 @@ function OffseasonDraftClosedView(){
       ${moderator ? `
         <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap">
           <button class="btn" onclick="openOffseasonDraftBoardImporter()">📋 Import Draft Board Table</button>
+          <button class="btn ghost" onclick="openDraftBoardLibraryModal()">📚 Saved Boards Library</button>
         </div>
       ` : ''}
     </div>
@@ -42323,6 +42879,8 @@ function OffseasonDraftView(){
           </span>
         </div>
 
+        <button class="btn ghost btn-sm" onclick="promptSaveCurrentBoardToLibrary()">💾 Save to Library</button>
+        <button class="btn ghost btn-sm" onclick="openDraftBoardLibraryModal()">📚 Library</button>
         <button class="btn ghost btn-sm" onclick="exportDraftBoardCSV()">📥 Export Board (CSV)</button>
         <button class="btn ghost btn-sm" onclick="openOffseasonDraftBoardImporter()">📋 Edit / Re-Import Board</button>
         <button class="btn ghost btn-sm" style="color:#ff8e95;border-color:#5a242c" onclick="clearOffseasonDraftBoard()">🗑️ Clear Board</button>
@@ -42446,15 +43004,28 @@ function removeTeamMonByName(name){
   }
 }
 
-function openOffseasonMonDetailModal(monName, cost){
+function openOffseasonMonDetailModal(monName, cost, tourneyId = null){
   let actualCost = cost;
   let tierName = `${cost} Points`;
   let board = getOffseasonDraftBoard();
-  let foundTier = board.find(tier => (tier.pokemon || []).some(m => m.toLowerCase().trim() === (monName||'').toLowerCase().trim()));
+  let clean = (monName || '').toLowerCase().trim();
+  let foundTier = board.find(tier => (tier.pokemon || []).some(m => m.toLowerCase().trim() === clean));
+  let targetTid = null;
+  if(tourneyId && tournamentData[tourneyId]?.draftData?.board?.length){
+    let tTier = tournamentData[tourneyId].draftData.board.find(tier => (tier.pokemon || []).some(m => m.toLowerCase().trim() === clean));
+    if(tTier){
+      foundTier = tTier;
+      targetTid = tourneyId;
+    }
+  }
   if(!foundTier){
     let curT = (typeof ongoingT === 'function' ? ongoingT() : null) || (typeof activeT === 'function' ? activeT() : null);
     if(curT?.draftData?.board?.length){
-      foundTier = curT.draftData.board.find(tier => (tier.pokemon || []).some(m => m.toLowerCase().trim() === (monName||'').toLowerCase().trim()));
+      let tTier = curT.draftData.board.find(tier => (tier.pokemon || []).some(m => m.toLowerCase().trim() === clean));
+      if(tTier){
+        foundTier = tTier;
+        targetTid = curT.id;
+      }
     }
   }
   if(foundTier){
@@ -42496,7 +43067,7 @@ function openOffseasonMonDetailModal(monName, cost){
 
           <div style="display:flex;flex-direction:column;gap:8px">
             ${moderator ? `
-              <button class="btn" style="background:linear-gradient(135deg,#ffd166,#f59e0b);color:#111;font-weight:800;border:0" onclick="openEditBoardPokemonModal(null, '${jsArg(monName)}', ${actualCost}, '${jsArg(tierName)}')">
+              <button class="btn" style="background:linear-gradient(135deg,#ffd166,#f59e0b);color:#111;font-weight:800;border:0" onclick="openEditBoardPokemonModal('${jsArg(targetTid || '')}', '${jsArg(monName)}', ${actualCost}, '${jsArg(tierName)}')">
                 ✏️ Edit on Draft Board / Move Tier
               </button>
             ` : ''}
@@ -42513,7 +43084,15 @@ function openOffseasonMonDetailModal(monName, cost){
 
 function openEditBoardPokemonModal(tId, oldMonName, currentCost, currentTierName){
   if(!moderator) return;
+  let clean = (oldMonName || '').toLowerCase().trim();
   let t = tId ? (tournamentData[tId] || null) : null;
+  if(!t){
+    let curT = (typeof ongoingT === 'function' ? ongoingT() : null) || (typeof activeT === 'function' ? activeT() : null);
+    if(curT?.draftData?.board?.length && curT.draftData.board.some(tier => (tier.pokemon || []).some(m => m.toLowerCase().trim() === clean))){
+      t = curT;
+      tId = curT.id;
+    }
+  }
   let board = t ? (t.draftData?.board || []) : getOffseasonDraftBoard();
   
   let tierOptions = Array.from(new Set(board.map(t => Number(t.cost)))).sort((a,b) => b - a);
@@ -42641,30 +43220,74 @@ function saveEditedBoardPokemon(tId, oldMonName, originalCost){
   }
 
   let t = tId ? (tournamentData[tId] || null) : null;
-  let board = t ? (t.draftData?.board || []) : getOffseasonDraftBoard();
-
-  // 1. Remove old entry from current tier
-  board.forEach(tier => {
-    tier.pokemon = (tier.pokemon || []).filter(m => m.toLowerCase().trim() !== oldClean);
-  });
-
-  // 2. Insert into target tier
-  let targetTier = board.find(tier => tier.cost === newCost);
-  if(targetTier){
-    targetTier.pokemon = (targetTier.pokemon || []).filter(m => m.toLowerCase().trim() !== newClean);
-    targetTier.pokemon.push(newName);
-    targetTier.pokemon.sort((a,b) => a.localeCompare(b));
-  } else {
-    board.push({
-      id: `tier_${newCost}`,
-      name: `${newCost} Points`,
-      cost: newCost,
-      pokemon: [newName]
-    });
-    board.sort((a,b) => b.cost - a.cost);
+  if(!t){
+    let curT = (typeof ongoingT === 'function' ? ongoingT() : null) || (typeof activeT === 'function' ? activeT() : null);
+    if(curT?.draftData?.board?.length && curT.draftData.board.some(tier => (tier.pokemon || []).some(m => m.toLowerCase().trim() === oldClean))){
+      t = curT;
+      tId = curT.id;
+    }
   }
 
-  // 3. If renamed, propagate to tournament/global rosters
+  // 1. Update in tournament board if present
+  if(t && t.draftData && Array.isArray(t.draftData.board)){
+    t.draftData.board.forEach(tier => {
+      tier.pokemon = (tier.pokemon || []).filter(m => m.toLowerCase().trim() !== oldClean);
+    });
+    let targetTier = t.draftData.board.find(tier => tier.cost === newCost);
+    if(targetTier){
+      targetTier.pokemon = (targetTier.pokemon || []).filter(m => m.toLowerCase().trim() !== newClean);
+      targetTier.pokemon.push(newName);
+      targetTier.pokemon.sort((a,b) => a.localeCompare(b));
+    } else {
+      t.draftData.board.push({
+        id: `tier_${newCost}`,
+        name: `${newCost} Points`,
+        cost: newCost,
+        pokemon: [newName]
+      });
+      t.draftData.board.sort((a,b) => b.cost - a.cost);
+    }
+    if(t.draft) t.draft.board = t.draftData.board;
+  }
+
+  // 2. Update in offseasonDraftBoard if present or if not a tournament
+  if(Array.isArray(offseasonDraftBoard)){
+    let offFound = false;
+    offseasonDraftBoard.forEach(tier => {
+      let before = (tier.pokemon || []).length;
+      tier.pokemon = (tier.pokemon || []).filter(m => m.toLowerCase().trim() !== oldClean);
+      if(tier.pokemon.length !== before) offFound = true;
+    });
+    if(offFound || !t){
+      let targetTier = offseasonDraftBoard.find(tier => tier.cost === newCost);
+      if(targetTier){
+        targetTier.pokemon = (targetTier.pokemon || []).filter(m => m.toLowerCase().trim() !== newClean);
+        targetTier.pokemon.push(newName);
+        targetTier.pokemon.sort((a,b) => a.localeCompare(b));
+      } else {
+        offseasonDraftBoard.push({
+          id: `tier_${newCost}`,
+          name: `${newCost} Points`,
+          cost: newCost,
+          pokemon: [newName]
+        });
+        offseasonDraftBoard.sort((a,b) => b.cost - a.cost);
+      }
+      try { localStorage.setItem('draftdex-offseason-board', JSON.stringify(offseasonDraftBoard)); } catch(e){}
+    }
+  }
+
+  // 3. Update in draftPool if present
+  if(typeof draftPool !== 'undefined' && Array.isArray(draftPool?.items)){
+    let pItem = draftPool.items.find(x => (x.name || '').toLowerCase().trim() === oldClean);
+    if(pItem){
+      pItem.name = newName;
+      pItem.cost = newCost;
+      try { localStorage.setItem('draftdex-pool', JSON.stringify(draftPool)); } catch(e){}
+    }
+  }
+
+  // 4. If renamed, propagate to tournament/global rosters
   if(oldClean !== newClean){
     if(t && t.rosters){
       Object.keys(t.rosters).forEach(coach => {
@@ -42678,12 +43301,19 @@ function saveEditedBoardPokemon(tId, oldMonName, originalCost){
     }
   }
 
-  // 4. Save and sync
-  if(!t){
-    offseasonDraftBoard = board;
-    try { localStorage.setItem('draftdex-offseason-board', JSON.stringify(offseasonDraftBoard)); } catch(e){}
-  }
+  // 5. Save and sync with immediate push and lagback guard timestamps
+  window._lastLocalDraftActionTime = Date.now();
+  window._lastLocalDraftBoardActionTime = Date.now();
+  lastLocalUpdate = Date.now();
+  knownRev = (knownRev || 0) + 1;
+
   persistLeague();
+  if(!isSandboxMode()){
+    clearTimeout(syncTimer);
+    syncTimer = null;
+    flushSync();
+    if(t && typeof syncDraftStateToCloud === 'function') syncDraftStateToCloud(t);
+  }
   closeModal();
   render();
   if(typeof showDraftToast === 'function'){
@@ -42694,19 +43324,56 @@ function saveEditedBoardPokemon(tId, oldMonName, originalCost){
 function deleteBoardPokemon(tId, monName, cost){
   if(!moderator) return;
   if(!confirm(`Remove "${monName}" from the draft board completely?`)) return;
+  let clean = (monName || '').toLowerCase().trim();
+
   let t = tId ? (tournamentData[tId] || null) : null;
-  let board = t ? (t.draftData?.board || []) : getOffseasonDraftBoard();
-  let clean = monName.toLowerCase().trim();
-
-  board.forEach(tier => {
-    tier.pokemon = (tier.pokemon || []).filter(m => m.toLowerCase().trim() !== clean);
-  });
-
   if(!t){
-    offseasonDraftBoard = board;
+    let curT = (typeof ongoingT === 'function' ? ongoingT() : null) || (typeof activeT === 'function' ? activeT() : null);
+    if(curT?.draftData?.board?.length && curT.draftData.board.some(tier => (tier.pokemon || []).some(m => m.toLowerCase().trim() === clean))){
+      t = curT;
+      tId = curT.id;
+    }
+  }
+
+  // 1. Remove from tournament draft board if present
+  if(t && t.draftData && Array.isArray(t.draftData.board)){
+    t.draftData.board.forEach(tier => {
+      tier.pokemon = (tier.pokemon || []).filter(m => m.toLowerCase().trim() !== clean);
+    });
+    if(t.draft && t.draft !== t.draftData && Array.isArray(t.draft.board)){
+      t.draft.board.forEach(tier => {
+        tier.pokemon = (tier.pokemon || []).filter(m => m.toLowerCase().trim() !== clean);
+      });
+    }
+  }
+
+  // 2. Remove from offseason draft board
+  if(Array.isArray(offseasonDraftBoard)){
+    offseasonDraftBoard.forEach(tier => {
+      tier.pokemon = (tier.pokemon || []).filter(m => m.toLowerCase().trim() !== clean);
+    });
     try { localStorage.setItem('draftdex-offseason-board', JSON.stringify(offseasonDraftBoard)); } catch(e){}
   }
+
+  // 3. Remove from draftPool if present
+  if(typeof draftPool !== 'undefined' && Array.isArray(draftPool?.items)){
+    draftPool.items = draftPool.items.filter(x => (x.name || '').toLowerCase().trim() !== clean);
+    try { localStorage.setItem('draftdex-pool', JSON.stringify(draftPool)); } catch(e){}
+  }
+
+  // 4. Save and sync with immediate push and lagback guard timestamps
+  window._lastLocalDraftActionTime = Date.now();
+  window._lastLocalDraftBoardActionTime = Date.now();
+  lastLocalUpdate = Date.now();
+  knownRev = (knownRev || 0) + 1;
+
   persistLeague();
+  if(!isSandboxMode()){
+    clearTimeout(syncTimer);
+    syncTimer = null;
+    flushSync();
+    if(t && typeof syncDraftStateToCloud === 'function') syncDraftStateToCloud(t);
+  }
   closeModal();
   render();
   if(typeof showDraftToast === 'function'){
@@ -42865,8 +43532,23 @@ function saveNewBoardPokemon(){
   if(isOffseason){
     offseasonDraftBoard = board;
     try { localStorage.setItem('draftdex-offseason-board', JSON.stringify(offseasonDraftBoard)); } catch(e){}
+  } else if(t?.draftData){
+    t.draftData.board = board;
+    if(t.draft) t.draft.board = board;
   }
+
+  window._lastLocalDraftActionTime = Date.now();
+  window._lastLocalDraftBoardActionTime = Date.now();
+  lastLocalUpdate = Date.now();
+  knownRev = (knownRev || 0) + 1;
+
   persistLeague();
+  if(!isSandboxMode()){
+    clearTimeout(syncTimer);
+    syncTimer = null;
+    flushSync();
+    if(t && typeof syncDraftStateToCloud === 'function') syncDraftStateToCloud(t);
+  }
   closeModal();
   render();
   if(typeof showDraftToast === 'function'){

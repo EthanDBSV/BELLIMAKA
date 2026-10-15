@@ -3,6 +3,30 @@
 All notable changes to the Bellimaka Pokémon Draft League platform are documented here.
 Format: `v[MAJOR].[MINOR].[PATCH]` — Major = major system overhauls, Minor = new features, Patch = bug fixes and visual improvements.
 
+## [v3.2.0] — 2026-10-14
+
+### Draft Board Library & Saved Presets + Draftboard Removal Race Condition Fix
+- **Draft Board Library & Saved Presets (`savedDraftBoards`)**:
+  - **Reusable Board Presets**: Added the ability to save imported draft boards as named library presets for future reuse across tournaments and offseason planning without risk of losing tier layouts.
+  - **Comprehensive Preset Management**:
+    - **One-Click Saving**: Save the active tournament draft board, offseason board, or newly parsed import table via "+ Save as Preset" buttons in the Draft Importer, toolbar, and Library modal.
+    - **Instant Deployment (`loadBoardFromLibrary`)**: Load any saved board into an active tournament or the offseason board with confirmation, updating draft revisions, timestamps, and cloud state.
+    - **Importer Editing (`loadSavedBoardIntoImporter`)**: "📋 Edit in Importer" action loads preset tiers into the Google Sheets / CSV text editor and visual preview area for adjustments before applying.
+    - **CSV Export Engine (`downloadBoardCSV`, `exportSavedBoardCSV`)**: Dedicated CSV generator to download any saved preset or active draft board as an Excel/Sheets-compatible CSV spreadsheet at any time.
+    - **Full Preset Lifecycle**: Rename presets (`renameBoardInLibrary`), overwrite presets with the current board (`overwriteBoardInLibrary`), and delete presets (`deleteBoardFromLibrary`) with real-time keyword search filtering.
+  - **Storage & Cloud Sync Integration**:
+    - Persisted locally under `'draftdex-saved-boards'` and synchronized automatically across devices via Cloudflare KV (`savedDraftBoards` in `flushSync` and `applySharedState`).
+    - Included in automated `league_backup.json` export snapshots.
+- **Draft Board Removal Race Condition & Auto-Reappearing Pokémon Fix**:
+  - **Root Cause Resolution**: Resolved an issue where removing a Pokémon from the draft board caused it to disappear for ~0.5 seconds before popping back onto the screen. Closing the browser's native `confirm()` modal triggered the window `focus` event listener's `syncFromCloud(true)`, whose forced sync bypassed timestamp checks and overwrote the local removal with stale cloud state before `flushSync()` could upload the change.
+  - **Guard Timestamps & Immediate Sync**:
+    - Added `_lastLocalDraftBoardActionTime` guards to `shouldApply()` and `syncFromCloud()` preventing cloud poll overwrites within 8 seconds of any draft board modification.
+    - Updated `saveEditedBoardPokemon`, `deleteBoardPokemon`, and `saveNewBoardPokemon` to immediately trigger `flushSync()` and `syncDraftStateToCloud()` synchronously.
+    - Guaranteed simultaneous pruning across `t.draftData.board`, `offseasonDraftBoard`, and `draftPool.items`.
+    - Passed explicit tournament context (`tId`) through `openDraftConfirmationModal`, `openOffseasonMonDetailModal`, and `openEditBoardPokemonModal` to prevent fallback ambiguity.
+
+---
+
 ## [v3.1.0] — 2026-10-12
 
 ### League Phase Competitive Format (Random No-Rematch Single-Table Stage)
