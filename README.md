@@ -66,12 +66,18 @@ Format: `v[MAJOR].[MINOR].[PATCH]` — Major = major system overhauls, Minor = n
 - **Team Sheet & Showcase High-Resolution Artwork Upgrade (`getPokemonArtworkUrl`)**:
   - **Team Roster Detail Sheet (`TeamRosterDetailView`)**: Upgraded coach team sheets from low-resolution Showdown sprites to high-resolution PokeAPI official artwork via `getPokemonArtworkUrl(monName)`.
   - **Team Showcase Cards (`renderTeamsGridHtml`)**: Upgraded tournament coach showcase overview cards so all 10 roster slots render crisp official artwork.
+  - **Games Played Display Next to Record**: In both tournament archives and ongoing tournaments, team sheet hero headers now explicitly calculate and display the total number of games played next to the record (e.g. `COACH: DAO MING · RECORD: 6-3 (9 games played)`).
   - **Full Mega & Special Form Resolution**: All 97 canonical and community Megas (including **Mega Crabominable** `10315`, **Mega Banette** `10056`, **Mega Froslass** `10285`), Therian Formes (**Landorus-Therian** `10021`, **Thundurus-Therian** `10020`), Necrozma Formes (**Necrozma-Dawn-Wings** `10156`), Rotom appliances, and regional forms resolve to verified PokeAPI official artwork.
   - **Non-Base Form Fallback Guard**: Megas and special forms without explicit PokeAPI artwork IDs fall back to Showdown Mega sprites rather than degrading to base Pokémon National Dex numbers.
   - **1-Click Interactive Sidebar Drawer Navigation**: Clicking any Pokémon row on a coach's team sheet seamlessly opens the Drafteon-style detail sidebar drawer (`openPokemonDetailDrawer`) with stats, BST, and abilities, while preserving the point cost edit button independently via `event.stopPropagation()`.
   - **Automatic Artwork Margin Cropping (`autoTrimArtwork`)**: Automatically crops transparent borders using offscreen canvas trimming, ensuring consistent, edge-to-edge presentation.
   - **Zero Broken Image Fallback Chain (`handleArtworkFallback`)**: Cascades from PokeAPI Official Artwork $\rightarrow$ Showdown Sprite $\rightarrow$ Local Pokéball icon.
   - **Real-Time Cold Cache DOM Upgrade**: On cold browser caches, `ensureShowdownDex()` upgrades any rendered team sprites to official artwork in real time as soon as Showdown's Pokedex data arrives.
+- **Tournament Awards High-Resolution PokeAPI Artwork & Interactive Drawer**:
+  - **Major Awards (`renderMajorAwardsCardsHtml`)**: Upgraded Season MVP and Finals MVP cards (both compact and grand card layouts) to render crisp PokeAPI official artwork with auto-trimming and multi-tier fallback.
+  - **Tournament Stat Leaders (`renderTournamentStatLeadersHtml`)**: Upgraded top 3 podium spotlights (Most KOs, Most Damage, Most Tanked, Most Healed, Most Support) to use official PokeAPI artwork.
+  - **All-Tournament Teams of the Season (`renderTeamOfTheSeasonCardsHtml`)**: Upgraded 1st, 2nd, and 3rd All-Tournament Team cards (both compact and grand card layouts) to display full official artwork with primary type theme glows.
+  - **1-Click Drawer Access from Awards**: Clicking any award winner card or leader Pokémon immediately opens the Drafteon-style detail sidebar drawer (`openPokemonDetailDrawer`) for instant inspection of base stats and abilities, with `event.stopPropagation()` preserving coach profile navigation.
 
 ---
 

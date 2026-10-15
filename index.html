@@ -14442,12 +14442,12 @@ function renderMajorAwardsCardsHtml(major, t, isCompact = false) {
           let types = (typeof getPokemonTypes === 'function' ? getPokemonTypes(mon.name) : []) || ['Normal'];
           let pType = types[0] || 'Normal';
           let theme = (typeof TYPE_THEMES !== 'undefined' && TYPE_THEMES[pType]) ? TYPE_THEMES[pType] : { bg: '#1c1c24', border: '#383847', glow: 'rgba(255,255,255,0.06)' };
-          let sprite = (typeof resolvePokemonData === 'function' ? resolvePokemonData(mon.name)?.sprite : null) || (typeof getPokemonSpriteUrl === 'function' ? getPokemonSpriteUrl(mon.name.toLowerCase()) : '') || mon.sprite || '';
+          let sprite = (typeof getPokemonArtworkUrl === 'function' ? getPokemonArtworkUrl(mon.name) : null) || (typeof resolvePokemonData === 'function' ? resolvePokemonData(mon.name)?.sprite : null) || (typeof getPokemonSpriteUrl === 'function' ? getPokemonSpriteUrl(mon.name.toLowerCase()) : '') || mon.sprite || '';
 
           return `
-            <div class="award-major-card" style="background:linear-gradient(135deg, ${theme.bg} 0%, #15131a 55%, #101015 100%);border:1px solid ${item.badgeBorder}">
+            <div class="award-major-card" style="background:linear-gradient(135deg, ${theme.bg} 0%, #15131a 55%, #101015 100%);border:1px solid ${item.badgeBorder};cursor:pointer" onclick="openPokemonDetailDrawer('${jsArg(mon.name)}')">
               <div style="width:58px;height:58px;border-radius:50%;background:rgba(0,0,0,0.45);border:2px solid ${item.badgeColor};box-shadow:0 0 16px ${theme.glow || 'rgba(0,0,0,0.4)'};display:flex;align-items:center;justify-content:center;flex-shrink:0">
-                <img src="${sprite}" alt="${esc(mon.name)}" style="width:50px;height:50px;object-fit:contain;filter:drop-shadow(0 4px 6px rgba(0,0,0,0.6))" onerror="handleSpriteError(this)">
+                <img src="${sprite}" alt="${esc(mon.name)}" style="width:50px;height:50px;object-fit:contain;filter:drop-shadow(0 4px 6px rgba(0,0,0,0.6))" loading="lazy" data-mon-name="${esc(mon.name)}" crossOrigin="anonymous" onload="autoTrimArtwork(this)" onerror="handleArtworkFallback(this, '${jsArg(mon.name)}')">
               </div>
               <div style="min-width:0;flex:1">
                 <div style="display:flex;align-items:center;gap:6px">
@@ -14525,10 +14525,10 @@ function renderMajorAwardsCardsHtml(major, t, isCompact = false) {
         let types = (typeof getPokemonTypes === 'function' ? getPokemonTypes(mon.name) : []) || ['Normal'];
         let pType = types[0] || 'Normal';
         let theme = (typeof TYPE_THEMES !== 'undefined' && TYPE_THEMES[pType]) ? TYPE_THEMES[pType] : { bg: '#1c1c24', border: '#383847', glow: 'rgba(255,255,255,0.06)' };
-        let sprite = (typeof resolvePokemonData === 'function' ? resolvePokemonData(mon.name)?.sprite : null) || (typeof getPokemonSpriteUrl === 'function' ? getPokemonSpriteUrl(mon.name.toLowerCase()) : '') || mon.sprite || '';
+        let sprite = (typeof getPokemonArtworkUrl === 'function' ? getPokemonArtworkUrl(mon.name) : null) || (typeof resolvePokemonData === 'function' ? resolvePokemonData(mon.name)?.sprite : null) || (typeof getPokemonSpriteUrl === 'function' ? getPokemonSpriteUrl(mon.name.toLowerCase()) : '') || mon.sprite || '';
 
         return `
-          <div class="tots-card" style="background:linear-gradient(180deg, ${theme.bg} 0%, rgba(18,18,24,0.96) 100%);border-color:${theme.border || '#2e2e3e'}">
+          <div class="tots-card" style="background:linear-gradient(180deg, ${theme.bg} 0%, rgba(18,18,24,0.96) 100%);border-color:${theme.border || '#2e2e3e'};cursor:pointer" onclick="openPokemonDetailDrawer('${jsArg(mon.name)}')">
             <div style="display:flex;flex-direction:column;align-items:center;gap:3px;margin-bottom:6px">
               <span style="font:800 10px 'Barlow Condensed';letter-spacing:.8px;text-transform:uppercase;padding:2px 8px;border-radius:4px;background:${item.badgeBg};color:${item.badgeColor};border:1px solid ${item.badgeBorder}">
                 ${item.icon} ${item.categoryTitle}
@@ -14543,7 +14543,7 @@ function renderMajorAwardsCardsHtml(major, t, isCompact = false) {
             </div>
 
             <div style="width:100%;height:115px;display:flex;align-items:center;justify-content:center;margin:8px 0">
-              <img src="${sprite}" alt="${esc(mon.name)}" style="max-height:105px;max-width:115px;object-fit:contain;filter:drop-shadow(0 6px 12px ${theme.glow || 'rgba(0,0,0,0.5)'})" onerror="handleSpriteError(this)">
+              <img src="${sprite}" alt="${esc(mon.name)}" style="max-height:105px;max-width:115px;object-fit:contain;filter:drop-shadow(0 6px 12px ${theme.glow || 'rgba(0,0,0,0.5)'})" loading="lazy" data-mon-name="${esc(mon.name)}" crossOrigin="anonymous" onload="autoTrimArtwork(this)" onerror="handleArtworkFallback(this, '${jsArg(mon.name)}')">
             </div>
 
             <div style="display:flex;align-items:center;justify-content:center;gap:4px;margin-bottom:8px">
@@ -14649,8 +14649,8 @@ function renderTournamentStatLeadersHtml(leaders, t) {
 
           let renderSprite = (m, size = 48) => {
             if(!m) return '';
-            let s = (typeof resolvePokemonData === 'function' ? resolvePokemonData(m.name)?.sprite : null) || (typeof getPokemonSpriteUrl === 'function' ? getPokemonSpriteUrl(m.name.toLowerCase()) : '') || m.sprite || '';
-            return `<img src="${s}" alt="${esc(m.name)}" style="max-height:${size}px;max-width:${size}px;object-fit:contain" onerror="handleSpriteError(this)">`;
+            let s = (typeof getPokemonArtworkUrl === 'function' ? getPokemonArtworkUrl(m.name) : null) || (typeof resolvePokemonData === 'function' ? resolvePokemonData(m.name)?.sprite : null) || (typeof getPokemonSpriteUrl === 'function' ? getPokemonSpriteUrl(m.name.toLowerCase()) : '') || m.sprite || '';
+            return `<img src="${s}" alt="${esc(m.name)}" style="max-height:${size}px;max-width:${size}px;object-fit:contain;cursor:pointer" loading="lazy" data-mon-name="${esc(m.name)}" crossOrigin="anonymous" onload="autoTrimArtwork(this)" onerror="handleArtworkFallback(this, '${jsArg(m.name)}')" onclick="event.stopPropagation();openPokemonDetailDrawer('${jsArg(m.name)}')">`;
           };
 
           return `
@@ -14765,10 +14765,10 @@ function renderTeamOfTheSeasonCardsHtml(totsOrList, isCompact = false) {
           let types = (typeof getPokemonTypes === 'function' ? getPokemonTypes(mon.name) : []) || ['Normal'];
           let pType = types[0] || 'Normal';
           let theme = (typeof TYPE_THEMES !== 'undefined' && TYPE_THEMES[pType]) ? TYPE_THEMES[pType] : { bg: '#1c1c24', border: '#383847', glow: 'rgba(255,255,255,0.06)' };
-          let sprite = (typeof resolvePokemonData === 'function' ? resolvePokemonData(mon.name)?.sprite : null) || (typeof getPokemonSpriteUrl === 'function' ? getPokemonSpriteUrl(mon.name.toLowerCase()) : '') || mon.sprite || '';
+          let sprite = (typeof getPokemonArtworkUrl === 'function' ? getPokemonArtworkUrl(mon.name) : null) || (typeof resolvePokemonData === 'function' ? resolvePokemonData(mon.name)?.sprite : null) || (typeof getPokemonSpriteUrl === 'function' ? getPokemonSpriteUrl(mon.name.toLowerCase()) : '') || mon.sprite || '';
 
           return `
-            <div class="award-compact-card" style="background:linear-gradient(135deg, ${theme.bg} 0%, #15151e 100%);border:1px solid ${theme.border || '#2e2e3e'}">
+            <div class="award-compact-card" style="background:linear-gradient(135deg, ${theme.bg} 0%, #15151e 100%);border:1px solid ${theme.border || '#2e2e3e'};cursor:pointer" onclick="openPokemonDetailDrawer('${jsArg(mon.name)}')">
               <!-- Header with min-height 44px so 1-line or 2-line tags never displace content below -->
               <div style="display:flex;align-items:flex-start;justify-content:space-between;width:100%;gap:4px;min-height:44px;margin-bottom:8px">
                 <span class="award-role-badge" style="background:${item.tierNum === 1 ? 'rgba(255,209,102,0.14)' : (item.tierNum === 2 ? 'rgba(203,213,225,0.14)' : 'rgba(240,168,117,0.14)')};border-color:${item.tierNum === 1 ? 'rgba(255,209,102,0.35)' : (item.tierNum === 2 ? 'rgba(203,213,225,0.35)' : 'rgba(240,168,117,0.35)')};color:${item.tierNum === 1 ? '#ffd166' : (item.tierNum === 2 ? '#cbd5e1' : '#f0a875')}">
@@ -14782,7 +14782,7 @@ function renderTeamOfTheSeasonCardsHtml(totsOrList, isCompact = false) {
               <!-- Main Content: Sprite + Info Column aligned to top -->
               <div style="display:flex;align-items:flex-start;gap:12px;width:100%">
                 <div style="width:62px;height:62px;flex-shrink:0;border-radius:8px;background:rgba(0,0,0,0.4);border:1px solid rgba(255,255,255,0.06);display:flex;align-items:center;justify-content:center">
-                  <img src="${sprite}" alt="${esc(mon.name)}" style="max-height:54px;max-width:54px;object-fit:contain;filter:drop-shadow(0 4px 6px ${theme.glow || 'rgba(0,0,0,0.5)'})" onerror="handleSpriteError(this)">
+                  <img src="${sprite}" alt="${esc(mon.name)}" style="max-height:54px;max-width:54px;object-fit:contain;filter:drop-shadow(0 4px 6px ${theme.glow || 'rgba(0,0,0,0.5)'})" loading="lazy" data-mon-name="${esc(mon.name)}" crossOrigin="anonymous" onload="autoTrimArtwork(this)" onerror="handleArtworkFallback(this, '${jsArg(mon.name)}')">
                 </div>
                 <div style="min-width:0;flex:1;display:flex;flex-direction:column">
                   <!-- Name with fixed height -->
@@ -14828,10 +14828,10 @@ function renderTeamOfTheSeasonCardsHtml(totsOrList, isCompact = false) {
         let types = (typeof getPokemonTypes === 'function' ? getPokemonTypes(mon.name) : []) || ['Normal'];
         let pType = types[0] || 'Normal';
         let theme = (typeof TYPE_THEMES !== 'undefined' && TYPE_THEMES[pType]) ? TYPE_THEMES[pType] : { bg: '#1c1c24', border: '#383847', glow: 'rgba(255,255,255,0.06)' };
-        let sprite = (typeof resolvePokemonData === 'function' ? resolvePokemonData(mon.name)?.sprite : null) || (typeof getPokemonSpriteUrl === 'function' ? getPokemonSpriteUrl(mon.name.toLowerCase()) : '') || mon.sprite || '';
+        let sprite = (typeof getPokemonArtworkUrl === 'function' ? getPokemonArtworkUrl(mon.name) : null) || (typeof resolvePokemonData === 'function' ? resolvePokemonData(mon.name)?.sprite : null) || (typeof getPokemonSpriteUrl === 'function' ? getPokemonSpriteUrl(mon.name.toLowerCase()) : '') || mon.sprite || '';
 
         return `
-          <div class="tots-card" style="background:linear-gradient(180deg, ${theme.bg} 0%, rgba(18,18,24,0.96) 100%);border-color:${theme.border || '#2e2e3e'}">
+          <div class="tots-card" style="background:linear-gradient(180deg, ${theme.bg} 0%, rgba(18,18,24,0.96) 100%);border-color:${theme.border || '#2e2e3e'};cursor:pointer" onclick="openPokemonDetailDrawer('${jsArg(mon.name)}')">
             <!-- Header: Tier Pill & Leader Tags with fixed min-height for row-wide symmetry -->
             <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:50px;margin-bottom:6px;width:100%">
               <div style="display:flex;align-items:center;gap:4px;flex-wrap:wrap;justify-content:center">
@@ -14849,7 +14849,7 @@ function renderTeamOfTheSeasonCardsHtml(totsOrList, isCompact = false) {
 
             <!-- Big Centered Sprite -->
             <div style="width:100%;height:115px;display:flex;align-items:center;justify-content:center;margin:8px 0">
-              <img src="${sprite}" alt="${esc(mon.name)}" style="max-height:105px;max-width:115px;object-fit:contain;filter:drop-shadow(0 6px 12px ${theme.glow || 'rgba(0,0,0,0.5)'})" onerror="handleSpriteError(this)">
+              <img src="${sprite}" alt="${esc(mon.name)}" style="max-height:105px;max-width:115px;object-fit:contain;filter:drop-shadow(0 6px 12px ${theme.glow || 'rgba(0,0,0,0.5)'})" loading="lazy" data-mon-name="${esc(mon.name)}" crossOrigin="anonymous" onload="autoTrimArtwork(this)" onerror="handleArtworkFallback(this, '${jsArg(mon.name)}')">
             </div>
 
             <!-- Type Badges with min-height -->
@@ -38335,7 +38335,13 @@ function TeamRosterDetailView(t, p){
               <h1 class="team-detail-team-name" title="${esc(tName)}">${esc(tName)}</h1>
               <span class="tag" style="background:#1b1b26;color:#ffd166;border:1px solid #3d3d52;font-size:10px">${esc(t.name)}</span>
             </div>
-            <div class="team-detail-coach-sub">COACH: ${esc(p.toUpperCase())} · RECORD: <b>${tournamentRecord(t, p)}</b></div>
+            ${(() => {
+              let coachRec = tournamentRecord(t, p);
+              let [w, l] = coachRec.split('-').map(Number);
+              let gamesCount = (w || 0) + (l || 0);
+              let gamesText = `${gamesCount} ${gamesCount === 1 ? 'game' : 'games'} played`;
+              return `<div class="team-detail-coach-sub">COACH: ${esc(p.toUpperCase())} · RECORD: <b>${coachRec}</b> (${esc(gamesText)})</div>`;
+            })()}
           </div>
         </div>
 
@@ -43969,7 +43975,7 @@ async function ensureShowdownDex() {
           localStorage.setItem('bellimaka_showdown_dex_v1', JSON.stringify(json));
         } catch(e) {}
         try {
-          document.querySelectorAll('.team-detail-mon-sprite[data-mon-name], .team-card-sprite-img[data-mon-name]').forEach(img => {
+          document.querySelectorAll('img[data-mon-name]').forEach(img => {
             let mon = img.getAttribute('data-mon-name');
             if(mon) {
               let newSrc = getPokemonArtworkUrl(mon);
