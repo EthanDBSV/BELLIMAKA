@@ -5758,9 +5758,13 @@ function _resolvePokemonDataUncached(raw) {
   s = s.replace(/\barcanine-h\b/g, 'arcanine-hisui');
   s = s.replace(/\bh-arcanine\b/g, 'arcanine-hisui');
   s = s.replace(/\blando\b/g, 'landorus');
+  s = s.replace(/\blandorous\b/g, 'landorus');
   s = s.replace(/\bthundy\b/g, 'thundurus');
+  s = s.replace(/\bthunderus\b/g, 'thundurus');
   s = s.replace(/\btorny\b/g, 'tornadus');
+  s = s.replace(/\btornadous\b/g, 'tornadus');
   s = s.replace(/\benam\b/g, 'enamorus');
+  s = s.replace(/\benamarous\b/g, 'enamorus');
 
   // Normalize forms like "raichu-mega-y" -> "raichu-megay"
   s = s.replace(/^([a-z0-9]+)-mega-([xyz])$/i, '$1-mega$2');
@@ -6055,7 +6059,7 @@ function _resolvePokemonDataUncached(raw) {
   }
 
   // Necrozma forms
-  let necrozmaMatch = s.match(/^necrozma[- ]?(dm|dw|dusk|dawn|dusk-mane|dawn-wings|ultra)$|^(dm|dw|dusk|dawn)[- ]necrozma$/);
+  let necrozmaMatch = s.match(/^necrozma[- ]*(dm|dw|dusk|dawn|dusk[- ]*mane|dawn[- ]*wings|ultra)$|^(dm|dw|dusk|dawn|dusk[- ]*mane|dawn[- ]*wings)[- ]*necrozma$/);
   if(necrozmaMatch){
     let f = (necrozmaMatch[1] || necrozmaMatch[2]).toLowerCase();
     if(f === 'dm' || f.startsWith('dusk')) return { name: 'Necrozma-Dusk-Mane', slug: 'necrozma-duskmane', sprite: 'https://play.pokemonshowdown.com/sprites/gen5/necrozma-duskmane.png' };
@@ -43536,97 +43540,262 @@ var _pokemonDetailCache = new Map();
 var _showdownDex = null;
 var _showdownDexPromise = null;
 
-// Official Artwork Form IDs for special forms, megas, and variants
+// Official Artwork Form IDs for special forms, megas, and variants (verified with PokeAPI)
 const SPECIAL_FORM_ARTWORK_IDS = {
-  'landorus-therian': 10020,
-  'thundurus-therian': 10021,
-  'tornadus-therian': 10022,
+  // Therian Formes
+  'landorus-therian': 10021,
+  'landorustherian': 10021,
+  'thundurus-therian': 10020,
+  'thundurustherian': 10020,
+  'tornadus-therian': 10019,
+  'tornadustherian': 10019,
   'enamorus-therian': 10249,
-  'rotom-wash': 10008,
-  'rotom-heat': 10007,
-  'rotom-frost': 10009,
-  'rotom-fan': 10010,
-  'rotom-mow': 10011,
-  'charizard-megax': 10034,
-  'charizard-megay': 10035,
-  'mewtwo-megax': 10043,
-  'mewtwo-megay': 10044,
-  'venusaur-mega': 10033,
-  'blastoise-mega': 10036,
-  'alakazam-mega': 10037,
-  'gengar-mega': 10038,
-  'kangaskhan-mega': 10039,
-  'pinsir-mega': 10040,
-  'gyarados-mega': 10041,
-  'aerodactyl-mega': 10042,
-  'ampharos-mega': 10045,
-  'scizor-mega': 10046,
-  'heracross-mega': 10047,
-  'houndoom-mega': 10048,
-  'tyranitar-mega': 10049,
-  'blaziken-mega': 10050,
-  'gardevoir-mega': 10051,
-  'mawile-mega': 10052,
-  'aggron-mega': 10053,
-  'medicham-mega': 10054,
-  'manectric-mega': 10055,
-  'banette-mega': 10056,
-  'absol-mega': 10057,
-  'garchomp-mega': 10058,
-  'lucario-mega': 10059,
-  'abomasnow-mega': 10060,
-  'beedrill-mega': 10090,
-  'pidgeot-mega': 10073,
-  'slowbro-mega': 10071,
-  'steelix-mega': 10072,
-  'sceptile-mega': 10065,
-  'swampert-mega': 10064,
-  'sableye-mega': 10066,
-  'sharpedo-mega': 10070,
-  'camerupt-mega': 10069,
-  'altaria-mega': 10067,
-  'glalie-mega': 10074,
-  'salamence-mega': 10089,
-  'metagross-mega': 10076,
-  'latias-mega': 10062,
-  'latios-mega': 10063,
-  'rayquaza-mega': 10079,
-  'lopunny-mega': 10088,
-  'gallade-mega': 10068,
-  'audino-mega': 10069,
-  'diancie-mega': 10075,
-  'urshifu-rapidstrike': 10191,
-  'urshifu-rapid-strike': 10191,
-  'ogerpon-hearthflame': 10273,
-  'ogerpon-wellspring': 10274,
-  'ogerpon-cornerstone': 10275,
-  'ursaluna-bloodmoon': 10272,
-  'tauros-paldeacombat': 10250,
-  'tauros-paldeablaze': 10251,
-  'tauros-paldeaaqua': 10252,
-  'deoxys-attack': 10001,
-  'deoxys-defense': 10002,
-  'deoxys-speed': 10003,
-  'giratina-origin': 10007,
-  'shaymin-sky': 10006,
-  'kyurem-black': 10022,
-  'kyurem-white': 10023,
-  'calyrex-shadow': 10194,
-  'calyrex-ice': 10193,
+  'enamorustherian': 10249,
+
+  // Rotom Appliances
+  'rotom-heat': 10008,
+  'rotomheat': 10008,
+  'rotom-wash': 10009,
+  'rotomwash': 10009,
+  'rotom-frost': 10010,
+  'rotomfrost': 10010,
+  'rotom-fan': 10011,
+  'rotomfan': 10011,
+  'rotom-mow': 10012,
+  'rotommow': 10012,
+
+  // Necrozma
   'necrozma-dusk': 10155,
+  'necrozmadusk': 10155,
+  'necrozma-duskmane': 10155,
+  'necrozma-dusk-mane': 10155,
+  'necrozmaduskmane': 10155,
   'necrozma-dawn': 10156,
+  'necrozmadawn': 10156,
+  'necrozma-dawnwings': 10156,
+  'necrozma-dawn-wings': 10156,
+  'necrozmadawnwings': 10156,
+  'necrozma-ultra': 10157,
+  'necrozmaultra': 10157,
+  'ultra-necrozma': 10157,
+  'ultranecrozma': 10157,
+
+  // Ogerpon Masks
+  'ogerpon-wellspring': 10273,
+  'ogerponwellspring': 10273,
+  'ogerpon-wellspring-mask': 10273,
+  'ogerpon-hearthflame': 10274,
+  'ogerponhearthflame': 10274,
+  'ogerpon-hearthflame-mask': 10274,
+  'ogerpon-cornerstone': 10275,
+  'ogerponcornerstone': 10275,
+  'ogerpon-cornerstone-mask': 10275,
+
+  // Calyrex Riders
+  'calyrex-ice': 10193,
+  'calyrexice': 10193,
+  'calyrex-ice-rider': 10193,
+  'calyrexicerider': 10193,
+  'calyrex-shadow': 10194,
+  'calyrexshadow': 10194,
+  'calyrex-shadow-rider': 10194,
+  'calyrexshadowrider': 10194,
+
+  // Urshifu
+  'urshifu-rapid-strike': 10191,
+  'urshifu-rapidstrike': 10191,
+  'urshifurapidstrike': 10191,
+  'urshifu-rapid': 10191,
+
+  // Paldean Tauros Breeds
+  'tauros-paldea-combat': 10250,
+  'tauros-paldeacombat': 10250,
+  'taurospaldeacombat': 10250,
+  'tauros-paldea-combat-breed': 10250,
+  'tauros-paldea-blaze': 10251,
+  'tauros-paldeablaze': 10251,
+  'taurospaldeablaze': 10251,
+  'tauros-paldea-blaze-breed': 10251,
+  'tauros-paldea-aqua': 10252,
+  'tauros-paldeaaqua': 10252,
+  'taurospaldeaaqua': 10252,
+  'tauros-paldea-aqua-breed': 10252,
+
+  // Bloodmoon Ursaluna
+  'ursaluna-bloodmoon': 10272,
+  'ursalunabloodmoon': 10272,
+  'bloodmoon-ursaluna': 10272,
+  'bloodmoonursaluna': 10272,
+
+  // Deoxys
+  'deoxys-attack': 10001,
+  'deoxysattack': 10001,
+  'deoxys-defense': 10002,
+  'deoxysdefense': 10002,
+  'deoxys-speed': 10003,
+  'deoxysspeed': 10003,
+
+  // Origin & Sky Formes
+  'giratina-origin': 10007,
+  'giratinaorigin': 10007,
+  'shaymin-sky': 10006,
+  'shayminsky': 10006,
+  'dialga-origin': 10245,
+  'dialgaorigin': 10245,
+  'palkia-origin': 10246,
+  'palkiaorigin': 10246,
+
+  // Kyurem Fusions
+  'kyurem-black': 10022,
+  'kyuremblack': 10022,
+  'kyurem-white': 10023,
+  'kyuremwhite': 10023,
+
+  // Crowned Zacian & Zamazenta
   'zacian-crowned': 10188,
+  'zaciancrowned': 10188,
   'zamazenta-crowned': 10189,
+  'zamazentacrowned': 10189,
+
+  // Palafin & Terapagos
+  'palafin-hero': 10256,
+  'palafinhero': 10256,
+  'terapagos-terastal': 10276,
+  'terapagosterastal': 10276,
+  'terapagos-stellar': 10277,
+  'terapagosstellar': 10277,
+
+  // Megas
+  'charizard-megax': 10034,
+  'charizard-mega-x': 10034,
+  'charizardmegax': 10034,
+  'charizard-megay': 10035,
+  'charizard-mega-y': 10035,
+  'charizardmegay': 10035,
+  'mewtwo-megax': 10043,
+  'mewtwo-mega-x': 10043,
+  'mewtwomegax': 10043,
+  'mewtwo-megay': 10044,
+  'mewtwo-mega-y': 10044,
+  'mewtwomegay': 10044,
+  'venusaur-mega': 10033,
+  'venusaurmega': 10033,
+  'blastoise-mega': 10036,
+  'blastoisemega': 10036,
+  'alakazam-mega': 10037,
+  'alakazammega': 10037,
+  'gengar-mega': 10038,
+  'gengarmega': 10038,
+  'kangaskhan-mega': 10039,
+  'kangaskhanmega': 10039,
+  'pinsir-mega': 10040,
+  'pinsirmega': 10040,
+  'gyarados-mega': 10041,
+  'gyaradosmega': 10041,
+  'aerodactyl-mega': 10042,
+  'aerodactylmega': 10042,
+  'ampharos-mega': 10045,
+  'ampharosmega': 10045,
+  'scizor-mega': 10046,
+  'scizormega': 10046,
+  'heracross-mega': 10047,
+  'heracrossmega': 10047,
+  'houndoom-mega': 10048,
+  'houndoommega': 10048,
+  'tyranitar-mega': 10049,
+  'tyranitarmega': 10049,
+  'blaziken-mega': 10050,
+  'blazikenmega': 10050,
+  'gardevoir-mega': 10051,
+  'gardevoirmega': 10051,
+  'mawile-mega': 10052,
+  'mawilemega': 10052,
+  'aggron-mega': 10053,
+  'aggronmega': 10053,
+  'medicham-mega': 10054,
+  'medichammega': 10054,
+  'manectric-mega': 10055,
+  'manectricmega': 10055,
+  'banette-mega': 10056,
+  'banettemega': 10056,
+  'absol-mega': 10057,
+  'absolmega': 10057,
+  'garchomp-mega': 10058,
+  'garchompmega': 10058,
+  'lucario-mega': 10059,
+  'lucariomega': 10059,
+  'abomasnow-mega': 10060,
+  'abomasnowmega': 10060,
+  'beedrill-mega': 10090,
+  'beedrillmega': 10090,
+  'pidgeot-mega': 10073,
+  'pidgeotmega': 10073,
+  'slowbro-mega': 10071,
+  'slowbromega': 10071,
+  'steelix-mega': 10072,
+  'steelixmega': 10072,
+  'sceptile-mega': 10065,
+  'sceptilemega': 10065,
+  'swampert-mega': 10064,
+  'swampertmega': 10064,
+  'sableye-mega': 10066,
+  'sableyemega': 10066,
+  'sharpedo-mega': 10070,
+  'sharpedomega': 10070,
+  'camerupt-mega': 10087,
+  'cameruptmega': 10087,
+  'altaria-mega': 10067,
+  'altariamega': 10067,
+  'glalie-mega': 10074,
+  'glaliemega': 10074,
+  'salamence-mega': 10089,
+  'salamencemega': 10089,
+  'metagross-mega': 10076,
+  'metagrossmega': 10076,
+  'latias-mega': 10062,
+  'latiasmega': 10062,
+  'latios-mega': 10063,
+  'latiosmega': 10063,
+  'rayquaza-mega': 10079,
+  'rayquazamega': 10079,
+  'lopunny-mega': 10088,
+  'lopunnymega': 10088,
+  'gallade-mega': 10068,
+  'gallademega': 10068,
+  'audino-mega': 10069,
+  'audinomega': 10069,
+  'diancie-mega': 10075,
+  'dianciemega': 10075,
+
+  // Regional forms
   'ninetales-alola': 10104,
+  'ninetalesalola': 10104,
   'marowak-alola': 10115,
+  'marowakalola': 10115,
   'raichu-alola': 10100,
+  'raichualola': 10100,
   'arcanine-hisui': 10230,
+  'arcaninehisui': 10230,
   'zoroark-hisui': 10239,
+  'zoroarkhisui': 10239,
   'samurott-hisui': 10236,
+  'samurotthisui': 10236,
+  'decidueye-hisui': 10244,
+  'decidueyehisui': 10244,
+  'typhlosion-hisui': 10233,
+  'typhlosionhisui': 10233,
+  'goodra-hisui': 10242,
+  'goodrahisui': 10242,
+  'sliggoo-hisui': 10241,
+  'sliggoohisui': 10241,
   'zapdos-galar': 10170,
+  'zapdosgalar': 10170,
   'moltres-galar': 10171,
+  'moltresgalar': 10171,
   'articuno-galar': 10169,
-  'slowbro-galar': 10165
+  'articunogalar': 10169,
+  'slowbro-galar': 10165,
+  'slowbrogalar': 10165
 };
 
 async function ensureShowdownDex() {
@@ -43676,18 +43845,30 @@ function getPokemonShowdownData(rawName) {
   let raw = String(rawName || '').trim();
   if(!raw) return null;
 
-  // 1. Direct alphanumeric normalization
-  let clean = raw.toLowerCase().replace(/[^a-z0-9]/g, '');
-  if(_showdownDex[clean]) return _showdownDex[clean];
-
-  // 2. Try resolvePokemonData slug
+  // 1. Master Name Guard: Resolve aliases, forms, and typos first
   if(typeof resolvePokemonData === 'function') {
     let resolved = resolvePokemonData(raw);
-    if(resolved && resolved.slug) {
-      let slugKey = resolved.slug.toLowerCase().replace(/[^a-z0-9]/g, '');
-      if(_showdownDex[slugKey]) return _showdownDex[slugKey];
+    if(resolved) {
+      if(resolved.slug) {
+        let slugKey = resolved.slug.toLowerCase().replace(/[^a-z0-9]/g, '');
+        if(_showdownDex[slugKey]) return _showdownDex[slugKey];
+      }
+      if(resolved.name) {
+        let nameKey = resolved.name.toLowerCase().replace(/[^a-z0-9]/g, '');
+        if(_showdownDex[nameKey]) return _showdownDex[nameKey];
+        let lowerName = resolved.name.toLowerCase();
+        for(let k in _showdownDex) {
+          if(_showdownDex[k].name && _showdownDex[k].name.toLowerCase() === lowerName) {
+            return _showdownDex[k];
+          }
+        }
+      }
     }
   }
+
+  // 2. Direct alphanumeric normalization
+  let clean = raw.toLowerCase().replace(/[^a-z0-9]/g, '');
+  if(_showdownDex[clean]) return _showdownDex[clean];
 
   // 3. Try removing parenthetical annotations
   let noParen = raw.replace(/\s*\([^)]*\)/g, '').toLowerCase().replace(/[^a-z0-9]/g, '');
@@ -43734,16 +43915,28 @@ function buildPokemonDetailFromDex(rawName, entry) {
   }
 
   let types = Array.isArray(entry.types) ? entry.types : (getPokemonTypes(rawName) || ['Normal']);
-  let resolvedSlug = typeof resolvePokemonData === 'function' ? resolvePokemonData(rawName).slug : '';
-  let specialFormId = SPECIAL_FORM_ARTWORK_IDS[resolvedSlug] || SPECIAL_FORM_ARTWORK_IDS[toPokeApiSlug(rawName)];
+  let resolved = typeof resolvePokemonData === 'function' ? resolvePokemonData(rawName) : null;
+  let canonicalName = resolved?.name || entry.name || rawName;
+  let resolvedSlug = resolved?.slug || '';
+  let pokeSlug = toPokeApiSlug(rawName);
+  let cleanRaw = String(rawName || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+  let cleanDexName = String(entry.name || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+  let cleanSlug = resolvedSlug.toLowerCase().replace(/[^a-z0-9]/g, '');
+
+  let specialFormId = 
+    SPECIAL_FORM_ARTWORK_IDS[resolvedSlug] ||
+    SPECIAL_FORM_ARTWORK_IDS[pokeSlug] ||
+    SPECIAL_FORM_ARTWORK_IDS[cleanSlug] ||
+    SPECIAL_FORM_ARTWORK_IDS[cleanDexName] ||
+    SPECIAL_FORM_ARTWORK_IDS[cleanRaw];
   let artworkId = specialFormId || entry.num;
   let artwork = artworkId ? 
     `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/${artworkId}.png` :
-    pokeSprite(rawName);
+    pokeSprite(canonicalName);
 
   return {
     id: entry.num,
-    name: entry.name || rawName,
+    name: canonicalName,
     artwork,
     stats,
     abilities,
@@ -43754,7 +43947,7 @@ function buildPokemonDetailFromDex(rawName, entry) {
 
 function getStoredMonDetail(slug) {
   try {
-    let raw = localStorage.getItem('bellimaka_mon_v1_' + slug);
+    let raw = localStorage.getItem('bellimaka_mon_v2_' + slug);
     if(raw) return JSON.parse(raw);
   } catch(e) {}
   return null;
@@ -43763,7 +43956,7 @@ function getStoredMonDetail(slug) {
 function storeMonDetail(slug, data) {
   try {
     _pokemonDetailCache.set(slug, data);
-    localStorage.setItem('bellimaka_mon_v1_' + slug, JSON.stringify(data));
+    localStorage.setItem('bellimaka_mon_v2_' + slug, JSON.stringify(data));
   } catch(e) {}
 }
 
@@ -43792,8 +43985,29 @@ async function fetchPokemonGenus(num) {
 function toPokeApiSlug(rawName) {
   let s = String(rawName || '').toLowerCase().trim();
   s = s.replace(/\s*\(\d+.*?\)$/, '').trim();
+
+  // Master Name Guard: Normalize form names, typos, and variants first
+  if(typeof resolvePokemonData === 'function') {
+    let resolved = resolvePokemonData(s);
+    if(resolved && resolved.slug) {
+      let rSlug = resolved.slug.toLowerCase().trim();
+      let rClean = rSlug.replace(/[^a-z0-9]/g, '');
+      if(typeof SPECIAL_FORM_ARTWORK_IDS !== 'undefined' && (SPECIAL_FORM_ARTWORK_IDS[rSlug] || SPECIAL_FORM_ARTWORK_IDS[rClean])) {
+        return rSlug;
+      }
+      if(resolved.name) s = resolved.name.toLowerCase().trim();
+    }
+  }
   
   const specialMap = {
+    'necrozma-dawn-wings': 'necrozma-dawn',
+    'necrozma-dawnwings': 'necrozma-dawn',
+    'necrozma dawn wings': 'necrozma-dawn',
+    'necrozma-dusk-mane': 'necrozma-dusk',
+    'necrozma-duskmane': 'necrozma-dusk',
+    'necrozma dusk mane': 'necrozma-dusk',
+    'necrozma-ultra': 'necrozma-ultra',
+    'ultra-necrozma': 'necrozma-ultra',
     'great tusk': 'great-tusk',
     'greattusk': 'great-tusk',
     'iron valiant': 'iron-valiant',
@@ -44020,16 +44234,18 @@ function handleArtworkFallback(img, monName) {
 }
 
 async function fetchPokemonDetailData(rawName) {
-  let slug = toPokeApiSlug(rawName);
+  let resolved = typeof resolvePokemonData === 'function' ? resolvePokemonData(rawName) : null;
+  let canonicalName = resolved?.name || rawName;
+  let slug = (resolved?.slug) || toPokeApiSlug(canonicalName);
   let mem = _pokemonDetailCache.get(slug) || getStoredMonDetail(slug);
   if(mem && mem.stats) return mem;
 
   // Try Showdown Dex first (instant, rate-limit free)
   let dex = await ensureShowdownDex();
   if(dex) {
-    let dexEntry = getPokemonShowdownData(rawName);
+    let dexEntry = getPokemonShowdownData(canonicalName) || getPokemonShowdownData(rawName);
     if(dexEntry) {
-      let detail = buildPokemonDetailFromDex(rawName, dexEntry);
+      let detail = buildPokemonDetailFromDex(canonicalName, dexEntry);
       if(detail) {
         storeMonDetail(slug, detail);
         return detail;
@@ -44040,12 +44256,12 @@ async function fetchPokemonDetailData(rawName) {
   // Fallback to basic details
   let fallback = {
     id: null,
-    name: rawName,
-    artwork: pokeSprite(rawName),
+    name: canonicalName,
+    artwork: pokeSprite(canonicalName),
     stats: null,
     abilities: [],
-    types: getPokemonTypes(rawName),
-    genus: getPokemonTypes(rawName).join(' / ') + ' Pokémon'
+    types: getPokemonTypes(canonicalName),
+    genus: getPokemonTypes(canonicalName).join(' / ') + ' Pokémon'
   };
   storeMonDetail(slug, fallback);
   return fallback;
@@ -44197,24 +44413,52 @@ function openPokemonDetailDrawer(monName, cost, tierName, tourneyId = null) {
   let cleanName = String(monName || '').trim();
   if(!cleanName) return;
 
+  // Master Name Guard: Resolve canonical name, slug, and form variants
+  let resolved = typeof resolvePokemonData === 'function' ? resolvePokemonData(cleanName) : null;
+  let canonicalName = resolved?.name || cleanName;
+  let cleanLower = cleanName.toLowerCase().trim();
+  let canonicalLower = canonicalName.toLowerCase().trim();
+  let cleanAlpha = cleanLower.replace(/[^a-z0-9]/g, '');
+  let canonicalAlpha = canonicalLower.replace(/[^a-z0-9]/g, '');
+
+  let isMatch = (m) => {
+    let s = String(m || '').toLowerCase().trim();
+    if(s === cleanLower || s === canonicalLower) return true;
+    let a = s.replace(/[^a-z0-9]/g, '');
+    return a === cleanAlpha || a === canonicalAlpha;
+  };
+
   let actualCost = cost;
   let actualTierName = tierName;
   let board = getOffseasonDraftBoard();
-  let cleanLower = cleanName.toLowerCase();
 
   let t = tourneyId ? (tournamentData[tourneyId] || null) : (typeof ongoingT === 'function' ? ongoingT() : null) || (typeof activeT === 'function' ? activeT() : null);
   let targetTid = t?.id || tourneyId || null;
 
+  let matchedBoardMon = null;
+
   if(actualCost === undefined || actualCost === null || !actualTierName) {
     if(t && t.draftData?.board?.length) {
-      let tTier = t.draftData.board.find(tier => (tier.pokemon || []).some(m => m.toLowerCase().trim() === cleanLower));
+      let tTier = t.draftData.board.find(tier => (tier.pokemon || []).some(m => {
+        if(isMatch(m)) {
+          matchedBoardMon = m;
+          return true;
+        }
+        return false;
+      }));
       if(tTier) {
         actualCost = tTier.cost;
         actualTierName = tTier.name || `${tTier.cost} Points`;
       }
     }
     if(actualCost === undefined || actualCost === null) {
-      let foundTier = board.find(tier => (tier.pokemon || []).some(m => m.toLowerCase().trim() === cleanLower));
+      let foundTier = board.find(tier => (tier.pokemon || []).some(m => {
+        if(isMatch(m)) {
+          matchedBoardMon = m;
+          return true;
+        }
+        return false;
+      }));
       if(foundTier) {
         actualCost = foundTier.cost;
         actualTierName = foundTier.name || `${foundTier.cost} Points`;
@@ -44225,29 +44469,32 @@ function openPokemonDetailDrawer(monName, cost, tierName, tourneyId = null) {
     }
   }
 
+  let boardTargetName = matchedBoardMon || canonicalName;
+
   currentDrawerMon = {
-    name: cleanName,
+    name: canonicalName,
+    rawName: cleanName,
     cost: actualCost,
     tierName: actualTierName,
     tourneyId: targetTid
   };
 
-  let slug = toPokeApiSlug(cleanName);
+  let slug = (resolved?.slug) || toPokeApiSlug(canonicalName);
   let cachedData = _pokemonDetailCache.get(slug) || getStoredMonDetail(slug);
 
   // If not in cache, resolve synchronously from Showdown Dex
   if(!cachedData || !cachedData.stats) {
-    let dexEntry = getPokemonShowdownData(cleanName);
+    let dexEntry = getPokemonShowdownData(canonicalName) || getPokemonShowdownData(cleanName);
     if(dexEntry) {
-      cachedData = buildPokemonDetailFromDex(cleanName, dexEntry);
+      cachedData = buildPokemonDetailFromDex(canonicalName, dexEntry);
       if(cachedData) storeMonDetail(slug, cachedData);
     }
   }
 
-  let theme = getPokemonTypeTheme(cleanName);
+  let theme = getPokemonTypeTheme(canonicalName);
 
-  let initialArtworkUrl = (cachedData?.artwork && _trimmedArtworkCache.get(cachedData.artwork)) || cachedData?.artwork || pokeSprite(cleanName);
-  let initialGenusText = cachedData?.genus ? (cachedData.genus.startsWith('The ') ? cachedData.genus : ('The ' + cachedData.genus)) : (getPokemonTypes(cleanName).join(' / ') + ' Pokémon');
+  let initialArtworkUrl = (cachedData?.artwork && _trimmedArtworkCache.get(cachedData.artwork)) || cachedData?.artwork || pokeSprite(canonicalName);
+  let initialGenusText = cachedData?.genus ? (cachedData.genus.startsWith('The ') ? cachedData.genus : ('The ' + cachedData.genus)) : (getPokemonTypes(canonicalName).join(' / ') + ' Pokémon');
 
   panel.innerHTML = `
     <div class="pokemon-drawer-header">
@@ -44258,7 +44505,7 @@ function openPokemonDetailDrawer(monName, cost, tierName, tourneyId = null) {
         </div>
       </div>
       ${moderator ? `
-        <button class="btn ghost btn-sm" style="font-size:11px!important;color:#ffd166;border-color:#5a4218;padding:2px 8px!important" onclick="closePokemonDetailDrawer();openEditBoardPokemonModal('${jsArg(targetTid||'')}', '${jsArg(cleanName)}', ${actualCost}, '${jsArg(actualTierName)}')">
+        <button class="btn ghost btn-sm" style="font-size:11px!important;color:#ffd166;border-color:#5a4218;padding:2px 8px!important" onclick="closePokemonDetailDrawer();openEditBoardPokemonModal('${jsArg(targetTid||'')}', '${jsArg(boardTargetName)}', ${actualCost}, '${jsArg(actualTierName)}')">
           ✏️ Edit Tier
         </button>
       ` : ''}
@@ -44266,14 +44513,14 @@ function openPokemonDetailDrawer(monName, cost, tierName, tourneyId = null) {
 
     <div class="pokemon-drawer-hero" style="--drawer-theme-glow: ${theme.glow};">
       <div class="pokemon-drawer-art-wrap">
-        <img id="drawerArtwork" src="${esc(initialArtworkUrl)}" alt="${esc(cleanName)}" class="pokemon-drawer-art" crossOrigin="anonymous" onload="autoTrimArtwork(this)" onerror="handleArtworkFallback(this, '${jsArg(cleanName)}')">
+        <img id="drawerArtwork" src="${esc(initialArtworkUrl)}" alt="${esc(canonicalName)}" class="pokemon-drawer-art" crossOrigin="anonymous" onload="autoTrimArtwork(this)" onerror="handleArtworkFallback(this, '${jsArg(canonicalName)}')">
       </div>
-      <h2 class="pokemon-drawer-name" id="drawerMonName">${esc(cleanName)}</h2>
+      <h2 class="pokemon-drawer-name" id="drawerMonName">${esc(canonicalName)}</h2>
       <div id="drawerDexAndGenus" style="display:flex;align-items:center;justify-content:center;margin-bottom:8px">
         <span class="pokemon-drawer-genus" id="drawerGenusText">${esc(initialGenusText)}</span>
       </div>
       <div class="pokemon-drawer-types" id="drawerTypes">
-        ${renderPokemonTypeBadges(cleanName, 'font-size:11px;padding:3px 9px;font-weight:700')}
+        ${renderPokemonTypeBadges(canonicalName, 'font-size:11px;padding:3px 9px;font-weight:700')}
       </div>
     </div>
 
@@ -44302,15 +44549,15 @@ function openPokemonDetailDrawer(monName, cost, tierName, tourneyId = null) {
 
     <!-- Actions Section -->
     <div class="pokemon-drawer-section" id="drawerActionsContainer">
-      ${renderDrawerActionsHtml(cleanName, actualCost, actualTierName, targetTid)}
+      ${renderDrawerActionsHtml(canonicalName, actualCost, actualTierName, targetTid)}
     </div>
 
     <!-- External Links -->
     <div style="display:flex;gap:8px;padding:0 18px 24px">
-      <a href="https://www.smogon.com/dex/sv/pokemon/${encodeURIComponent(toSmogonSlug(cleanName))}/" target="_blank" rel="noopener" class="btn ghost btn-sm" style="flex:1;text-align:center;text-decoration:none;font-size:11px;color:#94a3b8">
+      <a href="https://www.smogon.com/dex/sv/pokemon/${encodeURIComponent(toSmogonSlug(canonicalName))}/" target="_blank" rel="noopener" class="btn ghost btn-sm" style="flex:1;text-align:center;text-decoration:none;font-size:11px;color:#94a3b8">
         Smogon Dex ↗
       </a>
-      <a href="https://bulbapedia.bulbagarden.net/wiki/${encodeURIComponent(cleanBulbaName(cleanName))}_(Pok%C3%A9mon)" target="_blank" rel="noopener" class="btn ghost btn-sm" style="flex:1;text-align:center;text-decoration:none;font-size:11px;color:#94a3b8">
+      <a href="https://bulbapedia.bulbagarden.net/wiki/${encodeURIComponent(cleanBulbaName(canonicalName))}_(Pok%C3%A9mon)" target="_blank" rel="noopener" class="btn ghost btn-sm" style="flex:1;text-align:center;text-decoration:none;font-size:11px;color:#94a3b8">
         Bulbapedia ↗
       </a>
     </div>
@@ -44324,7 +44571,7 @@ function openPokemonDetailDrawer(monName, cost, tierName, tourneyId = null) {
   let dexNum = cachedData?.id;
   if(dexNum && (!cachedData.genus || cachedData.genus.endsWith('Pokémon'))) {
     fetchPokemonGenus(dexNum).then(genus => {
-      if(genus && currentDrawerMon && currentDrawerMon.name.toLowerCase().trim() === cleanLower) {
+      if(genus && currentDrawerMon && (currentDrawerMon.name.toLowerCase().trim() === canonicalLower || currentDrawerMon.name.toLowerCase().trim() === cleanLower)) {
         let genusEl = document.getElementById('drawerGenusText');
         if(genusEl) genusEl.textContent = genus.startsWith('The ') ? genus : ('The ' + genus);
         cachedData.genus = genus;
@@ -44335,15 +44582,15 @@ function openPokemonDetailDrawer(monName, cost, tierName, tourneyId = null) {
 
   // If dex wasn't available synchronously yet, wait for ensureShowdownDex to resolve
   if(!cachedData || !cachedData.stats) {
-    fetchPokemonDetailData(cleanName).then(data => {
-      if(currentDrawerMon && currentDrawerMon.name.toLowerCase().trim() === cleanLower) {
-        updateDrawerWithPokemonData(data, cleanName);
+    fetchPokemonDetailData(canonicalName).then(data => {
+      if(currentDrawerMon && (currentDrawerMon.name.toLowerCase().trim() === canonicalLower || currentDrawerMon.name.toLowerCase().trim() === cleanLower)) {
+        updateDrawerWithPokemonData(data, canonicalName);
       }
     }).catch(err => {
-      console.warn('Could not fetch Pokemon detail for ' + cleanName, err);
+      console.warn('Could not fetch Pokemon detail for ' + canonicalName, err);
     });
   } else {
-    updateDrawerWithPokemonData(cachedData, cleanName);
+    updateDrawerWithPokemonData(cachedData, canonicalName);
   }
 }
 
@@ -44356,7 +44603,11 @@ function closePokemonDetailDrawer() {
 }
 
 function updateDrawerWithPokemonData(data, requestedName) {
-  if(!currentDrawerMon || currentDrawerMon.name.toLowerCase().trim() !== requestedName.toLowerCase().trim()) return;
+  if(!currentDrawerMon) return;
+  let reqLower = (requestedName || '').toLowerCase().trim();
+  let currLower = (currentDrawerMon.name || '').toLowerCase().trim();
+  let rawLower = (currentDrawerMon.rawName || '').toLowerCase().trim();
+  if(currLower !== reqLower && rawLower !== reqLower) return;
 
   let artImg = document.getElementById('drawerArtwork');
   if(artImg && data.artwork && artImg.src !== data.artwork) {

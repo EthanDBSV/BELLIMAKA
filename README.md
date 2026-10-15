@@ -44,8 +44,21 @@ Format: `v[MAJOR].[MINOR].[PATCH]` — Major = major system overhauls, Minor = n
     - One-click `✏️ Edit Tier` button in the drawer header allowing tournament organizers to move or re-cost the Pokémon directly.
   - **External Competitive Reference Links**:
     - Direct shortcuts to **Smogon SV Dex** strategy analysis and **Bulbapedia** encyclopedic entries.
+- **Universal Name Guards & Form Resolution Engine (`resolvePokemonData`, `SPECIAL_FORM_ARTWORK_IDS`)**:
+  - **Comprehensive PokeAPI Form Artwork ID Audit & Corrections**:
+    - **Forces of Nature Therian Formes**: Corrected 1-off ID shift (`landorus-therian = 10021`, `thundurus-therian = 10020`, `tornadus-therian = 10019`, `enamorus-therian = 10249`). Previously, Landorus-Therian erroneously loaded ID 10020 (Thundurus-Therian).
+    - **Necrozma Form Resolution**: Fixed slug and alias mapping (`necrozma-dawnwings`, `necrozma-dawn-wings` $\rightarrow$ `10156`; `necrozma-duskmane`, `necrozma-dusk-mane` $\rightarrow$ `10155`; `necrozma-ultra`, `ultra-necrozma` $\rightarrow$ `10157`). Previously, Necrozma-Dawn-Wings defaulted to base prism Necrozma (ID 800) due to a missing alias slug.
+    - **Rotom Appliance Alignment**: Corrected Rotom forms (`rotom-heat = 10008`, `rotom-wash = 10009`, `rotom-frost = 10010`, `rotom-fan = 10011`, `rotom-mow = 10012`).
+    - **Ogerpon Mask Forms**: Corrected inverted mask IDs (`ogerpon-wellspring = 10273`, `ogerpon-hearthflame = 10274`, `ogerpon-cornerstone = 10275`).
+    - **Mega Evolutions & Regional Variants**: Corrected Mega Camerupt (`10087`), Mega Salamence (`10089`), Hisuian Typhlosion (`10233`), and Calyrex Ice/Shadow Riders (`10193`, `10194`).
+  - **Universal Typo Tolerance & Spelling Normalization**:
+    - Integrated the master fuzzy name resolver (`resolvePokemonData`) into the sidebar drawer pipeline (`openPokemonDetailDrawer`, `getPokemonShowdownData`, `fetchPokemonDetailData`, `buildPokemonDetailFromDex`).
+    - Automatically heals common community typos (e.g. `landorous` $\rightarrow$ `landorus`, `thunderus` $\rightarrow$ `thundurus`, `tornadous` $\rightarrow$ `tornadus`, `enamarous` $\rightarrow$ `enamorus`, spaced Necrozma forms like `necrozma dawn wings` $\rightarrow$ `Necrozma-Dawn-Wings`).
+  - **Auto-Cache Busting (`bellimaka_mon_v2_*`)**:
+    - Bumped local storage cache version to `v2`, instantly invalidating and repairing any stale or misaligned artwork data cached in user browsers.
+
 - **High-Performance In-Memory & `localStorage` Caching**:
-  - Stores fetched Pokémon data in both `_pokemonDetailCache` (memory) and `bellimaka_mon_v1_*` (`localStorage`), enabling subsequent drawer opens to render instantaneously with 0ms network latency.
+  - Stores fetched Pokémon data in both `_pokemonDetailCache` (memory) and `bellimaka_mon_v2_*` (`localStorage`), enabling subsequent drawer opens to render instantaneously with 0ms network latency.
 
 ---
 
