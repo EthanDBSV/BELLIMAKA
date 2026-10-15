@@ -11,12 +11,13 @@ Format: `v[MAJOR].[MINOR].[PATCH]` — Major = major system overhauls, Minor = n
   - **Full Backdrop & Keyboard Accessibility**: Includes a frosted glass blur backdrop (`.pokemon-drawer-backdrop`), top close button (`.pokemon-drawer-close`), backdrop click dismissal, and instant <kbd>ESC</kbd> keyboard dismissal.
   - **Unified Navigation Across Views**: Clicking any Pokémon on the active Tournament Draft Board or the Offseason Draft Board immediately opens the drawer with complete data. A small `+` button remains on the cards for 1-click quick-add convenience.
   - **Persistent Body Scroll Lock**: Adds `.pokemon-drawer-open` to prevent background scrolling while inspecting Pokémon stats on mobile devices.
-- **Full-Size Official Artwork Integration (PokeAPI GitHub CDN & Multi-Tier Fallbacks)**:
-  - **High-Resolution Official Artwork**: Directly streams official Pokémon artwork via PokeAPI GitHub CDN (`https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/{dexId}.png`), covering all 1,025+ canonical Pokémon, Megas (e.g. Mega Scovillain #10320, Mega Charizard X #10034), and regional variants.
-  - **Tiered Multi-Stage Fallback Chain (`handleArtworkFallback`)**: Automatically cascades from PokeAPI Official Artwork $\rightarrow$ Pokémon Showdown Home Sprite $\rightarrow$ Pokémon Showdown Dex Sprite $\rightarrow$ Animated Gen 5 Sprite $\rightarrow$ Placeholder, guaranteeing no broken image icons for custom or CAP Pokémon.
+- **Full-Size Official Artwork Integration & Instant Showdown Dex Engine**:
+  - **High-Resolution Official Artwork**: Directly streams official Pokémon artwork via PokeAPI GitHub CDN (`https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/{dexId}.png`) using mapped National Dex IDs and specialized form IDs (`SPECIAL_FORM_ARTWORK_IDS`), covering all 1,025+ canonical Pokémon, Megas, Paradox Pokémon, and regional forms.
+  - **Showdown Pokedex Engine (`ensureShowdownDex`, `getPokemonShowdownData`)**: Pre-fetches Pokémon Showdown's Pokedex JSON CDN and caches it locally (`bellimaka_showdown_dex_v1`). Eliminates PokeAPI 429 rate limiting, providing 0ms instantaneous load times for stats, BST, and abilities across the entire draft board.
+  - **Tiered Multi-Stage Fallback Chain (`handleArtworkFallback`)**: Automatically cascades from PokeAPI Official Artwork $\rightarrow$ Pokémon Showdown Home/Gen5 Sprite $\rightarrow$ Local Pokéball icon, guaranteeing instantaneous display and zero broken image states.
   - **Dynamic Ambient Theme Glow**: Surrounds the artwork presentation with a radial gradient glow matching the Pokémon's primary type theme (`TYPE_THEMES` for Fire, Water, Grass, Dragon, etc.).
 - **Base Stats & BST (Base Stat Total) Visualization**:
-  - **National Dex Number & Genus Title Tagline**: Displays official National Dex badges (e.g. `#0952`) alongside canonical genus classification taglines (e.g. *"The Spicy Pepper Pokémon"* or *"The Seed Pokémon"*).
+  - **National Dex Number & Genus Title Tagline**: Displays official National Dex badges (e.g. `#0812`) alongside canonical genus classification taglines (e.g. *"The Drummer Pokémon"* or *"The Spicy Pepper Pokémon"*).
   - **Total Base Stats (BST) Summary Badge**: Dynamically color-coded BST pill with tier highlights ($\ge 600$ Legendary/Mythical Gold, $\ge 500$ High-Tier Cyan, Standard Slate).
   - **6 Competitive Base Stat Bars (`renderDrawerStatsHtml`)**:
     - Visual progress tracks with numeric stat readouts and proportional scaling (up to 200–255 max):
@@ -26,10 +27,9 @@ Format: `v[MAJOR].[MINOR].[PATCH]` — Major = major system overhauls, Minor = n
       - **SPA** (Special Attack): Cyber Cyan (`#06b6d4`)
       - **SPD** (Special Defense): Mystic Violet (`#8b5cf6`)
       - **SPE** (Speed): Neon Rose (`#ec4899`)
-  - **Skeleton Pulse Loader (`.pokemon-stat-skeleton`)**: Smoothly animates loading placeholder bars while stats asynchronously stream from PokeAPI.
-- **Ability Display & Hidden Ability Indicators (`renderDrawerAbilitiesHtml`)**:
-  - Lists primary and secondary abilities in clean styled pills.
-  - Distinctive purple gradient badges for **Hidden Abilities** with a dedicated `(Hidden)` indicator tag.
+- **Complete Ability Display & Hidden Ability Indicators (`renderDrawerAbilitiesHtml`)**:
+  - **All Abilities Rendered**: Extracts full ability slots (`0`, `1`, `H`, `S`) so every primary, secondary, and hidden ability displays simultaneously (e.g. Rillaboom displays both *Overgrow* and *Grassy Surge*; Scovillain displays *Chlorophyll*, *Insomnia*, and *Moody*).
+  - **CSS Name Collision Fix (`.is-hidden-ability`)**: Resolved a CSS conflict where `.pokemon-ability-pill.hidden` collided with the global `.hidden { display: none !important; }`, which previously rendered hidden abilities invisible. Hidden abilities now render with distinct purple glowing pills and a high-contrast `HIDDEN` tag.
 - **Deep Bellimaka Draft & Team Planner Integration**:
   - **Private Team Planner (`handleDrawerAddPlan`, `handleDrawerRemovePlan`)**:
     - Live roster status: detects whether the Pokémon is currently in the active team plan.

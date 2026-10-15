@@ -5540,10 +5540,11 @@ body.mobile-nav-open {
   font-weight: 600;
   text-transform: capitalize;
 }
-.pokemon-ability-pill.hidden {
-  background: rgba(168, 85, 247, 0.12);
-  border-color: rgba(168, 85, 247, 0.35);
-  color: #d8b4fe;
+.pokemon-ability-pill.is-hidden-ability {
+  background: rgba(168, 85, 247, 0.15) !important;
+  border-color: rgba(168, 85, 247, 0.45) !important;
+  color: #e9d5ff !important;
+  display: inline-flex !important;
 }
 .pokemon-ability-hidden-tag {
   font-size: 9px;
@@ -43526,6 +43527,224 @@ function removeTeamMonByName(name){
    ------------------------------------------------------------ */
 var currentDrawerMon = null;
 var _pokemonDetailCache = new Map();
+var _showdownDex = null;
+var _showdownDexPromise = null;
+
+// Official Artwork Form IDs for special forms, megas, and variants
+const SPECIAL_FORM_ARTWORK_IDS = {
+  'landorus-therian': 10020,
+  'thundurus-therian': 10021,
+  'tornadus-therian': 10022,
+  'enamorus-therian': 10249,
+  'rotom-wash': 10008,
+  'rotom-heat': 10007,
+  'rotom-frost': 10009,
+  'rotom-fan': 10010,
+  'rotom-mow': 10011,
+  'charizard-megax': 10034,
+  'charizard-megay': 10035,
+  'mewtwo-megax': 10043,
+  'mewtwo-megay': 10044,
+  'venusaur-mega': 10033,
+  'blastoise-mega': 10036,
+  'alakazam-mega': 10037,
+  'gengar-mega': 10038,
+  'kangaskhan-mega': 10039,
+  'pinsir-mega': 10040,
+  'gyarados-mega': 10041,
+  'aerodactyl-mega': 10042,
+  'ampharos-mega': 10045,
+  'scizor-mega': 10046,
+  'heracross-mega': 10047,
+  'houndoom-mega': 10048,
+  'tyranitar-mega': 10049,
+  'blaziken-mega': 10050,
+  'gardevoir-mega': 10051,
+  'mawile-mega': 10052,
+  'aggron-mega': 10053,
+  'medicham-mega': 10054,
+  'manectric-mega': 10055,
+  'banette-mega': 10056,
+  'absol-mega': 10057,
+  'garchomp-mega': 10058,
+  'lucario-mega': 10059,
+  'abomasnow-mega': 10060,
+  'beedrill-mega': 10090,
+  'pidgeot-mega': 10073,
+  'slowbro-mega': 10071,
+  'steelix-mega': 10072,
+  'sceptile-mega': 10065,
+  'swampert-mega': 10064,
+  'sableye-mega': 10066,
+  'sharpedo-mega': 10070,
+  'camerupt-mega': 10069,
+  'altaria-mega': 10067,
+  'glalie-mega': 10074,
+  'salamence-mega': 10089,
+  'metagross-mega': 10076,
+  'latias-mega': 10062,
+  'latios-mega': 10063,
+  'rayquaza-mega': 10079,
+  'lopunny-mega': 10088,
+  'gallade-mega': 10068,
+  'audino-mega': 10069,
+  'diancie-mega': 10075,
+  'urshifu-rapidstrike': 10191,
+  'urshifu-rapid-strike': 10191,
+  'ogerpon-hearthflame': 10273,
+  'ogerpon-wellspring': 10274,
+  'ogerpon-cornerstone': 10275,
+  'ursaluna-bloodmoon': 10272,
+  'tauros-paldeacombat': 10250,
+  'tauros-paldeablaze': 10251,
+  'tauros-paldeaaqua': 10252,
+  'deoxys-attack': 10001,
+  'deoxys-defense': 10002,
+  'deoxys-speed': 10003,
+  'giratina-origin': 10007,
+  'shaymin-sky': 10006,
+  'kyurem-black': 10022,
+  'kyurem-white': 10023,
+  'calyrex-shadow': 10194,
+  'calyrex-ice': 10193,
+  'necrozma-dusk': 10155,
+  'necrozma-dawn': 10156,
+  'zacian-crowned': 10188,
+  'zamazenta-crowned': 10189,
+  'ninetales-alola': 10104,
+  'marowak-alola': 10115,
+  'raichu-alola': 10100,
+  'arcanine-hisui': 10230,
+  'zoroark-hisui': 10239,
+  'samurott-hisui': 10236,
+  'zapdos-galar': 10170,
+  'moltres-galar': 10171,
+  'articuno-galar': 10169,
+  'slowbro-galar': 10165
+};
+
+async function ensureShowdownDex() {
+  if(_showdownDex) return _showdownDex;
+  if(_showdownDexPromise) return _showdownDexPromise;
+
+  _showdownDexPromise = (async () => {
+    try {
+      let cached = localStorage.getItem('bellimaka_showdown_dex_v1');
+      if(cached) {
+        _showdownDex = JSON.parse(cached);
+        return _showdownDex;
+      }
+    } catch(e) {}
+
+    try {
+      let res = await fetch('https://play.pokemonshowdown.com/data/pokedex.json');
+      if(res.ok) {
+        let json = await res.json();
+        _showdownDex = json;
+        try {
+          localStorage.setItem('bellimaka_showdown_dex_v1', JSON.stringify(json));
+        } catch(e) {}
+        return json;
+      }
+    } catch(err) {
+      console.warn('Could not load Showdown Pokedex data:', err);
+    }
+    return null;
+  })();
+
+  return _showdownDexPromise;
+}
+
+// Kick off background pre-fetch immediately
+try { ensureShowdownDex(); } catch(e) {}
+
+function getPokemonShowdownData(rawName) {
+  if(!_showdownDex) {
+    try {
+      let cached = localStorage.getItem('bellimaka_showdown_dex_v1');
+      if(cached) _showdownDex = JSON.parse(cached);
+    } catch(e) {}
+  }
+  if(!_showdownDex) return null;
+
+  let raw = String(rawName || '').trim();
+  if(!raw) return null;
+
+  // 1. Direct alphanumeric normalization
+  let clean = raw.toLowerCase().replace(/[^a-z0-9]/g, '');
+  if(_showdownDex[clean]) return _showdownDex[clean];
+
+  // 2. Try resolvePokemonData slug
+  if(typeof resolvePokemonData === 'function') {
+    let resolved = resolvePokemonData(raw);
+    if(resolved && resolved.slug) {
+      let slugKey = resolved.slug.toLowerCase().replace(/[^a-z0-9]/g, '');
+      if(_showdownDex[slugKey]) return _showdownDex[slugKey];
+    }
+  }
+
+  // 3. Try removing parenthetical annotations
+  let noParen = raw.replace(/\s*\([^)]*\)/g, '').toLowerCase().replace(/[^a-z0-9]/g, '');
+  if(_showdownDex[noParen]) return _showdownDex[noParen];
+
+  // 4. Exact case-insensitive name match
+  let lower = raw.toLowerCase();
+  for(let k in _showdownDex) {
+    if(_showdownDex[k].name && _showdownDex[k].name.toLowerCase() === lower) {
+      return _showdownDex[k];
+    }
+  }
+
+  return null;
+}
+
+function buildPokemonDetailFromDex(rawName, entry) {
+  if(!entry) return null;
+
+  let stats = {};
+  let bst = 0;
+  if(entry.baseStats) {
+    stats.hp = entry.baseStats.hp || 0;
+    stats.atk = entry.baseStats.atk || 0;
+    stats.def = entry.baseStats.def || 0;
+    stats.spa = entry.baseStats.spa || 0;
+    stats.spd = entry.baseStats.spd || 0;
+    stats.spe = entry.baseStats.spe || 0;
+    bst = stats.hp + stats.atk + stats.def + stats.spa + stats.spd + stats.spe;
+  }
+  stats.bst = bst;
+
+  let abilities = [];
+  if(entry.abilities) {
+    ['0', '1', 'H', 'S'].forEach(slot => {
+      if(entry.abilities[slot]) {
+        abilities.push({
+          name: entry.abilities[slot],
+          isHidden: slot === 'H' || slot === 'S',
+          slot
+        });
+      }
+    });
+  }
+
+  let types = Array.isArray(entry.types) ? entry.types : (getPokemonTypes(rawName) || ['Normal']);
+  let resolvedSlug = typeof resolvePokemonData === 'function' ? resolvePokemonData(rawName).slug : '';
+  let specialFormId = SPECIAL_FORM_ARTWORK_IDS[resolvedSlug] || SPECIAL_FORM_ARTWORK_IDS[toPokeApiSlug(rawName)];
+  let artworkId = specialFormId || entry.num;
+  let artwork = artworkId ? 
+    `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/${artworkId}.png` :
+    pokeSprite(rawName);
+
+  return {
+    id: entry.num,
+    name: entry.name || rawName,
+    artwork,
+    stats,
+    abilities,
+    types,
+    genus: types.join(' / ') + ' Pokémon'
+  };
+}
 
 function getStoredMonDetail(slug) {
   try {
@@ -43540,6 +43759,28 @@ function storeMonDetail(slug, data) {
     _pokemonDetailCache.set(slug, data);
     localStorage.setItem('bellimaka_mon_v1_' + slug, JSON.stringify(data));
   } catch(e) {}
+}
+
+async function fetchPokemonGenus(num) {
+  if(!num) return null;
+  let storageKey = 'bellimaka_genus_' + num;
+  try {
+    let cached = localStorage.getItem(storageKey);
+    if(cached) return cached;
+  } catch(e) {}
+
+  try {
+    let res = await fetch('https://pokeapi.co/api/v2/pokemon-species/' + num);
+    if(res.ok) {
+      let data = await res.json();
+      let g = (data.genera || []).find(x => x.language.name === 'en');
+      if(g && g.genus) {
+        try { localStorage.setItem(storageKey, g.genus); } catch(e) {}
+        return g.genus;
+      }
+    }
+  } catch(e) {}
+  return null;
 }
 
 function toPokeApiSlug(rawName) {
@@ -43689,18 +43930,16 @@ function cleanBulbaName(rawName) {
   return s.replace(/\s+/g, '_');
 }
 
-function handleArtworkFallback(img, slug, monName) {
+function handleArtworkFallback(img, monName) {
   if(!img) return;
   if(!img._fbStage) img._fbStage = 1;
   else img._fbStage++;
 
   if(img._fbStage === 2) {
-    img.src = 'https://play.pokemonshowdown.com/sprites/home/' + encodeURIComponent(slug) + '.png';
-  } else if(img._fbStage === 3) {
-    img.src = 'https://play.pokemonshowdown.com/sprites/dex/' + encodeURIComponent(slug) + '.png';
-  } else if(img._fbStage === 4) {
+    // Stage 2: Fallback to high-quality Showdown sprite (Home/Gen5/Ani)
     img.src = pokeSprite(monName);
   } else {
+    // Stage 3: Local Pokéball placeholder
     img.src = 'Fonts%20%26%20Logos/iconNotFound.png';
   }
 }
@@ -43710,71 +43949,31 @@ async function fetchPokemonDetailData(rawName) {
   let mem = _pokemonDetailCache.get(slug) || getStoredMonDetail(slug);
   if(mem && mem.stats) return mem;
 
-  try {
-    let r = await fetch('https://pokeapi.co/api/v2/pokemon/' + encodeURIComponent(slug));
-    if(!r.ok) throw new Error('PokeAPI status ' + r.status);
-    let d = await r.json();
-
-    let stats = {};
-    let bst = 0;
-    (d.stats || []).forEach(s => {
-      let val = s.base_stat;
-      bst += val;
-      if(s.stat.name === 'hp') stats.hp = val;
-      else if(s.stat.name === 'attack') stats.atk = val;
-      else if(s.stat.name === 'defense') stats.def = val;
-      else if(s.stat.name === 'special-attack') stats.spa = val;
-      else if(s.stat.name === 'special-defense') stats.spd = val;
-      else if(s.stat.name === 'speed') stats.spe = val;
-    });
-    stats.bst = bst;
-
-    let types = (d.types || []).map(t => t.type.name);
-    let abilities = (d.abilities || []).map(a => ({
-      name: a.ability.name.replace(/-/g, ' '),
-      isHidden: a.is_hidden
-    }));
-
-    let genus = '';
-    if(d.species && d.species.url) {
-      try {
-        let sr = await fetch(d.species.url);
-        if(sr.ok) {
-          let sd = await sr.json();
-          let g = (sd.genera || []).find(x => x.language.name === 'en');
-          if(g) genus = g.genus;
-        }
-      } catch(e) {}
+  // Try Showdown Dex first (instant, rate-limit free)
+  let dex = await ensureShowdownDex();
+  if(dex) {
+    let dexEntry = getPokemonShowdownData(rawName);
+    if(dexEntry) {
+      let detail = buildPokemonDetailFromDex(rawName, dexEntry);
+      if(detail) {
+        storeMonDetail(slug, detail);
+        return detail;
+      }
     }
-
-    let artwork = d.sprites?.other?.['official-artwork']?.front_default ||
-                  ('https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/' + d.id + '.png');
-
-    let result = {
-      id: d.id,
-      name: d.name,
-      artwork,
-      stats,
-      abilities,
-      types,
-      genus: genus || 'Pokémon'
-    };
-
-    storeMonDetail(slug, result);
-    return result;
-  } catch(err) {
-    let fallback = {
-      id: null,
-      name: rawName,
-      artwork: 'https://play.pokemonshowdown.com/sprites/dex/' + encodeURIComponent(slug) + '.png',
-      stats: null,
-      abilities: [],
-      types: getPokemonTypes(rawName),
-      genus: getPokemonTypes(rawName).join(' / ') + ' Pokémon'
-    };
-    storeMonDetail(slug, fallback);
-    return fallback;
   }
+
+  // Fallback to basic details
+  let fallback = {
+    id: null,
+    name: rawName,
+    artwork: pokeSprite(rawName),
+    stats: null,
+    abilities: [],
+    types: getPokemonTypes(rawName),
+    genus: getPokemonTypes(rawName).join(' / ') + ' Pokémon'
+  };
+  storeMonDetail(slug, fallback);
+  return fallback;
 }
 
 function renderDrawerStatsHtml(stats) {
@@ -43822,7 +44021,7 @@ function renderDrawerAbilitiesHtml(abilities) {
     let name = esc(a.name || '');
     if(a.isHidden) {
       return `
-        <span class="pokemon-ability-pill hidden" title="Hidden Ability">
+        <span class="pokemon-ability-pill is-hidden-ability" title="Hidden Ability">
           ${name} <span class="pokemon-ability-hidden-tag">Hidden</span>
         </span>
       `;
@@ -43960,9 +44159,19 @@ function openPokemonDetailDrawer(monName, cost, tierName, tourneyId = null) {
 
   let slug = toPokeApiSlug(cleanName);
   let cachedData = _pokemonDetailCache.get(slug) || getStoredMonDetail(slug);
+
+  // If not in cache, resolve synchronously from Showdown Dex
+  if(!cachedData || !cachedData.stats) {
+    let dexEntry = getPokemonShowdownData(cleanName);
+    if(dexEntry) {
+      cachedData = buildPokemonDetailFromDex(cleanName, dexEntry);
+      if(cachedData) storeMonDetail(slug, cachedData);
+    }
+  }
+
   let theme = getPokemonTypeTheme(cleanName);
 
-  let initialArtworkUrl = cachedData?.artwork || `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/${slug}.png`;
+  let initialArtworkUrl = cachedData?.artwork || pokeSprite(cleanName);
   let initialDexText = cachedData?.id ? ((cachedData.id < 10000) ? ('#' + String(cachedData.id).padStart(4, '0')) : ('#' + cachedData.id)) : '#????';
   let initialGenusText = cachedData?.genus ? (cachedData.genus.startsWith('The ') ? cachedData.genus : ('The ' + cachedData.genus)) : (getPokemonTypes(cleanName).join(' / ') + ' Pokémon');
 
@@ -43983,7 +44192,7 @@ function openPokemonDetailDrawer(monName, cost, tierName, tourneyId = null) {
 
     <div class="pokemon-drawer-hero" style="--drawer-theme-glow: ${theme.glow};">
       <div class="pokemon-drawer-art-wrap">
-        <img id="drawerArtwork" src="${esc(initialArtworkUrl)}" alt="${esc(cleanName)}" class="pokemon-drawer-art" onerror="handleArtworkFallback(this, '${jsArg(slug)}', '${jsArg(cleanName)}')">
+        <img id="drawerArtwork" src="${esc(initialArtworkUrl)}" alt="${esc(cleanName)}" class="pokemon-drawer-art" onerror="handleArtworkFallback(this, '${jsArg(cleanName)}')">
       </div>
       <h2 class="pokemon-drawer-name" id="drawerMonName">${esc(cleanName)}</h2>
       <div id="drawerDexAndGenus" style="display:flex;align-items:center;gap:6px;margin-bottom:6px">
@@ -44038,6 +44247,20 @@ function openPokemonDetailDrawer(monName, cost, tierName, tourneyId = null) {
   drawer.setAttribute('aria-hidden', 'false');
   document.body.classList.add('pokemon-drawer-open');
 
+  // Background genus fetch (non-blocking, caches per Dex number)
+  let dexNum = cachedData?.id;
+  if(dexNum && (!cachedData.genus || cachedData.genus.endsWith('Pokémon'))) {
+    fetchPokemonGenus(dexNum).then(genus => {
+      if(genus && currentDrawerMon && currentDrawerMon.name.toLowerCase().trim() === cleanLower) {
+        let genusEl = document.getElementById('drawerGenusText');
+        if(genusEl) genusEl.textContent = genus.startsWith('The ') ? genus : ('The ' + genus);
+        cachedData.genus = genus;
+        storeMonDetail(slug, cachedData);
+      }
+    });
+  }
+
+  // If dex wasn't available synchronously yet, wait for ensureShowdownDex to resolve
   if(!cachedData || !cachedData.stats) {
     fetchPokemonDetailData(cleanName).then(data => {
       if(currentDrawerMon && currentDrawerMon.name.toLowerCase().trim() === cleanLower) {
@@ -44063,7 +44286,7 @@ function updateDrawerWithPokemonData(data, requestedName) {
   if(!currentDrawerMon || currentDrawerMon.name.toLowerCase().trim() !== requestedName.toLowerCase().trim()) return;
 
   let artImg = document.getElementById('drawerArtwork');
-  if(artImg && data.artwork && !artImg._fbStage) {
+  if(artImg && data.artwork) {
     artImg.src = data.artwork;
   }
 
