@@ -5,7 +5,20 @@ Format: `v[MAJOR].[MINOR].[PATCH]` — Major = major system overhauls, Minor = n
 
 ## [v3.2.0] — 2026-10-14
 
-### Draft Board Library & Saved Presets + Draftboard Removal Race Condition Fix
+### Draft Board Library, Consolidated Board Settings & Direct Library Import + Removal Bug Fix
+- **Consolidated "⚙️ Board Settings" Menu (`renderBoardSettingsButton`, `toggleBoardSettingsMenu`)**:
+  - **Clean Toolbar Layout**: Consolidated the crowded draft board action buttons across the Offseason Draft View and Tournament Draft Board headers into a single modern **"⚙️ Board Settings ▾"** dropdown menu, significantly reducing clutter and visual footprint.
+  - **Preserved Primary Sliders**: Kept the `Private / Public` toggle slider and `Quick Edit: ON / OFF` toggle slider outside on the main header bar for rapid 1-click status changes.
+  - **Categorized Actions Menu**:
+    - **Presets & Library**: `📚 Saved Boards Library`, `📥 Import Directly to Library`, `💾 Save Active Board as Preset`.
+    - **Active Draft Board**: `📋 Edit / Re-Import Board`, `📤 Export Board (CSV)`.
+    - **Danger Zone**: `🗑️ Clear Active Board` (with confirmation modal).
+  - **Interaction & Responsive Design**: Includes click-outside dismissal (`closeBoardSettingsMenu`), full keyboard/touch compatibility, and right-aligned dropdown positioning (`.board-settings-dropdown`).
+- **Direct-to-Library Import Engine (`openImportDirectlyToLibraryModal`, `saveDirectlyToLibrary`)**:
+  - **Independent Library Ingestion**: Added the ability to import Google Sheets columns or CSV spreadsheets straight into the Saved Boards Library as reusable presets **without overwriting or modifying the current active draft board**.
+  - **Dedicated Import Modal**: Provides an intuitive workflow with custom preset naming (`#libDirectImportName`), file upload (`📁 Upload CSV File`), sample data loading, and instant multi-tier Pokémon parsing & preview (`previewLibDirectImport`).
+  - **Accessible Across the Platform**: Accessible from the "⚙️ Board Settings" dropdown menu, the Saved Boards Library modal toolbar (`📥 + Import Directly to Library`), and the Library empty-state view.
+  - **Clarified Importer Actions**: Updated button labels in both `openDraftBoardImporter` and `openOffseasonDraftBoardImporter` to explicitly distinguish between `💾 Save to Library Only` and `💾 Set as Active Board`.
 - **Draft Board Library & Saved Presets (`savedDraftBoards`)**:
   - **Reusable Board Presets**: Added the ability to save imported draft boards as named library presets for future reuse across tournaments and offseason planning without risk of losing tier layouts.
   - **Comprehensive Preset Management**:
