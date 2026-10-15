@@ -23859,6 +23859,104 @@ function tournamentRecord(t, p){
   return `${w}-${l}`;
 }
 
+function getCoachTotalTournamentGames(t, p) {
+  if(!t || !p) return 0;
+  let targetNorm = String(p).trim().toLowerCase();
+  let isTarget = (name) => {
+    if(!name) return false;
+    let n = String(name).trim().toLowerCase();
+    return n === targetNorm || (typeof isCoachMatch === 'function' && isCoachMatch(name, p, t));
+  };
+
+  // 1. Calculate from match scores (regular stage + swiss + groups)
+  let scoreGames = 0;
+  (t.matches || []).forEach(m => {
+    let a = m.a || m.p1, b = m.b || m.p2;
+    if(!isTarget(a) && !isTarget(b)) return;
+    let sa = m.as != null && m.as !== '' ? Number(m.as) : null;
+    let sb = m.bs != null && m.bs !== '' ? Number(m.bs) : null;
+    if(sa != null && sb != null && !isNaN(sa) && !isNaN(sb)) {
+      scoreGames += (sa + sb);
+    }
+  });
+
+  // Top Cut match scores
+  let topResults = t.topCutCache?.results;
+  if((!topResults || !topResults.length) && (t.bracketManagerData || t.phase === 'topcut' || t.status === 'COMPLETE') && typeof getTournamentTopCutModel === 'function'){
+    try {
+      let mod = getTournamentTopCutModel(t);
+      if(mod && mod.completedList) topResults = mod.completedList.map(m => ({ p1: m.p1, p2: m.p2, s1: m.s1, s2: m.s2 }));
+    } catch(e) {}
+  }
+  (topResults || []).forEach(m => {
+    let a = m.p1 || m.a, b = m.p2 || m.b;
+    if(!isTarget(a) && !isTarget(b)) return;
+    let sa = m.s1 != null && m.s1 !== '' ? Number(m.s1) : (m.as != null && m.as !== '' ? Number(m.as) : null);
+    let sb = m.s2 != null && m.s2 !== '' ? Number(m.s2) : (m.bs != null && m.bs !== '' ? Number(m.bs) : null);
+    if(sa != null && sb != null && !isNaN(sa) && !isNaN(sb)) {
+      scoreGames += (sa + sb);
+    }
+  });
+
+  // 2. Calculate from telemetry replays
+  let replayGames = 0;
+  let seenReplayKeys = new Set();
+  (t.matches || []).forEach(m => {
+    let a = m.a || m.p1, b = m.b || m.p2;
+    if(!isTarget(a) && !isTarget(b)) return;
+    if(Array.isArray(m.replays)) {
+      m.replays.forEach(r => {
+        if(!r) return;
+        let repKey = r.id || ((m.id || '') + '_g' + (r.game || 1));
+        if(!seenReplayKeys.has(repKey)) {
+          seenReplayKeys.add(repKey);
+          replayGames++;
+        }
+      });
+    }
+  });
+  if(t.topCutReplays && typeof t.topCutReplays === 'object') {
+    Object.keys(t.topCutReplays).forEach(tcKey => {
+      let rList = t.topCutReplays[tcKey];
+      if(Array.isArray(rList)) {
+        rList.forEach(r => {
+          if(!r) return;
+          let c1 = r.coach1, c2 = r.coach2;
+          if(!isTarget(c1) && !isTarget(c2)) return;
+          let repKey = r.id || (tcKey + '_g' + (r.game || 1));
+          if(!seenReplayKeys.has(repKey)) {
+            seenReplayKeys.add(repKey);
+            replayGames++;
+          }
+        });
+      }
+    });
+  }
+
+  // 3. Check max individual Pokemon appearances from stats map
+  let monMaxGames = 0;
+  try {
+    let monStatsMap = (typeof getTournamentPokemonStatsMap === 'function') ? getTournamentPokemonStatsMap(t, p) : null;
+    if(monStatsMap) {
+      Object.values(monStatsMap).forEach(st => {
+        if(st && typeof st.games === 'number' && st.games > monMaxGames) {
+          monMaxGames = st.games;
+        }
+      });
+    }
+  } catch(e) {}
+
+  let totalGames = Math.max(scoreGames, replayGames, monMaxGames);
+
+  if(totalGames === 0) {
+    let rec = typeof tournamentRecord === 'function' ? tournamentRecord(t, p) : '0-0';
+    let parts = String(rec).split('-').map(Number);
+    totalGames = (parts[0] || 0) + (parts[1] || 0);
+  }
+
+  return totalGames;
+}
+
 function playerCareerStats(p){
   let wins=0,losses=0,titles=0,topCuts=0,tournaments=0,championshipCups=[];
   Object.values(tournamentData).forEach(t=>{
@@ -38337,10 +38435,9 @@ function TeamRosterDetailView(t, p){
             </div>
             ${(() => {
               let coachRec = tournamentRecord(t, p);
-              let [w, l] = coachRec.split('-').map(Number);
-              let gamesCount = (w || 0) + (l || 0);
-              let gamesText = `${gamesCount} ${gamesCount === 1 ? 'game' : 'games'} played`;
-              return `<div class="team-detail-coach-sub">COACH: ${esc(p.toUpperCase())} · RECORD: <b>${coachRec}</b> (${esc(gamesText)})</div>`;
+              let totalGames = (typeof getCoachTotalTournamentGames === 'function') ? getCoachTotalTournamentGames(t, p) : 0;
+              let gamesText = `${totalGames} ${totalGames === 1 ? 'game' : 'games'} played`;
+              return `<div class="team-detail-coach-sub">COACH: ${esc(p.toUpperCase())} · RECORD: <b>${coachRec}</b>  ·  ${esc(gamesText)}</div>`;
             })()}
           </div>
         </div>
@@ -38485,7 +38582,12 @@ function renderTeamsGridHtml(t){
                 <div class="team-card-avatar" style="background-image:${faceArt}">${faceLetter}</div>
                 <div class="team-card-meta">
                   <h3 class="team-card-name" title="${esc(tName)}">${esc(tName)}</h3>
-                  <div class="team-card-coach">COACH: ${esc(p.toUpperCase())}</div>
+                  ${(() => {
+                    let coachRec = tournamentRecord(t, p);
+                    let totalGames = (typeof getCoachTotalTournamentGames === 'function') ? getCoachTotalTournamentGames(t, p) : 0;
+                    let gamesText = `${totalGames} ${totalGames === 1 ? 'game' : 'games'} played`;
+                    return `<div class="team-card-coach">COACH: ${esc(p.toUpperCase())} · ${coachRec}  ·  ${esc(gamesText)}</div>`;
+                  })()}
                 </div>
               </div>
               <div class="team-card-chips">
