@@ -43767,6 +43767,113 @@ const SPECIAL_FORM_ARTWORK_IDS = {
   'diancie-mega': 10075,
   'dianciemega': 10075,
 
+  // Newer & Community Megas (PokeAPI verified)
+  'clefable-mega': 10278,
+  'clefablemega': 10278,
+  'victreebel-mega': 10279,
+  'victreebelmega': 10279,
+  'starmie-mega': 10280,
+  'starmiemega': 10280,
+  'dragonite-mega': 10281,
+  'dragonitemega': 10281,
+  'meganium-mega': 10282,
+  'meganiummega': 10282,
+  'feraligatr-mega': 10283,
+  'feraligatrmega': 10283,
+  'skarmory-mega': 10284,
+  'skarmorymega': 10284,
+  'froslass-mega': 10285,
+  'froslassmega': 10285,
+  'emboar-mega': 10286,
+  'emboarmega': 10286,
+  'excadrill-mega': 10287,
+  'excadrillmega': 10287,
+  'scolipede-mega': 10288,
+  'scolipedemega': 10288,
+  'scrafty-mega': 10289,
+  'scraftymega': 10289,
+  'eelektross-mega': 10290,
+  'eelektrossmega': 10290,
+  'chandelure-mega': 10291,
+  'chandeluremega': 10291,
+  'chesnaught-mega': 10292,
+  'chesnaughtmega': 10292,
+  'delphox-mega': 10293,
+  'delphoxmega': 10293,
+  'greninja-mega': 10294,
+  'greninjamega': 10294,
+  'pyroar-mega': 10295,
+  'pyroarmega': 10295,
+  'floette-mega': 10296,
+  'floettemega': 10296,
+  'malamar-mega': 10297,
+  'malamarmega': 10297,
+  'barbaracle-mega': 10298,
+  'barbaraclemega': 10298,
+  'dragalge-mega': 10299,
+  'dragalgemega': 10299,
+  'hawlucha-mega': 10300,
+  'hawluchamega': 10300,
+  'zygarde-mega': 10301,
+  'zygardemega': 10301,
+  'drampa-mega': 10302,
+  'drampamega': 10302,
+  'falinks-mega': 10303,
+  'falinksmega': 10303,
+  'raichu-mega-x': 10304,
+  'raichu-megax': 10304,
+  'raichumegax': 10304,
+  'raichu-mega-y': 10305,
+  'raichu-megay': 10305,
+  'raichumegay': 10305,
+  'chimecho-mega': 10306,
+  'chimechomega': 10306,
+  'absol-mega-z': 10307,
+  'absol-megaz': 10307,
+  'absolmegaz': 10307,
+  'staraptor-mega': 10308,
+  'staraptormega': 10308,
+  'garchomp-mega-z': 10309,
+  'garchomp-megaz': 10309,
+  'garchompmegaz': 10309,
+  'lucario-mega-z': 10310,
+  'lucario-megaz': 10310,
+  'lucariomegaz': 10310,
+  'heatran-mega': 10311,
+  'heatranmega': 10311,
+  'darkrai-mega': 10312,
+  'darkraimega': 10312,
+  'golurk-mega': 10313,
+  'golurkmega': 10313,
+  'meowstic-male-mega': 10314,
+  'meowstic-m-mega': 10314,
+  'meowsticmmega': 10314,
+  'crabominable-mega': 10315,
+  'crabominablemega': 10315,
+  'golisopod-mega': 10316,
+  'golisopodmega': 10316,
+  'magearna-mega': 10317,
+  'magearnamega': 10317,
+  'magearna-original-mega': 10318,
+  'magearnaoriginalmega': 10318,
+  'zeraora-mega': 10319,
+  'zeraoramega': 10319,
+  'scovillain-mega': 10320,
+  'scovillainmega': 10320,
+  'glimmora-mega': 10321,
+  'glimmoramega': 10321,
+  'tatsugiri-curly-mega': 10322,
+  'tatsugiricurlymega': 10322,
+  'tatsugiri-droopy-mega': 10323,
+  'tatsugiridroopymega': 10323,
+  'tatsugiri-stretchy-mega': 10324,
+  'tatsugiristretchymega': 10324,
+  'baxcalibur-mega': 10325,
+  'baxcaliburmega': 10325,
+  'meowstic-female-mega': 10326,
+  'meowstic-f-mega': 10326,
+  'meowsticfmega': 10326,
+
   // Regional forms
   'ninetales-alola': 10104,
   'ninetalesalola': 10104,
@@ -43929,7 +44036,15 @@ function buildPokemonDetailFromDex(rawName, entry) {
     SPECIAL_FORM_ARTWORK_IDS[cleanSlug] ||
     SPECIAL_FORM_ARTWORK_IDS[cleanDexName] ||
     SPECIAL_FORM_ARTWORK_IDS[cleanRaw];
-  let artworkId = specialFormId || entry.num;
+
+  let isSpecialForm = 
+    (entry.baseSpecies && entry.baseSpecies.toLowerCase().trim() !== String(entry.name || '').toLowerCase().trim()) ||
+    (entry.forme && entry.forme !== '') ||
+    (canonicalName.toLowerCase().includes('mega')) ||
+    (resolvedSlug.includes('-mega') || resolvedSlug.endsWith('mega')) ||
+    (String(entry.name || '').toLowerCase().includes('-mega'));
+
+  let artworkId = specialFormId || (!isSpecialForm ? entry.num : null);
   let artwork = artworkId ? 
     `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/${artworkId}.png` :
     pokeSprite(canonicalName);
@@ -43947,7 +44062,7 @@ function buildPokemonDetailFromDex(rawName, entry) {
 
 function getStoredMonDetail(slug) {
   try {
-    let raw = localStorage.getItem('bellimaka_mon_v2_' + slug);
+    let raw = localStorage.getItem('bellimaka_mon_v3_' + slug);
     if(raw) return JSON.parse(raw);
   } catch(e) {}
   return null;
@@ -43956,7 +44071,7 @@ function getStoredMonDetail(slug) {
 function storeMonDetail(slug, data) {
   try {
     _pokemonDetailCache.set(slug, data);
-    localStorage.setItem('bellimaka_mon_v2_' + slug, JSON.stringify(data));
+    localStorage.setItem('bellimaka_mon_v3_' + slug, JSON.stringify(data));
   } catch(e) {}
 }
 

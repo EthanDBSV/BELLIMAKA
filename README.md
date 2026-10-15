@@ -50,15 +50,19 @@ Format: `v[MAJOR].[MINOR].[PATCH]` — Major = major system overhauls, Minor = n
     - **Necrozma Form Resolution**: Fixed slug and alias mapping (`necrozma-dawnwings`, `necrozma-dawn-wings` $\rightarrow$ `10156`; `necrozma-duskmane`, `necrozma-dusk-mane` $\rightarrow$ `10155`; `necrozma-ultra`, `ultra-necrozma` $\rightarrow$ `10157`). Previously, Necrozma-Dawn-Wings defaulted to base prism Necrozma (ID 800) due to a missing alias slug.
     - **Rotom Appliance Alignment**: Corrected Rotom forms (`rotom-heat = 10008`, `rotom-wash = 10009`, `rotom-frost = 10010`, `rotom-fan = 10011`, `rotom-mow = 10012`).
     - **Ogerpon Mask Forms**: Corrected inverted mask IDs (`ogerpon-wellspring = 10273`, `ogerpon-hearthflame = 10274`, `ogerpon-cornerstone = 10275`).
-    - **Mega Evolutions & Regional Variants**: Corrected Mega Camerupt (`10087`), Mega Salamence (`10089`), Hisuian Typhlosion (`10233`), and Calyrex Ice/Shadow Riders (`10193`, `10194`).
+    - **Mega Evolutions (All 97 Canon & Community Megas Mapped)**:
+      - Full coverage of classic Gen 6 / ORAS Megas (`10033`–`10090`).
+      - Added verified PokeAPI artwork IDs for all 49 newer community & mod Megas (`10278`–`10326`): **Mega Froslass** (`10285`), **Mega Dragonite** (`10281`), **Mega Meganium** (`10282`), **Mega Feraligatr** (`10283`), **Mega Greninja** (`10294`), **Mega Staraptor** (`10308`), **Mega Baxcalibur** (`10325`), **Mega Raichu X/Y** (`10304`, `10305`), **Mega Hawlucha** (`10300`), **Mega Chandelure** (`10291`), **Mega Skarmory** (`10284`), **Mega Excadrill** (`10287`), and 37 others.
+      - Fixed fallback logic: Non-base forms and Megas that lack an explicit PokeAPI artwork ID now automatically fall back to the Showdown Mega sprite rather than defaulting to the base Pokémon National Dex number (`entry.num`).
+    - **Regional Variants & Legends**: Corrected Mega Camerupt (`10087`), Mega Salamence (`10089`), Hisuian Typhlosion (`10233`), and Calyrex Ice/Shadow Riders (`10193`, `10194`).
   - **Universal Typo Tolerance & Spelling Normalization**:
     - Integrated the master fuzzy name resolver (`resolvePokemonData`) into the sidebar drawer pipeline (`openPokemonDetailDrawer`, `getPokemonShowdownData`, `fetchPokemonDetailData`, `buildPokemonDetailFromDex`).
     - Automatically heals common community typos (e.g. `landorous` $\rightarrow$ `landorus`, `thunderus` $\rightarrow$ `thundurus`, `tornadous` $\rightarrow$ `tornadus`, `enamarous` $\rightarrow$ `enamorus`, spaced Necrozma forms like `necrozma dawn wings` $\rightarrow$ `Necrozma-Dawn-Wings`).
-  - **Auto-Cache Busting (`bellimaka_mon_v2_*`)**:
-    - Bumped local storage cache version to `v2`, instantly invalidating and repairing any stale or misaligned artwork data cached in user browsers.
+  - **Auto-Cache Busting (`bellimaka_mon_v3_*`)**:
+    - Bumped local storage cache version to `v3`, instantly invalidating and replacing any stale base Pokémon artwork previously cached for Megas in user browsers.
 
 - **High-Performance In-Memory & `localStorage` Caching**:
-  - Stores fetched Pokémon data in both `_pokemonDetailCache` (memory) and `bellimaka_mon_v2_*` (`localStorage`), enabling subsequent drawer opens to render instantaneously with 0ms network latency.
+  - Stores fetched Pokémon data in both `_pokemonDetailCache` (memory) and `bellimaka_mon_v3_*` (`localStorage`), enabling subsequent drawer opens to render instantaneously with 0ms network latency.
 
 ---
 
