@@ -5422,27 +5422,31 @@ body.mobile-nav-open {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 24px 20px 14px;
-  background: radial-gradient(circle at 50% 50%, var(--drawer-theme-glow, rgba(239, 48, 56, 0.2)) 0%, rgba(18, 18, 27, 0) 70%);
+  padding: 20px 16px 14px;
+  background: radial-gradient(circle at 50% 45%, var(--drawer-theme-glow, rgba(239, 48, 56, 0.22)) 0%, rgba(18, 18, 27, 0) 72%);
 }
 .pokemon-drawer-art-wrap {
   position: relative;
-  width: 220px;
-  height: 220px;
+  width: 100%;
+  max-width: 360px;
+  height: 250px;
   display: flex;
   align-items: center;
   justify-content: center;
+  margin: 0 auto;
 }
 .pokemon-drawer-art {
   max-width: 100%;
   max-height: 100%;
+  width: auto;
+  height: auto;
   object-fit: contain;
-  filter: drop-shadow(0 10px 24px rgba(0, 0, 0, 0.75));
+  filter: drop-shadow(0 12px 28px rgba(0, 0, 0, 0.75));
   transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
   will-change: transform;
 }
 .pokemon-drawer-art:hover {
-  transform: scale(1.06);
+  transform: scale(1.05);
 }
 .pokemon-drawer-name {
   font: 800 28px 'Barlow Condensed', sans-serif;
@@ -5452,12 +5456,14 @@ body.mobile-nav-open {
   text-align: center;
 }
 .pokemon-drawer-genus {
-  font-size: 12px;
-  font-weight: 600;
-  color: #a09fa8;
+  font-size: 13px;
+  font-weight: 700;
+  color: #cbd5e1;
   font-style: italic;
   text-align: center;
+  letter-spacing: 0.5px;
   margin-bottom: 8px;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.6);
 }
 .pokemon-drawer-types {
   display: flex;
@@ -43930,8 +43936,77 @@ function cleanBulbaName(rawName) {
   return s.replace(/\s+/g, '_');
 }
 
+var _trimmedArtworkCache = new Map();
+
+function autoTrimArtwork(img) {
+  if(!img || img._isTrimmed || !img.naturalWidth || !img.naturalHeight) return;
+  let originalSrc = img.src;
+  if(!originalSrc || originalSrc.startsWith('data:')) return;
+
+  if(_trimmedArtworkCache.has(originalSrc)) {
+    img._isTrimmed = true;
+    img.src = _trimmedArtworkCache.get(originalSrc);
+    return;
+  }
+
+  try {
+    let nw = img.naturalWidth;
+    let nh = img.naturalHeight;
+    // Only crop square official artwork (skip rectangular showdown sprites)
+    if(Math.abs(nw - nh) > 12) return;
+
+    let c = document.createElement('canvas');
+    c.width = nw;
+    c.height = nh;
+    let ctx = c.getContext('2d', { willReadFrequently: true });
+    ctx.drawImage(img, 0, 0);
+    let imgData = ctx.getImageData(0, 0, nw, nh);
+    let data = imgData.data;
+
+    let minX = nw, maxX = 0, minY = nh, maxY = 0;
+    for(let y = 0; y < nh; y++) {
+      let row = y * nw * 4;
+      for(let x = 0; x < nw; x++) {
+        if(data[row + x * 4 + 3] > 10) {
+          if(x < minX) minX = x;
+          if(x > maxX) maxX = x;
+          if(y < minY) minY = y;
+          if(y > maxY) maxY = y;
+        }
+      }
+    }
+
+    if(maxX > minX && maxY > minY) {
+      let cropW = maxX - minX + 1;
+      let cropH = maxY - minY + 1;
+      // Only crop if there is notable padding (at least 15px anywhere)
+      if(minX > 15 || minY > 15 || (nw - maxX) > 15 || (nh - maxY) > 15) {
+        let pad = 4;
+        let finalX = Math.max(0, minX - pad);
+        let finalY = Math.max(0, minY - pad);
+        let finalW = Math.min(nw - finalX, cropW + pad * 2);
+        let finalH = Math.min(nh - finalY, cropH + pad * 2);
+
+        let c2 = document.createElement('canvas');
+        c2.width = finalW;
+        c2.height = finalH;
+        let ctx2 = c2.getContext('2d');
+        ctx2.drawImage(c, finalX, finalY, finalW, finalH, 0, 0, finalW, finalH);
+
+        let trimmedDataUrl = c2.toDataURL('image/png');
+        _trimmedArtworkCache.set(originalSrc, trimmedDataUrl);
+        img._isTrimmed = true;
+        img.src = trimmedDataUrl;
+      }
+    }
+  } catch(e) {
+    // If CORS or tainted canvas prevents read, image continues displaying as-is
+  }
+}
+
 function handleArtworkFallback(img, monName) {
   if(!img) return;
+  img._isTrimmed = true;
   if(!img._fbStage) img._fbStage = 1;
   else img._fbStage++;
 
@@ -44171,8 +44246,7 @@ function openPokemonDetailDrawer(monName, cost, tierName, tourneyId = null) {
 
   let theme = getPokemonTypeTheme(cleanName);
 
-  let initialArtworkUrl = cachedData?.artwork || pokeSprite(cleanName);
-  let initialDexText = cachedData?.id ? ((cachedData.id < 10000) ? ('#' + String(cachedData.id).padStart(4, '0')) : ('#' + cachedData.id)) : '#????';
+  let initialArtworkUrl = (cachedData?.artwork && _trimmedArtworkCache.get(cachedData.artwork)) || cachedData?.artwork || pokeSprite(cleanName);
   let initialGenusText = cachedData?.genus ? (cachedData.genus.startsWith('The ') ? cachedData.genus : ('The ' + cachedData.genus)) : (getPokemonTypes(cleanName).join(' / ') + ' Pokémon');
 
   panel.innerHTML = `
@@ -44192,11 +44266,10 @@ function openPokemonDetailDrawer(monName, cost, tierName, tourneyId = null) {
 
     <div class="pokemon-drawer-hero" style="--drawer-theme-glow: ${theme.glow};">
       <div class="pokemon-drawer-art-wrap">
-        <img id="drawerArtwork" src="${esc(initialArtworkUrl)}" alt="${esc(cleanName)}" class="pokemon-drawer-art" onerror="handleArtworkFallback(this, '${jsArg(cleanName)}')">
+        <img id="drawerArtwork" src="${esc(initialArtworkUrl)}" alt="${esc(cleanName)}" class="pokemon-drawer-art" crossOrigin="anonymous" onload="autoTrimArtwork(this)" onerror="handleArtworkFallback(this, '${jsArg(cleanName)}')">
       </div>
       <h2 class="pokemon-drawer-name" id="drawerMonName">${esc(cleanName)}</h2>
-      <div id="drawerDexAndGenus" style="display:flex;align-items:center;gap:6px;margin-bottom:6px">
-        <span class="tag" id="drawerDexTag" style="background:#262115;color:#ffd166;border:1px solid #5a4218;font-size:10px">${initialDexText}</span>
+      <div id="drawerDexAndGenus" style="display:flex;align-items:center;justify-content:center;margin-bottom:8px">
         <span class="pokemon-drawer-genus" id="drawerGenusText">${esc(initialGenusText)}</span>
       </div>
       <div class="pokemon-drawer-types" id="drawerTypes">
@@ -44286,14 +44359,15 @@ function updateDrawerWithPokemonData(data, requestedName) {
   if(!currentDrawerMon || currentDrawerMon.name.toLowerCase().trim() !== requestedName.toLowerCase().trim()) return;
 
   let artImg = document.getElementById('drawerArtwork');
-  if(artImg && data.artwork) {
-    artImg.src = data.artwork;
-  }
-
-  let dexTag = document.getElementById('drawerDexTag');
-  if(dexTag && data.id) {
-    let dexStr = (data.id < 10000) ? ('#' + String(data.id).padStart(4, '0')) : ('#' + data.id);
-    dexTag.textContent = dexStr;
+  if(artImg && data.artwork && artImg.src !== data.artwork) {
+    artImg._isTrimmed = false;
+    let trimmed = _trimmedArtworkCache.get(data.artwork);
+    if(trimmed) {
+      artImg._isTrimmed = true;
+      artImg.src = trimmed;
+    } else {
+      artImg.src = data.artwork;
+    }
   }
 
   let genusEl = document.getElementById('drawerGenusText');
