@@ -3,6 +3,51 @@
 All notable changes to the Bellimaka Pokémon Draft League platform are documented here.
 Format: `v[MAJOR].[MINOR].[PATCH]` — Major = major system overhauls, Minor = new features, Patch = bug fixes and visual improvements.
 
+## [v4.0.0] — 2026-10-14
+
+### Interactive Pokémon Detail Sidebar Drawer (Drafteon-Style) & Official Artwork Integration
+- **Interactive Slide-Over Sidebar Drawer (`openPokemonDetailDrawer`, `closePokemonDetailDrawer`)**:
+  - **Drafteon-Style Slide-In Panel (`#pokemonDrawerPanel`, `.pokemon-drawer`)**: Implemented a responsive 60fps desktop & mobile slide-out sidebar drawer inspired by Drafteon.com that flies in smoothly from the right edge upon clicking any Pokémon card on the draft board, team planner, or roster.
+  - **Full Backdrop & Keyboard Accessibility**: Includes a frosted glass blur backdrop (`.pokemon-drawer-backdrop`), top close button (`.pokemon-drawer-close`), backdrop click dismissal, and instant <kbd>ESC</kbd> keyboard dismissal.
+  - **Unified Navigation Across Views**: Clicking any Pokémon on the active Tournament Draft Board or the Offseason Draft Board immediately opens the drawer with complete data. A small `+` button remains on the cards for 1-click quick-add convenience.
+  - **Persistent Body Scroll Lock**: Adds `.pokemon-drawer-open` to prevent background scrolling while inspecting Pokémon stats on mobile devices.
+- **Full-Size Official Artwork Integration (PokeAPI GitHub CDN & Multi-Tier Fallbacks)**:
+  - **High-Resolution Official Artwork**: Directly streams official Pokémon artwork via PokeAPI GitHub CDN (`https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/{dexId}.png`), covering all 1,025+ canonical Pokémon, Megas (e.g. Mega Scovillain #10320, Mega Charizard X #10034), and regional variants.
+  - **Tiered Multi-Stage Fallback Chain (`handleArtworkFallback`)**: Automatically cascades from PokeAPI Official Artwork $\rightarrow$ Pokémon Showdown Home Sprite $\rightarrow$ Pokémon Showdown Dex Sprite $\rightarrow$ Animated Gen 5 Sprite $\rightarrow$ Placeholder, guaranteeing no broken image icons for custom or CAP Pokémon.
+  - **Dynamic Ambient Theme Glow**: Surrounds the artwork presentation with a radial gradient glow matching the Pokémon's primary type theme (`TYPE_THEMES` for Fire, Water, Grass, Dragon, etc.).
+- **Base Stats & BST (Base Stat Total) Visualization**:
+  - **National Dex Number & Genus Title Tagline**: Displays official National Dex badges (e.g. `#0952`) alongside canonical genus classification taglines (e.g. *"The Spicy Pepper Pokémon"* or *"The Seed Pokémon"*).
+  - **Total Base Stats (BST) Summary Badge**: Dynamically color-coded BST pill with tier highlights ($\ge 600$ Legendary/Mythical Gold, $\ge 500$ High-Tier Cyan, Standard Slate).
+  - **6 Competitive Base Stat Bars (`renderDrawerStatsHtml`)**:
+    - Visual progress tracks with numeric stat readouts and proportional scaling (up to 200–255 max):
+      - **HP** (Health Points): Vibrant Emerald Green (`#22c55e`)
+      - **ATK** (Attack): Fiery Orange (`#f97316`)
+      - **DEF** (Defense): Amber Gold (`#eab308`)
+      - **SPA** (Special Attack): Cyber Cyan (`#06b6d4`)
+      - **SPD** (Special Defense): Mystic Violet (`#8b5cf6`)
+      - **SPE** (Speed): Neon Rose (`#ec4899`)
+  - **Skeleton Pulse Loader (`.pokemon-stat-skeleton`)**: Smoothly animates loading placeholder bars while stats asynchronously stream from PokeAPI.
+- **Ability Display & Hidden Ability Indicators (`renderDrawerAbilitiesHtml`)**:
+  - Lists primary and secondary abilities in clean styled pills.
+  - Distinctive purple gradient badges for **Hidden Abilities** with a dedicated `(Hidden)` indicator tag.
+- **Deep Bellimaka Draft & Team Planner Integration**:
+  - **Private Team Planner (`handleDrawerAddPlan`, `handleDrawerRemovePlan`)**:
+    - Live roster status: detects whether the Pokémon is currently in the active team plan.
+    - One-click `➕ Add to My Team Plan ({cost} pts)` or `➖ Remove from Plan` actions with instant live updates to planner capacity (`X/10 slots`) and budget spent (`Y/120 pts`).
+  - **Auto-Pick Draft Bank (`handleDrawerSetBank`, `handleDrawerClearBank`)**:
+    - One-click `🏦 Save to Draft Bank` to set the Pokémon as the coach's auto-pick target, or clear it if already queued.
+  - **Tournament Live Draft Action (`handleDrawerDraftPick`)**:
+    - In live tournament drafts, displays a prominent `🎯 Draft {Pokemon} Now` button that launches the draft confirmation flow.
+    - If already drafted, displays an alert banner showing the coach name, round number, and pick number.
+  - **Moderator Quick-Edit**:
+    - One-click `✏️ Edit Tier` button in the drawer header allowing tournament organizers to move or re-cost the Pokémon directly.
+  - **External Competitive Reference Links**:
+    - Direct shortcuts to **Smogon SV Dex** strategy analysis and **Bulbapedia** encyclopedic entries.
+- **High-Performance In-Memory & `localStorage` Caching**:
+  - Stores fetched Pokémon data in both `_pokemonDetailCache` (memory) and `bellimaka_mon_v1_*` (`localStorage`), enabling subsequent drawer opens to render instantaneously with 0ms network latency.
+
+---
+
 ## [v3.2.0] — 2026-10-14
 
 ### Draft Board Library, Consolidated Board Settings & Direct Library Import + Removal Bug Fix

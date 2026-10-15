@@ -5335,9 +5335,230 @@ body.mobile-nav-open {
   color: var(--red);
   transform: translateX(2px);
 }
+/* ------------------------------------------------------------
+   Pokemon Detail Sidebar Drawer (Drafteon-style)
+   ------------------------------------------------------------ */
+.pokemon-drawer {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  visibility: hidden;
+  pointer-events: none;
+  transition: visibility 0.25s;
+}
+.pokemon-drawer.open {
+  visibility: visible;
+  pointer-events: auto;
+}
+.pokemon-drawer-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(8, 8, 14, 0.78);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  opacity: 0;
+  transition: opacity 0.25s ease;
+}
+.pokemon-drawer.open .pokemon-drawer-backdrop {
+  opacity: 1;
+}
+.pokemon-drawer-panel {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: min(450px, 92vw);
+  background: #12121b;
+  border-left: 1px solid #28283a;
+  box-shadow: -12px 0 40px rgba(0, 0, 0, 0.85);
+  display: flex;
+  flex-direction: column;
+  transform: translateX(100%);
+  transition: transform 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  box-sizing: border-box;
+}
+.pokemon-drawer.open .pokemon-drawer-panel {
+  transform: translateX(0);
+}
+.pokemon-drawer-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px 10px;
+  border-bottom: 1px solid #20202d;
+  background: rgba(18, 18, 27, 0.95);
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+}
+.pokemon-drawer-close {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #a09fa8;
+  font-size: 16px;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  line-height: 1;
+}
+.pokemon-drawer-close:hover {
+  background: rgba(239, 48, 56, 0.16);
+  color: #ff8e95;
+  border-color: rgba(239, 48, 56, 0.4);
+  transform: scale(1.05);
+}
+.pokemon-drawer-hero {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 24px 20px 14px;
+  background: radial-gradient(circle at 50% 50%, var(--drawer-theme-glow, rgba(239, 48, 56, 0.2)) 0%, rgba(18, 18, 27, 0) 70%);
+}
+.pokemon-drawer-art-wrap {
+  position: relative;
+  width: 220px;
+  height: 220px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.pokemon-drawer-art {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  filter: drop-shadow(0 10px 24px rgba(0, 0, 0, 0.75));
+  transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  will-change: transform;
+}
+.pokemon-drawer-art:hover {
+  transform: scale(1.06);
+}
+.pokemon-drawer-name {
+  font: 800 28px 'Barlow Condensed', sans-serif;
+  letter-spacing: 0.5px;
+  color: #f5f3f0;
+  margin: 12px 0 2px;
+  text-align: center;
+}
+.pokemon-drawer-genus {
+  font-size: 12px;
+  font-weight: 600;
+  color: #a09fa8;
+  font-style: italic;
+  text-align: center;
+  margin-bottom: 8px;
+}
+.pokemon-drawer-types {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-bottom: 6px;
+}
+.pokemon-drawer-section {
+  background: #171723;
+  border: 1px solid #28283a;
+  border-radius: 10px;
+  padding: 14px 16px;
+  margin: 8px 18px;
+}
+.pokemon-drawer-section-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font: 800 11px 'Barlow Condensed', sans-serif;
+  letter-spacing: 1px;
+  color: #8e8c95;
+  text-transform: uppercase;
+  margin-bottom: 10px;
+}
+.pokemon-stat-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 7px;
+}
+.pokemon-stat-row:last-child {
+  margin-bottom: 0;
+}
+.pokemon-stat-lbl {
+  width: 32px;
+  font: 800 11px 'Barlow Condensed', sans-serif;
+  color: #a09fa8;
+  letter-spacing: 0.5px;
+  flex-shrink: 0;
+}
+.pokemon-stat-val {
+  width: 30px;
+  font: 700 13px 'Barlow Condensed', sans-serif;
+  color: #f5f3f0;
+  text-align: right;
+  flex-shrink: 0;
+}
+.pokemon-stat-track {
+  flex: 1;
+  height: 8px;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 4px;
+  overflow: hidden;
+  position: relative;
+}
+.pokemon-stat-fill {
+  height: 100%;
+  border-radius: 4px;
+  transition: width 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.pokemon-stat-skeleton {
+  animation: pulseStatSkeleton 1.4s ease-in-out infinite;
+}
+@keyframes pulseStatSkeleton {
+  0% { opacity: 0.4; }
+  50% { opacity: 0.8; }
+  100% { opacity: 0.4; }
+}
+.pokemon-ability-pill {
+  display: inline-flex;
+  align-items: center;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #e5e7eb;
+  border-radius: 6px;
+  padding: 4px 10px;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: capitalize;
+}
+.pokemon-ability-pill.hidden {
+  background: rgba(168, 85, 247, 0.12);
+  border-color: rgba(168, 85, 247, 0.35);
+  color: #d8b4fe;
+}
+.pokemon-ability-hidden-tag {
+  font-size: 9px;
+  font-weight: 800;
+  text-transform: uppercase;
+  background: rgba(168, 85, 247, 0.28);
+  color: #e9d5ff;
+  border-radius: 3px;
+  padding: 1px 4px;
+  margin-left: 5px;
+  letter-spacing: 0.4px;
+}
 /* ------------------------------------------------------------ End v2.1.0 Mobile Experience & Modernized Guides System ------------------------------------------------------------ */
 </style>
-<body><div style="position:absolute;left:-9999px;top:-9999px;opacity:0.001;pointer-events:none;font-size:1px" aria-hidden="true"><span style="font-family:'Matcha World';font-weight:900;font-style:italic">MATCHA WORLD</span><span style="font-family:'Matcha World';font-weight:900;font-style:normal">MATCHA WORLD</span><span style="font-family:'Matcha World';font-weight:normal;font-style:normal">MATCHA WORLD</span><span style="font-family:'Saphifen';font-weight:900;font-style:italic">SAPHIFEN</span><span style="font-family:'Agency FB';font-weight:800;font-style:normal">AGENCY FB</span><span style="font-family:'Agency FB';font-weight:900;font-style:normal">AGENCY FB</span></div><div class="shell"><header class="topbar"><div class="brand" onclick="go('Home')"><img src="Fonts%20%26%20Logos/bellimaka_logo.jpg" onerror="handleLogoError(this)" class="bellimaka-logo" alt="Bellimaka"><span style="letter-spacing:1px">BELLIMAKA</span></div><nav class="nav" id="nav"></nav><div id="topbarActions" style="display:flex;align-items:center;gap:8px;margin-left:auto"><button class="account" onclick="go('Account')"><span class="mode-dot"></span><span id="accountText">Sign in</span></button></div><button class="mobile-menu-btn" id="mobileMenuBtn" onclick="toggleMobileNav(event)" aria-label="Open Navigation Menu"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg></button></header><div id="mobileDrawer" class="mobile-drawer" aria-hidden="true"><div class="mobile-drawer-backdrop" onclick="closeMobileNav()"></div><div class="mobile-drawer-content"><div class="mobile-drawer-header"><div class="brand" onclick="closeMobileNav(); go('Home');"><img src="Fonts%20%26%20Logos/bellimaka_logo.jpg" onerror="handleLogoError(this)" class="bellimaka-logo" alt="Bellimaka"><span style="letter-spacing:1px">BELLIMAKA</span></div><button class="mobile-drawer-close" onclick="closeMobileNav()" aria-label="Close Navigation Menu">✕</button></div><div class="mobile-drawer-nav" id="mobileDrawerNav"></div><div class="mobile-drawer-actions" id="mobileDrawerActions"></div></div></div><main class="page" id="app"></main></div><div id="modal"></div>
+<body><div style="position:absolute;left:-9999px;top:-9999px;opacity:0.001;pointer-events:none;font-size:1px" aria-hidden="true"><span style="font-family:'Matcha World';font-weight:900;font-style:italic">MATCHA WORLD</span><span style="font-family:'Matcha World';font-weight:900;font-style:normal">MATCHA WORLD</span><span style="font-family:'Matcha World';font-weight:normal;font-style:normal">MATCHA WORLD</span><span style="font-family:'Saphifen';font-weight:900;font-style:italic">SAPHIFEN</span><span style="font-family:'Agency FB';font-weight:800;font-style:normal">AGENCY FB</span><span style="font-family:'Agency FB';font-weight:900;font-style:normal">AGENCY FB</span></div><div class="shell"><header class="topbar"><div class="brand" onclick="go('Home')"><img src="Fonts%20%26%20Logos/bellimaka_logo.jpg" onerror="handleLogoError(this)" class="bellimaka-logo" alt="Bellimaka"><span style="letter-spacing:1px">BELLIMAKA</span></div><nav class="nav" id="nav"></nav><div id="topbarActions" style="display:flex;align-items:center;gap:8px;margin-left:auto"><button class="account" onclick="go('Account')"><span class="mode-dot"></span><span id="accountText">Sign in</span></button></div><button class="mobile-menu-btn" id="mobileMenuBtn" onclick="toggleMobileNav(event)" aria-label="Open Navigation Menu"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg></button></header><div id="mobileDrawer" class="mobile-drawer" aria-hidden="true"><div class="mobile-drawer-backdrop" onclick="closeMobileNav()"></div><div class="mobile-drawer-content"><div class="mobile-drawer-header"><div class="brand" onclick="closeMobileNav(); go('Home');"><img src="Fonts%20%26%20Logos/bellimaka_logo.jpg" onerror="handleLogoError(this)" class="bellimaka-logo" alt="Bellimaka"><span style="letter-spacing:1px">BELLIMAKA</span></div><button class="mobile-drawer-close" onclick="closeMobileNav()" aria-label="Close Navigation Menu">✕</button></div><div class="mobile-drawer-nav" id="mobileDrawerNav"></div><div class="mobile-drawer-actions" id="mobileDrawerActions"></div></div></div><main class="page" id="app"></main></div><div id="modal"></div><div id="pokemonDrawer" class="pokemon-drawer" aria-hidden="true"><div class="pokemon-drawer-backdrop" onclick="closePokemonDetailDrawer()"></div><div class="pokemon-drawer-panel" id="pokemonDrawerPanel"></div></div>
 <script>
 const SVG_SWORD_GREY = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:4px;flex-shrink:0"><polyline points="14.5 17.5 3 6 3 3 6 3 17.5 14.5"></polyline><line x1="13" y1="19" x2="19" y2="13"></line><line x1="16" y1="16" x2="20" y2="20"></line><line x1="19" y1="21" x2="21" y2="19"></line></svg>`;
 const SVG_SHIELD_GREY = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:4px;flex-shrink:0"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>`;
@@ -6255,6 +6476,7 @@ window.addEventListener('keydown', function(e){
     let cWrap = document.getElementById('cropperModalWrap');
     if(cWrap){ closeCropperModal(); return; }
     if(document.querySelector('#modal')?.innerHTML){ closeModal(); return; }
+    if(typeof closePokemonDetailDrawer === 'function'){ closePokemonDetailDrawer(); }
   }
 });
 
@@ -38625,26 +38847,24 @@ function teamKeydown(e){if(e.key==='Enter'){e.preventDefault();addTeamMon()}}
 function openDraftFromPlanner(monName, cost){
   let t = ongoingT();
   let isLiveDraft = t && t.status === 'ONGOING' && t.phase === 'draft' && t.draftData?.status !== 'completed';
-  if(!isLiveDraft){
-    openOffseasonMonDetailModal(monName, cost);
-    return;
-  }
-  let d = ensureTournamentDraft(t);
-  if(!d){
-    openOffseasonMonDetailModal(monName, cost);
-    return;
-  }
-
   let actualCost = findPokemonCostOnBoard(t, monName) || cost;
   let tierName = `${actualCost} Points`;
-  if(d.board && Array.isArray(d.board)){
-    let foundTier = d.board.find(tier => (tier.pokemon || []).some(m => m.toLowerCase().trim() === (monName||'').toLowerCase().trim()));
+  if(t?.draftData?.board && Array.isArray(t.draftData.board)){
+    let foundTier = t.draftData.board.find(tier => (tier.pokemon || []).some(m => m.toLowerCase().trim() === (monName||'').toLowerCase().trim()));
     if(foundTier){
       tierName = foundTier.name || `${foundTier.cost} Points`;
       actualCost = foundTier.cost || actualCost;
     }
   }
 
+  if(typeof openPokemonDetailDrawer === 'function'){
+    openPokemonDetailDrawer(monName, actualCost, tierName, isLiveDraft ? t?.id : null);
+    return;
+  }
+  if(!isLiveDraft){
+    openOffseasonMonDetailModal(monName, cost);
+    return;
+  }
   openDraftConfirmationModal(t.id, monName, actualCost, tierName);
 }
 
@@ -42211,7 +42431,7 @@ function renderDraftBoardTierColumns(t){
             let theme = getPokemonTypeTheme(mon);
 
             return `
-              <div class="draft-mon-card ${isDrafted ? 'drafted' : ''}" style="${isDrafted ? '' : `border-left:3px solid ${theme.accent};background:linear-gradient(90deg, ${theme.glow} 0%, #171722 100%);`}" onclick="${isDrafted ? '' : `openDraftConfirmationModal('${jsArg(t.id)}', '${jsArg(mon)}', ${tier.cost}, '${jsArg(tier.name)}')`}">
+              <div class="draft-mon-card ${isDrafted ? 'drafted' : ''}" style="${isDrafted ? '' : `border-left:3px solid ${theme.accent};background:linear-gradient(90deg, ${theme.glow} 0%, #171722 100%);`};cursor:pointer" onclick="openPokemonDetailDrawer('${jsArg(mon)}', ${tier.cost}, '${jsArg(tier.name)}', '${jsArg(t.id)}')">
                 <div style="display:flex;align-items:center;gap:8px;min-width:0;flex:1">
                   <img src="${esc(spriteUrl)}" class="draft-sprite" alt="${esc(mon)}" loading="lazy" decoding="async" onerror="handleSpriteError(this)">
                   <div style="min-width:0;flex:1">
@@ -42226,7 +42446,11 @@ function renderDraftBoardTierColumns(t){
 
                 ${isDrafted ? `
                   <span style="font-size:11px;color:#6b6a75;font-weight:700;flex:none">Picked</span>
-                ` : ''}
+                ` : `
+                  <button type="button" class="btn ghost btn-sm" onclick="event.stopPropagation(); addMonToPlannerFromBoard('${jsArg(mon)}', ${tier.cost})" title="Quick add to team plan" style="padding:1px 6px!important;font-size:11px!important;line-height:1;color:#ffd166;border-color:#5a4218;flex-shrink:0;margin-left:4px">
+                    +
+                  </button>
+                `}
               </div>
             `;
           }).join('') || '<div style="padding:14px;font-size:11px;color:#6b6a75;text-align:center">No matches in this tier</div>'}
@@ -42894,14 +43118,17 @@ function renderOffseasonTierColumns(){
             let theme = getPokemonTypeTheme(mon);
 
             return `
-              <div class="draft-mon-card" style="border-left:3px solid ${theme.accent};background:linear-gradient(90deg, ${theme.glow} 0%, #171722 100%);cursor:pointer" onclick="addMonToPlannerFromBoard('${jsArg(mon)}', ${tier.cost})">
+              <div class="draft-mon-card" style="border-left:3px solid ${theme.accent};background:linear-gradient(90deg, ${theme.glow} 0%, #171722 100%);cursor:pointer" onclick="openPokemonDetailDrawer('${jsArg(mon)}', ${tier.cost}, '${jsArg(tier.name)}', null)">
                 <div style="display:flex;align-items:center;gap:8px;min-width:0;flex:1">
                   <img src="${esc(spriteUrl)}" class="draft-sprite" alt="${esc(mon)}" loading="lazy" decoding="async" onerror="handleSpriteError(this)">
                   <div style="min-width:0;flex:1">
                     <div class="draft-mon-name" title="${esc(mon)}">${esc(mon)}</div>
-                    <div style="font-size:9px;color:#a09fa8">+ Add to plan</div>
+                    <div style="font-size:9px;color:#a09fa8">+ View details</div>
                   </div>
                 </div>
+                <button type="button" class="btn ghost btn-sm" onclick="event.stopPropagation(); addMonToPlannerFromBoard('${jsArg(mon)}', ${tier.cost})" title="Quick add to team plan" style="padding:1px 6px!important;font-size:11px!important;line-height:1;color:#ffd166;border-color:#5a4218;flex-shrink:0;margin-left:4px">
+                  +
+                </button>
                 ${(moderator && offseasonQuickEditMode) ? `
                   <button type="button" class="draft-mon-edit-btn" onclick="event.stopPropagation(); openEditBoardPokemonModal(null, '${jsArg(mon)}', ${tier.cost}, '${jsArg(tier.name)}')" title="Quick edit ${esc(mon)}" style="display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;margin-left:8px;border:1px solid rgba(255,255,255,0.16);background:rgba(255,255,255,0.08);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);border-radius:6px;font-size:13px;line-height:1;cursor:pointer;flex-shrink:0;box-shadow:0 2px 6px rgba(0,0,0,0.25);transition:all 0.15s ease" onmouseover="this.style.background='rgba(245,158,11,0.18)';this.style.borderColor='rgba(245,158,11,0.5)';this.style.boxShadow='0 0 10px rgba(245,158,11,0.28)';this.style.transform='scale(1.08)'" onmouseout="this.style.background='rgba(255,255,255,0.08)';this.style.borderColor='rgba(255,255,255,0.16)';this.style.boxShadow='0 2px 6px rgba(0,0,0,0.25)';this.style.transform='scale(1)'">
                     ✏️
@@ -43294,82 +43521,648 @@ function removeTeamMonByName(name){
   }
 }
 
-function openOffseasonMonDetailModal(monName, cost, tourneyId = null){
-  let actualCost = cost;
-  let tierName = `${cost} Points`;
-  let board = getOffseasonDraftBoard();
-  let clean = (monName || '').toLowerCase().trim();
-  let foundTier = board.find(tier => (tier.pokemon || []).some(m => m.toLowerCase().trim() === clean));
-  let targetTid = null;
-  if(tourneyId && tournamentData[tourneyId]?.draftData?.board?.length){
-    let tTier = tournamentData[tourneyId].draftData.board.find(tier => (tier.pokemon || []).some(m => m.toLowerCase().trim() === clean));
-    if(tTier){
-      foundTier = tTier;
-      targetTid = tourneyId;
-    }
+/* ------------------------------------------------------------
+   Pokemon Detail Sidebar Drawer (Drafteon-style Official Artwork, BST & Abilities)
+   ------------------------------------------------------------ */
+var currentDrawerMon = null;
+var _pokemonDetailCache = new Map();
+
+function getStoredMonDetail(slug) {
+  try {
+    let raw = localStorage.getItem('bellimaka_mon_v1_' + slug);
+    if(raw) return JSON.parse(raw);
+  } catch(e) {}
+  return null;
+}
+
+function storeMonDetail(slug, data) {
+  try {
+    _pokemonDetailCache.set(slug, data);
+    localStorage.setItem('bellimaka_mon_v1_' + slug, JSON.stringify(data));
+  } catch(e) {}
+}
+
+function toPokeApiSlug(rawName) {
+  let s = String(rawName || '').toLowerCase().trim();
+  s = s.replace(/\s*\(\d+.*?\)$/, '').trim();
+  
+  const specialMap = {
+    'great tusk': 'great-tusk',
+    'greattusk': 'great-tusk',
+    'iron valiant': 'iron-valiant',
+    'ironvaliant': 'iron-valiant',
+    'roaring moon': 'roaring-moon',
+    'roaringmoon': 'roaring-moon',
+    'flutter mane': 'flutter-mane',
+    'fluttermane': 'flutter-mane',
+    'scream tail': 'scream-tail',
+    'screamtail': 'scream-tail',
+    'brute bonnet': 'brute-bonnet',
+    'brutebonnet': 'brute-bonnet',
+    'sandy shocks': 'sandy-shocks',
+    'sandyshocks': 'sandy-shocks',
+    'iron treads': 'iron-treads',
+    'irontreads': 'iron-treads',
+    'iron bundle': 'iron-bundle',
+    'ironbundle': 'iron-bundle',
+    'iron hands': 'iron-hands',
+    'ironhands': 'iron-hands',
+    'iron jugulis': 'iron-jugulis',
+    'ironjugulis': 'iron-jugulis',
+    'iron moth': 'iron-moth',
+    'ironmoth': 'iron-moth',
+    'iron thorns': 'iron-thorns',
+    'ironthorns': 'iron-thorns',
+    'iron leaves': 'iron-leaves',
+    'ironleaves': 'iron-leaves',
+    'iron boulder': 'iron-boulder',
+    'ironboulder': 'iron-boulder',
+    'iron crown': 'iron-crown',
+    'ironcrown': 'iron-crown',
+    'gouging fire': 'gouging-fire',
+    'gougingfire': 'gouging-fire',
+    'raging bolt': 'raging-bolt',
+    'ragingbolt': 'raging-bolt',
+    'walking wake': 'walking-wake',
+    'walkingwake': 'walking-wake',
+    'chi-yu': 'chi-yu',
+    'chiyu': 'chi-yu',
+    'chien-pao': 'chien-pao',
+    'chienpao': 'chien-pao',
+    'ting-lu': 'ting-lu',
+    'tinglu': 'ting-lu',
+    'wo-chien': 'wo-chien',
+    'wochien': 'wo-chien',
+    'ogerpon-wellspring': 'ogerpon-wellspring-mask',
+    'ogerpon wellspring': 'ogerpon-wellspring-mask',
+    'ogerpon (wellspring)': 'ogerpon-wellspring-mask',
+    'ogerpon-hearthflame': 'ogerpon-hearthflame-mask',
+    'ogerpon hearthflame': 'ogerpon-hearthflame-mask',
+    'ogerpon (hearthflame)': 'ogerpon-hearthflame-mask',
+    'ogerpon-cornerstone': 'ogerpon-cornerstone-mask',
+    'ogerpon cornerstone': 'ogerpon-cornerstone-mask',
+    'ogerpon (cornerstone)': 'ogerpon-cornerstone-mask',
+    'paldean tauros': 'tauros-paldea-combat-breed',
+    'paldean tauros combat': 'tauros-paldea-combat-breed',
+    'paldean tauros blaze': 'tauros-paldea-blaze-breed',
+    'paldean tauros aqua': 'tauros-paldea-aqua-breed',
+    'tauros-paldea-combat': 'tauros-paldea-combat-breed',
+    'tauros-paldea-blaze': 'tauros-paldea-blaze-breed',
+    'tauros-paldea-aqua': 'tauros-paldea-aqua-breed',
+    'tauros-combat': 'tauros-paldea-combat-breed',
+    'tauros-blaze': 'tauros-paldea-blaze-breed',
+    'tauros-aqua': 'tauros-paldea-aqua-breed',
+    'tauros (blaze)': 'tauros-paldea-blaze-breed',
+    'tauros (aqua)': 'tauros-paldea-aqua-breed',
+    'tauros (combat)': 'tauros-paldea-combat-breed',
+    'landorus': 'landorus-incarnate',
+    'landorus-therian': 'landorus-therian',
+    'landorus therian': 'landorus-therian',
+    'thundurus': 'thundurus-incarnate',
+    'thundurus-therian': 'thundurus-therian',
+    'thundurus therian': 'thundurus-therian',
+    'tornadus': 'tornadus-incarnate',
+    'tornadus-therian': 'tornadus-therian',
+    'tornadus therian': 'tornadus-therian',
+    'enamorus': 'enamorus-incarnate',
+    'enamorus-therian': 'enamorus-therian',
+    'enamorus therian': 'enamorus-therian',
+    'urshifu': 'urshifu-single-strike',
+    'urshifu-rapid-strike': 'urshifu-rapid-strike',
+    'urshifu rapid strike': 'urshifu-rapid-strike',
+    'urshifu (rapid strike)': 'urshifu-rapid-strike',
+    'urshifu-rapid': 'urshifu-rapid-strike',
+    'meowstic': 'meowstic-male',
+    'meowstic-m': 'meowstic-male',
+    'meowstic-f': 'meowstic-female',
+    'indeedee': 'indeedee-male',
+    'indeedee-m': 'indeedee-male',
+    'indeedee-f': 'indeedee-female',
+    'basculegion': 'basculegion-male',
+    'basculegion-m': 'basculegion-male',
+    'basculegion-f': 'basculegion-female',
+    'oinkologne': 'oinkologne-male',
+    'oinkologne-m': 'oinkologne-male',
+    'oinkologne-f': 'oinkologne-female',
+    'giratina': 'giratina-altered',
+    'giratina-origin': 'giratina-origin',
+    'deoxys': 'deoxys-normal',
+    'shaymin': 'shaymin-land',
+    'shaymin-sky': 'shaymin-sky',
+    'meloetta': 'meloetta-aria',
+    'meloetta-pirouette': 'meloetta-pirouette',
+    'aegislash': 'aegislash-shield',
+    'aegislash-blade': 'aegislash-blade',
+    'mimikyu': 'mimikyu-disguised',
+    'toxtricity': 'toxtricity-amped',
+    'toxtricity-low-key': 'toxtricity-low-key'
+  };
+
+  if(specialMap[s]) return specialMap[s];
+
+  let clean = s.replace(/[^a-z0-9\s-]/g, '').trim();
+  if(specialMap[clean]) return specialMap[clean];
+
+  let megaXy = clean.match(/^mega\s+(.+?)\s+([xyz])$/i);
+  if(megaXy) return megaXy[1].replace(/\s+/g, '-') + '-mega-' + megaXy[2].toLowerCase();
+
+  if(clean.startsWith('mega ')) return clean.replace(/^mega\s+/, '').replace(/\s+/g, '-') + '-mega';
+  if(clean.startsWith('mega-')) return clean.replace(/^mega-/, '').replace(/\s+/g, '-') + '-mega';
+  if(clean.startsWith('hisuian ')) return clean.replace(/^hisuian\s+/, '').replace(/\s+/g, '-') + '-hisui';
+  if(clean.startsWith('alolan ')) return clean.replace(/^alolan\s+/, '').replace(/\s+/g, '-') + '-alola';
+  if(clean.startsWith('galarian ')) return clean.replace(/^galarian\s+/, '').replace(/\s+/g, '-') + '-galar';
+  if(clean.startsWith('paldean ')) return clean.replace(/^paldean\s+/, '').replace(/\s+/g, '-') + '-paldea';
+
+  return clean.replace(/\s+/g, '-');
+}
+
+function toSmogonSlug(rawName) {
+  let s = String(rawName || '').toLowerCase().trim();
+  s = s.replace(/\s*\(\d+.*?\)$/, '').trim();
+  s = s.replace(/[^a-z0-9\s-]/g, '').trim();
+  return s.replace(/[\s-]+/g, '_');
+}
+
+function cleanBulbaName(rawName) {
+  let s = String(rawName || '').trim();
+  s = s.replace(/\s*\(\d+.*?\)$/, '').trim();
+  return s.replace(/\s+/g, '_');
+}
+
+function handleArtworkFallback(img, slug, monName) {
+  if(!img) return;
+  if(!img._fbStage) img._fbStage = 1;
+  else img._fbStage++;
+
+  if(img._fbStage === 2) {
+    img.src = 'https://play.pokemonshowdown.com/sprites/home/' + encodeURIComponent(slug) + '.png';
+  } else if(img._fbStage === 3) {
+    img.src = 'https://play.pokemonshowdown.com/sprites/dex/' + encodeURIComponent(slug) + '.png';
+  } else if(img._fbStage === 4) {
+    img.src = pokeSprite(monName);
+  } else {
+    img.src = 'Fonts%20%26%20Logos/iconNotFound.png';
   }
-  if(!foundTier){
-    let curT = (typeof ongoingT === 'function' ? ongoingT() : null) || (typeof activeT === 'function' ? activeT() : null);
-    if(curT?.draftData?.board?.length){
-      let tTier = curT.draftData.board.find(tier => (tier.pokemon || []).some(m => m.toLowerCase().trim() === clean));
-      if(tTier){
-        foundTier = tTier;
-        targetTid = curT.id;
+}
+
+async function fetchPokemonDetailData(rawName) {
+  let slug = toPokeApiSlug(rawName);
+  let mem = _pokemonDetailCache.get(slug) || getStoredMonDetail(slug);
+  if(mem && mem.stats) return mem;
+
+  try {
+    let r = await fetch('https://pokeapi.co/api/v2/pokemon/' + encodeURIComponent(slug));
+    if(!r.ok) throw new Error('PokeAPI status ' + r.status);
+    let d = await r.json();
+
+    let stats = {};
+    let bst = 0;
+    (d.stats || []).forEach(s => {
+      let val = s.base_stat;
+      bst += val;
+      if(s.stat.name === 'hp') stats.hp = val;
+      else if(s.stat.name === 'attack') stats.atk = val;
+      else if(s.stat.name === 'defense') stats.def = val;
+      else if(s.stat.name === 'special-attack') stats.spa = val;
+      else if(s.stat.name === 'special-defense') stats.spd = val;
+      else if(s.stat.name === 'speed') stats.spe = val;
+    });
+    stats.bst = bst;
+
+    let types = (d.types || []).map(t => t.type.name);
+    let abilities = (d.abilities || []).map(a => ({
+      name: a.ability.name.replace(/-/g, ' '),
+      isHidden: a.is_hidden
+    }));
+
+    let genus = '';
+    if(d.species && d.species.url) {
+      try {
+        let sr = await fetch(d.species.url);
+        if(sr.ok) {
+          let sd = await sr.json();
+          let g = (sd.genera || []).find(x => x.language.name === 'en');
+          if(g) genus = g.genus;
+        }
+      } catch(e) {}
+    }
+
+    let artwork = d.sprites?.other?.['official-artwork']?.front_default ||
+                  ('https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/' + d.id + '.png');
+
+    let result = {
+      id: d.id,
+      name: d.name,
+      artwork,
+      stats,
+      abilities,
+      types,
+      genus: genus || 'Pokémon'
+    };
+
+    storeMonDetail(slug, result);
+    return result;
+  } catch(err) {
+    let fallback = {
+      id: null,
+      name: rawName,
+      artwork: 'https://play.pokemonshowdown.com/sprites/dex/' + encodeURIComponent(slug) + '.png',
+      stats: null,
+      abilities: [],
+      types: getPokemonTypes(rawName),
+      genus: getPokemonTypes(rawName).join(' / ') + ' Pokémon'
+    };
+    storeMonDetail(slug, fallback);
+    return fallback;
+  }
+}
+
+function renderDrawerStatsHtml(stats) {
+  if(!stats) {
+    return ['HP', 'ATK', 'DEF', 'SPA', 'SPD', 'SPE'].map(s => `
+      <div class="pokemon-stat-row pokemon-stat-skeleton">
+        <span class="pokemon-stat-lbl">${s}</span>
+        <span class="pokemon-stat-val" style="color:#6b6a75">--</span>
+        <div class="pokemon-stat-track">
+          <div class="pokemon-stat-fill" style="width:30%;background:rgba(255,255,255,0.12)"></div>
+        </div>
+      </div>
+    `).join('');
+  }
+
+  const statDefs = [
+    { key: 'hp', lbl: 'HP', color: '#22c55e' },
+    { key: 'atk', lbl: 'ATK', color: '#f97316' },
+    { key: 'def', lbl: 'DEF', color: '#eab308' },
+    { key: 'spa', lbl: 'SPA', color: '#06b6d4' },
+    { key: 'spd', lbl: 'SPD', color: '#8b5cf6' },
+    { key: 'spe', lbl: 'SPE', color: '#ec4899' }
+  ];
+
+  return statDefs.map(s => {
+    let val = Number(stats[s.key]) || 0;
+    let pct = Math.min(100, Math.max(4, Math.round((val / 200) * 100)));
+    return `
+      <div class="pokemon-stat-row">
+        <span class="pokemon-stat-lbl">${s.lbl}</span>
+        <span class="pokemon-stat-val">${val}</span>
+        <div class="pokemon-stat-track">
+          <div class="pokemon-stat-fill" style="width:${pct}%;background:${s.color}"></div>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+function renderDrawerAbilitiesHtml(abilities) {
+  if(!abilities || !abilities.length) {
+    return `<div style="font-size:12px;color:#6b6a75;font-style:italic">Loading abilities...</div>`;
+  }
+  return abilities.map(a => {
+    let name = esc(a.name || '');
+    if(a.isHidden) {
+      return `
+        <span class="pokemon-ability-pill hidden" title="Hidden Ability">
+          ${name} <span class="pokemon-ability-hidden-tag">Hidden</span>
+        </span>
+      `;
+    }
+    return `<span class="pokemon-ability-pill">${name}</span>`;
+  }).join('');
+}
+
+function renderDrawerActionsHtml(monName, cost, tierName, tourneyId) {
+  let clean = String(monName || '').toLowerCase().trim();
+  let team = typeof activeTeam === 'function' ? activeTeam() : null;
+  let isInPlan = team && Array.isArray(team.picks) && team.picks.some(p => (p.name || '').toLowerCase().trim() === clean);
+
+  let t = tourneyId ? (tournamentData[tourneyId] || null) : (typeof ongoingT === 'function' ? ongoingT() : null) || (typeof activeT === 'function' ? activeT() : null);
+  let d = t ? ensureTournamentDraft(t) : null;
+  let isLiveDraft = t && t.phase === 'draft' && d && d.status === 'active';
+
+  let draftedPick = d && Array.isArray(d.picks) ? d.picks.find(p => (p.pokemon || '').toLowerCase().trim() === clean) : null;
+
+  let currentUsername = window.currentAccount?.username || sessionUser?.user_metadata?.username || sessionUser?.email?.split('@')[0] || '';
+  let coach = (typeof myPlayer === 'function' ? myPlayer() : null) || (typeof playerForAccount === 'function' ? playerForAccount(currentUsername) : null) || currentUsername;
+  let isBanked = d?.bank && coach && (d.bank[coach]?.pokemon || '').toLowerCase().trim() === clean;
+
+  let planCount = team?.picks?.length || 0;
+  let planSpent = team ? teamSpent(team) : 0;
+
+  return `
+    <div style="font:800 11px 'Barlow Condensed';letter-spacing:1px;color:#8e8c95;text-transform:uppercase;margin-bottom:12px">
+      Draft & Planner Controls
+    </div>
+
+    <!-- Live Draft Pick (if in active draft) -->
+    ${isLiveDraft ? `
+      ${draftedPick ? `
+        <div style="padding:10px 12px;background:#241417;border:1px solid #5a262d;border-radius:8px;font-size:12px;color:#ff8e95;font-weight:700;margin-bottom:12px;display:flex;align-items:center;gap:8px">
+          <span>🚫</span>
+          <div>
+            <div>Drafted by ${esc(draftedPick.player)}</div>
+            <div style="font-size:10px;font-weight:normal;color:#a09fa8">Round ${draftedPick.round} · Pick #${draftedPick.pickNumber}</div>
+          </div>
+        </div>
+      ` : `
+        <button class="btn" style="width:100%;margin-bottom:12px;background:#22c55e;color:#052e16;font-weight:800;border:0;padding:10px;font-size:14px;box-shadow:0 4px 14px rgba(34,197,94,0.3)" onclick="handleDrawerDraftPick('${jsArg(t.id)}', '${jsArg(monName)}', ${cost}, '${jsArg(tierName)}')">
+          🎯 Draft ${esc(monName)} Now
+        </button>
+      `}
+    ` : ''}
+
+    <!-- Team Planner Action -->
+    <div style="background:#13131c;border:1px solid #232332;border-radius:8px;padding:10px 12px;margin-bottom:10px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+        <div style="font-size:11px;font-weight:800;color:#ffd166;text-transform:uppercase">Private Team Plan</div>
+        <div style="font-size:11px;color:#8e8c95">${planCount}/${TEAM_SLOTS} slots · ${planSpent}/${TEAM_BUDGET} pts</div>
+      </div>
+      ${isInPlan ? `
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:8px">
+          <span style="font-size:12px;font-weight:700;color:#4bdd91">✓ On Active Roster</span>
+          <button class="btn ghost btn-sm" style="color:#ff8e95;border-color:#5a242c" onclick="handleDrawerRemovePlan('${jsArg(monName)}')">
+            ➖ Remove from Plan
+          </button>
+        </div>
+      ` : `
+        <button class="btn" style="width:100%;margin-top:6px;background:linear-gradient(135deg,#ffd166,#f59e0b);color:#111;font-weight:800;border:0" onclick="handleDrawerAddPlan('${jsArg(monName)}', ${cost})">
+          ➕ Add to My Team Plan (${cost} pts)
+        </button>
+      `}
+    </div>
+
+    <!-- Draft Bank Action -->
+    ${t && t.hasDraft ? `
+      <div style="background:#13131c;border:1px solid #232332;border-radius:8px;padding:10px 12px;margin-bottom:10px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+          <div style="font-size:11px;font-weight:800;color:#ffd166;text-transform:uppercase">Auto-Pick Draft Bank</div>
+          <div style="font-size:10px;color:#8e8c95">${coach ? esc(coach) : 'You'}</div>
+        </div>
+        ${isBanked ? `
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:8px">
+            <span style="font-size:12px;font-weight:700;color:#ffd166">✓ Saved as Bank Target</span>
+            <button class="btn ghost btn-sm" style="color:#ffd166;border-color:#5a4218" onclick="handleDrawerClearBank('${jsArg(t.id)}')">
+              Clear Bank
+            </button>
+          </div>
+        ` : `
+          <button class="btn ghost btn-sm" style="width:100%;margin-top:6px;color:#ffd166;border-color:#5a4218;font-weight:700" onclick="handleDrawerSetBank('${jsArg(t.id)}', '${jsArg(monName)}', ${cost})">
+            🏦 Save to Draft Bank
+          </button>
+        `}
+      </div>
+    ` : ''}
+  `;
+}
+
+function openPokemonDetailDrawer(monName, cost, tierName, tourneyId = null) {
+  let drawer = document.getElementById('pokemonDrawer');
+  let panel = document.getElementById('pokemonDrawerPanel');
+  if(!drawer || !panel) return;
+
+  let cleanName = String(monName || '').trim();
+  if(!cleanName) return;
+
+  let actualCost = cost;
+  let actualTierName = tierName;
+  let board = getOffseasonDraftBoard();
+  let cleanLower = cleanName.toLowerCase();
+
+  let t = tourneyId ? (tournamentData[tourneyId] || null) : (typeof ongoingT === 'function' ? ongoingT() : null) || (typeof activeT === 'function' ? activeT() : null);
+  let targetTid = t?.id || tourneyId || null;
+
+  if(actualCost === undefined || actualCost === null || !actualTierName) {
+    if(t && t.draftData?.board?.length) {
+      let tTier = t.draftData.board.find(tier => (tier.pokemon || []).some(m => m.toLowerCase().trim() === cleanLower));
+      if(tTier) {
+        actualCost = tTier.cost;
+        actualTierName = tTier.name || `${tTier.cost} Points`;
+      }
+    }
+    if(actualCost === undefined || actualCost === null) {
+      let foundTier = board.find(tier => (tier.pokemon || []).some(m => m.toLowerCase().trim() === cleanLower));
+      if(foundTier) {
+        actualCost = foundTier.cost;
+        actualTierName = foundTier.name || `${foundTier.cost} Points`;
+      } else {
+        actualCost = 15;
+        actualTierName = '15 Points';
       }
     }
   }
-  if(foundTier){
-    actualCost = foundTier.cost;
-    tierName = foundTier.name || `${foundTier.cost} Points`;
-  }
-  let spriteUrl = pokeSprite(monName);
 
-  document.querySelector('#modal').innerHTML = `
-    <div class="modal-wrap">
-      <div class="modal" style="max-width:440px;text-align:center">
-        <div class="modal-head" style="justify-content:flex-end">
-          <button class="close" onclick="closeModal()">×</button>
-        </div>
+  currentDrawerMon = {
+    name: cleanName,
+    cost: actualCost,
+    tierName: actualTierName,
+    tourneyId: targetTid
+  };
 
-        <div style="margin-top:-10px">
-          <div style="background:radial-gradient(circle,rgba(239,48,56,0.20) 0%,rgba(0,0,0,0.25) 60%,transparent 75%);padding:16px;border-radius:16px;display:inline-block;margin-bottom:4px">
-            <img src="${esc(spriteUrl)}" alt="${esc(monName)}" style="width:145px;height:145px;object-fit:contain;filter:drop-shadow(0 8px 18px rgba(0,0,0,0.7))" onerror="handleSpriteError(this)">
-          </div>
+  let slug = toPokeApiSlug(cleanName);
+  let cachedData = _pokemonDetailCache.get(slug) || getStoredMonDetail(slug);
+  let theme = getPokemonTypeTheme(cleanName);
 
-          <h2 style="margin:8px 0 4px;font:800 24px 'Barlow Condensed';letter-spacing:.5px">
-            ${esc(monName)}
-          </h2>
+  let initialArtworkUrl = cachedData?.artwork || `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/${slug}.png`;
+  let initialDexText = cachedData?.id ? ((cachedData.id < 10000) ? ('#' + String(cachedData.id).padStart(4, '0')) : ('#' + cachedData.id)) : '#????';
+  let initialGenusText = cachedData?.genus ? (cachedData.genus.startsWith('The ') ? cachedData.genus : ('The ' + cachedData.genus)) : (getPokemonTypes(cleanName).join(' / ') + ' Pokémon');
 
-          <div style="display:flex;justify-content:center;align-items:center;gap:6px;margin-bottom:12px">
-            ${typeof renderPokemonTypeBadges === 'function' ? renderPokemonTypeBadges(monName, 'font-size:9px;padding:1px 6px') : ''}
-          </div>
-
-          <div style="display:flex;justify-content:center;align-items:center;gap:8px;margin-bottom:16px">
-            ${renderTierAndCostBadges(tierName, actualCost)}
-          </div>
-
-          <div class="card" style="padding:12px 14px;background:#14141c;border-color:#2a2a3a;text-align:left;margin-bottom:16px">
-            <div style="font-size:10px;font-weight:800;color:#ffd166;text-transform:uppercase;letter-spacing:.6px">Private Team Planner</div>
-            <div style="font-size:12px;color:#94a3b8;margin-top:4px;line-height:1.4">
-              Saved in your private team plan. During the offseason, there is no active draft clock. You can test roster combinations against the budget.
-            </div>
-          </div>
-
-          <div style="display:flex;flex-direction:column;gap:8px">
-            ${moderator ? `
-              <button class="btn" style="background:linear-gradient(135deg,#ffd166,#f59e0b);color:#111;font-weight:800;border:0" onclick="openEditBoardPokemonModal('${jsArg(targetTid || '')}', '${jsArg(monName)}', ${actualCost}, '${jsArg(tierName)}')">
-                ✏️ Edit on Draft Board / Move Tier
-              </button>
-            ` : ''}
-            <button class="btn ghost" style="color:#ff8e95;border-color:#5a242c" onclick="removeTeamMonByName('${jsArg(monName)}');closeModal()">
-              🗑️ Remove from My Team Plan
-            </button>
-            <button class="btn ghost" onclick="closeModal()">Close</button>
-          </div>
+  panel.innerHTML = `
+    <div class="pokemon-drawer-header">
+      <div style="display:flex;align-items:center;gap:8px">
+        <button class="pokemon-drawer-close" onclick="closePokemonDetailDrawer()" aria-label="Close details">✕</button>
+        <div id="drawerTierBadges">
+          ${renderTierAndCostBadges(actualTierName, actualCost)}
         </div>
       </div>
+      ${moderator ? `
+        <button class="btn ghost btn-sm" style="font-size:11px!important;color:#ffd166;border-color:#5a4218;padding:2px 8px!important" onclick="closePokemonDetailDrawer();openEditBoardPokemonModal('${jsArg(targetTid||'')}', '${jsArg(cleanName)}', ${actualCost}, '${jsArg(actualTierName)}')">
+          ✏️ Edit Tier
+        </button>
+      ` : ''}
+    </div>
+
+    <div class="pokemon-drawer-hero" style="--drawer-theme-glow: ${theme.glow};">
+      <div class="pokemon-drawer-art-wrap">
+        <img id="drawerArtwork" src="${esc(initialArtworkUrl)}" alt="${esc(cleanName)}" class="pokemon-drawer-art" onerror="handleArtworkFallback(this, '${jsArg(slug)}', '${jsArg(cleanName)}')">
+      </div>
+      <h2 class="pokemon-drawer-name" id="drawerMonName">${esc(cleanName)}</h2>
+      <div id="drawerDexAndGenus" style="display:flex;align-items:center;gap:6px;margin-bottom:6px">
+        <span class="tag" id="drawerDexTag" style="background:#262115;color:#ffd166;border:1px solid #5a4218;font-size:10px">${initialDexText}</span>
+        <span class="pokemon-drawer-genus" id="drawerGenusText">${esc(initialGenusText)}</span>
+      </div>
+      <div class="pokemon-drawer-types" id="drawerTypes">
+        ${renderPokemonTypeBadges(cleanName, 'font-size:11px;padding:3px 9px;font-weight:700')}
+      </div>
+    </div>
+
+    <!-- Base Stats Section -->
+    <div class="pokemon-drawer-section">
+      <div class="pokemon-drawer-section-title">
+        <span>Base Stats</span>
+        <span id="drawerBstPill" class="tag" style="background:#262115;color:#ffd166;border:1px solid #5a4218;font-size:11px;font-weight:800">
+          ${cachedData?.stats ? `BST ${cachedData.stats.bst}` : 'BST ...'}
+        </span>
+      </div>
+      <div id="drawerStatsContainer">
+        ${renderDrawerStatsHtml(cachedData?.stats)}
+      </div>
+    </div>
+
+    <!-- Abilities Section -->
+    <div class="pokemon-drawer-section">
+      <div class="pokemon-drawer-section-title">
+        <span>Abilities</span>
+      </div>
+      <div id="drawerAbilitiesContainer" style="display:flex;flex-wrap:wrap;gap:6px">
+        ${renderDrawerAbilitiesHtml(cachedData?.abilities)}
+      </div>
+    </div>
+
+    <!-- Actions Section -->
+    <div class="pokemon-drawer-section" id="drawerActionsContainer">
+      ${renderDrawerActionsHtml(cleanName, actualCost, actualTierName, targetTid)}
+    </div>
+
+    <!-- External Links -->
+    <div style="display:flex;gap:8px;padding:0 18px 24px">
+      <a href="https://www.smogon.com/dex/sv/pokemon/${encodeURIComponent(toSmogonSlug(cleanName))}/" target="_blank" rel="noopener" class="btn ghost btn-sm" style="flex:1;text-align:center;text-decoration:none;font-size:11px;color:#94a3b8">
+        Smogon Dex ↗
+      </a>
+      <a href="https://bulbapedia.bulbagarden.net/wiki/${encodeURIComponent(cleanBulbaName(cleanName))}_(Pok%C3%A9mon)" target="_blank" rel="noopener" class="btn ghost btn-sm" style="flex:1;text-align:center;text-decoration:none;font-size:11px;color:#94a3b8">
+        Bulbapedia ↗
+      </a>
     </div>
   `;
+
+  drawer.classList.add('open');
+  drawer.setAttribute('aria-hidden', 'false');
+  document.body.classList.add('pokemon-drawer-open');
+
+  if(!cachedData || !cachedData.stats) {
+    fetchPokemonDetailData(cleanName).then(data => {
+      if(currentDrawerMon && currentDrawerMon.name.toLowerCase().trim() === cleanLower) {
+        updateDrawerWithPokemonData(data, cleanName);
+      }
+    }).catch(err => {
+      console.warn('Could not fetch Pokemon detail for ' + cleanName, err);
+    });
+  } else {
+    updateDrawerWithPokemonData(cachedData, cleanName);
+  }
+}
+
+function closePokemonDetailDrawer() {
+  let drawer = document.getElementById('pokemonDrawer');
+  if(!drawer) return;
+  drawer.classList.remove('open');
+  drawer.setAttribute('aria-hidden', 'true');
+  document.body.classList.remove('pokemon-drawer-open');
+}
+
+function updateDrawerWithPokemonData(data, requestedName) {
+  if(!currentDrawerMon || currentDrawerMon.name.toLowerCase().trim() !== requestedName.toLowerCase().trim()) return;
+
+  let artImg = document.getElementById('drawerArtwork');
+  if(artImg && data.artwork && !artImg._fbStage) {
+    artImg.src = data.artwork;
+  }
+
+  let dexTag = document.getElementById('drawerDexTag');
+  if(dexTag && data.id) {
+    let dexStr = (data.id < 10000) ? ('#' + String(data.id).padStart(4, '0')) : ('#' + data.id);
+    dexTag.textContent = dexStr;
+  }
+
+  let genusEl = document.getElementById('drawerGenusText');
+  if(genusEl && data.genus) {
+    genusEl.textContent = data.genus.startsWith('The ') ? data.genus : ('The ' + data.genus);
+  }
+
+  if(data.types && data.types.length) {
+    let typesEl = document.getElementById('drawerTypes');
+    if(typesEl) {
+      typesEl.innerHTML = data.types.map(t => {
+        let cap = t.charAt(0).toUpperCase() + t.slice(1).toLowerCase();
+        let theme = TYPE_THEMES[cap] || TYPE_THEMES['Normal'];
+        return `<span class="team-type-badge" style="background:${theme.badgeBg};color:${theme.badgeText};font-size:11px;padding:3px 9px;font-weight:700">${cap}</span>`;
+      }).join('');
+    }
+  }
+
+  let bstPill = document.getElementById('drawerBstPill');
+  if(bstPill && data.stats) {
+    bstPill.textContent = 'BST ' + data.stats.bst;
+    if(data.stats.bst >= 600) {
+      bstPill.style.background = '#382a10';
+      bstPill.style.color = '#ffd166';
+      bstPill.style.borderColor = '#8c6518';
+    } else if(data.stats.bst >= 500) {
+      bstPill.style.background = '#102538';
+      bstPill.style.color = '#68a7f2';
+      bstPill.style.borderColor = '#1a436e';
+    }
+  }
+
+  let statsEl = document.getElementById('drawerStatsContainer');
+  if(statsEl) {
+    statsEl.innerHTML = renderDrawerStatsHtml(data.stats);
+  }
+
+  let abEl = document.getElementById('drawerAbilitiesContainer');
+  if(abEl) {
+    abEl.innerHTML = renderDrawerAbilitiesHtml(data.abilities);
+  }
+}
+
+function handleDrawerAddPlan(monName, cost) {
+  addTeamMon(monName, cost);
+  if(typeof showDraftToast === 'function') {
+    showDraftToast(`Added ${monName} (${cost} pts) to your team plan`, monName);
+  }
+  refreshDrawerActions();
+  if(typeof renderOffseasonBoardColumns === 'function') {
+    renderOffseasonBoardColumns();
+  }
+}
+
+function handleDrawerRemovePlan(monName) {
+  removeTeamMonByName(monName);
+  refreshDrawerActions();
+  if(typeof renderOffseasonBoardColumns === 'function') {
+    renderOffseasonBoardColumns();
+  }
+}
+
+function handleDrawerSetBank(tourneyId, monName, cost) {
+  setDraftBankMon(tourneyId, monName, cost);
+  refreshDrawerActions();
+}
+
+function handleDrawerClearBank(tourneyId) {
+  clearDraftBankMon(tourneyId);
+  refreshDrawerActions();
+}
+
+function handleDrawerDraftPick(tourneyId, monName, cost, tierName) {
+  closePokemonDetailDrawer();
+  openDraftConfirmationModal(tourneyId, monName, cost, tierName);
+}
+
+function refreshDrawerActions() {
+  if(!currentDrawerMon) return;
+  let actionsEl = document.getElementById('drawerActionsContainer');
+  if(actionsEl) {
+    actionsEl.innerHTML = renderDrawerActionsHtml(
+      currentDrawerMon.name,
+      currentDrawerMon.cost,
+      currentDrawerMon.tierName,
+      currentDrawerMon.tourneyId
+    );
+  }
+}
+
+function openOffseasonMonDetailModal(monName, cost, tourneyId = null){
+  openPokemonDetailDrawer(monName, cost, null, tourneyId);
 }
 
 function openEditBoardPokemonModal(tId, oldMonName, currentCost, currentTierName){
