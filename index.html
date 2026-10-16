@@ -2258,14 +2258,15 @@ details[open] > .past-tourney-summary .past-chevron{transform:rotate(180deg);col
 .nyt-table tbody tr.zone-elimination:hover{background:rgba(239,68,68,0.11)!important}
 
 /* Clean cutline border under last qualifying spot */
-.nyt-table tbody tr.is-cutline-row td{border-bottom:2px solid #ffd166!important;box-shadow:0 3px 10px rgba(255,209,102,0.22)}
+.nyt-table tbody tr.is-cutline-row td{border-bottom:2px solid rgba(255,209,102,0.55)!important}
 
-/* What-If Affected Glow Flash */
-@keyframes whatifGlow{
-  0%,100%{outline:1.5px solid rgba(255,209,102,0.55);box-shadow:inset 3px 0 0 #ffd166,0 0 10px rgba(255,209,102,0.18)}
-  50%{outline:1.5px solid #ffd166;box-shadow:inset 4px 0 0 #ffd166,0 0 16px rgba(255,209,102,0.38)}
+/* What-If Affected Highlight: subtle background tint pulse, NO outline on tr so no vertical lines between cells */
+@keyframes whatifPulseBg{
+  0%,100%{background-color:rgba(255,209,102,0.06)!important}
+  50%{background-color:rgba(255,209,102,0.14)!important}
 }
-.nyt-table tbody tr.is-whatif-affected{animation:whatifGlow 2.5s ease-in-out infinite;position:relative;z-index:1}
+.nyt-table tbody tr.is-whatif-affected td{animation:whatifPulseBg 2.5s ease-in-out infinite}
+.nyt-table tbody tr.is-whatif-affected td:first-child{border-left:3px solid #ffd166!important}
 
 /* Group header styling */
 .nyt-group-header-cell{background:linear-gradient(90deg,#191926 0%,#13131c 100%)!important;padding:10px 18px!important;border-bottom:1px solid #2b2b3d!important}
@@ -38014,7 +38015,60 @@ function getNytMiniAvatarHtml(playerName){
   return `<div class="nyt-side-avatar" style="background-image:${faceArt}">${faceLetter}</div>`;
 }
 
-function getCoachMagicBadge(x, gItems, cut, exact, sc){
+function getPreTournamentTier(x, gItems){
+  let sorted = gItems ? [...gItems].sort((a,b) => (b.topCutPct - a.topCutPct) || ((b.firstSeedPct||0) - (a.firstSeedPct||0)) || ((b.ovr||0) - (a.ovr||0))) : [];
+  let rank = sorted.findIndex(e => e.player === x.player);
+  if(rank < 0) rank = 0;
+  let total = sorted.length || 7;
+
+  // 1. Favorite (Rank 1 / top favorite)
+  if(rank === 0 || x.topCutPct >= 42){
+    return {
+      text: '👑 FAVORITE',
+      cls: 'fav',
+      desc: 'Top projected seed with the highest probability to win the group and secure the #1 playoff seed.'
+    };
+  }
+  // 2. Contender (Rank 2 or high odds in cutline)
+  if(rank === 1 || x.topCutPct >= 30){
+    return {
+      text: '⚔️ CONTENDER',
+      cls: 'destiny',
+      desc: 'High projected qualification equity; prime favorite to claim an automatic Top Cut spot.'
+    };
+  }
+  // 3. Dark Horse (Rank 3-4, solid playoff probability)
+  if(rank <= Math.max(2, Math.floor(total * 0.45)) || x.topCutPct >= 20){
+    return {
+      text: '🔥 DARK HORSE',
+      cls: 'darkhorse',
+      desc: 'Dangerous upside with upset potential; strong threat to challenge the favorites and steal a playoff berth.'
+    };
+  }
+  // 4. Sleeper (Rank 5-6, capable underdogs)
+  if(rank < total - 1 || x.topCutPct >= 10){
+    return {
+      text: '⚡ SLEEPER',
+      cls: 'bubble',
+      desc: 'Flying under the radar; capable of surprising the field with key fixture upsets.'
+    };
+  }
+  // 5. Long Shot (lowest projected)
+  return {
+    text: '🎲 LONG SHOT',
+    cls: 'eliminated',
+    desc: 'Facing long odds; requires multiple major upsets and favorable tiebreakers to reach the cutline.'
+  };
+}
+
+function getCoachMagicBadge(x, gItems, cut, exact, sc, totalPlayed = null){
+  // 1. Before any matches are played: Show tournament tier (Favorite, Contender, Dark Horse, Sleeper, Long Shot)
+  let isPreTournament = (totalPlayed === 0) || (gItems && gItems.every(item => (item.form?.w || 0) === 0 && (item.form?.l || 0) === 0));
+  if(isPreTournament){
+    return getPreTournamentTier(x, gItems);
+  }
+
+  // 2. Clinched or Eliminated
   if(x.clinchStatus === 'clinched'){
     return { text: '✓ CLINCHED', cls: 'clinched', desc: 'Playoff berth mathematically locked.' };
   }
@@ -38022,6 +38076,7 @@ function getCoachMagicBadge(x, gItems, cut, exact, sc){
     return { text: '✗ ELIMINATED', cls: 'eliminated', desc: 'Mathematically eliminated from Top Cut contention.' };
   }
   
+  // 3. Exact combinatorial solver when 1 or 2 matches remain
   if(exact){
     if(exact.matchesLeft === 1){
       if(exact.clinchesAnyWin && exact.eliminatedIfLoseAll){
@@ -38031,13 +38086,13 @@ function getCoachMagicBadge(x, gItems, cut, exact, sc){
         return { text: '⚡ WIN & IN', cls: 'destiny', desc: 'A win in the final match guarantees Top Cut.' };
       }
       if(exact.clinches20Sweep && exact.eliminatedIfLoseAll){
-        return { text: '⚡ 2-0 CLINCHES', cls: 'mustwin', desc: '2-0 sweep clinches; loss eliminates.' };
+        return { text: '⚡ 2-0 CLINCHES', cls: 'mustwin', desc: 'A 2-0 sweep locks Top Cut; a loss eliminates.' };
       }
       if(exact.clinches20Sweep){
         return { text: '⚡ 2-0 CLINCHES', cls: 'destiny', desc: 'A 2-0 sweep guarantees Top Cut.' };
       }
       if(exact.eliminatedIfLoseAll){
-        return { text: '⚠️ MUST WIN', cls: 'mustwin', desc: 'Must win final match to maintain playoff hopes.' };
+        return { text: '⚠️ MUST WIN', cls: 'mustwin', desc: 'Must win the final match to maintain playoff hopes.' };
       }
     } else if(exact.matchesLeft === 2){
       if(exact.clinchesAnyWin && exact.eliminatedIfLoseOne){
@@ -38056,7 +38111,12 @@ function getCoachMagicBadge(x, gItems, cut, exact, sc){
   let left = x.unplayedCount != null ? x.unplayedCount : 0;
   let isInside = gItems ? gItems.findIndex(e => e.player === x.player) < cut : false;
 
-  // Magic Number for qualifiers
+  // 4. In Clubhouse (Finished all matches)
+  if(left === 0){
+    return { text: 'IN CLUBHOUSE', cls: 'bubble', desc: 'All fixtures completed. Awaiting remaining match results.' };
+  }
+
+  // 5. Teams inside the cutline: Magic numbers or control status
   if(gItems && gItems.length > cut && isInside){
     let bubble = gItems[cut]; // First team out
     let bubbleWins = bubble.form ? bubble.form.w : 0;
@@ -38065,39 +38125,25 @@ function getCoachMagicBadge(x, gItems, cut, exact, sc){
     let magicNum = (maxBubbleWins + 1) - myWins;
     if(magicNum > 0 && magicNum <= left){
       return {
-        text: magicNum === 1 ? 'MAGIC #1' : `MAGIC #${magicNum}`,
+        text: magicNum === 1 ? '⚡ WIN & IN' : `MAGIC #${magicNum}`,
         cls: magicNum <= 2 ? 'destiny' : 'bubble',
         desc: `${magicNum} more win${magicNum === 1 ? '' : 's'} (or bubble competitor loss) guarantees Top ${cut}.`
       };
     }
-  }
-
-  // Elimination Number (E#) for chasers
-  if(gItems && gItems.length >= cut && !isInside){
-    let cutQual = gItems[cut - 1]; // Last team in
-    let cutWins = cutQual.form ? cutQual.form.w : 0;
-    let maxWins = myWins + left;
-    let eNum = (maxWins + 1) - cutWins;
-    if(eNum > 0 && eNum <= 2 && left > 0){
-      return {
-        text: `E#${eNum}`,
-        cls: 'mustwin',
-        desc: `Elimination Number: ${eNum}. Any combination of losses or cutline wins totaling ${eNum} eliminates.`
-      };
+    if(x.topCutPct >= 75){
+      return { text: '🛡️ IN CONTROL', cls: 'destiny', desc: 'Strong qualification probability; controls own path.' };
     }
+    return { text: '⚔️ CONTENDER', cls: 'destiny', desc: 'Currently holding a qualifying spot; battling to preserve seed.' };
   }
 
-  if(left === 0){
-    return { text: 'IN CLUBHOUSE', cls: 'bubble', desc: 'All fixtures completed. Awaiting remaining match results.' };
-  }
-
-  if(x.topCutPct >= 75){
-    return { text: '🛡️ IN CONTROL', cls: 'destiny', desc: 'Strong qualification probability; controls own path.' };
-  }
+  // 6. Teams outside the cutline: clean status (No E#)
   if(x.topCutPct >= 35){
-    return { text: '⚔️ BUBBLE', cls: 'bubble', desc: 'On the playoff bubble; every fixture carries high leverage.' };
+    return { text: '⚔️ ON THE BUBBLE', cls: 'bubble', desc: 'Right on the playoff bubble; within immediate striking distance.' };
   }
-  return { text: '🔥 IN THE HUNT', cls: 'darkhorse', desc: 'Chasing the cutline; requires consecutive wins + tiebreaker support.' };
+  if(x.topCutPct >= 10){
+    return { text: '🔥 IN THE HUNT', cls: 'darkhorse', desc: 'Chasing the cutline; within striking distance with wins.' };
+  }
+  return { text: '⚠️ MUST WIN', cls: 'mustwin', desc: 'Facing elimination pressure; must win remaining fixtures to stay alive.' };
 }
 
 function renderNytPhase1Row(x, rowIdx, cut, t, sim, totalPlayed, isFocused, gItems){
@@ -38125,7 +38171,7 @@ function renderNytPhase1Row(x, rowIdx, cut, t, sim, totalPlayed, isFocused, gIte
 
   let exact = typeof solveExactCoachPlayoffScenario === 'function' ? solveExactCoachPlayoffScenario(t, x.player, x.group, ((typeof groupsOf === 'function' ? groupsOf(t)[x.group] : null) || t.players || []), cut) : null;
   let sc = x.scenario || {};
-  let magicBadge = getCoachMagicBadge(x, gItems, cut, exact, sc);
+  let magicBadge = getCoachMagicBadge(x, gItems, cut, exact, sc, totalPlayed);
 
   let faceImg = (typeof profilePictures !== 'undefined' && profilePictures[x.player]) || (typeof teamCovers !== 'undefined' && teamCovers[x.player]) || '';
   let faceArt = faceImg ? `url('${esc(faceImg)}')` : fallbackArt(x.player);
@@ -38240,7 +38286,8 @@ function openPlayoffScenarioModal(p){
   let exact = typeof solveExactCoachPlayoffScenario === 'function' ? solveExactCoachPlayoffScenario(t, p, gName, members, cut) : null;
   let sc = x.scenario || {};
   let gItems = Object.values(sim).filter(item => item.group === gName);
-  let magicBadge = getCoachMagicBadge(x, gItems, cut, exact, sc);
+  let totalPlayed = (t.matches || []).filter(m => m && m.a !== 'BYE' && m.b !== 'BYE' && m.as !== '' && m.as != null && m.bs !== '' && m.bs != null).length;
+  let magicBadge = getCoachMagicBadge(x, gItems, cut, exact, sc, totalPlayed);
 
   let faceImg = (typeof profilePictures !== 'undefined' && profilePictures[p]) || (typeof teamCovers !== 'undefined' && teamCovers[p]) || '';
   let faceArt = faceImg ? `url('${esc(faceImg)}')` : fallbackArt(p);

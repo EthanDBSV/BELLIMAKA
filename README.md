@@ -16,12 +16,22 @@ Format: `v[MAJOR].[MINOR].[PATCH]` — Major = major system overhauls, Minor = n
   - **Full Distribution Tooltips**: Hovering the track displays exact percentage breakdowns (`Playoff Cut: X% (#1 Seed: Y% · Seeds 2+: Z% · Missed: W%)`).
 - **Streamlined Status & Scenarios Engine**:
   - **Removed Text Clutter**: Removed verbose multi-line projected record strings (`Proj. X–Y · Z matches remaining`) directly from table cells to prevent vertical bloat.
-  - **Compact Sports-Standard Magic & Elimination Badges (`getCoachMagicBadge`)**:
-    - `✓ CLINCHED`: Playoff spot mathematically secured.
-    - `MAGIC #X` / `⚡ WIN & IN`: True combinatorial magic numbers indicating exact wins required to guarantee Top Cut regardless of external match outcomes.
-    - `⚔️ BUBBLE` / `🛡️ IN CONTROL` / `🔥 IN THE HUNT`: Immediate race status indicators.
-    - `E#X`: Elimination number tracking for cutline chasers.
-    - `✗ ELIMINATED`: Mathematically eliminated from Top Cut contention.
+  - **Pre-Tournament Tier Badges (`getPreTournamentTier`)**:
+    - When 0 matches have been played in a tournament, coaches now display intuitive pre-tournament outlook badges based on simulated equity and seed rankings instead of in-season cut badges:
+      - `👑 FAVORITE` (Gold): Top projected seed with the highest probability to secure the #1 playoff seed.
+      - `⚔️ CONTENDER` (Cyan): High projected playoff equity; prime favorite for an automatic Top Cut spot.
+      - `🔥 DARK HORSE` (Purple): High upset potential; dangerous threat to challenge the frontrunners.
+      - `⚡ SLEEPER` (Amber): Capable underdogs flying under the radar with key fixture upset ability.
+      - `🎲 LONG SHOT` (Slate): Heavy underdog facing steep odds requiring multiple upsets.
+  - **Intuitive Sports Status Badges (Cryptic `E#` Numbers Eliminated)**:
+    - Replaced confusing mathematical elimination numbers (`E#1`, `E#2`) with clear, human-readable race statuses:
+      - `✓ CLINCHED`: Playoff spot mathematically secured.
+      - `MAGIC #X` / `⚡ WIN & IN`: Combinatorial magic numbers indicating exact wins required to guarantee Top Cut regardless of external match outcomes.
+      - `🛡️ IN CONTROL`: Strong qualifying probability; controls own path.
+      - `⚔️ ON THE BUBBLE`: Sitting directly on the playoff bubble within immediate striking distance.
+      - `🔥 IN THE HUNT`: Chasing the cutline with viable paths to qualification.
+      - `⚠️ MUST WIN` / `⚡ WIN OR GO HOME`: Elimination pressure requiring urgent wins to stay alive.
+      - `✗ ELIMINATED`: Mathematically eliminated from Top Cut contention.
   - **Scenario Popovers & Interactive Schedule Modal (`openPlayoffScenarioModal`)**:
     - **CSS Hover Popover**: Instant hover preview showing scenario headlines, head-to-head status, and qualification requirements.
     - **Interactive Modal**: Full-depth breakdown displaying game differential, path intelligence, clinch formulas, and remaining fixtures with one-click "Test Win" shortcuts.
@@ -32,8 +42,9 @@ Format: `v[MAJOR].[MINOR].[PATCH]` — Major = major system overhauls, Minor = n
     - **Qualifying Zone (Ranks 1–2)**: 5% emerald green tint (`rgba(16, 185, 129, 0.05)`).
     - **Bubble Zone (Ranks 3–4)**: Neutral dark slate (`#14141d`).
     - **Elimination / Longshot Zone (Ranks 5–7)**: 4% red tint (`rgba(239, 68, 68, 0.04)`).
-- **Enhanced "What-If" Simulator Interactivity**:
-  - **Dynamic Row Flash & Outline Pulse**: Toggling match outcomes in the What-If picker highlights affected coaches (both directly involved in the match and those whose odds shifted by $\ge 0.5\%$) with an animated glowing amber pulse (`.is-whatif-affected`).
+- **Enhanced "What-If" Simulator Interactivity & Visual Fixes**:
+  - **Table Highlight Fix (Gold Vertical Lines Removed)**: Fixed a browser rendering bug where `outline` applied to `<tr>` elements within collapsed tables drew vertical box outlines across all column cell borders. Replaced with an elegant background pulse animation (`@keyframes whatifPulseBg`) and an amber accent stripe on `td:first-child`.
+  - **Dynamic Row Flash**: Toggling match outcomes in the What-If picker highlights affected coaches (both directly involved in the match and those whose odds shifted by $\ge 0.5\%$).
   - **Real-Time Mini Delta Badges**: Dynamic `▲ +X%` (green) and `▼ -X%` (red) indicators appear directly beside probability numbers.
 - **Official Artwork & PokeAPI Form Resolution Expansion**:
   - **Female Form Variants (-F)**: Mapped official PokeAPI artwork IDs for `indeedee-female`/`indeedee-f` (`10186`), `meowstic-female`/`meowstic-f` (`10025`), `oinkologne-female`/`oinkologne-f` (`10254`), and `basculegion-female`/`basculegion-f` (`10248`).
