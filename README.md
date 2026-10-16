@@ -3,6 +3,27 @@
 All notable changes to the Bellimaka Pokémon Draft League platform are documented here.
 Format: `v[MAJOR].[MINOR].[PATCH]` — Major = major system overhauls, Minor = new features, Patch = bug fixes and visual improvements.
 
+## [v4.3.1] — 2026-10-16
+
+### Drafteon-Style Base Stats Drawer, Historical Pick Cost Preservation & Number Readability
+- **Drafteon-Style Base Stats Drawer Overhaul**:
+  - Replicated the Drafteon card model inside the right-hand Pokémon inspection drawer sidebar.
+  - Added dedicated inline SVG stat icons utilizing previously empty left-hand space:
+    - **BST**: Solid circular white badge with dark upward directional arrow.
+    - **HP**: Solid lime green heart (`#a3e635`).
+    - **ATK**: 8-point yellow physical burst (`#facc15`).
+    - **DEF**: Orange shield with internal impact star (`#fb923c`).
+    - **SPA**: Cyan concentric radar wave rings (`#38bdf8`).
+    - **SPD**: Periwinkle shield with concentric defensive wave rings (`#818cf8`).
+    - **SPE**: Triple speed chevrons in hot pink (`#f472b6`).
+  - Added an integrated BST stat row (0–720 scale) alongside standard stats, unified tabular numeric alignment, and rounded pill-shaped progress meters (`border-radius: 999px`).
+- **Historical Draft Pick Cost Preservation Fix (Past Tournament Overdraft Bug)**:
+  - **Root Cause**: In past tournament draft recaps (e.g. Bentonville Regional), draft matrices and roster calculation views dynamically resolved pick prices through `findPokemonCostOnBoard(t, name)`. When a Pokémon's cost was adjusted on the offseason board (such as Grimmsnarl increasing from 16 to 17 points), historical tournament rosters recalculated against current board costs, artificially showing coaches like Eric at `101/100p` with a red overdraft warning.
+  - **Immutable Historical Cost Anchor**: Updated `getDraftCoachStats(t, p)`, `DraftRostersView(t)`, `TeamRosterDetailView(t, p)`, and `getCurrentDraftedPicks()` to strictly prioritize the immutable cost recorded when the pick was officially drafted (`pickObj.cost` = 16 pts). Restored Eric's Bentonville Regional draft cost to `100/100p` and Grimmsnarl to `16 PTS`.
+- **Enhanced Badge & Number Visibility / Readability**:
+  - **Planner & Draft Bank Cost Badges**: Upgraded draft planner point badges from narrow 12px condensed text on dark `#252535` backgrounds to high-visibility luminous amber badges (`#fef08a` text, `font-weight: 900`, `14.5px`, `rgba(250, 204, 21, 0.15)` background, `rgba(250, 204, 21, 0.45)` border, text shadow, and `tabular-nums`). Eliminates pinching and blur on digits with tight loops like `6` and `9`.
+  - **Draft Matrix Cost Badges**: Increased font weight to 800 with crisp text drop shadows and tabular numbers for enhanced legibility across all type themes.
+
 ## [v4.3.0] — 2026-10-16
 
 ### Hall of Fame Badges & Accolades System Overhaul, Pearlescent/Prismatic Themes & Layout Expansion

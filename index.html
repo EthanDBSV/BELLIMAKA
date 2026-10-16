@@ -1747,7 +1747,7 @@ details[open] > .past-tourney-summary .past-chevron{transform:rotate(180deg);col
 .draft-matrix-cell.empty{background:#111116;border:1px dashed #282836;opacity:.55}
 .draft-matrix-cell-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:4px}
 .draft-matrix-pick-num{color:#8e8c95;font:800 12px 'Barlow Condensed';letter-spacing:.3px}
-.draft-matrix-cost{color:#ffd166;font:800 10.5px 'Barlow Condensed';background:#2c2210;border:1px solid #5a4218;padding:1px 6px;border-radius:4px;letter-spacing:.4px}
+.draft-matrix-cost{color:#fef08a;font:900 11.5px/1 'DM Sans',sans-serif;background:rgba(250,204,21,0.15);border:1px solid rgba(250,204,21,0.45);padding:2.5px 7px;border-radius:4px;letter-spacing:.3px;font-variant-numeric:tabular-nums;text-shadow:0 1px 2px rgba(0,0,0,0.85)}
 .draft-matrix-dir{color:#5c5a68;font-weight:900}
 
 .draft-matrix-cell-body{display:flex;align-items:center;gap:8px;min-width:0}
@@ -5583,37 +5583,44 @@ body.mobile-nav-open {
 .pokemon-stat-row {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
   margin-bottom: 7px;
 }
 .pokemon-stat-row:last-child {
   margin-bottom: 0;
 }
+.pokemon-stat-icon {
+  width: 18px;
+  height: 18px;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+}
 .pokemon-stat-lbl {
-  width: 32px;
-  font: 800 11px 'Barlow Condensed', sans-serif;
-  color: #a09fa8;
-  letter-spacing: 0.5px;
+  width: 28px;
+  font: 800 12px 'Barlow Condensed', sans-serif;
+  letter-spacing: 0.6px;
   flex-shrink: 0;
 }
 .pokemon-stat-val {
-  width: 30px;
-  font: 700 13px 'Barlow Condensed', sans-serif;
-  color: #f5f3f0;
+  width: 32px;
+  font: 800 13px 'Barlow Condensed', sans-serif;
+  color: #f1f5f9;
   text-align: right;
+  font-variant-numeric: tabular-nums;
   flex-shrink: 0;
 }
 .pokemon-stat-track {
   flex: 1;
-  height: 8px;
+  height: 7px;
   background: rgba(255, 255, 255, 0.08);
-  border-radius: 4px;
+  border-radius: 999px;
   overflow: hidden;
   position: relative;
 }
 .pokemon-stat-fill {
   height: 100%;
-  border-radius: 4px;
+  border-radius: 999px;
   transition: width 0.4s cubic-bezier(0.16, 1, 0.3, 1);
 }
 .pokemon-stat-skeleton {
@@ -39820,7 +39827,12 @@ function TeamRosterDetailView(t, p){
     if(mon){
       let monName = typeof mon === 'string' ? mon : (mon.pokemon || mon.name || '');
       let sprite = getPokemonArtworkUrl(monName);
-      let cost = findPokemonCostOnBoard(t, monName);
+      let pickObj = (t?.draftData?.picks || []).find(pk => pk.player === p && ((pk.pokemon || '').toLowerCase().trim() === monName.toLowerCase().trim() || (pk.name || '').toLowerCase().trim() === monName.toLowerCase().trim()));
+      let cost = (pickObj && typeof pickObj.cost === 'number' && !isNaN(pickObj.cost) && pickObj.cost > 0)
+        ? pickObj.cost
+        : (pickObj && pickObj.cost != null && !isNaN(Number(pickObj.cost)) && Number(pickObj.cost) > 0
+          ? Number(pickObj.cost)
+          : (typeof mon === 'object' && typeof mon.cost === 'number' && mon.cost > 0 ? mon.cost : findPokemonCostOnBoard(t, monName)));
       let costDisplay = String(cost);
       let monStat = (typeof findPokemonStatsInMap === 'function') ? findPokemonStatsInMap(monStatsMap, monName) : null;
       slots.push({
@@ -40373,7 +40385,7 @@ function getCurrentDraftedPicks(){
   let userPicks = t.draftData.picks.filter(p => p && p.player && p.player.toLowerCase().trim() === myCoachLower);
   return userPicks.map(p => ({
     name: p.pokemon,
-    cost: fmtPts(p.cost !== undefined ? p.cost : (findPokemonCostOnBoard(t, p.pokemon) || 0)),
+    cost: fmtPts((p.cost != null && !isNaN(Number(p.cost)) && Number(p.cost) > 0) ? p.cost : (findPokemonCostOnBoard(t, p.pokemon) || 0)),
     isOfficial: true
   }));
 }
@@ -41006,7 +41018,7 @@ function builderHTML(){
             <span style="font-weight:700;color:#f5f3f0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;${isDrafted && !isMine && !isCurrentTab ? 'text-decoration:line-through;color:#a09fa8' : ''}">${esc(x.name)}</span>
             ${statusBadge}
           </div>
-          <b style="color:#ffd166;font-size:12px;background:#282014;padding:2px 6px;border-radius:4px;border:1px solid #4a3818;flex:none">${fmtPts(x.cost)}</b>
+          <b style="color:#fef08a;font:900 14.5px/1 'Barlow Condensed',sans-serif;letter-spacing:.3px;background:rgba(250,204,21,0.15);padding:3px 7px;border-radius:5px;border:1px solid rgba(250,204,21,0.45);flex:none;min-width:26px;text-align:center;box-shadow:0 1px 4px rgba(0,0,0,0.5);text-shadow:0 1px 2px rgba(0,0,0,0.85);font-variant-numeric:tabular-nums">${fmtPts(x.cost)}</b>
           ${bankBtn}
           ${!isCurrentTab ? `<button title="Remove ${esc(x.name)}" onclick="event.stopPropagation();removeTeamMon(${i})">×</button>` : ''}
         </div>`;
@@ -41181,6 +41193,8 @@ function getDraftCoachStats(t, p){
     }));
   } else {
     picks = picks.map(x => {
+      let historicalCost = (typeof x.cost === 'number' && !isNaN(x.cost) && x.cost > 0) ? x.cost : (x.cost != null && !isNaN(Number(x.cost)) && Number(x.cost) > 0 ? Number(x.cost) : null);
+      if(historicalCost !== null) return { ...x, cost: historicalCost };
       let bc = findPokemonCostOnBoard(t, x.pokemon);
       return (typeof bc === 'number' && bc > 0) ? { ...x, cost: bc } : x;
     });
@@ -44789,7 +44803,11 @@ function DraftRostersView(t){
               let pickObj = (d.picks || []).find(x => x.player === coach && x.round === roundNum) || (stats.picks && stats.picks[rIdx]) || (d.picks || []).find(x => x.pickNumber === pickNumber);
 
               if(pickObj){
-                let cellCost = (typeof findPokemonCostOnBoard === 'function') ? (findPokemonCostOnBoard(t, pickObj.pokemon) || pickObj.cost || 0) : (pickObj.cost || 0);
+                let cellCost = (pickObj && typeof pickObj.cost === 'number' && !isNaN(pickObj.cost) && pickObj.cost > 0)
+                  ? pickObj.cost
+                  : (pickObj && pickObj.cost != null && !isNaN(Number(pickObj.cost)) && Number(pickObj.cost) > 0
+                    ? Number(pickObj.cost)
+                    : ((typeof findPokemonCostOnBoard === 'function' ? findPokemonCostOnBoard(t, pickObj.pokemon) : 0) || 0));
                 let spriteUrl = pokeSprite(pickObj.pokemon);
                 let theme = getPokemonTypeTheme(pickObj.pokemon);
                 return `
@@ -44799,7 +44817,7 @@ function DraftRostersView(t){
                        ${canManage ? `onclick="openModeratorSwapModal('${jsArg(t.id)}', '${jsArg(coach)}', '${jsArg(pickObj.pokemon)}', ${roundNum}, ${pickNumber}, ${cellCost})"` : ''}>
                     <div class="draft-matrix-cell-head">
                       <span class="draft-matrix-pick-num" style="color:${theme.accent};font-weight:800">${roundNum}.${posInRound + 1}${pickObj.autoReason === 'bank' ? ' <span title="Draft Bank auto-pick" style="font-size:10px">🏦</span>' : (pickObj.autoReason === 'timeout' ? ' <span title="Auto-picked on timeout" style="font-size:10px">⏰</span>' : '')}</span>
-                      <span class="draft-matrix-cost" style="background:${theme.badgeBg};border:1px solid ${theme.border};color:${theme.badgeText};font-weight:700">${cellCost} PTS</span>
+                      <span class="draft-matrix-cost" style="background:${theme.badgeBg};border:1px solid ${theme.border};color:${theme.badgeText};font-weight:800;letter-spacing:0.3px;text-shadow:0 1px 2px rgba(0,0,0,0.85);font-variant-numeric:tabular-nums">${cellCost} PTS</span>
                     </div>
                     <div class="draft-matrix-cell-body">
                       <img src="${esc(spriteUrl)}" class="draft-matrix-sprite" alt="${esc(pickObj.pokemon)}" loading="lazy" onerror="handleSpriteError(this)">
@@ -45920,10 +45938,31 @@ async function fetchPokemonDetailData(rawName) {
 }
 
 function renderDrawerStatsHtml(stats) {
+  const statIcons = {
+    bst: `<svg width="15" height="15" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="#f1f5f9"/><path d="M12 16V8M8.5 11.5L12 8l3.5 3.5" stroke="#12121a" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>`,
+    hp: `<svg width="15" height="15" viewBox="0 0 24 24" fill="#a3e635"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>`,
+    atk: `<svg width="15" height="15" viewBox="0 0 24 24"><path d="M12 2l1.9 4.3 4.4-1.8-1.8 4.4 4.3 1.9-4.3 1.9 1.8 4.4-4.4-1.8-1.9 4.3-1.9-4.3-4.4 1.8 1.8-4.4-4.3-1.9 4.3-1.9-1.8-4.4 4.4 1.8z" fill="#facc15"/></svg>`,
+    def: `<svg width="15" height="15" viewBox="0 0 24 24"><path d="M12 2L4 5.5v5.5c0 5.2 3.4 10 8 11 4.6-1 8-5.8 8-11V5.5L12 2z" fill="#fb923c"/><path d="M12 7l.8 2.2 2.2-.8-.8 2.2 2.2.8-2.2.8.8 2.2-2.2-.8-.8 2.2-.8-2.2-2.2.8.8-2.2-2.2-.8 2.2-.8-.8-2.2 2.2.8z" fill="#181822"/></svg>`,
+    spa: `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#38bdf8" stroke-width="2.2"><ellipse cx="12" cy="12" rx="10" ry="5"/><ellipse cx="12" cy="12" rx="5" ry="2.5"/><circle cx="12" cy="12" r="1.5" fill="#38bdf8"/></svg>`,
+    spd: `<svg width="15" height="15" viewBox="0 0 24 24"><path d="M12 2L4 5.5v5.5c0 5.2 3.4 10 8 11 4.6-1 8-5.8 8-11V5.5L12 2z" fill="#818cf8"/><ellipse cx="12" cy="12" rx="4.5" ry="2.2" fill="none" stroke="#181822" stroke-width="1.3"/><circle cx="12" cy="12" r="1" fill="#181822"/></svg>`,
+    spe: `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#f472b6" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 7l5 5-5 5M11 7l5 5-5 5M16 7l5 5-5 5"/></svg>`
+  };
+
+  const statDefs = [
+    { key: 'bst', lbl: 'BST', color: '#f1f5f9', max: 720 },
+    { key: 'hp',  lbl: 'HP',  color: '#a3e635', max: 200 },
+    { key: 'atk', lbl: 'ATK', color: '#facc15', max: 200 },
+    { key: 'def', lbl: 'DEF', color: '#fb923c', max: 200 },
+    { key: 'spa', lbl: 'SPA', color: '#38bdf8', max: 200 },
+    { key: 'spd', lbl: 'SPD', color: '#818cf8', max: 200 },
+    { key: 'spe', lbl: 'SPE', color: '#f472b6', max: 200 }
+  ];
+
   if(!stats) {
-    return ['HP', 'ATK', 'DEF', 'SPA', 'SPD', 'SPE'].map(s => `
+    return statDefs.map(s => `
       <div class="pokemon-stat-row pokemon-stat-skeleton">
-        <span class="pokemon-stat-lbl">${s}</span>
+        <span class="pokemon-stat-icon">${statIcons[s.key]}</span>
+        <span class="pokemon-stat-lbl" style="color:${s.color}">${s.lbl}</span>
         <span class="pokemon-stat-val" style="color:#6b6a75">--</span>
         <div class="pokemon-stat-track">
           <div class="pokemon-stat-fill" style="width:30%;background:rgba(255,255,255,0.12)"></div>
@@ -45932,21 +45971,15 @@ function renderDrawerStatsHtml(stats) {
     `).join('');
   }
 
-  const statDefs = [
-    { key: 'hp', lbl: 'HP', color: '#22c55e' },
-    { key: 'atk', lbl: 'ATK', color: '#f97316' },
-    { key: 'def', lbl: 'DEF', color: '#eab308' },
-    { key: 'spa', lbl: 'SPA', color: '#06b6d4' },
-    { key: 'spd', lbl: 'SPD', color: '#8b5cf6' },
-    { key: 'spe', lbl: 'SPE', color: '#ec4899' }
-  ];
+  let computedBst = Number(stats.bst) || ((Number(stats.hp) || 0) + (Number(stats.atk) || 0) + (Number(stats.def) || 0) + (Number(stats.spa) || 0) + (Number(stats.spd) || 0) + (Number(stats.spe) || 0));
 
   return statDefs.map(s => {
-    let val = Number(stats[s.key]) || 0;
-    let pct = Math.min(100, Math.max(4, Math.round((val / 200) * 100)));
+    let val = s.key === 'bst' ? computedBst : (Number(stats[s.key]) || 0);
+    let pct = Math.min(100, Math.max(4, Math.round((val / s.max) * 100)));
     return `
       <div class="pokemon-stat-row">
-        <span class="pokemon-stat-lbl">${s.lbl}</span>
+        <span class="pokemon-stat-icon">${statIcons[s.key]}</span>
+        <span class="pokemon-stat-lbl" style="color:${s.color}">${s.lbl}</span>
         <span class="pokemon-stat-val">${val}</span>
         <div class="pokemon-stat-track">
           <div class="pokemon-stat-fill" style="width:${pct}%;background:${s.color}"></div>
