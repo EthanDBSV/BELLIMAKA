@@ -3,6 +3,22 @@
 All notable changes to the Bellimaka Pokémon Draft League platform are documented here.
 Format: `v[MAJOR].[MINOR].[PATCH]` — Major = major system overhauls, Minor = new features, Patch = bug fixes and visual improvements.
 
+## [v4.2.1] — 2026-10-16
+
+### Autonomous Cloud Draft Timers, Manual Pick Webhook Fix & Clean Action Bar
+- **Streamlined Draft Room Action Bar (Removed Clutter During Active Drafts)**:
+  - Removed "Export Board (CSV)" and "Import Sheet" buttons from the live Draft Room top action bar (`modActions`) during active, paused, and completed drafts (`d.status !== 'pending'`).
+  - Keeps the live draft interface focused and clean while preserving sheet import and CSV export during initial setup (`d.status === 'pending'`) and within the draft board's Board Settings (⚙️) menu.
+- **Discord Webhook Fix for Manual Coach Picks**:
+  - **Data URL Thumbnail Rejection Fix**: Diagnosed why Discord webhook alerts sent on autopicks and bank reserves but failed on manual coach picks: opening the right-hand drawer to inspect a Pokémon cached a canvas-trimmed base64 `data:image/png;base64,...` URL in memory, which was passed as `spriteUrl`; Discord's embed API rejects non-http(s) thumbnail URLs with HTTP 400 Bad Request (`{"embeds": ["0"]}`).
+  - **Dual-Layer URL Sanitization (`dispatchDiscordDraftPick`)**: Both the client announcer (`announceDraftPickToDiscord`) and the Cloudflare Worker strictly filter out `data:` URLs, guaranteeing only clean HTTPS URLs (PokeAPI official artwork or Showdown sprites) are supplied to Discord embed thumbnails.
+  - **Immediate Non-Moderator Draft Sync**: Added `syncDraftStateToCloud(t)` to `makeDraftPick` so that picks drafted by non-moderator coaches immediately sync to Cloudflare KV `/api/draft` without waiting on moderator sync locks.
+- **Autonomous Cloud-Side Draft Timer & Offline Auto-Pick Engine**:
+  - **Server-Side Evaluation (`evaluateDraftTimers`)**: Draft pick clocks no longer require an active user on the website "witnessing" the timer reach 0:00 to trigger an auto-pick.
+  - **Cloudflare Worker Cron Trigger (`scheduled`)**: Exported `async scheduled()` cron trigger in `cloudflare-worker.js` that checks active draft tournaments once every minute or two minutes (consuming $\le 1.4\%$ of Cloudflare's free daily limit).
+  - **Passive Request Verification**: Whenever `/api/draft` or `/api/state` is called, the server evaluates timer expiration on-demand and returns updated draft state immediately.
+  - **Full Deterministic Parity & Bank Auto-Chaining**: Uses identical lowest-cost tier sorting and modulo indexing as the client engine, automatically checks coach bank reserves, updates KV state, and pings the next on-the-clock coach in Discord even when all browser tabs are closed.
+
 ## [v4.2.0] — 2026-10-16
 
 ### Live Draft Countdown Timer, Multi-Surface Sync & Discord Pick Webhooks

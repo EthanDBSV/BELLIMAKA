@@ -17905,7 +17905,12 @@ async function announceDraftPickToDiscord(t, pickObj, nextTurn){
     let teamCount = (t.rosters?.[pickObj.player] || []).length;
     let maxSlots = stats?.maxSlots || d?.maxRosterSize || t?.draftData?.maxRosterSize || 10;
     let remainingBudget = stats ? stats.remainingBudget : null;
-    let artworkUrl = (typeof getPokemonArtworkUrl === 'function' ? getPokemonArtworkUrl(pickObj.pokemon) : '') || '';
+    let rawArt = (typeof getPokemonArtworkUrl === 'function' ? getPokemonArtworkUrl(pickObj.pokemon) : '') || '';
+    let artworkUrl = (rawArt && (rawArt.startsWith('http://') || rawArt.startsWith('https://'))) ? rawArt : '';
+    if(!artworkUrl && typeof pokeSprite === 'function'){
+      let sp = pokeSprite(pickObj.pokemon);
+      if(sp && (sp.startsWith('http://') || sp.startsWith('https://'))) artworkUrl = sp;
+    }
 
     let payload = {
       tournamentId: t.id,
@@ -41760,6 +41765,11 @@ function saveDraftSettingsModal(tId){
   d.activeEnd = document.getElementById('editDraftActiveEnd')?.value || '22:00';
   d.pointBudget = Math.max(0, +(document.getElementById('editDraftPointBudget')?.value || 100));
   d.maxRosterSize = Math.max(1, +(document.getElementById('editDraftMaxRoster')?.value || 10));
+  try {
+    d.timezone = Intl.DateTimeFormat().resolvedOptions().timeZone || 'America/Los_Angeles';
+  } catch(e){
+    d.timezone = 'America/Los_Angeles';
+  }
 
   persistLeague();
   syncDraftStateToCloud(t);
@@ -43753,6 +43763,11 @@ function makeDraftPick(tId, pokemonName, forcedPlayer = null, options = {}){
     flushSync();
   }
 
+  // Fast lightweight draft state sync to Cloudflare KV (< 50ms)
+  if(typeof syncDraftStateToCloud === 'function'){
+    syncDraftStateToCloud(t);
+  }
+
   // Instant 24/7 Discord Notification with Showdown sprite & @next coach
   try {
     let nextTurn = getDraftCurrentTurn(t);
@@ -43984,8 +43999,8 @@ function DraftRoom(t){
       ${canManageDraft && d.picks?.length ? `<button class="btn ghost btn-sm" style="color:#ff9ba1" onclick="undoDraftPick('${jsArg(t.id)}')">↩️ Undo Pick</button>` : ''}
       ${canManageDraft ? `<button class="btn ghost btn-sm" onclick="openDraftSettingsModal('${jsArg(t.id)}')">⚙️ Timer & Settings</button>` : ''}
       ${canManageDraft ? `<button class="btn ghost btn-sm" onclick="openDraftOrderEditor('${jsArg(t.id)}')">🔀 Draft Order</button>` : ''}
-      ${canManageDraft ? `<button class="btn ghost btn-sm" onclick="exportDraftBoardCSV('${jsArg(t.id)}')">📥 Export Board (CSV)</button>` : ''}
-      ${canManageDraft ? `<button class="btn ghost btn-sm" onclick="openDraftBoardImporter('${jsArg(t.id)}')">📥 Import Sheet</button>` : ''}
+      ${canManageDraft && d.status === 'pending' ? `<button class="btn ghost btn-sm" onclick="exportDraftBoardCSV('${jsArg(t.id)}')">📥 Export Board (CSV)</button>` : ''}
+      ${canManageDraft && d.status === 'pending' ? `<button class="btn ghost btn-sm" onclick="openDraftBoardImporter('${jsArg(t.id)}')">📥 Import Sheet</button>` : ''}
       ${canManageDraft && (d.status === 'completed' || d.picks?.length >= getDraftTotalPicks(t)) ? `<button class="btn btn-sm" style="background:#10b981;border-color:#34d399" onclick="completeDraftAndAdvance('${jsArg(t.id)}')">🏁 Start ${getStage1Label(t)} →</button>` : ''}
     </div>
   `;
