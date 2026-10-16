@@ -70,7 +70,18 @@ Format: `v[MAJOR].[MINOR].[PATCH]` — Major = major system overhauls, Minor = n
     - Pairs with clean playoff win-loss record display (`Playoffs: 2-0`), omitting redundant stage 1 record strings.
   - **Full-Width Table Layout & What-If Rail Streamlining**:
     - Removed the cramped 2-column layout and the Phase 2 bracket What-If picker rail (as double-elimination brackets follow deterministic advancement paths without ambiguous tiebreakers), expanding the championship table to full 100% width.
-    - Reduced table columns to 5 high-impact columns (`Seed`, `Contender & Team`, `Bracket Status`, `Title & Finals Equity`, `Next Matchup & Path`), preventing cell wrapping on desktop and tablet displays.
+- **Swiss Stage & League Phase Live Hat Draw Pairing Ceremony (`openSwissRoundDrawCeremony`)**:
+  - **Round 1 Match Concealment Until Button Pressed**:
+    - Round 1 pairings in Swiss Stage and League Phase are no longer pre-generated or revealed automatically upon tournament creation or draft completion.
+    - The Matches list and tournament overview now display a prominent Hat Draw callout card (`🎩 Round 1 Matchups Not Yet Drawn`), keeping opening fixtures under wraps until the manager presses `🎩 Start Live Hat Draw · Pair Round 1 →`.
+  - **Animated Hat Draw Ceremony**:
+    - Features the signature wobbling top hat (`.hat-emblem.drawing`) with suspenseful decelerating coach name tickers (`🎩 Name... ✨ Name... ⭐ Name?!`).
+    - Draws coaches sequentially into fixtures: Coach 1 is drawn from the hat, followed by their opponent, locking in the matchup with dramatic pop-in animations (`.draw-revealed-card`), trainer avatars, team names, OVR badges, and head-to-head win probability readouts.
+    - Supports `BYE` draws for odd player pools with clear `✓ BYE WIN (2–0)` tagging.
+  - **Ceremony Controls & Re-Pair Support**:
+    - **Interactive Draw Modes**: Manual `🎩 Draw Next Name`, animated `⚡ Auto-Draw Show (2.5s)`, or instant `⚡ Fast-Forward All`.
+    - **Multi-Round Support**: Seamlessly triggers for pairing Round 1, generating subsequent rounds (`Pair Round X`), or re-pairing existing rounds (`Re-pair Round X`) before scores are locked.
+    - **Safe Publish & Commit**: A reviewable match card grid with a green `💾 Confirm & Publish Round X Matches →` commit button ensures pairings are validated before persisting to the tournament schedule.
 - **Enhanced "What-If" Simulator Interactivity & Visual Fixes**:
   - **Table Highlight Fix (Gold Vertical Lines Removed)**: Fixed a browser rendering bug where `outline` applied to `<tr>` elements within collapsed tables drew vertical box outlines across all column cell borders. Replaced with an elegant background pulse animation (`@keyframes whatifPulseBg`) and an amber accent stripe on `td:first-child`.
   - **Dynamic Row Flash**: Toggling match outcomes in the What-If picker highlights affected coaches (both directly involved in the match and those whose odds shifted by $\ge 0.5\%$).

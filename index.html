@@ -2421,6 +2421,12 @@ details[open] > .past-tourney-summary .past-chevron{transform:rotate(180deg);col
 .draw-slot-card.empty{border:1px dashed #2d2d3c;background:#111116;opacity:.55;justify-content:center;color:#6b6a75;font-size:11px;font-weight:700}
 .draw-slot-card.active-target{border:1px solid var(--amber);background:#221e14;box-shadow:0 0 14px rgba(255,209,102,0.22)}
 
+.round-draw-ceremony-modal{max-width:880px;width:100%}
+.round-draw-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:12px;margin-top:16px}
+.round-fixture-card{background:#121218;border:1px solid #282836;border-radius:10px;padding:12px;display:flex;flex-direction:column;gap:8px;transition:all .2s ease}
+.round-fixture-card.is-active-target{border-color:var(--amber);background:linear-gradient(180deg,#1c171e 0%,#121218 100%);box-shadow:0 0 16px rgba(255,209,102,0.18)}
+.round-fixture-card.is-complete{border-color:#2a3a30;background:#111613}
+
 .draft-locked-card{background:linear-gradient(135deg,#18141c 0%,#111116 100%);border:1px solid #3d2432;border-radius:12px;padding:36px 24px;text-align:center;max-width:680px;margin:24px auto;box-shadow:0 12px 40px rgba(0,0,0,0.6)}
 /* ------------------------------------------------------------ Modern Responsive Auth UI ------------------------------------------------------------ */
 .auth-wrapper{width:100%;max-width:480px;margin:16px auto 36px;display:flex;flex-direction:column;gap:16px;box-sizing:border-box}
@@ -7955,6 +7961,8 @@ function noTournament(tabName = '', sub = ''){
 
 
 function closeModal(){
+  if(typeof pauseAutoGroupDraw === 'function') pauseAutoGroupDraw();
+  if(typeof pauseAutoRoundDraw === 'function') pauseAutoRoundDraw();
   if(typeof window._editingDraftOrderId !== 'undefined' && window._editingDraftOrderId){
     window._editingDraftOrder = null;
     window._editingDraftOrderId = null;
@@ -9324,34 +9332,19 @@ function pairSwissNextRound(targetT = null){
     return;
   }
 
-  let newMatches = isLeague ? generateLeaguePhaseRound(t, nextRound) : generateSwissRound(t, nextRound);
-  if(newMatches.length === 0){
-    alert(`No further active pairings are needed! You can now advance to Top Cut.`);
-    return;
-  }
-  t.matches = (t.matches || []).concat(newMatches);
-  t.swissCurrentRound = nextRound;
-  persistLeague();
-  render();
+  openSwissRoundDrawCeremony(t.id, nextRound, false);
 }
 
 function repairCurrentSwissRound(targetT = null){
   let t = targetT || (viewTournament ? tournamentData[viewTournament] : null) || ongoingT();
   if(!t || !canManageTournament(t)) return;
-  let isLeague = isLeaguePhase(t);
   let curRound = t.swissCurrentRound || 1;
   let curRoundMatches = (t.matches || []).filter(m => m.round === 'Round ' + curRound);
   let reported = curRoundMatches.filter(m => m.b !== 'BYE' && m.a !== 'BYE' && m.as !== '' && m.as != null && m.bs !== '' && m.bs != null);
   if(reported.length > 0){
-    if(!confirm(`Some scores for Round ${curRound} have already been reported. Re-pairing will clear these scores and re-generate pairings. Continue?`)) return;
-  } else {
-    if(!confirm(`Re-generate pairings for Round ${curRound}?`)) return;
+    if(!confirm(`Some scores for Round ${curRound} have already been reported. Re-pairing will clear these scores and re-draw pairings from the hat. Continue?`)) return;
   }
-  t.matches = (t.matches || []).filter(m => m.round !== 'Round ' + curRound);
-  let freshMatches = isLeague ? generateLeaguePhaseRound(t, curRound) : generateSwissRound(t, curRound);
-  t.matches = (t.matches || []).concat(freshMatches);
-  persistLeague();
-  render();
+  openSwissRoundDrawCeremony(t.id, curRound, true);
 }
 
 async function endFirstPhase(targetT = null){
@@ -9382,8 +9375,7 @@ function groupMatches(t,g){
   return (t?.matches||[]).filter(m=>(m.group||'Group A')===g);
 }
 function groupSchedule(t){
-  if(t?.stage1Format === 'swiss') return generateSwissRound(t, 1);
-  if(t?.stage1Format === 'league_phase') return generateLeaguePhaseRound(t, 1);
+  if(t?.stage1Format === 'swiss' || t?.stage1Format === 'league_phase') return [];
   let buckets=groupsOf(t);
   return Object.entries(buckets).flatMap(([g,ps])=>rr(ps).map(m=>({...m,group:g})));
 }
@@ -16466,6 +16458,10 @@ function groupsOf(t){
 }
 
 function rebuildSchedulePreserving(t){
+  if(isRoundBasedStage1(t)){
+    // Swiss Stage & League Phase fixtures are drawn round-by-round via the Hat Draw Ceremony; preserve existing round matches!
+    return;
+  }
   let old={};
   (t.matches||[]).forEach(m=>{
     old[[m.group||'Group A', m.a, m.b].sort().join('|')] = m;
@@ -27880,7 +27876,8 @@ function Matches(){
     return na - nb;
   }) : [];
 
-  let curRound = t.swissCurrentRound || (swissRoundsList.length ? parseInt(swissRoundsList[swissRoundsList.length - 1].replace(/\D/g, '')) : 1);
+  let isRound1Unpaired = isRoundBased && (allMatches.filter(m => (m.round || '').includes('Round 1')).length === 0);
+  let curRound = isRound1Unpaired ? 1 : (t.swissCurrentRound || (swissRoundsList.length ? parseInt(swissRoundsList[swissRoundsList.length - 1].replace(/\D/g, '')) : 1));
   let totalRounds = t.swissRounds || 4;
   let curRoundMatches = isRoundBased ? allMatches.filter(m => m.round === 'Round ' + curRound) : [];
   let curRoundDone = isRoundBased && curRoundMatches.length > 0 && curRoundMatches.every(m => m.b === 'BYE' || m.a === 'BYE' || (m.as !== '' && m.as != null && m.bs !== '' && m.bs != null));
@@ -27892,18 +27889,19 @@ function Matches(){
   let canPairNext = isRoundBased && curRoundDone && !swissStageOver && (curRound < totalRounds) && (inContention.length > 0);
 
   let visibleSections = isRoundBased
-    ? (matchGroupTab === 'all' ? swissRoundsList : swissRoundsList.filter(r => r === matchGroupTab))
+    ? (isRound1Unpaired ? [] : (matchGroupTab === 'all' ? swissRoundsList : swissRoundsList.filter(r => r === matchGroupTab)))
     : (matchGroupTab === 'all' ? groups : groups.filter(g => g === matchGroupTab));
 
   let modActions = (canManageTournament(t) && t.status === 'ONGOING' && t.phase !== 'topcut') ? (
     isRoundBased ? `
       <div style="display:flex;align-items:center;flex-wrap:wrap;gap:8px">
-        ${canPairNext ? `<button class="btn" style="padding:6px 13px;font-size:11px;background:#2563eb" onclick="pairSwissNextRound()">🎲 Pair Round ${curRound + 1}${isLeague ? '' : ` (${inContention.length} active)`}</button>` : ''}
+        ${isRound1Unpaired ? `<button class="btn" style="padding:6px 14px;font-size:11px;background:#2563eb;font-weight:800" onclick="openSwissRoundDrawCeremony('${jsArg(t.id)}', 1)">🎩 Draw Round 1 Pairings</button>` : ''}
+        ${canPairNext ? `<button class="btn" style="padding:6px 13px;font-size:11px;background:#2563eb;font-weight:800" onclick="pairSwissNextRound()">🎲 Pair Round ${curRound + 1}${isLeague ? '' : ` (${inContention.length} active)`}</button>` : ''}
         ${swissStageOver ? `<button class="btn" style="padding:6px 13px;font-size:11px;background:#10b981;border-color:#34d399" onclick="endFirstPhase()">🏆 End ${stageLabel} · Start Top Cut</button>` : ''}
-        <button class="btn ghost" style="padding:6px 11px;font-size:11px" onclick="repairCurrentSwissRound()">🎲 Re-pair Round ${curRound}</button>
+        ${!isRound1Unpaired ? `<button class="btn ghost" style="padding:6px 11px;font-size:11px" onclick="repairCurrentSwissRound()">🎲 Re-pair Round ${curRound}</button>` : ''}
         <button class="btn ghost" style="padding:6px 11px;font-size:11px" onclick="addCustom()">⚡ Custom match</button>
-        <button class="btn ghost" style="padding:6px 11px;font-size:11px;color:#ff9ba1;border-color:#4a242a" onclick="resetGroupStageScores()">➔ Reset scores</button>
-        ${!swissStageOver && !canPairNext && !curRoundDone ? `<button class="btn ghost" style="padding:6px 13px;font-size:11px" onclick="endFirstPhase()">🏆 Conclude ${stageLabel}</button>` : ''}
+        ${!isRound1Unpaired ? `<button class="btn ghost" style="padding:6px 11px;font-size:11px;color:#ff9ba1;border-color:#4a242a" onclick="resetGroupStageScores()">➔ Reset scores</button>` : ''}
+        ${!swissStageOver && !canPairNext && !curRoundDone && !isRound1Unpaired ? `<button class="btn ghost" style="padding:6px 13px;font-size:11px" onclick="endFirstPhase()">🏆 Conclude ${stageLabel}</button>` : ''}
       </div>
     ` : `
       <div style="display:flex;align-items:center;flex-wrap:wrap;gap:8px">
@@ -27976,7 +27974,25 @@ function Matches(){
       </div>
 
       <div>
-        ${visibleSections.map(sec => {
+        ${isRound1Unpaired ? `
+          <div class="card" style="padding:44px 24px;text-align:center;background:linear-gradient(180deg,#1c1b26 0%,#121218 100%);border:1px dashed #3a3a4e;border-radius:14px;margin-bottom:24px;box-shadow:0 8px 30px rgba(0,0,0,0.5)">
+            <div class="hat-emblem" style="font-size:56px;margin-bottom:10px;cursor:pointer" onclick="${canManageTournament(t) ? `openSwissRoundDrawCeremony('${jsArg(t.id)}', 1)` : ''}">🎩</div>
+            <div class="eyebrow" style="color:var(--amber);margin-bottom:4px;letter-spacing:1px">${stageLabel.toUpperCase()} · ROUND 1 FIXTURES</div>
+            <h2 style="font:900 28px 'Barlow Condensed';letter-spacing:.6px;text-transform:uppercase;color:#f5f3f0;margin:4px 0 10px">
+              Round 1 Matchups Not Yet Drawn
+            </h2>
+            <p class="sub" style="margin:8px auto 22px;max-width:500px;font-size:13px;color:#a09fa8;line-height:1.6">
+              All ${t.players.length} coaches are set for the ${stageLabel}. Conduct the live Hat Draw Ceremony to pull competitors from the hat and reveal the opening round pairings!
+            </p>
+            ${canManageTournament(t) ? `
+              <button class="btn" style="padding:12px 28px;font-weight:900;font-size:14px" onclick="openSwissRoundDrawCeremony('${jsArg(t.id)}', 1)">
+                🎩 Start Live Hat Draw · Pair Round 1 →
+              </button>
+            ` : `
+              <div style="font-size:12.5px;color:#8e8c95;font-weight:600">Awaiting tournament manager to conduct the live Round 1 draw ceremony.</div>
+            `}
+          </div>
+        ` : visibleSections.map(sec => {
           let sMatches = isRoundBased ? (t.matches || []).filter(m => (m.round || 'Round 1') === sec) : (t.matches || []).filter(m => (m.group || 'Group A') === sec);
           let filtered = sMatches.filter(filterMatch);
           let sReported = sMatches.filter(m => m.b === 'BYE' || m.a === 'BYE' || (m.as !== '' && m.as != null && m.bs !== '' && m.bs != null)).length;
@@ -28016,6 +28032,20 @@ function matchesView(t=activeT(), editable=canManageTournament(t)){
   if(!t) return '';
   if(isRoundBasedStage1(t)){
     let allMatches = t.matches || [];
+    let isRound1Unpaired = (allMatches.filter(m => (m.round || '').includes('Round 1')).length === 0);
+    if(isRound1Unpaired){
+      let stageLabel = getStage1Label(t);
+      return `
+        <div class="card" style="padding:36px 20px;text-align:center;background:#141419;border:1px dashed #363648;border-radius:12px">
+          <div style="font-size:44px;margin-bottom:8px">🎩</div>
+          <div style="font:900 22px 'Barlow Condensed';color:#ffd166;letter-spacing:.5px;text-transform:uppercase">${stageLabel} · Round 1 Fixtures</div>
+          <p class="sub" style="margin:6px auto 18px;max-width:440px;font-size:12.5px;color:#a09fa8">
+            Round 1 matchups will be revealed during the live Hat Draw Ceremony.
+          </p>
+          ${editable ? `<button class="btn" style="padding:10px 22px;font-weight:900;font-size:13px" onclick="openSwissRoundDrawCeremony('${jsArg(t.id)}', 1)">🎩 Draw Round 1 Pairings →</button>` : ''}
+        </div>
+      `;
+    }
     let rounds = Array.from(new Set(allMatches.map(m => m.round || 'Round 1'))).sort((a,b) => {
       let na = parseInt(a.replace(/\D/g, '')) || 0;
       let nb = parseInt(b.replace(/\D/g, '')) || 0;
@@ -37340,6 +37370,419 @@ function commitGroupDrawCeremony(){
 
   persistLeague();
   closeGroupDrawCeremony();
+  current = 'Matches';
+  render();
+}
+
+/* ============================================================
+   SWISS & LEAGUE PHASE LIVE ROUND HAT DRAW CEREMONY
+   ============================================================ */
+
+window.roundDrawCeremonyState = null;
+
+function openSwissRoundDrawCeremony(tId, targetRoundNum, isRepair = false){
+  let t = tournamentData[tId] || (viewTournament ? tournamentData[viewTournament] : null) || ongoingT() || activeT();
+  if(!t) return;
+  if(!canManageTournament(t)){
+    alert('Round pairing ceremonies are only available to tournament managers and moderators.');
+    return;
+  }
+  let isLeague = isLeaguePhase(t);
+  let stageLabel = getStage1Label(t);
+  let roundNum = Math.max(1, Number(targetRoundNum) || 1);
+
+  // Generate official pairings for this round
+  let generatedMatches = isLeague ? generateLeaguePhaseRound(t, roundNum) : generateSwissRound(t, roundNum);
+  if(!generatedMatches || generatedMatches.length === 0){
+    alert(`No further active pairings needed for Round ${roundNum}.`);
+    return;
+  }
+
+  // Map into ceremony fixture objects
+  let fixtures = generatedMatches.map((m, idx) => {
+    let isBye = (m.b === 'BYE');
+    return {
+      matchId: m.id,
+      index: idx + 1,
+      match: m,
+      isBye: isBye,
+      p1: m.a,
+      p2: m.b,
+      drawnP1: null,
+      drawnP2: isBye ? 'BYE' : null,
+      isComplete: false
+    };
+  });
+
+  // Build sequential draw steps: Side 1, then Side 2 for each fixture
+  let drawSteps = [];
+  fixtures.forEach((f, fIdx) => {
+    if(f.isBye){
+      drawSteps.push({ fixtureIdx: fIdx, side: 1, player: f.p1, isBye: true });
+    } else {
+      drawSteps.push({ fixtureIdx: fIdx, side: 1, player: f.p1, isBye: false });
+      drawSteps.push({ fixtureIdx: fIdx, side: 2, player: f.p2, isBye: false });
+    }
+  });
+
+  // Candidate pool of coaches involved in this round for the suspense ticker
+  let coachesInRound = fixtures.flatMap(f => f.isBye ? [f.p1] : [f.p1, f.p2]);
+
+  window.roundDrawCeremonyState = {
+    tournamentId: t.id,
+    roundNum: roundNum,
+    isRepair: Boolean(isRepair),
+    stageLabel: stageLabel,
+    isLeague: isLeague,
+    fixtures: fixtures,
+    drawSteps: drawSteps,
+    coachesInRound: coachesInRound,
+    currentStepIdx: 0,
+    isDrawing: false,
+    autoTimer: null,
+    latestRevealed: null
+  };
+
+  renderRoundDrawCeremonyModal();
+}
+
+function renderRoundDrawCeremonyModal(){
+  let state = window.roundDrawCeremonyState;
+  if(!state) return;
+  let t = tournamentData[state.tournamentId] || activeT();
+  if(!t) return;
+
+  let totalSteps = state.drawSteps.length;
+  let currentStep = state.currentStepIdx;
+  let isComplete = currentStep >= totalSteps;
+  let completedFixtures = state.fixtures.filter(f => f.isComplete).length;
+  let totalFixtures = state.fixtures.length;
+
+  let modalHtml = `
+    <div class="modal-wrap">
+      <div class="modal round-draw-ceremony-modal" style="background:#111116;border:1px solid #363648;border-radius:14px;box-shadow:0 24px 70px rgba(0,0,0,0.9);padding:24px">
+        <div class="modal-head" style="border-bottom:1px solid #232330;padding-bottom:12px;margin-bottom:16px">
+          <div>
+            <div class="eyebrow" style="color:var(--amber);letter-spacing:1px">🎩 Live Tournament Ceremony · ${esc(state.stageLabel)}</div>
+            <h2 style="font:900 26px 'Barlow Condensed';margin:2px 0 0;color:#f5f3f0">${esc(t.name)} · Round ${state.roundNum} Pairing Draw</h2>
+          </div>
+          <button class="close" onclick="closeRoundDrawCeremony()">×</button>
+        </div>
+
+        <!-- Center Hat Stage -->
+        <div class="hat-stage" id="roundHatDrawStage">
+          ${renderRoundHatStageContent(state, t)}
+        </div>
+
+        <!-- Fixture Cards Grid -->
+        <div class="round-draw-grid">
+          ${state.fixtures.map((f, fIdx) => {
+            let nextStep = !isComplete ? state.drawSteps[state.currentStepIdx] : null;
+            let isActive = nextStep && (nextStep.fixtureIdx === fIdx);
+            let isDone = f.isComplete;
+            let wpA = (f.drawnP1 && f.drawnP2 && f.drawnP2 !== 'BYE') ? Math.round(winChance(f.drawnP1, f.drawnP2, t) * 100) : null;
+            let wpB = wpA != null ? (100 - wpA) : null;
+
+            return `
+              <div class="round-fixture-card ${isActive ? 'is-active-target' : (isDone ? 'is-complete' : '')}">
+                <div style="display:flex;justify-content:space-between;align-items:center;padding-bottom:6px;border-bottom:1px solid #242432">
+                  <span style="font:900 16px 'Barlow Condensed';color:${isActive ? '#ffd166' : (isDone ? '#4bdd91' : '#f5f3f0')}">MATCH #${f.index} · ROUND ${state.roundNum}</span>
+                  ${isDone ? `<span class="tag safe" style="font-size:10px">✓ LOCKED</span>` : (isActive ? `<span class="tag hunt" style="font-size:10px">🎯 IN THE HAT</span>` : `<span class="tag" style="background:#1a1a24;color:#8e8c95;font-size:10px">WAITING</span>`)}
+                </div>
+
+                <div style="display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:8px">
+                  <!-- Side 1 -->
+                  <div>
+                    ${f.drawnP1 ? renderCeremonyCoachCard(f.drawnP1, t, state.latestRevealed?.player === f.drawnP1) : `
+                      <div class="draw-slot-card empty ${isActive && nextStep.side === 1 ? 'active-target' : ''}">
+                        <span>${isActive && nextStep.side === 1 ? '🎯 Next In Hat' : 'Slot 1'}</span>
+                      </div>
+                    `}
+                  </div>
+
+                  <!-- VS or BYE Indicator -->
+                  <div style="text-align:center;padding:0 4px">
+                    ${f.isBye ? `
+                      <span class="tag safe" style="font:800 11px 'Barlow Condensed';padding:3px 7px;letter-spacing:.4px">BYE ➔ 2-0</span>
+                    ` : (f.drawnP1 && f.drawnP2 ? `
+                      <div style="display:flex;flex-direction:column;align-items:center;gap:2px">
+                        <span class="nyt-vs-tag" style="background:#2a1418;color:#ff8e95;border:1px solid #5a2028;font-weight:900;padding:2px 7px;border-radius:4px;font-size:11px">VS</span>
+                        <span style="font:800 10px 'Barlow Condensed';color:#a09fa8;letter-spacing:.3px">${wpA}%–${wpB}%</span>
+                      </div>
+                    ` : `
+                      <span class="nyt-vs-tag" style="opacity:.4">VS</span>
+                    `)}
+                  </div>
+
+                  <!-- Side 2 -->
+                  <div>
+                    ${f.isBye ? `
+                      <div class="draw-slot-card" style="opacity:.7;justify-content:center;background:#15151e;border-color:#2a2a3c;color:#94a3b8;font-weight:800;font-size:12px">
+                        BYE (Free Win)
+                      </div>
+                    ` : (f.drawnP2 ? renderCeremonyCoachCard(f.drawnP2, t, state.latestRevealed?.player === f.drawnP2) : `
+                      <div class="draw-slot-card empty ${isActive && nextStep.side === 2 ? 'active-target' : ''}">
+                        <span>${isActive && nextStep.side === 2 ? '🎯 Next In Hat' : 'Slot 2'}</span>
+                      </div>
+                    `)}
+                  </div>
+                </div>
+              </div>
+            `;
+          }).join('')}
+        </div>
+
+        <!-- Footer Actions -->
+        <div class="creator-actions" style="margin-top:20px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;border-top:1px solid #232330;padding-top:16px">
+          <div style="display:flex;gap:8px">
+            <button class="btn ghost btn-sm" onclick="resetRoundDrawCeremony()">🔄 Reset Hat</button>
+            <button class="btn ghost btn-sm" onclick="instantFillRemainingRoundDraw()">⚡ Fast-Forward All</button>
+          </div>
+
+          <div style="display:flex;gap:8px;align-items:center">
+            <button class="btn ghost" onclick="closeRoundDrawCeremony()">Cancel</button>
+            <button class="btn" style="${isComplete ? 'background:#10b981;border-color:#34d399;font-weight:900;padding:10px 24px' : 'opacity:.5;pointer-events:none'}" ${!isComplete ? 'disabled' : ''} onclick="commitRoundDrawCeremony()">
+              ${isComplete ? `💾 Confirm & Publish Round ${state.roundNum} Matches →` : `Draw all matches (${completedFixtures}/${totalFixtures})`}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+
+  document.querySelector('#modal').innerHTML = modalHtml;
+}
+
+function renderCeremonyCoachCard(p, t, isLatest = false){
+  let faceArt = profilePictures[p] ? `url('${esc(profilePictures[p])}')` : (teamCovers[p] ? `url('${esc(teamCovers[p])}')` : fallbackArt(p));
+  let faceLetter = (profilePictures[p] || teamCovers[p]) ? '' : esc((p || '?')[0]);
+  let ovrObj = calculatePlayerOVR(p);
+  return `
+    <div class="draw-slot-card ${isLatest ? 'draw-revealed-card' : ''}" style="${isLatest ? 'border-color:#4bdd91;box-shadow:0 0 16px rgba(75,221,145,0.25)' : ''}">
+      <div style="display:flex;align-items:center;gap:7px;min-width:0">
+        <span class="avatar mini" style="background-image:${faceArt};background-size:cover;background-position:center;width:26px;height:26px;border-radius:50%;display:grid;place-items:center;border:1px solid ${ovrObj.color};font-size:10px;flex:none">${faceLetter}</span>
+        <div style="min-width:0">
+          <div style="font:800 13.5px 'Barlow Condensed';color:#f5f3f0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(p)}</div>
+          <div style="font-size:10px;color:#8e8c95;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(teamName(t, p))}</div>
+        </div>
+      </div>
+      ${ovrObj.badgeHtml}
+    </div>
+  `;
+}
+
+function renderRoundHatStageContent(state, t){
+  let isComplete = state.currentStepIdx >= state.drawSteps.length;
+  let remainingSteps = state.drawSteps.length - state.currentStepIdx;
+
+  if(isComplete){
+    return `
+      <div>
+        <div style="font-size:52px;margin-bottom:6px">🏆</div>
+        <div style="font:900 24px 'Barlow Condensed';color:#4bdd91;letter-spacing:.6px">ROUND ${state.roundNum} PAIRINGS COMPLETE!</div>
+        <p class="sub" style="margin:4px auto 14px;max-width:500px;font-size:12px;color:#d8d6e0">All ${state.fixtures.length} matchups for Round ${state.roundNum} have been drawn from the hat and locked in.</p>
+        <button class="btn" style="background:#10b981;border-color:#34d399;font-weight:900;padding:10px 26px;font-size:13px" onclick="commitRoundDrawCeremony()">
+          💾 Save & Publish Round ${state.roundNum} Matches →
+        </button>
+      </div>
+    `;
+  }
+
+  let nextStep = state.drawSteps[state.currentStepIdx];
+  let nextFixture = state.fixtures[nextStep.fixtureIdx];
+  let promptText = nextStep.isBye
+    ? `Next Draw: Match #${nextFixture.index} Bye Recipient`
+    : (nextStep.side === 1 ? `Next Draw: Match #${nextFixture.index} (First Coach)` : `Next Draw: Match #${nextFixture.index} (Opponent for ${esc(nextFixture.drawnP1)})`);
+
+  let latestHtml = '';
+  if(state.latestRevealed && !state.isDrawing){
+    let rev = state.latestRevealed;
+    let p = rev.player;
+    let faceArt = profilePictures[p] ? `url('${esc(profilePictures[p])}')` : (teamCovers[p] ? `url('${esc(teamCovers[p])}')` : fallbackArt(p));
+    let faceLetter = (profilePictures[p] || teamCovers[p]) ? '' : esc((p || '?')[0]);
+    let ovrObj = calculatePlayerOVR(p);
+
+    let subMsg = rev.type === 'bye'
+      ? `<span style="color:#4ade80">Awarded Round ${state.roundNum} Bye (Automatic 2–0 Win)</span>`
+      : (rev.type === 'complete'
+          ? `<span style="color:#ffd166">⚔️ Locked vs ${esc(rev.opponent)} for Match #${rev.matchIdx}</span>`
+          : `Drawn for Match #${rev.matchIdx} · Awaiting Opponent`);
+
+    latestHtml = `
+      <div style="margin-top:12px;display:inline-flex;align-items:center;gap:12px;background:#181822;border:1px solid #3d2d38;border-radius:10px;padding:8px 16px" class="draw-revealed-card">
+        <span class="avatar" style="background-image:${faceArt};background-size:cover;background-position:center;width:40px;height:40px;border-radius:50%;display:grid;place-items:center;border:2px solid ${ovrObj.color};font-size:15px">${faceLetter}</span>
+        <div style="text-align:left">
+          <div style="font-size:10.5px;font-weight:800;text-transform:uppercase">${subMsg}</div>
+          <div style="font:900 17px 'Barlow Condensed';color:#f5f3f0">${esc(p)} <span style="font-size:12px;color:#a09fa8">(${esc(teamName(t, p))})</span></div>
+        </div>
+        ${ovrObj.badgeHtml}
+      </div>
+    `;
+  }
+
+  return `
+    <div>
+      <div class="hat-emblem ${state.isDrawing ? 'drawing' : ''}" onclick="${state.isDrawing ? '' : 'drawNextRoundCoach()'}">
+        🎩
+      </div>
+      <div style="font:800 20px 'Barlow Condensed';color:#ffd166;letter-spacing:.5px;margin-top:6px" id="roundHatTickerName">
+        ${state.isDrawing ? 'Drawing from the hat...' : `Hat contains ${remainingSteps} remaining pick${remainingSteps === 1 ? '' : 's'}`}
+      </div>
+      <div style="font-size:12px;color:#a09fa8;margin-top:2px">
+        ${promptText}
+      </div>
+
+      ${latestHtml}
+
+      <div style="display:flex;justify-content:center;gap:10px;margin-top:16px;flex-wrap:wrap">
+        <button class="btn" style="padding:10px 24px;font-weight:900;font-size:13px" ${state.isDrawing ? 'disabled style="opacity:.5"' : ''} onclick="drawNextRoundCoach()">
+          🎩 Draw Next Name
+        </button>
+        ${state.autoTimer ? `
+          <button class="btn ghost" style="color:#ff8e95;border-color:#5c242c" onclick="pauseAutoRoundDraw()">⏸️ Pause Show</button>
+        ` : `
+          <button class="btn ghost" style="border-color:#ffd166;color:#ffd166" ${state.isDrawing ? 'disabled' : ''} onclick="startAutoRoundDraw()">⚡ Auto-Draw Show (2.5s)</button>
+        `}
+      </div>
+    </div>
+  `;
+}
+
+function drawNextRoundCoach(){
+  let state = window.roundDrawCeremonyState;
+  if(!state || state.isDrawing || state.currentStepIdx >= state.drawSteps.length) return;
+
+  state.isDrawing = true;
+  let hatEl = document.querySelector('.round-draw-ceremony-modal .hat-emblem');
+  let tickerEl = document.getElementById('roundHatTickerName');
+  if(hatEl) hatEl.classList.add('drawing');
+
+  let step = state.drawSteps[state.currentStepIdx];
+  let pool = state.coachesInRound;
+  let startTime = Date.now();
+  let totalShuffleDuration = 2200; // 2.2s of dramatic suspense per draw
+
+  function tickShuffle(){
+    if(!state.isDrawing) return;
+    let elapsed = Date.now() - startTime;
+    if(elapsed >= totalShuffleDuration){
+      if(hatEl) hatEl.classList.remove('drawing');
+
+      let f = state.fixtures[step.fixtureIdx];
+      if(step.side === 1){
+        f.drawnP1 = step.player;
+        if(step.isBye){
+          f.drawnP2 = 'BYE';
+          f.isComplete = true;
+          state.latestRevealed = { type: 'bye', player: step.player, matchIdx: f.index, opponent: null };
+        } else {
+          state.latestRevealed = { type: 'p1', player: step.player, matchIdx: f.index, opponent: null };
+        }
+      } else {
+        f.drawnP2 = step.player;
+        f.isComplete = true;
+        state.latestRevealed = { type: 'complete', player: step.player, matchIdx: f.index, opponent: f.drawnP1 };
+      }
+
+      state.currentStepIdx++;
+      state.isDrawing = false;
+      renderRoundDrawCeremonyModal();
+
+      if(state.autoTimer && state.currentStepIdx < state.drawSteps.length){
+        state.autoTimer = setTimeout(drawNextRoundCoach, 700);
+      } else if(state.currentStepIdx >= state.drawSteps.length){
+        pauseAutoRoundDraw();
+      }
+      return;
+    }
+
+    let randomIdx = Math.floor(Math.random() * pool.length);
+    let samplePlayer = pool[randomIdx];
+    if(tickerEl){
+      if(elapsed < 1100){
+        tickerEl.textContent = `🎩 ${samplePlayer}...`;
+      } else if(elapsed < 1700){
+        tickerEl.textContent = `✨ ${samplePlayer}...`;
+      } else {
+        tickerEl.textContent = `⭐ ${samplePlayer}?!`;
+      }
+    }
+
+    let nextDelay = 60;
+    if(elapsed > 1800) nextDelay = 200;
+    else if(elapsed > 1400) nextDelay = 130;
+    else if(elapsed > 900) nextDelay = 80;
+
+    setTimeout(tickShuffle, nextDelay);
+  }
+
+  tickShuffle();
+}
+
+function startAutoRoundDraw(){
+  let state = window.roundDrawCeremonyState;
+  if(!state || state.currentStepIdx >= state.drawSteps.length) return;
+  state.autoTimer = true;
+  drawNextRoundCoach();
+}
+
+function pauseAutoRoundDraw(){
+  let state = window.roundDrawCeremonyState;
+  if(state && state.autoTimer){
+    clearTimeout(state.autoTimer);
+    state.autoTimer = null;
+    renderRoundDrawCeremonyModal();
+  }
+}
+
+function instantFillRemainingRoundDraw(){
+  let state = window.roundDrawCeremonyState;
+  if(!state) return;
+  pauseAutoRoundDraw();
+
+  state.fixtures.forEach(f => {
+    f.drawnP1 = f.p1;
+    f.drawnP2 = f.p2;
+    f.isComplete = true;
+  });
+  state.currentStepIdx = state.drawSteps.length;
+  state.isDrawing = false;
+  state.latestRevealed = null;
+  renderRoundDrawCeremonyModal();
+}
+
+function resetRoundDrawCeremony(){
+  let state = window.roundDrawCeremonyState;
+  if(!state) return;
+  pauseAutoRoundDraw();
+  openSwissRoundDrawCeremony(state.tournamentId, state.roundNum, state.isRepair);
+}
+
+function closeRoundDrawCeremony(){
+  pauseAutoRoundDraw();
+  window.roundDrawCeremonyState = null;
+  closeModal();
+}
+
+function commitRoundDrawCeremony(){
+  let state = window.roundDrawCeremonyState;
+  if(!state) return;
+  let t = tournamentData[state.tournamentId] || activeT();
+  if(!t || !canManageTournament(t)) return;
+
+  pauseAutoRoundDraw();
+
+  if(state.isRepair){
+    t.matches = (t.matches || []).filter(m => m.round !== 'Round ' + state.roundNum);
+  }
+  let newMatches = state.fixtures.map(f => f.match);
+  t.matches = (t.matches || []).concat(newMatches);
+  t.swissCurrentRound = Math.max(t.swissCurrentRound || 1, state.roundNum);
+  delete t.oddsSnapshot;
+
+  rebuildAllPlayerStats();
+  persistLeague();
+  closeRoundDrawCeremony();
   current = 'Matches';
   render();
 }
