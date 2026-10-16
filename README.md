@@ -24,11 +24,17 @@ Format: `v[MAJOR].[MINOR].[PATCH]` — Major = major system overhauls, Minor = n
       - `⚡ SLEEPER` (Amber): Lower-middle underdogs flying under the radar with key fixture upset ability.
       - `🎲 LONG SHOT` (Slate): Bottom-tier underdogs facing steep mathematical odds ($\le 8\%$ or bottom seeds in the group).
     - **Balanced Tier Representation**: Eliminated tier clumping (where groups previously collapsed into 5 Dark Horses and 0 Long Shots) by anchoring tier assignments to relative group position and cutline proximity rather than loose global thresholds.
-  - **Calibrated Top Contender Emphasis & Lower Tier Realism Model**:
-    - Calibrated baseline power scaling (`(ovr - 76) * 8.0`) and match win probability soft caps (`[0.20, 0.80]` baseline with logistic divider `135`), establishing clear competitive separation:
-      - **Top Contenders**: Top seeds hold commanding ~60–63% cut odds and ~37–41% #1 seed equity.
-      - **Lower-Rated Coaches Toned Down**: Underdogs and sleepers drop to realistic pre-tournament cut equity (~4–14% cut, ~1–4% #1 seed equity), preventing lower-rated teams from holding unrealistic double-digit #1 seed probabilities.
-    - Preserved rapid live-form takeover once actual match results are reported, allowing tournament form to instantly supersede pre-tournament expectations.
+  - **Balanced Competitor Parity & Realistic Odds Distribution Model**:
+    - **Balanced Baseline Power & Smoother Logistic Curve**:
+      - Calibrated baseline power scaling to `(ovr - 76) * 4.5` and smoothed the match logistic divider to `175`, preventing top seeds from accumulating overwhelming rating differentials that produce compound monopolies.
+      - Tempered stage 1 form weighting (`(form.w - form.l) * 18 + (gw - gl) * 5` in Top Cut) so tournament momentum remains impactful without overriding playoff unpredictability.
+    - **Realistic Match Win Probability Soft Caps (`[0.31, 0.69]`)**:
+      - Replaced extreme blowouts (which previously reached 85% single-match win probabilities) with realistic esports/sports soft caps (`[0.33, 0.67]`, expanding up to `[0.31, 0.69]` with established form). Even the heaviest favorites retain at most a ~69% match win probability, ensuring underdogs always hold a realistic ~31% upset potential.
+    - **Even, High-Parity Championship & Playoff Projections**:
+      - **Top Contenders**: Top seeds hold strong, realistic title equity (~28–35% Title, ~50–55% Finals), eliminating previous 94%+ two-player monopolies.
+      - **Contenders & Dark Horses**: Mid-tier qualifiers hold vibrant, meaningful odds (~7–16% Title, ~20–34% Finals).
+      - **Underdogs & Sleepers**: Lower seeds hold realistic puncher's equity (~2–5% Title, ~6–11% Finals) rather than collapsing to the 0.5% floor.
+    - **Checksum Version Bump (v5)**: Bumped checksum version to `v5` and PRNG seeds to `-cherrymoon-odds-v5` / `-cherrymoon-topcut-v3` to automatically invalidate older snapshots and recompute with balanced parity.
   - **Intuitive Sports Status Badges (Cryptic `E#` Numbers Eliminated)**:
     - Replaced confusing mathematical elimination numbers (`E#1`, `E#2`) with clear, human-readable race statuses:
       - `✓ CLINCHED`: Playoff spot mathematically secured.

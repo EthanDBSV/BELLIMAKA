@@ -26013,13 +26013,12 @@ function getPlayerTournamentPower(p, tourn, cachedLeagueRecs){
     }
   }
 
-  // Calibrated Pre-Tournament Baseline + Live Tournament Form Takeover
-  // Calibrated Pre-Tournament Baseline + Live Tournament Form Takeover
-  // (ovr - 76) * 8.0 establishes clear tier separation: top contenders (93 OVR Ozy) hold ~60-63% cut odds,
-  // while lower-rated coaches drop to true underdog equity (~4-14% cut, ~1-4% #1 seed).
-  let basePower = 1000 + (ovr - 76) * 8.0;
-  let stage1FormDiff = (form.w - form.l) * 52 + (form.gw - form.gl) * 18;
-  let topCutFormDiff = (tcForm.w - tcForm.l) * 40 + (tcForm.gw - tcForm.gl) * 14;
+  // Balanced Competitor Parity Model:
+  // (ovr - 76) * 4.5 gives realistic tier separation without allowing top teams to monopolize simulations.
+  // In-tournament form provides meaningful momentum without rendering brackets deterministic.
+  let basePower = 1000 + (ovr - 76) * 4.5;
+  let stage1FormDiff = (form.w - form.l) * 18 + (form.gw - form.gl) * 5;
+  let topCutFormDiff = (tcForm.w - tcForm.l) * 22 + (tcForm.gw - tcForm.gl) * 6;
   let power = basePower + stage1FormDiff + topCutFormDiff;
   let gamesPlayed = (form.w + form.l) + (tcForm.w + tcForm.l);
 
@@ -26035,10 +26034,10 @@ function computeCalibratedMatchWinProb(powA, powB){
   let gamesA = powA?.gamesPlayed || 0;
   let gamesB = powB?.gamesPlayed || 0;
   let avgGames = (gamesA + gamesB) / 2;
-  // Soft cap expands from [0.20, 0.80] at 0 games played up to [0.15, 0.85] as in-tournament form is established
-  let maxEdge = Math.min(0.85, 0.80 + Math.min(4, avgGames) * 0.015);
+  // Parity-calibrated soft cap [0.33, 0.67] expands slightly up to [0.31, 0.69] as in-tournament form is established
+  let maxEdge = Math.min(0.69, 0.67 + Math.min(4, avgGames) * 0.005);
   let minEdge = 1 - maxEdge;
-  let prob = 1 / (1 + Math.exp(-diff / 135));
+  let prob = 1 / (1 + Math.exp(-diff / 175));
   return Math.max(minEdge, Math.min(maxEdge, prob));
 }
 
@@ -27073,7 +27072,7 @@ function getTournamentOddsChecksum(t){
     ? t.bracketManagerData.match.map(m => [m.id, m.status, m.opponent1?.id, m.opponent1?.score, m.opponent1?.result, m.opponent2?.id, m.opponent2?.score, m.opponent2?.result])
     : [];
   return JSON.stringify({
-    v: 4,
+    v: 5,
     id: t.id,
     phase: t.phase || 'group',
     status: t.status || 'ONGOING',
@@ -27109,10 +27108,10 @@ function getOrComputeTournamentOdds(t){
   }
 
   // 2. Compute deterministically with a seeded PRNG based on the tournament state checksum
-  let prng = createPrng(key + '-cherrymoon-odds-v4');
+  let prng = createPrng(key + '-cherrymoon-odds-v5');
   let sim = simulateTournamentOdds(t, 2500, prng);
   let topCutSim = (t.phase === 'topcut' || t.bracketManagerData)
-    ? simulateTopCutBracketOdds(t, 2500, createPrng(key + '-cherrymoon-topcut-v2'))
+    ? simulateTopCutBracketOdds(t, 2500, createPrng(key + '-cherrymoon-topcut-v3'))
     : {};
 
   let data = {};
