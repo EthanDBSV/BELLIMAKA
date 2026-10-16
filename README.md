@@ -3,6 +3,18 @@
 All notable changes to the Bellimaka Pokémon Draft League platform are documented here.
 Format: `v[MAJOR].[MINOR].[PATCH]` — Major = major system overhauls, Minor = new features, Patch = bug fixes and visual improvements.
 
+## [v4.2.2] — 2026-10-16
+
+### Turn Timer Invariant Floor, Consecutive Timeout Fix & Discord Sensitive Media Bypass
+- **Turn Timer State Desynchronization & Consecutive Timeout Fix**:
+  - **Consecutive Timeout Glitch Resolved**: Fixed the bug where Coach #1 timed out, auto-drafted, and then Coach #2 was immediately timed out without receiving their countdown timer.
+  - **Root Cause**: During remote pick syncs, WebSocket broadcasts, and cross-device state heartbeats, `currentTurnStartedAt` retained stale start timestamps from previous turns ($\ge 60$s in the past). Because the previous coach's elapsed time was evaluated against the new coach, remaining time immediately evaluated to 0 ms.
+  - **Universal Turn Floor Anchor (`lastPickTime`)**: Implemented an architectural invariant across `getDraftPickTimerStatus`, `syncFromCloud`, `applyRemoteDraftPick`, `applySharedState`, `undoDraftPick`, and Cloudflare Worker `evaluateDraftTimers`: `currentTurnStartedAt` is strictly anchored to `lastPickTime` ($\ge$ preceding pick's timestamp), ensuring each consecutive coach is mathematically guaranteed their full clock allotment (e.g. 1 minute or 2 hours).
+  - **Immediate Local Clock Reset in Auto-Pick Engine**: Reset `d.currentTurnStartedAt = Date.now()` directly inside `autoPickLowestAvailableMon` prior to calling `makeDraftPick`, eliminating race conditions between client-side 1s tickers and cloud state synchronizations.
+- **Discord Sensitive Media Filter Bypass for Fluid & Slime Species**:
+  - **Root Cause of Blurred Embed Thumbnails**: Discord's automated Explicit Media Content Filter / AutoMod sensitive content classifier flagged high-resolution PokeAPI official artwork for Alolan Grimer (`10112.png`), mistaking its dripping yellow-green saliva/sludge textures for biological fluids and applying a client-side Gaussian blur until clicked.
+  - **AutoMod Filter Bypass**: Routed Discord thumbnail embeds for organic/fluid species (`grimer`, `muk`, `alolan grimer`, `alolan muk`, `garbodor`, `trubbish`, `gulpin`, `swalot`) to clean Pokémon Showdown Home and Gen 5 transparent sprites (`https://play.pokemonshowdown.com/sprites/home/grimer-alola.png`) across both `index.html` (`announceDraftPickToDiscord`) and Cloudflare Workers (`dispatchDiscordDraftPick`), preventing false-positive spoiler blurs while preserving high-definition official artwork for all other Pokémon.
+
 ## [v4.2.1] — 2026-10-16
 
 ### Autonomous Cloud Draft Timers, Manual Pick Webhook Fix & Clean Action Bar

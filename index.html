@@ -17905,7 +17905,8 @@ async function announceDraftPickToDiscord(t, pickObj, nextTurn){
     let teamCount = (t.rosters?.[pickObj.player] || []).length;
     let maxSlots = stats?.maxSlots || d?.maxRosterSize || t?.draftData?.maxRosterSize || 10;
     let remainingBudget = stats ? stats.remainingBudget : null;
-    let rawArt = (typeof getPokemonArtworkUrl === 'function' ? getPokemonArtworkUrl(pickObj.pokemon) : '') || '';
+    let isProneToDiscordBlur = /grimer|muk|garbodor|trubbish|swalot|gulpin/i.test(pickObj.pokemon || '');
+    let rawArt = (!isProneToDiscordBlur && typeof getPokemonArtworkUrl === 'function') ? getPokemonArtworkUrl(pickObj.pokemon) : '';
     let artworkUrl = (rawArt && (rawArt.startsWith('http://') || rawArt.startsWith('https://'))) ? rawArt : '';
     if(!artworkUrl && typeof pokeSprite === 'function'){
       let sp = pokeSprite(pickObj.pokemon);
@@ -20575,6 +20576,12 @@ function applySharedState(data){
         if((isEditingOrder || isRecentOrderAction) && locT.draftData.order?.length){
           incT.draftData.order = [...locT.draftData.order];
         }
+
+        let lastPickTime = (incT.draftData.picks && incT.draftData.picks.length) ? (incT.draftData.picks[incT.draftData.picks.length - 1]?.timestamp || 0) : 0;
+        if(!incT.draftData.currentTurnStartedAt || (lastPickTime > 0 && incT.draftData.currentTurnStartedAt < lastPickTime)){
+          incT.draftData.currentTurnStartedAt = lastPickTime || Date.now();
+          incT.draftData.currentTurnElapsedActiveMs = 0;
+        }
       }
 
       // Preserve local replay logs and stats if incoming tournament happens to have empty logs/stats
@@ -20990,6 +20997,11 @@ function applyRemoteDraftPick(payload){
     }
   }
 
+  let lastPickTime = (d.picks && d.picks.length) ? (d.picks[d.picks.length - 1]?.timestamp || 0) : 0;
+  d.currentTurnStartedAt = Math.max(Number(payload.timestamp || 0), lastPickTime, Date.now());
+  d.currentTurnElapsedActiveMs = 0;
+  d.lastTimerTickAt = Date.now();
+
   if(payload.rosters && typeof payload.rosters === 'object'){
     t.rosters = payload.rosters;
   } else {
@@ -21200,7 +21212,25 @@ async function syncFromCloud(force = false){
               if(hasPickDiff || hasStatusDiff || hasOrderDiff){
                 if(hasPickDiff){
                   localD.picks = remotePicks;
+                  let lastPickTime = (remotePicks && remotePicks.length) ? (remotePicks[remotePicks.length - 1]?.timestamp || 0) : 0;
+                  if(dJson.draft.currentTurnStartedAt && dJson.draft.currentTurnStartedAt >= lastPickTime){
+                    localD.currentTurnStartedAt = dJson.draft.currentTurnStartedAt;
+                  } else {
+                    localD.currentTurnStartedAt = lastPickTime || Date.now();
+                  }
+                  localD.currentTurnElapsedActiveMs = dJson.draft.currentTurnElapsedActiveMs || 0;
+                  localD.lastTimerTickAt = Date.now();
                 }
+                if(dJson.draft.currentTurnStartedAt && (!localD.currentTurnStartedAt || dJson.draft.currentTurnStartedAt > localD.currentTurnStartedAt)){
+                  localD.currentTurnStartedAt = dJson.draft.currentTurnStartedAt;
+                }
+                if(dJson.draft.timerEnabled !== undefined) localD.timerEnabled = dJson.draft.timerEnabled;
+                if(dJson.draft.timePerPickMinutes !== undefined) localD.timePerPickMinutes = dJson.draft.timePerPickMinutes;
+                if(dJson.draft.activeStart !== undefined) localD.activeStart = dJson.draft.activeStart;
+                if(dJson.draft.activeEnd !== undefined) localD.activeEnd = dJson.draft.activeEnd;
+                if(dJson.draft.timezone !== undefined) localD.timezone = dJson.draft.timezone;
+                if(dJson.draft.timerPaused !== undefined) localD.timerPaused = dJson.draft.timerPaused;
+                if(dJson.draft.frozenRemainingMs !== undefined) localD.frozenRemainingMs = dJson.draft.frozenRemainingMs;
                 if(hasStatusDiff){
                   localD.status = dJson.draft.status;
                 }
@@ -41456,8 +41486,11 @@ function getDraftPickTimerStatus(t){
   let now = Date.now();
   let inActiveWindow = isDraftTimerInActiveWindow(t, new Date(now));
 
-  if(!d.currentTurnStartedAt){
-    d.currentTurnStartedAt = now;
+  let lastPickTime = (d.picks && d.picks.length) ? (d.picks[d.picks.length - 1]?.timestamp || 0) : 0;
+  if(!d.currentTurnStartedAt || (lastPickTime > 0 && d.currentTurnStartedAt < lastPickTime)){
+    d.currentTurnStartedAt = lastPickTime || now;
+    d.currentTurnElapsedActiveMs = 0;
+    d.lastTimerTickAt = now;
   }
 
   let elapsedActiveMs = calculateActiveMsBetween(d.currentTurnStartedAt, now, d.activeStart, d.activeEnd);
@@ -41562,6 +41595,10 @@ function autoPickLowestAvailableMon(t, targetPlayer){
     lowestTierCandidates.sort((a, b) => a.pokemon.localeCompare(b.pokemon));
     let pickIndex = (turn?.currentPickNumber || 1);
     let chosen = lowestTierCandidates[pickIndex % lowestTierCandidates.length];
+
+    d.currentTurnStartedAt = Date.now();
+    d.currentTurnElapsedActiveMs = 0;
+    d.lastTimerTickAt = Date.now();
 
     makeDraftPick(t.id, chosen.pokemon, player, { autoReason: 'timeout' });
     return chosen;
@@ -43797,6 +43834,11 @@ function undoDraftPick(tId){
       t.draftData.status = 'active';
     }
   }
+
+  let remainingLastPick = (t.draftData.picks && t.draftData.picks.length) ? t.draftData.picks[t.draftData.picks.length - 1] : null;
+  t.draftData.currentTurnStartedAt = remainingLastPick?.timestamp || Date.now();
+  t.draftData.currentTurnElapsedActiveMs = 0;
+  t.draftData.lastTimerTickAt = Date.now();
 
   window._lastLocalDraftActionTime = Date.now();
   persistLeague();
