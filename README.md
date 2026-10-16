@@ -70,18 +70,25 @@ Format: `v[MAJOR].[MINOR].[PATCH]` — Major = major system overhauls, Minor = n
     - Pairs with clean playoff win-loss record display (`Playoffs: 2-0`), omitting redundant stage 1 record strings.
   - **Full-Width Table Layout & What-If Rail Streamlining**:
     - Removed the cramped 2-column layout and the Phase 2 bracket What-If picker rail (as double-elimination brackets follow deterministic advancement paths without ambiguous tiebreakers), expanding the championship table to full 100% width.
-- **Swiss Stage & League Phase Live Hat Draw Pairing Ceremony (`openSwissRoundDrawCeremony`)**:
+- **Swiss Stage & League Phase Live Pokéball Matchmaker Pairing Ceremony (`openSwissRoundDrawCeremony`)**:
   - **Round 1 Match Concealment Until Button Pressed**:
     - Round 1 pairings in Swiss Stage and League Phase are no longer pre-generated or revealed automatically upon tournament creation or draft completion.
-    - The Matches list and tournament overview now display a prominent Hat Draw callout card (`🎩 Round 1 Matchups Not Yet Drawn`), keeping opening fixtures under wraps until the manager presses `🎩 Start Live Hat Draw · Pair Round 1 →`.
-  - **Animated Hat Draw Ceremony**:
-    - Features the signature wobbling top hat (`.hat-emblem.drawing`) with suspenseful decelerating coach name tickers (`🎩 Name... ✨ Name... ⭐ Name?!`).
-    - Draws coaches sequentially into fixtures: Coach 1 is drawn from the hat, followed by their opponent, locking in the matchup with dramatic pop-in animations (`.draw-revealed-card`), trainer avatars, team names, OVR badges, and head-to-head win probability readouts.
-    - Supports `BYE` draws for odd player pools with clear `✓ BYE WIN (2–0)` tagging.
+    - The Matches list and tournament overview now display a prominent Matchmaker callout card (`⚡ Round 1 Matchups Not Yet Generated`), keeping opening fixtures under wraps until the manager presses `⚡ Launch Matchmaker · Pair Round 1 →`.
+  - **Animated Pokéball Matchmaking Engine (Distinct from Hat Draw)**:
+    - Replaced the reused magician's top hat with a custom-engineered **Pokéball Matchmaking Terminal** (`.pokeball-matchmaker-container`).
+    - Features crisp dual-tone red/white vector SVG geometry, glowing orbital radar rings (`.pokeball-radar-ring`), electric arc sparks (`⚡`), high-speed scan vibration (`@keyframes pokeballScanPulse`), and futuristic frequency telemetry ticker (`⚡ Scanning trainer pool... 📡 Frequency lock... 🎯 Target acquired!`).
+    - Pairs coaches sequentially into fixtures: Coach 1 is locked into the chamber, followed by their opponent, confirming matchups with dramatic pop-in animations (`.draw-revealed-card`), trainer avatars, team names, OVR badges, and head-to-head win probability readouts.
+    - Supports `BYE` pairings for odd player pools with clear `✓ BYE WIN (2–0)` tagging.
   - **Ceremony Controls & Re-Pair Support**:
-    - **Interactive Draw Modes**: Manual `🎩 Draw Next Name`, animated `⚡ Auto-Draw Show (2.5s)`, or instant `⚡ Fast-Forward All`.
+    - **Interactive Pairing Modes**: Manual `⚡ Pair Next Coach`, animated `⚡ Auto-Pair Show (2.5s)`, or instant `⚡ Fast-Forward All`.
     - **Multi-Round Support**: Seamlessly triggers for pairing Round 1, generating subsequent rounds (`Pair Round X`), or re-pairing existing rounds (`Re-pair Round X`) before scores are locked.
     - **Safe Publish & Commit**: A reviewable match card grid with a green `💾 Confirm & Publish Round X Matches →` commit button ensures pairings are validated before persisting to the tournament schedule.
+- **Ceremony Fixture Card Frame Overflow Fix**:
+  - Enforced `grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr)` and strict `min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap` across all fixture cards, coach name blocks, and team sublines.
+  - Eliminates container frame breaching where long coach/team names (e.g. "5 Espurrs In A Trenchcoat") previously overflowed past the card boundaries.
+- **Hall of Fame Leaderboard & Badges Column Width Optimization**:
+  - **Constrained Accolades & Badges Width**: Limited the `Accolades & Badges` column (`max-width: 300px; width: 280px`) and styled desktop badge pills (`.badge-pill`) to a tighter, centered cluster, preventing badges from monopolizing over 500px of horizontal table space.
+  - **Single-Line Team Names**: Expanded the `Trainer / Team` column (`min-width: 220px; width: 240px`) and enforced `white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block` on `.team`, ensuring all team sublines ("Netanyahu's Ninetails", "Sapporo ScreamTails", "Palestine Piloswines", etc.) fit cleanly on a single line instead of breaking across multiple lines.
 - **Enhanced "What-If" Simulator Interactivity & Visual Fixes**:
   - **Table Highlight Fix (Gold Vertical Lines Removed)**: Fixed a browser rendering bug where `outline` applied to `<tr>` elements within collapsed tables drew vertical box outlines across all column cell borders. Replaced with an elegant background pulse animation (`@keyframes whatifPulseBg`) and an amber accent stripe on `td:first-child`.
   - **Dynamic Row Flash**: Toggling match outcomes in the What-If picker highlights affected coaches (both directly involved in the match and those whose odds shifted by $\ge 0.5\%$).
