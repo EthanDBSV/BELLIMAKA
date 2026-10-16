@@ -6610,19 +6610,52 @@ var SPECIAL_FORM_ARTWORK_IDS = window.SPECIAL_FORM_ARTWORK_IDS = {
   'meowstic-f-mega': 10326,
   'meowsticfmega': 10326,
 
-  // Female Forms (-F)
+  // Female Forms (-F) & Dimorphic Species
+  'indeedee': 876,
+  'indeedee-m': 876,
+  'indeedee-male': 876,
+  'indeedeem': 876,
+  'indeedeemale': 876,
   'indeedee-f': 10186,
   'indeedee-female': 10186,
   'indeedeef': 10186,
+  'indeedeefemale': 10186,
+  'meowstic': 678,
+  'meowstic-m': 678,
+  'meowstic-male': 678,
+  'meowsticm': 678,
+  'meowsticmale': 678,
   'meowstic-f': 10025,
   'meowstic-female': 10025,
   'meowsticf': 10025,
+  'meowsticfemale': 10025,
+  'oinkologne': 916,
+  'oinkologne-m': 916,
+  'oinkologne-male': 916,
+  'oinkolognem': 916,
+  'oinkolognemale': 916,
   'oinkologne-f': 10254,
   'oinkologne-female': 10254,
   'oinkolognef': 10254,
+  'oinkolognefemale': 10254,
+  'basculegion': 902,
+  'basculegion-m': 902,
+  'basculegion-male': 902,
+  'basculegionm': 902,
+  'basculegionmale': 902,
   'basculegion-f': 10248,
   'basculegion-female': 10248,
   'basculegionf': 10248,
+  'basculegionfemale': 10248,
+  'urshifu': 892,
+  'urshifu-single-strike': 892,
+  'urshifu-singlestrike': 892,
+  'urshifu-ss': 892,
+  'urshifuss': 892,
+  'urshifu-rapid-strike': 10191,
+  'urshifu-rapidstrike': 10191,
+  'urshifu-rs': 10191,
+  'urshifurs': 10191,
 
   // Regional forms - Alola
   'rattata-alola': 10091,
@@ -6885,7 +6918,12 @@ function getPokemonArtworkUrl(monName) {
     return pokeSprite(canonicalName);
   }
 
-  let dexEntry = typeof getPokemonShowdownData === 'function' ? getPokemonShowdownData(canonicalName) : null;
+  let dexEntry = typeof getPokemonShowdownData === 'function' ? (
+    getPokemonShowdownData(canonicalName) ||
+    getPokemonShowdownData(canonicalName.replace(/[-\s]+[mf]$/i, '')) ||
+    getPokemonShowdownData(resolvedSlug.replace(/[-\s]+[mf]$/i, '')) ||
+    getPokemonShowdownData(cleanRaw)
+  ) : null;
   if(dexEntry && dexEntry.num) {
     let url = "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/" + dexEntry.num + ".png";
     return (typeof _trimmedArtworkCache !== 'undefined' && _trimmedArtworkCache && _trimmedArtworkCache.get(url)) || url;
@@ -17867,6 +17905,7 @@ async function announceDraftPickToDiscord(t, pickObj, nextTurn){
     let teamCount = (t.rosters?.[pickObj.player] || []).length;
     let maxSlots = stats?.maxSlots || d?.maxRosterSize || t?.draftData?.maxRosterSize || 10;
     let remainingBudget = stats ? stats.remainingBudget : null;
+    let artworkUrl = (typeof getPokemonArtworkUrl === 'function' ? getPokemonArtworkUrl(pickObj.pokemon) : '') || '';
 
     let payload = {
       tournamentId: t.id,
@@ -17880,7 +17919,8 @@ async function announceDraftPickToDiscord(t, pickObj, nextTurn){
         teamCount: teamCount,
         maxSlots: maxSlots,
         remainingBudget: remainingBudget,
-        autoReason: pickObj.autoReason || null
+        autoReason: pickObj.autoReason || null,
+        spriteUrl: artworkUrl
       },
       nextTurn: nextTurn ? {
         player: nextTurn.player,
@@ -18365,7 +18405,7 @@ function shouldApply(incoming, force = false){
   let isRecentLocalBoardAction = (Date.now() - (window._lastLocalDraftBoardActionTime || 0)) < 15000;
   let hasPendingLocalEdits = isRecentLocalAction || isRecentLocalBoardAction || (syncTimer !== null);
 
-  if(((force && !hasPendingLocalEdits) || !window._initialCloudSyncCompleted || !moderator)){
+  if(!window._initialCloudSyncCompleted || ((force || !moderator) && !hasPendingLocalEdits)){
     window._initialCloudSyncCompleted = true;
     if(incoming.tournaments && Object.keys(incoming.tournaments).length > 0){
       knownRev = Math.max(knownRev, incomingRev);
@@ -20852,26 +20892,31 @@ function setupDraftRealtime(){
   let isDraftActive = Boolean(t && (t.phase === 'draft' || t.draftData?.status === 'active' || t.draftData?.status === 'paused'));
   let isViewingDraft = (current === 'Draft' || (typeof window !== 'undefined' && window.current === 'Draft') || (typeof detailTab !== 'undefined' && detailTab === 'Draft'));
 
-  // ONLY tear down if tournament is not in active draft phase OR user navigated away from Draft Room
-  if(!isDraftActive || !isViewingDraft){
+  // If no tournament is in draft phase or draft is completed, tear down
+  if(!isDraftActive){
     teardownDraftRealtime();
     return;
   }
 
-  // Prevent mobile screen from sleeping while coach is watching live draft
-  requestDraftWakeLock();
-
-  // Active pick clock interval
+  // Active pick clock interval: runs across the entire platform while draft is active
   if(typeof setupDraftCountdownTicker === 'function'){
     setupDraftCountdownTicker();
   }
 
-  // Active Draft Room polling: 2s interval with ultra-lightweight fast-path (0.4ms execution, zero DOM rebuilds)
-  let pollInterval = bType === 'cloudflare' ? 2000 : 4000;
+  // Prevent mobile screen from sleeping only while coach is directly inside the Draft Room
+  if(isViewingDraft){
+    requestDraftWakeLock();
+  } else {
+    releaseDraftWakeLock();
+  }
+
+  // Polling: 2s in active Draft Room, 3.5s on Home or other views
+  let pollInterval = isViewingDraft ? (bType === 'cloudflare' ? 2000 : 4000) : (bType === 'cloudflare' ? 3500 : 6000);
 
   if(!draftPollTimer){
     draftPollTimer = setInterval(() => {
-      if(current !== 'Draft' || isSandboxMode()){
+      let curT = (typeof ongoingT === 'function' ? ongoingT() : null) || (typeof activeT === 'function' ? activeT() : null);
+      if(!curT || (curT.phase !== 'draft' && curT.draftData?.status !== 'active') || isSandboxMode()){
         teardownDraftRealtime();
         return;
       }
@@ -21015,27 +21060,41 @@ function applyRemoteDraftControl(payload){
   render();
 }
 
-async function syncDraftStateToCloud(t){
-  if(!t || !t.id || (isSandboxMode() && !window.__MOCK_ENV__)) return;
+async function syncDraftStateToCloud(t, maxRetries = 2, options = {}){
+  if(!t || !t.id || (isSandboxMode() && !window.__MOCK_ENV__)) return false;
   let bType = getBackendType();
   if(bType === 'cloudflare'){
-    try {
-      let cfUrl = getCloudflareUrl();
-      let d = typeof ensureTournamentDraft === 'function' ? ensureTournamentDraft(t) : (t.draftData || t.draft);
-      await fetch(`${cfUrl}/api/draft`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          tournamentId: t.id,
-          draftData: d,
-          roster: (typeof roster !== 'undefined' ? roster : (t.rosters || {})),
-          updatedAt: Date.now()
-        })
-      });
-    } catch(e){
-      console.warn('Draftdex: Fast draft cloud sync deferred or failed', e);
+    let cfUrl = getCloudflareUrl();
+    let d = typeof ensureTournamentDraft === 'function' ? ensureTournamentDraft(t) : (t.draftData || t.draft);
+    let payload = JSON.stringify({
+      tournamentId: t.id,
+      draftData: d,
+      roster: (typeof roster !== 'undefined' ? roster : (t.rosters || {})),
+      rosters: t.rosters || {},
+      allowUndo: Boolean(options && (options.allowUndo || options.force)),
+      updatedAt: Date.now()
+    });
+
+    for(let attempt = 0; attempt <= maxRetries; attempt++){
+      try {
+        let res = await fetch(`${cfUrl}/api/draft`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: payload
+        });
+        if(res.ok){
+          return true;
+        }
+      } catch(e){
+        if(attempt === maxRetries){
+          console.warn('Draftdex: Fast draft cloud sync deferred or failed', e);
+        } else {
+          await new Promise(r => setTimeout(r, 350 * (attempt + 1)));
+        }
+      }
     }
   }
+  return false;
 }
 
 var isSyncingFromCloud = false;
@@ -21058,11 +21117,12 @@ async function syncFromCloud(force = false){
                (typeof ongoingT === 'function' ? ongoingT() : null);
     let isDraftActive = Boolean(curT && (curT.phase === 'draft' || curT.draftData?.status === 'active' || curT.draftData?.status === 'paused'));
     let isViewingDraft = (current === 'Draft' || (typeof window !== 'undefined' && window.current === 'Draft') || (typeof detailTab !== 'undefined' && detailTab === 'Draft'));
+    let isHome = (current === 'Home' || !current);
 
     if(bType === 'cloudflare'){
       let cfUrl = getCloudflareUrl();
-      // If viewing active draft, quickly check lightweight /api/draft endpoint (~2KB vs ~600KB)
-      if(isDraftActive && curT?.id && isViewingDraft){
+      // If viewing active draft or on Home during active draft, quickly check lightweight /api/draft endpoint (~2KB vs ~600KB)
+      if(isDraftActive && curT?.id && (isViewingDraft || isHome)){
         try {
           let timeoutSignal = undefined;
           try {
@@ -21292,6 +21352,18 @@ async function syncFromCloud(force = false){
     console.warn('Bellimaka sync error:', e);
   } finally {
     isSyncingFromCloud = false;
+    // Auto-pick evaluation on background cloud sync if draft timer expired
+    try {
+      let curT = (typeof ongoingT === 'function' ? ongoingT() : null) || (typeof activeT === 'function' ? activeT() : null);
+      if(curT && curT.draftData?.status === 'active' && curT.draftData?.timerEnabled && !curT.draftData?.timerPaused && !curT.draftData?._isAutoPicking){
+        let tStatus = typeof getDraftPickTimerStatus === 'function' ? getDraftPickTimerStatus(curT) : null;
+        if(tStatus && tStatus.inActiveWindow && tStatus.isExpired){
+          if(typeof autoPickLowestAvailableMon === 'function'){
+            autoPickLowestAvailableMon(curT, tStatus.player);
+          }
+        }
+      }
+    } catch(e){}
   }
 }
 
@@ -21301,12 +21373,15 @@ function handleAppForeground(forced = false){
   if(document.hidden || isSandboxMode()) return;
   let now = Date.now();
   let isDraftRoom = (current === 'Draft');
+  let curT = (typeof ongoingT === 'function' ? ongoingT() : null) || (typeof activeT === 'function' ? activeT() : null);
+  let isDraftActive = Boolean(curT && (curT.phase === 'draft' || curT.draftData?.status === 'active'));
+  let isDraftActiveView = isDraftRoom || (current === 'Home' && isDraftActive);
 
-  // If viewing the Draft Room, ALWAYS check immediately on wake (no delay!)
+  // If viewing the Draft Room or on Home during active draft, ALWAYS check immediately on wake (no delay!)
   // If viewing static tabs, throttle checks to at least 8 seconds between focus switches
-  if(forced || isDraftRoom || (now - lastCloudCheckTime > 8000)){
+  if(forced || isDraftActiveView || (now - lastCloudCheckTime > 8000)){
     lastCloudCheckTime = now;
-    syncFromCloud(isDraftRoom);
+    syncFromCloud(isDraftActiveView);
   }
   setupLeagueStateRealtime();
   setupDraftRealtime();
@@ -21317,8 +21392,10 @@ document.addEventListener('visibilitychange', () => {
     handleAppForeground(false);
     if(current === 'Draft') requestDraftWakeLock();
   } else {
-    // Only tear down draft polling if user navigated away from Draft tab (do not kill timer on mobile screen dims!)
-    if(current !== 'Draft'){
+    // Only tear down draft polling if draft is not active and not on Draft tab
+    let curT = (typeof ongoingT === 'function' ? ongoingT() : null) || (typeof activeT === 'function' ? activeT() : null);
+    let isDraftActive = Boolean(curT && (curT.phase === 'draft' || curT.draftData?.status === 'active'));
+    if(!isDraftActive && current !== 'Draft'){
       teardownDraftRealtime();
     }
     teardownLeagueStateRealtime();
@@ -23954,6 +24031,13 @@ function draftStageHeroCard(t){
               </div>
               <div style="font:800 20px 'Barlow Condensed';color:#fff;line-height:1.15;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${turn.isComplete ? 'Draft Completed' : esc(curPlayer)}</div>
               <div style="font-size:12px;color:#a09fa8;line-height:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${turn.isComplete ? `Ready for ${getStage1Label(t)}` : esc(teamName(t, curPlayer))}</div>
+              ${d?.timerEnabled && !turn.isComplete && d.status === 'active' ? `
+                <div style="margin-top:6px;display:flex;align-items:center;gap:6px">
+                  <span class="tag draft-timer-badge" id="homeDraftCountdownBadge" style="${getDraftTimerBadgeStyle(t, d)}">
+                    ${getDraftTimerBadgeHtml(t, d)}
+                  </span>
+                </div>
+              ` : ''}
             </div>
           </div>
 
@@ -24116,6 +24200,34 @@ function Home(){
     ? `style="background-image:url('${esc(t.backgroundImage)}');background-size:cover;background-position:center"`
     : '';
 
+  let topDraftTimerText = '';
+  let topDraftTimerStyle = '';
+  if(isDraftPhase && t.draftData?.timerEnabled && !turn?.isComplete && t.draftData?.status === 'active'){
+    if(t.draftData.timerPaused){
+      topDraftTimerText = 'Paused';
+      topDraftTimerStyle = 'background:#282014;border:1px solid #b45309;color:#ffd166';
+    } else {
+      let tStatus = typeof getDraftPickTimerStatus === 'function' ? getDraftPickTimerStatus(t) : null;
+      if(!tStatus || !tStatus.inActiveWindow){
+        topDraftTimerText = `Paused (Resumes ${tStatus?.activeStart || '09:00'})`;
+        topDraftTimerStyle = 'background:#2e2208;border:1px solid #d97706;color:#fbbf24';
+      } else {
+        let totalSec = Math.max(0, Math.floor((tStatus.remainingMs || 0) / 1000));
+        let hrs = Math.floor(totalSec / 3600);
+        let mins = Math.floor((totalSec % 3600) / 60);
+        let secs = totalSec % 60;
+        let timeStr = `${hrs > 0 ? hrs + 'h ' : ''}${String(mins).padStart(2, '0')}m ${String(secs).padStart(2, '0')}s`;
+        topDraftTimerText = `${timeStr} Remaining`;
+        let urgent = (totalSec <= 300);
+        topDraftTimerStyle = `background:${urgent ? '#3e1418' : '#2a1b1e'};border:1px solid ${urgent ? '#ef4444' : '#ef3038'};color:${urgent ? '#fca5a5' : '#ff858b'}`;
+      }
+    }
+  }
+
+  if(isDraftPhase && t.draftData?.status === 'active'){
+    setTimeout(setupDraftCountdownTicker, 50);
+  }
+
   return head(t.season + ': ' + t.name, 'Current Tournament', actions) + `
     <!-- Top In-Season Showcase & Primetime Hero with Right-Aligned Metrics -->
     <section class="in-season-hero">
@@ -24127,6 +24239,11 @@ function Home(){
             <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
               <span class="status"><i></i>${isDraftPhase ? 'DRAFT ROOM LIVE' : (isTopCutPhase ? 'TOP CUT PLAYOFFS LIVE' : (isLeaguePhase(t) ? 'LEAGUE PHASE LIVE' : (isSwissStage(t) ? 'SWISS STAGE LIVE' : 'GROUP STAGE LIVE')))}</span>
               <span class="status status-grey">${esc(t.season ? t.season.toUpperCase() : 'IN-SEASON')}</span>
+              ${isDraftPhase && t.draftData?.timerEnabled && !turn?.isComplete && t.draftData?.status === 'active' ? `
+                <span class="status" style="${topDraftTimerStyle};font-weight:800;display:inline-flex;align-items:center;gap:5px">
+                  ⏳ <span id="homeTopDraftTimerText">${esc(topDraftTimerText)}</span>
+                </span>
+              ` : ''}
             </div>
 
             <div style="display:flex;flex-direction:column;align-items:flex-start;text-align:left">
@@ -41436,13 +41553,40 @@ function autoPickLowestAvailableMon(t, targetPlayer){
 
     let minCost = Math.min(...candidates.map(c => c.cost));
     let lowestTierCandidates = candidates.filter(c => c.cost === minCost);
-    let chosen = lowestTierCandidates[Math.floor(Math.random() * lowestTierCandidates.length)];
+    // Sort deterministically by Pokémon name so concurrent client timeouts pick the exact same Pokémon
+    lowestTierCandidates.sort((a, b) => a.pokemon.localeCompare(b.pokemon));
+    let pickIndex = (turn?.currentPickNumber || 1);
+    let chosen = lowestTierCandidates[pickIndex % lowestTierCandidates.length];
 
     makeDraftPick(t.id, chosen.pokemon, player, { autoReason: 'timeout' });
     return chosen;
   } finally {
     d._isAutoPicking = false;
   }
+}
+
+function getDraftTimerBadgeStyle(t, d){
+  if(!d || !d.timerEnabled) return 'display:none';
+  if(d.timerPaused) return 'background:#282014;border:1px solid #b45309;color:#ffd166;font-weight:800;font-size:11px;padding:3px 8px;border-radius:6px';
+  let tStatus = typeof getDraftPickTimerStatus === 'function' ? getDraftPickTimerStatus(t) : null;
+  if(!tStatus || !tStatus.inActiveWindow) return 'background:#2e2208;border:1px solid #d97706;color:#fbbf24;font-weight:800;font-size:11px;padding:3px 8px;border-radius:6px';
+  let totalSec = Math.floor((tStatus.remainingMs || 0) / 1000);
+  let urgent = totalSec <= 300;
+  return `background:${urgent ? '#3e1418' : '#2a1b1e'};border:1px solid ${urgent ? '#ef4444' : '#ef3038'};color:${urgent ? '#fca5a5' : '#ff858b'};font-weight:800;font-size:11px;padding:3px 8px;border-radius:6px`;
+}
+
+function getDraftTimerBadgeHtml(t, d){
+  if(!d || !d.timerEnabled) return '';
+  if(d.timerPaused) return '⏸️ <b>Timer Paused</b> (By Director)';
+  let tStatus = typeof getDraftPickTimerStatus === 'function' ? getDraftPickTimerStatus(t) : null;
+  if(!tStatus) return '';
+  if(!tStatus.inActiveWindow) return `⏸️ Paused (Resumes at ${esc(tStatus.activeStart || '09:00')})`;
+  let totalSec = Math.max(0, Math.floor((tStatus.remainingMs || 0) / 1000));
+  let hrs = Math.floor(totalSec / 3600);
+  let mins = Math.floor((totalSec % 3600) / 60);
+  let secs = totalSec % 60;
+  let timeStr = `${hrs > 0 ? hrs + 'h ' : ''}${String(mins).padStart(2, '0')}m ${String(secs).padStart(2, '0')}s`;
+  return `⏳ <b>${timeStr}</b> Remaining`;
 }
 
 function setupDraftCountdownTicker(){
@@ -41454,13 +41598,19 @@ function setupDraftCountdownTicker(){
             (typeof activeT === 'function' ? activeT() : null);
     if(!t || !t.draftData || t.draftData.status !== 'active' || !t.draftData.timerEnabled) return;
 
+    let badge = document.getElementById('draftCountdownBadge');
+    let homeBadge = document.getElementById('homeDraftCountdownBadge');
+    let topBadge = document.getElementById('homeTopDraftTimerText');
+
     if(t.draftData.timerPaused){
-      let badge = document.getElementById('draftCountdownBadge');
-      if(badge){
-        badge.innerHTML = `⏸️ <b>Timer Paused</b> (By Director)`;
-        badge.style.background = '#282014';
-        badge.style.borderColor = '#b45309';
-        badge.style.color = '#ffd166';
+      let text = `⏸️ <b>Timer Paused</b> (By Director)`;
+      let bg = '#282014', border = '#b45309', color = '#ffd166';
+      if(badge){ badge.innerHTML = text; badge.style.background = bg; badge.style.borderColor = border; badge.style.color = color; }
+      if(homeBadge){ homeBadge.innerHTML = `⏸️ <b>Timer Paused</b>`; homeBadge.style.background = bg; homeBadge.style.borderColor = border; homeBadge.style.color = color; }
+      if(topBadge){
+        topBadge.textContent = 'Paused';
+        let p = topBadge.parentElement;
+        if(p){ p.style.background = bg; p.style.borderColor = border; p.style.color = color; }
       }
       return;
     }
@@ -41468,30 +41618,44 @@ function setupDraftCountdownTicker(){
     let status = getDraftPickTimerStatus(t);
     if(!status || !status.isActive) return;
 
-    let badge = document.getElementById('draftCountdownBadge');
-    if(badge){
-      if(!status.inActiveWindow){
-        badge.innerHTML = `⏸️ Paused (Resumes at ${status.activeStart})`;
-        badge.style.background = '#2e2208';
-        badge.style.borderColor = '#d97706';
-        badge.style.color = '#fbbf24';
-      } else {
-        let totalSec = Math.floor(status.remainingMs / 1000);
-        let hrs = Math.floor(totalSec / 3600);
-        let mins = Math.floor((totalSec % 3600) / 60);
-        let secs = totalSec % 60;
-        let timeStr = `${hrs > 0 ? hrs + 'h ' : ''}${String(mins).padStart(2, '0')}m ${String(secs).padStart(2, '0')}s`;
+    if(!status.inActiveWindow){
+      let text = `⏸️ Paused (Resumes at ${status.activeStart})`;
+      let bg = '#2e2208', border = '#d97706', color = '#fbbf24';
+      if(badge){ badge.innerHTML = text; badge.style.background = bg; badge.style.borderColor = border; badge.style.color = color; }
+      if(homeBadge){ homeBadge.innerHTML = `⏸️ Paused (Resumes ${status.activeStart})`; homeBadge.style.background = bg; homeBadge.style.borderColor = border; homeBadge.style.color = color; }
+      if(topBadge){
+        topBadge.textContent = `Paused (Resumes ${status.activeStart})`;
+        let p = topBadge.parentElement;
+        if(p){ p.style.background = bg; p.style.borderColor = border; p.style.color = color; }
+      }
+    } else {
+      let totalSec = Math.floor(status.remainingMs / 1000);
+      let hrs = Math.floor(totalSec / 3600);
+      let mins = Math.floor((totalSec % 3600) / 60);
+      let secs = totalSec % 60;
+      let timeStr = `${hrs > 0 ? hrs + 'h ' : ''}${String(mins).padStart(2, '0')}m ${String(secs).padStart(2, '0')}s`;
 
+      let urgent = (totalSec <= 300);
+      let bg = urgent ? '#3e1418' : '#2a1b1e';
+      let border = urgent ? '#ef4444' : '#ef3038';
+      let color = urgent ? '#fca5a5' : '#ff858b';
+
+      if(badge){
         badge.innerHTML = `⏳ <b>${timeStr}</b> Remaining`;
-        if(totalSec <= 300){
-          badge.style.background = '#3e1418';
-          badge.style.borderColor = '#ef4444';
-          badge.style.color = '#fca5a5';
-        } else {
-          badge.style.background = '#2a1b1e';
-          badge.style.borderColor = '#ef3038';
-          badge.style.color = '#ff858b';
-        }
+        badge.style.background = bg;
+        badge.style.borderColor = border;
+        badge.style.color = color;
+      }
+      if(homeBadge){
+        homeBadge.innerHTML = `⏳ <b>${timeStr}</b> Remaining`;
+        homeBadge.style.background = bg;
+        homeBadge.style.borderColor = border;
+        homeBadge.style.color = color;
+      }
+      if(topBadge){
+        topBadge.textContent = `${timeStr} Remaining`;
+        let p = topBadge.parentElement;
+        if(p){ p.style.background = bg; p.style.borderColor = border; p.style.color = color; }
       }
     }
 
@@ -43750,6 +43914,11 @@ function undoDraftPick(tId){
   render();
   showDraftToast('Draft pick was undone');
 
+  // Fast lightweight draft state sync with allowUndo
+  if(typeof syncDraftStateToCloud === 'function'){
+    syncDraftStateToCloud(t, 2, { allowUndo: true });
+  }
+
   if(draftRealtimeChannel){
     try {
       draftRealtimeChannel.send({
@@ -43956,20 +44125,8 @@ function DraftRoom(t){
       timerBadge = `<span class="tag" style="background:#3d2c12;border-color:#f59e0b;color:#f59e0b">⏸️ Draft Paused</span>`;
     } else if(d.status === 'completed'){
       timerBadge = '';
-    } else if(d.timerPaused){
-      timerBadge = `<span class="tag" id="draftCountdownBadge" style="background:#282014;border:1px solid #b45309;color:#ffd166;font-weight:800;font-size:11px;padding:3px 8px;border-radius:6px">⏸️ <b>Timer Paused</b> (By Director)</span>`;
     } else {
-      let tStatus = getDraftPickTimerStatus(t);
-      if(!tStatus.inActiveWindow){
-        timerBadge = `<span class="tag" id="draftCountdownBadge" style="background:#2e2208;border:1px solid #d97706;color:#fbbf24;font-weight:800;font-size:11px;padding:3px 8px;border-radius:6px">⏸️ Paused (Resumes at ${esc(tStatus.activeStart)})</span>`;
-      } else {
-        let totalSec = Math.floor(tStatus.remainingMs / 1000);
-        let hrs = Math.floor(totalSec / 3600);
-        let mins = Math.floor((totalSec % 3600) / 60);
-        let secs = totalSec % 60;
-        let timeStr = `${hrs > 0 ? hrs + 'h ' : ''}${String(mins).padStart(2, '0')}m ${String(secs).padStart(2, '0')}s`;
-        timerBadge = `<span class="tag" id="draftCountdownBadge" style="background:#2a1b1e;border:1px solid #ef3038;color:#ff858b;font-weight:800;font-size:11px;padding:3px 8px;border-radius:6px">⏳ <b>${timeStr}</b> Remaining</span>`;
-      }
+      timerBadge = `<span class="tag" id="draftCountdownBadge" style="${getDraftTimerBadgeStyle(t, d)}">${getDraftTimerBadgeHtml(t, d)}</span>`;
     }
   }
 

@@ -3,6 +3,35 @@
 All notable changes to the Bellimaka Pokémon Draft League platform are documented here.
 Format: `v[MAJOR].[MINOR].[PATCH]` — Major = major system overhauls, Minor = new features, Patch = bug fixes and visual improvements.
 
+## [v4.2.0] — 2026-10-16
+
+### Live Draft Countdown Timer, Multi-Surface Sync & Discord Pick Webhooks
+- **Multi-Surface Live Draft Pick Countdown Timer**:
+  - **Synchronous Cross-Platform Ticker (`setupDraftCountdownTicker`)**:
+    - Embedded synchronized, real-time pick timers across multiple high-visibility surfaces: the **Draft Room HUD** (`#draftCountdownBadge`), the **Home Page Primetime Hero Dock** (`#homeDraftCountdownBadge`), and the **Home Header Status Badges** (`#homeTopDraftTimerText`).
+    - Dynamic visual feedback states:
+      - **Running**: Dark burgundy badge with bold crimson borders (`#2a1b1e` / `#ef3038`).
+      - **Urgent Warning ($\le 5\text{m}$)**: Deep ruby pulsing alert with vibrant red accents (`#3e1418` / `#ef4444`) to alert on-the-clock coaches.
+      - **Director Paused**: Warm amber badge (`#282014` / `#b45309`) when a moderator pauses the draft timer.
+      - **Outside Operating Window**: Muted bronze badge (`#2e2208` / `#d97706`) displaying exact resumption time (e.g., `Paused (Resumes at 09:00)`).
+  - **Automatic Render Lifecycle Scheduling**: Both `Home()` and `DraftRoom()` automatically trigger and refresh the countdown ticker on component mounting.
+- **Resilient Cloud Draft Syncing & Rollback Protection**:
+  - **Lightweight `/api/draft` Micro-Payloads**: Direct Cloudflare Worker KV synchronization for `draftData` and `rosters` (< 2KB), polling every 2s in Draft Room and 3.5s on Home.
+  - **Local Action Stale-Read Shielding (`hasPendingLocalEdits`)**: Prevented non-moderator coaches on mobile from having their freshly submitted picks clobbered by stale edge cache reads before cloud workers register the write.
+  - **Moderator Undo Pick Cloud Propagation (`allowUndo`)**:
+    - Connected `undoDraftPick` to immediate cloud sync with the `allowUndo` flag.
+    - Updated Cloudflare Worker's stale draft rollback check to honor intentional moderator undos, eliminating state reverts from concurrent polling clients.
+- **Deterministic Timeout Auto-Pick Engine**:
+  - **Desynchronization Prevention (`autoPickLowestAvailableMon`)**: When pick timers expire across multiple active browser sessions, available candidates within the lowest cost tier are sorted alphabetically by Pokémon name and chosen via `currentPickNumber` modulo indexing.
+  - Guarantees that all concurrent client browsers select the exact same Pokémon without diverging.
+- **Discord Draft Pick Announcements & Dimorphic Artwork Resolution**:
+  - **Rich Webhook Pick Alerts (`/api/discord/announce-pick`)**:
+    - Rich embed messages announcing picks to Discord channels with round and pick numbers, coach mentions (`<@id>`), remaining budget, roster count progress, and official Pokémon artwork.
+    - Added dedicated pings notifying the next on-the-clock coach with their active round and pick numbers, and automated draft completion celebrations.
+  - **Worker Strict-Mode Scope Fix**: Declared `nextCoachMention` and `contentPing` within block scope in Cloudflare Workers to prevent `ReferenceError` during webhook delivery.
+  - **Gender-Dimorphic & Form Artwork Lookup (`SPECIAL_FORM_ARTWORK_IDS`)**:
+    - Robust PokeAPI official artwork resolution for gender-dimorphic species (Indeedee, Meowstic, Basculegion, Oinkologne) matching male (`-m`, `876`, `678`, `902`, `916`) and female (`-f`, `10186`, `10025`, `10248`, `10254`) forms, with automatic Pokemon Showdown sprite fallbacks.
+
 ## [v4.1.0] — 2026-10-15
 
 ### Broadcast Playoff Odds Overhaul, Modernized Projections & Visual System Refinements
