@@ -3,6 +3,26 @@
 All notable changes to the Bellimaka Pokémon Draft League platform are documented here.
 Format: `v[MAJOR].[MINOR].[PATCH]` — Major = major system overhauls, Minor = new features, Patch = bug fixes and visual improvements.
 
+## [v4.3.2] — 2026-10-16
+
+### Major Season Awards & All-Tournament Card Overhaul, Drawer Streamlining
+- **Pokémon Drawer Sidebar Streamlining**:
+  - Removed redundant `BST` pill from the "Base Stats" section header, preserving the clean Drafteon-style stat bar below it.
+  - Removed Bulbapedia external link, streamlining external reference controls into a single, clean full-width Smogon Strategy Dex action.
+- **Award Cards Visual Overhaul (Major Season Awards & All-Tournament Teams)**:
+  - **Centerpiece Artwork & Halo Spotlight (`.award-mon-stage`)**:
+    - Expanded artwork viewport height from 115px to **165px–175px**, increasing maximum Pokémon sprite scale from 105px to **155px–165px**.
+    - Embedded dynamic radial halo spotlight backdrops matched to each Pokémon's primary type with layered 3D ambient drop shadows (`filter: drop-shadow(0 10px 18px rgba(0,0,0,0.75))`).
+    - Added subtle hover lift and scale animations (`transform: scale(1.08) translateY(-4px)`).
+  - **Bold Proportional Typography**:
+    - Increased Pokémon name sizing from 22px to **`26px–28px`** (`clamp(20px, 2.2vw, 26px)` / `clamp(22px, 2.6vw, 28px)`) with crisp text drop shadows for instant visual hierarchy.
+  - **Structured Substats HUD Dock (`.award-substats-dock`)**:
+    - Replaced unstyled, bullet-separated plain text strings (`1.3 KOs/g • 352 Dmg/g • 35 Supp/g • 16 Games`) with a structured 4-column glass telemetry dock.
+    - Features high-visibility tabular numbers on top (`.award-substat-num`) and crisp micro uppercase labels underneath (`KOs/G`, `DMG/G`, `SUPP/G`, `GAMES` / `REG GP`, `MATCH MVPS`, `TOTAL KOS`, `AVG IMPACT`).
+    - Standardized row-wide height symmetry across all cards.
+  - **Card Frame & Atmosphere**:
+    - Upgraded card backgrounds with radial lighting, type-themed glowing borders, and inset highlights.
+
 ## [v4.3.1] — 2026-10-16
 
 ### Drafteon-Style Base Stats Drawer, Historical Pick Cost Preservation & Number Readability

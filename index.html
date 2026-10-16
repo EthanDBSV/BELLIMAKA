@@ -3218,9 +3218,15 @@ details[open] > .past-tourney-summary .past-chevron{transform:rotate(180deg);col
 .replay-dropzone.dragover{border-color:var(--red);background:rgba(255,89,100,0.08)}
 @media(max-width:768px){.replay-hub-modal{width:98vw;max-height:98vh}.replay-mvp-card{flex-direction:column;text-align:center}}
 .tots-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px;align-items:stretch}
-.tots-card{border-radius:14px;padding:22px 16px 18px;display:flex;flex-direction:column;align-items:center;text-align:center;position:relative;overflow:hidden;transition:all .2s ease;box-shadow:0 8px 24px rgba(0,0,0,0.35);height:100%}
-.tots-card:hover{transform:translateY(-4px);box-shadow:0 14px 36px rgba(0,0,0,0.55)}
-.tots-hero-box{width:100%;border-radius:10px;padding:12px 8px;margin:12px 0 10px;display:flex;flex-direction:column;align-items:center;justify-content:center;background:rgba(0,0,0,0.38);border:1px solid rgba(255,255,255,0.08);margin-top:auto}
+.tots-card{border-radius:14px;padding:18px 16px 16px;display:flex;flex-direction:column;align-items:center;text-align:center;position:relative;overflow:hidden;transition:all .22s cubic-bezier(0.16,1,0.3,1);box-shadow:0 8px 26px rgba(0,0,0,0.4);height:100%}
+.tots-card:hover{transform:translateY(-5px);box-shadow:0 16px 40px rgba(0,0,0,0.6)}
+.tots-card:hover .award-mon-stage img{transform:scale(1.08) translateY(-4px)}
+.tots-hero-box{width:100%;border-radius:9px;padding:9px 8px;margin:10px 0 6px;display:flex;flex-direction:column;align-items:center;justify-content:center;background:rgba(0,0,0,0.45);border:1px solid rgba(255,255,255,0.08);box-shadow:inset 0 1px 3px rgba(0,0,0,0.4);margin-top:auto}
+.award-substats-dock{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));width:100%;background:rgba(0,0,0,0.42);border:1px solid rgba(255,255,255,0.07);border-radius:8px;padding:6px 2px;margin-top:6px;box-shadow:inset 0 1px 3px rgba(0,0,0,0.4)}
+.award-substat-col{display:flex;flex-direction:column;align-items:center;justify-content:center;border-right:1px solid rgba(255,255,255,0.06);padding:0 2px;min-width:0}
+.award-substat-col:last-child{border-right:none}
+.award-substat-num{font:900 13.5px/1.1 'Barlow Condensed',sans-serif;color:#f1f5f9;letter-spacing:.3px;font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.award-substat-lbl{font:800 8.5px/1 'Barlow Condensed',sans-serif;color:#8e8c95;text-transform:uppercase;letter-spacing:.5px;margin-top:2px;white-space:nowrap}
 .award-role-badge{display:inline-flex;align-items:center;gap:3px;padding:2px 8px;border-radius:4px;font:800 11px 'Barlow Condensed',sans-serif;letter-spacing:.6px;text-transform:uppercase;background:rgba(156,163,175,0.12);border:1px solid rgba(156,163,175,0.3);color:#d1d5db;white-space:nowrap;flex-shrink:0}
 .award-leader-tag{display:inline-flex;align-items:center;gap:4px;padding:2px 7px;border-radius:4px;font:800 10px 'Barlow Condensed',sans-serif;letter-spacing:.6px;text-transform:uppercase;line-height:1.2;white-space:nowrap;flex-shrink:0}
 .award-leader-tag.tag-dmg{background:rgba(239,68,68,0.16);border:1px solid rgba(239,68,68,0.5);color:#fca5a5;box-shadow:0 0 8px rgba(239,68,68,0.15)}
@@ -14844,6 +14850,10 @@ function calculateTeamOfTheSeason(t) {
         tierIcon,
         slotNum,
         mon,
+        kpg,
+        dpg,
+        spg,
+        games: mon.games,
         statVal: formatImpactScore(mon.avgImpactScore),
         statUnit: 'Average Impact per Game',
         statBreakdown: `${kpg} KOs/g • ${dpg} Dmg/g • ${spg} Supp/g`,
@@ -14995,33 +15005,34 @@ function renderMajorAwardsCardsHtml(major, t, isCompact = false) {
         if(!mon) {
           return `
             <div class="tots-card" style="background:linear-gradient(180deg,#171720 0%,rgba(18,18,24,0.96) 100%);border-color:#2e2e3e">
-              <div style="display:flex;flex-direction:column;align-items:center;gap:3px;margin-bottom:6px">
-                <span style="font:800 10px 'Barlow Condensed';letter-spacing:.8px;text-transform:uppercase;padding:2px 8px;border-radius:4px;background:${item.badgeBg};color:${item.badgeColor};border:1px solid ${item.badgeBorder}">
+              <div style="display:flex;flex-direction:column;align-items:center;gap:4px;margin-bottom:6px">
+                <span style="font:900 11px 'Barlow Condensed';letter-spacing:1px;text-transform:uppercase;padding:3px 10px;border-radius:5px;background:${item.badgeBg};color:${item.badgeColor};border:1px solid ${item.badgeBorder}">
                   ${item.icon} ${item.categoryTitle}
                 </span>
-                <span style="font-size:10px;font-weight:800;color:#8e8c95;text-transform:uppercase;letter-spacing:.5px">
+                <span style="font-size:10px;font-weight:800;color:#8e8c95;text-transform:uppercase;letter-spacing:.6px">
                   ${item.roleTitle}
                 </span>
               </div>
-              <div style="font:900 22px 'Barlow Condensed';color:#8e8c95;letter-spacing:.5px;text-transform:uppercase;margin-top:2px">
+              <div style="font:900 24px 'Barlow Condensed';color:#8e8c95;letter-spacing:.6px;text-transform:uppercase;margin:4px 0">
                 Awaiting Decision
               </div>
-              <div style="width:100%;height:115px;display:flex;align-items:center;justify-content:center;margin:8px 0;opacity:0.4">
-                <span style="font-size:48px">${item.icon}</span>
+              <div class="award-mon-stage" style="width:100%;height:175px;display:flex;align-items:center;justify-content:center;margin:6px 0;opacity:0.35">
+                <span style="font-size:54px">${item.icon}</span>
               </div>
-              <div style="font-size:11px;color:#6b697b;margin-bottom:8px">\u2014</div>
-              <div class="tots-hero-box">
-                <div style="font:900 24px 'Barlow Condensed';line-height:1;color:#8e8c95">
+              <div class="tots-hero-box" style="margin-top:auto">
+                <div style="font:900 28px 'Barlow Condensed';line-height:1;color:#8e8c95">
                   ${item.statVal}
                 </div>
-                <div style="font-size:10px;font-weight:800;color:#6b697b;text-transform:uppercase;letter-spacing:.5px;margin-top:3px">
+                <div style="font-size:9.5px;font-weight:800;color:#6b697b;text-transform:uppercase;letter-spacing:.8px;margin-top:3px">
                   ${item.statUnit}
                 </div>
               </div>
-              <div style="font-size:11px;color:#6b697b;margin-top:4px">
-                ${item.subMetric}
+              <div class="award-substats-dock" style="opacity:0.5">
+                <div class="award-substat-col" style="grid-column:1 / -1">
+                  <span class="award-substat-num" style="font-size:11px;color:#8e8c95">${item.subMetric}</span>
+                </div>
               </div>
-              <div style="margin-top:8px;font-size:11px;color:#6b697b;width:100%;border-top:1px solid rgba(255,255,255,0.06);padding-top:8px">
+              <div style="margin-top:8px;font-size:11px;color:#6b697b;width:100%;border-top:1px solid rgba(255,255,255,0.06);padding-top:7px;display:flex;align-items:center;justify-content:center">
                 Coach: \u2014
               </div>
             </div>
@@ -15033,44 +15044,91 @@ function renderMajorAwardsCardsHtml(major, t, isCompact = false) {
         let theme = (typeof TYPE_THEMES !== 'undefined' && TYPE_THEMES[pType]) ? TYPE_THEMES[pType] : { bg: '#1c1c24', border: '#383847', glow: 'rgba(255,255,255,0.06)' };
         let sprite = (typeof getPokemonArtworkUrl === 'function' ? getPokemonArtworkUrl(mon.name) : null) || (typeof resolvePokemonData === 'function' ? resolvePokemonData(mon.name)?.sprite : null) || (typeof getPokemonSpriteUrl === 'function' ? getPokemonSpriteUrl(mon.name.toLowerCase()) : '') || mon.sprite || '';
 
+        let isFinals = item.key === 'finalsMvp';
+        let subDockHtml = isFinals ? `
+          <div class="award-substats-dock">
+            <div class="award-substat-col">
+              <span class="award-substat-num">${mon.games || 1}</span>
+              <span class="award-substat-lbl">FINALS GP</span>
+            </div>
+            <div class="award-substat-col">
+              <span class="award-substat-num">${mon.totalKills !== undefined ? mon.totalKills : (mon.kills || 0)}</span>
+              <span class="award-substat-lbl">FINALS KOS</span>
+            </div>
+            <div class="award-substat-col">
+              <span class="award-substat-num">${Math.round(mon.totalDamageDealt !== undefined ? mon.totalDamageDealt : (mon.damageDealt || 0))}</span>
+              <span class="award-substat-lbl">TOTAL DMG</span>
+            </div>
+            <div class="award-substat-col">
+              <span class="award-substat-num" style="color:#ffd166">CHAMP \uD83C\uDFC6</span>
+              <span class="award-substat-lbl">STATUS</span>
+            </div>
+          </div>
+        ` : `
+          <div class="award-substats-dock">
+            <div class="award-substat-col">
+              <span class="award-substat-num">${mon.regGames || mon.games || 0}</span>
+              <span class="award-substat-lbl">REG GP</span>
+            </div>
+            <div class="award-substat-col">
+              <span class="award-substat-num">${mon.regMatchMvps || mon.matchMvps || 0}</span>
+              <span class="award-substat-lbl">MATCH MVPS</span>
+            </div>
+            <div class="award-substat-col">
+              <span class="award-substat-num">${mon.regKills || mon.totalKills || 0}</span>
+              <span class="award-substat-lbl">TOTAL KOS</span>
+            </div>
+            <div class="award-substat-col">
+              <span class="award-substat-num">${formatImpactScore(mon.regAvgImpactScore || mon.avgImpactScore)}</span>
+              <span class="award-substat-lbl">AVG IMPACT</span>
+            </div>
+          </div>
+        `;
+
         return `
-          <div class="tots-card" style="background:linear-gradient(180deg, ${theme.bg} 0%, rgba(18,18,24,0.96) 100%);border-color:${theme.border || '#2e2e3e'};cursor:pointer" onclick="openPokemonDetailDrawer('${jsArg(mon.name)}')">
-            <div style="display:flex;flex-direction:column;align-items:center;gap:3px;margin-bottom:6px">
-              <span style="font:800 10px 'Barlow Condensed';letter-spacing:.8px;text-transform:uppercase;padding:2px 8px;border-radius:4px;background:${item.badgeBg};color:${item.badgeColor};border:1px solid ${item.badgeBorder}">
+          <div class="tots-card" style="background:radial-gradient(circle at 50% 25%, ${theme.glow ? theme.glow.replace(/0\.\d+/, '0.30') : 'rgba(255,209,102,0.14)'} 0%, ${theme.bg} 50%, rgba(15,15,22,0.98) 100%);border:1px solid ${item.badgeBorder || theme.border || '#2e2e3e'};box-shadow:0 12px 34px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.08);cursor:pointer" onclick="openPokemonDetailDrawer('${jsArg(mon.name)}')">
+            <!-- Header: Award Tier Pill & Role Title -->
+            <div style="display:flex;flex-direction:column;align-items:center;gap:4px;margin-bottom:6px">
+              <span style="font:900 11px 'Barlow Condensed';letter-spacing:1px;text-transform:uppercase;padding:3px 10px;border-radius:5px;background:${item.badgeBg};color:${item.badgeColor};border:1px solid ${item.badgeBorder};box-shadow:0 0 12px ${item.badgeBg}">
                 ${item.icon} ${item.categoryTitle}
               </span>
-              <span style="font-size:10px;font-weight:800;color:#8e8c95;text-transform:uppercase;letter-spacing:.5px">
+              <span style="font-size:10.5px;font-weight:800;color:#94a3b8;text-transform:uppercase;letter-spacing:.6px">
                 ${item.roleTitle}
               </span>
             </div>
 
-            <div style="font:900 22px 'Barlow Condensed';color:#ffffff;letter-spacing:.5px;text-transform:uppercase;margin-top:2px">
+            <!-- Pokémon Name with prominent font size and shadow -->
+            <div style="font:900 clamp(22px, 2.6vw, 28px)/1.1 'Barlow Condensed';color:#ffffff;letter-spacing:.8px;text-transform:uppercase;margin:4px 0 3px;text-align:center;text-shadow:0 2px 10px rgba(0,0,0,0.85);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;width:100%" title="${esc(mon.name)}">
               ${esc(mon.name)}
             </div>
 
-            <div style="width:100%;height:115px;display:flex;align-items:center;justify-content:center;margin:8px 0">
-              <img src="${sprite}" alt="${esc(mon.name)}" style="max-height:105px;max-width:115px;object-fit:contain;filter:drop-shadow(0 6px 12px ${theme.glow || 'rgba(0,0,0,0.5)'})" loading="lazy" data-mon-name="${esc(mon.name)}" crossOrigin="anonymous" onload="autoTrimArtwork(this)" onerror="handleArtworkFallback(this, '${jsArg(mon.name)}')">
+            <!-- Type Badges -->
+            <div style="display:flex;align-items:center;justify-content:center;gap:4px;min-height:20px;margin-bottom:6px">
+              ${typeof renderPokemonTypeBadges === 'function' ? renderPokemonTypeBadges(mon.name, 'font-size:10px;padding:2px 8px;font-weight:800') : ''}
             </div>
 
-            <div style="display:flex;align-items:center;justify-content:center;gap:4px;margin-bottom:8px">
-              ${typeof renderPokemonTypeBadges === 'function' ? renderPokemonTypeBadges(mon.name, 'font-size:9px;padding:1px 6px') : ''}
+            <!-- Grand Pokémon Stage & Spotlight Aura (Centerpiece Focus) -->
+            <div class="award-mon-stage" style="width:100%;height:175px;position:relative;display:flex;align-items:center;justify-content:center;margin:4px 0 10px">
+              <div class="award-mon-halo" style="position:absolute;width:155px;height:155px;border-radius:50%;background:radial-gradient(circle, ${theme.glow ? theme.glow.replace(/0\.\d+/, '0.40') : 'rgba(255,209,102,0.22)'} 0%, rgba(0,0,0,0.3) 65%, transparent 100%);pointer-events:none"></div>
+              <img src="${sprite}" alt="${esc(mon.name)}" style="max-height:165px;max-width:185px;object-fit:contain;filter:drop-shadow(0 12px 22px rgba(0,0,0,0.8)) drop-shadow(0 2px 10px ${theme.glow || 'rgba(255,209,102,0.35)'});transition:transform .22s cubic-bezier(0.16,1,0.3,1);position:relative;z-index:2" loading="lazy" data-mon-name="${esc(mon.name)}" crossOrigin="anonymous" onload="autoTrimArtwork(this)" onerror="handleArtworkFallback(this, '${jsArg(mon.name)}')">
             </div>
 
-            <div class="tots-hero-box">
-              <div style="font:900 28px 'Barlow Condensed';line-height:1;color:${item.badgeColor}">
+            <!-- Hero Stat Box with margin-top: auto for row-wide alignment -->
+            <div class="tots-hero-box" style="margin-top:auto">
+              <div style="font:900 34px/1 'Barlow Condensed';line-height:1;color:${item.badgeColor};font-variant-numeric:tabular-nums;letter-spacing:.3px">
                 ${item.statVal}
               </div>
-              <div style="font-size:10px;font-weight:800;color:#94a3b8;text-transform:uppercase;letter-spacing:.5px;margin-top:3px">
+              <div style="font-size:10px;font-weight:800;color:#94a3b8;text-transform:uppercase;letter-spacing:.8px;margin-top:3px">
                 ${item.statUnit}
               </div>
             </div>
 
-            <div style="font-size:11px;color:#8e8c95;margin-top:4px">
-              ${item.subMetric}
-            </div>
+            <!-- Clean Structured Substats Dock -->
+            ${subDockHtml}
 
-            <div style="margin-top:8px;font-size:11px;color:#8e8c95;width:100%;border-top:1px solid rgba(255,255,255,0.06);padding-top:8px">
-              Coach: <b style="color:#ffd166">${mon.coach ? playerLink(mon.coach) : '<span style="color:#666">\u2014</span>'}</b>
+            <!-- Coach Footer -->
+            <div style="margin-top:8px;font-size:11px;color:#8e8c95;width:100%;border-top:1px solid rgba(255,255,255,0.06);padding-top:7px;display:flex;align-items:center;justify-content:center;gap:4px">
+              <span>Coach:</span> <b style="color:#ffd166">${mon.coach ? playerLink(mon.coach) : '<span style="color:#666">\u2014</span>'}</b>
             </div>
           </div>
         `;
@@ -15312,9 +15370,12 @@ function renderTeamOfTheSeasonCardsHtml(totsOrList, isCompact = false) {
                     </div>
                   </div>
 
-                  <!-- Stats Underneath with min-height 28px so 1-line or 2-line stats never shift anything -->
-                  <div style="font-size:10px;color:#6b7280;margin-top:4px;min-height:28px;line-height:1.4">
-                    ${item.statBreakdown || ''} &bull; <b>${mon.games}</b> ${mon.games === 1 ? 'game' : 'games'}
+                  <!-- Stats Underneath with clean mini chips -->
+                  <div style="font-size:10.5px;color:#94a3b8;margin-top:5px;display:flex;align-items:center;gap:4px;flex-wrap:wrap;min-height:24px">
+                    <span style="background:rgba(255,255,255,0.06);padding:1px 5px;border-radius:4px;color:#f1f5f9;font-weight:800;font-variant-numeric:tabular-nums">${item.kpg !== undefined ? item.kpg : (mon.killsPerGame % 1 === 0 ? mon.killsPerGame.toFixed(0) : mon.killsPerGame.toFixed(1))} KOs/g</span>
+                    <span style="background:rgba(255,255,255,0.06);padding:1px 5px;border-radius:4px;color:#f1f5f9;font-weight:800;font-variant-numeric:tabular-nums">${item.dpg !== undefined ? item.dpg : Math.round(mon.damageDealtPerGame)} Dmg/g</span>
+                    <span style="background:rgba(255,255,255,0.06);padding:1px 5px;border-radius:4px;color:#f1f5f9;font-weight:800;font-variant-numeric:tabular-nums">${item.spg !== undefined ? item.spg : Math.round(mon.supportPerGame || 0)} Supp/g</span>
+                    <span style="color:#64748b;font-weight:700;margin-left:2px">${mon.games} ${mon.games === 1 ? 'game' : 'games'}</span>
                   </div>
                 </div>
               </div>
@@ -15337,50 +15398,66 @@ function renderTeamOfTheSeasonCardsHtml(totsOrList, isCompact = false) {
         let sprite = (typeof getPokemonArtworkUrl === 'function' ? getPokemonArtworkUrl(mon.name) : null) || (typeof resolvePokemonData === 'function' ? resolvePokemonData(mon.name)?.sprite : null) || (typeof getPokemonSpriteUrl === 'function' ? getPokemonSpriteUrl(mon.name.toLowerCase()) : '') || mon.sprite || '';
 
         return `
-          <div class="tots-card" style="background:linear-gradient(180deg, ${theme.bg} 0%, rgba(18,18,24,0.96) 100%);border-color:${theme.border || '#2e2e3e'};cursor:pointer" onclick="openPokemonDetailDrawer('${jsArg(mon.name)}')">
+          <div class="tots-card" style="background:radial-gradient(circle at 50% 25%, ${theme.glow ? theme.glow.replace(/0\.\d+/, '0.24') : 'rgba(255,255,255,0.08)'} 0%, ${theme.bg} 50%, rgba(15,15,22,0.98) 100%);border:1px solid ${theme.border || '#2e2e3e'};box-shadow:0 10px 30px rgba(0,0,0,0.45), inset 0 1px 0 rgba(255,255,255,0.08);cursor:pointer" onclick="openPokemonDetailDrawer('${jsArg(mon.name)}')">
             <!-- Header: Tier Pill & Leader Tags with fixed min-height for row-wide symmetry -->
-            <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:50px;margin-bottom:6px;width:100%">
-              <div style="display:flex;align-items:center;gap:4px;flex-wrap:wrap;justify-content:center">
-                <span class="award-role-badge" style="background:${item.tierNum === 1 ? 'rgba(255,209,102,0.14)' : (item.tierNum === 2 ? 'rgba(203,213,225,0.14)' : 'rgba(240,168,117,0.14)')};border-color:${item.tierNum === 1 ? 'rgba(255,209,102,0.35)' : (item.tierNum === 2 ? 'rgba(203,213,225,0.35)' : 'rgba(240,168,117,0.35)')};color:${item.tierNum === 1 ? '#ffd166' : (item.tierNum === 2 ? '#cbd5e1' : '#f0a875')}">
-                  ${item.tierIcon || '🥇'} ${item.tierTitle || '1st Team'} • #${item.slotNum || 1}
-                </span>
+            <div style="display:flex;align-items:center;justify-content:space-between;width:100%;gap:6px;min-height:28px;margin-bottom:6px">
+              <span class="award-role-badge" style="background:${item.tierNum === 1 ? 'rgba(255,209,102,0.18)' : (item.tierNum === 2 ? 'rgba(203,213,225,0.18)' : 'rgba(240,168,117,0.18)')};border-color:${item.tierNum === 1 ? 'rgba(255,209,102,0.5)' : (item.tierNum === 2 ? 'rgba(203,213,225,0.5)' : 'rgba(240,168,117,0.5)')};color:${item.tierNum === 1 ? '#ffd166' : (item.tierNum === 2 ? '#cbd5e1' : '#f0a875')};font-weight:900">
+                ${item.tierIcon || '🥇'} ${item.tierTitle || '1st Team'} • #${item.slotNum || 1}
+              </span>
+              <div style="display:flex;align-items:center;gap:3px;flex-wrap:wrap;justify-content:flex-end">
                 ${(item.tags || []).map(t => `<span class="award-leader-tag ${t.cls}">${t.icon} ${t.label}</span>`).join('')}
               </div>
             </div>
 
-            <!-- Pokémon Name with min-height -->
-            <div style="font:900 22px 'Barlow Condensed';color:#ffffff;letter-spacing:.5px;text-transform:uppercase;min-height:28px;display:flex;align-items:center;justify-content:center;margin-top:2px">
+            <!-- Pokémon Name with prominent font size and shadow -->
+            <div style="font:900 clamp(20px, 2.2vw, 26px)/1.1 'Barlow Condensed';color:#ffffff;letter-spacing:.8px;text-transform:uppercase;margin:3px 0 2px;text-align:center;text-shadow:0 2px 8px rgba(0,0,0,0.85);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;width:100%" title="${esc(mon.name)}">
               ${esc(mon.name)}
             </div>
 
-            <!-- Big Centered Sprite -->
-            <div style="width:100%;height:115px;display:flex;align-items:center;justify-content:center;margin:8px 0">
-              <img src="${sprite}" alt="${esc(mon.name)}" style="max-height:105px;max-width:115px;object-fit:contain;filter:drop-shadow(0 6px 12px ${theme.glow || 'rgba(0,0,0,0.5)'})" loading="lazy" data-mon-name="${esc(mon.name)}" crossOrigin="anonymous" onload="autoTrimArtwork(this)" onerror="handleArtworkFallback(this, '${jsArg(mon.name)}')">
+            <!-- Type Badges -->
+            <div style="display:flex;align-items:center;justify-content:center;gap:4px;min-height:20px;margin-bottom:6px">
+              ${typeof renderPokemonTypeBadges === 'function' ? renderPokemonTypeBadges(mon.name, 'font-size:9.5px;padding:1px 7px;font-weight:800') : ''}
             </div>
 
-            <!-- Type Badges with min-height -->
-            <div style="display:flex;align-items:center;justify-content:center;gap:4px;min-height:22px;margin-bottom:8px">
-              ${typeof renderPokemonTypeBadges === 'function' ? renderPokemonTypeBadges(mon.name, 'font-size:9px;padding:1px 6px') : ''}
+            <!-- Prominent Pokémon Stage & Halo Glow (Main Focus of Card) -->
+            <div class="award-mon-stage" style="width:100%;height:165px;position:relative;display:flex;align-items:center;justify-content:center;margin:4px 0 8px">
+              <div class="award-mon-halo" style="position:absolute;width:145px;height:145px;border-radius:50%;background:radial-gradient(circle, ${theme.glow ? theme.glow.replace(/0\.\d+/, '0.36') : 'rgba(255,255,255,0.18)'} 0%, rgba(0,0,0,0.3) 65%, transparent 100%);pointer-events:none"></div>
+              <img src="${sprite}" alt="${esc(mon.name)}" style="max-height:155px;max-width:175px;object-fit:contain;filter:drop-shadow(0 10px 18px rgba(0,0,0,0.75)) drop-shadow(0 2px 8px ${theme.glow || 'rgba(0,0,0,0.4)'});transition:transform .22s cubic-bezier(0.16,1,0.3,1);position:relative;z-index:2" loading="lazy" data-mon-name="${esc(mon.name)}" crossOrigin="anonymous" onload="autoTrimArtwork(this)" onerror="handleArtworkFallback(this, '${jsArg(mon.name)}')">
             </div>
 
-            <!-- Hero Stat Box with margin-top: auto to perfectly align bottom across cards -->
+            <!-- Hero Stat Box with margin-top: auto for row-wide bottom alignment -->
             <div class="tots-hero-box" style="margin-top:auto">
-              <div style="font:900 28px 'Barlow Condensed';line-height:1;color:${item.heroColor || '#38bdf8'}">
+              <div style="font:900 32px/1 'Barlow Condensed';line-height:1;color:${item.heroColor || '#38bdf8'};font-variant-numeric:tabular-nums;letter-spacing:.3px">
                 ${item.statVal}
               </div>
-              <div style="font-size:10px;font-weight:800;color:#94a3b8;text-transform:uppercase;letter-spacing:.5px;margin-top:3px">
+              <div style="font-size:9.5px;font-weight:800;color:#94a3b8;text-transform:uppercase;letter-spacing:.8px;margin-top:3px">
                 ${item.statUnit}
               </div>
             </div>
 
-            <!-- Breakdown & Games -->
-            <div style="font-size:11px;color:#8e8c95;margin-top:6px;min-height:32px;display:flex;align-items:center;justify-content:center;text-align:center;line-height:1.4">
-              ${item.statBreakdown || ''} &bull; <b>${mon.games}</b>&nbsp;${mon.games === 1 ? 'Game' : 'Games'}
+            <!-- Clean Structured Substats Dock (Organized Telemetry Grid) -->
+            <div class="award-substats-dock">
+              <div class="award-substat-col">
+                <span class="award-substat-num">${item.kpg !== undefined ? item.kpg : (mon.killsPerGame % 1 === 0 ? mon.killsPerGame.toFixed(0) : mon.killsPerGame.toFixed(1))}</span>
+                <span class="award-substat-lbl">KOs/G</span>
+              </div>
+              <div class="award-substat-col">
+                <span class="award-substat-num">${item.dpg !== undefined ? item.dpg : Math.round(mon.damageDealtPerGame)}</span>
+                <span class="award-substat-lbl">DMG/G</span>
+              </div>
+              <div class="award-substat-col">
+                <span class="award-substat-num">${item.spg !== undefined ? item.spg : Math.round(mon.supportPerGame || 0)}</span>
+                <span class="award-substat-lbl">SUPP/G</span>
+              </div>
+              <div class="award-substat-col">
+                <span class="award-substat-num">${mon.games}</span>
+                <span class="award-substat-lbl">GAMES</span>
+              </div>
             </div>
 
             <!-- Coach Footer -->
-            <div style="margin-top:8px;font-size:11px;color:#8e8c95;width:100%;border-top:1px solid rgba(255,255,255,0.06);padding-top:8px">
-              Coach: <b style="color:#ffd166">${mon.coach ? playerLink(mon.coach) : '<span style="color:#666">\u2014</span>'}</b>
+            <div style="margin-top:8px;font-size:11px;color:#8e8c95;width:100%;border-top:1px solid rgba(255,255,255,0.06);padding-top:7px;display:flex;align-items:center;justify-content:center;gap:4px">
+              <span>Coach:</span> <b style="color:#ffd166">${mon.coach ? playerLink(mon.coach) : '<span style="color:#666">\u2014</span>'}</b>
             </div>
           </div>
         `;
@@ -46281,9 +46358,6 @@ function openPokemonDetailDrawer(monName, cost, tierName, tourneyId = null) {
     <div class="pokemon-drawer-section">
       <div class="pokemon-drawer-section-title">
         <span>Base Stats</span>
-        <span id="drawerBstPill" class="tag" style="background:#262115;color:#ffd166;border:1px solid #5a4218;font-size:11px;font-weight:800">
-          ${cachedData?.stats ? `BST ${cachedData.stats.bst}` : 'BST ...'}
-        </span>
       </div>
       <div id="drawerStatsContainer">
         ${renderDrawerStatsHtml(cachedData?.stats)}
@@ -46296,12 +46370,9 @@ function openPokemonDetailDrawer(monName, cost, tierName, tourneyId = null) {
     </div>
 
     <!-- External Links -->
-    <div style="display:flex;gap:8px;padding:0 18px 24px">
-      <a href="https://www.smogon.com/dex/sv/pokemon/${encodeURIComponent(toSmogonSlug(canonicalName))}/" target="_blank" rel="noopener" class="btn ghost btn-sm" style="flex:1;text-align:center;text-decoration:none;font-size:11px;color:#94a3b8">
+    <div style="padding:0 18px 24px">
+      <a href="https://www.smogon.com/dex/sv/pokemon/${encodeURIComponent(toSmogonSlug(canonicalName))}/" target="_blank" rel="noopener" class="btn ghost btn-sm" style="display:flex;align-items:center;justify-content:center;gap:6px;width:100%;text-decoration:none;font-size:12px;font-weight:700;color:#94a3b8;border-color:rgba(255,255,255,0.1);padding:8px 12px;border-radius:8px;background:rgba(255,255,255,0.03)">
         Smogon Dex ↗
-      </a>
-      <a href="https://bulbapedia.bulbagarden.net/wiki/${encodeURIComponent(cleanBulbaName(canonicalName))}_(Pok%C3%A9mon)" target="_blank" rel="noopener" class="btn ghost btn-sm" style="flex:1;text-align:center;text-decoration:none;font-size:11px;color:#94a3b8">
-        Bulbapedia ↗
       </a>
     </div>
   `;
