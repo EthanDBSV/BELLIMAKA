@@ -6,6 +6,12 @@ Format: `v[MAJOR].[MINOR].[PATCH]` — Major = major system overhauls, Minor = n
 ## [v4.2.0] — 2026-10-16
 
 ### Live Draft Countdown Timer, Multi-Surface Sync & Discord Pick Webhooks
+- **Streamlined One-Click Drafting (Eliminated Redundant Confirmation Modal)**:
+  - **Removed Redundant Center Modal**: Eliminated the duplicate modal screen (`openDraftConfirmationModal`) that previously appeared after clicking "Draft Now" in the right-hand inspection panel.
+  - **Unified Drawer Action Controls (`renderDrawerActionsHtml`)**:
+    - Direct, instantaneous drafting from the right-hand panel (`handleDrawerDraftPick`) without duplicate prompts or secondary confirmations.
+    - Integrated live on-the-clock indicators, points balance, and automatic roster reserve guardrail checks directly inside the panel.
+    - Added clean disabled feedback when waiting for another coach, exceeded budget, or full rosters.
 - **Multi-Surface Live Draft Pick Countdown Timer**:
   - **Synchronous Cross-Platform Ticker (`setupDraftCountdownTicker`)**:
     - Embedded synchronized, real-time pick timers across multiple high-visibility surfaces: the **Draft Room HUD** (`#draftCountdownBadge`), the **Home Page Primetime Hero Dock** (`#homeDraftCountdownBadge`), and the **Home Header Status Badges** (`#homeTopDraftTimerText`).

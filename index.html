@@ -43483,7 +43483,7 @@ function openRenameBoardPokemonModal(tId, oldMonName, cost, tierName){
             <div class="eyebrow" style="color:var(--red)">Moderator Tool</div>
             <h2 style="font:800 24px 'Barlow Condensed'">Rename Pokémon</h2>
           </div>
-          <button class="close" onclick="openDraftConfirmationModal('${jsArg(tId)}', '${jsArg(oldMonName)}', ${cost}, '${jsArg(tierName)}')">×</button>
+          <button class="close" onclick="closeModal();openPokemonDetailDrawer('${jsArg(oldMonName)}', ${cost}, '${jsArg(tierName)}', '${jsArg(tId)}')">×</button>
         </div>
 
         <p class="sub" style="margin-top:4px;font-size:12px">Fix typos or imported spreadsheet naming. This updates the draft board and roster records across the site.</p>
@@ -43502,7 +43502,7 @@ function openRenameBoardPokemonModal(tId, oldMonName, cost, tierName){
         </div>
 
         <div class="creator-actions" style="margin-top:18px">
-          <button class="btn ghost" onclick="openDraftConfirmationModal('${jsArg(tId)}', '${jsArg(oldMonName)}', ${cost}, '${jsArg(tierName)}')">Cancel</button>
+          <button class="btn ghost" onclick="closeModal();openPokemonDetailDrawer('${jsArg(oldMonName)}', ${cost}, '${jsArg(tierName)}', '${jsArg(tId)}')">Cancel</button>
           <button class="btn" onclick="saveRenamedBoardPokemon('${jsArg(tId)}', '${jsArg(oldMonName)}', ${cost}, '${jsArg(tierName)}')">💾 Save Name</button>
         </div>
       </div>
@@ -43541,7 +43541,8 @@ function saveRenamedBoardPokemon(tId, oldMonName, cost, tierName){
   }
 
   if(newName.toLowerCase() === oldMonName.toLowerCase()){
-    openDraftConfirmationModal(tId, oldMonName, cost, tierName);
+    closeModal();
+    openPokemonDetailDrawer(oldMonName, cost, tierName, tId);
     return;
   }
 
@@ -43590,141 +43591,14 @@ function saveRenamedBoardPokemon(tId, oldMonName, cost, tierName){
 
   persistLeague();
   render();
-  openDraftConfirmationModal(t.id, newName, cost, tierName);
+  closeModal();
+  openPokemonDetailDrawer(newName, cost, tierName, t.id);
 }
 
 function openDraftConfirmationModal(tId, monName, cost, tierName){
-  let t = tournamentData[tId] || ongoingT() || activeT();
-  if(!t || t.status === 'COMPLETE' || t.phase !== 'draft'){
-    openOffseasonMonDetailModal(monName, cost, t?.id || tId);
-    return;
+  if(typeof openPokemonDetailDrawer === 'function'){
+    openPokemonDetailDrawer(monName, cost, tierName, tId);
   }
-  let d = ensureTournamentDraft(t);
-  let turn = getDraftCurrentTurn(t);
-  if(!turn || turn.isComplete || !turn.player){
-    openOffseasonMonDetailModal(monName, cost, t?.id || tId);
-    return;
-  }
-
-  let pickingCoach = turn.player;
-  let coachStats = getDraftCoachStats(t, pickingCoach);
-  let spriteUrl = pokeSprite(monName);
-
-  let currentUsername = window.currentAccount?.username || sessionUser?.user_metadata?.username || sessionUser?.email?.split('@')[0] || '';
-  let linkedPlayerName = (typeof myPlayer === 'function' ? myPlayer() : null) || (typeof playerForAccount === 'function' ? playerForAccount(currentUsername) : null);
-  let isMe = (currentUsername && currentUsername.toLowerCase() === (pickingCoach || '').toLowerCase()) ||
-             (linkedPlayerName && linkedPlayerName.toLowerCase() === (pickingCoach || '').toLowerCase());
-  let isPending = (d.status === 'pending');
-  let isPaused = (d.status === 'paused');
-  let isDraftLive = (d.status === 'active');
-  let canPick = isDraftLive && (moderator || canManageTournament(t) || isMe);
-  let hasDirectBudget = (coachStats.budget === 0 || coachStats.remainingBudget >= cost);
-  let satisfiesReserve = (coachStats.budget === 0 || cost <= coachStats.maxAffordableCost);
-  let hasBudget = hasDirectBudget && satisfiesReserve;
-  let hasSlots = !coachStats.isRosterFull;
-
-  document.querySelector('#modal').innerHTML = `
-    <div class="modal-wrap">
-      <div class="modal" style="max-width:460px;text-align:center">
-        <div class="modal-head" style="justify-content:flex-end">
-          <button class="close" onclick="closeModal()">×</button>
-        </div>
-
-        <div style="margin-top:-10px">
-          <div style="background:radial-gradient(circle,rgba(239,48,56,0.20) 0%,rgba(0,0,0,0.25) 60%,transparent 75%);padding:16px;border-radius:16px;display:inline-block;margin-bottom:4px">
-            <img src="${esc(spriteUrl)}" alt="${esc(monName)}" style="width:165px;height:165px;object-fit:contain;filter:drop-shadow(0 8px 18px rgba(0,0,0,0.7))" onerror="handleSpriteError(this)">
-          </div>
-          <div style="display:flex;align-items:center;justify-content:center;gap:8px">
-            <h2 style="margin:10px 0 4px;font:800 24px 'Barlow Condensed';letter-spacing:.5px;${moderator ? 'cursor:pointer;display:inline-flex;align-items:center;gap:6px' : ''}" 
-                ${moderator ? `onclick="openEditBoardPokemonModal('${jsArg(t.id)}', '${jsArg(monName)}', ${cost}, '${jsArg(tierName)}')"` : ''}
-                title="${moderator ? 'Click to edit or move this Pokémon on the draft board' : ''}">
-              ${esc(monName)}
-              ${moderator ? `<span style="font-size:13px;color:#ffd166;opacity:.85" title="Edit Pokémon">✏️</span>` : ''}
-            </h2>
-          </div>
-          ${moderator ? `
-            <div style="margin-bottom:10px">
-              <button class="btn ghost btn-sm" style="font-size:11px!important;color:#ffd166;border-color:#5a4218;padding:3px 10px!important" onclick="openEditBoardPokemonModal('${jsArg(t.id)}', '${jsArg(monName)}', ${cost}, '${jsArg(tierName)}')">
-                ✏️ Edit Pokémon / Move Tier
-              </button>
-            </div>
-          ` : ''}
-          <div style="display:flex;justify-content:center;align-items:center;gap:8px;margin-bottom:16px">
-            ${renderTierAndCostBadges(tierName, cost)}
-          </div>
-
-          <div class="card" style="padding:14px;background:#14141c;border-color:#2a2a3a;text-align:left;margin-bottom:14px">
-            <div style="display:flex;align-items:center;justify-content:space-between">
-              <div>
-                <div style="font-size:10px;font-weight:800;color:#8e8c95;text-transform:uppercase">On The Clock</div>
-                <div style="font-weight:800;font-size:15px;color:#f5f3f0">${esc(pickingCoach)} ${isMe ? '⭐ (You)' : ''}</div>
-              </div>
-              <div style="text-align:right">
-                <div style="font-size:10px;font-weight:800;color:#8e8c95;text-transform:uppercase">Points Balance</div>
-                <div style="font:800 15px 'Barlow Condensed';color:${hasBudget ? '#4bdd91' : '#ff4b54'}">${coachStats.budget > 0 ? `${coachStats.remainingBudget} / ${coachStats.budget} pts` : 'Unlimited'}</div>
-              </div>
-            </div>
-            <div style="margin-top:8px;font-size:11px;color:#9d9ba6;display:flex;justify-content:space-between">
-              <span>Pick <b>#${turn.currentPickNumber}</b> (R${turn.currentRound}) · Slot <b>${coachStats.count + 1}/${coachStats.maxSlots}</b></span>
-              ${coachStats.budget > 0 ? `<span style="color:#ffd166">Max on pick: <b>${coachStats.maxAffordableCost}p</b></span>` : ''}
-            </div>
-            ${coachStats.budget > 0 && coachStats.slotsAfterPick > 0 ? `
-              <div style="font-size:10px;color:#8e8c95;margin-top:4px;border-top:1px solid #242432;padding-top:4px">
-                🛡️ Reserving <b>${coachStats.minPointsReserve} pts</b> for ${coachStats.slotsAfterPick} remaining slot(s) (1 pt min per slot).
-              </div>
-            ` : ''}
-          </div>
-
-          ${isPending ? `
-            <div class="sub" style="color:#ffd166;background:rgba(255,209,102,0.1);border:1px solid rgba(255,209,102,0.3);border-radius:6px;padding:8px 10px;margin-bottom:10px;font-size:12px">
-              ⏳ <b>Draft Has Not Started Yet</b><br>Official picks are disabled until the tournament organizer presses <b>Start Draft</b>.
-            </div>
-          ` : ''}
-          ${isPaused ? `
-            <div class="sub" style="color:#f59e0b;background:rgba(245,158,11,0.1);border:1px solid rgba(245,158,11,0.3);border-radius:6px;padding:8px 10px;margin-bottom:10px;font-size:12px">
-              ⏸️ <b>Draft Paused</b><br>Drafting is currently paused by a moderator.
-            </div>
-          ` : ''}
-          ${isDraftLive && !canPick ? `<div class="sub" style="color:#a09fa8;margin-bottom:10px">Waiting for <b>${esc(pickingCoach)}</b> to make official Pick #${turn.currentPickNumber}.</div>` : ''}
-          ${canPick && !hasDirectBudget ? `<div class="sub" style="color:#ff4b54;margin-bottom:10px">⚠️ Not enough points. ${esc(pickingCoach)} only has ${coachStats.remainingBudget} pts remaining (costs ${cost} pts).</div>` : ''}
-          ${canPick && hasDirectBudget && !satisfiesReserve ? `<div class="sub" style="color:#ff4b54;margin-bottom:10px">⚠️ Roster Reserve Guardrail: You must keep at least 1 point for every remaining slot (${coachStats.minPointsReserve} pts for ${coachStats.slotsAfterPick} slot(s)). Maximum affordable on this pick is <b>${coachStats.maxAffordableCost} pts</b>.</div>` : ''}
-          ${canPick && !hasSlots ? `<div class="sub" style="color:#ff4b54;margin-bottom:10px">⚠️ Roster is already full (${coachStats.maxSlots}/${coachStats.maxSlots}).</div>` : ''}
-
-          <div style="display:flex;flex-direction:column;gap:8px">
-            ${canPick ? `
-              <button class="btn" ${(!hasBudget || !hasSlots) ? 'disabled style="opacity:.4;cursor:not-allowed"' : ''} style="padding:11px 16px;font-weight:800;width:100%" onclick="makeDraftPick('${jsArg(t.id)}', '${jsArg(monName)}');closeModal()">
-                🎯 Official Draft Pick (${esc(monName)})
-              </button>
-            ` : (isPending ? `
-              <button class="btn" disabled style="opacity:.45;cursor:not-allowed;padding:11px 16px;font-weight:800;width:100%;background:#2a2a38;color:#8e8c95;border:1px solid #3d3d4e">
-                ⏳ Draft Not Started (Pending)
-              </button>
-            ` : (isPaused ? `
-              <button class="btn" disabled style="opacity:.45;cursor:not-allowed;padding:11px 16px;font-weight:800;width:100%;background:#2e2208;color:#f59e0b;border:1px solid #5a441c">
-                ⏸️ Draft Paused
-              </button>
-            ` : ''))}
-
-            <button class="btn ghost" style="color:#60a5fa;border-color:#2563eb;width:100%;font-weight:700" onclick="setDraftBankMon('${jsArg(t.id)}', '${jsArg(monName)}', ${cost});closeModal()">
-              🏦 Save to My Draft Bank (Auto-Pick on My Turn)
-            </button>
-
-            <button class="btn ghost" style="color:#ffd166;border-color:#5a441c;width:100%" onclick="addTeamMon('${jsArg(monName)}', ${cost});closeModal()">
-              📝 Add to My Private Team Plan
-            </button>
-
-            ${moderator ? `
-              <button class="btn ghost" style="color:#ffd166;border-color:#5a4218;width:100%;font-weight:700" onclick="openEditBoardPokemonModal('${jsArg(t.id)}', '${jsArg(monName)}', ${cost}, '${jsArg(tierName)}')">
-                ✏️ Edit Pokémon / Move Tier (Moderator)
-              </button>
-            ` : ''}
-
-            <button class="btn ghost" onclick="closeModal()">Cancel</button>
-          </div>
-        </div>
-      </div>
-    </div>
-  `;
 }
 
 
@@ -45993,7 +45867,7 @@ function renderDrawerActionsHtml(monName, cost, tierName, tourneyId) {
 
   let t = tourneyId ? (tournamentData[tourneyId] || null) : (typeof ongoingT === 'function' ? ongoingT() : null) || (typeof activeT === 'function' ? activeT() : null);
   let d = t ? ensureTournamentDraft(t) : null;
-  let isLiveDraft = t && t.phase === 'draft' && d && d.status === 'active';
+  let isLiveDraft = Boolean(t && t.phase === 'draft' && d && d.status === 'active');
 
   let draftedPick = d && Array.isArray(d.picks) ? d.picks.find(p => (p.pokemon || '').toLowerCase().trim() === clean) : null;
 
@@ -46003,6 +45877,20 @@ function renderDrawerActionsHtml(monName, cost, tierName, tourneyId) {
 
   let planCount = team?.picks?.length || 0;
   let planSpent = team ? teamSpent(team) : 0;
+
+  let turn = isLiveDraft ? getDraftCurrentTurn(t) : null;
+  let pickingCoach = turn?.player || '';
+  let coachStats = (t && pickingCoach) ? getDraftCoachStats(t, pickingCoach) : null;
+  let linkedPlayerName = (typeof myPlayer === 'function' ? myPlayer() : null) || (typeof playerForAccount === 'function' ? playerForAccount(currentUsername) : null);
+  let isMe = (currentUsername && currentUsername.toLowerCase() === pickingCoach.toLowerCase()) ||
+             (linkedPlayerName && linkedPlayerName.toLowerCase() === pickingCoach.toLowerCase());
+  let isMod = moderator || (t && canManageTournament(t));
+  let canPick = isLiveDraft && (isMod || isMe) && turn && !turn.isComplete;
+  let hasDirectBudget = !coachStats || (coachStats.budget === 0 || coachStats.remainingBudget >= cost);
+  let satisfiesReserve = !coachStats || (coachStats.budget === 0 || cost <= coachStats.maxAffordableCost);
+  let hasBudget = hasDirectBudget && satisfiesReserve;
+  let hasSlots = !coachStats || !coachStats.isRosterFull;
+  let canMakeThisPick = canPick && hasBudget && hasSlots;
 
   return `
     <div style="font:800 11px 'Barlow Condensed';letter-spacing:1px;color:#8e8c95;text-transform:uppercase;margin-bottom:12px">
@@ -46016,13 +45904,51 @@ function renderDrawerActionsHtml(monName, cost, tierName, tourneyId) {
           <span>🚫</span>
           <div>
             <div>Drafted by ${esc(draftedPick.player)}</div>
-            <div style="font-size:10px;font-weight:normal;color:#a09fa8">Round ${draftedPick.round} · Pick #${draftedPick.pickNumber}</div>
+            <div style="font-size:10px;font-weight:normal;color:#a09fa8">Round ${draftedPick.round} · Pick #${draftedPick.pickNumber} (${draftedPick.cost || cost} pts)</div>
           </div>
         </div>
       ` : `
-        <button class="btn" style="width:100%;margin-bottom:12px;background:#22c55e;color:#052e16;font-weight:800;border:0;padding:10px;font-size:14px;box-shadow:0 4px 14px rgba(34,197,94,0.3)" onclick="handleDrawerDraftPick('${jsArg(t.id)}', '${jsArg(monName)}', ${cost}, '${jsArg(tierName)}')">
-          🎯 Draft ${esc(monName)} Now
-        </button>
+        <div style="background:#14141c;border:1px solid #28283a;border-radius:8px;padding:10px 12px;margin-bottom:12px">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+            <div>
+              <div style="font-size:9.5px;font-weight:800;color:#8e8c95;text-transform:uppercase">On The Clock</div>
+              <div style="font-weight:800;font-size:13px;color:#f5f3f0">${esc(pickingCoach)} ${isMe ? '⭐ (You)' : ''}</div>
+            </div>
+            ${coachStats ? `
+              <div style="text-align:right">
+                <div style="font-size:9.5px;font-weight:800;color:#8e8c95;text-transform:uppercase">Points Balance</div>
+                <div style="font:800 13px 'Barlow Condensed';color:${hasBudget ? '#4bdd91' : '#ff4b54'}">${coachStats.budget > 0 ? `${coachStats.remainingBudget} / ${coachStats.budget} pts` : 'Unlimited'}</div>
+              </div>
+            ` : ''}
+          </div>
+
+          ${canMakeThisPick ? `
+            <button class="btn" style="width:100%;background:#22c55e;color:#052e16;font-weight:800;border:0;padding:11px;font-size:14px;box-shadow:0 4px 14px rgba(34,197,94,0.3);cursor:pointer;letter-spacing:0.3px" onclick="handleDrawerDraftPick('${jsArg(t.id)}', '${jsArg(monName)}')">
+              🎯 Official Draft Pick (${cost} pts)
+            </button>
+            ${isMod && !isMe ? `
+              <div style="font-size:10px;color:#ffd166;text-align:center;margin-top:5px">👑 Drafting on behalf of <b>${esc(pickingCoach)}</b> (Moderator)</div>
+            ` : ''}
+          ` : (canPick && !hasDirectBudget ? `
+            <button class="btn" disabled style="width:100%;opacity:.45;cursor:not-allowed;background:#3a181c;border:1px solid #7f1d1d;color:#fca5a5;padding:10px;font-size:12.5px;font-weight:800">
+              ⚠️ Not Enough Points (${coachStats.remainingBudget}p left, costs ${cost}p)
+            </button>
+          ` : (canPick && !satisfiesReserve ? `
+            <button class="btn" disabled style="width:100%;opacity:.45;cursor:not-allowed;background:#3a181c;border:1px solid #7f1d1d;color:#fca5a5;padding:10px;font-size:12px;font-weight:800">
+              ⚠️ Reserve Guardrail (Max ${coachStats.maxAffordableCost}p on this pick)
+            </button>
+            <div style="font-size:10px;color:#8e8c95;text-align:center;margin-top:4px">Must keep 1 pt/slot (${coachStats.minPointsReserve} pts for ${coachStats.slotsAfterPick} slot(s))</div>
+          ` : (canPick && !hasSlots ? `
+            <button class="btn" disabled style="width:100%;opacity:.45;cursor:not-allowed;background:#3a181c;border:1px solid #7f1d1d;color:#fca5a5;padding:10px;font-size:12.5px;font-weight:800">
+              ⚠️ Roster Full (${coachStats.maxSlots}/${coachStats.maxSlots})
+            </button>
+          ` : `
+            <button class="btn" disabled style="width:100%;opacity:.5;cursor:not-allowed;background:#1b1b24;border:1px solid #2e2e3e;color:#8e8c95;padding:10px;font-size:12.5px;font-weight:700">
+              ⏳ Waiting for ${esc(pickingCoach || 'Next Coach')} (Pick #${turn?.currentPickNumber || '?'})
+            </button>
+            <div style="font-size:10px;color:#71707d;text-align:center;margin-top:4px">Save this to your <b>Draft Bank</b> below to auto-pick on your turn!</div>
+          `)))}
+        </div>
       `}
     ` : ''}
 
@@ -46065,6 +45991,14 @@ function renderDrawerActionsHtml(monName, cost, tierName, tourneyId) {
             🏦 Save to Draft Bank
           </button>
         `}
+      </div>
+    ` : ''}
+
+    ${moderator ? `
+      <div style="margin-top:12px;border-top:1px solid #232332;padding-top:10px">
+        <button class="btn ghost btn-sm" style="width:100%;color:#ffd166;border-color:#5a4218;font-weight:700;font-size:11px" onclick="openEditBoardPokemonModal('${jsArg(t ? t.id : '')}', '${jsArg(monName)}', ${cost}, '${jsArg(tierName)}')">
+          ✏️ Edit Pokémon / Move Tier (Moderator)
+        </button>
       </div>
     ` : ''}
   `;
@@ -46361,9 +46295,9 @@ function handleDrawerClearBank(tourneyId) {
   refreshDrawerActions();
 }
 
-function handleDrawerDraftPick(tourneyId, monName, cost, tierName) {
+function handleDrawerDraftPick(tourneyId, monName) {
   closePokemonDetailDrawer();
-  openDraftConfirmationModal(tourneyId, monName, cost, tierName);
+  makeDraftPick(tourneyId, monName);
 }
 
 function refreshDrawerActions() {
