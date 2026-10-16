@@ -2237,16 +2237,56 @@ details[open] > .past-tourney-summary .past-chevron{transform:rotate(180deg);col
 .nyt-table{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums;min-width:680px}
 .nyt-table thead th{padding:12px 16px;background:rgba(10,10,14,0.75);border-bottom:1px solid #262638;font:800 12.5px/1 'Barlow Condensed',sans-serif;letter-spacing:.9px;text-transform:uppercase;color:#a4a2b0;text-align:left;white-space:nowrap;user-select:none}
 .nyt-table thead th.num,.nyt-table tbody td.num{text-align:center}
-.nyt-table tbody tr{border-bottom:1px solid #20202e;transition:background .15s ease;cursor:pointer;background:#13131b}
+.nyt-table tbody tr{border-bottom:1px solid #20202e;transition:background .15s ease,outline .15s ease,box-shadow .15s ease;cursor:pointer;background:#13131b}
 .nyt-table tbody tr:nth-child(even){background:#15151e}
 .nyt-table tbody tr:hover{background:#1b1b28}
-.nyt-table tbody tr.is-focused{background:linear-gradient(90deg,rgba(255,209,102,0.1) 0%,#191926 45%)!important;box-shadow:inset 4px 0 0 #ffd166}
-.nyt-table tbody tr.is-eliminated{opacity:0.68}
-.nyt-table tbody td{padding:15px 16px;vertical-align:middle;color:#f5f3f0}
+.nyt-table tbody tr.is-focused{background:linear-gradient(90deg,rgba(255,209,102,0.12) 0%,#191926 45%)!important;box-shadow:inset 4px 0 0 #ffd166}
+.nyt-table tbody tr.is-eliminated{opacity:0.65}
+.nyt-table tbody td{padding:14px 16px;vertical-align:middle;color:#f5f3f0}
 
-.nyt-cutline-tr,.nyt-cutline-tr:hover{background:#0d0d13!important;cursor:default!important}
-.nyt-cutline-tr td{padding:0!important;border-bottom:none!important}
-.nyt-cutline-bar{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:8px 20px;background:linear-gradient(90deg,rgba(255,209,102,0.09),rgba(255,209,102,0.04),rgba(255,209,102,0.09));border-top:1px dashed rgba(255,209,102,0.5);border-bottom:1px dashed rgba(255,209,102,0.5);font:800 12px/1 'Barlow Condensed',sans-serif;letter-spacing:1.1px;text-transform:uppercase;color:#ffd166}
+/* Zone Tinting: 5% green for qualifying, slate for bubble, 5% red for elimination */
+.nyt-table tbody tr.zone-qualifying{background:rgba(16,185,129,0.05)}
+.nyt-table tbody tr.zone-qualifying:nth-child(even){background:rgba(16,185,129,0.08)}
+.nyt-table tbody tr.zone-qualifying:hover{background:rgba(16,185,129,0.13)!important}
+
+.nyt-table tbody tr.zone-bubble{background:#14141d}
+.nyt-table tbody tr.zone-bubble:nth-child(even){background:#171722}
+.nyt-table tbody tr.zone-bubble:hover{background:#1e1e2d!important}
+
+.nyt-table tbody tr.zone-elimination{background:rgba(239,68,68,0.04)}
+.nyt-table tbody tr.zone-elimination:nth-child(even){background:rgba(239,68,68,0.065)}
+.nyt-table tbody tr.zone-elimination:hover{background:rgba(239,68,68,0.11)!important}
+
+/* Clean cutline border under last qualifying spot */
+.nyt-table tbody tr.is-cutline-row td{border-bottom:2px solid #ffd166!important;box-shadow:0 3px 10px rgba(255,209,102,0.22)}
+
+/* What-If Affected Glow Flash */
+@keyframes whatifGlow{
+  0%,100%{outline:1.5px solid rgba(255,209,102,0.55);box-shadow:inset 3px 0 0 #ffd166,0 0 10px rgba(255,209,102,0.18)}
+  50%{outline:1.5px solid #ffd166;box-shadow:inset 4px 0 0 #ffd166,0 0 16px rgba(255,209,102,0.38)}
+}
+.nyt-table tbody tr.is-whatif-affected{animation:whatifGlow 2.5s ease-in-out infinite;position:relative;z-index:1}
+
+/* Group header styling */
+.nyt-group-header-cell{background:linear-gradient(90deg,#191926 0%,#13131c 100%)!important;padding:10px 18px!important;border-bottom:1px solid #2b2b3d!important}
+
+/* Segmented progress bar */
+.nyt-seg-cell{display:flex;flex-direction:column;gap:5px;min-width:175px;max-width:240px}
+.nyt-seg-header{display:flex;align-items:center;gap:7px;flex-wrap:nowrap}
+.nyt-seg-primary-num{font:900 18px/1 'Barlow Condensed',sans-serif;letter-spacing:.3px;color:#f5f3f0;font-variant-numeric:tabular-nums}
+.nyt-seg-seed1-pill{display:inline-flex;align-items:center;gap:3px;font:800 11.5px/1 'Barlow Condensed',sans-serif;color:#ffd166;letter-spacing:.4px;padding:2px 6px;border-radius:4px;background:rgba(255,209,102,0.12);border:1px solid rgba(255,209,102,0.32);white-space:nowrap}
+.nyt-seg-track{width:100%;height:8px;background:#09090f;border:1px solid #242436;border-radius:99px;overflow:hidden;display:flex;box-shadow:inset 0 1px 3px rgba(0,0,0,0.7)}
+.nyt-seg-fill-seed1{height:100%;background:linear-gradient(90deg,#ffd166 0%,#f59e0b 100%);transition:width .25s ease}
+.nyt-seg-fill-cut{height:100%;background:linear-gradient(90deg,#fb923c 0%,#ea580c 100%);transition:width .25s ease}
+.nyt-seg-track.is-locked .nyt-seg-fill-cut{background:linear-gradient(90deg,#34d399 0%,#10b981 100%)}
+
+/* Scenario cell with popover */
+.nyt-scenario-cell{display:flex;align-items:center;gap:8px;flex-wrap:nowrap}
+.nyt-scenario-btn-wrap{position:relative;display:inline-flex}
+.nyt-scenario-btn{appearance:none;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.14);border-radius:5px;padding:3px 8px;color:#cbd5e1;font:800 11.5px/1 'Barlow Condensed',sans-serif;letter-spacing:.4px;cursor:pointer;display:inline-flex;align-items:center;gap:4px;transition:all .15s ease;white-space:nowrap}
+.nyt-scenario-btn:hover{background:rgba(255,209,102,0.16);border-color:rgba(255,209,102,0.45);color:#ffd166}
+.nyt-popover{position:absolute;bottom:calc(100% + 8px);right:0;width:280px;background:#181824;border:1px solid #36364a;border-radius:8px;padding:12px;box-shadow:0 10px 30px rgba(0,0,0,0.65),0 0 1px rgba(255,255,255,0.2);z-index:100;pointer-events:none;opacity:0;transform:translateY(4px);transition:opacity .18s ease,transform .18s ease}
+.nyt-scenario-btn-wrap:hover .nyt-popover{opacity:1;transform:translateY(0);pointer-events:auto}
 
 .nyt-rank-num{display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:6px;font:900 17px/1 'Barlow Condensed',sans-serif;color:#a4a2b0;background:#191923;border:1px solid #2e2e3f}
 .nyt-rank-num.leader{background:linear-gradient(135deg,#ffd166 0%,#c99320 100%)!important;color:#161002!important;border-color:#ffe699!important;box-shadow:0 0 10px rgba(255,209,102,0.35)}
@@ -37793,6 +37833,7 @@ function togglePlayoffWhatIfWinner(matchIdx, winnerName, defaultScore){
       score: (cur && cur.score) ? cur.score : (defaultScore || '2-0')
     };
   }
+  window.lastWhatIfToggledMatchIdx = matchIdx;
   render();
 }
 
@@ -37800,6 +37841,7 @@ function setPlayoffWhatIfScore(matchIdx, scoreStr){
   let key = String(matchIdx);
   if(window.playoffOddsWhatIf[key]){
     window.playoffOddsWhatIf[key].score = scoreStr || '2-0';
+    window.lastWhatIfToggledMatchIdx = matchIdx;
     render();
   }
 }
@@ -37807,6 +37849,7 @@ function setPlayoffWhatIfScore(matchIdx, scoreStr){
 function resetPlayoffWhatIf(){
   window.playoffOddsWhatIf = {};
   window.playoffOddsTopCutWhatIf = {};
+  window.lastWhatIfToggledMatchIdx = null;
   render();
 }
 
@@ -37971,26 +38014,118 @@ function getNytMiniAvatarHtml(playerName){
   return `<div class="nyt-side-avatar" style="background-image:${faceArt}">${faceLetter}</div>`;
 }
 
-function renderNytPhase1Row(x, rowIdx, cut, t, sim, totalPlayed, isFocused){
-  let sc = x.scenario || {
-    status: 'contending',
-    badgeText: '⚡ IN THE HUNT',
-    badgeClass: 'bubble',
-    headline: 'Playoff Race Open',
-    detail: `${x.unplayedCount} matches remaining.`
-  };
+function getCoachMagicBadge(x, gItems, cut, exact, sc){
+  if(x.clinchStatus === 'clinched'){
+    return { text: '✓ CLINCHED', cls: 'clinched', desc: 'Playoff berth mathematically locked.' };
+  }
+  if(x.clinchStatus === 'eliminated'){
+    return { text: '✗ ELIMINATED', cls: 'eliminated', desc: 'Mathematically eliminated from Top Cut contention.' };
+  }
+  
+  if(exact){
+    if(exact.matchesLeft === 1){
+      if(exact.clinchesAnyWin && exact.eliminatedIfLoseAll){
+        return { text: '⚡ WIN OR GO HOME', cls: 'mustwin', desc: 'Any win clinches Top Cut; a loss eliminates.' };
+      }
+      if(exact.clinchesAnyWin){
+        return { text: '⚡ WIN & IN', cls: 'destiny', desc: 'A win in the final match guarantees Top Cut.' };
+      }
+      if(exact.clinches20Sweep && exact.eliminatedIfLoseAll){
+        return { text: '⚡ 2-0 CLINCHES', cls: 'mustwin', desc: '2-0 sweep clinches; loss eliminates.' };
+      }
+      if(exact.clinches20Sweep){
+        return { text: '⚡ 2-0 CLINCHES', cls: 'destiny', desc: 'A 2-0 sweep guarantees Top Cut.' };
+      }
+      if(exact.eliminatedIfLoseAll){
+        return { text: '⚠️ MUST WIN', cls: 'mustwin', desc: 'Must win final match to maintain playoff hopes.' };
+      }
+    } else if(exact.matchesLeft === 2){
+      if(exact.clinchesAnyWin && exact.eliminatedIfLoseOne){
+        return { text: '⚡ MUST WIN OUT', cls: 'mustwin', desc: 'Winning both remaining matches clinches; any loss eliminates.' };
+      }
+      if(exact.clinchesAnyWin){
+        return { text: 'MAGIC #2', cls: 'destiny', desc: 'Winning both remaining matches mathematically locks Top Cut.' };
+      }
+      if(exact.eliminatedIfLoseOne){
+        return { text: '⚠️ MUST WIN OUT', cls: 'mustwin', desc: 'Must win out to stay in playoff contention.' };
+      }
+    }
+  }
 
+  let myWins = x.form ? x.form.w : 0;
+  let left = x.unplayedCount != null ? x.unplayedCount : 0;
+  let isInside = gItems ? gItems.findIndex(e => e.player === x.player) < cut : false;
+
+  // Magic Number for qualifiers
+  if(gItems && gItems.length > cut && isInside){
+    let bubble = gItems[cut]; // First team out
+    let bubbleWins = bubble.form ? bubble.form.w : 0;
+    let bubbleLeft = bubble.unplayedCount != null ? bubble.unplayedCount : 0;
+    let maxBubbleWins = bubbleWins + bubbleLeft;
+    let magicNum = (maxBubbleWins + 1) - myWins;
+    if(magicNum > 0 && magicNum <= left){
+      return {
+        text: magicNum === 1 ? 'MAGIC #1' : `MAGIC #${magicNum}`,
+        cls: magicNum <= 2 ? 'destiny' : 'bubble',
+        desc: `${magicNum} more win${magicNum === 1 ? '' : 's'} (or bubble competitor loss) guarantees Top ${cut}.`
+      };
+    }
+  }
+
+  // Elimination Number (E#) for chasers
+  if(gItems && gItems.length >= cut && !isInside){
+    let cutQual = gItems[cut - 1]; // Last team in
+    let cutWins = cutQual.form ? cutQual.form.w : 0;
+    let maxWins = myWins + left;
+    let eNum = (maxWins + 1) - cutWins;
+    if(eNum > 0 && eNum <= 2 && left > 0){
+      return {
+        text: `E#${eNum}`,
+        cls: 'mustwin',
+        desc: `Elimination Number: ${eNum}. Any combination of losses or cutline wins totaling ${eNum} eliminates.`
+      };
+    }
+  }
+
+  if(left === 0){
+    return { text: 'IN CLUBHOUSE', cls: 'bubble', desc: 'All fixtures completed. Awaiting remaining match results.' };
+  }
+
+  if(x.topCutPct >= 75){
+    return { text: '🛡️ IN CONTROL', cls: 'destiny', desc: 'Strong qualification probability; controls own path.' };
+  }
+  if(x.topCutPct >= 35){
+    return { text: '⚔️ BUBBLE', cls: 'bubble', desc: 'On the playoff bubble; every fixture carries high leverage.' };
+  }
+  return { text: '🔥 IN THE HUNT', cls: 'darkhorse', desc: 'Chasing the cutline; requires consecutive wins + tiebreaker support.' };
+}
+
+function renderNytPhase1Row(x, rowIdx, cut, t, sim, totalPlayed, isFocused, gItems){
   let isClinched = x.clinchStatus === 'clinched';
   let isEliminated = x.clinchStatus === 'eliminated';
+  let isCutlineRow = (rowIdx === cut - 1 && gItems && rowIdx < gItems.length - 1);
 
-  let chipCls = sc.badgeClass || 'bubble';
-  let chipText = sc.badgeText || '⚡ IN THE HUNT';
-  if(totalPlayed === 0 && !isClinched && !isEliminated){
-    if(rowIdx === 0){ chipCls = 'fav'; chipText = '👑 #1 SEED FAV'; }
-    else if(rowIdx < cut){ chipCls = 'destiny'; chipText = '🛡️ PROJECTED CUT'; }
-    else if(x.topCutPct >= 30){ chipCls = 'bubble'; chipText = '⚔️ BUBBLE CONTENDER'; }
-    else { chipCls = 'darkhorse'; chipText = '🔥 DARK HORSE'; }
+  let zoneCls = 'zone-bubble';
+  if(rowIdx < cut){
+    zoneCls = 'zone-qualifying';
+  } else if(isEliminated || x.topCutPct < 15 || rowIdx >= cut + 2){
+    zoneCls = 'zone-elimination';
   }
+
+  let isWhatIfActive = (typeof window.playoffOddsWhatIf === 'object' && Object.keys(window.playoffOddsWhatIf).length > 0);
+  let hasSignificantDelta = (x.topCutDelta != null && Math.abs(x.topCutDelta) >= 0.5) || (x.firstSeedDelta != null && Math.abs(x.firstSeedDelta) >= 0.5);
+  let isDirectlyInLastToggled = false;
+  if(isWhatIfActive && window.lastWhatIfToggledMatchIdx != null){
+    let lastM = t.matches ? t.matches[window.lastWhatIfToggledMatchIdx] : null;
+    if(lastM && (lastM.a === x.player || lastM.b === x.player)){
+      isDirectlyInLastToggled = true;
+    }
+  }
+  let isAffected = isWhatIfActive && (hasSignificantDelta || isDirectlyInLastToggled);
+
+  let exact = typeof solveExactCoachPlayoffScenario === 'function' ? solveExactCoachPlayoffScenario(t, x.player, x.group, ((typeof groupsOf === 'function' ? groupsOf(t)[x.group] : null) || t.players || []), cut) : null;
+  let sc = x.scenario || {};
+  let magicBadge = getCoachMagicBadge(x, gItems, cut, exact, sc);
 
   let faceImg = (typeof profilePictures !== 'undefined' && profilePictures[x.player]) || (typeof teamCovers !== 'undefined' && teamCovers[x.player]) || '';
   let faceArt = faceImg ? `url('${esc(faceImg)}')` : fallbackArt(x.player);
@@ -38001,15 +38136,13 @@ function renderNytPhase1Row(x, rowIdx, cut, t, sim, totalPlayed, isFocused){
   let gdStr = (gdVal >= 0 ? '+' : '') + gdVal;
   let gdColor = gdVal > 0 ? '#4ade80' : (gdVal < 0 ? '#f87171' : '#9c9aa8');
 
-  let cutPctVal = isClinched ? 100 : (isEliminated ? 0 : +x.topCutPct.toFixed(1));
-  let cutBarW = isClinched ? 100 : (isEliminated ? 0 : Math.min(100, Math.max(cutPctVal > 0 ? 4 : 0, cutPctVal)));
-  let cutDisplay = isClinched ? '✓ LOCK' : (isEliminated ? '✗ OUT' : (x.topCutDisplay || `${Math.round(x.topCutPct)}%`));
-  let cutPillStyle = getNytHeatPillStyle(cutPctVal, isClinched, isEliminated, false);
-  let cutBarColor = getNytBarColor(cutPctVal, isClinched, isEliminated, false);
+  let cutPctVal = isClinched ? 100 : (isEliminated ? 0 : Math.min(100, Math.max(0, +x.topCutPct.toFixed(1))));
+  let seed1Val = isEliminated ? 0 : Math.min(cutPctVal, Math.max(0, +(x.firstSeedPct || 0).toFixed(1)));
+  let remainingCutVal = Math.max(0, cutPctVal - seed1Val);
 
-  let seed1Val = isEliminated ? 0 : +(x.firstSeedPct || 0).toFixed(1);
-  let seed1Display = seed1Val >= 99.5 ? '>99%' : (seed1Val > 0 && seed1Val < 1 ? '<1%' : `${Math.round(seed1Val)}%`);
-  let seed1PillStyle = getNytHeatPillStyle(seed1Val, seed1Val >= 99.5, seed1Val <= 0, true);
+  let cutDisplay = isClinched ? '✓ LOCK' : (isEliminated ? '0%' : `${Math.round(x.topCutPct)}%`);
+  let cutTextColor = isClinched ? '#4ade80' : (cutPctVal >= 50 ? '#ffd166' : (cutPctVal >= 25 ? '#f59e0b' : '#cbd5e1'));
+  if(isEliminated) cutTextColor = '#94a3b8';
 
   let rankInside = rowIdx < cut;
   let rankStyle = isClinched
@@ -38018,32 +38151,17 @@ function renderNytPhase1Row(x, rowIdx, cut, t, sim, totalPlayed, isFocused){
         ? 'background:rgba(255,209,102,0.16);color:#ffd166;border:1px solid rgba(255,209,102,0.38)'
         : 'background:#191923;color:#a4a2b0;border:1px solid #2e2e3f');
 
-  // Compact 1-line note so rows never wrap or feel cramped
-  let shortNote = '';
-  if(isClinched){
-    shortNote = x.unplayedCount > 0
-      ? `Playing for seeding · <b style="color:#ffd166">${Math.round(seed1Val)}%</b> #1 Seed`
-      : `Locked in as #${x.currentRank} Seed (${x.form.w}–${x.form.l})`;
-  } else if(isEliminated){
-    shortNote = x.unplayedCount > 0
-      ? `Eliminated from Top ${cut} · ${x.unplayedCount} match${x.unplayedCount === 1 ? '' : 'es'} left`
-      : `Finished #${x.currentRank} (${x.form.w}–${x.form.l})`;
-  } else if(x.nextMatch && x.winNextCutPct !== null && x.loseNextCutPct !== null){
-    shortNote = `vs <b style="color:#fff">${esc(x.nextMatch.opponent)}</b> (${x.nextMatch.winProb}%) · Win: <b style="color:#4ade80">${Math.round(x.winNextCutPct)}%</b> | Loss: <b style="color:#ff8a90">${Math.round(x.loseNextCutPct)}%</b>`;
-  } else if(x.unplayedCount === 0){
-    shortNote = `In clubhouse at ${x.form.w}–${x.form.l} (${gdStr}) · Awaiting other results`;
-  } else {
-    shortNote = `Proj: <b style="color:#e2e8f0">${x.projWins}–${x.projLosses}</b> · ${x.unplayedCount} match${x.unplayedCount === 1 ? '' : 'es'} remaining`;
-  }
-
   let rowCls = [
+    zoneCls,
+    isCutlineRow ? 'is-cutline-row' : '',
     isFocused ? 'is-focused' : '',
-    isEliminated ? 'is-eliminated' : ''
+    isEliminated ? 'is-eliminated' : '',
+    isAffected ? 'is-whatif-affected' : ''
   ].filter(Boolean).join(' ');
 
   return `
-    <tr class="${rowCls}" onclick="togglePlayoffOddsCoachFocus('${jsArg(x.player)}')" title="Click to filter ${esc(x.player)}'s remaining matches in the What-If Simulator">
-      <td style="width:52px;text-align:center">
+    <tr class="${rowCls}" onclick="togglePlayoffOddsCoachFocus('${jsArg(x.player)}')" title="Click row to filter ${esc(x.player)}'s schedule in What-If Simulator">
+      <td style="width:44px;text-align:center">
         <span class="nyt-rank-num ${rowIdx === 0 ? 'leader' : ''}" style="${rowIdx === 0 ? '' : rankStyle}">${rowIdx + 1}</span>
       </td>
       <td>
@@ -38059,30 +38177,149 @@ function renderNytPhase1Row(x, rowIdx, cut, t, sim, totalPlayed, isFocused){
         </div>
       </td>
       <td class="num" style="white-space:nowrap">
-        <span style="font:900 19px/1 'Barlow Condensed',sans-serif;color:#f5f3f0;letter-spacing:.4px">${x.form.w}–${x.form.l}</span>
-        <span style="font:800 14px/1 'Barlow Condensed',sans-serif;color:${gdColor};margin-left:5px">(${gdStr})</span>
+        <span style="font:900 18px/1 'Barlow Condensed',sans-serif;color:#f5f3f0;letter-spacing:.4px">${x.form.w}–${x.form.l}</span>
+        <span style="font:800 13px/1 'Barlow Condensed',sans-serif;color:${gdColor};margin-left:4px">(${gdStr})</span>
       </td>
-      <td>
-        <div class="nyt-prob-wrap">
-          <div class="nyt-prob-track">
-            <div class="nyt-prob-fill" style="width:${cutBarW}%;background:${cutBarColor}"></div>
+      <td style="white-space:nowrap">
+        <div class="nyt-seg-cell">
+          <div class="nyt-seg-header">
+            <span class="nyt-seg-primary-num" style="color:${cutTextColor}">${cutDisplay}</span>
+            ${seed1Val > 0 && !isClinched ? `
+              <span class="nyt-seg-seed1-pill" title="#1 Seed Equity: ${Math.round(seed1Val)}%">
+                ★ ${Math.round(seed1Val)}% <span style="font-size:9.5px;color:#cbd5e1">#1</span>
+              </span>
+            ` : (isClinched && seed1Val > 0 ? `
+              <span class="nyt-seg-seed1-pill" title="#1 Seed Equity: ${Math.round(seed1Val)}%">
+                ★ ${Math.round(seed1Val)}% #1
+              </span>
+            ` : '')}
+            ${formatNytDeltaBadge(x.topCutDelta)}
           </div>
-          <span class="nyt-heat-pill" style="${cutPillStyle}">${cutDisplay}</span>
-          ${formatNytDeltaBadge(x.topCutDelta)}
+          <div class="nyt-seg-track ${isClinched ? 'is-locked' : ''}" title="Playoff Cut: ${Math.round(cutPctVal)}% (#1 Seed: ${Math.round(seed1Val)}% · Seeds 2+: ${Math.round(remainingCutVal)}% · Missed: ${100 - Math.round(cutPctVal)}%)">
+            <div class="nyt-seg-fill-seed1" style="width:${seed1Val}%"></div>
+            <div class="nyt-seg-fill-cut" style="width:${remainingCutVal}%"></div>
+          </div>
         </div>
-      </td>
-      <td class="num" style="white-space:nowrap">
-        <span class="nyt-heat-pill" style="${seed1PillStyle}">${seed1Display}</span>
-        ${formatNytDeltaBadge(x.firstSeedDelta)}
       </td>
       <td>
-        <div style="display:flex;align-items:center;gap:7px;flex-wrap:nowrap">
-          <span class="nyt-status-chip ${esc(chipCls)}">${esc(chipText)}</span>
-          ${x.unplayedCount > 0 ? `<span style="font:800 11px/1 'Barlow Condensed',sans-serif;color:#8e8c98;letter-spacing:.5px;text-transform:uppercase">${x.unplayedCount} LEFT</span>` : ''}
+        <div class="nyt-scenario-cell">
+          <span class="nyt-status-chip ${esc(magicBadge.cls)}">${esc(magicBadge.text)}</span>
+          <div class="nyt-scenario-btn-wrap">
+            <button type="button" class="nyt-scenario-btn" onclick="event.stopPropagation();openPlayoffScenarioModal('${jsArg(x.player)}')" title="View complete tiebreaker scenarios &amp; qualification path">
+              <span>ⓘ</span> Scenarios
+            </button>
+            <div class="nyt-popover">
+              <div style="font:800 13px 'Barlow Condensed';color:#f5f3f0;letter-spacing:.4px;text-transform:uppercase;margin-bottom:4px;display:flex;align-items:center;justify-content:space-between">
+                <span>${esc(x.player)}</span>
+                <span style="color:#ffd166;font-size:11.5px">${esc(magicBadge.text)}</span>
+              </div>
+              <div style="font-size:11.5px;color:#cbd5e1;line-height:1.4">${esc(magicBadge.desc)}</div>
+              ${sc.headline ? `<div style="font-size:11px;color:#9d9ba6;margin-top:6px;border-top:1px solid rgba(255,255,255,0.08);padding-top:6px">${esc(sc.headline)}</div>` : ''}
+              ${sc.detail ? `<div style="font-size:10.5px;color:#8e8c98;margin-top:4px;line-height:1.35">${esc(sc.detail)}</div>` : ''}
+              <div style="font-size:10px;color:#ffd166;margin-top:7px;font-weight:700">Click to view details · Click row to filter schedule →</div>
+            </div>
+          </div>
         </div>
-        <div class="nyt-scenario-line" title="${esc(sc.detail || '')}">${shortNote}</div>
       </td>
     </tr>
+  `;
+}
+
+function openPlayoffScenarioModal(p){
+  let t = typeof ongoingT === 'function' ? ongoingT() : (typeof activeT === 'function' ? activeT() : null);
+  if(!t) return;
+  let snapshot = getOrComputeTournamentOdds(t);
+  let sim = snapshot.sim || {};
+  let x = sim[p];
+  if(!x) return;
+  
+  let cut = advancePerGroup(t);
+  let groups = groupsOf(t);
+  let gName = x.group || Object.keys(groups)[0];
+  let members = groups[gName] || t.players || [];
+  let exact = typeof solveExactCoachPlayoffScenario === 'function' ? solveExactCoachPlayoffScenario(t, p, gName, members, cut) : null;
+  let sc = x.scenario || {};
+  let gItems = Object.values(sim).filter(item => item.group === gName);
+  let magicBadge = getCoachMagicBadge(x, gItems, cut, exact, sc);
+
+  let faceImg = (typeof profilePictures !== 'undefined' && profilePictures[p]) || (typeof teamCovers !== 'undefined' && teamCovers[p]) || '';
+  let faceArt = faceImg ? `url('${esc(faceImg)}')` : fallbackArt(p);
+  let faceLetter = faceImg ? '' : esc((p||'?')[0]);
+  let ovrObj = typeof calculatePlayerOVR === 'function' ? calculatePlayerOVR(p) : null;
+  let tName = teamName(t, p);
+
+  // Remaining fixtures for coach p
+  let unplayedMatches = (t.matches || []).filter(m => {
+    if(!m || m.a === 'BYE' || m.b === 'BYE') return false;
+    let isPlayed = (m.as !== '' && m.as != null && m.bs !== '' && m.bs != null);
+    return !isPlayed && (m.a === p || m.b === p);
+  });
+
+  document.querySelector('#modal').innerHTML = `
+    <div class="modal-wrap" onclick="if(event.target===this)closeModal()">
+      <div class="modal" style="max-width:560px;width:94vw;max-height:88vh;display:flex;flex-direction:column;padding:22px;gap:16px">
+        <div class="modal-head" style="align-items:center;border-bottom:1px solid #282836;padding-bottom:14px">
+          <div style="display:flex;align-items:center;gap:12px">
+            <span style="background-image:${faceArt};background-size:cover;background-position:center;width:44px;height:44px;border-radius:50%;display:grid;place-items:center;border:2px solid ${ovrObj?.color || '#fff'};font:800 18px 'Barlow Condensed';color:#fff;flex-shrink:0">${faceLetter}</span>
+            <div>
+              <div style="font:900 22px/1.1 'Barlow Condensed';letter-spacing:0.5px;color:#f5f3f0;display:flex;align-items:center;gap:8px">
+                ${esc(p)} ${ovrObj ? ovrObj.badgeHtml : ''}
+              </div>
+              <div style="font-size:12px;color:#a09fa8;margin-top:2px">${esc(tName)} · Current Rank #${x.currentRank} in ${esc(gName)}</div>
+            </div>
+          </div>
+          <button class="close" onclick="closeModal()">✕</button>
+        </div>
+
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px">
+          <div style="background:#13131c;border:1px solid #28283a;border-radius:8px;padding:10px 12px;text-align:center">
+            <div style="font:800 11px 'Barlow Condensed';color:#8e8c98;text-transform:uppercase;letter-spacing:.5px">Record (GD)</div>
+            <div style="font:900 20px 'Barlow Condensed';color:#f5f3f0;margin-top:2px">${x.form.w}–${x.form.l} <span style="font-size:14px;color:#4ade80">(${x.form.gw - x.form.gl >= 0 ? '+' : ''}${x.form.gw - x.form.gl})</span></div>
+          </div>
+          <div style="background:#13131c;border:1px solid #28283a;border-radius:8px;padding:10px 12px;text-align:center">
+            <div style="font:800 11px 'Barlow Condensed';color:#8e8c98;text-transform:uppercase;letter-spacing:.5px">Playoff Cut %</div>
+            <div style="font:900 20px 'Barlow Condensed';color:#ffd166;margin-top:2px">${x.clinchStatus === 'clinched' ? '✓ LOCK' : `${Math.round(x.topCutPct)}%`}</div>
+          </div>
+          <div style="background:#13131c;border:1px solid #28283a;border-radius:8px;padding:10px 12px;text-align:center">
+            <div style="font:800 11px 'Barlow Condensed';color:#8e8c98;text-transform:uppercase;letter-spacing:.5px">Status Badge</div>
+            <div style="margin-top:4px"><span class="nyt-status-chip ${esc(magicBadge.cls)}" style="font-size:12px">${esc(magicBadge.text)}</span></div>
+          </div>
+        </div>
+
+        <div style="background:#14141f;border:1px solid #29293e;border-radius:8px;padding:14px">
+          <div style="font:800 13px 'Barlow Condensed';letter-spacing:.6px;text-transform:uppercase;color:#ffd166;margin-bottom:6px">
+            📋 Qualification Status &amp; Scenarios
+          </div>
+          <div style="font-size:13px;font-weight:700;color:#f5f3f0;line-height:1.4">${esc(sc.headline || magicBadge.desc)}</div>
+          <p style="font-size:12px;color:#b0aebc;line-height:1.5;margin:6px 0 0">${esc(sc.detail || magicBadge.desc)}</p>
+        </div>
+
+        <div style="display:flex;flex-direction:column;gap:8px;flex:1;overflow-y:auto">
+          <div style="font:800 13px 'Barlow Condensed';letter-spacing:.6px;text-transform:uppercase;color:#a4a2b0;display:flex;align-items:center;justify-content:space-between">
+            <span>Remaining Match Schedule (${unplayedMatches.length})</span>
+            <button class="btn ghost btn-sm" style="padding:2px 8px;font-size:10.5px" onclick="togglePlayoffOddsCoachFocus('${jsArg(p)}');closeModal()">Focus in What-If Simulator →</button>
+          </div>
+          ${unplayedMatches.length === 0 ? `
+            <div style="padding:16px;text-align:center;color:#8e8c98;font-size:12px;background:#121218;border-radius:6px">Schedule complete! In the clubhouse awaiting remaining results.</div>
+          ` : unplayedMatches.map(m => {
+            let opp = m.a === p ? m.b : m.a;
+            let wpP = Math.round(winChance(p, opp, t) * 100);
+            return `
+              <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 12px;background:#12121a;border:1px solid #242436;border-radius:6px">
+                <div style="display:flex;align-items:center;gap:8px">
+                  <span style="font:800 11px 'Barlow Condensed';color:#ffd166">${esc(m.round ? (String(m.round).startsWith('R') ? m.round : 'R' + m.round) : 'Fixture')}</span>
+                  <span style="font-size:13px;font-weight:800;color:#f5f3f0">vs ${playerLink(opp)}</span>
+                </div>
+                <div style="display:flex;align-items:center;gap:10px">
+                  <span style="font:800 12px 'Barlow Condensed';color:#8e8c98">Win Prob: ${wpP}%</span>
+                  <button class="btn ghost btn-sm" style="padding:2px 8px;font-size:10.5px;color:#ffd166;border-color:rgba(255,209,102,0.3)" onclick="togglePlayoffOddsCoachFocus('${jsArg(p)}');closeModal()">Test Win</button>
+                </div>
+              </div>
+            `;
+          }).join('')}
+        </div>
+      </div>
+    </div>
   `;
 }
 
@@ -38648,26 +38885,20 @@ function playoffOdds(targetT){
     if(showGroupBanner){
       rowsHtml += `
         <tr>
-          <td colspan="6" style="background:#191926;padding:10px 18px;font:900 14px/1 'Barlow Condensed',sans-serif;color:#ffd166;letter-spacing:0.9px;text-transform:uppercase;border-bottom:1px solid #2b2b3d">
-            🏁 ${esc(gName)} — Top ${cut} Advance to Playoffs
+          <td colspan="5" class="nyt-group-header-cell">
+            <div style="display:flex;align-items:center;justify-content:space-between">
+              <div style="display:flex;align-items:center;gap:8px">
+                <span class="tag" style="background:#282012;color:#ffd166;border:1px solid #5a4218;font-weight:900">${esc(gName)}</span>
+                <span style="font:800 13px 'Barlow Condensed';color:#f5f3f0;letter-spacing:.6px;text-transform:uppercase">Top ${cut} Advance to Playoffs</span>
+              </div>
+              <span style="font:700 11px 'DM Sans';color:#8e8c98">Cutline at Rank ${cut}</span>
+            </div>
           </td>
         </tr>
       `;
     }
     gItems.forEach((x, idx) => {
-      rowsHtml += renderNytPhase1Row(x, idx, cut, t, sim, totalPlayed, window.playoffOddsFocusCoach === x.player);
-      if(idx === cut - 1 && idx < gItems.length - 1){
-        rowsHtml += `
-          <tr class="nyt-cutline-tr">
-            <td colspan="6">
-              <div class="nyt-cutline-bar">
-                <span>▲ TOP ${cut} PLAYOFF CUTLINE (${esc(gName)}) · PROJECTED QUALIFIERS ABOVE ▲</span>
-                <span>▼ BUBBLE &amp; CHASERS BELOW ▼</span>
-              </div>
-            </td>
-          </tr>
-        `;
-      }
+      rowsHtml += renderNytPhase1Row(x, idx, cut, t, sim, totalPlayed, window.playoffOddsFocusCoach === x.player, gItems);
     });
     return rowsHtml;
   };
@@ -38703,12 +38934,11 @@ function playoffOdds(targetT){
           <table class="nyt-table">
             <thead>
               <tr>
-                <th style="text-align:center">#</th>
-                <th>Coach &amp; Team</th>
-                <th class="num">Record (GD)</th>
-                <th>Make Top Cut %</th>
-                <th class="num">#1 Seed %</th>
-                <th>Status &amp; Scenario</th>
+                <th style="text-align:center;width:44px">#</th>
+                <th style="min-width:210px">Coach &amp; Team</th>
+                <th class="num" style="width:110px">Record (GD)</th>
+                <th style="min-width:190px">Playoff &amp; #1 Seed Odds</th>
+                <th style="min-width:180px">Status &amp; Scenarios</th>
               </tr>
             </thead>
             <tbody>

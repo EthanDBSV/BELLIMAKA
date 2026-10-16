@@ -3,6 +3,48 @@
 All notable changes to the Bellimaka Pokémon Draft League platform are documented here.
 Format: `v[MAJOR].[MINOR].[PATCH]` — Major = major system overhauls, Minor = new features, Patch = bug fixes and visual improvements.
 
+## [v4.1.0] — 2026-10-15
+
+### Broadcast Playoff Odds Overhaul, Modernized Projections & Visual System Refinements
+- **Unified Playoff & Seeding Odds Column (Segmented Progress Visualization)**:
+  - **Combined Progress Track**: Merged separate `#1 Seed %` and `Make Top Cut %` columns into a single, high-density `Playoff & #1 Seed Odds` column featuring a dual-fill segmented progress bar.
+  - **Accent & Segmented Color Hierarchy**:
+    - `#1 Seed %`: Rendered as an amber-gold accent fill (`#ffd166` $\rightarrow$ `#f59e0b`).
+    - Remaining Playoff Cut %: Rendered as a warm secondary orange fill (`#fb923c` $\rightarrow$ `#ea580c`), or vibrant emerald (`#34d399` $\rightarrow$ `#10b981`) when qualification is locked.
+    - Missed Cut: Rendered as a clean, dark track background (`#09090f`).
+  - **Prominent Primary Numeric Typography**: Clear tabular percentage display for total cut probability alongside an adjacent gold star badge (`★ X% #1`) and interactive What-If delta indicators.
+  - **Full Distribution Tooltips**: Hovering the track displays exact percentage breakdowns (`Playoff Cut: X% (#1 Seed: Y% · Seeds 2+: Z% · Missed: W%)`).
+- **Streamlined Status & Scenarios Engine**:
+  - **Removed Text Clutter**: Removed verbose multi-line projected record strings (`Proj. X–Y · Z matches remaining`) directly from table cells to prevent vertical bloat.
+  - **Compact Sports-Standard Magic & Elimination Badges (`getCoachMagicBadge`)**:
+    - `✓ CLINCHED`: Playoff spot mathematically secured.
+    - `MAGIC #X` / `⚡ WIN & IN`: True combinatorial magic numbers indicating exact wins required to guarantee Top Cut regardless of external match outcomes.
+    - `⚔️ BUBBLE` / `🛡️ IN CONTROL` / `🔥 IN THE HUNT`: Immediate race status indicators.
+    - `E#X`: Elimination number tracking for cutline chasers.
+    - `✗ ELIMINATED`: Mathematically eliminated from Top Cut contention.
+  - **Scenario Popovers & Interactive Schedule Modal (`openPlayoffScenarioModal`)**:
+    - **CSS Hover Popover**: Instant hover preview showing scenario headlines, head-to-head status, and qualification requirements.
+    - **Interactive Modal**: Full-depth breakdown displaying game differential, path intelligence, clinch formulas, and remaining fixtures with one-click "Test Win" shortcuts.
+- **Table Cutline Redesign & Subtle Zone Background Tinting**:
+  - **Removed Banner Dividers**: Eliminated the jarring, full-width dashed cutline banner (`▲ TOP 2 PLAYOFF CUTLINE ▲`).
+  - **Accent Border Divider**: Implemented a sleek, glowing 2px amber accent border (`#ffd166`) directly under Rank 2 separating qualifiers from the field.
+  - **Subtle Zone Tinting**:
+    - **Qualifying Zone (Ranks 1–2)**: 5% emerald green tint (`rgba(16, 185, 129, 0.05)`).
+    - **Bubble Zone (Ranks 3–4)**: Neutral dark slate (`#14141d`).
+    - **Elimination / Longshot Zone (Ranks 5–7)**: 4% red tint (`rgba(239, 68, 68, 0.04)`).
+- **Enhanced "What-If" Simulator Interactivity**:
+  - **Dynamic Row Flash & Outline Pulse**: Toggling match outcomes in the What-If picker highlights affected coaches (both directly involved in the match and those whose odds shifted by $\ge 0.5\%$) with an animated glowing amber pulse (`.is-whatif-affected`).
+  - **Real-Time Mini Delta Badges**: Dynamic `▲ +X%` (green) and `▼ -X%` (red) indicators appear directly beside probability numbers.
+- **Official Artwork & PokeAPI Form Resolution Expansion**:
+  - **Female Form Variants (-F)**: Mapped official PokeAPI artwork IDs for `indeedee-female`/`indeedee-f` (`10186`), `meowstic-female`/`meowstic-f` (`10025`), `oinkologne-female`/`oinkologne-f` (`10254`), and `basculegion-female`/`basculegion-f` (`10248`).
+  - **Comprehensive Regional Variants**: Added explicit 10000+ artwork IDs for all Alolan (`10091`–`10115`), Galarian (`10161`–`10180`), Hisuian (`10229`–`10244`), and Paldean (`10250`–`10253`) forms.
+  - **Cache Auto-Healing**: Drawer initialization now directly validates artwork against `SPECIAL_FORM_ARTWORK_IDS`, automatically replacing previously cached fallbacks in `localStorage`.
+- **Drawer Ability Styling & Clean Typography**:
+  - Cleaned ability presentation in Pokémon detail drawers, rendering all primary, secondary, and hidden abilities as uniform pills without jarring purple backgrounds or hidden tags.
+- **OVR Badge Redesign & Rose Gold Immortal Tier**:
+  - Replaced FIFA/Madden plaque borders, shadows, and backgrounds on `.ovr-badge-pill` with clean, colored tabular typography (`#ff4d58` Elite, `#ffd166` Gold, `#d0d0dc` Silver, `#cd7f32` Bronze) across the Offseason Legacy Standings and Coach Career Stats tables.
+  - Changed the All-Time Elo Immortal tier color to Rose Gold (`#f4a4a8`, `#5a3038` badge, `#2a1418` tag) in `getLegacyTier` and the Elo Playbook to eliminate visual conflict with Gold tier player OVRs (`#ffd166`).
+
 ## [v4.0.0] — 2026-10-14
 
 ### Interactive Pokémon Detail Sidebar Drawer (Drafteon-Style) & Official Artwork Integration
