@@ -1561,17 +1561,17 @@ details[open] > .past-tourney-summary .past-chevron{transform:rotate(180deg);col
 /* ------------------------------------------------------------ Badges & Hall of Fame ------------------------------------------------------------ */
 .badge-pill{display:inline-flex;align-items:center;gap:5px;font-size:10px;font-weight:800;letter-spacing:.5px;padding:3px 8px;border-radius:4px;white-space:nowrap;cursor:default;transition:transform .12s}
 .badge-pill:hover{transform:translateY(-1px)}
-.badge-pill.gold{background:#382711;color:#ffd166;border:1px solid #78531e}
-.badge-pill.gold-pearlescent{background:linear-gradient(135deg,#36260e 0%,#201708 50%,#3d2b0e 100%);color:#fef08a;border:1px solid #eab308;box-shadow:0 0 10px rgba(234,179,8,0.22),inset 0 1px 1px rgba(254,240,138,0.35);text-shadow:0 1px 2px rgba(0,0,0,0.8),0 0 6px rgba(250,204,21,0.4)}
-.badge-pill.gold-pearlescent:hover{border-color:#fde047;box-shadow:0 0 14px rgba(250,204,21,0.45),inset 0 1px 2px rgba(255,255,255,0.45)}
+.badge-pill.gold{background:#4a3416;color:#ffd675;border:1px solid #8f6526;box-shadow:0 0 6px rgba(255,214,117,0.18)}
+.badge-pill.gold-pearlescent{background:linear-gradient(135deg,#4e3714 0%,#38260d 50%,#543b16 100%);color:#fef08a;border:1px solid #facc15;box-shadow:0 0 10px rgba(250,204,21,0.30),inset 0 1px 1px rgba(254,240,138,0.50);text-shadow:0 1px 2px rgba(0,0,0,0.85),0 0 6px rgba(250,204,21,0.45)}
+.badge-pill.gold-pearlescent:hover{border-color:#fef08a;box-shadow:0 0 16px rgba(250,204,21,0.55),inset 0 1px 2px rgba(255,255,255,0.60)}
 .badge-pill.prismatic{background:linear-gradient(135deg,rgba(255,105,180,0.18) 0%,rgba(56,189,248,0.20) 40%,rgba(251,191,36,0.20) 75%,rgba(168,85,247,0.18) 100%);color:#ffffff;border:1px solid rgba(255,255,255,0.5);box-shadow:0 0 12px rgba(56,189,248,0.35),0 0 4px rgba(244,114,182,0.3),inset 0 0 8px rgba(255,255,255,0.15);text-shadow:0 0 6px rgba(255,255,255,0.7),0 1px 2px rgba(0,0,0,0.9)}
 .badge-pill.prismatic:hover{border-color:#fff;box-shadow:0 0 16px rgba(168,85,247,0.5),0 0 10px rgba(56,189,248,0.5),inset 0 0 10px rgba(255,255,255,0.3)}
 .badge-pill.silver{background:#23252d;color:#d8d9e2;border:1px solid #4a4d5e}
-.badge-pill.red{background:#381419;color:#ff8e95;border:1px solid #73242f}
-.badge-pill.crimson{background:#260a0f;color:#fca5a5;border:1px solid #7f1d1d;box-shadow:0 0 6px rgba(127,29,29,0.35)}
-.badge-pill.amber{background:#382c12;color:#ffc857;border:1px solid #6e551f}
-.badge-pill.orange{background:#381a10;color:#ff9066;border:1px solid #7a3520}
-.badge-pill.flame{background:linear-gradient(135deg,#381608 0%,#260e05 100%);color:#fdba74;border:1px solid #f97316;box-shadow:0 0 8px rgba(249,115,22,0.35)}
+.badge-pill.red{background:#4a191f;color:#ffa3a9;border:1px solid #8e2b38;box-shadow:0 0 6px rgba(239,68,68,0.22)}
+.badge-pill.crimson{background:linear-gradient(135deg,#3e1219 0%,#2e0a11 100%);color:#fca5a5;border:1px solid #991b1b;box-shadow:0 0 8px rgba(185,28,28,0.32)}
+.badge-pill.amber{background:#483617;color:#ffd270;border:1px solid #8a6723;box-shadow:0 0 6px rgba(245,158,11,0.20)}
+.badge-pill.orange{background:#4a2114;color:#ffa27b;border:1px solid #943d22;box-shadow:0 0 6px rgba(249,115,22,0.22)}
+.badge-pill.flame{background:linear-gradient(135deg,#521f0b 0%,#3c1406 100%);color:#fdba74;border:1px solid #f97316;box-shadow:0 0 10px rgba(249,115,22,0.40)}
 .badge-pill.blue{background:#122538;color:#7ad1ff;border:1px solid #234b73}
 .badge-pill.cyan{background:#0e2a36;color:#67e8f9;border:1px solid #155e75}
 .badge-pill.teal{background:#0d2d2a;color:#4dd4bf;border:1px solid #115e59}
@@ -36242,6 +36242,29 @@ function calculateLeagueRecords(forceRefresh = false){
           gb.name = badgeToPush.name;
           gb.tournament = badgeToPush.tournament;
         }
+      }
+      // Auto-normalize badge color to latest themes if loaded from legacy customBadges
+      let bNameLower = String(badgeToPush.name || '').toLowerCase();
+      let bIdLower = String(badgeToPush.id || '').toLowerCase();
+      if(bNameLower.includes('dark horse') || bIdLower.includes('dark-horse') ||
+         bNameLower.includes('moneyball') || bIdLower.includes('moneyball') ||
+         bNameLower.includes('specialist') || bIdLower.includes('specialist') ||
+         bNameLower.includes('league champion') || bNameLower.includes('dynasty') ||
+         bNameLower.includes('triple crown') || bNameLower.includes('unrivaled') ||
+         bNameLower.includes('undefeated champ') || bNameLower.includes('cinderella') ||
+         bNameLower.includes('goat')){
+        badgeToPush.color = 'gold-pearlescent';
+        gb.color = 'gold-pearlescent';
+      } else if(bNameLower.includes('streak king') || bNameLower.includes('sweep artist') ||
+                bNameLower.includes('ice in veins') || bNameLower.includes('prophet')){
+        badgeToPush.color = 'prismatic';
+        gb.color = 'prismatic';
+      } else if(bNameLower.includes('victim') || bIdLower.includes('victim')){
+        badgeToPush.color = 'crimson';
+        gb.color = 'crimson';
+      } else if(bNameLower.includes('on fire')){
+        badgeToPush.color = 'flame';
+        gb.color = 'flame';
       }
       if(!s.badges.some(b=>b.id===badgeToPush.id||b.name===badgeToPush.name)){
         s.badges.push(badgeToPush);

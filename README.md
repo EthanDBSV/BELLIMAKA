@@ -23,9 +23,13 @@ Format: `v[MAJOR].[MINOR].[PATCH]` — Major = major system overhauls, Minor = n
     - Multi-hue spectral gradient with cyan, violet, and amber luminescence, white border, and radiant prism glow.
     - Applied to all **All-Time Record Badges** (*All-Time Streak King*, *Sweep Artist*, *Ice in Veins*, *Prophet*).
   - **Distinct Crimson Theme (`.badge-pill.crimson`)**:
-    - Deep wine-red palette (`#260a0f` / `#7f1d1d`) dedicated to **Victim** (0-win tournament finish), eliminating color collision with win-streak records.
+    - Deep wine-red palette (`#3e1219` / `#991b1b`) dedicated to **Victim** (0-win tournament finish), eliminating color collision with win-streak records.
   - **Warm Flame Theme (`.badge-pill.flame`)**:
     - Burning ember and orange gradient glow for **Active Win Streak (On Fire 3W+)**.
+  - **Backdrop Luminance & Richness Calibration**:
+    - Turned up the background luminance, saturation, and subtle border glows for **gold**, **gold-pearlescent**, **amber**, **red**, **crimson**, **orange**, and **flame** badge pills. Eliminates dark-mode "hollow black" appearance and harmonizes visual density with cool badges (teal, green, blue).
+  - **Custom & Granted Badge Theme Migration**:
+    - Automatic engine normalization in `calculateLeagueRecords` for any manually granted or historical custom badges, upgrading legacy preset colors (e.g. `amber` on older Dark Horse grants) to the official `gold-pearlescent` championship styling.
 - **Reorganized 5-Category Badge Guide Modal (`openBadgeGuide`)**:
   - Structured all earnable league accolades into five intuitive, clean categories:
     1. **🏆 Championship Badges**: Highest honors for winning tournament titles and legendary championship runs.
