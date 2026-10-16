@@ -2279,7 +2279,9 @@ details[open] > .past-tourney-summary .past-chevron{transform:rotate(180deg);col
 .nyt-seg-track{width:100%;height:8px;background:#09090f;border:1px solid #242436;border-radius:99px;overflow:hidden;display:flex;box-shadow:inset 0 1px 3px rgba(0,0,0,0.7)}
 .nyt-seg-fill-seed1{height:100%;background:linear-gradient(90deg,#ffd166 0%,#f59e0b 100%);transition:width .25s ease}
 .nyt-seg-fill-cut{height:100%;background:linear-gradient(90deg,#fb923c 0%,#ea580c 100%);transition:width .25s ease}
-.nyt-seg-track.is-locked .nyt-seg-fill-cut{background:linear-gradient(90deg,#34d399 0%,#10b981 100%)}
+.nyt-seg-fill-finals{height:100%;background:linear-gradient(90deg,#34d399 0%,#10b981 100%);transition:width .25s ease}
+.nyt-seg-finals-pill{display:inline-flex;align-items:center;gap:3px;font:800 11.5px/1 'Barlow Condensed',sans-serif;color:#34d399;letter-spacing:.4px;padding:2px 6px;border-radius:4px;background:rgba(52,211,153,0.12);border:1px solid rgba(52,211,153,0.32);white-space:nowrap}
+.nyt-seg-track.is-locked .nyt-seg-fill-cut,.nyt-seg-track.is-locked .nyt-seg-fill-finals{background:linear-gradient(90deg,#34d399 0%,#10b981 100%)}
 
 /* Scenario cell with popover */
 .nyt-scenario-cell{display:flex;align-items:center;gap:8px;flex-wrap:nowrap}
@@ -38534,7 +38536,7 @@ function renderNytPhase1PickerRail(t, baseSim, activeWhatIfCount){
   `;
 }
 
-function renderNytPhase2Row(x, idx, t, topCutSim, isFocused){
+function renderNytPhase2Row(x, idx, t, topCutSim){
   let isElim = x.bracketStatus === 'eliminated';
   let isChamp = x.bracketStatus === 'champion';
   let isFav = (idx === 0 && !isElim);
@@ -38544,47 +38546,84 @@ function renderNytPhase2Row(x, idx, t, topCutSim, isFocused){
   let faceLetter = faceImg ? '' : esc((x.player||'?')[0]);
   let faceStyle = `style="background-image:${faceArt}"`;
 
-  let statusChipCls = isChamp ? 'clinched' : (isElim ? 'eliminated' : (x.lives === 2 ? 'destiny' : 'mustwin'));
+  let statusChipCls = isChamp ? 'clinched' : (isElim ? 'eliminated' : (x.inGrandFinals ? 'fav' : (x.lives === 2 ? 'destiny' : 'mustwin')));
   let statusChipTxt = isChamp
     ? '👑 CHAMPION'
     : (isElim
         ? '✗ ELIMINATED'
-        : (topCutSim.isSingleElim
-            ? '⚡ SINGLE ELIM'
-            : (x.lives === 2 ? '🛡️ UPPER · 2 LIVES' : '⚠️ LOWER · 1 LIFE')));
-
-  let finalsVal = isChamp ? 100 : (isElim && x.finalsPct <= 0 ? 0 : +x.finalsPct.toFixed(1));
-  let finalsBarW = Math.min(100, Math.max(finalsVal > 0 ? 4 : 0, finalsVal));
-  let finalsPillStyle = getNytHeatPillStyle(finalsVal, finalsVal >= 99.5, isElim && finalsVal <= 0, false);
-  let finalsBarColor = getNytBarColor(finalsVal, finalsVal >= 99.5, isElim && finalsVal <= 0, false);
+        : (x.inGrandFinals
+            ? '🏆 GRAND FINALS'
+            : (topCutSim.isSingleElim
+                ? '⚡ SINGLE ELIM'
+                : (x.lives === 2 ? '🛡️ UPPER · 2 LIVES' : '⚠️ LOWER · 1 LIFE'))));
 
   let champVal = isChamp ? 100 : (isElim ? 0 : +x.champPct.toFixed(1));
-  let champBarW = Math.min(100, Math.max(champVal > 0 ? 4 : 0, champVal));
-  let champPillStyle = getNytHeatPillStyle(champVal, isChamp, isElim, true);
-  let champBarColor = getNytBarColor(champVal, isChamp, isElim, true);
+  let finalsVal = isChamp ? 100 : (isElim && x.finalsPct <= 0 ? 0 : +x.finalsPct.toFixed(1));
+  let remainingFinalsVal = Math.max(0, finalsVal - champVal);
 
-  let nextLine = esc(x.pathDetail || '');
-  if(!isChamp && !isElim && x.nextMatch && x.nextMatch.opponent){
-    let wp = x.nextMatch.winProb;
-    let wpCol = wp >= 55 ? '#4ade80' : (wp >= 45 ? '#fde047' : '#ff8a90');
-    nextLine = `vs <b style="color:#fff">${esc(x.nextMatch.opponent)}</b> (<span style="color:${wpCol};font-weight:700">${wp}%</span>) · ${esc(x.nextMatch.label || 'Next Set')}`;
+  let champDisplay = isChamp
+    ? '👑 100%'
+    : (champVal > 0 ? `${champVal}%` : '0%');
+  let titleTextColor = isChamp ? '#7df0aa' : (champVal >= 25 ? '#ffd166' : (champVal > 0 ? '#f5f3f0' : '#8e8c98'));
+
+  let nextMatchHtml = '';
+  if(isChamp){
+    nextMatchHtml = `
+      <div style="display:flex;align-items:center;gap:7px">
+        <span style="font:800 13.5px/1 'Barlow Condensed',sans-serif;color:#ffd166;letter-spacing:.6px;text-transform:uppercase">🏆 2026 Bellimaka Champion</span>
+      </div>
+    `;
+  } else if(isElim){
+    nextMatchHtml = `
+      <div style="font:600 12px/1.3 'Plus Jakarta Sans',sans-serif;color:#8e8c98">
+        ${esc(x.pathHeadline || 'Eliminated from Top Cut')}
+      </div>
+    `;
+  } else if(x.nextMatch && x.nextMatch.opponent){
+    let opp = x.nextMatch.opponent;
+    let wp = x.nextMatch.winProb != null ? x.nextMatch.winProb : 50;
+    let wpColor = wp >= 55 ? '#4ade80' : (wp >= 45 ? '#ffd166' : '#ff8a90');
+    nextMatchHtml = `
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+        <span style="font:800 14px/1 'Barlow Condensed',sans-serif;color:#f5f3f0">vs ${playerLink(opp)}</span>
+        <span class="tag" style="background:#13131c;border:1px solid #29293e;color:#ffd166;font:800 11px/1 'Barlow Condensed',sans-serif;letter-spacing:.4px;padding:2px 7px">
+          ${esc(x.nextMatch.title || 'Next Set')}
+        </span>
+        <span style="font:800 12px/1 'Barlow Condensed',sans-serif;color:${wpColor};letter-spacing:.3px">
+          ${wp}% Win Prob
+        </span>
+      </div>
+    `;
+  } else if(x.nextMatch && x.nextMatch.awaitingLabel){
+    nextMatchHtml = `
+      <div style="display:flex;align-items:center;gap:8px">
+        <span class="tag" style="background:#13131c;border:1px solid #29293e;color:#ffd166;font:800 11px/1 'Barlow Condensed',sans-serif;letter-spacing:.4px;padding:2px 7px">
+          ${esc(x.nextMatch.title || 'Next')}
+        </span>
+        <span style="font:600 12px/1.3 'Plus Jakarta Sans',sans-serif;color:#cbd5e1">Awaiting ${esc(x.nextMatch.awaitingLabel)}</span>
+      </div>
+    `;
+  } else {
+    nextMatchHtml = `<span style="font:600 12px/1.3 'Plus Jakarta Sans',sans-serif;color:#8e8c98">${esc(x.pathHeadline || 'Active in Top Cut')}</span>`;
   }
 
   let seedStyle = isChamp || isFav
     ? 'background:rgba(255,209,102,0.18);color:#ffd166;border:1px solid rgba(255,209,102,0.42)'
     : 'background:#191923;color:#cbd5e1;border:1px solid #2e2e3f';
 
+  let zoneCls = isChamp ? 'zone-qualifying' : (isElim ? 'zone-elimination' : (x.lives === 2 ? 'zone-qualifying' : 'zone-bubble'));
+
   return `
-    <tr class="${isFocused ? 'is-focused' : ''} ${isElim ? 'is-eliminated' : ''}" onclick="togglePlayoffOddsCoachFocus('${jsArg(x.player)}')">
-      <td style="width:56px;text-align:center">
+    <tr class="${zoneCls} ${isElim ? 'is-eliminated' : ''}">
+      <td style="width:52px;text-align:center">
         <span class="nyt-rank-num ${idx === 0 && !isElim ? 'leader' : ''}" style="width:auto;padding:0 8px;${idx === 0 && !isElim ? '' : seedStyle}">#${x.seed}</span>
       </td>
       <td>
         <div class="nyt-coach-cell">
-          <div class="nyt-coach-avatar" ${faceStyle} onclick="event.stopPropagation();openProfile('${jsArg(x.player)}')" title="View ${esc(x.player)}'s Profile">${faceLetter}</div>
+          <div class="nyt-coach-avatar" ${faceStyle} onclick="openProfile('${jsArg(x.player)}')" title="View ${esc(x.player)}'s Profile">${faceLetter}</div>
           <div style="min-width:0;flex:1">
             <div class="nyt-coach-name">
-              <button type="button" class="player-link nyt-coach-name-btn" onclick="event.stopPropagation();openProfile('${jsArg(x.player)}')" title="View ${esc(x.player)}'s Profile">${esc(x.player)}</button>
+              <button type="button" class="player-link nyt-coach-name-btn" onclick="openProfile('${jsArg(x.player)}')" title="View ${esc(x.player)}'s Profile">${esc(x.player)}</button>
               ${x.ovrObj ? x.ovrObj.badgeHtml : `<span class="ovr-badge-pill ovr-silver">${x.ovr}</span>`}
             </div>
             <div class="nyt-coach-sub">${esc(teamName(t, x.player))} · Seed ${esc(x.seedLabel)}</div>
@@ -38592,33 +38631,31 @@ function renderNytPhase2Row(x, idx, t, topCutSim, isFocused){
         </div>
       </td>
       <td>
-        <span class="nyt-status-chip ${statusChipCls}">${statusChipTxt}</span>
-        <div style="font:700 12px/1.2 'Barlow Condensed',sans-serif;color:#9d9ba6;margin-top:4px;letter-spacing:.3px">PLAYOFFS: <b style="color:#f5f3f0">${esc(x.playoffRecord)}</b> · STAGE 1: ${esc(x.stage1Record)}</div>
-      </td>
-      <td>
-        <div class="nyt-prob-wrap">
-          <div class="nyt-prob-track">
-            <div class="nyt-prob-fill" style="width:${finalsBarW}%;background:${finalsBarColor}"></div>
+        <div style="display:inline-flex;flex-direction:column;gap:4px">
+          <span class="nyt-status-chip ${statusChipCls}">${statusChipTxt}</span>
+          <div style="font:700 12px/1.2 'Barlow Condensed',sans-serif;color:#9d9ba6;letter-spacing:.3px">
+            Playoffs: <b style="color:#f5f3f0">${esc(x.playoffRecord)}</b>
           </div>
-          <span class="nyt-heat-pill" style="${finalsPillStyle}">${Math.round(finalsVal)}%</span>
-          ${formatNytDeltaBadge(x.finalsDelta)}
         </div>
       </td>
       <td>
-        <div class="nyt-prob-wrap">
-          <div class="nyt-prob-track">
-            <div class="nyt-prob-fill" style="width:${champBarW}%;background:${champBarColor}"></div>
+        <div class="nyt-seg-cell">
+          <div class="nyt-seg-header">
+            <span class="nyt-seg-primary-num" style="color:${titleTextColor}">${champDisplay}</span>
+            ${finalsVal > 0 && !isChamp ? `
+              <span class="nyt-seg-finals-pill" title="Grand Finals Equity: ${Math.round(finalsVal)}%">
+                ★ ${Math.round(finalsVal)}% <span style="font-size:9.5px;color:#94a3b8">Finals</span>
+              </span>
+            ` : ''}
           </div>
-          <span class="nyt-heat-pill" style="${champPillStyle}">${isChamp ? '👑 100%' : (isElim ? '0%' : `${champVal}%`)}</span>
-          ${formatNytDeltaBadge(x.champDelta)}
+          <div class="nyt-seg-track ${isChamp ? 'is-locked' : ''}" title="Title Champion: ${champVal}% · Grand Finals: ${finalsVal}% · Earlier Exit: ${(100 - finalsVal).toFixed(1)}%">
+            <div class="nyt-seg-fill-seed1" style="width:${champVal}%"></div>
+            <div class="nyt-seg-fill-finals" style="width:${remainingFinalsVal}%"></div>
+          </div>
         </div>
       </td>
       <td>
-        <div style="display:flex;align-items:center;gap:8px">
-          <span style="font:900 16px/1 'Barlow Condensed',sans-serif;color:#ffd166;letter-spacing:.4px">${x.moneyline}</span>
-          <span style="font:700 12.5px/1 'Barlow Condensed',sans-serif;color:#e2e8f0;text-transform:uppercase;letter-spacing:.4px">${esc(x.pathHeadline)}</span>
-        </div>
-        <div class="nyt-scenario-line">${nextLine}</div>
+        ${nextMatchHtml}
       </td>
     </tr>
   `;
@@ -38782,15 +38819,13 @@ function playoffOdds(targetT){
   // PHASE 2 VIEW: TOP CUT CHAMPIONSHIP SIMULATOR
   // ============================================================================
   if(activePhaseView === 'topcut' && baseTopCutSim && baseTopCutSim.entries && baseTopCutSim.entries.length){
-    let whatIfTc = computeWhatIfTopCutSim(t, baseTopCutSim);
-    let topCutSim = whatIfTc.topCutSim;
-    let activeWhatIfCount = whatIfTc.activeCount;
+    let topCutSim = baseTopCutSim;
     let entries = topCutSim.entries;
-    let titleFav = entries[0] || { player: 'TBD', champPct: 0, moneyline: '+100', decimalOdds: '2.00x' };
+    let titleFav = entries[0] || { player: 'TBD', champPct: 0, finalsPct: 0, seed: 1 };
     let finalsFav = [...entries].sort((a, b) => b.finalsPct - a.finalsPct || b.champPct - a.champPct)[0] || titleFav;
     let aliveCount = entries.filter(e => e.bracketStatus !== 'eliminated').length;
 
-    let html = head('Championship Bracket Simulator', `${t.name} (${t.season || 'In-Season'}) · Interactive Top Cut Projections & What-If Picker`);
+    let html = head('Championship Bracket Simulator', `${t.name} (${t.season || 'In-Season'}) · Top Cut Projections &amp; Championship Probability`);
     html += phaseToggleHtml;
 
     html += `
@@ -38800,7 +38835,7 @@ function playoffOdds(targetT){
           <div class="odds-metric-body">
             <div class="odds-metric-label">${titleFav.bracketStatus === 'champion' ? 'Tournament Champion' : 'Projected Title Favorite'}</div>
             <div class="odds-metric-val">${esc(titleFav.player)} <span style="font-size:20px;color:#ffd166">(${titleFav.champPct}%)</span></div>
-            <div class="odds-metric-sub">Implied Moneyline: <b>${titleFav.moneyline}</b> ${titleFav.decimalOdds !== '—' ? `(${titleFav.decimalOdds})` : ''}</div>
+            <div class="odds-metric-sub">Seed #${titleFav.seed} · <b>${titleFav.finalsPct}%</b> Grand Finals Equity</div>
           </div>
         </div>
         <div class="odds-metric-card red">
@@ -38808,54 +38843,47 @@ function playoffOdds(targetT){
           <div class="odds-metric-body">
             <div class="odds-metric-label">Grand Finals Favorite</div>
             <div class="odds-metric-val">${esc(finalsFav.player)} <span style="font-size:20px;color:#ff8e95">(${finalsFav.finalsPct}%)</span></div>
-            <div class="odds-metric-sub">${esc(finalsFav.bracketBadgeText)} · Seed #${finalsFav.seed}</div>
+            <div class="odds-metric-sub">${esc(finalsFav.bracketBadgeText || 'Top Cut Contender')} · Seed #${finalsFav.seed}</div>
           </div>
         </div>
         <div class="odds-metric-card green">
-          <div class="odds-metric-icon">🎛️</div>
+          <div class="odds-metric-icon">🛡️</div>
           <div class="odds-metric-body">
-            <div class="odds-metric-label">Interactive Bracket Model</div>
+            <div class="odds-metric-label">Bracket Contenders</div>
             <div class="odds-metric-val">${aliveCount} of ${entries.length} Alive</div>
-            <div class="odds-metric-sub">${activeWhatIfCount > 0 ? `<b style="color:#ffd166">${activeWhatIfCount} Hypothetical Set Pick(s) Active</b>` : `${topCutSim.completedMatches}/${topCutSim.totalMatches} Sets Played · Pick sets on the right →`}</div>
+            <div class="odds-metric-sub">${topCutSim.completedMatches || 0} of ${topCutSim.totalMatches || 0} Sets Completed · ${topCutSim.isSingleElim ? 'Single Elimination' : 'Double Elimination'}</div>
           </div>
         </div>
       </div>
 
-      <div class="nyt-sim-layout">
-        <div class="nyt-table-card">
-          <div class="nyt-table-topbar">
-            <div>
-              <div class="nyt-table-title">🏆 Top Cut Championship Projections</div>
-              <div class="nyt-table-sub">Click any contender row to filter their bracket sets in the What-If Picker</div>
-            </div>
-            ${activeWhatIfCount > 0 ? `
-              <div style="display:flex;align-items:center;gap:8px;padding:6px 12px;background:rgba(255,209,102,0.12);border:1px solid rgba(255,209,102,0.38);border-radius:7px;font:800 12px/1 'Barlow Condensed',sans-serif;letter-spacing:.5px;text-transform:uppercase;color:#fde68a">
-                <span>🧪 ${activeWhatIfCount} What-If Pick${activeWhatIfCount === 1 ? '' : 's'} Active</span>
-                <button class="btn ghost btn-sm" style="padding:2px 8px;font-size:10px" onclick="resetPlayoffWhatIf()">Reset</button>
-              </div>
-            ` : ''}
-          </div>
-          <div class="nyt-table-scroll">
-            <table class="nyt-table">
-              <thead>
-                <tr>
-                  <th style="text-align:center">Seed</th>
-                  <th>Coach &amp; Team</th>
-                  <th>Bracket Status</th>
-                  <th>Make Finals %</th>
-                  <th>Win Title %</th>
-                  <th>Title Line &amp; Next Matchup</th>
-                </tr>
-              </thead>
-              <tbody>
-                ${entries.map((x, idx) => renderNytPhase2Row(x, idx, t, topCutSim, window.playoffOddsFocusCoach === x.player)).join('')}
-              </tbody>
-            </table>
+      <div class="nyt-table-card" style="width:100%">
+        <div class="nyt-table-topbar">
+          <div>
+            <div class="nyt-table-title">🏆 Top Cut Championship Projections</div>
+            <div class="nyt-table-sub">Monte Carlo championship equity &amp; tournament bracket paths</div>
           </div>
         </div>
-
-        ${renderNytPhase2PickerRail(t, activeWhatIfCount)}
+        <div class="nyt-table-scroll">
+          <table class="nyt-table">
+            <thead>
+              <tr>
+                <th style="text-align:center;width:44px">Seed</th>
+                <th style="min-width:210px">Contender &amp; Team</th>
+                <th style="min-width:160px">Bracket Status</th>
+                <th style="min-width:190px">Title &amp; Finals Equity</th>
+                <th style="min-width:220px">Next Matchup &amp; Path</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${entries.map((x, idx) => renderNytPhase2Row(x, idx, t, topCutSim)).join('')}
+            </tbody>
+          </table>
+        </div>
       </div>
+
+      <p class="sub" style="margin-top:16px;font-size:11.5px;color:#8e8c98;line-height:1.6">
+        <b>Methodology:</b> Championship probabilities are simulated across 2,500 Monte Carlo runs through the official double-elimination bracket, accounting for current bracket positions, upper/lower lives remaining, and calibrated coach ratings.
+      </p>
     `;
     return html;
   }

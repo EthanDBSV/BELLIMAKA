@@ -48,6 +48,23 @@ Format: `v[MAJOR].[MINOR].[PATCH]` — Major = major system overhauls, Minor = n
     - **Qualifying Zone (Ranks 1–2)**: 5% emerald green tint (`rgba(16, 185, 129, 0.05)`).
     - **Bubble Zone (Ranks 3–4)**: Neutral dark slate (`#14141d`).
     - **Elimination / Longshot Zone (Ranks 5–7)**: 4% red tint (`rgba(239, 68, 68, 0.04)`).
+- **Streamlined Top Cut Championship Projections (Phase 2 Overhaul)**:
+  - **Unified Title & Finals Equity Column (`renderNytPhase2Row`)**:
+    - Merged separate `Make Finals %` and `Win Title %` columns into a single, high-density `Title & Finals Equity` column featuring a dual-fill segmented progress bar:
+      - **Title Champion Equity**: Rendered as an amber-gold accent fill (`#ffd166` $\rightarrow$ `#f59e0b`).
+      - **Finals Runner-Up Equity**: Rendered as a vibrant emerald green secondary fill (`#34d399` $\rightarrow$ `#10b981`).
+      - **Non-Finals Exit**: Rendered as a dark, clean track background (`#09090f`).
+    - Prominent primary numeric typography for Title Equity alongside an adjacent emerald star badge (`★ X% Finals`).
+    - Hovering the progress track reveals exact distribution percentages (`Title Champion: X% · Grand Finals: Y% · Earlier Exit: Z%`).
+  - **Clean Sports Fixture Chips (Moneyline Betting Clutter Removed)**:
+    - Removed confusing gambling moneylines (`-101`, `+16583`, etc.) and redundant match text from table cells.
+    - Replaced with sleek, high-visibility matchup chips (e.g. `vs Kai · WB Quarterfinal 1 · 85% Win Prob`) with color-coded win probabilities.
+  - **Streamlined Bracket Status Column**:
+    - Displays active bracket condition with clean status pills: `👑 CHAMPION`, `🏆 GRAND FINALS`, `🛡️ UPPER · 2 LIVES`, `⚠️ LOWER · 1 LIFE`, or `✗ ELIMINATED`.
+    - Pairs with clean playoff win-loss record display (`Playoffs: 2-0`), omitting redundant stage 1 record strings.
+  - **Full-Width Table Layout & What-If Rail Streamlining**:
+    - Removed the cramped 2-column layout and the Phase 2 bracket What-If picker rail (as double-elimination brackets follow deterministic advancement paths without ambiguous tiebreakers), expanding the championship table to full 100% width.
+    - Reduced table columns to 5 high-impact columns (`Seed`, `Contender & Team`, `Bracket Status`, `Title & Finals Equity`, `Next Matchup & Path`), preventing cell wrapping on desktop and tablet displays.
 - **Enhanced "What-If" Simulator Interactivity & Visual Fixes**:
   - **Table Highlight Fix (Gold Vertical Lines Removed)**: Fixed a browser rendering bug where `outline` applied to `<tr>` elements within collapsed tables drew vertical box outlines across all column cell borders. Replaced with an elegant background pulse animation (`@keyframes whatifPulseBg`) and an amber accent stripe on `td:first-child`.
   - **Dynamic Row Flash**: Toggling match outcomes in the What-If picker highlights affected coaches (both directly involved in the match and those whose odds shifted by $\ge 0.5\%$).
