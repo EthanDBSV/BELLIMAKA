@@ -16,13 +16,17 @@ Format: `v[MAJOR].[MINOR].[PATCH]` — Major = major system overhauls, Minor = n
   - **Full Distribution Tooltips**: Hovering the track displays exact percentage breakdowns (`Playoff Cut: X% (#1 Seed: Y% · Seeds 2+: Z% · Missed: W%)`).
 - **Streamlined Status & Scenarios Engine**:
   - **Removed Text Clutter**: Removed verbose multi-line projected record strings (`Proj. X–Y · Z matches remaining`) directly from table cells to prevent vertical bloat.
-  - **Pre-Tournament Tier Badges (`getPreTournamentTier`)**:
-    - When 0 matches have been played in a tournament, coaches now display intuitive pre-tournament outlook badges based on simulated equity and seed rankings instead of in-season cut badges:
-      - `👑 FAVORITE` (Gold): Top projected seed with the highest probability to secure the #1 playoff seed.
-      - `⚔️ CONTENDER` (Cyan): High projected playoff equity; prime favorite for an automatic Top Cut spot.
-      - `🔥 DARK HORSE` (Purple): High upset potential; dangerous threat to challenge the frontrunners.
-      - `⚡ SLEEPER` (Amber): Capable underdogs flying under the radar with key fixture upset ability.
-      - `🎲 LONG SHOT` (Slate): Heavy underdog facing steep odds requiring multiple upsets.
+  - **Pre-Tournament Tier Badges & Balanced Hierarchy Engine (`getPreTournamentTier`)**:
+    - When 0 matches have been played in a tournament, coaches display intuitive pre-tournament outlook badges based on group seed rankings, qualification cutlines, and simulated equity instead of in-season cut badges:
+      - `👑 FAVORITE` (Gold): Top projected seed (#1 seed favorite, or co-favorites $\ge 45\%$).
+      - `⚔️ CONTENDER` (Cyan): High projected playoff equity holding an automatic Top Cut spot (Rank $\le$ Cut or within 3% of the cutline).
+      - `🔥 DARK HORSE` (Purple): Upper-middle challengers right on the bubble with dangerous spoiler/upset potential.
+      - `⚡ SLEEPER` (Amber): Lower-middle underdogs flying under the radar with key fixture upset ability.
+      - `🎲 LONG SHOT` (Slate): Bottom-tier underdogs facing steep mathematical odds ($\le 13\%$ or bottom seeds in the group).
+    - **Balanced Tier Representation**: Eliminated tier clumping (where groups previously collapsed into 5 Dark Horses and 0 Long Shots) by anchoring tier assignments to relative group position and cutline proximity rather than loose global thresholds.
+  - **Calibrated Top Contender Emphasis & Parity Model**:
+    - Enhanced baseline power scaling (`(ovr - 76) * 5.8`) and match win probability soft caps (`[0.28, 0.72]` baseline), giving elite favorites (e.g. 93 OVR Ozy, 85 OVR Yamac) distinct pre-tournament cut equity (~52–55%) while maintaining parity and enabling true long shots (~9–18%) to be accurately identified.
+    - Preserved rapid live-form takeover once actual match results are reported, allowing tournament form to instantly supersede pre-tournament expectations.
   - **Intuitive Sports Status Badges (Cryptic `E#` Numbers Eliminated)**:
     - Replaced confusing mathematical elimination numbers (`E#1`, `E#2`) with clear, human-readable race statuses:
       - `✓ CLINCHED`: Playoff spot mathematically secured.
