@@ -3,6 +3,40 @@
 All notable changes to the Bellimaka Pokémon Draft League platform are documented here.
 Format: `v[MAJOR].[MINOR].[PATCH]` — Major = major system overhauls, Minor = new features, Patch = bug fixes and visual improvements.
 
+## [v4.3.0] — 2026-10-16
+
+### Hall of Fame Badges & Accolades System Overhaul, Pearlescent/Prismatic Themes & Layout Expansion
+- **Hall of Fame & Trophy Case Badges Overhaul**:
+  - **New Badge — Specialist (`🧪`)**:
+    - Rewarded to tournament champions who drafted **5 or more Pokémon sharing a single type** and went on to win the championship.
+    - Integrated automatic type inspection via `getPokemonTypes()` across draft picks and tournament rosters.
+  - **Updated Moneyball Badge (`💵`)**:
+    - Raised the championship point ceiling cap from `< 85` pts to **`≤ 90` points** (`spent > 0 && spent <= 90`).
+    - Recategorized under the championship prestige visual tier.
+  - **Removed Redundant Badges**:
+    - Removed **Top Gun** (peak OVR badge) and **Blowout King** (+7 Game Differential in a single tournament) from engine generation and preset management to eliminate badge inflation.
+- **Color Coding & Styling Overhaul (Prismatic & Gold-Pearlescent Theming)**:
+  - **Gold-Pearlescent Theme (`.badge-pill.gold-pearlescent`)**:
+    - Multi-layered amber-gold gradient with gold borders, inner luminance highlights, and outer glow.
+    - Applied to all **Championship Badges** (*GOAT*, *Triple Crown*, *Unrivaled*, *Undefeated Champ*, *Dynasty Champion*, *League Champion*, *Cinderella Run*, *Dark Horse*, *Specialist*, *Moneyball*).
+  - **Prismatic Theme (`.badge-pill.prismatic`)**:
+    - Multi-hue spectral gradient with cyan, violet, and amber luminescence, white border, and radiant prism glow.
+    - Applied to all **All-Time Record Badges** (*All-Time Streak King*, *Sweep Artist*, *Ice in Veins*, *Prophet*).
+  - **Distinct Crimson Theme (`.badge-pill.crimson`)**:
+    - Deep wine-red palette (`#260a0f` / `#7f1d1d`) dedicated to **Victim** (0-win tournament finish), eliminating color collision with win-streak records.
+  - **Warm Flame Theme (`.badge-pill.flame`)**:
+    - Burning ember and orange gradient glow for **Active Win Streak (On Fire 3W+)**.
+- **Reorganized 5-Category Badge Guide Modal (`openBadgeGuide`)**:
+  - Structured all earnable league accolades into five intuitive, clean categories:
+    1. **🏆 Championship Badges**: Highest honors for winning tournament titles and legendary championship runs.
+    2. **🌟 All-Time Record Badges**: Prismatic honors for historical career record holders across the league.
+    3. **🔮 Prediction Badges**: Accolades for prediction perfection and tournament prediction crowns.
+    4. **⚔️ Tournament Feats**: Notable tournament achievements, sweeps, clutch deciders, and milestones.
+    5. **⚡ Form & Streak Badges**: Real-time form indicators tracking active hot/cold streaks and career win-rates.
+- **Hall of Fame Leaderboard & Table Spacing**:
+  - Expanded the `Accolades & Badges` table column `min-width` to **`560px`** with balanced padding (`8px 12px`).
+  - Set `.records-desktop-badges` to `100%` width with flex-wrapping to maximize horizontal margin usage and eliminate unnatural badge row wrapping.
+
 ## [v4.2.2] — 2026-10-16
 
 ### Turn Timer Invariant Floor, Consecutive Timeout Fix & Discord Sensitive Media Bypass
