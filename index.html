@@ -31478,12 +31478,12 @@ function openBadgeManager(p){
     { id: 'triple-crown', icon: '👑', name: 'Triple Crown', color: 'astral', desc: 'Legendary three-peat: Won 3 consecutive tournament championships in a row.', perTournament: true },
     { id: 'unrivaled', icon: '⚜️', name: 'Unrivaled', color: 'astral', desc: 'Flawless tournament championship without dropping a single game (2-0 in every match).', perTournament: true },
     { id: 'undefeated-champ', icon: '🌟', name: 'Undefeated Champ', color: 'astral', desc: 'Won an entire tournament without dropping a single match in groups or playoffs.', perTournament: true },
-    { id: 'total-harmony', icon: '🧬', name: 'Total Harmony', color: 'teal', desc: 'Masterclass synergy: Every single drafted Pokémon on the roster played at least 2 games and scored at least 3 KOs.', perTournament: true },
+    { id: 'total-harmony', icon: '🧬', name: 'Total Harmony', color: 'teal', desc: 'Masterclass synergy: Every single drafted Pokémon on the roster played at least 2 games and has an impact score > 50.', perTournament: true },
     { id: 'dark-horse', icon: '🐴', name: 'Dark Horse', color: 'gold-pearlescent', desc: 'Projected as a Dark Horse or below by pre-tournament playoff odds and went on to win the Championship.', perTournament: true },
     { id: 'champion-badge', icon: '🏆', name: 'League Champion', color: 'gold-pearlescent', desc: 'Won a League Championship tournament.', perTournament: true },
     { id: 'dynasty-badge', icon: '🏛️', name: 'Dynasty Champion', color: 'gold-pearlescent', desc: 'Won 2 or more League Championships.', perTournament: false },
     { id: 'cinderella', icon: '✨', name: 'Cinderella Run', color: 'gold-pearlescent', desc: 'Miracle run: Lost Match 1 in Top Cut, fought through Losers Bracket, and won the Championship.', perTournament: true },
-    { id: 'specialist', icon: '🧪', name: 'Specialist', color: 'gold-pearlescent', desc: 'Drafted 5+ Pokémon sharing a type and won the Championship.', perTournament: true },
+    { id: 'specialist', icon: '🧪', name: 'Specialist', color: 'gold-pearlescent', desc: 'Drafted 5+ Pokémon sharing a type (at least 2 appearances each) and won the Championship.', perTournament: true },
     { id: 'moneyball', icon: '💵', name: 'Moneyball', color: 'gold-pearlescent', desc: 'Won a tournament championship with a roster of 90 points or fewer.', perTournament: true },
     { id: 'record-win-streak', icon: '🔥', name: 'All-Time Streak King', color: 'prismatic', desc: 'All-time consecutive win streak record holder.', perTournament: false },
     { id: 'sweep-artist', icon: '🧹', name: 'Sweep Artist', color: 'prismatic', desc: 'All-time clean sweep record holder.', perTournament: false },
@@ -35544,7 +35544,7 @@ function calculateLeagueRecords(forceRefresh = false){
           }
         }
 
-        // Total Harmony: Every single drafted Pokémon on the roster played >= 2 games AND scored >= 3 KOs
+        // Total Harmony: Every single drafted Pokémon on the roster played >= 2 games AND has an impact score > 50
         let pRoster = (t.draftData?.picks || t.draft?.picks || []).filter(pk => pk.player === p).map(pk => pk.pokemon || pk.name);
         if(!pRoster.length && t.rosters && t.rosters[p]){
           pRoster = (t.rosters[p] || []).map(x => typeof x === 'string' ? x : (x.pokemon || x.name || x.mon)).filter(Boolean);
@@ -35561,16 +35561,17 @@ function calculateLeagueRecords(forceRefresh = false){
             });
           }
           let uniqueReplays = [...new Set(tReplays)];
+          let monStatsMap = (typeof getTournamentPokemonStatsMap === 'function') ? getTournamentPokemonStatsMap(t, p) : null;
           let monStats = {};
           pRoster.forEach(mName => {
-            monStats[mName] = { games: 0, kills: 0 };
+            monStats[mName] = { games: 0, totalImpact: 0, totalRaw: 0 };
           });
           uniqueReplays.forEach(r => {
             if(!r || !r.stats || !r.stats.pokemon) return;
             let pList = Array.isArray(r.stats.pokemon) ? r.stats.pokemon : Object.values(r.stats.pokemon);
             pList.forEach(pk => {
               let coach = pk.coach;
-              if(coach !== p) return;
+              if(coach && (typeof isCoachMatch === 'function' ? !isCoachMatch(coach, p, t) : (String(coach).trim().toLowerCase() !== String(p).trim().toLowerCase()))) return;
               if(pk.brought === false) return;
               let matchedKey = null;
               for(let rMon of pRoster){
@@ -35585,11 +35586,30 @@ function calculateLeagueRecords(forceRefresh = false){
               }
               if(matchedKey){
                 monStats[matchedKey].games++;
-                monStats[matchedKey].kills += (pk.kills || 0);
+                let imp = (typeof calculateMonImpactScore === 'function') ? calculateMonImpactScore(pk) : (Number(pk.impactScore) || 0);
+                monStats[matchedKey].totalImpact += imp;
+                if(typeof calculateMonRawComponents === 'function'){
+                  monStats[matchedKey].totalRaw += (calculateMonRawComponents(pk).raw || 0);
+                }
               }
             });
           });
-          let allHarmonious = pRoster.every(rMon => monStats[rMon].games >= 2 && monStats[rMon].kills >= 3);
+          let allHarmonious = pRoster.every(rMon => {
+            let direct = monStats[rMon] || { games: 0, totalImpact: 0, totalRaw: 0 };
+            let mapStat = (monStatsMap && typeof findPokemonStatsInMap === 'function') ? findPokemonStatsInMap(monStatsMap, rMon) : null;
+            let games = Math.max(direct.games || 0, mapStat?.games || 0);
+            if(games < 2) return false;
+            let impact = 0;
+            if(mapStat && mapStat.avgImpactScore != null && !isNaN(mapStat.avgImpactScore)){
+              impact = Math.max(impact, Number(mapStat.avgImpactScore));
+            }
+            if(direct.games > 0){
+              let avgImp = direct.totalImpact / direct.games;
+              let rawAvgImp = (direct.totalRaw > 0 && typeof rawToImpactScore === 'function') ? rawToImpactScore(direct.totalRaw / direct.games) : 0;
+              impact = Math.max(impact, avgImp, rawAvgImp);
+            }
+            return impact > 50;
+          });
           if(allHarmonious){
             let badgeId = 'total-harmony-' + t.id;
             if(!statsByPlayer[p].badges.some(b => b.id === badgeId)){
@@ -35597,7 +35617,7 @@ function calculateLeagueRecords(forceRefresh = false){
                 id: badgeId,
                 icon: '🧬',
                 name: `Total Harmony (${tournamentBadgeLabel(t)})`,
-                desc: `Masterclass team synergy: Every single drafted Pokémon on the roster played at least 2 games and scored at least 3 KOs in ${t.name}`,
+                desc: `Masterclass team synergy: Every single drafted Pokémon on the roster played at least 2 games and has an impact score > 50 in ${t.name}`,
                 category: 'performance',
                 color: 'teal'
               });
@@ -36260,7 +36280,7 @@ function calculateLeagueRecords(forceRefresh = false){
       }
     }
 
-    // Award Specialist badge for drafting 5+ Pokémon sharing a type and winning the Championship
+    // Award Specialist badge for drafting 5+ Pokémon sharing a type (each with at least 2 appearances) and winning the Championship
     if(t.status === 'COMPLETE' && champ){
       let champMons = [];
       if(t.draftData?.picks?.length){
@@ -36270,26 +36290,72 @@ function calculateLeagueRecords(forceRefresh = false){
         champMons = (t.rosters[champ] || []).map(x => typeof x === 'string' ? x : (x.pokemon || x.name || x.mon)).filter(Boolean);
       }
       if(champMons.length){
-        let typeCounts = {};
+        let champStatsMap = (typeof getTournamentPokemonStatsMap === 'function') ? getTournamentPokemonStatsMap(t, champ) : null;
+        let tReplays = [];
+        let champMatches = allMatches.filter(m => m.tournamentId === t.id && (m.a === champ || m.b === champ));
+        champMatches.forEach(m => {
+          if(Array.isArray(m.replays)) tReplays.push(...m.replays);
+          if(Array.isArray(m.matchObj?.replays)) tReplays.push(...m.matchObj.replays);
+        });
+        if(t.topCutReplays){
+          Object.values(t.topCutReplays).forEach(rList => {
+            if(Array.isArray(rList)) tReplays.push(...rList);
+          });
+        }
+        let uniqueReplays = [...new Set(tReplays)];
+        let monGames = {};
+        champMons.forEach(m => { monGames[m] = 0; });
+        uniqueReplays.forEach(r => {
+          if(!r || !r.stats || !r.stats.pokemon) return;
+          let pList = Array.isArray(r.stats.pokemon) ? r.stats.pokemon : Object.values(r.stats.pokemon);
+          pList.forEach(pk => {
+            let coach = pk.coach;
+            if(coach && (typeof isCoachMatch === 'function' ? !isCoachMatch(coach, champ, t) : (String(coach).trim().toLowerCase() !== String(champ).trim().toLowerCase()))) return;
+            if(pk.brought === false) return;
+            for(let rMon of champMons){
+              let rNorm = rMon.toLowerCase().replace(/[^a-z0-9]/g, '');
+              let pNorm = String(pk.name || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+              let sNorm = String(pk.species || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+              let bNorm = String(pk.baseSpecies || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+              if(pNorm === rNorm || sNorm === rNorm || bNorm === rNorm || pNorm.includes(rNorm) || rNorm.includes(pNorm)){
+                monGames[rMon] = (monGames[rMon] || 0) + 1;
+                break;
+              }
+            }
+          });
+        });
+
+        let monAppearances = {};
         champMons.forEach(mon => {
+          let directG = monGames[mon] || 0;
+          let mapStat = (champStatsMap && typeof findPokemonStatsInMap === 'function') ? findPokemonStatsInMap(champStatsMap, mon) : null;
+          monAppearances[mon] = Math.max(directG, mapStat?.games || 0);
+        });
+
+        let typeQualifyingMons = {};
+        champMons.forEach(mon => {
+          if((monAppearances[mon] || 0) < 2) return;
           let types = (typeof getPokemonTypes === 'function' ? getPokemonTypes(mon) : []) || [];
           let uniqueTypes = new Set(types.map(tp => String(tp).trim()));
           uniqueTypes.forEach(tp => {
             if(!tp) return;
-            typeCounts[tp] = (typeCounts[tp] || 0) + 1;
+            if(!typeQualifyingMons[tp]) typeQualifyingMons[tp] = [];
+            typeQualifyingMons[tp].push(mon);
           });
         });
-        let qualifyingTypes = Object.entries(typeCounts).filter(([, count]) => count >= 5);
+
+        let qualifyingTypes = Object.entries(typeQualifyingMons).filter(([, qMons]) => qMons.length >= 5);
         if(qualifyingTypes.length > 0){
-          qualifyingTypes.sort((a, b) => b[1] - a[1]);
-          let [topType, count] = qualifyingTypes[0];
+          qualifyingTypes.sort((a, b) => b[1].length - a[1].length);
+          let [topType, qMons] = qualifyingTypes[0];
+          let count = qMons.length;
           let badgeId = 'specialist-' + t.id;
           if(statsByPlayer[champ] && !statsByPlayer[champ].badges.some(b => b.id === badgeId)){
             statsByPlayer[champ].badges.push({
               id: badgeId,
               icon: '🧪',
               name: `Specialist (${tournamentBadgeLabel(t)})`,
-              desc: `Drafted 5+ Pokémon sharing the ${topType} type (${count} ${topType}-types) and won the ${t.name} Championship!`,
+              desc: `Drafted 5+ Pokémon sharing the ${topType} type (${count} ${topType}-types) with at least 2 appearances each, and won the ${t.name} Championship!`,
               category: 'championship',
               color: 'gold-pearlescent',
               tournament: t.name,
@@ -36739,7 +36805,7 @@ function openBadgeGuide(){
         { icon: '🏆', name: 'League Champion', color: 'gold-pearlescent', desc: 'Trophy holder. Won a league championship tournament.' },
         { icon: '✨', name: 'Cinderella Run', color: 'gold-pearlescent', desc: 'Miracle run: Lost Match 1 in Top Cut, fought through Losers Bracket, and won the Championship.' },
         { icon: '🐴', name: 'Dark Horse', color: 'gold-pearlescent', desc: 'Underdog miracle. Projected as a Dark Horse or below before Match 1 and won the championship.' },
-        { icon: '🧪', name: 'Specialist', color: 'gold-pearlescent', desc: 'Mono-focus mastery. Drafted 5 or more Pokémon sharing a type and won the Championship.' },
+        { icon: '🧪', name: 'Specialist', color: 'gold-pearlescent', desc: 'Mono-focus mastery. Drafted 5 or more Pokémon sharing a type (each with at least 2 appearances) and won the Championship.' },
         { icon: '💵', name: 'Moneyball', color: 'gold-pearlescent', desc: 'Budget brilliance. Won the championship with a draft roster of 90 points or fewer (≤ 90 pts).' }
       ]
     },
@@ -36768,7 +36834,7 @@ function openBadgeGuide(){
       icon: '⚔️',
       color: '#4ade80',
       badges: [
-        { icon: '🧬', name: 'Total Harmony', color: 'teal', desc: 'Masterclass team synergy. Every single drafted Pokémon on the roster played at least 2 games and scored at least 3 KOs in a single tournament.' },
+        { icon: '🧬', name: 'Total Harmony', color: 'teal', desc: 'Masterclass team synergy. Every single drafted Pokémon on the roster played at least 2 games and has an impact score > 50 in a single tournament.' },
         { icon: '🛡️', name: 'Clean Sheet', color: 'teal', desc: 'Flawless group stage. Went completely undefeated without dropping a single match.' },
         { icon: '🎴', name: 'Heart of the Cards', color: 'ruby', desc: 'The ultimate comeback artist. Reverse-swept (won 2-1 after dropping Game 1) in 4 or more matches in a single tournament.' },
         { icon: '🎯', name: 'Clutch King', color: 'ruby', desc: 'Ice in the veins. Won 4 or more deciding Game 3s (2-1) in a single tournament.' },

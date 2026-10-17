@@ -13,7 +13,9 @@ Format: `v[MAJOR].[MINOR].[PATCH]` — Major = major system overhauls, Minor = n
   - Decoupled **Clutch King** (🎯) from Prediction King (`purple`), moving it to a high-voltage glowing ruby rose gradient with crimson/rose neon aura.
   - Added **Heart of the Cards** (🎴): Awarded for pulling off 4 or more match reverse sweeps (winning 2-1 after dropping Game 1) in a single tournament.
 - **"Total Harmony" Holy Grail Synergist Badge (`.badge-pill.teal`)**:
-  - Added **Total Harmony** (🧬): Awarded when every single drafted Pokémon on a coach's roster plays at least 2 games AND scores at least 3 KOs in a completed tournament.
+  - **Total Harmony** (🧬): Awarded when every single drafted Pokémon on a coach's roster plays at least 2 games AND maintains an impact score > 50 in a completed tournament.
+- **Specialist Appearance Requirement**:
+  - **Specialist** (🧪): Updated requirement so that the 5 or more drafted Pokémon sharing a type must each have at least 2 appearances (battles brought) in the tournament to qualify.
 - **Dedicated "Infamous Feats" Subsection**:
   - Created a dedicated section in the Badge Guide and record engine for notorious disasters:
     - **Donut** (🍩, `crimson`): Awarded for a total eclipse tournament where a coach fails to win a single individual battle game (0-X games, 0-X matches). Automatically replaces/suppresses **Victim** (💀) so coaches don't suffer badge bloat.
