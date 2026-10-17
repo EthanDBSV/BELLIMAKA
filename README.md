@@ -3,6 +3,25 @@
 All notable changes to the Bellimaka Pokémon Draft League platform are documented here.
 Format: `v[MAJOR].[MINOR].[PATCH]` — Major = major system overhauls, Minor = new features, Patch = bug fixes and visual improvements.
 
+## [v4.3.6] — 2026-10-16
+
+### Team Sheet Original Type Badge Restoration, Drawer Header Visual Hierarchy, Tabular Telemetry Typography
+- **Restored Original Solid Pill Coloring on Team Sheets**:
+  - Reverted type badges on team sheets, rosters, and general Pokémon views back to their original solid pill appearance (`background: ${theme.badgeBg}; color: ${theme.badgeText};`).
+  - Restricts the darkened obsidian gradient with glowing accent borders (`variant='obsidian'`) exclusively to the Awards cards (`renderMajorAwardsCardsHtml` and `renderTeamOfTheSeasonCardsHtml`), where radiant stage lighting and dark backdrops require extra contrast separation.
+- **Enlarged Drawer Section Titles & Accent Counts**:
+  - Upgraded the primary section headers in the career drawer (**🏆 Accolades & Honors** and **⚔️ Tournament Record**) to `font: 900 15px 'Barlow Condensed'` with letter-spacing `1px` and uppercase styling, distinctly elevating them above the 11px category sub-headers (`CHAMPIONSHIPS & TITLES`, etc.).
+  - Added dedicated accent badge chips to the right-hand counts (`X Honors` in gold, `X Events` in cyan) at `13px` bold with soft translucent backgrounds and matching 1px borders for immediate scanability.
+  - Enhanced the **Career Telemetry HUD** title to `13.5px` bold with icon accent.
+- **High-Visibility Tabular Telemetry Typography (Tournament Record)**:
+  - Addressed number legibility issues where condensed digits (such as 19 and 10) were hard to differentiate at small sizes.
+  - Upgraded tournament battle telemetry numbers to standard, non-condensed tabular figures (`font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 13px; font-weight: 800; font-variant-numeric: tabular-nums`).
+  - Wrapped each metric in its own high-contrast tinted micro-badge with clear uppercase labels:
+    - **KOs**: Peach badge (`#fdba74` on `rgba(251,146,60,0.12)`)
+    - **Dmg/g**: Light coral badge (`#fca5a5` on `rgba(248,113,113,0.12)`)
+    - **Imp**: Sky cyan badge (`#7dd3fc` on `rgba(56,189,248,0.12)`)
+  - Applied tabular numbers to the win-loss record (`W - L (%)`) and accolade season/stat badges for unmistakable clarity.
+
 ## [v4.3.5] — 2026-10-16
 
 ### High-Visibility Smogon Logo, Streamlined Career Dossier, Draft & Planner Guardrails
