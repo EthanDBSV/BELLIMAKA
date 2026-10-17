@@ -3,6 +3,25 @@
 All notable changes to the Bellimaka Pokémon Draft League platform are documented here.
 Format: `v[MAJOR].[MINOR].[PATCH]` — Major = major system overhauls, Minor = new features, Patch = bug fixes and visual improvements.
 
+## [v4.3.4] — 2026-10-16
+
+### Pokémon League Career Dossier & Accolades Modal, Smogon Icon Integration
+- **Smogon Dex Embed Icon Integration**:
+  - Enhanced the "Smogon Dex" link button in the right-hand Pokémon inspection drawer sidebar with a crisp Smogon icon.
+  - Configured to automatically prioritize custom local uploads at `Fonts & Logos/smogon.png` (or `smogon.png` in GitHub), with seamless live fallback to Smogon's official `favicon.ico`.
+- **Pokémon League Career Dossier & Accolades Modal (`openPokemonLeagueCareerModal`)**:
+  - Added a circular gold medal action button (`🏅`) next to the Smogon Dex button in the Pokémon drawer action bar.
+  - Clicking the button opens a comprehensive **League Career Dossier & Accolades Modal** featuring:
+    - **Career Telemetry HUD Bar**: Total times drafted, games fielded, win rate percentage (`X.X%`) with exact battle record (`W - L` in matches appeared in), total career knockouts (`KOs/game`), and career average impact rating.
+    - **Official Accolades & Honors Gallery**:
+      - **Tournaments Won / Championships**: Highlights championships won when this Pokémon was on the winning team, specifying the tournament, season, winning coach, and team name.
+      - **Playoff Finals MVP**: Records Finals MVP honors with finals game count, KOs, impact rating, season, coach, and team.
+      - **Regular Season MVP**: Records Season MVP honors with match MVPs count, season impact rating, season, coach, and team.
+      - **All-Tournament Teams (1st, 2nd, 3rd)**: Records every All-Tournament honor with tier badge, slot number, season, coach, and team.
+      - **Statistical Category Leaders**: Displays honors for leading the entire tournament in KOs, Damage, Damage Absorbed, Healing, or Support.
+    - **Per-Tournament Battle Record Breakdown**: Detailed log of every tournament where the Pokémon was fielded in battle, showing win-loss record, win rate, KOs, damage per game, and impact score.
+    - **League Draft History**: Complete historical draft ledger listing every tournament and season the Pokémon was selected, with coach, team name, round, pick number, and point cost badge.
+
 ## [v4.3.3] — 2026-10-16
 
 ### Silhouette Lighting & Halo Fix, Obsidian Type Badges, All-Teams Collectible Grid Overhaul

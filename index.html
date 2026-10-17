@@ -46233,11 +46233,16 @@ function openPokemonDetailDrawer(monName, cost, tierName, tourneyId = null) {
       ${renderDrawerActionsHtml(canonicalName, actualCost, actualTierName, targetTid)}
     </div>
 
-    <!-- External Links -->
-    <div style="padding:0 18px 24px">
-      <a href="https://www.smogon.com/dex/sv/pokemon/${encodeURIComponent(toSmogonSlug(canonicalName))}/" target="_blank" rel="noopener" class="btn ghost btn-sm" style="display:flex;align-items:center;justify-content:center;gap:6px;width:100%;text-decoration:none;font-size:12px;font-weight:700;color:#94a3b8;border-color:rgba(255,255,255,0.1);padding:8px 12px;border-radius:8px;background:rgba(255,255,255,0.03)">
-        Smogon Dex ↗
+    <!-- External Links & League Career Action Bar -->
+    <div style="padding:0 18px 24px;display:flex;align-items:center;gap:8px">
+      <a href="https://www.smogon.com/dex/sv/pokemon/${encodeURIComponent(toSmogonSlug(canonicalName))}/" target="_blank" rel="noopener" class="btn ghost btn-sm" style="display:flex;align-items:center;justify-content:center;gap:8px;flex:1;text-decoration:none;font-size:12px;font-weight:700;color:#cbd5e1;border-color:rgba(255,255,255,0.12);padding:9px 12px;border-radius:8px;background:rgba(255,255,255,0.03);transition:all .2s ease" onmouseover="this.style.background='rgba(255,255,255,0.07)';this.style.borderColor='rgba(255,255,255,0.2)'" onmouseout="this.style.background='rgba(255,255,255,0.03)';this.style.borderColor='rgba(255,255,255,0.12)'">
+        <img src="Fonts & Logos/smogon.png" onerror="if(this.src!=='https://www.smogon.com/favicon.ico'){this.src='https://www.smogon.com/favicon.ico';}" alt="Smogon" style="width:16px;height:16px;object-fit:contain;flex-shrink:0;border-radius:3px">
+        <span>Smogon Dex</span>
+        <span style="font-size:11px;opacity:0.6">↗</span>
       </a>
+      <button type="button" class="btn ghost btn-sm" onclick="openPokemonLeagueCareerModal('${jsArg(canonicalName)}')" title="View ${esc(canonicalName)} League Career Stats & Accolades" style="width:38px;height:38px;padding:0;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;background:linear-gradient(135deg,rgba(255,209,102,0.14) 0%,rgba(217,119,6,0.14) 100%);border:1px solid rgba(255,209,102,0.4);color:#ffd166;box-shadow:0 2px 8px rgba(0,0,0,0.3);transition:all .2s ease;cursor:pointer" onmouseover="this.style.transform='scale(1.08)';this.style.borderColor='#ffd166';this.style.boxShadow='0 0 12px rgba(255,209,102,0.35)'" onmouseout="this.style.transform='none';this.style.borderColor='rgba(255,209,102,0.4)';this.style.boxShadow='0 2px 8px rgba(0,0,0,0.3)'">
+        <span style="font-size:17px;line-height:1">🏅</span>
+      </button>
     </div>
   `;
 
@@ -46389,6 +46394,668 @@ function refreshDrawerActions() {
 
 function openOffseasonMonDetailModal(monName, cost, tourneyId = null){
   openPokemonDetailDrawer(monName, cost, null, tourneyId);
+}
+
+function getPokemonLeagueCareerDossier(monName) {
+  let cleanName = String(monName || '').trim();
+  let resolved = (typeof resolvePokemonData === 'function') ? resolvePokemonData(cleanName) : null;
+  let canonicalName = resolved?.name || cleanName;
+
+  function matchesTarget(candName, coachName, tourn) {
+    if(!candName || !canonicalName) return false;
+    let tNorm = canonicalName.toLowerCase().replace(/[^a-z0-9]/g, '');
+    let cNorm = String(candName).trim().toLowerCase().replace(/[^a-z0-9]/g, '');
+    if(cNorm === tNorm) return true;
+
+    let cDraft = (typeof normalizeBattleFormToDraftForm === 'function' ? normalizeBattleFormToDraftForm(candName) : candName).toLowerCase().replace(/[^a-z0-9]/g, '');
+    let tDraft = (typeof normalizeBattleFormToDraftForm === 'function' ? normalizeBattleFormToDraftForm(canonicalName) : canonicalName).toLowerCase().replace(/[^a-z0-9]/g, '');
+    if(cDraft === tDraft || cDraft === tNorm || cNorm === tDraft) return true;
+
+    if(coachName && tourn && typeof resolveDraftMonName === 'function') {
+      let rDraft = resolveDraftMonName(candName, coachName, tourn).toLowerCase().replace(/[^a-z0-9]/g, '');
+      if(rDraft === tNorm || rDraft === tDraft) return true;
+    }
+    return false;
+  }
+
+  let tourneys = (typeof sortedTournamentsChronological === 'function' ? sortedTournamentsChronological() : Object.values(window.tournamentData || {})) || [];
+  if(!tourneys.length && window.tournamentData) {
+    tourneys = Object.values(window.tournamentData);
+  }
+
+  let draftHistory = [];
+  let accolades = [];
+  let tournamentRecords = [];
+  let totalGames = 0;
+  let totalWins = 0;
+  let totalLosses = 0;
+  let totalKills = 0;
+  let totalDamage = 0;
+  let totalDamageTaken = 0;
+  let totalSupport = 0;
+  let totalImpactScore = 0;
+
+  tourneys.forEach(t => {
+    if(!t) return;
+    let tName = t.name || 'Tournament';
+    let sNum = (typeof getTournamentSeasonNumber === 'function') ? getTournamentSeasonNumber(t) : null;
+    let seasonLabel = t.season || (sNum ? `Season ${sNum}` : tName);
+
+    // 1. Check Draft History in this tournament
+    let foundInDraft = false;
+    if(t.draftData?.picks && Array.isArray(t.draftData.picks)) {
+      t.draftData.picks.forEach(p => {
+        if(p && matchesTarget(p.pokemon, p.player, t)) {
+          foundInDraft = true;
+          draftHistory.push({
+            tournamentId: t.id,
+            tournament: tName,
+            season: seasonLabel,
+            coach: p.player,
+            team: (typeof teamName === 'function') ? teamName(t, p.player) : 'Unassigned',
+            cost: p.cost !== undefined ? p.cost : (typeof findPokemonCostOnBoard === 'function' ? findPokemonCostOnBoard(t, canonicalName) : 0),
+            round: p.round || null,
+            pickNumber: p.pickNumber || null,
+            pickType: 'draft'
+          });
+        }
+      });
+    }
+
+    if(!foundInDraft && t.rosters) {
+      Object.keys(t.rosters).forEach(coach => {
+        let rList = t.rosters[coach] || [];
+        let hasMon = rList.some(m => matchesTarget(typeof m === 'string' ? m : (m.pokemon || m.name), coach, t));
+        if(hasMon) {
+          draftHistory.push({
+            tournamentId: t.id,
+            tournament: tName,
+            season: seasonLabel,
+            coach: coach,
+            team: (typeof teamName === 'function') ? teamName(t, coach) : 'Unassigned',
+            cost: (typeof findPokemonCostOnBoard === 'function' ? findPokemonCostOnBoard(t, canonicalName) : 0),
+            round: null,
+            pickNumber: null,
+            pickType: 'roster'
+          });
+        }
+      });
+    }
+
+    // 2. Battle Replays & Match Appearances
+    let tGames = 0;
+    let tWins = 0;
+    let tLosses = 0;
+    let tKills = 0;
+    let tDamage = 0;
+    let tTaken = 0;
+    let tSupport = 0;
+    let tImpact = 0;
+    let tCoaches = new Set();
+
+    let allReplays = [];
+    let seenReplays = new Set();
+    (t.matches || []).forEach(m => {
+      if(Array.isArray(m.replays)) {
+        m.replays.forEach(r => {
+          if(!r) return;
+          let matchKey = m.id || `${m.a || ''}_${m.b || ''}_${m.round || m.group || ''}`;
+          let repKey = r.id || `${matchKey}_g${r.game || 1}`;
+          if(!seenReplays.has(r) && !seenReplays.has(repKey)){
+            seenReplays.add(r);
+            seenReplays.add(repKey);
+            allReplays.push({ replay: r, match: m });
+          }
+        });
+      }
+    });
+
+    if(t.topCutReplays && typeof t.topCutReplays === 'object') {
+      Object.keys(t.topCutReplays).forEach(tcKey => {
+        let rList = t.topCutReplays[tcKey];
+        if(Array.isArray(rList)) {
+          let tcMatch = (typeof findTournamentMatch === 'function') ? findTournamentMatch(t, tcKey)?.match : null;
+          rList.forEach(r => {
+            if(!r) return;
+            if(tcMatch) {
+              if(!r.coach1 && (tcMatch.a || tcMatch.p1)) r.coach1 = tcMatch.a || tcMatch.p1;
+              if(!r.coach2 && (tcMatch.b || tcMatch.p2)) r.coach2 = tcMatch.b || tcMatch.p2;
+            }
+            let matchKey = tcMatch?.id || `${tcMatch?.a || ''}_${tcMatch?.b || ''}_${tcKey}`;
+            let repKey = r.id || `${matchKey}_g${r.game || 1}`;
+            if(!seenReplays.has(r) && !seenReplays.has(repKey)){
+              seenReplays.add(r);
+              seenReplays.add(repKey);
+              allReplays.push({ replay: r, match: tcMatch });
+            }
+          });
+        }
+      });
+    }
+
+    allReplays.forEach(({ replay, match }) => {
+      let c1 = replay.coach1 || match?.a || match?.p1 || '';
+      let c2 = replay.coach2 || match?.b || match?.p2 || '';
+      let stats = replay.stats;
+      let pList = Array.isArray(stats?.pokemon) ? stats.pokemon : (stats?.pokemon ? Object.values(stats.pokemon) : []);
+      let isSwapped = Boolean(replay.swapped || stats?.swapped || stats?.sideAttribution?.swapped);
+
+      pList.forEach(p => {
+        if(!p.name || p.brought === false) return;
+        let coach = (typeof resolvePokemonCoach === 'function') ? resolvePokemonCoach(p, c1, c2, t, isSwapped) : '';
+        if(!matchesTarget(p.name, coach, t)) return;
+
+        if(coach) tCoaches.add(coach);
+        tGames++;
+        totalGames++;
+
+        let kills = (p.kills || 0);
+        let dmg = (p.damageDealt || 0);
+        let taken = (p.damageTaken || 0);
+        let supp = (p.supportScore || 0);
+        let imp = (typeof calculateMonImpactScore === 'function') ? calculateMonImpactScore(p) : 0;
+
+        tKills += kills;
+        totalKills += kills;
+        tDamage += dmg;
+        totalDamage += dmg;
+        tTaken += taken;
+        totalDamageTaken += taken;
+        tSupport += supp;
+        totalSupport += supp;
+        tImpact += imp;
+        totalImpactScore += imp;
+
+        let winCoach = replay.winnerCoach || stats?.winnerCoach || replay.winner;
+        if(winCoach && coach) {
+          let isWin = (typeof isCoachMatch === 'function') ? isCoachMatch(winCoach, coach, t) : (String(winCoach).trim().toLowerCase() === String(coach).trim().toLowerCase());
+          if(isWin) {
+            tWins++;
+            totalWins++;
+          } else {
+            tLosses++;
+            totalLosses++;
+          }
+        }
+      });
+    });
+
+    if(tGames > 0 || foundInDraft) {
+      tournamentRecords.push({
+        tournamentId: t.id,
+        tournament: tName,
+        season: seasonLabel,
+        coaches: Array.from(tCoaches),
+        games: tGames,
+        wins: tWins,
+        losses: tLosses,
+        winRate: tGames > 0 ? ((tWins / tGames) * 100) : 0,
+        kills: tKills,
+        damage: tDamage,
+        impactScore: tImpact,
+        avgImpact: tGames > 0 ? (tImpact / tGames) : 0
+      });
+    }
+
+    // 3. Tournament Honors & Accolades
+    let isComplete = String(t.status || '').toUpperCase() === 'COMPLETE' || t.phase === 'complete' || t.phase === 'completed';
+    let champCoach = (t.topCutCache?.champion || t.champion || (typeof getTournamentTopCutModel === 'function' ? getTournamentTopCutModel(t)?.champion : '') || '').trim();
+    if(champCoach && isComplete) {
+      let champRoster = (t.rosters && t.rosters[champCoach]) ? t.rosters[champCoach] : [];
+      let onChampTeam = champRoster.some(m => matchesTarget(typeof m === 'string' ? m : (m.pokemon || m.name), champCoach, t));
+      if(!onChampTeam && t.draftData?.picks) {
+        onChampTeam = t.draftData.picks.some(p => p.player === champCoach && matchesTarget(p.pokemon, champCoach, t));
+      }
+      if(!onChampTeam && tCoaches.has(champCoach)) {
+        onChampTeam = true;
+      }
+      if(onChampTeam) {
+        accolades.push({
+          type: 'champion',
+          badgeText: '🏆 TOURNAMENT CHAMPION',
+          title: `${tName} Champion`,
+          icon: '🏆',
+          tournament: tName,
+          season: seasonLabel,
+          coach: champCoach,
+          team: (typeof teamName === 'function') ? teamName(t, champCoach) : 'Unassigned',
+          badgeColor: '#ffd166',
+          badgeBg: 'rgba(255,209,102,0.16)',
+          badgeBorder: 'rgba(255,209,102,0.45)',
+          priority: 1
+        });
+      }
+    }
+
+    if(typeof calculateTeamOfTheSeason === 'function') {
+      let tots = calculateTeamOfTheSeason(t);
+      if(tots) {
+        if(tots.majorAwards?.finalsMvp && matchesTarget(tots.majorAwards.finalsMvp.name, tots.majorAwards.finalsMvp.coach, t)) {
+          let mvp = tots.majorAwards.finalsMvp;
+          accolades.push({
+            type: 'finalsMvp',
+            badgeText: '🏆 FINALS MVP',
+            title: 'Playoff Finals MVP',
+            icon: '🏆',
+            tournament: tName,
+            season: seasonLabel,
+            coach: mvp.coach,
+            team: (typeof teamName === 'function') ? teamName(t, mvp.coach) : 'Unassigned',
+            statHighlight: `${mvp.games || 1} Finals GP • ${mvp.totalKills || 0} KOs • ${typeof formatImpactScore === 'function' ? formatImpactScore(mvp.impactScore) : mvp.impactScore} Finals Impact`,
+            badgeColor: '#ffd166',
+            badgeBg: 'rgba(255,209,102,0.18)',
+            badgeBorder: 'rgba(255,209,102,0.5)',
+            priority: 2
+          });
+        }
+
+        if(tots.majorAwards?.mvp && matchesTarget(tots.majorAwards.mvp.name, tots.majorAwards.mvp.coach, t)) {
+          let mvp = tots.majorAwards.mvp;
+          accolades.push({
+            type: 'seasonMvp',
+            badgeText: '⭐ REGULAR SEASON MVP',
+            title: 'Regular Season MVP',
+            icon: '⭐',
+            tournament: tName,
+            season: seasonLabel,
+            coach: mvp.coach,
+            team: (typeof teamName === 'function') ? teamName(t, mvp.coach) : 'Unassigned',
+            statHighlight: `${mvp.regMatchMvps || mvp.matchMvps || 0} Match MVPs • ${typeof formatImpactScore === 'function' ? formatImpactScore(mvp.regAvgImpactScore || mvp.avgImpactScore) : ''} Avg Impact`,
+            badgeColor: '#ffd166',
+            badgeBg: 'rgba(255,209,102,0.18)',
+            badgeBorder: 'rgba(255,209,102,0.5)',
+            priority: 3
+          });
+        }
+
+        let fItem = (tots.firstTeam || []).find(item => item.mon && matchesTarget(item.mon.name, item.mon.coach, t));
+        if(fItem) {
+          accolades.push({
+            type: 'firstTeam',
+            badgeText: '🥇 1ST TEAM ALL-TOURNAMENT',
+            title: `1st Team All-Tournament (#${fItem.slotNum || 1})`,
+            icon: '🥇',
+            tournament: tName,
+            season: seasonLabel,
+            coach: fItem.mon.coach,
+            team: (typeof teamName === 'function') ? teamName(t, fItem.mon.coach) : 'Unassigned',
+            statHighlight: `${fItem.statVal} ${fItem.statUnit}`,
+            badgeColor: '#ffd166',
+            badgeBg: 'rgba(255,209,102,0.16)',
+            badgeBorder: 'rgba(255,209,102,0.4)',
+            priority: 4
+          });
+        }
+
+        let sItem = (tots.secondTeam || []).find(item => item.mon && matchesTarget(item.mon.name, item.mon.coach, t));
+        if(sItem) {
+          accolades.push({
+            type: 'secondTeam',
+            badgeText: '🥈 2ND TEAM ALL-TOURNAMENT',
+            title: `2nd Team All-Tournament (#${sItem.slotNum || 1})`,
+            icon: '🥈',
+            tournament: tName,
+            season: seasonLabel,
+            coach: sItem.mon.coach,
+            team: (typeof teamName === 'function') ? teamName(t, sItem.mon.coach) : 'Unassigned',
+            statHighlight: `${sItem.statVal} ${sItem.statUnit}`,
+            badgeColor: '#cbd5e1',
+            badgeBg: 'rgba(203,213,225,0.16)',
+            badgeBorder: 'rgba(203,213,225,0.4)',
+            priority: 5
+          });
+        }
+
+        let tItem = (tots.thirdTeam || []).find(item => item.mon && matchesTarget(item.mon.name, item.mon.coach, t));
+        if(tItem) {
+          accolades.push({
+            type: 'thirdTeam',
+            badgeText: '🥉 3RD TEAM ALL-TOURNAMENT',
+            title: `3rd Team All-Tournament (#${tItem.slotNum || 1})`,
+            icon: '🥉',
+            tournament: tName,
+            season: seasonLabel,
+            coach: tItem.mon.coach,
+            team: (typeof teamName === 'function') ? teamName(t, tItem.mon.coach) : 'Unassigned',
+            statHighlight: `${tItem.statVal} ${tItem.statUnit}`,
+            badgeColor: '#f0a875',
+            badgeBg: 'rgba(240,168,117,0.16)',
+            badgeBorder: 'rgba(240,168,117,0.4)',
+            priority: 6
+          });
+        }
+
+        if(tots.leaders) {
+          let checkLeader = (list, icon, lbl, col) => {
+            let top1 = list && list[0];
+            if(top1 && matchesTarget(top1.name, top1.coach, t)) {
+              accolades.push({
+                type: 'statLeader',
+                badgeText: `${icon} ${lbl.toUpperCase()}`,
+                title: `${lbl} (#1 in Tournament)`,
+                icon: icon,
+                tournament: tName,
+                season: seasonLabel,
+                coach: top1.coach,
+                team: (typeof teamName === 'function') ? teamName(t, top1.coach) : 'Unassigned',
+                statHighlight: `${top1.games} Games • ${top1.killsPerGame ? (top1.killsPerGame % 1 === 0 ? top1.killsPerGame.toFixed(0) : top1.killsPerGame.toFixed(1)) + ' KOs/g' : (top1.damageDealtPerGame ? Math.round(top1.damageDealtPerGame) + ' Dmg/g' : '')}`,
+                badgeColor: col,
+                badgeBg: 'rgba(255,255,255,0.06)',
+                badgeBorder: col,
+                priority: 7
+              });
+            }
+          };
+          checkLeader(tots.leaders.topKOs, '⚔️', 'Tournament KO Leader', '#fb923c');
+          checkLeader(tots.leaders.topDamage, '💥', 'Tournament Damage Leader', '#f87171');
+          checkLeader(tots.leaders.topTaken, '🛡️', 'Tournament Tank Leader', '#94a3b8');
+          checkLeader(tots.leaders.topHealed, '💚', 'Tournament Healing Leader', '#4ade80');
+          checkLeader(tots.leaders.topSupport, '✨', 'Tournament Support Leader', '#c084fc');
+        }
+      }
+    }
+  });
+
+  accolades.sort((a,b) => (a.priority || 99) - (b.priority || 99));
+
+  return {
+    canonicalName,
+    timesDrafted: draftHistory.length,
+    draftHistory,
+    totalGames,
+    totalWins,
+    totalLosses,
+    winRate: totalGames > 0 ? ((totalWins / totalGames) * 100) : 0,
+    totalKills,
+    killsPerGame: totalGames > 0 ? (totalKills / totalGames) : 0,
+    totalDamage,
+    damagePerGame: totalGames > 0 ? (totalDamage / totalGames) : 0,
+    totalDamageTaken,
+    totalSupport,
+    avgImpact: totalGames > 0 ? (totalImpactScore / totalGames) : 0,
+    accolades,
+    tournamentRecords
+  };
+}
+
+function openPokemonLeagueCareerModal(monName) {
+  let cleanName = String(monName || '').trim();
+  if(!cleanName) return;
+  let resolved = (typeof resolvePokemonData === 'function') ? resolvePokemonData(cleanName) : null;
+  let canonicalName = resolved?.name || cleanName;
+  let sprite = (typeof getPokemonArtworkUrl === 'function' ? getPokemonArtworkUrl(canonicalName) : null) || (resolved?.sprite) || (typeof getPokemonSpriteUrl === 'function' ? getPokemonSpriteUrl(canonicalName.toLowerCase()) : '');
+  let types = (typeof getPokemonTypes === 'function' ? getPokemonTypes(canonicalName) : []) || ['Normal'];
+  let pType = types[0] || 'Normal';
+  let theme = (typeof TYPE_THEMES !== 'undefined' && TYPE_THEMES[pType]) ? TYPE_THEMES[pType] : { bg: '#1c1c24', border: '#383847', glow: 'rgba(255,255,255,0.06)' };
+
+  let dossier = getPokemonLeagueCareerDossier(canonicalName);
+
+  let modalEl = document.querySelector('#modal');
+  if(!modalEl) return;
+
+  modalEl.innerHTML = `
+    <div class="modal-wrap" onclick="if(event.target===this)closeModal()">
+      <div class="modal" style="display:flex;flex-direction:column;max-width:760px;width:95vw;max-height:92vh;max-height:92dvh;padding:0;background:#111118;border:1px solid #2e2e42;border-radius:14px;box-shadow:0 20px 60px rgba(0,0,0,0.85);overflow:hidden">
+        
+        <!-- Modal Head -->
+        <div class="modal-head" style="padding:16px 22px;background:linear-gradient(90deg, #181824, #12121b);border-bottom:1px solid #28283c;display:flex;justify-content:space-between;align-items:center;position:sticky;top:0;z-index:10;flex-shrink:0">
+          <div style="display:flex;align-items:center;gap:14px">
+            <div style="width:52px;height:52px;border-radius:10px;background:radial-gradient(circle, ${theme.glow ? theme.glow.replace(/0\.\d+/, '0.35') : 'rgba(255,255,255,0.1)'} 0%, rgba(0,0,0,0.4) 70%);border:1px solid ${theme.border || '#383847'};display:flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:0 4px 12px rgba(0,0,0,0.4)">
+              <img src="${sprite}" alt="${esc(canonicalName)}" style="max-width:44px;max-height:44px;object-fit:contain;filter:drop-shadow(0 4px 8px rgba(0,0,0,0.7))" loading="lazy" crossOrigin="anonymous" onload="autoTrimArtwork(this)" onerror="handleArtworkFallback(this, '${jsArg(canonicalName)}')">
+            </div>
+            <div>
+              <div class="eyebrow" style="color:#ffd166;display:flex;align-items:center;gap:6px;font-size:11px">
+                <span>🏅</span> LEAGUE CAREER DOSSIER &amp; ACCOLADES
+              </div>
+              <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:2px">
+                <h2 style="font:900 24px/1 'Barlow Condensed',sans-serif;margin:0;letter-spacing:.6px;color:#ffffff;text-transform:uppercase">
+                  ${esc(canonicalName)}
+                </h2>
+                <div style="display:flex;align-items:center;gap:4px">
+                  ${typeof renderPokemonTypeBadges === 'function' ? renderPokemonTypeBadges(canonicalName, 'font-size:9px;padding:2px 7px') : ''}
+                </div>
+              </div>
+            </div>
+          </div>
+          <button class="close" onclick="closeModal()" title="Close" style="background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);color:#94a3b8;width:32px;height:32px;border-radius:8px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:16px;line-height:1;transition:all .15s ease" onmouseover="this.style.color='#fff';this.style.background='rgba(255,255,255,0.12)'" onmouseout="this.style.color='#94a3b8';this.style.background='rgba(255,255,255,0.06)'">✕</button>
+        </div>
+
+        <!-- Modal Body (Scrollable) -->
+        <div class="modal-body" style="padding:18px 22px;overflow-y:auto;display:flex;flex-direction:column;gap:18px">
+          
+          <!-- Career Highlights HUD Bar -->
+          <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(110px, 1fr));gap:10px;background:rgba(0,0,0,0.35);border:1px solid rgba(255,255,255,0.08);border-radius:10px;padding:12px 14px;box-shadow:inset 0 1px 4px rgba(0,0,0,0.5)">
+            <div style="text-align:center">
+              <div style="font:900 24px 'Barlow Condensed';color:#ffd166;line-height:1.1">
+                ${dossier.timesDrafted}x
+              </div>
+              <div style="font-size:9.5px;font-weight:800;color:#94a3b8;text-transform:uppercase;letter-spacing:.6px;margin-top:3px">
+                Times Drafted
+              </div>
+              <div style="font-size:10px;color:#6b7280;margin-top:2px">
+                ${dossier.draftHistory.length === 1 ? '1 Season' : dossier.draftHistory.length + ' Seasons'}
+              </div>
+            </div>
+
+            <div style="text-align:center;border-left:1px solid rgba(255,255,255,0.06)">
+              <div style="font:900 24px 'Barlow Condensed';color:#f8fafc;line-height:1.1">
+                ${dossier.totalGames}
+              </div>
+              <div style="font-size:9.5px;font-weight:800;color:#94a3b8;text-transform:uppercase;letter-spacing:.6px;margin-top:3px">
+                Games Fielded
+              </div>
+              <div style="font-size:10px;color:#6b7280;margin-top:2px">
+                Appearances
+              </div>
+            </div>
+
+            <div style="text-align:center;border-left:1px solid rgba(255,255,255,0.06)">
+              <div style="font:900 24px 'Barlow Condensed';color:${dossier.winRate >= 60 ? '#4ade80' : (dossier.winRate >= 45 ? '#38bdf8' : '#cbd5e1')};line-height:1.1">
+                ${dossier.totalGames > 0 ? (dossier.winRate.toFixed(1) + '%') : '—'}
+              </div>
+              <div style="font-size:9.5px;font-weight:800;color:#94a3b8;text-transform:uppercase;letter-spacing:.6px;margin-top:3px">
+                Win Rate
+              </div>
+              <div style="font-size:10px;color:#6b7280;margin-top:2px">
+                ${dossier.totalWins}W - ${dossier.totalLosses}L
+              </div>
+            </div>
+
+            <div style="text-align:center;border-left:1px solid rgba(255,255,255,0.06)">
+              <div style="font:900 24px 'Barlow Condensed';color:#fb923c;line-height:1.1">
+                ${dossier.totalKills}
+              </div>
+              <div style="font-size:9.5px;font-weight:800;color:#94a3b8;text-transform:uppercase;letter-spacing:.6px;margin-top:3px">
+                Total KOs
+              </div>
+              <div style="font-size:10px;color:#6b7280;margin-top:2px">
+                ${dossier.killsPerGame.toFixed(1)} / game
+              </div>
+            </div>
+
+            <div style="text-align:center;border-left:1px solid rgba(255,255,255,0.06)">
+              <div style="font:900 24px 'Barlow Condensed';color:#38bdf8;line-height:1.1">
+                ${dossier.totalGames > 0 ? (typeof formatImpactScore === 'function' ? formatImpactScore(dossier.avgImpact) : dossier.avgImpact.toFixed(1)) : '—'}
+              </div>
+              <div style="font-size:9.5px;font-weight:800;color:#94a3b8;text-transform:uppercase;letter-spacing:.6px;margin-top:3px">
+                Avg Impact
+              </div>
+              <div style="font-size:10px;color:#6b7280;margin-top:2px">
+                Rating / game
+              </div>
+            </div>
+          </div>
+
+          <!-- Section 1: Official League Accolades -->
+          <div>
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+              <div style="display:flex;align-items:center;gap:8px">
+                <span style="font-size:16px">🏆</span>
+                <span style="font:900 16px 'Barlow Condensed';color:#ffd166;letter-spacing:.6px;text-transform:uppercase">League Accolades &amp; Honors</span>
+              </div>
+              <span style="font-size:11px;color:#8e8c95;font-weight:700">${dossier.accolades.length} ${dossier.accolades.length === 1 ? 'Accolade' : 'Accolades'}</span>
+            </div>
+
+            ${dossier.accolades.length > 0 ? `
+              <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(310px, 1fr));gap:10px">
+                ${dossier.accolades.map(acc => `
+                  <div style="background:linear-gradient(135deg, ${acc.badgeBg} 0%, rgba(18,18,26,0.95) 100%);border:1px solid ${acc.badgeBorder};border-radius:10px;padding:12px 14px;display:flex;flex-direction:column;gap:6px;box-shadow:0 4px 14px rgba(0,0,0,0.3)">
+                    <div style="display:flex;align-items:center;justify-content:space-between;gap:6px">
+                      <span style="font:900 10.5px 'Barlow Condensed';letter-spacing:.8px;text-transform:uppercase;padding:2px 8px;border-radius:4px;background:${acc.badgeBg};color:${acc.badgeColor};border:1px solid ${acc.badgeBorder};box-shadow:0 0 8px ${acc.badgeBg}">
+                        ${acc.badgeText}
+                      </span>
+                      <span style="font-size:11px;color:#ffd166;font-weight:800;letter-spacing:.4px">
+                        ${esc(acc.season)}
+                      </span>
+                    </div>
+                    <div style="font:900 17px 'Barlow Condensed';color:#fff;letter-spacing:.4px;text-transform:uppercase;margin-top:2px">
+                      ${esc(acc.title)}
+                    </div>
+                    <div style="font-size:11.5px;color:#94a3b8;display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+                      <span>Coach: <b style="color:#ffd166">${acc.coach ? (typeof playerLink === 'function' ? playerLink(acc.coach) : esc(acc.coach)) : '—'}</b></span>
+                      <span>•</span>
+                      <span>Team: <b style="color:#f8fafc">${esc(acc.team || 'Unassigned')}</b></span>
+                    </div>
+                    ${acc.statHighlight ? `
+                      <div style="margin-top:4px;font-size:10.5px;font-weight:700;color:#cbd5e1;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.06);padding:3px 8px;border-radius:4px;width:fit-content">
+                        ${acc.statHighlight}
+                      </div>
+                    ` : ''}
+                  </div>
+                `).join('')}
+              </div>
+            ` : `
+              <div style="background:rgba(255,255,255,0.02);border:1px dashed rgba(255,255,255,0.1);border-radius:10px;padding:24px 16px;text-align:center">
+                <div style="font-size:24px;margin-bottom:6px;opacity:0.5">🏅</div>
+                <div style="font:900 15px 'Barlow Condensed';color:#94a3b8;letter-spacing:.4px;text-transform:uppercase">Awaiting Official League Honors</div>
+                <div style="font-size:11px;color:#6b7280;margin-top:4px;max-width:440px;margin-left:auto;margin-right:auto">
+                  Accolades (Championships, Finals MVP, Season MVP, All-Tournament Teams) will automatically record here as battle replays and tournament results are completed!
+                </div>
+              </div>
+            `}
+          </div>
+
+          <!-- Section 2: Battle Record by Tournament -->
+          <div>
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+              <div style="display:flex;align-items:center;gap:8px">
+                <span style="font-size:16px">⚔️</span>
+                <span style="font:900 16px 'Barlow Condensed';color:#38bdf8;letter-spacing:.6px;text-transform:uppercase">Battle Record &amp; Appearances</span>
+              </div>
+              <span style="font-size:11px;color:#8e8c95;font-weight:700">${dossier.tournamentRecords.length} ${dossier.tournamentRecords.length === 1 ? 'Tournament' : 'Tournaments'}</span>
+            </div>
+
+            ${dossier.tournamentRecords.length > 0 ? `
+              <div style="display:flex;flex-direction:column;gap:8px">
+                ${dossier.tournamentRecords.map(rec => `
+                  <div style="background:linear-gradient(135deg,#151520 0%,#101017 100%);border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:10px 14px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
+                    <div style="min-width:0;flex:1">
+                      <div style="display:flex;align-items:center;gap:6px">
+                        <span style="font:900 11px 'Barlow Condensed';padding:1px 6px;border-radius:3px;background:rgba(56,189,248,0.15);color:#38bdf8;border:1px solid rgba(56,189,248,0.3)">
+                          ${esc(rec.season)}
+                        </span>
+                        <span style="font:900 15px 'Barlow Condensed';color:#fff;letter-spacing:.4px;text-transform:uppercase">
+                          ${esc(rec.tournament)}
+                        </span>
+                      </div>
+                      <div style="font-size:11px;color:#94a3b8;margin-top:2px">
+                        ${rec.coaches.length > 0 ? `Coach: <b style="color:#ffd166">${rec.coaches.map(c => typeof playerLink === 'function' ? playerLink(c) : esc(c)).join(', ')}</b>` : 'Drafted / Roster Reserve'}
+                      </div>
+                    </div>
+                    <div style="display:flex;align-items:center;gap:14px;flex-shrink:0">
+                      <div style="text-align:right">
+                        <div style="font:900 16px 'Barlow Condensed';color:${rec.winRate >= 60 ? '#4ade80' : (rec.winRate >= 45 ? '#38bdf8' : '#cbd5e1')};line-height:1">
+                          ${rec.games > 0 ? `${rec.wins}W - ${rec.losses}L (${rec.winRate.toFixed(1)}%)` : '0 Games Fielded'}
+                        </div>
+                        <div style="font-size:9.5px;color:#8e8c95;margin-top:2px;font-weight:700">
+                          ${rec.games} ${rec.games === 1 ? 'game' : 'games'} appeared
+                        </div>
+                      </div>
+                      ${rec.games > 0 ? `
+                        <div style="text-align:right;background:rgba(0,0,0,0.3);padding:4px 8px;border-radius:6px;border:1px solid rgba(255,255,255,0.05)">
+                          <div style="font:900 14px 'Barlow Condensed';color:#f8fafc;line-height:1">
+                            ${rec.kills} KOs • ${Math.round(rec.damage / rec.games)} Dmg/g
+                          </div>
+                          <div style="font-size:9.5px;color:#ffd166;margin-top:2px;font-weight:700">
+                            ${(rec.impactScore / rec.games).toFixed(1)} Avg Impact
+                          </div>
+                        </div>
+                      ` : ''}
+                    </div>
+                  </div>
+                `).join('')}
+              </div>
+            ` : `
+              <div style="background:rgba(255,255,255,0.02);border:1px dashed rgba(255,255,255,0.1);border-radius:10px;padding:20px;text-align:center;color:#8e8c95;font-size:11.5px">
+                No match appearances recorded for ${esc(canonicalName)} yet.
+              </div>
+            `}
+          </div>
+
+          <!-- Section 3: Draft History -->
+          <div>
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+              <div style="display:flex;align-items:center;gap:8px">
+                <span style="font-size:16px">📋</span>
+                <span style="font:900 16px 'Barlow Condensed';color:#f8fafc;letter-spacing:.6px;text-transform:uppercase">League Draft History</span>
+              </div>
+              <span style="font-size:11px;color:#8e8c95;font-weight:700">${dossier.draftHistory.length} ${dossier.draftHistory.length === 1 ? 'Selection' : 'Selections'}</span>
+            </div>
+
+            ${dossier.draftHistory.length > 0 ? `
+              <div style="display:flex;flex-direction:column;gap:8px">
+                ${dossier.draftHistory.map(dh => `
+                  <div style="background:linear-gradient(135deg,#151520 0%,#101017 100%);border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:10px 14px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
+                    <div style="min-width:0;flex:1">
+                      <div style="display:flex;align-items:center;gap:6px">
+                        <span style="font:900 11px 'Barlow Condensed';padding:1px 6px;border-radius:3px;background:rgba(255,209,102,0.15);color:#ffd166;border:1px solid rgba(255,209,102,0.3)">
+                          ${esc(dh.season)}
+                        </span>
+                        <span style="font:900 15px 'Barlow Condensed';color:#fff;letter-spacing:.4px;text-transform:uppercase">
+                          ${esc(dh.tournament)}
+                        </span>
+                      </div>
+                      <div style="font-size:11.5px;color:#94a3b8;margin-top:2px">
+                        Drafted by: <b style="color:#ffd166">${dh.coach ? (typeof playerLink === 'function' ? playerLink(dh.coach) : esc(dh.coach)) : '—'}</b>
+                        <span style="margin:0 4px">•</span>
+                        <span>Team: <b style="color:#f8fafc">${esc(dh.team || 'Unassigned')}</b></span>
+                      </div>
+                    </div>
+                    <div style="display:flex;align-items:center;gap:8px;flex-shrink:0">
+                      ${dh.round ? `
+                        <span style="font:800 10.5px 'Barlow Condensed';color:#cbd5e1;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);padding:3px 8px;border-radius:4px;letter-spacing:.4px">
+                          R${dh.round} • Pick #${dh.pickNumber}
+                        </span>
+                      ` : ''}
+                      <span style="font:900 12px 'Barlow Condensed';color:#fef08a;background:rgba(250,204,21,0.15);border:1px solid rgba(250,204,21,0.4);padding:3px 9px;border-radius:4px;letter-spacing:.5px;font-variant-numeric:tabular-nums">
+                        ${dh.cost} PTS
+                      </span>
+                    </div>
+                  </div>
+                `).join('')}
+              </div>
+            ` : `
+              <div style="background:rgba(255,255,255,0.02);border:1px dashed rgba(255,255,255,0.1);border-radius:10px;padding:20px;text-align:center;color:#8e8c95;font-size:11.5px">
+                No draft records found for ${esc(canonicalName)} yet.
+              </div>
+            `}
+          </div>
+
+        </div>
+
+        <!-- Modal Foot -->
+        <div style="padding:12px 22px;background:#14141d;border-top:1px solid #28283c;display:flex;justify-content:space-between;align-items:center;flex-shrink:0">
+          <div style="font-size:11px;color:#6b7280">
+            Bellimaka Draft League Historical Record
+          </div>
+          <button class="btn btn-sm" onclick="closeModal()" style="padding:6px 20px;font-family:'Barlow Condensed',sans-serif;font-size:12px;font-weight:700;letter-spacing:.5px;text-transform:uppercase">
+            Close Dossier
+          </button>
+        </div>
+
+      </div>
+    </div>
+  `;
 }
 
 function openEditBoardPokemonModal(tId, oldMonName, currentCost, currentTierName){
