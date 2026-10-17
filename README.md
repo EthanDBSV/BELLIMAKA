@@ -3,6 +3,21 @@
 All notable changes to the Bellimaka Pokémon Draft League platform are documented here.
 Format: `v[MAJOR].[MINOR].[PATCH]` — Major = major system overhauls, Minor = new features, Patch = bug fixes and visual improvements.
 
+## [v4.3.3] — 2026-10-16
+
+### Silhouette Lighting & Halo Fix, Obsidian Type Badges, All-Teams Collectible Grid Overhaul
+- **Removal of Rigid Circular Halo (`.award-mon-halo`)**:
+  - Removed static circular halo disks behind Pokémon artwork in both Major Awards and All-Tournament cards.
+  - Fixed visual clipping and lopsided alignment on asymmetrical or wide Pokémon sprites (e.g. Kyurem-Black, Mega Salamence, Thundurus-Therian).
+  - Replaced with seamless elliptical diffuse stage lighting (`radial-gradient(ellipse at 50% 55%, ... 0%, transparent 72%)`) and multi-stage silhouette contour drop-shadows (`filter: drop-shadow(0 14px 24px rgba(0,0,0,0.85)) drop-shadow(...)`) that organically hug the exact alpha silhouette of any Pokémon.
+- **High-Contrast Obsidian Type Pill Badges**:
+  - Fixed type badges under Pokémon names blending into the dark card backgrounds.
+  - Implemented an obsidian foundation gradient (`linear-gradient(135deg, rgba(22,22,34,0.94) 0%, rgba(10,10,16,0.98) 100%)`) with a crisp 1px type-accent border (`border: 1px solid ${theme.accent}`), inner type aura, and outer drop shadow for distinct separation on every theme.
+- **Compact Awards Menu / "All Teams" View Overhaul**:
+  - Replaced the horizontal compact cards (which previously featured tiny 54px sprites and wide empty voids) with full vertical collectible cards across all tiers.
+  - Major Season Awards always displays the two grand MVP vertical cards side-by-side.
+  - The "All Teams" tab now renders First Team, Second Team, and Third Team as clean 4-column collectible card grids with full-scale artwork, hero impact rating badges, and 4-column telemetry docks, completely eliminating empty space.
+
 ## [v4.3.2] — 2026-10-16
 
 ### Major Season Awards & All-Tournament Card Overhaul, Drawer Streamlining
