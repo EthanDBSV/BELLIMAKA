@@ -10,9 +10,18 @@ Format: `v[MAJOR].[MINOR].[PATCH]` — Major = major system overhauls, Minor = n
   - Upgraded the circular Smogon button to **48px diameter** and enlarged the icon to **34px** (`object-fit: contain;`), more than doubling its visible presence.
   - Removed internal image corner clipping (`border-radius: 50%` on the `img` itself), allowing the full Koffing artwork with skull, crossbones, and smoke clouds to render clearly.
   - Sized the gold career medal button (`🏅`) to 48px alongside it with balanced accent lighting.
-- **Streamlined Unboxed Career Dossier (Accolades & Tournament Record)**:
-  - Eliminated the heavy, bloated card boxes and glowing "bubbles" that previously cluttered the career view.
-  - Replaced **Accolades & Honors** with a sleek, compact honors ledger featuring hairline dividers, crisp typography, accolade icons, season badges, coach links, and team names in ~42px rows.
+  - Streamlined the bottom drawer action row in career view: removed the redundant bottom `← Back to Details` button (since the top sticky header already provides instant `← Details` navigation), centering the Smogon logo button.
+- **Accolade Category Segmentation & Hierarchy**:
+  - Divided honors into clearly segmented category blocks instead of a single undifferentiated list:
+    - **🏆 Championships & Titles** (gold left accent)
+    - **⭐ Major MVP Honors** (amber left accent)
+    - **🥇 All-Tournament Selections** (cyan left accent)
+    - **⚔️ Stat Category Leaders** (coral left accent)
+  - Each group features its own header label, icon, and count pill, with hairline row dividers for effortless scanning.
+- **Finals MVP Impact Score Resolution**:
+  - Fixed an unpopulated property lookup where `mvp.impactScore` was queried instead of `mvp.avgImpact`, which previously produced `— Finals Impact`.
+  - Now accurately displays the true computed Finals average impact score (e.g. `85.2 Finals Impact`), with an automatic guard preventing any dash-only fallbacks.
+- **Tournament Record Sports Ledger**:
   - Redesigned **Tournament Record** into a unified sports ledger displaying Season tag, Event name, battle record (`W - L` & win rate %), coach and team names, and per-event telemetry (`KOs`, `Dmg/g`, `Avg Impact`).
   - **Removed Draft History Section**: Eliminated redundant draft ledger since the tournament record already captures the teams and coaches the Pokémon was fielded on.
   - Retained the clean 6-stat **Career Telemetry HUD Bar** (Times Drafted, Games Fielded, Win %, Total KOs, Dmg/G, Avg Impact).

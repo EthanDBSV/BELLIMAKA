@@ -46682,6 +46682,13 @@ function getPokemonLeagueCareerDossier(monName) {
       if(tots) {
         if(tots.majorAwards?.finalsMvp && matchesTarget(tots.majorAwards.finalsMvp.name, tots.majorAwards.finalsMvp.coach, t)) {
           let mvp = tots.majorAwards.finalsMvp;
+          let fImpact = (mvp.avgImpact != null && !isNaN(mvp.avgImpact)) ? mvp.avgImpact : (mvp.impactScore != null && !isNaN(mvp.impactScore) ? mvp.impactScore : (mvp.totalImpact && mvp.games ? (mvp.totalImpact / mvp.games) : null));
+          let fImpactStr = (fImpact != null && typeof formatImpactScore === 'function') ? formatImpactScore(fImpact) : '';
+          let fParts = [];
+          if(mvp.games) fParts.push(`${mvp.games} Finals GP`);
+          if(mvp.totalKills != null) fParts.push(`${mvp.totalKills} KOs`);
+          if(fImpactStr && fImpactStr !== '—') fParts.push(`${fImpactStr} Finals Impact`);
+
           accolades.push({
             type: 'finalsMvp',
             badgeText: '🏆 FINALS MVP',
@@ -46691,7 +46698,7 @@ function getPokemonLeagueCareerDossier(monName) {
             season: seasonLabel,
             coach: mvp.coach,
             team: (typeof teamName === 'function') ? teamName(t, mvp.coach) : 'Unassigned',
-            statHighlight: `${mvp.games || 1} Finals GP • ${mvp.totalKills || 0} KOs • ${typeof formatImpactScore === 'function' ? formatImpactScore(mvp.impactScore) : mvp.impactScore} Finals Impact`,
+            statHighlight: fParts.join(' • '),
             badgeColor: '#ffd166',
             badgeBg: 'rgba(255,209,102,0.18)',
             badgeBorder: 'rgba(255,209,102,0.5)',
@@ -46701,6 +46708,13 @@ function getPokemonLeagueCareerDossier(monName) {
 
         if(tots.majorAwards?.mvp && matchesTarget(tots.majorAwards.mvp.name, tots.majorAwards.mvp.coach, t)) {
           let mvp = tots.majorAwards.mvp;
+          let sImpact = (mvp.regAvgImpactScore != null && !isNaN(mvp.regAvgImpactScore)) ? mvp.regAvgImpactScore : (mvp.avgImpactScore != null && !isNaN(mvp.avgImpactScore) ? mvp.avgImpactScore : mvp.avgImpact);
+          let sImpactStr = (sImpact != null && typeof formatImpactScore === 'function') ? formatImpactScore(sImpact) : '';
+          let sParts = [];
+          let sMvps = mvp.regMatchMvps || mvp.matchMvps || 0;
+          if(sMvps > 0) sParts.push(`${sMvps} Match MVPs`);
+          if(sImpactStr && sImpactStr !== '—') sParts.push(`${sImpactStr} Avg Impact`);
+
           accolades.push({
             type: 'seasonMvp',
             badgeText: '⭐ REGULAR SEASON MVP',
@@ -46710,7 +46724,7 @@ function getPokemonLeagueCareerDossier(monName) {
             season: seasonLabel,
             coach: mvp.coach,
             team: (typeof teamName === 'function') ? teamName(t, mvp.coach) : 'Unassigned',
-            statHighlight: `${mvp.regMatchMvps || mvp.matchMvps || 0} Match MVPs • ${typeof formatImpactScore === 'function' ? formatImpactScore(mvp.regAvgImpactScore || mvp.avgImpactScore) : ''} Avg Impact`,
+            statHighlight: sParts.join(' • '),
             badgeColor: '#ffd166',
             badgeBg: 'rgba(255,209,102,0.18)',
             badgeBorder: 'rgba(255,209,102,0.5)',
@@ -47126,6 +47140,45 @@ function showPokemonDrawerCareerStats(monName) {
 
   let dossier = getPokemonLeagueCareerDossier(canonicalName);
 
+  const accoladeCategories = [
+    {
+      id: 'championships',
+      label: 'Championships & Titles',
+      icon: '🏆',
+      color: '#ffd166',
+      border: '#ffd166',
+      bg: 'rgba(255,209,102,0.12)',
+      items: dossier.accolades.filter(a => a.type === 'champion')
+    },
+    {
+      id: 'mvps',
+      label: 'Major MVP Honors',
+      icon: '⭐',
+      color: '#f59e0b',
+      border: '#f59e0b',
+      bg: 'rgba(245,158,11,0.12)',
+      items: dossier.accolades.filter(a => a.type === 'finalsMvp' || a.type === 'seasonMvp')
+    },
+    {
+      id: 'allTournament',
+      label: 'All-Tournament Selections',
+      icon: '🥇',
+      color: '#38bdf8',
+      border: '#38bdf8',
+      bg: 'rgba(56,189,248,0.12)',
+      items: dossier.accolades.filter(a => a.type === 'firstTeam' || a.type === 'secondTeam' || a.type === 'thirdTeam')
+    },
+    {
+      id: 'leaders',
+      label: 'Stat Category Leaders',
+      icon: '⚔️',
+      color: '#f87171',
+      border: '#f87171',
+      bg: 'rgba(248,113,113,0.12)',
+      items: dossier.accolades.filter(a => a.type === 'leader')
+    }
+  ];
+
   panel.innerHTML = `
     <!-- Top Sticky Header with Back Button and Close Button -->
     <div class="pokemon-drawer-header" style="position:sticky;top:0;background:rgba(18,18,27,0.96);backdrop-filter:blur(8px);z-index:10;border-bottom:1px solid #20202d;padding:14px 18px;display:flex;align-items:center;justify-content:space-between">
@@ -47191,29 +47244,45 @@ function showPokemonDrawerCareerStats(monName) {
 
     <!-- Section 1: Official League Accolades -->
     <div class="pokemon-drawer-section">
-      <div class="pokemon-drawer-section-title">
+      <div class="pokemon-drawer-section-title" style="margin-bottom:10px">
         <span style="color:#ffd166;display:flex;align-items:center;gap:6px"><span>🏆</span> Accolades &amp; Honors</span>
-        <span>${dossier.accolades.length} ${dossier.accolades.length === 1 ? 'Honor' : 'Honors'}</span>
+        <span style="color:#ffd166;font-size:11px">${dossier.accolades.length} ${dossier.accolades.length === 1 ? 'Honor' : 'Honors'}</span>
       </div>
+
       ${dossier.accolades.length > 0 ? `
-        <div style="background:rgba(20,20,30,0.5);border-radius:10px;border:1px solid rgba(255,255,255,0.06);overflow:hidden">
-          ${dossier.accolades.map((acc, idx) => `
-            <div style="padding:10px 14px;display:flex;align-items:center;gap:12px;${idx > 0 ? 'border-top:1px solid rgba(255,255,255,0.05);' : ''}transition:background .15s ease" onmouseover="this.style.background='rgba(255,255,255,0.03)'" onmouseout="this.style.background='transparent'">
-              <div style="font-size:20px;line-height:1;flex-shrink:0;width:26px;text-align:center">${acc.icon || '🏅'}</div>
-              <div style="min-width:0;flex:1">
-                <div style="display:flex;align-items:baseline;justify-content:space-between;gap:8px">
-                  <span style="font:800 13.5px 'Barlow Condensed',sans-serif;color:#ffffff;letter-spacing:.4px;text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">
-                    ${esc(acc.title)}
-                  </span>
-                  <span style="font:800 10.5px 'Barlow Condensed',sans-serif;color:#ffd166;background:rgba(255,209,102,0.1);padding:1px 6px;border-radius:4px;flex-shrink:0;letter-spacing:.3px">
-                    ${esc(acc.season)}
-                  </span>
-                </div>
-                <div style="font-size:11px;color:#94a3b8;margin-top:2px;display:flex;align-items:center;gap:5px;flex-wrap:wrap">
-                  <span>${acc.coach ? playerLink(acc.coach) : '—'}</span>
-                  ${acc.team && acc.team !== 'Unassigned' ? `<span style="color:#475569">·</span><span style="color:#cbd5e1">${esc(acc.team)}</span>` : ''}
-                  ${acc.statHighlight ? `<span style="color:#475569">·</span><span style="color:#a7f3d0;font-weight:600">${acc.statHighlight}</span>` : ''}
-                </div>
+        <div style="display:flex;flex-direction:column;gap:12px">
+          ${accoladeCategories.filter(cat => cat.items.length > 0).map(cat => `
+            <div>
+              <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px">
+                <span style="font-size:12px;line-height:1">${cat.icon}</span>
+                <span style="font:800 11px 'Barlow Condensed',sans-serif;color:${cat.color};letter-spacing:.8px;text-transform:uppercase">
+                  ${cat.label}
+                </span>
+                <span style="font:800 9.5px 'Barlow Condensed';color:#94a3b8;background:rgba(255,255,255,0.06);padding:1px 5px;border-radius:3px">
+                  ${cat.items.length}
+                </span>
+              </div>
+              <div style="background:rgba(20,20,30,0.55);border-radius:8px;border:1px solid rgba(255,255,255,0.06);overflow:hidden">
+                ${cat.items.map((acc, idx) => `
+                  <div style="padding:9px 12px;border-left:3px solid ${cat.border};display:flex;align-items:center;gap:10px;${idx > 0 ? 'border-top:1px solid rgba(255,255,255,0.05);' : ''}transition:background .15s ease" onmouseover="this.style.background='rgba(255,255,255,0.03)'" onmouseout="this.style.background='transparent'">
+                    <div style="font-size:18px;line-height:1;flex-shrink:0;width:22px;text-align:center">${acc.icon || cat.icon}</div>
+                    <div style="min-width:0;flex:1">
+                      <div style="display:flex;align-items:baseline;justify-content:space-between;gap:8px">
+                        <span style="font:800 13px 'Barlow Condensed',sans-serif;color:#ffffff;letter-spacing:.3px;text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">
+                          ${esc(acc.title)}
+                        </span>
+                        <span style="font:800 10.5px 'Barlow Condensed',sans-serif;color:${cat.color};background:${cat.bg};padding:1px 6px;border-radius:4px;flex-shrink:0;letter-spacing:.3px">
+                          ${esc(acc.season)}
+                        </span>
+                      </div>
+                      <div style="font-size:11px;color:#94a3b8;margin-top:2px;display:flex;align-items:center;gap:5px;flex-wrap:wrap">
+                        <span>${acc.coach ? playerLink(acc.coach) : '—'}</span>
+                        ${acc.team && acc.team !== 'Unassigned' ? `<span style="color:#475569">·</span><span style="color:#cbd5e1">${esc(acc.team)}</span>` : ''}
+                        ${acc.statHighlight ? `<span style="color:#475569">·</span><span style="color:#a7f3d0;font-weight:600">${acc.statHighlight}</span>` : ''}
+                      </div>
+                    </div>
+                  </div>
+                `).join('')}
               </div>
             </div>
           `).join('')}
@@ -47281,11 +47350,8 @@ function showPokemonDrawerCareerStats(monName) {
       `}
     </div>
 
-    <!-- Bottom Action Row -->
-    <div style="padding:14px 18px 24px;display:flex;align-items:center;justify-content:center;gap:16px">
-      <button class="btn ghost btn-sm" onclick="returnToPokemonDrawerInfo()" style="display:flex;align-items:center;gap:6px;font-family:'Barlow Condensed',sans-serif;font-size:12px;font-weight:800;letter-spacing:.5px;text-transform:uppercase;color:#cbd5e1;padding:8px 18px;border-radius:8px">
-        ← Back to Details
-      </button>
+    <!-- Bottom Action Row (Centered Smogon Button) -->
+    <div style="padding:14px 18px 24px;display:flex;align-items:center;justify-content:center">
       <a href="https://www.smogon.com/dex/sv/pokemon/${encodeURIComponent(toSmogonSlug(canonicalName))}/" target="_blank" rel="noopener" class="btn ghost btn-sm" title="View ${esc(canonicalName)} on Smogon Dex ↗" style="width:48px;height:48px;padding:0;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;text-decoration:none;border:1.5px solid rgba(168,85,247,0.45);background:radial-gradient(circle at 40% 35%, rgba(138,92,246,0.22) 0%, rgba(20,20,30,0.95) 100%);box-shadow:0 4px 14px rgba(0,0,0,0.45), 0 0 10px rgba(168,85,247,0.18);transition:all .2s cubic-bezier(0.4, 0, 0.2, 1);cursor:pointer" onmouseover="this.style.transform='scale(1.1)';this.style.borderColor='rgba(192,132,252,0.8)';this.style.boxShadow='0 0 18px rgba(168,85,247,0.45)'" onmouseout="this.style.transform='none';this.style.borderColor='rgba(168,85,247,0.45)';this.style.boxShadow='0 4px 14px rgba(0,0,0,0.45), 0 0 10px rgba(168,85,247,0.18)'">
         <img src="Fonts & Logos/smogon.png" onerror="if(this.src!=='https://www.smogon.com/favicon.ico'){this.src='https://www.smogon.com/favicon.ico';}" alt="Smogon Dex" style="width:34px;height:34px;object-fit:contain;flex-shrink:0">
       </a>
