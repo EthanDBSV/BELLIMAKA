@@ -47267,22 +47267,26 @@ function showPokemonDrawerCareerStats(monName) {
               </div>
               <div style="background:rgba(20,20,30,0.55);border-radius:8px;border:1px solid rgba(255,255,255,0.06);overflow:hidden">
                 ${cat.items.map((acc, idx) => `
-                  <div style="padding:9px 12px;border-left:3px solid ${cat.border};display:flex;align-items:center;gap:10px;${idx > 0 ? 'border-top:1px solid rgba(255,255,255,0.05);' : ''}transition:background .15s ease" onmouseover="this.style.background='rgba(255,255,255,0.03)'" onmouseout="this.style.background='transparent'">
-                    <div style="font-size:18px;line-height:1;flex-shrink:0;width:22px;text-align:center">${acc.icon || cat.icon}</div>
+                  <div style="padding:9px 12px;border-left:3px solid ${cat.border};display:flex;align-items:flex-start;gap:10px;${idx > 0 ? 'border-top:1px solid rgba(255,255,255,0.05);' : ''}transition:background .15s ease" onmouseover="this.style.background='rgba(255,255,255,0.03)'" onmouseout="this.style.background='transparent'">
+                    <div style="font-size:18px;line-height:1;flex-shrink:0;width:22px;text-align:center;margin-top:2px">${acc.icon || cat.icon}</div>
                     <div style="min-width:0;flex:1">
                       <div style="display:flex;align-items:baseline;justify-content:space-between;gap:8px">
                         <span style="font:800 13px 'Barlow Condensed',sans-serif;color:#ffffff;letter-spacing:.3px;text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">
                           ${esc(acc.title)}
                         </span>
-                        <span style="font:800 11px -apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;font-variant-numeric:tabular-nums;color:${cat.color};background:${cat.bg};padding:1px 6px;border-radius:4px;flex-shrink:0;letter-spacing:.3px">
+                        <span style="font:800 11px 'Barlow Condensed',sans-serif;color:${cat.color};background:${cat.bg};padding:1px 6px;border-radius:4px;flex-shrink:0;letter-spacing:.4px;text-transform:uppercase">
                           ${esc(acc.season)}
                         </span>
                       </div>
-                      <div style="font-size:11px;color:#94a3b8;margin-top:2px;display:flex;align-items:center;gap:5px;flex-wrap:wrap">
+                      <div style="font-size:11px;color:#94a3b8;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">
                         <span>${acc.coach ? playerLink(acc.coach) : '—'}</span>
-                        ${acc.team && acc.team !== 'Unassigned' ? `<span style="color:#475569">·</span><span style="color:#cbd5e1">${esc(acc.team)}</span>` : ''}
-                        ${acc.statHighlight ? `<span style="color:#475569">·</span><span style="color:#a7f3d0;font-weight:700;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;font-size:11.5px;font-variant-numeric:tabular-nums">${acc.statHighlight}</span>` : ''}
+                        ${acc.team && acc.team !== 'Unassigned' ? `<span style="color:#475569"> · </span><span style="color:#cbd5e1">${esc(acc.team)}</span>` : ''}
                       </div>
+                      ${acc.statHighlight ? `
+                        <div style="font:800 11.5px 'Barlow Condensed',sans-serif;color:#a7f3d0;letter-spacing:.4px;margin-top:2px">
+                          ${acc.statHighlight}
+                        </div>
+                      ` : ''}
                     </div>
                   </div>
                 `).join('')}
@@ -47316,34 +47320,34 @@ function showPokemonDrawerCareerStats(monName) {
               <div style="padding:10px 14px;${idx > 0 ? 'border-top:1px solid rgba(255,255,255,0.05);' : ''}transition:background .15s ease" onmouseover="this.style.background='rgba(255,255,255,0.03)'" onmouseout="this.style.background='transparent'">
                 <div style="display:flex;align-items:baseline;justify-content:space-between;gap:8px">
                   <div style="min-width:0;flex:1;display:flex;align-items:center;gap:6px">
-                    <span style="font:800 10.5px 'Barlow Condensed';color:#38bdf8;background:rgba(56,189,248,0.12);padding:1px 6px;border-radius:4px;flex-shrink:0;letter-spacing:.3px">
+                    <span style="font:800 11px 'Barlow Condensed',sans-serif;color:#38bdf8;background:rgba(56,189,248,0.12);padding:1px 6px;border-radius:4px;flex-shrink:0;letter-spacing:.4px;text-transform:uppercase">
                       ${esc(rec.season)}
                     </span>
                     <span style="font:800 14px 'Barlow Condensed',sans-serif;color:#ffffff;letter-spacing:.3px;text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">
                       ${esc(rec.tournament)}
                     </span>
                   </div>
-                  <div style="font:800 13px -apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;font-variant-numeric:tabular-nums;color:${winColor};flex-shrink:0;letter-spacing:.3px">
+                  <div style="font:900 13.5px 'Barlow Condensed',sans-serif;font-variant-numeric:tabular-nums;color:${winColor};flex-shrink:0;letter-spacing:.3px">
                     ${rec.games > 0 ? `${rec.wins}W - ${rec.losses}L (${rec.winRate.toFixed(1)}%)` : '<span style="color:#64748b;font-weight:700">0 Fielded</span>'}
                   </div>
                 </div>
 
-                <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:4px;flex-wrap:wrap">
-                  <div style="font-size:11px;color:#94a3b8">
+                <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:4px">
+                  <div style="font-size:11px;color:#94a3b8;min-width:0;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">
                     ${coachTeamStr}
                   </div>
                   ${rec.games > 0 ? `
-                    <div style="display:flex;align-items:center;gap:5px;flex-wrap:wrap">
+                    <div style="display:flex;align-items:center;gap:4px;flex-shrink:0">
                       <span style="background:rgba(251,146,60,0.12);border:1px solid rgba(251,146,60,0.25);border-radius:4px;padding:2px 6px;display:inline-flex;align-items:baseline;gap:3px" title="${rec.kills} Total Knockouts">
-                        <span style="font:800 13px -apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;font-variant-numeric:tabular-nums;color:#fdba74;line-height:1">${rec.kills}</span>
+                        <span style="font:900 13.5px 'Barlow Condensed',sans-serif;font-variant-numeric:tabular-nums;letter-spacing:.3px;color:#fdba74;line-height:1">${rec.kills}</span>
                         <span style="font:800 10px 'Barlow Condensed',sans-serif;letter-spacing:0.5px;color:#cbd5e1;text-transform:uppercase">KOs</span>
                       </span>
                       <span style="background:rgba(248,113,113,0.12);border:1px solid rgba(248,113,113,0.25);border-radius:4px;padding:2px 6px;display:inline-flex;align-items:baseline;gap:3px" title="${Math.round(rec.damage / rec.games)} Average Damage Dealt per Game">
-                        <span style="font:800 13px -apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;font-variant-numeric:tabular-nums;color:#fca5a5;line-height:1">${Math.round(rec.damage / rec.games)}</span>
+                        <span style="font:900 13.5px 'Barlow Condensed',sans-serif;font-variant-numeric:tabular-nums;letter-spacing:.3px;color:#fca5a5;line-height:1">${Math.round(rec.damage / rec.games)}</span>
                         <span style="font:800 10px 'Barlow Condensed',sans-serif;letter-spacing:0.5px;color:#cbd5e1;text-transform:uppercase">Dmg/g</span>
                       </span>
                       <span style="background:rgba(56,189,248,0.12);border:1px solid rgba(56,189,248,0.25);border-radius:4px;padding:2px 6px;display:inline-flex;align-items:baseline;gap:3px" title="${(rec.impactScore / rec.games).toFixed(1)} Average Impact Score per Game">
-                        <span style="font:800 13px -apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;font-variant-numeric:tabular-nums;color:#7dd3fc;line-height:1">${(rec.impactScore / rec.games).toFixed(1)}</span>
+                        <span style="font:900 13.5px 'Barlow Condensed',sans-serif;font-variant-numeric:tabular-nums;letter-spacing:.3px;color:#7dd3fc;line-height:1">${(rec.impactScore / rec.games).toFixed(1)}</span>
                         <span style="font:800 10px 'Barlow Condensed',sans-serif;letter-spacing:0.5px;color:#cbd5e1;text-transform:uppercase">Imp</span>
                       </span>
                     </div>

@@ -5,7 +5,7 @@ Format: `v[MAJOR].[MINOR].[PATCH]` — Major = major system overhauls, Minor = n
 
 ## [v4.3.6] — 2026-10-16
 
-### Team Sheet Original Type Badge Restoration, Drawer Header Visual Hierarchy, Tabular Telemetry Typography
+### Team Sheet Original Type Badge Restoration, Drawer Header Hierarchy, Unified Barlow Telemetry & Even Line Layout
 - **Restored Original Solid Pill Coloring on Team Sheets**:
   - Reverted type badges on team sheets, rosters, and general Pokémon views back to their original solid pill appearance (`background: ${theme.badgeBg}; color: ${theme.badgeText};`).
   - Restricts the darkened obsidian gradient with glowing accent borders (`variant='obsidian'`) exclusively to the Awards cards (`renderMajorAwardsCardsHtml` and `renderTeamOfTheSeasonCardsHtml`), where radiant stage lighting and dark backdrops require extra contrast separation.
@@ -13,14 +13,15 @@ Format: `v[MAJOR].[MINOR].[PATCH]` — Major = major system overhauls, Minor = n
   - Upgraded the primary section headers in the career drawer (**🏆 Accolades & Honors** and **⚔️ Tournament Record**) to `font: 900 15px 'Barlow Condensed'` with letter-spacing `1px` and uppercase styling, distinctly elevating them above the 11px category sub-headers (`CHAMPIONSHIPS & TITLES`, etc.).
   - Added dedicated accent badge chips to the right-hand counts (`X Honors` in gold, `X Events` in cyan) at `13px` bold with soft translucent backgrounds and matching 1px borders for immediate scanability.
   - Enhanced the **Career Telemetry HUD** title to `13.5px` bold with icon accent.
-- **High-Visibility Tabular Telemetry Typography (Tournament Record)**:
-  - Addressed number legibility issues where condensed digits (such as 19 and 10) were hard to differentiate at small sizes.
-  - Upgraded tournament battle telemetry numbers to standard, non-condensed tabular figures (`font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 13px; font-weight: 800; font-variant-numeric: tabular-nums`).
-  - Wrapped each metric in its own high-contrast tinted micro-badge with clear uppercase labels:
-    - **KOs**: Peach badge (`#fdba74` on `rgba(251,146,60,0.12)`)
-    - **Dmg/g**: Light coral badge (`#fca5a5` on `rgba(248,113,113,0.12)`)
-    - **Imp**: Sky cyan badge (`#7dd3fc` on `rgba(56,189,248,0.12)`)
-  - Applied tabular numbers to the win-loss record (`W - L (%)`) and accolade season/stat badges for unmistakable clarity.
+- **Unified Barlow Condensed Typography (Zero Font Mismatches)**:
+  - Unified all fonts across the career drawer to strictly use `'Barlow Condensed', sans-serif`, removing foreign system fonts.
+  - Sized telemetry digits to `13.5px` bold (`font: 900 13.5px 'Barlow Condensed'`) with `font-variant-numeric: tabular-nums` inside high-contrast tinted micro-badges (`KOs` peach, `Dmg/g` coral, `Imp` cyan) for unmistakable digit clarity.
+- **Even Line Layout & Split-Line Prevention (Accolades & Tournament Record)**:
+  - Structured Accolade cards into clean, dedicated rows so cards across all coaches and seasons remain perfectly even:
+    - **Row 1**: Title (left) & Season tag (right).
+    - **Row 2**: Coach & Team (`Ethan · Hà Nội Hoothoots` / `Ozy · Netanyahu's Ninetails`) with clean ellipsis truncation and zero trailing dots.
+    - **Row 3**: Dedicated Stat Highlight (`92.3 Average Impact per Game` / `5 Match MVPs • 80.5 Avg Impact`), eliminating inconsistent flex-wrapping where shorter team names kept impact on line 2 while longer team names wrapped to line 3.
+  - Fixed Tournament Record second row with flex-shrink protection on telemetry chips, guaranteeing that every tournament ledger row remains on a uniform 2-row height.
 
 ## [v4.3.5] — 2026-10-16
 
