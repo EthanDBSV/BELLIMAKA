@@ -3,6 +3,42 @@
 All notable changes to the Bellimaka Pokémon Draft League platform are documented here.
 Format: `v[MAJOR].[MINOR].[PATCH]` — Major = major system overhauls, Minor = new features, Patch = bug fixes and visual improvements.
 
+## [v4.3.8] — 2026-10-17
+
+### Grand Achievements Astral Badges, Ruby Decider Color, Total Harmony & Infamous Feats
+- **"Grand Achievements" Astral & Starlight Badge Tier (`.badge-pill.astral`)**:
+  - Created a brand-new celestial prestige category featuring a cosmic deep-space gradient with dual radial star highlights (`#c084fc` purple & `#38bdf8` cyan), celestial aura box-shadows, and glowing starlight text glow.
+  - Promoted the league's pinnacle honors into this tier: **GOAT** (🐐), **Triple Crown** (👑), **Unrivaled** (⚜️), and **Undefeated Champ** (🌟).
+- **Vibrant Ruby Rose Decider Tier (`.badge-pill.ruby` / `.badge-pill.clutch`)**:
+  - Decoupled **Clutch King** (🎯) from Prediction King (`purple`), moving it to a high-voltage glowing ruby rose gradient with crimson/rose neon aura.
+  - Added **Heart of the Cards** (🎴): Awarded for pulling off 4 or more match reverse sweeps (winning 2-1 after dropping Game 1) in a single tournament.
+- **"Total Harmony" Holy Grail Synergist Badge (`.badge-pill.teal`)**:
+  - Added **Total Harmony** (🧬): Awarded when every single drafted Pokémon on a coach's roster plays at least 2 games AND scores at least 3 KOs in a completed tournament.
+- **Dedicated "Infamous Feats" Subsection**:
+  - Created a dedicated section in the Badge Guide and record engine for notorious disasters:
+    - **Donut** (🍩, `crimson`): Awarded for a total eclipse tournament where a coach fails to win a single individual battle game (0-X games, 0-X matches). Automatically replaces/suppresses **Victim** (💀) so coaches don't suffer badge bloat.
+    - **Butterfingers** (🧈, `orange`): Awarded for holding a 1-0 series lead in 3 or more separate matches in a single tournament and getting reverse-swept 1-2 in all of them.
+    - Grouped alongside **Victim** (💀), **The Process** (🧱), and **Cold Slump** (❄️).
+- **Badge Guide & Moderator Manager Harmonization**:
+  - Updated `openBadgeGuide()` with full category cards and descriptions.
+  - Updated moderator `badgePresets` in `openManageBadges` to allow manual management of all new badge types.
+
+## [v4.3.7] — 2026-10-17
+
+### Cloudflare Workers Free Tier CPU Overrun Elimination & Zero-CPU KV Streaming
+- **Root Cause Resolution for Cloudflare Free Tier CPU Limit Alert**:
+  - Eliminated the 10ms CPU execution time overrun triggered 1,440 times/day by the 1-minute cron scheduled worker (`scheduled(controller, env, ctx)`).
+  - Previously, the cron job unconditionally executed `JSON.parse()` on the full 3 MB `league_state:main` database payload every 60 seconds (taking 12–20ms of pure V8 execution time, exceeding Cloudflare's strict 10ms limit) just to check draft turn timers even when no draft was running.
+- **Ultra-Fast `active_draft_ids` KV Index (< 0.001 ms CPU)**:
+  - Introduced a lightweight index key (`active_draft_ids`, ~10 bytes) tracking only active drafts (`[]` during normal non-draft periods).
+  - Draft timer evaluation checks `active_draft_ids` first. If no drafts are active, it terminates in `< 0.001 ms` CPU time (10,000× safely below the 10ms limit).
+  - When a draft is active, evaluation now fetches only that tournament's isolated `draft_state:${tId}` key (~20 KB instead of 3 MB), completing timer evaluation in `~0.05 ms` CPU time.
+- **Zero-CPU Direct KV Streaming on Read Endpoints**:
+  - Removed redundant draft timer evaluation and `JSON.parse` overhead from `GET /api/state` and `GET /api/draft`.
+  - Read endpoints now stream the raw string directly from Cloudflare KV into `Response` bodies (`0 ms` CPU parsing time), keeping frontend polling under all platform limits.
+- **Self-Healing Cold-Start & Automated Maintenance**:
+  - Automatically initializes and synchronizes the `active_draft_ids` index during `/api/health` checks and whenever drafts are started, updated, or completed.
+
 ## [v4.3.6] — 2026-10-16
 
 ### Team Sheet Original Type Badge Restoration, Drawer Header Hierarchy, Unified Barlow Telemetry & Even Line Layout
