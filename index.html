@@ -45940,7 +45940,31 @@ function renderDrawerAbilitiesHtml(abilities) {
   }).join('');
 }
 
+function isDraftMenuSectionActive() {
+  let cur = String(window.current || current || '').trim();
+  if(cur === 'Draft' || cur === 'Draft Board' || cur === 'Draft Tools') return true;
+  if(cur === 'Tournament Detail' && typeof detailTab !== 'undefined' && detailTab === 'Draft') return true;
+  return false;
+}
+
 function renderDrawerActionsHtml(monName, cost, tierName, tourneyId) {
+  // Only render Draft & Planner Controls when actively in the draft menu section
+  if(!isDraftMenuSectionActive()) {
+    return '';
+  }
+
+  // If in draft section but the Pokémon is not on the draft board / has no cost:
+  if(cost === null || cost === undefined || isNaN(Number(cost))) {
+    return `
+      <div style="font:800 11px 'Barlow Condensed';letter-spacing:1px;color:#8e8c95;text-transform:uppercase;margin-bottom:8px">
+        Draft &amp; Planner Controls
+      </div>
+      <div style="padding:10px 12px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:8px;font-size:11.5px;color:#94a3b8;text-align:center">
+        This Pokémon is not in the active draft board pool.
+      </div>
+    `;
+  }
+
   let clean = String(monName || '').toLowerCase().trim();
   let team = typeof activeTeam === 'function' ? activeTeam() : null;
   let isInPlan = team && Array.isArray(team.picks) && team.picks.some(p => (p.name || '').toLowerCase().trim() === clean);
@@ -46142,10 +46166,16 @@ function openPokemonDetailDrawer(monName, cost, tierName, tourneyId = null) {
         actualCost = foundTier.cost;
         actualTierName = foundTier.name || `${foundTier.cost} Points`;
       } else {
-        actualCost = 15;
-        actualTierName = '15 Points';
+        actualCost = null;
+        actualTierName = null;
       }
     }
+  }
+
+  let isOnBoard = Boolean(matchedBoardMon || (actualCost !== null && actualCost !== undefined));
+  if(!isOnBoard) {
+    actualCost = null;
+    actualTierName = null;
   }
 
   let boardTargetName = matchedBoardMon || canonicalName;
@@ -46187,16 +46217,18 @@ function openPokemonDetailDrawer(monName, cost, tierName, tourneyId = null) {
   let initialArtworkUrl = (cachedData?.artwork && _trimmedArtworkCache.get(cachedData.artwork)) || cachedData?.artwork || pokeSprite(canonicalName);
   let initialGenusText = cachedData?.genus ? (cachedData.genus.startsWith('The ') ? cachedData.genus : ('The ' + cachedData.genus)) : (getPokemonTypes(canonicalName).join(' / ') + ' Pokémon');
 
+  let drawerActionsHtml = renderDrawerActionsHtml(canonicalName, actualCost, actualTierName, targetTid);
+
   panel.innerHTML = `
     <div class="pokemon-drawer-header">
       <div style="display:flex;align-items:center;gap:8px">
         <button class="pokemon-drawer-close" onclick="closePokemonDetailDrawer()" aria-label="Close details">✕</button>
         <div id="drawerTierBadges">
-          ${renderTierAndCostBadges(actualTierName, actualCost)}
+          ${actualCost !== null && actualCost !== undefined ? renderTierAndCostBadges(actualTierName, actualCost) : ''}
         </div>
       </div>
-      ${moderator ? `
-        <button class="btn ghost btn-sm" style="font-size:11px!important;color:#ffd166;border-color:#5a4218;padding:2px 8px!important" onclick="closePokemonDetailDrawer();openEditBoardPokemonModal('${jsArg(targetTid||'')}', '${jsArg(boardTargetName)}', ${actualCost}, '${jsArg(actualTierName)}')">
+      ${moderator && (targetTid || actualCost !== null) ? `
+        <button class="btn ghost btn-sm" style="font-size:11px!important;color:#ffd166;border-color:#5a4218;padding:2px 8px!important" onclick="closePokemonDetailDrawer();openEditBoardPokemonModal('${jsArg(targetTid||'')}', '${jsArg(boardTargetName)}', ${actualCost || 15}, '${jsArg(actualTierName || '')}')">
           ✏️ Edit Tier
         </button>
       ` : ''}
@@ -46228,21 +46260,23 @@ function openPokemonDetailDrawer(monName, cost, tierName, tourneyId = null) {
       </div>
     </div>
 
-    <!-- Actions Section -->
-    <div class="pokemon-drawer-section" id="drawerActionsContainer">
-      ${renderDrawerActionsHtml(canonicalName, actualCost, actualTierName, targetTid)}
-    </div>
+    <!-- Actions Section (only present when draft controls are active) -->
+    ${drawerActionsHtml ? `
+      <div class="pokemon-drawer-section" id="drawerActionsContainer">
+        ${drawerActionsHtml}
+      </div>
+    ` : `<div id="drawerActionsContainer" style="display:none"></div>`}
 
     <!-- External Links & League Career Action Bar -->
-    <div style="padding:6px 18px 24px;display:flex;align-items:center;justify-content:center;gap:14px">
+    <div style="padding:12px 18px 24px;display:flex;align-items:center;justify-content:center;gap:16px">
       <!-- Smogon Button (Circular, Just the Logo in the Middle of the Space) -->
-      <a href="https://www.smogon.com/dex/sv/pokemon/${encodeURIComponent(toSmogonSlug(canonicalName))}/" target="_blank" rel="noopener" class="btn ghost btn-sm" title="View on Smogon Dex ↗" style="width:42px;height:42px;padding:0;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;text-decoration:none;border:1px solid rgba(255,255,255,0.15);background:linear-gradient(135deg,rgba(255,255,255,0.06) 0%,rgba(0,0,0,0.35) 100%);box-shadow:0 3px 10px rgba(0,0,0,0.3);transition:all .2s ease;cursor:pointer" onmouseover="this.style.transform='scale(1.08)';this.style.borderColor='rgba(255,255,255,0.35)';this.style.boxShadow='0 0 12px rgba(255,255,255,0.18)'" onmouseout="this.style.transform='none';this.style.borderColor='rgba(255,255,255,0.15)';this.style.boxShadow='0 3px 10px rgba(0,0,0,0.3)'">
-        <img src="Fonts & Logos/smogon.png" onerror="if(this.src!=='https://www.smogon.com/favicon.ico'){this.src='https://www.smogon.com/favicon.ico';}" alt="Smogon Dex" style="width:22px;height:22px;object-fit:contain;flex-shrink:0;border-radius:50%">
+      <a href="https://www.smogon.com/dex/sv/pokemon/${encodeURIComponent(toSmogonSlug(canonicalName))}/" target="_blank" rel="noopener" class="btn ghost btn-sm" title="View ${esc(canonicalName)} on Smogon Dex ↗" style="width:48px;height:48px;padding:0;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;text-decoration:none;border:1.5px solid rgba(168,85,247,0.45);background:radial-gradient(circle at 40% 35%, rgba(138,92,246,0.22) 0%, rgba(20,20,30,0.95) 100%);box-shadow:0 4px 14px rgba(0,0,0,0.45), 0 0 10px rgba(168,85,247,0.18);transition:all .2s cubic-bezier(0.4, 0, 0.2, 1);cursor:pointer" onmouseover="this.style.transform='scale(1.1)';this.style.borderColor='rgba(192,132,252,0.8)';this.style.boxShadow='0 0 18px rgba(168,85,247,0.45)'" onmouseout="this.style.transform='none';this.style.borderColor='rgba(168,85,247,0.45)';this.style.boxShadow='0 4px 14px rgba(0,0,0,0.45), 0 0 10px rgba(168,85,247,0.18)'">
+        <img src="Fonts & Logos/smogon.png" onerror="if(this.src!=='https://www.smogon.com/favicon.ico'){this.src='https://www.smogon.com/favicon.ico';}" alt="Smogon Dex" style="width:34px;height:34px;object-fit:contain;flex-shrink:0">
       </a>
 
       <!-- Stats Button (Circular, opens career stats in this right-hand side panel) -->
-      <button type="button" class="btn ghost btn-sm" onclick="showPokemonDrawerCareerStats('${jsArg(canonicalName)}')" title="View ${esc(canonicalName)} League Career Stats & Accolades" style="width:42px;height:42px;padding:0;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;background:linear-gradient(135deg,rgba(255,209,102,0.18) 0%,rgba(217,119,6,0.18) 100%);border:1px solid rgba(255,209,102,0.45);color:#ffd166;box-shadow:0 3px 10px rgba(0,0,0,0.35);transition:all .2s ease;cursor:pointer" onmouseover="this.style.transform='scale(1.08)';this.style.borderColor='#ffd166';this.style.boxShadow='0 0 14px rgba(255,209,102,0.4)'" onmouseout="this.style.transform='none';this.style.borderColor='rgba(255,209,102,0.45)';this.style.boxShadow='0 3px 10px rgba(0,0,0,0.35)'">
-        <span style="font-size:19px;line-height:1">🏅</span>
+      <button type="button" class="btn ghost btn-sm" onclick="showPokemonDrawerCareerStats('${jsArg(canonicalName)}')" title="View ${esc(canonicalName)} League Career Stats & Accolades" style="width:48px;height:48px;padding:0;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;background:radial-gradient(circle at 40% 35%, rgba(255,209,102,0.25) 0%, rgba(24,20,12,0.95) 100%);border:1.5px solid rgba(255,209,102,0.5);color:#ffd166;box-shadow:0 4px 14px rgba(0,0,0,0.45), 0 0 10px rgba(255,209,102,0.2);transition:all .2s cubic-bezier(0.4, 0, 0.2, 1);cursor:pointer" onmouseover="this.style.transform='scale(1.1)';this.style.borderColor='#ffd166';this.style.boxShadow='0 0 18px rgba(255,209,102,0.45)'" onmouseout="this.style.transform='none';this.style.borderColor='rgba(255,209,102,0.5)';this.style.boxShadow='0 4px 14px rgba(0,0,0,0.45), 0 0 10px rgba(255,209,102,0.2)'">
+        <span style="font-size:22px;line-height:1">🏅</span>
       </button>
     </div>
   `;
@@ -46384,12 +46418,14 @@ function refreshDrawerActions() {
   if(!currentDrawerMon) return;
   let actionsEl = document.getElementById('drawerActionsContainer');
   if(actionsEl) {
-    actionsEl.innerHTML = renderDrawerActionsHtml(
+    let html = renderDrawerActionsHtml(
       currentDrawerMon.name,
       currentDrawerMon.cost,
       currentDrawerMon.tierName,
       currentDrawerMon.tourneyId
     );
+    actionsEl.innerHTML = html;
+    actionsEl.style.display = html ? '' : 'none';
   }
 }
 
@@ -46582,11 +46618,24 @@ function getPokemonLeagueCareerDossier(monName) {
     });
 
     if(tGames > 0 || foundInDraft) {
+      let coachEntries = [];
+      if(tCoaches.size > 0) {
+        tCoaches.forEach(c => {
+          let tm = (typeof teamName === 'function') ? teamName(t, c) : '';
+          coachEntries.push({ coach: c, team: tm });
+        });
+      } else {
+        let dHits = draftHistory.filter(dh => dh.tournamentId === t.id);
+        dHits.forEach(dh => {
+          coachEntries.push({ coach: dh.coach, team: dh.team });
+        });
+      }
       tournamentRecords.push({
         tournamentId: t.id,
         tournament: tName,
         season: seasonLabel,
         coaches: Array.from(tCoaches),
+        coachEntries: coachEntries,
         games: tGames,
         wins: tWins,
         losses: tLosses,
@@ -47147,28 +47196,25 @@ function showPokemonDrawerCareerStats(monName) {
         <span>${dossier.accolades.length} ${dossier.accolades.length === 1 ? 'Honor' : 'Honors'}</span>
       </div>
       ${dossier.accolades.length > 0 ? `
-        <div style="display:flex;flex-direction:column;gap:8px">
-          ${dossier.accolades.map(acc => `
-            <div style="background:linear-gradient(135deg, ${acc.badgeBg} 0%, rgba(18,18,26,0.96) 100%);border:1px solid ${acc.badgeBorder};border-radius:8px;padding:10px 12px;box-shadow:0 3px 12px rgba(0,0,0,0.3)">
-              <div style="display:flex;align-items:center;justify-content:space-between;gap:6px">
-                <span style="font:900 10px 'Barlow Condensed';letter-spacing:.8px;text-transform:uppercase;padding:2px 7px;border-radius:4px;background:${acc.badgeBg};color:${acc.badgeColor};border:1px solid ${acc.badgeBorder}">
-                  ${acc.badgeText}
-                </span>
-                <span style="font-size:10.5px;font-weight:800;color:#ffd166">${esc(acc.season)}</span>
-              </div>
-              <div style="font:900 16px 'Barlow Condensed';color:#ffffff;letter-spacing:.4px;text-transform:uppercase;margin-top:4px">
-                ${esc(acc.title)}
-              </div>
-              <div style="font-size:11px;color:#94a3b8;margin-top:2px;display:flex;align-items:center;gap:4px;flex-wrap:wrap">
-                <span>Coach: <b style="color:#ffd166">${acc.coach ? playerLink(acc.coach) : '—'}</b></span>
-                <span>•</span>
-                <span>Team: <b style="color:#f8fafc">${esc(acc.team || 'Unassigned')}</b></span>
-              </div>
-              ${acc.statHighlight ? `
-                <div style="margin-top:4px;font-size:10px;color:#cbd5e1;background:rgba(0,0,0,0.3);padding:2px 7px;border-radius:4px;width:fit-content;font-weight:700">
-                  ${acc.statHighlight}
+        <div style="background:rgba(20,20,30,0.5);border-radius:10px;border:1px solid rgba(255,255,255,0.06);overflow:hidden">
+          ${dossier.accolades.map((acc, idx) => `
+            <div style="padding:10px 14px;display:flex;align-items:center;gap:12px;${idx > 0 ? 'border-top:1px solid rgba(255,255,255,0.05);' : ''}transition:background .15s ease" onmouseover="this.style.background='rgba(255,255,255,0.03)'" onmouseout="this.style.background='transparent'">
+              <div style="font-size:20px;line-height:1;flex-shrink:0;width:26px;text-align:center">${acc.icon || '🏅'}</div>
+              <div style="min-width:0;flex:1">
+                <div style="display:flex;align-items:baseline;justify-content:space-between;gap:8px">
+                  <span style="font:800 13.5px 'Barlow Condensed',sans-serif;color:#ffffff;letter-spacing:.4px;text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">
+                    ${esc(acc.title)}
+                  </span>
+                  <span style="font:800 10.5px 'Barlow Condensed',sans-serif;color:#ffd166;background:rgba(255,209,102,0.1);padding:1px 6px;border-radius:4px;flex-shrink:0;letter-spacing:.3px">
+                    ${esc(acc.season)}
+                  </span>
                 </div>
-              ` : ''}
+                <div style="font-size:11px;color:#94a3b8;margin-top:2px;display:flex;align-items:center;gap:5px;flex-wrap:wrap">
+                  <span>${acc.coach ? playerLink(acc.coach) : '—'}</span>
+                  ${acc.team && acc.team !== 'Unassigned' ? `<span style="color:#475569">·</span><span style="color:#cbd5e1">${esc(acc.team)}</span>` : ''}
+                  ${acc.statHighlight ? `<span style="color:#475569">·</span><span style="color:#a7f3d0;font-weight:600">${acc.statHighlight}</span>` : ''}
+                </div>
+              </div>
             </div>
           `).join('')}
         </div>
@@ -47186,30 +47232,47 @@ function showPokemonDrawerCareerStats(monName) {
         <span>${dossier.tournamentRecords.length} ${dossier.tournamentRecords.length === 1 ? 'Event' : 'Events'}</span>
       </div>
       ${dossier.tournamentRecords.length > 0 ? `
-        <div style="display:flex;flex-direction:column;gap:8px">
-          ${dossier.tournamentRecords.map(rec => `
-            <div style="background:#13131d;border:1px solid rgba(255,255,255,0.06);border-radius:8px;padding:9px 12px">
-              <div style="display:flex;align-items:center;justify-content:space-between;gap:6px">
-                <span style="font:900 11px 'Barlow Condensed';color:#38bdf8;padding:1px 5px;border-radius:3px;background:rgba(56,189,248,0.12);border:1px solid rgba(56,189,248,0.3)">${esc(rec.season)}</span>
-                <span style="font:900 13px 'Barlow Condensed';color:${rec.winRate >= 60 ? '#4ade80' : (rec.winRate >= 45 ? '#38bdf8' : '#cbd5e1')}">${rec.games > 0 ? `${rec.wins}W - ${rec.losses}L (${rec.winRate.toFixed(1)}%)` : '0 Fielded'}</span>
-              </div>
-              <div style="font:900 14px 'Barlow Condensed';color:#fff;margin-top:2px;letter-spacing:.3px;text-transform:uppercase">
-                ${esc(rec.tournament)}
-              </div>
-              <div style="font-size:10.5px;color:#94a3b8;margin-top:1px">
-                Coach: <b style="color:#ffd166">${rec.coaches.length > 0 ? rec.coaches.map(c => playerLink(c)).join(', ') : 'Roster Reserve'}</b>
-              </div>
-              ${rec.games > 0 ? `
-                <div style="margin-top:4px;font-size:10px;color:#cbd5e1;display:flex;align-items:center;gap:6px">
-                  <span><b>${rec.kills}</b> KOs</span>
-                  <span>•</span>
-                  <span><b>${Math.round(rec.damage / rec.games)}</b> Dmg/g</span>
-                  <span>•</span>
-                  <span><b>${(rec.impactScore / rec.games).toFixed(1)}</b> Avg Impact</span>
+        <div style="background:rgba(20,20,30,0.5);border-radius:10px;border:1px solid rgba(255,255,255,0.06);overflow:hidden">
+          ${dossier.tournamentRecords.map((rec, idx) => {
+            let coachTeamStr = rec.coachEntries && rec.coachEntries.length > 0
+              ? rec.coachEntries.map(ce => `${playerLink(ce.coach)}${ce.team && ce.team !== 'Unassigned' ? ` · <span style="color:#cbd5e1">${esc(ce.team)}</span>` : ''}`).join(', ')
+              : (rec.coaches.length > 0 ? rec.coaches.map(c => playerLink(c)).join(', ') : 'Roster Reserve');
+
+            let winColor = rec.winRate >= 60 ? '#4ade80' : (rec.winRate >= 45 ? '#38bdf8' : '#cbd5e1');
+
+            return `
+              <div style="padding:10px 14px;${idx > 0 ? 'border-top:1px solid rgba(255,255,255,0.05);' : ''}transition:background .15s ease" onmouseover="this.style.background='rgba(255,255,255,0.03)'" onmouseout="this.style.background='transparent'">
+                <div style="display:flex;align-items:baseline;justify-content:space-between;gap:8px">
+                  <div style="min-width:0;flex:1;display:flex;align-items:center;gap:6px">
+                    <span style="font:800 10.5px 'Barlow Condensed';color:#38bdf8;background:rgba(56,189,248,0.12);padding:1px 6px;border-radius:4px;flex-shrink:0;letter-spacing:.3px">
+                      ${esc(rec.season)}
+                    </span>
+                    <span style="font:800 14px 'Barlow Condensed',sans-serif;color:#ffffff;letter-spacing:.3px;text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">
+                      ${esc(rec.tournament)}
+                    </span>
+                  </div>
+                  <div style="font:900 13px 'Barlow Condensed';color:${winColor};flex-shrink:0;letter-spacing:.3px">
+                    ${rec.games > 0 ? `${rec.wins}W - ${rec.losses}L (${rec.winRate.toFixed(1)}%)` : '<span style="color:#64748b;font-weight:700">0 Fielded</span>'}
+                  </div>
                 </div>
-              ` : ''}
-            </div>
-          `).join('')}
+
+                <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:3px;flex-wrap:wrap">
+                  <div style="font-size:11px;color:#94a3b8">
+                    ${coachTeamStr}
+                  </div>
+                  ${rec.games > 0 ? `
+                    <div style="font:700 10.5px 'Barlow Condensed';color:#cbd5e1;display:flex;align-items:center;gap:6px;letter-spacing:.3px">
+                      <span><b style="color:#fb923c">${rec.kills}</b> KOs</span>
+                      <span style="color:#475569">·</span>
+                      <span><b style="color:#f87171">${Math.round(rec.damage / rec.games)}</b> Dmg/g</span>
+                      <span style="color:#475569">·</span>
+                      <span><b style="color:#38bdf8">${(rec.impactScore / rec.games).toFixed(1)}</b> Imp</span>
+                    </div>
+                  ` : ''}
+                </div>
+              </div>
+            `;
+          }).join('')}
         </div>
       ` : `
         <div style="text-align:center;padding:14px 12px;color:#6b7280;font-size:11.5px">
@@ -47218,44 +47281,13 @@ function showPokemonDrawerCareerStats(monName) {
       `}
     </div>
 
-    <!-- Section 3: Draft History -->
-    <div class="pokemon-drawer-section">
-      <div class="pokemon-drawer-section-title">
-        <span style="color:#f8fafc;display:flex;align-items:center;gap:6px"><span>📋</span> Draft History</span>
-        <span>${dossier.draftHistory.length} ${dossier.draftHistory.length === 1 ? 'Pick' : 'Picks'}</span>
-      </div>
-      ${dossier.draftHistory.length > 0 ? `
-        <div style="display:flex;flex-direction:column;gap:8px">
-          ${dossier.draftHistory.map(dh => `
-            <div style="background:#13131d;border:1px solid rgba(255,255,255,0.06);border-radius:8px;padding:9px 12px">
-              <div style="display:flex;align-items:center;justify-content:space-between;gap:6px">
-                <span style="font:900 11px 'Barlow Condensed';color:#ffd166;padding:1px 5px;border-radius:3px;background:rgba(255,209,102,0.12);border:1px solid rgba(255,209,102,0.3)">${esc(dh.season)}</span>
-                <span style="font:900 12px 'Barlow Condensed';color:#fef08a;background:rgba(250,204,21,0.15);border:1px solid rgba(250,204,21,0.4);padding:2px 7px;border-radius:4px">${dh.cost} PTS</span>
-              </div>
-              <div style="font:900 14px 'Barlow Condensed';color:#fff;margin-top:2px;letter-spacing:.3px;text-transform:uppercase">
-                ${esc(dh.tournament)}
-              </div>
-              <div style="font-size:10.5px;color:#94a3b8;margin-top:1px">
-                Drafted by <b style="color:#ffd166">${dh.coach ? playerLink(dh.coach) : '—'}</b> (${esc(dh.team || 'Unassigned')})
-                ${dh.round ? `<span style="color:#64748b"> • R${dh.round} Pick #${dh.pickNumber}</span>` : ''}
-              </div>
-            </div>
-          `).join('')}
-        </div>
-      ` : `
-        <div style="text-align:center;padding:14px 12px;color:#6b7280;font-size:11.5px">
-          No draft picks recorded for this Pokémon yet.
-        </div>
-      `}
-    </div>
-
     <!-- Bottom Action Row -->
-    <div style="padding:10px 18px 24px;display:flex;align-items:center;justify-content:center;gap:14px">
-      <button class="btn ghost btn-sm" onclick="returnToPokemonDrawerInfo()" style="display:flex;align-items:center;gap:6px;font-family:'Barlow Condensed',sans-serif;font-size:12px;font-weight:800;letter-spacing:.5px;text-transform:uppercase;color:#cbd5e1;padding:8px 16px;border-radius:8px">
+    <div style="padding:14px 18px 24px;display:flex;align-items:center;justify-content:center;gap:16px">
+      <button class="btn ghost btn-sm" onclick="returnToPokemonDrawerInfo()" style="display:flex;align-items:center;gap:6px;font-family:'Barlow Condensed',sans-serif;font-size:12px;font-weight:800;letter-spacing:.5px;text-transform:uppercase;color:#cbd5e1;padding:8px 18px;border-radius:8px">
         ← Back to Details
       </button>
-      <a href="https://www.smogon.com/dex/sv/pokemon/${encodeURIComponent(toSmogonSlug(canonicalName))}/" target="_blank" rel="noopener" class="btn ghost btn-sm" title="View on Smogon Dex ↗" style="width:40px;height:40px;padding:0;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;text-decoration:none;border:1px solid rgba(255,255,255,0.15);background:linear-gradient(135deg,rgba(255,255,255,0.06) 0%,rgba(0,0,0,0.35) 100%);box-shadow:0 3px 10px rgba(0,0,0,0.3);transition:all .2s ease;cursor:pointer" onmouseover="this.style.transform='scale(1.08)';this.style.borderColor='rgba(255,255,255,0.35)'" onmouseout="this.style.transform='none';this.style.borderColor='rgba(255,255,255,0.15)'">
-        <img src="Fonts & Logos/smogon.png" onerror="if(this.src!=='https://www.smogon.com/favicon.ico'){this.src='https://www.smogon.com/favicon.ico';}" alt="Smogon" style="width:20px;height:20px;object-fit:contain;border-radius:50%">
+      <a href="https://www.smogon.com/dex/sv/pokemon/${encodeURIComponent(toSmogonSlug(canonicalName))}/" target="_blank" rel="noopener" class="btn ghost btn-sm" title="View ${esc(canonicalName)} on Smogon Dex ↗" style="width:48px;height:48px;padding:0;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;text-decoration:none;border:1.5px solid rgba(168,85,247,0.45);background:radial-gradient(circle at 40% 35%, rgba(138,92,246,0.22) 0%, rgba(20,20,30,0.95) 100%);box-shadow:0 4px 14px rgba(0,0,0,0.45), 0 0 10px rgba(168,85,247,0.18);transition:all .2s cubic-bezier(0.4, 0, 0.2, 1);cursor:pointer" onmouseover="this.style.transform='scale(1.1)';this.style.borderColor='rgba(192,132,252,0.8)';this.style.boxShadow='0 0 18px rgba(168,85,247,0.45)'" onmouseout="this.style.transform='none';this.style.borderColor='rgba(168,85,247,0.45)';this.style.boxShadow='0 4px 14px rgba(0,0,0,0.45), 0 0 10px rgba(168,85,247,0.18)'">
+        <img src="Fonts & Logos/smogon.png" onerror="if(this.src!=='https://www.smogon.com/favicon.ico'){this.src='https://www.smogon.com/favicon.ico';}" alt="Smogon Dex" style="width:34px;height:34px;object-fit:contain;flex-shrink:0">
       </a>
     </div>
   `;

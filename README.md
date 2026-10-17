@@ -3,6 +3,24 @@
 All notable changes to the Bellimaka Pokémon Draft League platform are documented here.
 Format: `v[MAJOR].[MINOR].[PATCH]` — Major = major system overhauls, Minor = new features, Patch = bug fixes and visual improvements.
 
+## [v4.3.5] — 2026-10-16
+
+### High-Visibility Smogon Logo, Streamlined Career Dossier, Draft & Planner Guardrails
+- **High-Visibility Smogon Logo Action Button**:
+  - Upgraded the circular Smogon button to **48px diameter** and enlarged the icon to **34px** (`object-fit: contain;`), more than doubling its visible presence.
+  - Removed internal image corner clipping (`border-radius: 50%` on the `img` itself), allowing the full Koffing artwork with skull, crossbones, and smoke clouds to render clearly.
+  - Sized the gold career medal button (`🏅`) to 48px alongside it with balanced accent lighting.
+- **Streamlined Unboxed Career Dossier (Accolades & Tournament Record)**:
+  - Eliminated the heavy, bloated card boxes and glowing "bubbles" that previously cluttered the career view.
+  - Replaced **Accolades & Honors** with a sleek, compact honors ledger featuring hairline dividers, crisp typography, accolade icons, season badges, coach links, and team names in ~42px rows.
+  - Redesigned **Tournament Record** into a unified sports ledger displaying Season tag, Event name, battle record (`W - L` & win rate %), coach and team names, and per-event telemetry (`KOs`, `Dmg/g`, `Avg Impact`).
+  - **Removed Draft History Section**: Eliminated redundant draft ledger since the tournament record already captures the teams and coaches the Pokémon was fielded on.
+  - Retained the clean 6-stat **Career Telemetry HUD Bar** (Times Drafted, Games Fielded, Win %, Total KOs, Dmg/G, Avg Impact).
+- **Draft & Planner Controls Contextual Guardrail**:
+  - Restricted the sidebar's "Draft & Planner Controls" section (`renderDrawerActionsHtml`) to appear **only when actively in the draft section** (`Draft` tab or `Tournament Detail → Draft`).
+  - Opening Pokémon from any other tab (Awards, Standings, Teams, Matches, Records, etc.) completely hides the draft & planner controls.
+  - Fixed false-positive default point pricing: Pokémon not listed on an active draft board no longer default to 15 points and cannot be added to the team planner or draft bank.
+
 ## [v4.3.4] — 2026-10-16
 
 ### Pokémon League Career Dossier In-Drawer Panel & Circular Smogon Action Bar
