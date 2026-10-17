@@ -5,7 +5,7 @@ Format: `v[MAJOR].[MINOR].[PATCH]` — Major = major system overhauls, Minor = n
 
 ## [v4.3.8] — 2026-10-17
 
-### Grand Achievements Astral Badges, Ruby Decider Color, Total Harmony & Infamous Feats
+### Grand Achievements Astral Badges, Ruby Decider Color, Total Harmony, Infamous Feats & Strict Badge Glow Exclusivity
 - **"Grand Achievements" Astral & Starlight Badge Tier (`.badge-pill.astral`)**:
   - Created a brand-new celestial prestige category featuring a cosmic deep-space gradient with dual radial star highlights (`#c084fc` purple & `#38bdf8` cyan), celestial aura box-shadows, and glowing starlight text glow.
   - Promoted the league's pinnacle honors into this tier: **GOAT** (🐐), **Triple Crown** (👑), **Unrivaled** (⚜️), and **Undefeated Champ** (🌟).
@@ -18,7 +18,15 @@ Format: `v[MAJOR].[MINOR].[PATCH]` — Major = major system overhauls, Minor = n
   - Created a dedicated section in the Badge Guide and record engine for notorious disasters:
     - **Donut** (🍩, `crimson`): Awarded for a total eclipse tournament where a coach fails to win a single individual battle game (0-X games, 0-X matches). Automatically replaces/suppresses **Victim** (💀) so coaches don't suffer badge bloat.
     - **Butterfingers** (🧈, `orange`): Awarded for holding a 1-0 series lead in 3 or more separate matches in a single tournament and getting reverse-swept 1-2 in all of them.
-    - Grouped alongside **Victim** (💀), **The Process** (🧱), and **Cold Slump** (❄️).
+    - Grouped alongside **Victim** (💀) and **The Process** (🧱).
+- **Form & Streak Badge Categorization**:
+  - Grouped **Cold Slump (3L+)** (❄️) under **Form & Streak Badges** directly alongside **On Fire (3W+)** (⚡) and **70%+ Win Rate** (📈).
+- **Strict Glow Exclusivity (Reserved for Grand, Championship & All-Time Records)**:
+  - Enforced a strict rule reserving glow (`box-shadow`, `inset` aura, `text-shadow`) exclusively for the 3 pinnacle badge tiers:
+    - **Grand Achievements**: `.badge-pill.astral`
+    - **Championships**: `.badge-pill.gold-pearlescent`
+    - **All-Time Records**: `.badge-pill.prismatic`
+  - Reverted all standard badge colors (`ruby`/`clutch`, `flame`, `crimson`, `red`, `amber`, `orange`, `gold`) to clean, matte pill styling without blur or glow bloat.
 - **Badge Guide & Moderator Manager Harmonization**:
   - Updated `openBadgeGuide()` with full category cards and descriptions.
   - Updated moderator `badgePresets` in `openManageBadges` to allow manual management of all new badge types.
