@@ -5,14 +5,16 @@ Format: `v[MAJOR].[MINOR].[PATCH]` — Major = major system overhauls, Minor = n
 
 ## [v4.3.4] — 2026-10-16
 
-### Pokémon League Career Dossier & Accolades Modal, Smogon Icon Integration
-- **Smogon Dex Embed Icon Integration**:
-  - Enhanced the "Smogon Dex" link button in the right-hand Pokémon inspection drawer sidebar with a crisp Smogon icon.
-  - Configured to automatically prioritize custom local uploads at `Fonts & Logos/smogon.png` (or `smogon.png` in GitHub), with seamless live fallback to Smogon's official `favicon.ico`.
-- **Pokémon League Career Dossier & Accolades Modal (`openPokemonLeagueCareerModal`)**:
-  - Added a circular gold medal action button (`🏅`) next to the Smogon Dex button in the Pokémon drawer action bar.
-  - Clicking the button opens a comprehensive **League Career Dossier & Accolades Modal** featuring:
-    - **Career Telemetry HUD Bar**: Total times drafted, games fielded, win rate percentage (`X.X%`) with exact battle record (`W - L` in matches appeared in), total career knockouts (`KOs/game`), and career average impact rating.
+### Pokémon League Career Dossier In-Drawer Panel & Circular Smogon Action Bar
+- **Centered Circular Smogon & Career Action Bar**:
+  - Transformed the Smogon Dex action in the right-hand Pokémon inspection drawer into a centered 42px circular logo button (clean icon-only presentation, zero text clutter).
+  - Automatically prioritizes custom uploads at `Fonts & Logos/smogon.png` (or repository root `smogon.png`), with resilient live fallback to Smogon's official `favicon.ico`.
+  - Positioned the gold League Career button (`🏅`) directly alongside it in a balanced, centered dual-action layout.
+- **In-Drawer League Career Dossier & Accolades View (`showPokemonDrawerCareerStats`)**:
+  - Redesigned the career stats and accolades experience to open seamlessly **directly inside the right-hand side panel** (`#pokemonDrawerPanel`), replacing the drawer content rather than launching a disconnected screen-wide popup modal.
+  - Includes a sticky header with a one-click `← Details` button (`returnToPokemonDrawerInfo()`) to instantly return to the Pokémon's inspection view without reloading or re-fetching, alongside a clean `✕` drawer close button.
+  - Features the full historical record:
+    - **Career Telemetry HUD Bar**: Total times drafted, games fielded, win rate percentage (`X.X%`) with exact battle record (`W - L` in matches appeared in), total career knockouts (`KOs/game`), damage per game, and career average impact rating.
     - **Official Accolades & Honors Gallery**:
       - **Tournaments Won / Championships**: Highlights championships won when this Pokémon was on the winning team, specifying the tournament, season, winning coach, and team name.
       - **Playoff Finals MVP**: Records Finals MVP honors with finals game count, KOs, impact rating, season, coach, and team.

@@ -46234,14 +46234,15 @@ function openPokemonDetailDrawer(monName, cost, tierName, tourneyId = null) {
     </div>
 
     <!-- External Links & League Career Action Bar -->
-    <div style="padding:0 18px 24px;display:flex;align-items:center;gap:8px">
-      <a href="https://www.smogon.com/dex/sv/pokemon/${encodeURIComponent(toSmogonSlug(canonicalName))}/" target="_blank" rel="noopener" class="btn ghost btn-sm" style="display:flex;align-items:center;justify-content:center;gap:8px;flex:1;text-decoration:none;font-size:12px;font-weight:700;color:#cbd5e1;border-color:rgba(255,255,255,0.12);padding:9px 12px;border-radius:8px;background:rgba(255,255,255,0.03);transition:all .2s ease" onmouseover="this.style.background='rgba(255,255,255,0.07)';this.style.borderColor='rgba(255,255,255,0.2)'" onmouseout="this.style.background='rgba(255,255,255,0.03)';this.style.borderColor='rgba(255,255,255,0.12)'">
-        <img src="Fonts & Logos/smogon.png" onerror="if(this.src!=='https://www.smogon.com/favicon.ico'){this.src='https://www.smogon.com/favicon.ico';}" alt="Smogon" style="width:16px;height:16px;object-fit:contain;flex-shrink:0;border-radius:3px">
-        <span>Smogon Dex</span>
-        <span style="font-size:11px;opacity:0.6">↗</span>
+    <div style="padding:6px 18px 24px;display:flex;align-items:center;justify-content:center;gap:14px">
+      <!-- Smogon Button (Circular, Just the Logo in the Middle of the Space) -->
+      <a href="https://www.smogon.com/dex/sv/pokemon/${encodeURIComponent(toSmogonSlug(canonicalName))}/" target="_blank" rel="noopener" class="btn ghost btn-sm" title="View on Smogon Dex ↗" style="width:42px;height:42px;padding:0;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;text-decoration:none;border:1px solid rgba(255,255,255,0.15);background:linear-gradient(135deg,rgba(255,255,255,0.06) 0%,rgba(0,0,0,0.35) 100%);box-shadow:0 3px 10px rgba(0,0,0,0.3);transition:all .2s ease;cursor:pointer" onmouseover="this.style.transform='scale(1.08)';this.style.borderColor='rgba(255,255,255,0.35)';this.style.boxShadow='0 0 12px rgba(255,255,255,0.18)'" onmouseout="this.style.transform='none';this.style.borderColor='rgba(255,255,255,0.15)';this.style.boxShadow='0 3px 10px rgba(0,0,0,0.3)'">
+        <img src="Fonts & Logos/smogon.png" onerror="if(this.src!=='https://www.smogon.com/favicon.ico'){this.src='https://www.smogon.com/favicon.ico';}" alt="Smogon Dex" style="width:22px;height:22px;object-fit:contain;flex-shrink:0;border-radius:50%">
       </a>
-      <button type="button" class="btn ghost btn-sm" onclick="openPokemonLeagueCareerModal('${jsArg(canonicalName)}')" title="View ${esc(canonicalName)} League Career Stats & Accolades" style="width:38px;height:38px;padding:0;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;background:linear-gradient(135deg,rgba(255,209,102,0.14) 0%,rgba(217,119,6,0.14) 100%);border:1px solid rgba(255,209,102,0.4);color:#ffd166;box-shadow:0 2px 8px rgba(0,0,0,0.3);transition:all .2s ease;cursor:pointer" onmouseover="this.style.transform='scale(1.08)';this.style.borderColor='#ffd166';this.style.boxShadow='0 0 12px rgba(255,209,102,0.35)'" onmouseout="this.style.transform='none';this.style.borderColor='rgba(255,209,102,0.4)';this.style.boxShadow='0 2px 8px rgba(0,0,0,0.3)'">
-        <span style="font-size:17px;line-height:1">🏅</span>
+
+      <!-- Stats Button (Circular, opens career stats in this right-hand side panel) -->
+      <button type="button" class="btn ghost btn-sm" onclick="showPokemonDrawerCareerStats('${jsArg(canonicalName)}')" title="View ${esc(canonicalName)} League Career Stats & Accolades" style="width:42px;height:42px;padding:0;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;background:linear-gradient(135deg,rgba(255,209,102,0.18) 0%,rgba(217,119,6,0.18) 100%);border:1px solid rgba(255,209,102,0.45);color:#ffd166;box-shadow:0 3px 10px rgba(0,0,0,0.35);transition:all .2s ease;cursor:pointer" onmouseover="this.style.transform='scale(1.08)';this.style.borderColor='#ffd166';this.style.boxShadow='0 0 14px rgba(255,209,102,0.4)'" onmouseout="this.style.transform='none';this.style.borderColor='rgba(255,209,102,0.45)';this.style.boxShadow='0 3px 10px rgba(0,0,0,0.35)'">
+        <span style="font-size:19px;line-height:1">🏅</span>
       </button>
     </div>
   `;
@@ -47056,6 +47057,220 @@ function openPokemonLeagueCareerModal(monName) {
       </div>
     </div>
   `;
+}
+
+function showPokemonDrawerCareerStats(monName) {
+  let panel = document.getElementById('pokemonDrawerPanel');
+  if(!panel) return;
+
+  let cleanName = String(monName || currentDrawerMon?.name || '').trim();
+  if(!cleanName) return;
+  let resolved = (typeof resolvePokemonData === 'function') ? resolvePokemonData(cleanName) : null;
+  let canonicalName = resolved?.name || cleanName;
+
+  let slug = (resolved?.slug) || toPokeApiSlug(canonicalName);
+  let cachedData = _pokemonDetailCache.get(slug) || getStoredMonDetail(slug);
+  let initialArtworkUrl = (cachedData?.artwork && _trimmedArtworkCache.get(cachedData.artwork)) || cachedData?.artwork || pokeSprite(canonicalName);
+  let types = (typeof getPokemonTypes === 'function' ? getPokemonTypes(canonicalName) : []) || ['Normal'];
+  let pType = types[0] || 'Normal';
+  let theme = (typeof TYPE_THEMES !== 'undefined' && TYPE_THEMES[pType]) ? TYPE_THEMES[pType] : { bg: '#1c1c24', border: '#383847', glow: 'rgba(255,255,255,0.06)' };
+
+  let dossier = getPokemonLeagueCareerDossier(canonicalName);
+
+  panel.innerHTML = `
+    <!-- Top Sticky Header with Back Button and Close Button -->
+    <div class="pokemon-drawer-header" style="position:sticky;top:0;background:rgba(18,18,27,0.96);backdrop-filter:blur(8px);z-index:10;border-bottom:1px solid #20202d;padding:14px 18px;display:flex;align-items:center;justify-content:space-between">
+      <div style="display:flex;align-items:center;gap:8px">
+        <button class="btn ghost btn-sm" onclick="returnToPokemonDrawerInfo()" style="display:flex;align-items:center;gap:5px;font-family:'Barlow Condensed',sans-serif;font-size:12px;font-weight:800;letter-spacing:.5px;text-transform:uppercase;color:#cbd5e1;padding:4px 10px;border-radius:6px;border-color:rgba(255,255,255,0.15);background:rgba(255,255,255,0.04);cursor:pointer" title="Return to Pokémon details">
+          <span>←</span> <span>Details</span>
+        </button>
+        <span style="font:900 13px 'Barlow Condensed';letter-spacing:1px;text-transform:uppercase;color:#ffd166;display:flex;align-items:center;gap:5px">
+          <span>🏅</span> League Career
+        </span>
+      </div>
+      <button class="pokemon-drawer-close" onclick="closePokemonDetailDrawer()" aria-label="Close drawer">✕</button>
+    </div>
+
+    <!-- Mini Hero Sub-Header -->
+    <div style="padding:14px 18px 12px;background:radial-gradient(ellipse at 50% 30%, ${theme.glow ? theme.glow.replace(/0\.\d+/, '0.24') : 'rgba(255,255,255,0.08)'} 0%, rgba(18,18,27,0) 72%);display:flex;align-items:center;gap:12px;border-bottom:1px solid rgba(255,255,255,0.06)">
+      <div style="width:48px;height:48px;border-radius:8px;background:rgba(0,0,0,0.4);border:1px solid rgba(255,255,255,0.08);display:flex;align-items:center;justify-content:center;flex-shrink:0">
+        <img src="${esc(initialArtworkUrl)}" alt="${esc(canonicalName)}" style="max-height:42px;max-width:42px;object-fit:contain;filter:drop-shadow(0 4px 6px rgba(0,0,0,0.6))" loading="lazy" crossOrigin="anonymous" onload="autoTrimArtwork(this)" onerror="handleArtworkFallback(this, '${jsArg(canonicalName)}')">
+      </div>
+      <div style="min-width:0;flex:1">
+        <h3 style="font:900 20px/1.1 'Barlow Condensed',sans-serif;color:#ffffff;letter-spacing:.5px;text-transform:uppercase;margin:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">
+          ${esc(canonicalName)}
+        </h3>
+        <div style="display:flex;align-items:center;gap:4px;margin-top:3px">
+          ${typeof renderPokemonTypeBadges === 'function' ? renderPokemonTypeBadges(canonicalName, 'font-size:8.5px;padding:1px 6px') : ''}
+        </div>
+      </div>
+    </div>
+
+    <!-- Career Telemetry HUD Section -->
+    <div class="pokemon-drawer-section" style="padding:10px 12px;margin:12px 18px 6px">
+      <div class="pokemon-drawer-section-title">
+        <span>Career Telemetry</span>
+        <span style="color:#ffd166">League Record</span>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(3, 1fr);gap:6px;text-align:center">
+        <div style="background:rgba(0,0,0,0.28);border:1px solid rgba(255,255,255,0.06);border-radius:6px;padding:7px 4px">
+          <div style="font:900 20px 'Barlow Condensed';color:#ffd166;line-height:1">${dossier.timesDrafted}x</div>
+          <div style="font-size:8.5px;font-weight:800;color:#94a3b8;text-transform:uppercase;letter-spacing:.4px;margin-top:3px">Times Drafted</div>
+        </div>
+        <div style="background:rgba(0,0,0,0.28);border:1px solid rgba(255,255,255,0.06);border-radius:6px;padding:7px 4px">
+          <div style="font:900 20px 'Barlow Condensed';color:#f8fafc;line-height:1">${dossier.totalGames}</div>
+          <div style="font-size:8.5px;font-weight:800;color:#94a3b8;text-transform:uppercase;letter-spacing:.4px;margin-top:3px">Games Fielded</div>
+        </div>
+        <div style="background:rgba(0,0,0,0.28);border:1px solid rgba(255,255,255,0.06);border-radius:6px;padding:7px 4px">
+          <div style="font:900 20px 'Barlow Condensed';color:${dossier.winRate >= 60 ? '#4ade80' : (dossier.winRate >= 45 ? '#38bdf8' : '#cbd5e1')};line-height:1">${dossier.totalGames > 0 ? (dossier.winRate.toFixed(1) + '%') : '—'}</div>
+          <div style="font-size:8.5px;font-weight:800;color:#94a3b8;text-transform:uppercase;letter-spacing:.4px;margin-top:3px">Win % (${dossier.totalWins}-${dossier.totalLosses})</div>
+        </div>
+        <div style="background:rgba(0,0,0,0.28);border:1px solid rgba(255,255,255,0.06);border-radius:6px;padding:7px 4px">
+          <div style="font:900 20px 'Barlow Condensed';color:#fb923c;line-height:1">${dossier.totalKills}</div>
+          <div style="font-size:8.5px;font-weight:800;color:#94a3b8;text-transform:uppercase;letter-spacing:.4px;margin-top:3px">KOs (${dossier.killsPerGame.toFixed(1)}/g)</div>
+        </div>
+        <div style="background:rgba(0,0,0,0.28);border:1px solid rgba(255,255,255,0.06);border-radius:6px;padding:7px 4px">
+          <div style="font:900 20px 'Barlow Condensed';color:#f87171;line-height:1">${dossier.totalGames > 0 ? Math.round(dossier.damagePerGame) : 0}</div>
+          <div style="font-size:8.5px;font-weight:800;color:#94a3b8;text-transform:uppercase;letter-spacing:.4px;margin-top:3px">Dmg / Game</div>
+        </div>
+        <div style="background:rgba(0,0,0,0.28);border:1px solid rgba(255,255,255,0.06);border-radius:6px;padding:7px 4px">
+          <div style="font:900 20px 'Barlow Condensed';color:#38bdf8;line-height:1">${dossier.totalGames > 0 ? formatImpactScore(dossier.avgImpact) : '—'}</div>
+          <div style="font-size:8.5px;font-weight:800;color:#94a3b8;text-transform:uppercase;letter-spacing:.4px;margin-top:3px">Avg Impact</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Section 1: Official League Accolades -->
+    <div class="pokemon-drawer-section">
+      <div class="pokemon-drawer-section-title">
+        <span style="color:#ffd166;display:flex;align-items:center;gap:6px"><span>🏆</span> Accolades &amp; Honors</span>
+        <span>${dossier.accolades.length} ${dossier.accolades.length === 1 ? 'Honor' : 'Honors'}</span>
+      </div>
+      ${dossier.accolades.length > 0 ? `
+        <div style="display:flex;flex-direction:column;gap:8px">
+          ${dossier.accolades.map(acc => `
+            <div style="background:linear-gradient(135deg, ${acc.badgeBg} 0%, rgba(18,18,26,0.96) 100%);border:1px solid ${acc.badgeBorder};border-radius:8px;padding:10px 12px;box-shadow:0 3px 12px rgba(0,0,0,0.3)">
+              <div style="display:flex;align-items:center;justify-content:space-between;gap:6px">
+                <span style="font:900 10px 'Barlow Condensed';letter-spacing:.8px;text-transform:uppercase;padding:2px 7px;border-radius:4px;background:${acc.badgeBg};color:${acc.badgeColor};border:1px solid ${acc.badgeBorder}">
+                  ${acc.badgeText}
+                </span>
+                <span style="font-size:10.5px;font-weight:800;color:#ffd166">${esc(acc.season)}</span>
+              </div>
+              <div style="font:900 16px 'Barlow Condensed';color:#ffffff;letter-spacing:.4px;text-transform:uppercase;margin-top:4px">
+                ${esc(acc.title)}
+              </div>
+              <div style="font-size:11px;color:#94a3b8;margin-top:2px;display:flex;align-items:center;gap:4px;flex-wrap:wrap">
+                <span>Coach: <b style="color:#ffd166">${acc.coach ? playerLink(acc.coach) : '—'}</b></span>
+                <span>•</span>
+                <span>Team: <b style="color:#f8fafc">${esc(acc.team || 'Unassigned')}</b></span>
+              </div>
+              ${acc.statHighlight ? `
+                <div style="margin-top:4px;font-size:10px;color:#cbd5e1;background:rgba(0,0,0,0.3);padding:2px 7px;border-radius:4px;width:fit-content;font-weight:700">
+                  ${acc.statHighlight}
+                </div>
+              ` : ''}
+            </div>
+          `).join('')}
+        </div>
+      ` : `
+        <div style="text-align:center;padding:16px 12px;color:#6b7280;font-size:11.5px;line-height:1.5">
+          No honors recorded yet for ${esc(canonicalName)}. Accolades unlock automatically as tournament seasons conclude!
+        </div>
+      `}
+    </div>
+
+    <!-- Section 2: Battle Record by Tournament -->
+    <div class="pokemon-drawer-section">
+      <div class="pokemon-drawer-section-title">
+        <span style="color:#38bdf8;display:flex;align-items:center;gap:6px"><span>⚔️</span> Tournament Record</span>
+        <span>${dossier.tournamentRecords.length} ${dossier.tournamentRecords.length === 1 ? 'Event' : 'Events'}</span>
+      </div>
+      ${dossier.tournamentRecords.length > 0 ? `
+        <div style="display:flex;flex-direction:column;gap:8px">
+          ${dossier.tournamentRecords.map(rec => `
+            <div style="background:#13131d;border:1px solid rgba(255,255,255,0.06);border-radius:8px;padding:9px 12px">
+              <div style="display:flex;align-items:center;justify-content:space-between;gap:6px">
+                <span style="font:900 11px 'Barlow Condensed';color:#38bdf8;padding:1px 5px;border-radius:3px;background:rgba(56,189,248,0.12);border:1px solid rgba(56,189,248,0.3)">${esc(rec.season)}</span>
+                <span style="font:900 13px 'Barlow Condensed';color:${rec.winRate >= 60 ? '#4ade80' : (rec.winRate >= 45 ? '#38bdf8' : '#cbd5e1')}">${rec.games > 0 ? `${rec.wins}W - ${rec.losses}L (${rec.winRate.toFixed(1)}%)` : '0 Fielded'}</span>
+              </div>
+              <div style="font:900 14px 'Barlow Condensed';color:#fff;margin-top:2px;letter-spacing:.3px;text-transform:uppercase">
+                ${esc(rec.tournament)}
+              </div>
+              <div style="font-size:10.5px;color:#94a3b8;margin-top:1px">
+                Coach: <b style="color:#ffd166">${rec.coaches.length > 0 ? rec.coaches.map(c => playerLink(c)).join(', ') : 'Roster Reserve'}</b>
+              </div>
+              ${rec.games > 0 ? `
+                <div style="margin-top:4px;font-size:10px;color:#cbd5e1;display:flex;align-items:center;gap:6px">
+                  <span><b>${rec.kills}</b> KOs</span>
+                  <span>•</span>
+                  <span><b>${Math.round(rec.damage / rec.games)}</b> Dmg/g</span>
+                  <span>•</span>
+                  <span><b>${(rec.impactScore / rec.games).toFixed(1)}</b> Avg Impact</span>
+                </div>
+              ` : ''}
+            </div>
+          `).join('')}
+        </div>
+      ` : `
+        <div style="text-align:center;padding:14px 12px;color:#6b7280;font-size:11.5px">
+          No tournament battle appearances recorded yet.
+        </div>
+      `}
+    </div>
+
+    <!-- Section 3: Draft History -->
+    <div class="pokemon-drawer-section">
+      <div class="pokemon-drawer-section-title">
+        <span style="color:#f8fafc;display:flex;align-items:center;gap:6px"><span>📋</span> Draft History</span>
+        <span>${dossier.draftHistory.length} ${dossier.draftHistory.length === 1 ? 'Pick' : 'Picks'}</span>
+      </div>
+      ${dossier.draftHistory.length > 0 ? `
+        <div style="display:flex;flex-direction:column;gap:8px">
+          ${dossier.draftHistory.map(dh => `
+            <div style="background:#13131d;border:1px solid rgba(255,255,255,0.06);border-radius:8px;padding:9px 12px">
+              <div style="display:flex;align-items:center;justify-content:space-between;gap:6px">
+                <span style="font:900 11px 'Barlow Condensed';color:#ffd166;padding:1px 5px;border-radius:3px;background:rgba(255,209,102,0.12);border:1px solid rgba(255,209,102,0.3)">${esc(dh.season)}</span>
+                <span style="font:900 12px 'Barlow Condensed';color:#fef08a;background:rgba(250,204,21,0.15);border:1px solid rgba(250,204,21,0.4);padding:2px 7px;border-radius:4px">${dh.cost} PTS</span>
+              </div>
+              <div style="font:900 14px 'Barlow Condensed';color:#fff;margin-top:2px;letter-spacing:.3px;text-transform:uppercase">
+                ${esc(dh.tournament)}
+              </div>
+              <div style="font-size:10.5px;color:#94a3b8;margin-top:1px">
+                Drafted by <b style="color:#ffd166">${dh.coach ? playerLink(dh.coach) : '—'}</b> (${esc(dh.team || 'Unassigned')})
+                ${dh.round ? `<span style="color:#64748b"> • R${dh.round} Pick #${dh.pickNumber}</span>` : ''}
+              </div>
+            </div>
+          `).join('')}
+        </div>
+      ` : `
+        <div style="text-align:center;padding:14px 12px;color:#6b7280;font-size:11.5px">
+          No draft picks recorded for this Pokémon yet.
+        </div>
+      `}
+    </div>
+
+    <!-- Bottom Action Row -->
+    <div style="padding:10px 18px 24px;display:flex;align-items:center;justify-content:center;gap:14px">
+      <button class="btn ghost btn-sm" onclick="returnToPokemonDrawerInfo()" style="display:flex;align-items:center;gap:6px;font-family:'Barlow Condensed',sans-serif;font-size:12px;font-weight:800;letter-spacing:.5px;text-transform:uppercase;color:#cbd5e1;padding:8px 16px;border-radius:8px">
+        ← Back to Details
+      </button>
+      <a href="https://www.smogon.com/dex/sv/pokemon/${encodeURIComponent(toSmogonSlug(canonicalName))}/" target="_blank" rel="noopener" class="btn ghost btn-sm" title="View on Smogon Dex ↗" style="width:40px;height:40px;padding:0;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;text-decoration:none;border:1px solid rgba(255,255,255,0.15);background:linear-gradient(135deg,rgba(255,255,255,0.06) 0%,rgba(0,0,0,0.35) 100%);box-shadow:0 3px 10px rgba(0,0,0,0.3);transition:all .2s ease;cursor:pointer" onmouseover="this.style.transform='scale(1.08)';this.style.borderColor='rgba(255,255,255,0.35)'" onmouseout="this.style.transform='none';this.style.borderColor='rgba(255,255,255,0.15)'">
+        <img src="Fonts & Logos/smogon.png" onerror="if(this.src!=='https://www.smogon.com/favicon.ico'){this.src='https://www.smogon.com/favicon.ico';}" alt="Smogon" style="width:20px;height:20px;object-fit:contain;border-radius:50%">
+      </a>
+    </div>
+  `;
+
+  panel.scrollTop = 0;
+}
+
+function returnToPokemonDrawerInfo() {
+  if(!currentDrawerMon) return;
+  openPokemonDetailDrawer(
+    currentDrawerMon.name,
+    currentDrawerMon.cost,
+    currentDrawerMon.tierName,
+    currentDrawerMon.tourneyId
+  );
 }
 
 function openEditBoardPokemonModal(tId, oldMonName, currentCost, currentTierName){
